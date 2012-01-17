@@ -23,5 +23,17 @@
 
 if HAVE_CUNIT
 
+check_PROGRAMS = main
+
+OBJECTS = main.c spdylay_pq_test.c
+
+HFILES = spdylay_pq_test.h
+
+main_SOURCES = $(HFILES) $(OBJECTS)
+
+main_LDADD = ${top_builddir}/lib/libspdylay.la -lcunit
+main_LDFLAGS = -static
+AM_CFLAGS = -Wall -g -O2 -I${top_srcdir}/lib -I${top_srcdir}/lib/includes
+TESTS = main
 
 endif # HAVE_CUNIT

@@ -31,9 +31,10 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 
 lib_LTLIBRARIES = libspdylay.la
 
-OBJECTS =
-HFILES =
+OBJECTS = spdylay_pq.c
 
-libwslay_la_SOURCES = $(HFILES) $(OBJECTS)
-libwslay_la_LDFLAGS = -no-undefined \
+HFILES = spdylay_pq.h
+
+libspdylay_la_SOURCES = $(HFILES) $(OBJECTS)
+libspdylay_la_LDFLAGS = -no-undefined \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)
