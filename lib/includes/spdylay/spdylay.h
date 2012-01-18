@@ -25,10 +25,18 @@
 #ifndef SPDYLAY_H
 #define SPDYLAY_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 
 enum spdylay_error {
   SPDYLAY_ERR_NOMEM = -500
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SPDYLAY_H */
