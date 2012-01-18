@@ -24,7 +24,7 @@
  */
 #include "spdylay_pq.h"
 
-int spdylay_pq_init(spdylay_pq *pq, spdylay_pq_compar compar)
+int spdylay_pq_init(spdylay_pq *pq, spdylay_compar compar)
 {
   pq->capacity = 4096;
   pq->q = malloc(pq->capacity);
