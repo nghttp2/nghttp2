@@ -22,17 +22,42 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_INT_H
-#define SPDYLAY_INT_H
+#ifndef SPDYLAY_MAP_H
+#define SPDYLAY_MAP_H
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include <stdint.h>
+#include <spdylay/spdylay.h>
+#include "spdylay_int.h"
 
-/* Macros, types and constants for internal use */
+/* Implementation of ordered map */
 
-typedef int (*spdylay_compar)(const void *lhs, const void *rhs);
+typedef uint32_t key_type;
+typedef uint32_t pri_type;
 
-#endif /* SPDYLAY_INT_H */
+typedef struct spdylay_map_entry {
+  key_type key;
+  void *val;
+  struct spdylay_map_entry *left, *right;
+  pri_type priority;
+} spdylay_map_entry;
+
+typedef struct {
+  spdylay_map_entry *root;
+} spdylay_map;
+
+int spdylay_map_init(spdylay_map *map);
+
+void spdylay_map_free(spdylay_map *map);
+
+int spdylay_map_insert(spdylay_map *map, key_type key, void *val);
+
+void* spdylay_map_find(spdylay_map *map, key_type key);
+
+void spdylay_map_erase(spdylay_map *map, key_type key);
+
+void spdylay_map_each(spdylay_map *map, void (*func)(key_type key, void *val));
+
+#endif /* SPDYLAY_MAP_H */

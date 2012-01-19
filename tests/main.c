@@ -22,17 +22,49 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_INT_H
-#define SPDYLAY_INT_H
+#include <stdio.h>
+#include <string.h>
+#include <CUnit/Basic.h>
+/* include test cases' include files here */
+#include "spdylay_pq_test.h"
+#include "spdylay_map_test.h"
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+int init_suite1(void)
+{
+  return 0;
+}
 
-#include <stdint.h>
+int clean_suite1(void)
+{
+  return 0;
+}
 
-/* Macros, types and constants for internal use */
 
-typedef int (*spdylay_compar)(const void *lhs, const void *rhs);
+int main()
+{
+   CU_pSuite pSuite = NULL;
 
-#endif /* SPDYLAY_INT_H */
+   /* initialize the CUnit test registry */
+   if (CUE_SUCCESS != CU_initialize_registry())
+      return CU_get_error();
+
+   /* add a suite to the registry */
+   pSuite = CU_add_suite("libspdylay_TestSuite", init_suite1, clean_suite1);
+   if (NULL == pSuite) {
+      CU_cleanup_registry();
+      return CU_get_error();
+   }
+
+   /* add the tests to the suite */
+   if(!CU_add_test(pSuite, "pq", test_spdylay_pq) ||
+      !CU_add_test(pSuite, "map", test_spdylay_map)) {
+     CU_cleanup_registry();
+     return CU_get_error();
+   }
+
+   /* Run all tests using the CUnit Basic interface */
+   CU_basic_set_mode(CU_BRM_VERBOSE);
+   CU_basic_run_tests();
+   CU_cleanup_registry();
+   return CU_get_error();
+}

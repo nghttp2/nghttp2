@@ -31,9 +31,9 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 
 lib_LTLIBRARIES = libspdylay.la
 
-OBJECTS = spdylay_pq.c
+OBJECTS = spdylay_pq.c spdylay_map.c
 
-HFILES = spdylay_pq.h spdylay_int.h
+HFILES = spdylay_pq.h spdylay_int.h spdylay_map.h
 
 libspdylay_la_SOURCES = $(HFILES) $(OBJECTS)
 libspdylay_la_LDFLAGS = -no-undefined \

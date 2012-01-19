@@ -22,17 +22,9 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_INT_H
-#define SPDYLAY_INT_H
+#ifndef SPDYLAY_MAP_TEST_H
+#define SPDYLAY_MAP_TEST_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+void test_spdylay_map();
 
-#include <stdint.h>
-
-/* Macros, types and constants for internal use */
-
-typedef int (*spdylay_compar)(const void *lhs, const void *rhs);
-
-#endif /* SPDYLAY_INT_H */
+#endif /* SPDYLAY_MAP_TEST_H */

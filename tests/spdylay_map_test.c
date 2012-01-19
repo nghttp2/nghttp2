@@ -22,17 +22,34 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_INT_H
-#define SPDYLAY_INT_H
+#include "spdylay_map_test.h"
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include <CUnit/CUnit.h>
 
-#include <stdint.h>
+#include "spdylay_map.h"
 
-/* Macros, types and constants for internal use */
+void test_spdylay_map()
+{
+  spdylay_map map;
+  int i;
+  CU_ASSERT(0 == spdylay_map_init(&map));
+  CU_ASSERT(0 == spdylay_map_insert(&map, 1, "foo"));
+  CU_ASSERT(strcmp("foo", spdylay_map_find(&map, 1)) == 0);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT == spdylay_map_insert(&map, 1, "FOO"));
+  CU_ASSERT(strcmp("foo", spdylay_map_find(&map, 1)) == 0);
+  CU_ASSERT(0 == spdylay_map_insert(&map, 2, "bar"));
+  CU_ASSERT(0 == spdylay_map_insert(&map, 3, "baz"));
+  CU_ASSERT(0 == spdylay_map_insert(&map, 4, "shrubbery"));
+  CU_ASSERT(strcmp("baz", spdylay_map_find(&map, 3)) == 0);
 
-typedef int (*spdylay_compar)(const void *lhs, const void *rhs);
+  spdylay_map_erase(&map, 3);
+  CU_ASSERT(NULL == spdylay_map_find(&map, 3));
+  spdylay_map_erase(&map, 1);
+  CU_ASSERT(NULL == spdylay_map_find(&map, 1));
 
-#endif /* SPDYLAY_INT_H */
+  CU_ASSERT(strcmp("bar", spdylay_map_find(&map, 2)) == 0);
+  CU_ASSERT(strcmp("shrubbery", spdylay_map_find(&map, 4)) == 0);
+
+  spdylay_map_free(&map);
+}
+

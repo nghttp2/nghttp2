@@ -32,7 +32,8 @@ extern "C" {
 #include <stdlib.h>
 
 enum spdylay_error {
-  SPDYLAY_ERR_NOMEM = -500
+  SPDYLAY_ERR_NOMEM = -500,
+  SPDYLAY_ERR_INVALID_ARGUMENT = -501
 };
 
 #ifdef __cplusplus
