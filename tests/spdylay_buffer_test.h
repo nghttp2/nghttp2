@@ -22,23 +22,9 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_H
-#define SPDYLAY_H
+#ifndef SPDYLAY_BUFFER_TEST_H
+#define SPDYLAY_BUFFER_TEST_H
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+void test_spdylay_buffer();
 
-#include <stdlib.h>
-#include <stdint.h>
-
-enum spdylay_error {
-  SPDYLAY_ERR_NOMEM = -500,
-  SPDYLAY_ERR_INVALID_ARGUMENT = -501
-};
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* SPDYLAY_H */
+#endif // SPDYLAY_BUFFER_TEST_H
