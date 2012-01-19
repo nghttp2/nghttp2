@@ -40,8 +40,9 @@ static void spdylay_map_entry_free(spdylay_map_entry *entry)
 static void spdylay_map_entry_free_recur(spdylay_map_entry *entry)
 {
   if(entry != NULL) {
-    spdylay_map_entry_free(entry->left);
-    spdylay_map_entry_free(entry->right);
+    spdylay_map_entry_free_recur(entry->left);
+    spdylay_map_entry_free_recur(entry->right);
+    free(entry);
   }
 }
 
