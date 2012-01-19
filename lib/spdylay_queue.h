@@ -22,51 +22,30 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <stdio.h>
-#include <string.h>
-#include <CUnit/Basic.h>
-/* include test cases' include files here */
-#include "spdylay_pq_test.h"
-#include "spdylay_map_test.h"
-#include "spdylay_queue_test.h"
+#ifndef SPDYLAY_QUEUE_H
+#define SPDYLAY_QUEUE_H
 
-int init_suite1(void)
-{
-  return 0;
-}
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif /* HAVE_CONFIG_H */
 
-int clean_suite1(void)
-{
-  return 0;
-}
+#include <spdylay/spdylay.h>
 
+typedef struct spdylay_queue_cell {
+  void *data;
+  struct spdylay_queue_cell *next;
+} spdylay_queue_cell;
 
-int main()
-{
-   CU_pSuite pSuite = NULL;
+typedef struct {
+  spdylay_queue_cell *front, *back;
+} spdylay_queue;
 
-   /* initialize the CUnit test registry */
-   if (CUE_SUCCESS != CU_initialize_registry())
-      return CU_get_error();
+void spdylay_queue_init(spdylay_queue *queue);
+void spdylay_queue_free(spdylay_queue *queue);
+int spdylay_queue_push(spdylay_queue *queue, void *data);
+void spdylay_queue_pop(spdylay_queue *queue);
+void* spdylay_queue_front(spdylay_queue *queue);
+void* spdylay_queue_back(spdylay_queue *queue);
+int spdylay_queue_empty(spdylay_queue *queue);
 
-   /* add a suite to the registry */
-   pSuite = CU_add_suite("libspdylay_TestSuite", init_suite1, clean_suite1);
-   if (NULL == pSuite) {
-      CU_cleanup_registry();
-      return CU_get_error();
-   }
-
-   /* add the tests to the suite */
-   if(!CU_add_test(pSuite, "pq", test_spdylay_pq) ||
-      !CU_add_test(pSuite, "map", test_spdylay_map) ||
-      !CU_add_test(pSuite, "queue", test_spdylay_queue)) {
-     CU_cleanup_registry();
-     return CU_get_error();
-   }
-
-   /* Run all tests using the CUnit Basic interface */
-   CU_basic_set_mode(CU_BRM_VERBOSE);
-   CU_basic_run_tests();
-   CU_cleanup_registry();
-   return CU_get_error();
-}
+#endif /* SPDYLAY_QUEUE_H */

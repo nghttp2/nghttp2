@@ -22,51 +22,28 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <stdio.h>
-#include <string.h>
-#include <CUnit/Basic.h>
-/* include test cases' include files here */
-#include "spdylay_pq_test.h"
-#include "spdylay_map_test.h"
 #include "spdylay_queue_test.h"
 
-int init_suite1(void)
+#include <CUnit/CUnit.h>
+
+#include "spdylay_queue.h"
+
+void test_spdylay_queue()
 {
-  return 0;
-}
-
-int clean_suite1(void)
-{
-  return 0;
-}
-
-
-int main()
-{
-   CU_pSuite pSuite = NULL;
-
-   /* initialize the CUnit test registry */
-   if (CUE_SUCCESS != CU_initialize_registry())
-      return CU_get_error();
-
-   /* add a suite to the registry */
-   pSuite = CU_add_suite("libspdylay_TestSuite", init_suite1, clean_suite1);
-   if (NULL == pSuite) {
-      CU_cleanup_registry();
-      return CU_get_error();
-   }
-
-   /* add the tests to the suite */
-   if(!CU_add_test(pSuite, "pq", test_spdylay_pq) ||
-      !CU_add_test(pSuite, "map", test_spdylay_map) ||
-      !CU_add_test(pSuite, "queue", test_spdylay_queue)) {
-     CU_cleanup_registry();
-     return CU_get_error();
-   }
-
-   /* Run all tests using the CUnit Basic interface */
-   CU_basic_set_mode(CU_BRM_VERBOSE);
-   CU_basic_run_tests();
-   CU_cleanup_registry();
-   return CU_get_error();
+  int ints[] = { 1, 2, 3, 4, 5 };
+  int i;
+  spdylay_queue queue;
+  spdylay_queue_init(&queue);
+  CU_ASSERT(spdylay_queue_empty(&queue));
+  for(i = 0; i < 5; ++i) {
+    spdylay_queue_push(&queue, &ints[i]);
+    CU_ASSERT_EQUAL(ints[0], *(int*)(spdylay_queue_front(&queue)));
+    CU_ASSERT(!spdylay_queue_empty(&queue));
+  }
+  for(i = 0; i < 5; ++i) {
+    CU_ASSERT_EQUAL(ints[i], *(int*)(spdylay_queue_front(&queue)));
+    spdylay_queue_pop(&queue);
+  }
+  CU_ASSERT(spdylay_queue_empty(&queue));
+  spdylay_queue_free(&queue);
 }

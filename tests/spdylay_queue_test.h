@@ -22,51 +22,9 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <stdio.h>
-#include <string.h>
-#include <CUnit/Basic.h>
-/* include test cases' include files here */
-#include "spdylay_pq_test.h"
-#include "spdylay_map_test.h"
-#include "spdylay_queue_test.h"
+#ifndef SPDYLAY_QUEUE_TEST_H
+#define SPDYLAY_QUEUE_TEST_H
 
-int init_suite1(void)
-{
-  return 0;
-}
+void test_spdylay_queue();
 
-int clean_suite1(void)
-{
-  return 0;
-}
-
-
-int main()
-{
-   CU_pSuite pSuite = NULL;
-
-   /* initialize the CUnit test registry */
-   if (CUE_SUCCESS != CU_initialize_registry())
-      return CU_get_error();
-
-   /* add a suite to the registry */
-   pSuite = CU_add_suite("libspdylay_TestSuite", init_suite1, clean_suite1);
-   if (NULL == pSuite) {
-      CU_cleanup_registry();
-      return CU_get_error();
-   }
-
-   /* add the tests to the suite */
-   if(!CU_add_test(pSuite, "pq", test_spdylay_pq) ||
-      !CU_add_test(pSuite, "map", test_spdylay_map) ||
-      !CU_add_test(pSuite, "queue", test_spdylay_queue)) {
-     CU_cleanup_registry();
-     return CU_get_error();
-   }
-
-   /* Run all tests using the CUnit Basic interface */
-   CU_basic_set_mode(CU_BRM_VERBOSE);
-   CU_basic_run_tests();
-   CU_cleanup_registry();
-   return CU_get_error();
-}
+#endif // SPDYLAY_QUEUE_TEST_H
