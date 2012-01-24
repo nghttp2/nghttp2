@@ -41,9 +41,9 @@ int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
   return lhs->pri-rhs->pri;
 }
 
-int spdylay_session_client_init(spdylay_session **session_ptr,
-                                const spdylay_session_callbacks *callbacks,
-                                void *user_data)
+int spdylay_session_client_new(spdylay_session **session_ptr,
+                               const spdylay_session_callbacks *callbacks,
+                               void *user_data)
 {
   int r;
   *session_ptr = malloc(sizeof(spdylay_session));
@@ -109,7 +109,7 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
   free(item->frame);
 }
 
-void spdylay_session_free(spdylay_session *session)
+void spdylay_session_del(spdylay_session *session)
 {
   spdylay_map_each(&session->streams, spdylay_free_streams);
   spdylay_map_free(&session->streams);
@@ -239,7 +239,7 @@ int spdylay_session_send(spdylay_session *session)
     }
     data = session->aob.framebuf + session->aob.framebufoff;
     datalen = session->aob.framebuflen - session->aob.framebufoff;
-    sentlen = session->callbacks.send_callback(data, datalen, 0,
+    sentlen = session->callbacks.send_callback(session, data, datalen, 0,
                                                session->user_data);
     if(sentlen < 0) {
       if(sentlen == SPDYLAY_ERR_WOULDBLOCK) {
@@ -281,7 +281,7 @@ static ssize_t spdylay_recv(spdylay_session *session)
   }
   recv_max = session->ibuf.buf+sizeof(session->ibuf.buf)-session->ibuf.limit;
   r = session->callbacks.recv_callback
-    (session->ibuf.limit, recv_max, 0, session->user_data);
+    (session, session->ibuf.limit, recv_max, 0, session->user_data);
   if(r > 0) {
     if(r > recv_max) {
       return SPDYLAY_ERR_CALLBACK_FAILURE;

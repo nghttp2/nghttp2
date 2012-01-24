@@ -60,7 +60,8 @@ static void scripted_data_feed_init(scripted_data_feed *df,
   df->feedseq[0] = data_length;
 }
 
-static ssize_t scripted_recv_callback(uint8_t* data, size_t len, int flags,
+static ssize_t scripted_recv_callback(spdylay_session *session,
+                                      uint8_t* data, size_t len, int flags,
                                       void *user_data)
 {
   scripted_data_feed *df = ((my_user_data*)user_data)->df;
@@ -75,7 +76,8 @@ static ssize_t scripted_recv_callback(uint8_t* data, size_t len, int flags,
   return wlen;
 }
 
-static ssize_t accumulator_send_callback(const uint8_t *buf, size_t len,
+static ssize_t accumulator_send_callback(spdylay_session *session,
+                                         const uint8_t *buf, size_t len,
                                          int flags, void* user_data)
 {
   accumulator *acc = ((my_user_data*)user_data)->acc;
@@ -115,7 +117,7 @@ void test_spdylay_session_recv()
   spdylay_frame frame;
 
   user_data.df = &df;
-  spdylay_session_client_init(&session, &callbacks, &user_data);
+  spdylay_session_client_new(&session, &callbacks, &user_data);
   spdylay_frame_syn_stream_init(&frame.syn_stream, 0, 0, 0, 3, dup_nv(nv));
   framelen = spdylay_frame_pack_syn_stream(&framedata, &frame.syn_stream,
                                            &session->hd_deflater);
@@ -124,7 +126,7 @@ void test_spdylay_session_recv()
   spdylay_frame_syn_stream_free(&frame.syn_stream);
 
   CU_ASSERT(0 == spdylay_session_recv(session));
-  spdylay_session_free(session);
+  spdylay_session_del(session);
 }
 
 void test_spdylay_session_add_frame()
@@ -150,7 +152,7 @@ void test_spdylay_session_add_frame()
   uint32_t temp32;
   acc.length = 0;
   user_data.acc = &acc;
-  CU_ASSERT(0 == spdylay_session_client_init(&session, &callbacks, &user_data));
+  CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &user_data));
 
   frame = malloc(sizeof(spdylay_frame));
   spdylay_frame_syn_stream_init(&frame->syn_stream, 0, 0, 0, 3, dup_nv(nv));
@@ -171,5 +173,5 @@ void test_spdylay_session_add_frame()
   temp32 = (acc.buf[16] >> 6) & 0x3;
   CU_ASSERT(3 == temp32);
 
-  spdylay_session_free(session);
+  spdylay_session_del(session);
 }

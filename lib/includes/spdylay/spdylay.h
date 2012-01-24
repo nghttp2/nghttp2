@@ -46,25 +46,27 @@ typedef enum {
   SPDYLAY_MSG_MORE
 } spdylay_io_flag;
 
+struct spdylay_session;
+typedef struct spdylay_session spdylay_session;
+
 typedef ssize_t (*spdylay_send_callback)
-(const uint8_t *data, size_t length, int flags, void *user_data);
+(spdylay_session *session,
+ const uint8_t *data, size_t length, int flags, void *user_data);
 
 typedef ssize_t (*spdylay_recv_callback)
-(uint8_t *buf, size_t length, int flags, void *user_data);
+(spdylay_session *session,
+ uint8_t *buf, size_t length, int flags, void *user_data);
 
 typedef struct {
   spdylay_send_callback send_callback;
   spdylay_recv_callback recv_callback;
 } spdylay_session_callbacks;
 
-struct spdylay_session;
-typedef struct spdylay_session spdylay_session;
+int spdylay_session_client_new(spdylay_session **session_ptr,
+                               const spdylay_session_callbacks *callbacks,
+                               void *user_data);
 
-int spdylay_session_client_init(spdylay_session **session_ptr,
-                                const spdylay_session_callbacks *callbacks,
-                                void *user_data);
-
-void spdylay_session_free(struct spdylay_session *session);
+void spdylay_session_del(spdylay_session *session);
 
 int spdylay_session_send(spdylay_session *session);
 
