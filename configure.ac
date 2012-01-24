@@ -40,8 +40,13 @@ AM_PROG_LIBTOOL
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+PKG_PROG_PKG_CONFIG([0.20])
 
 # Checks for libraries.
+PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
+LIBS=$ZLIB_LIBS $LIBS
+CFLAGS=$CFLAGS $ZLIB_CFLAGS
+
 AC_CHECK_LIB([cunit], [CU_initialize_registry],
              [have_cunit=yes], [have_cunit=no])
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])

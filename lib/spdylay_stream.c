@@ -22,35 +22,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_PQ_H
-#define SPDYLAY_PQ_H
+#include "spdylay_stream.h"
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id)
+{
+  stream->stream_id = stream_id;
+}
 
-#include <spdylay/spdylay.h>
-#include "spdylay_int.h"
-
-/* Implementation of priority queue */
-
-typedef struct {
-  void **q;
-  size_t length;
-  size_t capacity;
-  spdylay_compar compar;
-} spdylay_pq;
-
-int spdylay_pq_init(spdylay_pq *pq, spdylay_compar cmp);
-
-void spdylay_pq_free(spdylay_pq *pq);
-
-int spdylay_pq_push(spdylay_pq *pq, void *item);
-
-void* spdylay_pq_top(spdylay_pq *pq);
-
-void spdylay_pq_pop(spdylay_pq *pq);
-
-int spdylay_pq_empty(spdylay_pq *pq);
-
-#endif /* SPDYLAY_PQ_H */
+void spdylay_stream_free(spdylay_stream *stream)
+{}

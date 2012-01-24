@@ -75,4 +75,11 @@ uint8_t* spdylay_buffer_front_data(spdylay_buffer *buffer);
    size of poped chunk buffer. */
 void spdylay_buffer_pop(spdylay_buffer *buffer);
 
+/* Returns capacity of each fixed chunk buffer */
+size_t spdylay_buffer_capacity(spdylay_buffer *buffer);
+
+/* Stores the contents of buffer into buf. buf must be at least
+   spdylay_buffer_length(buffer) bytes long. */
+void spdylay_buffer_serialize(spdylay_buffer *buffer, uint8_t *buf);
+
 #endif /* SPDYLAY_BUFFER_H */

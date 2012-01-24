@@ -22,35 +22,36 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_PQ_H
-#define SPDYLAY_PQ_H
+#ifndef SPDYLAY_ZLIB_H
+#define SPDYLAY_ZLIB_H
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
+#include <zlib.h>
 
-#include <spdylay/spdylay.h>
-#include "spdylay_int.h"
-
-/* Implementation of priority queue */
+#include "spdylay_buffer.h"
 
 typedef struct {
-  void **q;
-  size_t length;
-  size_t capacity;
-  spdylay_compar compar;
-} spdylay_pq;
+  z_stream zst;
+} spdylay_zlib;
 
-int spdylay_pq_init(spdylay_pq *pq, spdylay_compar cmp);
+int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater);
 
-void spdylay_pq_free(spdylay_pq *pq);
+int spdylay_zlib_inflate_hd_init(spdylay_zlib *inflater);
 
-int spdylay_pq_push(spdylay_pq *pq, void *item);
+void spdylay_zlib_deflate_free(spdylay_zlib *zlib);
 
-void* spdylay_pq_top(spdylay_pq *pq);
+void spdylay_zlib_inflate_free(spdylay_zlib *zlib);
 
-void spdylay_pq_pop(spdylay_pq *pq);
+size_t spdylay_zlib_deflate_hd_bound(spdylay_zlib *deflater, size_t len);
 
-int spdylay_pq_empty(spdylay_pq *pq);
+ssize_t spdylay_zlib_deflate_hd(spdylay_zlib *deflater,
+                                uint8_t *out, size_t outlen,
+                                const uint8_t *in, size_t inlen);
 
-#endif /* SPDYLAY_PQ_H */
+ssize_t spdylay_zlib_inflate_hd(spdylay_zlib *inflater,
+                                spdylay_buffer* buf,
+                                const uint8_t *in, size_t inlen);
+
+#endif /* SPDYLAY_ZLIB_H */

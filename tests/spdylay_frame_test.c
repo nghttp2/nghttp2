@@ -22,35 +22,29 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_PQ_H
-#define SPDYLAY_PQ_H
+#include "spdylay_frame_test.h"
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include <CUnit/CUnit.h>
 
-#include <spdylay/spdylay.h>
-#include "spdylay_int.h"
+#include "spdylay_frame.h"
 
-/* Implementation of priority queue */
+void test_spdylay_frame_unpack_nv()
+{
+  const char *headers[] = {
+    "method", "GET",
+    "scheme", "https",
+    "url", "/",
+    "version", "HTTP/1.1",
+    "x-head", "foo",
+    "x-head", "bar",
+    NULL
+  };
+  const char in[1024];
+  char **nv;
+  int i;
+  size_t inlen = spdylay_frame_pack_nv(in, (char**)headers);
+  CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, in, inlen));
+  spdylay_frame_nv_free(nv);
+  free(nv);
+}
 
-typedef struct {
-  void **q;
-  size_t length;
-  size_t capacity;
-  spdylay_compar compar;
-} spdylay_pq;
-
-int spdylay_pq_init(spdylay_pq *pq, spdylay_compar cmp);
-
-void spdylay_pq_free(spdylay_pq *pq);
-
-int spdylay_pq_push(spdylay_pq *pq, void *item);
-
-void* spdylay_pq_top(spdylay_pq *pq);
-
-void spdylay_pq_pop(spdylay_pq *pq);
-
-int spdylay_pq_empty(spdylay_pq *pq);
-
-#endif /* SPDYLAY_PQ_H */

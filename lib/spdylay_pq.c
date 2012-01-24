@@ -115,3 +115,8 @@ void spdylay_pq_pop(spdylay_pq *pq)
     bubble_down(pq, 0);
   }
 }
+
+int spdylay_pq_empty(spdylay_pq *pq)
+{
+  return pq->length == 0;
+}

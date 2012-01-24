@@ -26,10 +26,12 @@ if HAVE_CUNIT
 check_PROGRAMS = main
 
 OBJECTS = main.c spdylay_pq_test.c spdylay_map_test.c spdylay_queue_test.c \
-	spdylay_buffer_test.c
+	spdylay_buffer_test.c spdylay_zlib_test.c spdylay_session_test.c \
+	spdylay_frame_test.c
 
 HFILES = spdylay_pq_test.h spdylay_map_test.h spdylay_queue_test.h \
-	spdylay_buffer_test.h
+	spdylay_buffer_test.h spdylay_zlib_test.h spdylay_session_test.h
+	spdylay_frame_test.h
 
 main_SOURCES = $(HFILES) $(OBJECTS)
 

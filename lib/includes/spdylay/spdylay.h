@@ -32,10 +32,49 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 
-enum spdylay_error {
+typedef enum {
   SPDYLAY_ERR_NOMEM = -500,
-  SPDYLAY_ERR_INVALID_ARGUMENT = -501
-};
+  SPDYLAY_ERR_INVALID_ARGUMENT = -501,
+  SPDYLAY_ERR_ZLIB = -502,
+  SPDYLAY_ERR_ZLIB_BUF = -503,
+  SPDYLAY_ERR_WOULDBLOCK = -504,
+  SPDYLAY_ERR_PROTO = -505,
+  SPDYLAY_ERR_CALLBACK_FAILURE = -505,
+} spdylay_error;
+
+typedef enum {
+  SPDYLAY_MSG_MORE
+} spdylay_io_flag;
+
+typedef ssize_t (*spdylay_send_callback)
+(const uint8_t *data, size_t length, int flags, void *user_data);
+
+typedef ssize_t (*spdylay_recv_callback)
+(uint8_t *buf, size_t length, int flags, void *user_data);
+
+typedef struct {
+  spdylay_send_callback send_callback;
+  spdylay_recv_callback recv_callback;
+} spdylay_session_callbacks;
+
+struct spdylay_session;
+typedef struct spdylay_session spdylay_session;
+
+int spdylay_session_client_init(spdylay_session **session_ptr,
+                                const spdylay_session_callbacks *callbacks,
+                                void *user_data);
+
+void spdylay_session_free(struct spdylay_session *session);
+
+int spdylay_session_send(spdylay_session *session);
+
+int spdylay_session_recv(spdylay_session *session);
+
+int spdylay_session_want_read(spdylay_session *session);
+
+int spdylay_session_want_write(spdylay_session *session);
+
+int spdylay_req_submit(spdylay_session *session, const char *path);
 
 #ifdef __cplusplus
 }

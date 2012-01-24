@@ -22,35 +22,37 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_PQ_H
-#define SPDYLAY_PQ_H
+#ifndef SPDYLAY_HELPER_H
+#define SPDYLAY_HELPER_H
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <spdylay/spdylay.h>
-#include "spdylay_int.h"
 
-/* Implementation of priority queue */
+/*
+ * Copies 2 byte unsigned integer |n| in host byte order to |buf| in
+ * network byte order.
+ */
+void spdylay_put_uint16be(uint8_t *buf, uint16_t n);
 
-typedef struct {
-  void **q;
-  size_t length;
-  size_t capacity;
-  spdylay_compar compar;
-} spdylay_pq;
+/*
+ * Copies 4 byte unsigned integer |n| in host byte order to |buf| in
+ * network byte order.
+ */
+void spdylay_put_uint32be(uint8_t *buf, uint32_t n);
 
-int spdylay_pq_init(spdylay_pq *pq, spdylay_compar cmp);
+/*
+ * Retrieves 2 byte unsigned integer stored in |data| in network byte
+ * order and returns it in host byte order.
+ */
+uint16_t spdylay_get_uint16(const uint8_t *data);
 
-void spdylay_pq_free(spdylay_pq *pq);
+/*
+ * Retrieves 4 byte unsigned integer stored in |data| in network byte
+ * order and returns it in host byte order.
+ */
+uint32_t spdylay_get_uint32(const uint8_t *data);
 
-int spdylay_pq_push(spdylay_pq *pq, void *item);
-
-void* spdylay_pq_top(spdylay_pq *pq);
-
-void spdylay_pq_pop(spdylay_pq *pq);
-
-int spdylay_pq_empty(spdylay_pq *pq);
-
-#endif /* SPDYLAY_PQ_H */
+#endif /* SPDYLAY_HELPER_H */

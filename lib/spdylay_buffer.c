@@ -122,3 +122,18 @@ void spdylay_buffer_pop(spdylay_buffer *buffer)
     spdylay_queue_pop(&buffer->q);
   }
 }
+
+size_t spdylay_buffer_capacity(spdylay_buffer *buffer)
+{
+  return buffer->capacity;
+}
+
+void spdylay_buffer_serialize(spdylay_buffer *buffer, uint8_t *buf)
+{
+  while(spdylay_buffer_length(buffer)) {
+    size_t len = spdylay_buffer_front_length(buffer);
+    memcpy(buf, spdylay_buffer_front_data(buffer), len);
+    buf += len;
+    spdylay_buffer_pop(buffer);
+  }
+}

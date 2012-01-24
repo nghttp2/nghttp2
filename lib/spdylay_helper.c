@@ -22,35 +22,33 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_PQ_H
-#define SPDYLAY_PQ_H
+#include "spdylay_helper.h"
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include <string.h>
+#include <arpa/inet.h>
 
-#include <spdylay/spdylay.h>
-#include "spdylay_int.h"
+void spdylay_put_uint16be(uint8_t *buf, uint16_t n)
+{
+  uint16_t x = htons(n);
+  memcpy(buf, &x, sizeof(uint16_t));
+}
 
-/* Implementation of priority queue */
+void spdylay_put_uint32be(uint8_t *buf, uint32_t n)
+{
+  uint32_t x = htonl(n);
+  memcpy(buf, &x, sizeof(uint32_t));
+}
 
-typedef struct {
-  void **q;
-  size_t length;
-  size_t capacity;
-  spdylay_compar compar;
-} spdylay_pq;
+uint16_t spdylay_get_uint16(const uint8_t *data)
+{
+  uint16_t n;
+  memcpy(&n, data, sizeof(uint16_t));
+  return ntohs(n);
+}
 
-int spdylay_pq_init(spdylay_pq *pq, spdylay_compar cmp);
-
-void spdylay_pq_free(spdylay_pq *pq);
-
-int spdylay_pq_push(spdylay_pq *pq, void *item);
-
-void* spdylay_pq_top(spdylay_pq *pq);
-
-void spdylay_pq_pop(spdylay_pq *pq);
-
-int spdylay_pq_empty(spdylay_pq *pq);
-
-#endif /* SPDYLAY_PQ_H */
+uint32_t spdylay_get_uint32(const uint8_t *data)
+{
+  uint32_t n;
+  memcpy(&n, data, sizeof(uint32_t));
+  return ntohl(n);
+}
