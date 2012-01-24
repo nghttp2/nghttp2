@@ -27,6 +27,7 @@
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id)
 {
   stream->stream_id = stream_id;
+  stream->state = SPDYLAY_STREAM_OPENING;
 }
 
 void spdylay_stream_free(spdylay_stream *stream)

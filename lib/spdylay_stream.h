@@ -31,8 +31,17 @@
 
 #include <spdylay/spdylay.h>
 
+typedef enum {
+  SPDYLAY_STREAM_OPENING,
+  SPDYLAY_STREAM_OPENED,
+  SPDYLAY_STREAM_CLOSING
+} spdylay_stream_state;
+
 typedef struct {
   int32_t stream_id;
+  spdylay_stream_state state;
+  /* Use same value in frame */
+  uint8_t flags;
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id);
