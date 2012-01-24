@@ -94,8 +94,6 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
                                     const uint8_t *payload, size_t payloadlen,
                                     spdylay_zlib *inflater);
 
-
-
 /*
  * Unpacks SYN_REPLY frame byte sequence into |frame|.  This function
  * returns 0 if it succeeds or negative error code.

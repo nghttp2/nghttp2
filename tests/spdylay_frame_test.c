@@ -28,17 +28,18 @@
 
 #include "spdylay_frame.h"
 
+static const char *headers[] = {
+  "method", "GET",
+  "scheme", "https",
+  "url", "/",
+  "x-head", "foo",
+  "x-head", "bar",
+  "version", "HTTP/1.1",
+  NULL
+};
+
 void test_spdylay_frame_unpack_nv()
 {
-  const char *headers[] = {
-    "method", "GET",
-    "scheme", "https",
-    "url", "/",
-    "version", "HTTP/1.1",
-    "x-head", "foo",
-    "x-head", "bar",
-    NULL
-  };
   const char in[1024];
   char **nv;
   int i;
@@ -46,5 +47,10 @@ void test_spdylay_frame_unpack_nv()
   CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, in, inlen));
   spdylay_frame_nv_free(nv);
   free(nv);
+}
+
+void test_spdylay_frame_count_nv_space()
+{
+  CU_ASSERT(83 == spdylay_frame_count_nv_space(headers));
 }
 

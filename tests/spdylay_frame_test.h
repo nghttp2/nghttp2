@@ -26,5 +26,6 @@
 #define SPDYLAY_FRAME_TEST_H
 
 void test_spdylay_frame_unpack_nv();
+void test_spdylay_frame_count_nv_space();
 
 #endif /* SPDYLAY_FRAME_TEST_H */
