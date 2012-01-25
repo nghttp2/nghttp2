@@ -24,10 +24,13 @@
  */
 #include "spdylay_stream.h"
 
-void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id)
+void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
+                         uint8_t flags, uint8_t pri)
 {
   stream->stream_id = stream_id;
   stream->state = SPDYLAY_STREAM_OPENING;
+  stream->flags = flags;
+  stream->pri = pri;
 }
 
 void spdylay_stream_free(spdylay_stream *stream)

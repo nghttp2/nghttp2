@@ -31,6 +31,15 @@
 
 #include <spdylay/spdylay.h>
 
+/*
+ * If local peer is stream initiator:
+ * SPDYLAY_STREAM_OPENING : upon sending SYN_STREAM
+ * SPDYLAY_STREAM_OPENED : upon receiving SYN_REPLY
+ *
+ * If remote peer is stream initiator:
+ * SPDYLAY_STREAM_OPENING : upon receiving SYN_STREAM
+ * SPDYLAY_STREAM_OPENED : upon sending SYN_REPLY
+ */
 typedef enum {
   /* For stream initiator: SYN_STREAM has been sent, but SYN_REPLY is
      not received yet.  For receiver: SYN_STREAM has been received,
@@ -47,11 +56,14 @@ typedef enum {
 typedef struct {
   int32_t stream_id;
   spdylay_stream_state state;
-  /* Use same value in frame */
+  /* Use same value in SYN_STREAM frame */
   uint8_t flags;
+  /* Use same scheme in SYN_STREAM frame */
+  uint8_t pri;
 } spdylay_stream;
 
-void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id);
+void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
+                         uint8_t flags, uint8_t pri);
 
 void spdylay_stream_free(spdylay_stream *stream);
 

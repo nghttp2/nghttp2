@@ -101,8 +101,35 @@ int spdylay_session_add_frame(spdylay_session *session,
 int spdylay_session_add_rst_stream(spdylay_session *session,
                                    int32_t stream_id, uint32_t status_code);
 
-int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id);
+/*
+ * Creates new stream in |session| with stream ID |stream_id|,
+ * priority |pri| and flags |flags|. Currently, |flags| &
+ * SPDYLAY_FLAG_UNIDIRECTIONAL is non-zero, this stream is
+ * unidirectional. |flags| & SPDYLAY_FLAG_FIN is non-zero, the sender
+ * of SYN_STREAM will not send any further data in this stream.
+ */
+int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id,
+                                uint8_t flags, uint8_t pri);
 
 int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id);
+
+
+/*
+ * Called when SYN_STREAM is received. Received frame is |frame|.
+ * This function does first
+ * validate received frame and then open stream and call callback
+ * functions.
+ */
+int spdylay_session_on_syn_stream_received(spdylay_session *session,
+                                           spdylay_frame *frame);
+
+/*
+ * Called when SYN_STREAM is received. Received frame is |frame|.
+ * This function does first validate received frame and then open
+ * stream and call callback functions.
+ */
+int spdylay_session_on_syn_reply_received(spdylay_session *session,
+                                          spdylay_frame *frame);
+
 
 #endif /* SPDYLAY_SESSION_H */

@@ -71,6 +71,10 @@ int main()
                    test_spdylay_session_recv_invalid_stream_id) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_spdylay_session_add_frame) ||
+      !CU_add_test(pSuite, "session_on_syn_stream_received",
+                   test_spdylay_session_on_syn_stream_received) ||
+      !CU_add_test(pSuite, "session_on_syn_reply_received",
+                   test_spdylay_session_on_syn_reply_received) ||
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space)) {

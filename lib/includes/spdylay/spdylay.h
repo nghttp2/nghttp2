@@ -33,14 +33,19 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum {
-  SPDYLAY_ERR_NOMEM = -500,
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
   SPDYLAY_ERR_ZLIB = -502,
   SPDYLAY_ERR_ZLIB_BUF = -503,
   SPDYLAY_ERR_WOULDBLOCK = -504,
   SPDYLAY_ERR_PROTO = -505,
-  SPDYLAY_ERR_CALLBACK_FAILURE = -505,
   SPDYLAY_ERR_INVALID_FRAME = -506,
+
+  /* The errors < SPDYLAY_ERR_FATAL mean that the library is under
+     unexpected condition that it cannot process any further data
+     reliably (e.g., out of memory). */
+  SPDYLAY_ERR_FATAL = -900,
+  SPDYLAY_ERR_NOMEM = -901,
+  SPDYLAY_ERR_CALLBACK_FAILURE = -902,
 } spdylay_error;
 
 typedef enum {
@@ -58,7 +63,9 @@ typedef enum {
 } spdylay_frame_type;
 
 typedef enum {
-  SPDYLAY_FLAG_FIN = 1
+  SPDYLAY_FLAG_NONE = 0,
+  SPDYLAY_FLAG_FIN = 1,
+  SPDYLAY_FLAG_UNIDIRECTIONAL = 2
 } spdylay_flag;
 
 typedef enum {
