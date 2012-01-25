@@ -164,12 +164,14 @@ static spdylay_map_entry* erase_rotate_recur(spdylay_map_entry *entry)
 
 static spdylay_map_entry* erase_recur(spdylay_map_entry *entry, key_type key)
 {
-  if(key < entry->key) {
-    entry->left = erase_recur(entry->left, key);
-  } else if(key > entry->key) {
-    entry->right = erase_recur(entry->right, key);
-  } else {
-    entry = erase_rotate_recur(entry);
+  if(entry != NULL) {
+    if(key < entry->key) {
+      entry->left = erase_recur(entry->left, key);
+    } else if(key > entry->key) {
+      entry->right = erase_recur(entry->right, key);
+    } else {
+      entry = erase_rotate_recur(entry);
+    }
   }
   return entry;
 }

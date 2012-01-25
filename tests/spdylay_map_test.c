@@ -47,9 +47,11 @@ void test_spdylay_map()
   spdylay_map_erase(&map, 1);
   CU_ASSERT(NULL == spdylay_map_find(&map, 1));
 
+  spdylay_map_erase(&map, 1);
+  CU_ASSERT(NULL == spdylay_map_find(&map, 1));
+
   CU_ASSERT(strcmp("bar", spdylay_map_find(&map, 2)) == 0);
   CU_ASSERT(strcmp("shrubbery", spdylay_map_find(&map, 4)) == 0);
 
   spdylay_map_free(&map);
 }
-
