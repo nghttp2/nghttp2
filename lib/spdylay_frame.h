@@ -33,6 +33,10 @@
 #include "spdylay_zlib.h"
 #include "spdylay_buffer.h"
 
+#define SPDYLAY_STREAM_ID_MASK 0x7fffffff
+#define SPDYLAY_LENGTH_MASK 0xffffff
+#define SPDYLAY_VERSION_MASK 0x7fff
+
 /*
  * Packs SYN_STREAM frame |frame| in wire frame format and store it in
  * |*buf_ptr|. This function allocates enough memory to store given

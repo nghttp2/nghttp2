@@ -58,10 +58,10 @@ static void spdylay_frame_pack_ctrl_hd(uint8_t* buf, const spdylay_ctrl_hd *hd)
 static void spdylay_frame_unpack_ctrl_hd(spdylay_ctrl_hd *hd,
                                          const uint8_t* buf)
 {
-  hd->version = spdylay_get_uint16(buf) & 0x7fff;
+  hd->version = spdylay_get_uint16(buf) & SPDYLAY_VERSION_MASK;
   hd->type = spdylay_get_uint16(buf+2);
   hd->flags = buf[4];
-  hd->length = spdylay_get_uint32(buf+5) & 0xffffff;
+  hd->length = spdylay_get_uint32(buf+5) & SPDYLAY_LENGTH_MASK;
 }
 
 static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
@@ -403,8 +403,9 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
-  frame->stream_id = spdylay_get_uint32(payload) & 0x7fffffff;
-  frame->assoc_stream_id = spdylay_get_uint32(payload+4) & 0x7fffffff;
+  frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
+  frame->assoc_stream_id =
+    spdylay_get_uint32(payload+4) & SPDYLAY_STREAM_ID_MASK;
   frame->pri = spdylay_unpack_pri(payload+8);
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+10, payloadlen-10,
                                     inflater);
@@ -436,7 +437,7 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
 {
   int r;
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
-  frame->stream_id = spdylay_get_uint32(payload) &0x7fffffff;
+  frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+6, payloadlen-6,
                                     inflater);
   return r;
@@ -467,7 +468,7 @@ int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
-  frame->stream_id = spdylay_get_uint32(payload) & 0x7fffffff;
+  frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   frame->status_code = spdylay_get_uint32(payload+4);
   return 0;
 }
