@@ -254,6 +254,7 @@ void test_spdylay_session_on_syn_stream_received()
   my_user_data user_data;
   const char *nv[] = { NULL };
   spdylay_frame frame;
+  spdylay_stream *stream;
   user_data.valid = 0;
   user_data.invalid = 0;
 
@@ -263,8 +264,9 @@ void test_spdylay_session_on_syn_stream_received()
 
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
   CU_ASSERT(1 == user_data.valid);
-  CU_ASSERT(SPDYLAY_STREAM_OPENING ==
-            ((spdylay_stream*)spdylay_map_find(&session->streams, 2))->state);
+  stream = (spdylay_stream*)spdylay_map_find(&session->streams, 2);
+  CU_ASSERT(SPDYLAY_STREAM_OPENING == stream->state);
+  CU_ASSERT(3 == stream->pri);
 
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid);
