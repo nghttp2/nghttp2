@@ -89,6 +89,7 @@ typedef struct {
   spdylay_ctrl_hd hd;
   int32_t stream_id;
   int32_t assoc_stream_id;
+  /* 0 (Highest) to 3 (Lowest). Looks like spdy/2 spec is wrong. */
   uint8_t pri;
   char **nv;
 } spdylay_syn_stream;
