@@ -75,14 +75,16 @@ static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
   uint8_t *framebuf = malloc(maxframelen);
   ssize_t framelen;
   spdylay_frame_pack_nv(nvbuf, nv);
-  framelen = spdylay_zlib_deflate_hd(deflater, framebuf+18, maxframelen-18,
+  framelen = spdylay_zlib_deflate_hd(deflater,
+                                     framebuf+nv_offset,
+                                     maxframelen-nv_offset,
                                      nvbuf, nvbuflen);
   free(nvbuf);
   if(framelen < 0) {
     free(framebuf);
     return framelen;
   }
-  framelen += 18;
+  framelen += nv_offset;
   *buf_ptr = framebuf;
   return framelen;
 }
@@ -337,11 +339,37 @@ void spdylay_frame_syn_stream_free(spdylay_syn_stream *frame)
   free(frame->nv);
 }
 
+void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
+                                  int32_t stream_id, char **nv)
+{
+  memset(frame, 0, sizeof(spdylay_syn_reply));
+  frame->hd.version = 2;
+  frame->hd.type = SPDYLAY_SYN_REPLY;
+  frame->hd.flags = flags;
+  frame->stream_id = stream_id;
+  frame->nv = nv;
+}
+
 void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame)
 {
   spdylay_frame_nv_free(frame->nv);
   free(frame->nv);
 }
+
+void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
+                                   int32_t stream_id, uint32_t status_code)
+{
+  memset(frame, 0, sizeof(spdylay_rst_stream));
+  frame->hd.version = 2;
+  frame->hd.type = SPDYLAY_RST_STREAM;
+  frame->hd.flags = 0;
+  frame->hd.length = 8;
+  frame->stream_id = stream_id;
+  frame->status_code = status_code;
+}
+
+void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame)
+{}
 
 ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
                                       spdylay_syn_stream *frame,
@@ -371,13 +399,34 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
                                     spdylay_zlib *inflater)
 {
   int r;
+  if(payloadlen < 12) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
-  frame->stream_id = spdylay_get_uint32(payload);
-  frame->assoc_stream_id = spdylay_get_uint32(payload+4);
+  frame->stream_id = spdylay_get_uint32(payload) & 0x7fffffff;
+  frame->assoc_stream_id = spdylay_get_uint32(payload+4) & 0x7fffffff;
   frame->pri = spdylay_unpack_pri(payload+8);
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+10, payloadlen-10,
                                     inflater);
   return r;
+}
+
+ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
+                                     spdylay_syn_reply *frame,
+                                     spdylay_zlib *deflater)
+{
+  uint8_t *framebuf = NULL;
+  size_t framelen;
+  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv, 14, deflater);
+  if(framelen < 0) {
+    return framelen;
+  }
+  frame->hd.length = framelen-8;
+  memset(framebuf, 0, 14);
+  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
+  spdylay_put_uint32be(&framebuf[8], frame->stream_id);
+  *buf_ptr = framebuf;
+  return framelen;
 }
 
 int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
@@ -387,9 +436,38 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
 {
   int r;
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
-  frame->stream_id = spdylay_get_uint32(payload);
+  frame->stream_id = spdylay_get_uint32(payload) &0x7fffffff;
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+6, payloadlen-6,
                                     inflater);
   return r;
 }
 
+ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr,
+                                      spdylay_rst_stream *frame)
+{
+  uint8_t *framebuf;
+  size_t framelen = 16;
+  framebuf = malloc(framelen);
+  if(framebuf == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  memset(framebuf, 0, framelen);
+  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
+  spdylay_put_uint32be(&framebuf[8], frame->stream_id);
+  spdylay_put_uint32be(&framebuf[12], frame->status_code);
+  *buf_ptr = framebuf;
+  return framelen;
+}
+
+int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
+                                    const uint8_t *head, size_t headlen,
+                                    const uint8_t *payload, size_t payloadlen)
+{
+  if(payloadlen < 8) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
+  spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  frame->stream_id = spdylay_get_uint32(payload) & 0x7fffffff;
+  frame->status_code = spdylay_get_uint32(payload+4);
+  return 0;
+}

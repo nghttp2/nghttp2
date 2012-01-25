@@ -48,6 +48,7 @@ typedef struct {
 typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
+  int flags;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -85,6 +86,15 @@ static ssize_t accumulator_send_callback(spdylay_session *session,
   memcpy(acc->buf+acc->length, buf, len);
   acc->length += len;
   return len;
+}
+
+static void on_invalid_ctrl_recv_callback(spdylay_session *session,
+                                          spdylay_frame_type type,
+                                          spdylay_frame *frame,
+                                          void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->flags;
 }
 
 static char** dup_nv(const char **src)
@@ -175,3 +185,46 @@ void test_spdylay_session_add_frame()
 
   spdylay_session_del(session);
 }
+
+void test_spdylay_session_recv_invalid_stream_id()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    NULL,
+    scripted_recv_callback,
+    NULL,
+    on_invalid_ctrl_recv_callback
+  };
+  scripted_data_feed df;
+  my_user_data user_data;
+  const char *nv[] = { NULL };
+  uint8_t *framedata;
+  size_t framelen;
+  spdylay_frame frame;
+
+  user_data.df = &df;
+  user_data.flags = 0;
+  spdylay_session_client_new(&session, &callbacks, &user_data);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, 0, 1, 0, 3, dup_nv(nv));
+  framelen = spdylay_frame_pack_syn_stream(&framedata, &frame.syn_stream,
+                                           &session->hd_deflater);
+  scripted_data_feed_init(&df, framedata, framelen);
+  free(framedata);
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(1 == user_data.flags);
+
+  spdylay_frame_syn_reply_init(&frame.syn_reply, 0, 100, dup_nv(nv));
+  framelen = spdylay_frame_pack_syn_reply(&framedata, &frame.syn_reply,
+                                          &session->hd_deflater);
+  scripted_data_feed_init(&df, framedata, framelen);
+  free(framedata);
+  spdylay_frame_syn_reply_free(&frame.syn_reply);
+
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(2 == user_data.flags);
+
+  spdylay_session_del(session);
+}
+

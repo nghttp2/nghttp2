@@ -32,8 +32,15 @@
 #include <spdylay/spdylay.h>
 
 typedef enum {
+  /* For stream initiator: SYN_STREAM has been sent, but SYN_REPLY is
+     not received yet.  For receiver: SYN_STREAM has been received,
+     but it does not send SYN_REPLY yet. */
   SPDYLAY_STREAM_OPENING,
+  /* For stream initiator: SYN_REPLY is received. For receiver:
+     SYN_REPLY is sent. */
   SPDYLAY_STREAM_OPENED,
+  /* RST_STREAM is received, but somehow we need to keep stream in
+     memory. */
   SPDYLAY_STREAM_CLOSING
 } spdylay_stream_state;
 

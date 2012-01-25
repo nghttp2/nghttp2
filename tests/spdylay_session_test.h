@@ -26,6 +26,7 @@
 #define SPDYLAY_SESSION_TEST_H
 
 void test_spdylay_session_recv();
+void test_spdylay_session_recv_invalid_stream_id();
 void test_spdylay_session_add_frame();
 
 #endif // SPDYLAY_SESSION_TEST_H

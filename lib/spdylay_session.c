@@ -52,7 +52,7 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
   }
   memset(*session_ptr, 0, sizeof(spdylay_session));
   (*session_ptr)->next_stream_id = 1;
-  (*session_ptr)->last_accepted_stream_id = 0;
+  (*session_ptr)->last_recv_stream_id = 0;
 
   r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater);
   if(r != 0) {
@@ -152,6 +152,25 @@ int spdylay_session_add_frame(spdylay_session *session,
   r = spdylay_pq_push(&session->ob_pq, item);
   if(r != 0) {
     free(item);
+    return r;
+  }
+  return 0;
+}
+
+int spdylay_session_add_rst_stream(spdylay_session *session,
+                                   int32_t stream_id, uint32_t status_code)
+{
+  int r;
+  spdylay_frame *frame;
+  frame = malloc(sizeof(spdylay_frame));
+  if(frame == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_rst_stream_init(&frame->rst_stream, stream_id, status_code);
+  r = spdylay_session_add_frame(session, SPDYLAY_RST_STREAM, frame);
+  if(r != 0) {
+    spdylay_frame_rst_stream_free(&frame->rst_stream);
+    free(frame);
     return r;
   }
   return 0;
@@ -318,44 +337,142 @@ static void spdylay_debug_print_nv(char **nv)
   }
 }
 
-int spdylay_session_process_ctrl_frame(spdylay_session *session)
+static void spdylay_session_call_on_ctrl_frame_received
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame)
+{
+  if(session->callbacks.on_ctrl_recv_callback) {
+    session->callbacks.on_ctrl_recv_callback
+      (session, type, frame, session->user_data);
+  }
+}
+
+/*
+ * Checks whether received stream_id is valid.
+ * This function returns 1 if it succeeds, or 0.
+ */
+static int spdylay_session_is_new_peer_stream_id(spdylay_session *session,
+                                                 int32_t stream_id)
+{
+  if(stream_id == 0) {
+    return 0;
+  }
+  if(session->server) {
+    return stream_id % 2 == 1 && session->last_recv_stream_id < stream_id;
+  } else {
+    return stream_id % 2 == 0 && session->last_recv_stream_id < stream_id;
+  }
+}
+
+/*
+ * Validates SYN_STREAM frame |frame|.  This function returns 0 if it
+ * succeeds, or -1.
+ */
+static int spdylay_session_validate_syn_stream(spdylay_session *session,
+                                               spdylay_syn_stream *frame)
+{
+  /* TODO Check assoc_stream_id */
+  if(spdylay_session_is_new_peer_stream_id(session, frame->stream_id)) {
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
+static spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
+                                                  int32_t stream_id)
+{
+  return (spdylay_stream*)spdylay_map_find(&session->streams, stream_id);
+}
+
+/*
+ * Validates SYN_REPLY frame |frame|. This function returns 0 if it
+ * succeeds, or -1.
+ */
+static int spdylay_session_validate_syn_reply(spdylay_session *session,
+                                              spdylay_syn_reply *frame)
+{
+  spdylay_stream *stream;
+  stream = spdylay_session_get_stream(session, frame->stream_id);
+  if(stream && stream->state == SPDYLAY_STREAM_OPENING) {
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
+static int spdylay_session_handle_invalid_ctrl_frame(spdylay_session *session,
+                                                     int32_t stream_id,
+                                                     spdylay_frame_type type,
+                                                     spdylay_frame *frame)
 {
   int r;
+  r = spdylay_session_add_rst_stream(session, stream_id,
+                                     SPDYLAY_PROTOCOL_ERROR);
+  if(r != 0) {
+    return r;
+  }
+  if(session->callbacks.on_invalid_ctrl_recv_callback) {
+    session->callbacks.on_invalid_ctrl_recv_callback
+      (session, type, frame, session->user_data);
+  }
+}
+
+int spdylay_session_process_ctrl_frame(spdylay_session *session)
+{
+  int r = 0;
   uint16_t type;
+  spdylay_frame frame;
   memcpy(&type, &session->iframe.headbuf[2], sizeof(uint16_t));
   type = ntohs(type);
   switch(type) {
-  case SPDYLAY_SYN_STREAM: {
-    spdylay_syn_stream frame;
+  case SPDYLAY_SYN_STREAM:
     printf("SYN_STREAM\n");
-    r = spdylay_frame_unpack_syn_stream(&frame, session->iframe.headbuf,
+    r = spdylay_frame_unpack_syn_stream(&frame.syn_stream,
+                                        session->iframe.headbuf,
                                         sizeof(session->iframe.headbuf),
                                         session->iframe.buf,
                                         session->iframe.len,
                                         &session->hd_inflater);
     if(r == 0) {
-      spdylay_debug_print_nv(frame.nv);
-      spdylay_frame_syn_stream_free(&frame);
+      r = spdylay_session_validate_syn_stream(session, &frame.syn_stream);
+      if(r == 0) {
+        spdylay_session_call_on_ctrl_frame_received(session, type, &frame);
+      } else {
+        r = spdylay_session_handle_invalid_ctrl_frame
+          (session, frame.syn_stream.stream_id, type, &frame);
+      }
+      spdylay_frame_syn_stream_free(&frame.syn_stream);
+    } else {
+      /* TODO if r indicates mulformed NV pairs (multiple nulls) or
+         invalid frame, send RST_STREAM with PROTOCOL_ERROR. Same for
+         other control frames. */
     }
     break;
-  }
-  case SPDYLAY_SYN_REPLY: {
-    spdylay_syn_reply frame;
+  case SPDYLAY_SYN_REPLY:
     printf("SYN_REPLY\n");
-    r = spdylay_frame_unpack_syn_reply(&frame, session->iframe.headbuf,
+    r = spdylay_frame_unpack_syn_reply(&frame.syn_reply,
+                                       session->iframe.headbuf,
                                        sizeof(session->iframe.headbuf),
                                        session->iframe.buf,
                                        session->iframe.len,
                                        &session->hd_inflater);
     if(r == 0) {
-      spdylay_debug_print_nv(frame.nv);
-      spdylay_frame_syn_reply_free(&frame);
+      r = spdylay_session_validate_syn_reply(session, &frame.syn_reply);
+      if(r == 0) {
+        spdylay_session_call_on_ctrl_frame_received(session, type, &frame);
+      } else {
+        r = spdylay_session_handle_invalid_ctrl_frame
+          (session, frame.syn_reply.stream_id, type, &frame);
+      }
+      spdylay_frame_syn_reply_free(&frame.syn_reply);
     }
     break;
-  }
   default:
     /* ignore */
     printf("Received control frame type %x\n", type);
+  }
+  if(r != 0) {
+    return r;
   }
   return 0;
 }

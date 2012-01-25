@@ -75,7 +75,7 @@ typedef struct {
 typedef struct spdylay_session {
   uint8_t server;
   int32_t next_stream_id;
-  int32_t last_accepted_stream_id;
+  int32_t last_recv_stream_id;
   
   spdylay_map /* <spdylay_stream*> */ streams;
   spdylay_pq /* <spdylay_outbound_item*> */ ob_pq;
@@ -97,6 +97,9 @@ typedef struct spdylay_session {
 int spdylay_session_add_frame(spdylay_session *session,
                               spdylay_frame_type frame_type,
                               spdylay_frame *frame);
+
+int spdylay_session_add_rst_stream(spdylay_session *session,
+                                   int32_t stream_id, uint32_t status_code);
 
 int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id);
 

@@ -29,47 +29,9 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#include <spdylay/spdylay.h>
 #include "spdylay_zlib.h"
 #include "spdylay_buffer.h"
-
-typedef enum {
-  SPDYLAY_SYN_STREAM = 1,
-  SPDYLAY_SYN_REPLY = 2,
-  SPDYLAY_RST_STREAM = 3,
-  SPDYLAY_SETTINGS = 4,
-  SPDYLAY_NOOP = 5,
-  SPDYLAY_PING = 6,
-  SPDYLAY_GOAWAY = 7,
-} spdylay_frame_type;
-
-typedef enum {
-  SPDYLAY_FLAG_FIN = 1
-} spdylay_flag;
-
-typedef struct {
-  uint16_t version;
-  uint16_t type;
-  uint8_t flags;
-  int32_t length;
-} spdylay_ctrl_hd;
-
-typedef struct {
-  spdylay_ctrl_hd hd;
-  int32_t stream_id;
-  int32_t assoc_stream_id;
-  uint8_t pri;
-  char **nv;
-} spdylay_syn_stream;
-
-typedef struct {
-  spdylay_ctrl_hd hd;
-  int32_t stream_id;
-  char **nv;
-} spdylay_syn_reply;
-
-typedef union {
-  spdylay_syn_stream syn_stream;
-} spdylay_frame;
 
 /*
  * Packs SYN_STREAM frame |frame| in wire frame format and store it in
@@ -95,6 +57,17 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
                                     spdylay_zlib *inflater);
 
 /*
+ * Packs SYN_REPLY frame |frame| in wire frame format and store it in
+ * |*buf_ptr|. This function allocates enough memory to store given
+ * frame in |*buf_ptr|. This function returns the size of packed frame
+ * it it succeeds, or returns negative error code. frame->hd.length is
+ * assigned after length is determined during packing process.
+ */
+ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
+                                     spdylay_syn_reply *frame,
+                                     spdylay_zlib *deflater);
+
+/*
  * Unpacks SYN_REPLY frame byte sequence into |frame|.  This function
  * returns 0 if it succeeds or negative error code.
  */
@@ -102,6 +75,24 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    const uint8_t *head, size_t headlen,
                                    const uint8_t *payload, size_t payloadlen,
                                    spdylay_zlib *inflater);
+
+/*
+ * Packs RST_STREAM frame |frame| in wire frame format and store it in
+ * |*buf_ptr|. This function allocates enough memory to store given
+ * frame in |*buf_ptr|. In spdy/2 spc, RST_STREAM wire format is
+ * always 16 bytes long. This function returns the size of packed
+ * frame if it succeeds, or negative error code.
+ */
+ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr,
+                                      spdylay_rst_stream *frame);
+
+/*
+ * Unpacks RST_STREAM frame byte sequence into |frame|.  This function
+ * returns 0 if it succeeds, or negative error code.
+ */
+int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
+                                    const uint8_t *head, size_t headlen,
+                                    const uint8_t *payload, size_t payloadlen);
 
 /*
  * Returns number of bytes to pack name/value pairs |nv|. This
@@ -136,7 +127,15 @@ void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
 
 void spdylay_frame_syn_stream_free(spdylay_syn_stream *frame);
 
+void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
+                                  int32_t stream_id, char **nv);
+
 void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame);
+
+void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
+                                   int32_t stream_id, uint32_t status_code);
+
+void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame);
 
 /*
  * Returns 1 if the first byte of this frame indicates it is a control

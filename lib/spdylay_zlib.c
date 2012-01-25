@@ -120,7 +120,7 @@ ssize_t spdylay_zlib_inflate_hd(spdylay_zlib *inflater,
     inflater->zst.avail_out = spdylay_buffer_avail(buf);
     inflater->zst.next_out = spdylay_buffer_get(buf);
     r = inflate(&inflater->zst, Z_NO_FLUSH);
-    if(r == Z_STREAM_ERROR || r == Z_STREAM_END) {
+    if(r == Z_STREAM_ERROR || r == Z_STREAM_END || r == Z_DATA_ERROR) {
       return SPDYLAY_ERR_ZLIB;
     } else if(r == Z_NEED_DICT) {
       if(Z_OK != inflateSetDictionary(&inflater->zst, (uint8_t*)hd_dict,
