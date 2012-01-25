@@ -149,26 +149,29 @@ int spdylay_session_add_frame(spdylay_session *session,
   }
   item->frame_type = frame_type;
   item->frame = frame;
-  /* TODO Add pri field to SYN_REPLY, DATA frame which copies
-     corresponding SYN_STREAM pri.  PING frame always pri = 0
-     (highest) */
+  /* Set priority lowest at the moment. */
+  item->pri = 3;
   switch(frame_type) {
   case SPDYLAY_SYN_STREAM:
-    item->pri = 4-frame->syn_stream.pri;
+    item->pri = frame->syn_stream.pri;
     break;
+  case SPDYLAY_SYN_REPLY: {
+    spdylay_stream *stream = spdylay_session_get_stream
+      (session, frame->syn_reply.stream_id);
+    if(stream) {
+      item->pri = stream->pri;
+    }
+    break;
+  }
   case SPDYLAY_RST_STREAM: {
     spdylay_stream *stream = spdylay_session_get_stream
       (session, frame->rst_stream.stream_id);
     if(stream) {
       stream->state = SPDYLAY_STREAM_CLOSING;
       item->pri = stream->pri;
-    } else {
-      item->pri = 4;
     }
     break;
   }
-  default:
-    item->pri = 4;
   };
   r = spdylay_pq_push(&session->ob_pq, item);
   if(r != 0) {
