@@ -41,6 +41,7 @@
  * SPDYLAY_STREAM_OPENED : upon sending SYN_REPLY
  */
 typedef enum {
+  SPDYLAY_STREAM_INITIAL,
   /* For stream initiator: SYN_STREAM has been sent, but SYN_REPLY is
      not received yet.  For receiver: SYN_STREAM has been received,
      but it does not send SYN_REPLY yet. */
@@ -63,7 +64,8 @@ typedef struct {
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
-                         uint8_t flags, uint8_t pri);
+                         uint8_t flags, uint8_t pri,
+                         spdylay_stream_state initial_state);
 
 void spdylay_stream_free(spdylay_stream *stream);
 

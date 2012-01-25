@@ -34,6 +34,7 @@
 #include "spdylay_map.h"
 #include "spdylay_frame.h"
 #include "spdylay_zlib.h"
+#include "spdylay_stream.h"
 
 typedef struct {
   spdylay_frame_type frame_type;
@@ -107,12 +108,19 @@ int spdylay_session_add_rst_stream(spdylay_session *session,
  * SPDYLAY_FLAG_UNIDIRECTIONAL is non-zero, this stream is
  * unidirectional. |flags| & SPDYLAY_FLAG_FIN is non-zero, the sender
  * of SYN_STREAM will not send any further data in this stream.
+ * The state of stream is set to |initial_state|.
  */
 int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id,
-                                uint8_t flags, uint8_t pri);
+                                uint8_t flags, uint8_t pri,
+                                spdylay_stream_state initial_state);
 
+/*
+ * Closes stream whose stream ID is |stream_id|. This function returns
+ * 0 if it succeeds, or negative error code.  The possible error code
+ * is SPDYLAY_ERR_INVALID_ARGUMENT, which is used when stream
+ * |stream_id| does not exist. So the caller may ignore this error.
+ */
 int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id);
-
 
 /*
  * Called when SYN_STREAM is received. Received frame is |frame|.
@@ -131,5 +139,12 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
 int spdylay_session_on_syn_reply_received(spdylay_session *session,
                                           spdylay_frame *frame);
 
+
+/*
+ * Returns spdylay_stream* object whose stream ID is |stream_id|.  It
+ * could be NULL if such stream does not exist.
+ */
+spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
+                                           int32_t stream_id);
 
 #endif /* SPDYLAY_SESSION_H */

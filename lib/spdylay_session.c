@@ -30,15 +30,10 @@
 #include <assert.h>
 #include <arpa/inet.h>
 
-#include "spdylay_stream.h"
 #include "spdylay_helper.h"
 
-/*
- * Returns spdylay_stream* object whose stream ID is |stream_id|.  It
- * could be NULL if such stream does not exist.
- */
-static spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
-                                                  int32_t stream_id)
+spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
+                                           int32_t stream_id)
 {
   return (spdylay_stream*)spdylay_map_find(&session->streams, stream_id);
 }
@@ -114,6 +109,9 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
   switch(item->frame_type) {
   case SPDYLAY_SYN_STREAM:
     spdylay_frame_syn_stream_free(&item->frame->syn_stream);
+    break;
+  case SPDYLAY_SYN_REPLY:
+    spdylay_frame_syn_reply_free(&item->frame->syn_reply);
     break;
   }
   free(item->frame);
@@ -201,19 +199,33 @@ int spdylay_session_add_rst_stream(spdylay_session *session,
 }
 
 int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id,
-                                uint8_t flags, uint8_t pri)
+                                uint8_t flags, uint8_t pri,
+                                spdylay_stream_state initial_state)
 {
   int r;
   spdylay_stream *stream = malloc(sizeof(spdylay_stream));
   if(stream == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
-  spdylay_stream_init(stream, stream_id, flags, pri);
+  spdylay_stream_init(stream, stream_id, flags, pri, initial_state);
   r = spdylay_map_insert(&session->streams, stream_id, stream);
   if(r != 0) {
     free(stream);
   }
   return r;
+}
+
+int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id)
+{
+  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
+  if(stream) {
+    spdylay_map_erase(&session->streams, stream_id);
+    spdylay_stream_free(stream);
+    free(stream);
+    return 0;
+  } else {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
 }
 
 ssize_t spdylay_session_prep_frame(spdylay_session *session,
@@ -233,20 +245,29 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     if(framebuflen < 0) {
       return framebuflen;
     }
-    printf("packed %d bytes\n", framebuflen);
     r = spdylay_session_open_stream(session, item->frame->syn_stream.stream_id,
                                     item->frame->syn_stream.hd.flags,
-                                    item->frame->syn_stream.pri);
+                                    item->frame->syn_stream.pri,
+                                    SPDYLAY_STREAM_INITIAL);
     if(r != 0) {
       free(framebuf);
       return r;
     }
-    *framebuf_ptr = framebuf;
+    break;
+  }
+  case SPDYLAY_SYN_REPLY: {
+    framebuflen = spdylay_frame_pack_syn_reply(&framebuf,
+                                               &item->frame->syn_reply,
+                                               &session->hd_deflater);
+    if(framebuflen < 0) {
+      return framebuflen;
+    }
     break;
   }
   default:
     framebuflen = SPDYLAY_ERR_INVALID_ARGUMENT;
   }
+  *framebuf_ptr = framebuf;
   return framebuflen;
 }
 
@@ -257,6 +278,34 @@ static void spdylay_active_outbound_item_reset
   free(aob->item);
   free(aob->framebuf);
   memset(aob, 0, sizeof(spdylay_active_outbound_item));
+}
+
+static int spdylay_session_after_frame_sent(spdylay_session *session)
+{
+  spdylay_frame *frame = session->aob.item->frame;
+  switch(session->aob.item->frame_type) {
+  case SPDYLAY_SYN_STREAM: {
+    spdylay_stream *stream =
+      spdylay_session_get_stream(session, frame->syn_stream.stream_id);
+    if(stream) {
+      stream->state = SPDYLAY_STREAM_OPENING;
+    }
+    break;
+  }
+  case SPDYLAY_SYN_REPLY: {
+    spdylay_stream *stream =
+      spdylay_session_get_stream(session, frame->syn_reply.stream_id);
+    if(stream) {
+      stream->state = SPDYLAY_STREAM_OPENED;
+    }
+    break;
+  }
+  case SPDYLAY_RST_STREAM:
+    spdylay_session_close_stream(session, frame->rst_stream.stream_id);
+  };
+  /* TODO If frame is data frame, we need to sent all chunk of
+     data.*/
+  spdylay_active_outbound_item_reset(&session->aob);
 }
 
 int spdylay_session_send(spdylay_session *session)
@@ -298,9 +347,7 @@ int spdylay_session_send(spdylay_session *session)
       session->aob.framebufoff += sentlen;
       if(session->aob.framebufoff == session->aob.framebuflen) {
         /* Frame has completely sent */
-        spdylay_active_outbound_item_reset(&session->aob);
-        /* TODO If frame is data frame, we need to sent all chunk of
-           data.*/
+        spdylay_session_after_frame_sent(session);
       } else {
         /* partial write */
         break;
@@ -441,7 +488,8 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
   if(spdylay_session_validate_syn_stream(session, &frame->syn_stream) == 0) {
     r = spdylay_session_open_stream(session, frame->syn_stream.stream_id,
                                     frame->syn_stream.hd.flags,
-                                    frame->syn_stream.pri);
+                                    frame->syn_stream.pri,
+                                    SPDYLAY_STREAM_OPENING);
     if(r == 0) {
       session->last_recv_stream_id = frame->syn_stream.stream_id;
       spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,

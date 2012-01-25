@@ -62,6 +62,13 @@ static void scripted_data_feed_init(scripted_data_feed *df,
   df->feedseq[0] = data_length;
 }
 
+static ssize_t null_send_callback(spdylay_session *session,
+                                  const uint8_t* data, size_t len, int flags,
+                                  void *user_data)
+{
+  return len;
+}
+
 static ssize_t scripted_recv_callback(spdylay_session *session,
                                       uint8_t* data, size_t len, int flags,
                                       void *user_data)
@@ -293,7 +300,8 @@ void test_spdylay_session_on_syn_reply_received()
   user_data.invalid = 0;
 
   spdylay_session_client_new(&session, &callbacks, &user_data);
-  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 0);
+  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 0,
+                              SPDYLAY_STREAM_OPENING);
   spdylay_frame_syn_reply_init(&frame.syn_reply, SPDYLAY_FLAG_NONE, 1,
                                dup_nv(nv));
 
@@ -308,5 +316,55 @@ void test_spdylay_session_on_syn_reply_received()
             ((spdylay_stream*)spdylay_map_find(&session->streams, 1))->state);
 
   spdylay_frame_syn_reply_free(&frame.syn_reply);
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_send_syn_stream()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    null_send_callback,
+    NULL,
+    NULL,
+    NULL
+  };
+  const char *nv[] = { NULL };
+  spdylay_frame *frame = malloc(sizeof(spdylay_frame));
+  spdylay_stream *stream;
+
+  spdylay_session_client_new(&session, &callbacks, NULL);
+  spdylay_frame_syn_stream_init(&frame->syn_stream, SPDYLAY_FLAG_NONE,
+                                0, 0, 3, dup_nv(nv));
+  spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame);
+  CU_ASSERT(0 == spdylay_session_send(session));
+  stream = spdylay_session_get_stream(session, 1);
+  CU_ASSERT(SPDYLAY_STREAM_OPENING == stream->state);
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_send_syn_reply()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    null_send_callback,
+    NULL,
+    NULL,
+    NULL
+  };
+  const char *nv[] = { NULL };
+  spdylay_frame *frame = malloc(sizeof(spdylay_frame));
+  spdylay_stream *stream;
+
+  CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, NULL));
+  spdylay_session_open_stream(session, 2, SPDYLAY_FLAG_NONE, 3,
+                              SPDYLAY_STREAM_OPENING);
+  spdylay_frame_syn_reply_init(&frame->syn_reply, SPDYLAY_FLAG_NONE,
+                               2, dup_nv(nv));
+  spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame);
+  CU_ASSERT(0 == spdylay_session_send(session));
+  stream = spdylay_session_get_stream(session, 2);
+  CU_ASSERT(SPDYLAY_STREAM_OPENED == stream->state);
+
   spdylay_session_del(session);
 }
