@@ -27,6 +27,7 @@
 int spdylay_map_init(spdylay_map *map)
 {
   map->root = NULL;
+  map->size = 0;
   return 0;
 }
 
@@ -125,6 +126,9 @@ int spdylay_map_insert(spdylay_map *map, key_type key, void *val)
 {
   int error = 0;
   map->root = insert_recur(map->root, key, val, &error);
+  if(!error) {
+    ++map->size;
+  }
   return error;
 }
 
@@ -162,16 +166,17 @@ static spdylay_map_entry* erase_rotate_recur(spdylay_map_entry *entry)
   }
 }
 
-static spdylay_map_entry* erase_recur(spdylay_map_entry *entry, key_type key)
+static spdylay_map_entry* erase_recur(spdylay_map_entry *entry, key_type key,
+                                      int *error)
 {
-  if(entry != NULL) {
-    if(key < entry->key) {
-      entry->left = erase_recur(entry->left, key);
-    } else if(key > entry->key) {
-      entry->right = erase_recur(entry->right, key);
-    } else {
-      entry = erase_rotate_recur(entry);
-    }
+  if(entry == NULL) {
+    *error = SPDYLAY_ERR_INVALID_ARGUMENT;
+  } else if(key < entry->key) {
+    entry->left = erase_recur(entry->left, key, error);
+  } else if(key > entry->key) {
+    entry->right = erase_recur(entry->right, key, error);
+  } else {
+    entry = erase_rotate_recur(entry);
   }
   return entry;
 }
@@ -179,8 +184,17 @@ static spdylay_map_entry* erase_recur(spdylay_map_entry *entry, key_type key)
 void spdylay_map_erase(spdylay_map *map, key_type key)
 {
   if(map->root != NULL) {
-    map->root = erase_recur(map->root, key);
+    int error = 0;
+    map->root = erase_recur(map->root, key, &error);
+    if(!error) {
+      --map->size;
+    }
   }
+}
+
+size_t spdylay_map_size(spdylay_map *map)
+{
+  return map->size;
 }
 
 static void for_each(spdylay_map_entry *entry,

@@ -46,6 +46,7 @@ typedef struct spdylay_map_entry {
 
 typedef struct {
   spdylay_map_entry *root;
+  size_t size;
 } spdylay_map;
 
 int spdylay_map_init(spdylay_map *map);
@@ -57,6 +58,8 @@ int spdylay_map_insert(spdylay_map *map, key_type key, void *val);
 void* spdylay_map_find(spdylay_map *map, key_type key);
 
 void spdylay_map_erase(spdylay_map *map, key_type key);
+
+size_t spdylay_map_size(spdylay_map *map);
 
 void spdylay_map_each(spdylay_map *map, void (*func)(key_type key, void *val));
 
