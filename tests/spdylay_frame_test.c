@@ -40,17 +40,16 @@ static const char *headers[] = {
 
 void test_spdylay_frame_unpack_nv()
 {
-  const char in[1024];
+  uint8_t out[1024];
   char **nv;
-  int i;
-  size_t inlen = spdylay_frame_pack_nv(in, (char**)headers);
-  CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, in, inlen));
+  size_t inlen = spdylay_frame_pack_nv(out, (char**)headers);
+  CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, out, inlen));
   spdylay_frame_nv_free(nv);
   free(nv);
 }
 
 void test_spdylay_frame_count_nv_space()
 {
-  CU_ASSERT(83 == spdylay_frame_count_nv_space(headers));
+  CU_ASSERT(83 == spdylay_frame_count_nv_space((char**)headers));
 }
 
