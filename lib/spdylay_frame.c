@@ -313,10 +313,30 @@ int spdylay_frame_is_ctrl_frame(uint8_t first_byte)
 void spdylay_frame_nv_free(char **nv)
 {
   int i;
-  for(i = 0; nv[i]; i += 2) {
+  for(i = 0; nv[i]; ++i) {
     free(nv[i]);
-    free(nv[i+1]);
   }
+}
+
+char** spdylay_frame_nv_copy(const char **nv)
+{
+  int n, i;
+  char **nnv;
+  for(n = 0;nv[n]; ++n);
+  nnv = malloc((n+1)*sizeof(char*));
+  if(nnv == NULL) {
+    return NULL;
+  }
+  for(i = 0; i < n; ++i) {
+    nnv[i] = strdup(nv[i]);
+    if(nnv[i] == NULL) {
+      spdylay_frame_nv_free(nnv[i]);
+      free(nnv);
+      return NULL;
+    }
+  }
+  nnv[n] = NULL;
+  return nnv;
 }
 
 void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
@@ -371,12 +391,23 @@ void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
 void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame)
 {}
 
+void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
+                             spdylay_data_provider *data_prd)
+{
+  memset(frame, 0, sizeof(spdylay_data));
+  frame->stream_id = stream_id;
+  frame->data_prd = *data_prd;
+}
+
+void spdylay_frame_data_free(spdylay_data *frame)
+{}
+
 ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
                                       spdylay_syn_stream *frame,
                                       spdylay_zlib *deflater)
 {
   uint8_t *framebuf = NULL;
-  size_t framelen;
+  ssize_t framelen;
   framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv, 18, deflater);
   if(framelen < 0) {
     return framelen;
@@ -417,7 +448,7 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
                                      spdylay_zlib *deflater)
 {
   uint8_t *framebuf = NULL;
-  size_t framelen;
+  ssize_t framelen;
   framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv, 14, deflater);
   if(framelen < 0) {
     return framelen;
@@ -447,7 +478,7 @@ ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr,
                                       spdylay_rst_stream *frame)
 {
   uint8_t *framebuf;
-  size_t framelen = 16;
+  ssize_t framelen = 16;
   framebuf = malloc(framelen);
   if(framebuf == NULL) {
     return SPDYLAY_ERR_NOMEM;

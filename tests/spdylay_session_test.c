@@ -50,6 +50,7 @@ typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
   int valid, invalid;
+  size_t data_source_length;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -112,6 +113,24 @@ static void on_invalid_ctrl_recv_callback(spdylay_session *session,
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->invalid;
+}
+
+static ssize_t fixed_length_data_source_read_callback
+(spdylay_session *session, uint8_t *buf, size_t len, int *eof,
+ spdylay_data_source *source, void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  size_t wlen;
+  if(len < ud->data_source_length) {
+    wlen = len;
+  } else {
+    wlen = ud->data_source_length;
+  }
+  ud->data_source_length -= wlen;
+  if(ud->data_source_length == 0) {
+    *eof = 1;
+  }
+  return wlen;
 }
 
 static char** dup_nv(const char **src)
@@ -368,3 +387,33 @@ void test_spdylay_session_send_syn_reply()
 
   spdylay_session_del(session);
 }
+
+void test_spdylay_reply_submit()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    null_send_callback,
+    NULL,
+    NULL,
+    NULL
+  };
+  const char *nv[] = { NULL };
+  spdylay_stream *stream;
+  int32_t stream_id = 2;
+  spdylay_data_source source;
+  spdylay_data_provider data_prd = {
+    source,
+    fixed_length_data_source_read_callback
+  };
+  my_user_data ud;
+
+  ud.data_source_length = 64*1024;
+
+  CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
+  spdylay_session_open_stream(session, stream_id, SPDYLAY_FLAG_NONE, 3,
+                              SPDYLAY_STREAM_OPENING);
+  CU_ASSERT(0 == spdylay_reply_submit(session, stream_id, nv, &data_prd));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  spdylay_session_del(session);
+}
+

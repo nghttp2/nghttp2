@@ -32,6 +32,9 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 
+struct spdylay_session;
+typedef struct spdylay_session spdylay_session;
+
 typedef enum {
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
   SPDYLAY_ERR_ZLIB = -502,
@@ -60,6 +63,7 @@ typedef enum {
   SPDYLAY_NOOP = 5,
   SPDYLAY_PING = 6,
   SPDYLAY_GOAWAY = 7,
+  SPDYLAY_DATA = 100,
 } spdylay_frame_type;
 
 typedef enum {
@@ -107,13 +111,31 @@ typedef struct {
 } spdylay_rst_stream;
 
 typedef union {
+  int fd;
+  void *ptr;
+} spdylay_data_source;
+
+typedef ssize_t (*spdylay_data_source_read_callback)
+(spdylay_session *session, uint8_t *buf, size_t length, int *eof,
+ spdylay_data_source *source, void *user_data);
+
+typedef struct {
+  spdylay_data_source source;
+  spdylay_data_source_read_callback read_callback;
+} spdylay_data_provider;
+
+typedef struct {
+  int32_t stream_id;
+  uint8_t flags;
+  spdylay_data_provider data_prd;
+} spdylay_data;
+
+typedef union {
   spdylay_syn_stream syn_stream;
   spdylay_syn_reply syn_reply;
   spdylay_rst_stream rst_stream;
+  spdylay_data data;
 } spdylay_frame;
-
-struct spdylay_session;
-typedef struct spdylay_session spdylay_session;
 
 typedef ssize_t (*spdylay_send_callback)
 (spdylay_session *session,
@@ -162,6 +184,19 @@ int spdylay_session_want_read(spdylay_session *session);
 int spdylay_session_want_write(spdylay_session *session);
 
 int spdylay_req_submit(spdylay_session *session, const char *path);
+
+/*
+ * Submits SYN_REPLY frame against stream |stream_id|. |nv| must
+ * include "status" and "version" key. "status" must be status code
+ * (e.g., "200" or "200 OK"). "version" is HTTP response version
+ * (e.g., "HTTP/1.1"). This function creates copies of all name/value
+ * pairs in |nv|. If |data_prd| is not NULL, it provides data which
+ * will be sent in subsequent DATA frames. If |data_prd| is NULL,
+ * SYN_REPLY will have FLAG_FIN.
+ */
+int spdylay_reply_submit(spdylay_session *session,
+                         int32_t stream_id, const char **nv,
+                         spdylay_data_provider *data_prd);
 
 #ifdef __cplusplus
 }

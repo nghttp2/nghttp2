@@ -37,6 +37,8 @@
 #define SPDYLAY_LENGTH_MASK 0xffffff
 #define SPDYLAY_VERSION_MASK 0x7fff
 
+#define SPDYLAY_DATA_FRAME_LENGTH 4096
+
 /*
  * Packs SYN_STREAM frame |frame| in wire frame format and store it in
  * |*buf_ptr|. This function allocates enough memory to store given
@@ -141,6 +143,11 @@ void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
 
 void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame);
 
+void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
+                             spdylay_data_provider *data_prd);
+
+void spdylay_frame_data_free(spdylay_data *frame);
+
 /*
  * Returns 1 if the first byte of this frame indicates it is a control
  * frame.
@@ -151,5 +158,11 @@ int spdylay_frame_is_ctrl_frame(uint8_t first_byte);
  * Deallocates memory of key/value pairs in |nv|.
  */
 void spdylay_frame_nv_free(char **nv);
+
+/*
+ * Makes a deep copy of |nv| and returns the copy.  This function
+ * returns the pointer to the copy if it succeeds, or NULL.
+ */
+char** spdylay_frame_nv_copy(const char **nv);
 
 #endif /* SPDYLAY_FRAME_H */

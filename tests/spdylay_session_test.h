@@ -32,5 +32,6 @@ void test_spdylay_session_on_syn_stream_received();
 void test_spdylay_session_on_syn_reply_received();
 void test_spdylay_session_send_syn_stream();
 void test_spdylay_session_send_syn_reply();
+void test_spdylay_reply_submit();
 
 #endif // SPDYLAY_SESSION_TEST_H

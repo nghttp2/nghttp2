@@ -147,4 +147,25 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
 spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
                                            int32_t stream_id);
 
+/*
+ * Packs DATA frame |frame| in wire frame format and store it in
+ * |*buf_ptr|.  This function always allocates
+ * 8+SPDYLAY_DATA_CHUNK_LENGTH bytes. It packs header in first 8
+ * bytes. Remaining bytes are filled using frame->data_prd.  This
+ * function returns the size of packed frame if it succeeds, or
+ * negative error code.
+ */
+ssize_t spdylay_session_pack_data(spdylay_session *session,
+                                  uint8_t **buf_ptr, spdylay_data *frame);
+
+/*
+ * Packs DATA frame |frame| in wire frame format and store it in
+ * |buf|.  |len| must be greater than or equal to 8.  This function
+ * returns the sizeof packed frame if it succeeds, or negative error
+ * code.
+ */
+ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
+                                            uint8_t *buf, size_t len,
+                                            spdylay_data *frame);
+
 #endif /* SPDYLAY_SESSION_H */
