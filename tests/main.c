@@ -82,6 +82,8 @@ int main()
       !CU_add_test(pSuite, "reply_submit", test_spdylay_reply_submit) ||
       !CU_add_test(pSuite, "session_reply_fail",
                    test_spdylay_session_reply_fail) ||
+      !CU_add_test(pSuite, "session_on_headers_received",
+                   test_spdylay_session_on_headers_received) ||
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||

@@ -478,3 +478,58 @@ void test_spdylay_session_on_syn_stream_received_with_unidir_fin()
   spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
 }
+
+void test_spdylay_session_on_headers_received()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    NULL,
+    NULL,
+    on_ctrl_recv_callback,
+    on_invalid_ctrl_recv_callback
+  };
+  my_user_data user_data;
+  const char *nv[] = { NULL };
+  spdylay_frame frame;
+  user_data.valid = 0;
+  user_data.invalid = 0;
+
+  spdylay_session_client_new(&session, &callbacks, &user_data);
+  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 0,
+                              SPDYLAY_STREAM_OPENED);
+  spdylay_frame_headers_init(&frame.headers, SPDYLAY_FLAG_NONE, 1,
+                             dup_nv(nv));
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(1 == user_data.valid);
+  CU_ASSERT(SPDYLAY_STREAM_OPENED ==
+            spdylay_session_get_stream(session, 1)->state);
+
+  frame.headers.hd.flags |= SPDYLAY_FLAG_FIN;
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(2 == user_data.valid);
+  CU_ASSERT(NULL == spdylay_session_get_stream(session, 1));
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(1 == user_data.invalid);
+
+  /* Server initiated stream */
+  spdylay_session_open_stream(session, 2, SPDYLAY_FLAG_NONE, 0,
+                              SPDYLAY_STREAM_OPENING);
+
+  frame.headers.hd.flags = SPDYLAY_FLAG_FIN;
+  frame.headers.stream_id = 2;
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(3 == user_data.valid);
+  CU_ASSERT(SPDYLAY_STREAM_OPENING ==
+            spdylay_session_get_stream(session, 2)->state);
+  CU_ASSERT(spdylay_session_get_stream(session, 2)->flags & SPDYLAY_FLAG_FIN);
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(2 == user_data.invalid);
+
+  spdylay_frame_headers_free(&frame.headers);
+  spdylay_session_del(session);
+}

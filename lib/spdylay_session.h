@@ -124,21 +124,26 @@ int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id);
 
 /*
  * Called when SYN_STREAM is received. Received frame is |frame|.
- * This function does first
- * validate received frame and then open stream and call callback
- * functions.
+ * This function does first validate received frame and then open
+ * stream and call callback functions.  This function returns 0 if it
+ * succeeds, or negative error code.  This function does not return
+ * error if frame is not valid.
  */
 int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            spdylay_frame *frame);
 
 /*
- * Called when SYN_STREAM is received. Received frame is |frame|.
- * This function does first validate received frame and then open
- * stream and call callback functions.
+ * Called when SYN_REPLY is received. Received frame is |frame|.
  */
 int spdylay_session_on_syn_reply_received(spdylay_session *session,
                                           spdylay_frame *frame);
 
+
+/*
+ * Called when HEADERS is recieved. Received frame is |frame|.
+ */
+int spdylay_session_on_headers_received(spdylay_session *session,
+                                        spdylay_frame *frame);
 
 /*
  * Returns spdylay_stream* object whose stream ID is |stream_id|.  It

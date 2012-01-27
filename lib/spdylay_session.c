@@ -131,6 +131,10 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
   case SPDYLAY_RST_STREAM:
     spdylay_frame_rst_stream_free(&item->frame->rst_stream);
     break;
+  case SPDYLAY_HEADERS:
+    /* Currently we don't have any API to send HEADERS frame, so this
+       is unreachable. */
+    abort();
   case SPDYLAY_DATA:
     spdylay_frame_data_free(&item->frame->data);
     break;
@@ -191,6 +195,10 @@ int spdylay_session_add_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_HEADERS:
+    /* Currently we don't have any API to send HEADERS frame, so this
+       is unreachable. */
+    abort();
   case SPDYLAY_DATA: {
     spdylay_stream *stream = spdylay_session_get_stream
       (session, frame->data.stream_id);
@@ -331,6 +339,10 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_HEADERS:
+    /* Currently we don't have any API to send HEADERS frame, so this
+       is unreachable. */
+    abort();
   case SPDYLAY_DATA: {
     if(!spdylay_session_is_data_allowed(session, item->frame->data.stream_id)) {
       return SPDYLAY_ERR_INVALID_FRAME;
@@ -389,6 +401,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   case SPDYLAY_RST_STREAM:
     spdylay_session_close_stream(session, frame->rst_stream.stream_id);
     break;
+  case SPDYLAY_HEADERS:
+    /* Currently we don't have any API to send HEADERS frame, so this
+       is unreachable. */
+    abort();
   case SPDYLAY_DATA:
     if(frame->data.flags & SPDYLAY_FLAG_FIN) {
       if(spdylay_session_is_my_stream_id(session, frame->data.stream_id)) {
@@ -672,6 +688,52 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
   return r;
 }
 
+int spdylay_session_on_headers_received(spdylay_session *session,
+                                        spdylay_frame *frame)
+{
+  int r = 0;
+  int valid = 0;
+  if(spdylay_session_is_my_stream_id(session, frame->headers.stream_id)) {
+    spdylay_stream *stream = spdylay_session_get_stream
+      (session, frame->headers.stream_id);
+    if(stream) {
+      if(stream->state == SPDYLAY_STREAM_OPENED) {
+        valid = 1;
+        spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
+                                                    frame);
+        if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+          /* Close the stream because this is the last frame of the
+             stream. */
+          spdylay_session_close_stream(session, frame->headers.stream_id);
+        }
+      } else if(stream->state == SPDYLAY_STREAM_CLOSING) {
+        /* This is race condition. SPDYLAY_STREAM_CLOSING indicates
+           that we queued RST_STREAM but it has not been sent. It will
+           eventually sent, so we just ignore this frame. */
+        valid = 1;
+      }
+    }
+  } else {
+    spdylay_stream *stream = spdylay_session_get_stream
+      (session, frame->headers.stream_id);
+    if(stream) {
+      if((stream->flags & SPDYLAY_FLAG_FIN) == 0) {
+        valid = 1;
+        spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
+                                                    frame);
+        if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+          stream->flags |= SPDYLAY_FLAG_FIN;
+        }
+      }
+    }
+  }
+  if(!valid) {
+    r = spdylay_session_handle_invalid_ctrl_frame
+      (session, frame->headers.stream_id, SPDYLAY_HEADERS, frame);
+  }
+  return r;
+}
+
 int spdylay_session_process_ctrl_frame(spdylay_session *session)
 {
   int r = 0;
@@ -706,6 +768,18 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_syn_reply_received(session, &frame);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
+    }
+    break;
+  case SPDYLAY_HEADERS:
+    r = spdylay_frame_unpack_headers(&frame.headers,
+                                     session->iframe.headbuf,
+                                     sizeof(session->iframe.headbuf),
+                                     session->iframe.buf,
+                                     session->iframe.len,
+                                     &session->hd_inflater);
+    if(r == 0) {
+      r = spdylay_session_on_headers_received(session, &frame);
+      spdylay_frame_headers_free(&frame.headers);
     }
     break;
   }
