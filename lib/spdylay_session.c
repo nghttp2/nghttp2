@@ -447,7 +447,6 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
 int spdylay_session_send(spdylay_session *session)
 {
   int r;
-  printf("session_send\n");
   while(session->aob.item || !spdylay_pq_empty(&session->ob_pq)) {
     const uint8_t *data;
     size_t datalen;
@@ -682,7 +681,6 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
   type = ntohs(type);
   switch(type) {
   case SPDYLAY_SYN_STREAM:
-    printf("SYN_STREAM\n");
     r = spdylay_frame_unpack_syn_stream(&frame.syn_stream,
                                         session->iframe.headbuf,
                                         sizeof(session->iframe.headbuf),
@@ -699,7 +697,6 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
     }
     break;
   case SPDYLAY_SYN_REPLY:
-    printf("SYN_REPLY\n");
     r = spdylay_frame_unpack_syn_reply(&frame.syn_reply,
                                        session->iframe.headbuf,
                                        sizeof(session->iframe.headbuf),
@@ -711,9 +708,6 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
       spdylay_frame_syn_reply_free(&frame.syn_reply);
     }
     break;
-  default:
-    /* ignore */
-    printf("Received control frame type %x\n", type);
   }
   if(r < SPDYLAY_ERR_FATAL) {
     return r;
@@ -724,23 +718,21 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
 
 int spdylay_session_process_data_frame(spdylay_session *session)
 {
-  printf("Received data frame, stream_id %d, %zu bytes, fin=%d\n",
-         spdylay_get_uint32(session->iframe.headbuf),
-         session->iframe.len,
-         session->iframe.headbuf[4] & SPDYLAY_FLAG_FIN);
+  /* printf("Received data frame, stream_id %d, %zu bytes, fin=%d\n", */
+  /*        spdylay_get_uint32(session->iframe.headbuf), */
+  /*        session->iframe.len, */
+  /*        session->iframe.headbuf[4] & SPDYLAY_FLAG_FIN); */
   return 0;
 }
 
 int spdylay_session_recv(spdylay_session *session)
 {
-  printf("session_recv\n");
   while(1) {
     ssize_t r;
     if(session->iframe.state == SPDYLAY_RECV_HEAD) {
       uint32_t payloadlen;
       if(spdylay_inbound_buffer_avail(&session->ibuf) < SPDYLAY_HEAD_LEN) {
         r = spdylay_recv(session);
-        printf("r=%d\n", r);
         /* TODO handle EOF */
         if(r < 0) {
           if(r == SPDYLAY_ERR_WOULDBLOCK) {
@@ -749,7 +741,6 @@ int spdylay_session_recv(spdylay_session *session)
             return r;
           }
         }
-        printf("Recved %d bytes\n", r);
         if(spdylay_inbound_buffer_avail(&session->ibuf) < SPDYLAY_HEAD_LEN) {
           return 0;
         }

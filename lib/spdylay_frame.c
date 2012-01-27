@@ -50,9 +50,7 @@ static void spdylay_frame_pack_ctrl_hd(uint8_t* buf, const spdylay_ctrl_hd *hd)
   buf[0] |= 1 << 7;
   spdylay_put_uint16be(&buf[2], hd->type);
   spdylay_put_uint32be(&buf[4], hd->length);
-  printf("hd->length=%d\n", hd->length);
   buf[4] = hd->flags;
-  printf("hd->flags=%d\n", hd->flags);
 }
 
 static void spdylay_frame_unpack_ctrl_hd(spdylay_ctrl_hd *hd,
