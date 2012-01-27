@@ -13,6 +13,11 @@ command-line::
     NPN select next proto: server offers:
     * spdy/2
     * http/1.1
+    send SYN_STREAM frame (stream_id=1, flags=1, length=65)
+      method: GET
+      scheme: https
+      url: /
+      version: HTTP/1.1
     recv SYN_REPLY frame (stream_id=1, flags=0, length=576)
       cache-control: private, max-age=0
       content-type: text/html; charset=ISO-8859-1
