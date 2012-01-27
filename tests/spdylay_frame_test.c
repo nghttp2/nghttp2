@@ -53,6 +53,24 @@ void test_spdylay_frame_count_nv_space()
   CU_ASSERT(83 == spdylay_frame_count_nv_space((char**)headers));
 }
 
+void test_spdylay_frame_pack_ping()
+{
+  spdylay_frame frame, oframe;
+  uint8_t *buf;
+  ssize_t buflen;
+  spdylay_frame_ping_init(&frame.ping, 1);
+  buflen = spdylay_frame_pack_ping(&buf, &frame.ping);
+  CU_ASSERT(0 == spdylay_frame_unpack_ping
+            (&oframe.ping,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             buflen-SPDYLAY_FRAME_HEAD_LENGTH));
+  CU_ASSERT(1 == oframe.ping.unique_id);
+  free(buf);
+  spdylay_frame_ping_free(&oframe.ping);
+  spdylay_frame_ping_free(&frame.ping);
+}
+
 void test_spdylay_frame_pack_headers()
 {
   spdylay_zlib deflater, inflater;
@@ -70,6 +88,11 @@ void test_spdylay_frame_pack_headers()
              &buf[SPDYLAY_FRAME_HEAD_LENGTH],
              buflen-SPDYLAY_FRAME_HEAD_LENGTH,
              &inflater));
+  CU_ASSERT(3 == oframe.headers.stream_id);
+  CU_ASSERT(SPDYLAY_FLAG_FIN == oframe.headers.hd.flags);
+  CU_ASSERT(strcmp("method", oframe.headers.nv[0]) == 0);
+  CU_ASSERT(strcmp("GET", oframe.headers.nv[1]) == 0);
+  CU_ASSERT(NULL == oframe.headers.nv[12]);
   free(buf);
   spdylay_frame_headers_free(&oframe.headers);
   spdylay_frame_headers_free(&frame.headers);

@@ -120,6 +120,11 @@ typedef struct {
   uint32_t status_code;
 } spdylay_rst_stream;
 
+typedef struct {
+  spdylay_ctrl_hd hd;
+  uint32_t unique_id;
+} spdylay_ping;
+
 typedef union {
   int fd;
   void *ptr;
@@ -144,6 +149,7 @@ typedef union {
   spdylay_syn_stream syn_stream;
   spdylay_syn_reply syn_reply;
   spdylay_rst_stream rst_stream;
+  spdylay_ping ping;
   spdylay_headers headers;
   spdylay_data data;
 } spdylay_frame;

@@ -86,6 +86,22 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    spdylay_zlib *inflater);
 
 /*
+ * Packs PING frame |frame| in wire format and store it in
+ * |*buf_ptr|. This function allocates enough memory in |*buf_ptr| to
+ * store given |frame|. This function returns the size of packed frame
+ * if it succeeds, or negative error code.
+ */
+ssize_t spdylay_frame_pack_ping(uint8_t **buf_ptr, spdylay_ping *frame);
+
+/*
+ * Unpacks PING wire format into |frame|. This function returns 0 if
+ * it succeeds, or negative error code.
+ */
+int spdylay_frame_unpack_ping(spdylay_ping *frame,
+                              const uint8_t *head, size_t headlen,
+                              const uint8_t *payload, size_t payloadlen);
+
+/*
  * Packs HEADERS frame |frame| in wire format and store it in
  * |*buf_ptr|. This function allocates enough memory in |*buf_ptr| to
  * store given |frame|. This function returns the size of packed frame
@@ -104,6 +120,7 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
                                  const uint8_t *head, size_t headlen,
                                  const uint8_t *payload, size_t payloadlen,
                                  spdylay_zlib *inflater);
+
 /*
  * Packs RST_STREAM frame |frame| in wire frame format and store it in
  * |*buf_ptr|. This function allocates enough memory to store given
@@ -159,6 +176,10 @@ void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
                                   int32_t stream_id, char **nv);
 
 void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame);
+
+void spdylay_frame_ping_init(spdylay_ping *frame, uint32_t unique_id);
+
+void spdylay_frame_ping_free(spdylay_ping *frame);
 
 void spdylay_frame_headers_init(spdylay_headers *frame, uint8_t flags,
                                 int32_t stream_id, char **nv);
