@@ -211,20 +211,21 @@ void print_nv(char **nv)
   }
 }
 
+static const char *ctrl_names[] = {
+  "SYN_STREAM",
+  "SYN_REPLY",
+  "RST_STREAM",
+  "SETTINGS",
+  "NOOP",
+  "PING",
+  "GOAWAY",
+  "HEADERS"
+};
+
 void on_ctrl_recv_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
-  static const char *ctrl_names[] = {
-    "SYN_STREAM",
-    "SYN_REPLY",
-    "RST_STREAM",
-    "SETTINGS",
-    "NOOP",
-    "PING",
-    "GOAWAY",
-    "HEADERS"
-  };
   printf("recv %s frame ", ctrl_names[type-1]);
   switch(type) {
   case SPDYLAY_SYN_REPLY:
@@ -239,16 +240,33 @@ void on_ctrl_recv_callback
 }
 
 void on_data_chunk_recv_callback
-(spdylay_session *session, int32_t stream_id, uint8_t flags,
+(spdylay_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {}
 
 void on_data_recv_callback
-(spdylay_session *session, int32_t stream_id, uint8_t flags, int32_t length,
+(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data)
 {
   printf("recv DATA frame (stream_id=%d, flags=%d, length=%d)\n",
          stream_id, flags, length);
+}
+
+void on_ctrl_send_callback
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data)
+{
+  printf("send %s frame ", ctrl_names[type-1]);
+  switch(type) {
+  case SPDYLAY_SYN_STREAM:
+    printf("(stream_id=%d, flags=%d, length=%d)\n",
+           frame->syn_stream.stream_id, frame->syn_stream.hd.flags,
+           frame->syn_stream.hd.length);
+    print_nv(frame->syn_stream.nv);
+    break;
+  default:
+    break;
+  }
 }
 
 void ctl_epollev(int epollfd, int op, SpdylayClient& sc)
@@ -392,6 +410,7 @@ int run(const char *host, const char *service, const char *path)
   callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_data_recv_callback = on_data_recv_callback;
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
   return communicate(host, service, path, &callbacks);
 }
 
