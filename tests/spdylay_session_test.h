@@ -33,5 +33,6 @@ void test_spdylay_session_on_syn_reply_received();
 void test_spdylay_session_send_syn_stream();
 void test_spdylay_session_send_syn_reply();
 void test_spdylay_reply_submit();
+void test_spdylay_session_reply_fail();
 
 #endif // SPDYLAY_SESSION_TEST_H

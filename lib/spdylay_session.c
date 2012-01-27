@@ -257,6 +257,39 @@ int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id)
   }
 }
 
+/*
+ * Returns non-zero value if local peer can send SYN_REPLY with stream
+ * ID |stream_id| at the moment, or 0.
+ */
+static int spdylay_session_is_reply_allowed(spdylay_session *session,
+                                            int32_t stream_id)
+{
+  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return 0;
+  }
+  if(spdylay_session_is_my_stream_id(session, stream_id)) {
+    return 0;
+  } else {
+    return stream->state == SPDYLAY_STREAM_OPENING &&
+      (stream->flags & SPDYLAY_FLAG_UNIDIRECTIONAL) == 0;
+  }
+}
+
+static int spdylay_session_is_data_allowed(spdylay_session *session,
+                                           int32_t stream_id)
+{
+  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return 0;
+  }
+  if(spdylay_session_is_my_stream_id(session, stream_id)) {
+    return (stream->flags & SPDYLAY_FLAG_FIN) == 0;
+  } else {
+    return stream->state == SPDYLAY_STREAM_OPENED;
+  }
+}
+
 ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                    spdylay_outbound_item *item,
                                    uint8_t **framebuf_ptr)
@@ -286,6 +319,10 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     break;
   }
   case SPDYLAY_SYN_REPLY: {
+    if(!spdylay_session_is_reply_allowed(session,
+                                         item->frame->syn_reply.stream_id)) {
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
     framebuflen = spdylay_frame_pack_syn_reply(&framebuf,
                                                &item->frame->syn_reply,
                                                &session->hd_deflater);
@@ -295,6 +332,9 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     break;
   }
   case SPDYLAY_DATA: {
+    if(!spdylay_session_is_data_allowed(session, item->frame->data.stream_id)) {
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
     framebuflen = spdylay_session_pack_data(session, &framebuf,
                                             &item->frame->data);
     if(framebuflen < 0) {
@@ -564,10 +604,18 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
 {
   int r;
   if(spdylay_session_validate_syn_stream(session, &frame->syn_stream) == 0) {
-    r = spdylay_session_open_stream(session, frame->syn_stream.stream_id,
-                                    frame->syn_stream.hd.flags,
-                                    frame->syn_stream.pri,
-                                    SPDYLAY_STREAM_OPENING);
+    uint8_t flags = frame->syn_stream.hd.flags;
+    if((flags & SPDYLAY_FLAG_FIN) && (flags & SPDYLAY_FLAG_UNIDIRECTIONAL)) {
+      /* If the stream is UNIDIRECTIONAL and FIN bit set, we can close
+         stream upon receiving SYN_STREAM. So, the stream needs not to
+         be opened. */
+      r = 0;
+    } else {
+      r = spdylay_session_open_stream(session, frame->syn_stream.stream_id,
+                                      frame->syn_stream.hd.flags,
+                                      frame->syn_stream.pri,
+                                      SPDYLAY_STREAM_OPENING);
+    }
     if(r == 0) {
       session->last_recv_stream_id = frame->syn_stream.stream_id;
       spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
