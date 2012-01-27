@@ -413,7 +413,6 @@ void test_spdylay_submit_response()
     NULL
   };
   const char *nv[] = { NULL };
-  spdylay_stream *stream;
   int32_t stream_id = 2;
   spdylay_data_source source;
   spdylay_data_provider data_prd = {
@@ -442,7 +441,6 @@ void test_spdylay_session_reply_fail()
     NULL
   };
   const char *nv[] = { NULL };
-  spdylay_stream *stream;
   int32_t stream_id = 2;
   spdylay_data_source source;
   spdylay_data_provider data_prd = {
@@ -553,7 +551,6 @@ void test_spdylay_session_on_ping_received()
     on_ping_recv_callback
   };
   my_user_data user_data;
-  const char *nv[] = { NULL };
   spdylay_frame frame;
   spdylay_outbound_item *top;
   uint32_t unique_id;
