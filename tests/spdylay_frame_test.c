@@ -53,3 +53,26 @@ void test_spdylay_frame_count_nv_space()
   CU_ASSERT(83 == spdylay_frame_count_nv_space((char**)headers));
 }
 
+void test_spdylay_frame_pack_headers()
+{
+  spdylay_zlib deflater, inflater;
+  spdylay_frame frame, oframe;
+  uint8_t *buf;
+  ssize_t buflen;
+  spdylay_zlib_deflate_hd_init(&deflater);
+  spdylay_zlib_inflate_hd_init(&inflater);
+  spdylay_frame_headers_init(&frame.headers, SPDYLAY_FLAG_FIN, 3,
+                             spdylay_frame_nv_copy(headers));
+  buflen = spdylay_frame_pack_headers(&buf, &frame.headers, &deflater);
+  CU_ASSERT(0 == spdylay_frame_unpack_headers
+            (&oframe.headers,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             buflen-SPDYLAY_FRAME_HEAD_LENGTH,
+             &inflater));
+  free(buf);
+  spdylay_frame_headers_free(&oframe.headers);
+  spdylay_frame_headers_free(&frame.headers);
+  spdylay_zlib_inflate_free(&inflater);
+  spdylay_zlib_deflate_free(&deflater);
+}

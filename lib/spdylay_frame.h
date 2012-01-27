@@ -39,6 +39,9 @@
 
 #define SPDYLAY_DATA_FRAME_LENGTH 4096
 
+/* The number of bytes of frame header. */
+#define SPDYLAY_FRAME_HEAD_LENGTH 8
+
 /*
  * Packs SYN_STREAM frame |frame| in wire frame format and store it in
  * |*buf_ptr|. This function allocates enough memory to store given
@@ -82,6 +85,25 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    const uint8_t *payload, size_t payloadlen,
                                    spdylay_zlib *inflater);
 
+/*
+ * Packs HEADERS frame |frame| in wire format and store it in
+ * |*buf_ptr|. This function allocates enough memory in |*buf_ptr| to
+ * store given |frame|. This function returns the size of packed frame
+ * it it succeeds, or returns negative error code. frame->hd.length is
+ * assigned after length is determined during packing process.
+ */
+ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr,
+                                   spdylay_headers *frame,
+                                   spdylay_zlib *deflater);
+
+/*
+ * Unpacks HEADERS wire format into |frame|. This function returns 0
+ * if it succeeds or negative error code.
+ */
+int spdylay_frame_unpack_headers(spdylay_headers *frame,
+                                 const uint8_t *head, size_t headlen,
+                                 const uint8_t *payload, size_t payloadlen,
+                                 spdylay_zlib *inflater);
 /*
  * Packs RST_STREAM frame |frame| in wire frame format and store it in
  * |*buf_ptr|. This function allocates enough memory to store given
@@ -137,6 +159,11 @@ void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
                                   int32_t stream_id, char **nv);
 
 void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame);
+
+void spdylay_frame_headers_init(spdylay_headers *frame, uint8_t flags,
+                                int32_t stream_id, char **nv);
+
+void spdylay_frame_headers_free(spdylay_headers *frame);
 
 void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
                                    int32_t stream_id, uint32_t status_code);

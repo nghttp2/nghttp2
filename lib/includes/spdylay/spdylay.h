@@ -63,6 +63,7 @@ typedef enum {
   SPDYLAY_NOOP = 5,
   SPDYLAY_PING = 6,
   SPDYLAY_GOAWAY = 7,
+  SPDYLAY_HEADERS = 8,
   SPDYLAY_DATA = 100,
 } spdylay_frame_type;
 
@@ -107,6 +108,12 @@ typedef struct {
 typedef struct {
   spdylay_ctrl_hd hd;
   int32_t stream_id;
+  char **nv;
+} spdylay_headers;
+
+typedef struct {
+  spdylay_ctrl_hd hd;
+  int32_t stream_id;
   uint32_t status_code;
 } spdylay_rst_stream;
 
@@ -134,6 +141,7 @@ typedef union {
   spdylay_syn_stream syn_stream;
   spdylay_syn_reply syn_reply;
   spdylay_rst_stream rst_stream;
+  spdylay_headers headers;
   spdylay_data data;
 } spdylay_frame;
 

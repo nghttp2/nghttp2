@@ -374,6 +374,23 @@ void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame)
   free(frame->nv);
 }
 
+void spdylay_frame_headers_init(spdylay_headers *frame, uint8_t flags,
+                                int32_t stream_id, char **nv)
+{
+  memset(frame, 0, sizeof(spdylay_headers));
+  frame->hd.version = 2;
+  frame->hd.type = SPDYLAY_HEADERS;
+  frame->hd.flags = flags;
+  frame->stream_id = stream_id;
+  frame->nv = nv;
+}
+
+void spdylay_frame_headers_free(spdylay_headers *frame)
+{
+  spdylay_frame_nv_free(frame->nv);
+  free(frame->nv);
+}
+
 void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
                                    int32_t stream_id, uint32_t status_code)
 {
@@ -470,6 +487,39 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+6, payloadlen-6,
                                     inflater);
   return r;
+}
+
+#define SPDYLAY_HEADERS_NV_OFFSET 14
+
+ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr,
+                                   spdylay_headers *frame,
+                                   spdylay_zlib *deflater)
+{
+  uint8_t *framebuf = NULL;
+  ssize_t framelen;
+  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv,
+                                         SPDYLAY_HEADERS_NV_OFFSET, deflater);
+  if(framelen < 0) {
+    return framelen;
+  }
+  frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
+  memset(framebuf, 0, SPDYLAY_HEADERS_NV_OFFSET);
+  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
+  spdylay_put_uint32be(&framebuf[8], frame->stream_id);
+  *buf_ptr = framebuf;
+  return framelen;
+}
+
+int spdylay_frame_unpack_headers(spdylay_headers *frame,
+                                 const uint8_t *head, size_t headlen,
+                                 const uint8_t *payload, size_t payloadlen,
+                                 spdylay_zlib *inflater)
+{
+  int r;
+  spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
+  r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+6, payloadlen-6,
+                                    inflater);
 }
 
 ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr,
