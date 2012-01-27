@@ -207,6 +207,20 @@ int spdylay_session_want_read(spdylay_session *session);
 
 int spdylay_session_want_write(spdylay_session *session);
 
+/*
+ * Submits SYN_STREAM frame. |pri| is priority of this request and it
+ * must be in the range of [0, 3]. 0 means the higest priority. |nv|
+ * must include following name/value pairs:
+ *
+ * "method": HTTP method (e.g., "GET")
+ * "scheme": URI scheme (e.g., "https")
+ * "url": Abosolute path of this request (e.g., "/foo")
+ * "version": HTTP version (e.g., "HTTP/1.1")
+ *
+ * This function creates copies of all name/value pairs in |nv|.
+ *
+ * This function returns 0 if it succeeds, or negative error code.
+ */
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,
                            const char **nv);
 
