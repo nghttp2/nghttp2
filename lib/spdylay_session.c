@@ -390,10 +390,20 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     spdylay_session_close_stream(session, frame->rst_stream.stream_id);
     break;
   case SPDYLAY_DATA:
-    if((frame->data.flags & SPDYLAY_FLAG_FIN) &&
-       !spdylay_session_is_my_stream_id(session, frame->data.stream_id)) {
-      /* We send all data requested by peer, so close the stream. */
-      spdylay_session_close_stream(session, frame->data.stream_id);
+    if(frame->data.flags & SPDYLAY_FLAG_FIN) {
+      if(spdylay_session_is_my_stream_id(session, frame->data.stream_id)) {
+        /* This is the last frame of request DATA (e.g., POST in HTTP
+           term), so set FIN bit set in stream. This also happens when
+           request HEADERS frame is sent with FIN bit set. */
+        spdylay_stream *stream =
+          spdylay_session_get_stream(session, frame->data.stream_id);
+        if(stream) {
+          stream->flags |= SPDYLAY_FLAG_FIN;
+        }
+      } else {
+        /* We send all data requested by peer, so close the stream. */
+        spdylay_session_close_stream(session, frame->data.stream_id);
+      }
     }
     break;
   };
