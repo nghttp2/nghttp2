@@ -686,7 +686,7 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
   if(spdylay_session_is_my_stream_id(session, frame->syn_reply.stream_id)) {
     spdylay_stream *stream = spdylay_session_get_stream
       (session, frame->syn_reply.stream_id);
-    if(stream) {
+    if(stream && (stream->flags & SPDYLAY_FLAG_UNIDIRECTIONAL) == 0) {
       if(stream->state == SPDYLAY_STREAM_OPENING) {
         valid = 1;
         stream->state = SPDYLAY_STREAM_OPENED;
@@ -781,6 +781,9 @@ int spdylay_session_on_headers_received(spdylay_session *session,
                                                     frame);
         if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
           stream->flags |= SPDYLAY_FLAG_FIN;
+        }
+        if(stream->flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
+          spdylay_session_close_stream(session, frame->headers.stream_id);
         }
       }
     }
