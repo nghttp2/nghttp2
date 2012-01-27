@@ -89,7 +89,10 @@ void test_spdylay_frame_pack_headers()
              buflen-SPDYLAY_FRAME_HEAD_LENGTH,
              &inflater));
   CU_ASSERT(3 == oframe.headers.stream_id);
+  CU_ASSERT(SPDYLAY_PROTO_VERSION == oframe.headers.hd.version);
+  CU_ASSERT(SPDYLAY_HEADERS == oframe.headers.hd.type);
   CU_ASSERT(SPDYLAY_FLAG_FIN == oframe.headers.hd.flags);
+  CU_ASSERT(buflen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
   CU_ASSERT(strcmp("method", oframe.headers.nv[0]) == 0);
   CU_ASSERT(strcmp("GET", oframe.headers.nv[1]) == 0);
   CU_ASSERT(NULL == oframe.headers.nv[12]);
