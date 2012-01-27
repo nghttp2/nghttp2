@@ -51,6 +51,8 @@ AC_CHECK_LIB([cunit], [CU_initialize_registry],
              [have_cunit=yes], [have_cunit=no])
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
+AC_SEARCH_LIBS([clock_gettime], [rt])
+
 # Checks for header files.
 AC_CHECK_HEADERS([ \
   arpa/inet.h \
@@ -58,6 +60,7 @@ AC_CHECK_HEADERS([ \
   stdint.h \
   stdlib.h \
   string.h \
+  time.h \
   unistd.h \
 ])
 

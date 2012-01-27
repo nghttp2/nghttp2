@@ -49,7 +49,7 @@ typedef struct {
 typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
-  int valid, invalid;
+  int valid, invalid, ping_recv;
   size_t data_source_length;
 } my_user_data;
 
@@ -120,6 +120,14 @@ static void on_invalid_ctrl_recv_callback(spdylay_session *session,
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->invalid;
+}
+
+static void on_ping_recv_callback(spdylay_session *session,
+                                  const struct timespec *rtt,
+                                  void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->ping_recv;
 }
 
 static ssize_t fixed_length_data_source_read_callback
@@ -531,5 +539,46 @@ void test_spdylay_session_on_headers_received()
   CU_ASSERT(2 == user_data.invalid);
 
   spdylay_frame_headers_free(&frame.headers);
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_on_ping_received()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    NULL,
+    NULL,
+    on_ctrl_recv_callback,
+    on_invalid_ctrl_recv_callback,
+    on_ping_recv_callback
+  };
+  my_user_data user_data;
+  const char *nv[] = { NULL };
+  spdylay_frame frame;
+  spdylay_outbound_item *top;
+  uint32_t unique_id;
+  user_data.valid = 0;
+  user_data.invalid = 0;
+  user_data.ping_recv = 0;
+
+  spdylay_session_client_new(&session, &callbacks, &user_data);
+  unique_id = 2;
+  spdylay_frame_ping_init(&frame.ping, unique_id);
+
+  CU_ASSERT(0 == spdylay_session_on_ping_received(session, &frame));
+  CU_ASSERT(1 == user_data.valid);
+  CU_ASSERT(0 == user_data.ping_recv);
+  top = spdylay_session_get_ob_pq_top(session);
+  CU_ASSERT(SPDYLAY_PING == top->frame_type);
+  CU_ASSERT(unique_id == top->frame->ping.unique_id);
+
+  session->last_ping_unique_id = 1;
+  frame.ping.unique_id = 1;
+
+  CU_ASSERT(0 == spdylay_session_on_ping_received(session, &frame));
+  CU_ASSERT(2 == user_data.valid);
+  CU_ASSERT(1 == user_data.ping_recv);
+
+  spdylay_frame_ping_free(&frame.ping);
   spdylay_session_del(session);
 }

@@ -29,6 +29,8 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#include <time.h>
+
 #include <spdylay/spdylay.h>
 #include "spdylay_pq.h"
 #include "spdylay_map.h"
@@ -62,6 +64,10 @@ typedef enum {
 
 #define SPDYLAY_HEAD_LEN 8
 
+/* Maximum unique ID in use for PING. If unique ID exeeds this number,
+   it wraps to 1 (client) or 2 (server) */
+#define SPDYLAY_MAX_UNIQUE_ID ((1u << 31)-1)
+
 typedef struct {
   spdylay_inbound_state state;
   uint8_t headbuf[SPDYLAY_HEAD_LEN];
@@ -77,7 +83,10 @@ typedef struct spdylay_session {
   uint8_t server;
   int32_t next_stream_id;
   int32_t last_recv_stream_id;
-  
+  /* Counter of unique ID of PING. Wraps when it exceeds
+     SPDYLAY_MAX_UNIQUE_ID */
+  uint32_t next_unique_id;
+
   spdylay_map /* <spdylay_stream*> */ streams;
   spdylay_pq /* <spdylay_outbound_item*> */ ob_pq;
 
@@ -88,6 +97,11 @@ typedef struct spdylay_session {
 
   spdylay_zlib hd_deflater;
   spdylay_zlib hd_inflater;
+
+  /* The last unique ID sent to the peer. */
+  uint32_t last_ping_unique_id;
+  /* Time stamp when last ping is sent. */
+  struct timespec last_ping_time;
 
   spdylay_session_callbacks callbacks;
   void *user_data;
@@ -101,6 +115,8 @@ int spdylay_session_add_frame(spdylay_session *session,
 
 int spdylay_session_add_rst_stream(spdylay_session *session,
                                    int32_t stream_id, uint32_t status_code);
+
+int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id);
 
 /*
  * Creates new stream in |session| with stream ID |stream_id|,
@@ -172,5 +188,16 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
 ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
                                             uint8_t *buf, size_t len,
                                             spdylay_data *frame);
+
+/*
+ * Returns next unique ID which can be used with PING.
+ */
+uint32_t spdylay_session_get_next_unique_id(spdylay_session *session);
+
+/*
+ * Returns top of outbound frame queue. This function returns NULL if
+ * queue is empty.
+ */
+spdylay_outbound_item* spdylay_session_get_ob_pq_top(spdylay_session *session);
 
 #endif /* SPDYLAY_SESSION_H */

@@ -71,8 +71,14 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
     return SPDYLAY_ERR_NOMEM;
   }
   memset(*session_ptr, 0, sizeof(spdylay_session));
+
+  /* IDs for use in client */
   (*session_ptr)->next_stream_id = 1;
   (*session_ptr)->last_recv_stream_id = 0;
+  (*session_ptr)->next_unique_id = 1;
+
+  (*session_ptr)->last_ping_unique_id = 0;
+  memset(&(*session_ptr)->last_ping_time, 0, sizeof(struct timespec));
 
   r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater);
   if(r != 0) {
@@ -131,10 +137,12 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
   case SPDYLAY_RST_STREAM:
     spdylay_frame_rst_stream_free(&item->frame->rst_stream);
     break;
+  case SPDYLAY_PING:
+    spdylay_frame_ping_free(&item->frame->ping);
+    break;
   case SPDYLAY_HEADERS:
-    /* Currently we don't have any API to send HEADERS frame, so this
-       is unreachable. */
-    abort();
+    spdylay_frame_headers_free(&item->frame->headers);
+    break;
   case SPDYLAY_DATA:
     spdylay_frame_data_free(&item->frame->data);
     break;
@@ -195,6 +203,10 @@ int spdylay_session_add_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_PING:
+    /* Ping has "height" priority. Give it -1. */
+    item->pri = -1;
+    break;
   case SPDYLAY_HEADERS:
     /* Currently we don't have any API to send HEADERS frame, so this
        is unreachable. */
@@ -339,6 +351,12 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_PING:
+    framebuflen = spdylay_frame_pack_ping(&framebuf, &item->frame->ping);
+    if(framebuflen < 0) {
+      return framebuflen;
+    }
+    break;
   case SPDYLAY_HEADERS:
     /* Currently we don't have any API to send HEADERS frame, so this
        is unreachable. */
@@ -370,7 +388,7 @@ static void spdylay_active_outbound_item_reset
   memset(aob, 0, sizeof(spdylay_active_outbound_item));
 }
 
-static spdylay_outbound_item* spdylay_session_get_ob_pq_top
+spdylay_outbound_item* spdylay_session_get_ob_pq_top
 (spdylay_session *session)
 {
   return (spdylay_outbound_item*)spdylay_pq_top(&session->ob_pq);
@@ -400,6 +418,13 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   }
   case SPDYLAY_RST_STREAM:
     spdylay_session_close_stream(session, frame->rst_stream.stream_id);
+    break;
+  case SPDYLAY_PING:
+    /* We record the time now and show application code RTT when
+       reply PING is received. */
+    session->last_ping_unique_id = frame->ping.unique_id;
+    /* TODO If clock_gettime() fails, what should we do? */
+    clock_gettime(CLOCK_MONOTONIC, &session->last_ping_time);
     break;
   case SPDYLAY_HEADERS:
     /* Currently we don't have any API to send HEADERS frame, so this
@@ -688,6 +713,39 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
   return r;
 }
 
+int spdylay_session_on_ping_received(spdylay_session *session,
+                                     spdylay_frame *frame)
+{
+  int r = 0;
+  if(frame->ping.unique_id != 0) {
+    if(session->last_ping_unique_id == frame->ping.unique_id) {
+      /* This is ping reply from peer */
+      struct timespec rtt;
+      clock_gettime(CLOCK_MONOTONIC, &rtt);
+      rtt.tv_nsec -= session->last_ping_time.tv_nsec;
+      if(rtt.tv_nsec < 0) {
+        rtt.tv_nsec += 1000000000;
+        --rtt.tv_sec;
+      }
+      rtt.tv_sec -= session->last_ping_time.tv_sec;
+      /* Assign 0 to last_ping_unique_id so that we can ignore same
+         ID. */
+      session->last_ping_unique_id = 0;
+      if(session->callbacks.on_ping_recv_callback) {
+        session->callbacks.on_ping_recv_callback(session, &rtt,
+                                                 session->user_data);
+      }
+      spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_PING, frame);
+    } else if((session->server && frame->ping.unique_id % 2 == 1) ||
+              (!session->server && frame->ping.unique_id % 2 == 0)) {
+      /* Peer sent ping, so ping it back */
+      r = spdylay_session_add_ping(session, frame->ping.unique_id);
+      spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_PING, frame);
+    }
+  }
+  return r;
+}
+
 int spdylay_session_on_headers_received(spdylay_session *session,
                                         spdylay_frame *frame)
 {
@@ -768,6 +826,17 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_syn_reply_received(session, &frame);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
+    }
+    break;
+  case SPDYLAY_PING:
+    r = spdylay_frame_unpack_ping(&frame.ping,
+                                  session->iframe.headbuf,
+                                  sizeof(session->iframe.headbuf),
+                                  session->iframe.buf,
+                                  session->iframe.len);
+    if(r == 0) {
+      r = spdylay_session_on_ping_received(session, &frame);
+      spdylay_frame_ping_free(&frame.ping);
     }
     break;
   case SPDYLAY_HEADERS:
@@ -890,13 +959,35 @@ int spdylay_session_want_write(spdylay_session *session)
   return session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq);
 }
 
+int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id)
+{
+  int r;
+  spdylay_frame *frame;
+  frame = malloc(sizeof(spdylay_frame));
+  if(frame == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_ping_init(&frame->ping, unique_id);
+  r = spdylay_session_add_frame(session, SPDYLAY_PING, frame);
+  if(r != 0) {
+    spdylay_frame_ping_free(&frame->ping);
+    free(frame);
+  }
+  return r;
+}
+
+int spdylay_submit_ping(spdylay_session *session)
+{
+  return spdylay_session_add_ping(session,
+                                  spdylay_session_get_next_unique_id(session));
+}
+
 int spdylay_reply_submit(spdylay_session *session,
                          int32_t stream_id, const char **nv,
                          spdylay_data_provider *data_prd)
 {
   int r;
   spdylay_frame *frame;
-  spdylay_frame *data_frame = NULL;
   char **nv_copy;
   uint8_t flags = 0;
   frame = malloc(sizeof(spdylay_frame));
@@ -920,6 +1011,7 @@ int spdylay_reply_submit(spdylay_session *session,
     return r;
   }
   if(data_prd != NULL) {
+    spdylay_frame *data_frame;
     /* TODO If error is not FATAL, we should add RST_STREAM frame to
        cancel this stream. */
     data_frame = malloc(sizeof(spdylay_frame));
@@ -1000,4 +1092,16 @@ ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
   buf[4] = flags;
   frame->flags = flags;
   return r+8;
+}
+
+uint32_t spdylay_session_get_next_unique_id(spdylay_session *session)
+{
+  if(session->next_unique_id > SPDYLAY_MAX_UNIQUE_ID) {
+    if(session->server) {
+      session->next_unique_id = 2;
+    } else {
+      session->next_unique_id = 1;
+    }
+  }
+  return session->next_unique_id++;
 }

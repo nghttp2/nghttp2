@@ -179,11 +179,18 @@ typedef void (*spdylay_on_invalid_ctrl_recv_callback)
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data);
 
+/*
+ * Callback function invoked when PING reply is received from peer.
+ */
+typedef void (*spdylay_on_ping_recv_callback)
+(spdylay_session *session, const struct timespec *rtt, void *user_data);
+
 typedef struct {
   spdylay_send_callback send_callback;
   spdylay_recv_callback recv_callback;
   spdylay_on_ctrl_recv_callback on_ctrl_recv_callback;
   spdylay_on_invalid_ctrl_recv_callback on_invalid_ctrl_recv_callback;
+  spdylay_on_ping_recv_callback on_ping_recv_callback;
 } spdylay_session_callbacks;
 
 int spdylay_session_client_new(spdylay_session **session_ptr,
@@ -214,6 +221,8 @@ int spdylay_req_submit(spdylay_session *session, const char *path);
 int spdylay_reply_submit(spdylay_session *session,
                          int32_t stream_id, const char **nv,
                          spdylay_data_provider *data_prd);
+
+int spdylay_submit_ping(spdylay_session *session);
 
 #ifdef __cplusplus
 }

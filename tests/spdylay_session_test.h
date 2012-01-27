@@ -35,5 +35,6 @@ void test_spdylay_session_send_syn_reply();
 void test_spdylay_reply_submit();
 void test_spdylay_session_reply_fail();
 void test_spdylay_session_on_headers_received();
+void test_spdylay_session_on_ping_received();
 
 #endif // SPDYLAY_SESSION_TEST_H
