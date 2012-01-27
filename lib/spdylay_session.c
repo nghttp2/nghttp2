@@ -642,6 +642,12 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
         stream->state = SPDYLAY_STREAM_OPENED;
         spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_REPLY,
                                                     frame);
+        if(frame->syn_reply.hd.flags & SPDYLAY_FLAG_FIN) {
+          /* This is the last frame of this stream, so close the
+             stream. This also happens when DATA and HEADERS frame
+             with FIN bit set. */
+          spdylay_session_close_stream(session, frame->syn_reply.stream_id);
+        }
       } else if(stream->state == SPDYLAY_STREAM_CLOSING) {
         /* This is race condition. SPDYLAY_STREAM_CLOSING indicates
            that we queued RST_STREAM but it has not been sent. It will
