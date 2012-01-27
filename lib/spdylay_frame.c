@@ -337,6 +337,18 @@ char** spdylay_frame_nv_copy(const char **nv)
   return nnv;
 }
 
+static int spdylay_string_compar(const void *lhs, const void *rhs)
+{
+  return strcmp(*(char **)lhs, *(char **)rhs);
+}
+
+void spdylay_frame_nv_sort(char **nv)
+{
+  int n;
+  for(n = 0; nv[n]; ++n);
+  qsort(nv, n/2, 2*sizeof(char*), spdylay_string_compar);
+}
+
 void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
                                    int32_t stream_id, int32_t assoc_stream_id,
                                    uint8_t pri, char **nv)

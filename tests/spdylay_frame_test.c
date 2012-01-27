@@ -99,3 +99,22 @@ void test_spdylay_frame_pack_headers()
   spdylay_zlib_inflate_free(&inflater);
   spdylay_zlib_deflate_free(&deflater);
 }
+
+void test_spdylay_frame_nv_sort()
+{
+  char *nv[7];
+  nv[0] = (char*)"version";
+  nv[1] = (char*)"HTTP/1.1";
+  nv[2] = (char*)"method";
+  nv[3] = (char*)"GET";
+  nv[4] = (char*)"scheme";
+  nv[5] = (char*)"https";
+  nv[6] = NULL;
+  spdylay_frame_nv_sort(nv);
+  CU_ASSERT(strcmp("method", nv[0]) == 0);
+  CU_ASSERT(strcmp("GET", nv[1]) == 0);
+  CU_ASSERT(strcmp("scheme", nv[2]) == 0);
+  CU_ASSERT(strcmp("https", nv[3]) == 0);
+  CU_ASSERT(strcmp("version", nv[4]) == 0);
+  CU_ASSERT(strcmp("HTTP/1.1", nv[5]) == 0);
+}

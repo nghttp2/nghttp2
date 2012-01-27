@@ -1019,6 +1019,7 @@ int spdylay_submit_response(spdylay_session *session,
     free(frame);
     return SPDYLAY_ERR_NOMEM;
   }
+  spdylay_frame_nv_sort(nv_copy);
   if(data_prd == NULL) {
     flags |= SPDYLAY_FLAG_FIN;
   }
@@ -1068,6 +1069,7 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
     free(frame);
     return SPDYLAY_ERR_NOMEM;
   }
+  spdylay_frame_nv_sort(nv_copy);
   /* When we support POST using spdylay_data_provider, flags should be
      0 if data_prd is set. */
   flags |= SPDYLAY_FLAG_FIN;

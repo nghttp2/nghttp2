@@ -213,4 +213,9 @@ void spdylay_frame_nv_free(char **nv);
  */
 char** spdylay_frame_nv_copy(const char **nv);
 
+/*
+ * Sorts |nv| in the ascending order of name.
+ */
+void spdylay_frame_nv_sort(char **nv);
+
 #endif /* SPDYLAY_FRAME_H */
