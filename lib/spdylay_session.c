@@ -1002,9 +1002,9 @@ int spdylay_submit_ping(spdylay_session *session)
                                   spdylay_session_get_next_unique_id(session));
 }
 
-int spdylay_reply_submit(spdylay_session *session,
-                         int32_t stream_id, const char **nv,
-                         spdylay_data_provider *data_prd)
+int spdylay_submit_response(spdylay_session *session,
+                            int32_t stream_id, const char **nv,
+                            spdylay_data_provider *data_prd)
 {
   int r;
   spdylay_frame *frame;
@@ -1049,25 +1049,35 @@ int spdylay_reply_submit(spdylay_session *session,
   return 0;
 }
 
-int spdylay_req_submit(spdylay_session *session, const char *path)
+int spdylay_submit_request(spdylay_session *session, uint8_t pri,
+                           const char **nv)
 {
   int r;
   spdylay_frame *frame;
-  char **nv;
+  char **nv_copy;
+  uint8_t flags = 0;
+  if(pri > 3) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
   frame = malloc(sizeof(spdylay_frame));
-  nv = malloc(9*sizeof(char*));
-  nv[0] = strdup("method");
-  nv[1] = strdup("GET");
-  nv[2] = strdup("scheme");
-  nv[3] = strdup("https");
-  nv[4] = strdup("url");
-  nv[5] = strdup(path);
-  nv[6] = strdup("version");
-  nv[7] = strdup("HTTP/1.1");
-  nv[8] = NULL;
+  if(frame == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  nv_copy = spdylay_frame_nv_copy(nv);
+  if(nv_copy == NULL) {
+    free(frame);
+    return SPDYLAY_ERR_NOMEM;
+  }
+  /* When we support POST using spdylay_data_provider, flags should be
+     0 if data_prd is set. */
+  flags |= SPDYLAY_FLAG_FIN;
   spdylay_frame_syn_stream_init(&frame->syn_stream,
-                                SPDYLAY_FLAG_FIN, 0, 0, 0, nv);
+                                SPDYLAY_FLAG_FIN, 0, 0, pri, nv_copy);
   r = spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame);
+  if(r != 0) {
+    spdylay_frame_syn_stream_free(&frame->syn_stream);
+    free(frame);
+  }
   return r;
 }
 

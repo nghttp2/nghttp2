@@ -403,7 +403,7 @@ void test_spdylay_session_send_syn_reply()
   spdylay_session_del(session);
 }
 
-void test_spdylay_reply_submit()
+void test_spdylay_submit_response()
 {
   spdylay_session *session;
   spdylay_session_callbacks callbacks = {
@@ -427,7 +427,7 @@ void test_spdylay_reply_submit()
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
   spdylay_session_open_stream(session, stream_id, SPDYLAY_FLAG_NONE, 3,
                               SPDYLAY_STREAM_OPENING);
-  CU_ASSERT(0 == spdylay_reply_submit(session, stream_id, nv, &data_prd));
+  CU_ASSERT(0 == spdylay_submit_response(session, stream_id, nv, &data_prd));
   CU_ASSERT(0 == spdylay_session_send(session));
   spdylay_session_del(session);
 }
@@ -452,7 +452,7 @@ void test_spdylay_session_reply_fail()
   my_user_data ud;
   ud.data_source_length = 4*1024;
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
-  CU_ASSERT(0 == spdylay_reply_submit(session, stream_id, nv, &data_prd));
+  CU_ASSERT(0 == spdylay_submit_response(session, stream_id, nv, &data_prd));
   CU_ASSERT(0 == spdylay_session_send(session));
   spdylay_session_del(session);
 }

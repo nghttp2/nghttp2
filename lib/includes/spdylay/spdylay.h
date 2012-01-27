@@ -207,7 +207,8 @@ int spdylay_session_want_read(spdylay_session *session);
 
 int spdylay_session_want_write(spdylay_session *session);
 
-int spdylay_req_submit(spdylay_session *session, const char *path);
+int spdylay_submit_request(spdylay_session *session, uint8_t pri,
+                           const char **nv);
 
 /*
  * Submits SYN_REPLY frame against stream |stream_id|. |nv| must
@@ -218,9 +219,9 @@ int spdylay_req_submit(spdylay_session *session, const char *path);
  * will be sent in subsequent DATA frames. If |data_prd| is NULL,
  * SYN_REPLY will have FLAG_FIN.
  */
-int spdylay_reply_submit(spdylay_session *session,
-                         int32_t stream_id, const char **nv,
-                         spdylay_data_provider *data_prd);
+int spdylay_submit_response(spdylay_session *session,
+                            int32_t stream_id, const char **nv,
+                            spdylay_data_provider *data_prd);
 
 int spdylay_submit_ping(spdylay_session *session);
 
