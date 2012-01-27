@@ -35,6 +35,9 @@ extern "C" {
 struct spdylay_session;
 typedef struct spdylay_session spdylay_session;
 
+/* SPDY protocol version 2 */
+#define SPDYLAY_PROTO_VERSION 2
+
 typedef enum {
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
   SPDYLAY_ERR_ZLIB = -502,

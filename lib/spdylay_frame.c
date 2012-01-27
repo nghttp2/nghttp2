@@ -342,7 +342,7 @@ void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
                                    uint8_t pri, char **nv)
 {
   memset(frame, 0, sizeof(spdylay_syn_stream));
-  frame->hd.version = 2;
+  frame->hd.version = SPDYLAY_PROTO_VERSION;
   frame->hd.type = SPDYLAY_SYN_STREAM;
   frame->hd.flags = flags;
   frame->stream_id = stream_id;
@@ -361,7 +361,7 @@ void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
                                   int32_t stream_id, char **nv)
 {
   memset(frame, 0, sizeof(spdylay_syn_reply));
-  frame->hd.version = 2;
+  frame->hd.version = SPDYLAY_PROTO_VERSION;
   frame->hd.type = SPDYLAY_SYN_REPLY;
   frame->hd.flags = flags;
   frame->stream_id = stream_id;
@@ -378,7 +378,7 @@ void spdylay_frame_headers_init(spdylay_headers *frame, uint8_t flags,
                                 int32_t stream_id, char **nv)
 {
   memset(frame, 0, sizeof(spdylay_headers));
-  frame->hd.version = 2;
+  frame->hd.version = SPDYLAY_PROTO_VERSION;
   frame->hd.type = SPDYLAY_HEADERS;
   frame->hd.flags = flags;
   frame->stream_id = stream_id;
@@ -395,7 +395,7 @@ void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
                                    int32_t stream_id, uint32_t status_code)
 {
   memset(frame, 0, sizeof(spdylay_rst_stream));
-  frame->hd.version = 2;
+  frame->hd.version = SPDYLAY_PROTO_VERSION;
   frame->hd.type = SPDYLAY_RST_STREAM;
   frame->hd.flags = 0;
   frame->hd.length = 8;
@@ -417,18 +417,22 @@ void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
 void spdylay_frame_data_free(spdylay_data *frame)
 {}
 
+#define SPDYLAY_SYN_STREAM_NV_OFFSET 18
+
 ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
                                       spdylay_syn_stream *frame,
                                       spdylay_zlib *deflater)
 {
   uint8_t *framebuf = NULL;
   ssize_t framelen;
-  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv, 18, deflater);
+  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv,
+                                         SPDYLAY_SYN_STREAM_NV_OFFSET,
+                                         deflater);
   if(framelen < 0) {
     return framelen;
   }
-  frame->hd.length = framelen-8;
-  memset(framebuf, 0, 18);
+  frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
+  memset(framebuf, 0, SPDYLAY_SYN_STREAM_NV_OFFSET);
   /* pack ctrl header after length is determined */
   spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
   spdylay_put_uint32be(&framebuf[8], frame->stream_id);
@@ -458,18 +462,21 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
   return r;
 }
 
+#define SPDYLAY_SYN_REPLY_NV_OFFSET 14
+
 ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
                                      spdylay_syn_reply *frame,
                                      spdylay_zlib *deflater)
 {
   uint8_t *framebuf = NULL;
   ssize_t framelen;
-  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv, 14, deflater);
+  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv,
+                                         SPDYLAY_SYN_REPLY_NV_OFFSET, deflater);
   if(framelen < 0) {
     return framelen;
   }
-  frame->hd.length = framelen-8;
-  memset(framebuf, 0, 14);
+  frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
+  memset(framebuf, 0, SPDYLAY_SYN_REPLY_NV_OFFSET);
   spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
   spdylay_put_uint32be(&framebuf[8], frame->stream_id);
   *buf_ptr = framebuf;
@@ -482,6 +489,9 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    spdylay_zlib *inflater)
 {
   int r;
+  if(payloadlen < 8) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+6, payloadlen-6,
@@ -516,6 +526,9 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
                                  spdylay_zlib *inflater)
 {
   int r;
+  if(payloadlen < 8) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, payload+6, payloadlen-6,
