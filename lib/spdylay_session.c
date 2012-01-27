@@ -399,6 +399,18 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   /* TODO handle FIN flag. */
   spdylay_frame *frame = session->aob.item->frame;
   spdylay_frame_type type = session->aob.item->frame_type;
+  if(type == SPDYLAY_DATA) {
+    if(session->callbacks.on_data_send_callback) {
+      session->callbacks.on_data_send_callback
+        (session, frame->data.flags, frame->data.stream_id,
+         session->aob.framebuflen, session->user_data);
+    }
+  } else {
+    if(session->callbacks.on_ctrl_send_callback) {
+      session->callbacks.on_ctrl_send_callback
+        (session, type, frame, session->user_data);
+    }
+  }
   switch(type) {
   case SPDYLAY_SYN_STREAM: {
     spdylay_stream *stream =

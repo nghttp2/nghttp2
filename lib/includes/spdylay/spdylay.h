@@ -206,6 +206,21 @@ typedef void (*spdylay_on_data_recv_callback)
 (spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data);
 
+/*
+ * Callback function invoked after frame |frame| of type |type| is
+ * sent.
+ */
+typedef void (*spdylay_on_ctrl_send_callback)
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data);
+
+/*
+ * Callback function invoked after DATA frame is sent.
+ */
+typedef void (*spdylay_on_data_send_callback)
+(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+ void *user_data);
+
 typedef struct {
   spdylay_send_callback send_callback;
   spdylay_recv_callback recv_callback;
@@ -214,6 +229,8 @@ typedef struct {
   spdylay_on_ping_recv_callback on_ping_recv_callback;
   spdylay_on_data_chunk_recv_callback on_data_chunk_recv_callback;
   spdylay_on_data_recv_callback on_data_recv_callback;
+  spdylay_on_ctrl_send_callback on_ctrl_send_callback;
+  spdylay_on_data_send_callback on_data_send_callback;
 } spdylay_session_callbacks;
 
 int spdylay_session_client_new(spdylay_session **session_ptr,
