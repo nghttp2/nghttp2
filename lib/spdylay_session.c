@@ -892,7 +892,7 @@ int spdylay_session_process_data_frame(spdylay_session *session)
     length = spdylay_get_uint32(&session->iframe.headbuf[4]) &
       SPDYLAY_LENGTH_MASK;
     session->callbacks.on_data_recv_callback
-      (session, stream_id, flags, length, session->user_data);
+      (session, flags, stream_id, length, session->user_data);
   }
   return 0;
 }
@@ -962,8 +962,9 @@ int spdylay_session_recv(spdylay_session *session)
         stream_id = spdylay_get_uint32(session->iframe.headbuf) &
           SPDYLAY_STREAM_ID_MASK;
         flags = session->iframe.headbuf[4];
-        session->callbacks.on_data_chunk_recv_callback(session, stream_id,
+        session->callbacks.on_data_chunk_recv_callback(session,
                                                        flags,
+                                                       stream_id,
                                                        session->ibuf.mark,
                                                        readlen,
                                                        session->user_data);

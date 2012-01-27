@@ -195,7 +195,7 @@ typedef void (*spdylay_on_ping_recv_callback)
  * whose flags contains SPDYLAY_FLAG_FIN.
  */
 typedef void (*spdylay_on_data_chunk_recv_callback)
-(spdylay_session *session, int32_t stream_id, uint8_t flags,
+(spdylay_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data);
 
 /*
@@ -203,7 +203,7 @@ typedef void (*spdylay_on_data_chunk_recv_callback)
  * data it contains are received by spdylay_on_data_recv_callback.
  */
 typedef void (*spdylay_on_data_recv_callback)
-(spdylay_session *session, int32_t stream_id, uint8_t flags, int32_t length,
+(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data);
 
 typedef struct {
