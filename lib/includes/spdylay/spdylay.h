@@ -185,12 +185,35 @@ typedef void (*spdylay_on_invalid_ctrl_recv_callback)
 typedef void (*spdylay_on_ping_recv_callback)
 (spdylay_session *session, const struct timespec *rtt, void *user_data);
 
+/*
+ * Callback function invoked when data chunk of DATA frame is
+ * received. |stream_id| is the stream ID of this DATA frame belongs
+ * to. |flags| is the flags of DATA frame which this data chunk is
+ * contained. flags & SPDYLAY_FLAG_FIN does not necessarily mean this
+ * chunk of data is the last one in the stream. You should use
+ * spdylay_on_data_recv_callback to know all data frame is received
+ * whose flags contains SPDYLAY_FLAG_FIN.
+ */
+typedef void (*spdylay_on_data_chunk_recv_callback)
+(spdylay_session *session, int32_t stream_id, uint8_t flags,
+ const uint8_t *data, size_t len, void *user_data);
+
+/*
+ * Callback function invoked when DATA frame is received. The actual
+ * data it contains are received by spdylay_on_data_recv_callback.
+ */
+typedef void (*spdylay_on_data_recv_callback)
+(spdylay_session *session, int32_t stream_id, uint8_t flags, int32_t length,
+ void *user_data);
+
 typedef struct {
   spdylay_send_callback send_callback;
   spdylay_recv_callback recv_callback;
   spdylay_on_ctrl_recv_callback on_ctrl_recv_callback;
   spdylay_on_invalid_ctrl_recv_callback on_invalid_ctrl_recv_callback;
   spdylay_on_ping_recv_callback on_ping_recv_callback;
+  spdylay_on_data_chunk_recv_callback on_data_chunk_recv_callback;
+  spdylay_on_data_recv_callback on_data_recv_callback;
 } spdylay_session_callbacks;
 
 int spdylay_session_client_new(spdylay_session **session_ptr,

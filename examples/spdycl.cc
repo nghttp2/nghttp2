@@ -147,9 +147,16 @@ public:
   {
     return fd_;
   }
-  int req_submit(const char *path)
+  int submit_request(const char *path)
   {
-    return spdylay_req_submit(session_, path);
+    const char *nv[] = {
+      "method", "GET",
+      "scheme", "https",
+      "url", path,
+      "version", "HTTP/1.1",
+      NULL
+    };
+    return spdylay_submit_request(session_, 3, nv);
   }
   bool would_block(int r)
   {
@@ -194,6 +201,54 @@ ssize_t recv_callback(spdylay_session *session,
     r = SPDYLAY_ERR_CALLBACK_FAILURE;
   }
   return r;
+}
+
+void print_nv(char **nv)
+{
+  int i;
+  for(i = 0; nv[i]; i += 2) {
+    printf("  %s: %s\n", nv[i], nv[i+1]);
+  }
+}
+
+void on_ctrl_recv_callback
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data)
+{
+  static const char *ctrl_names[] = {
+    "SYN_STREAM",
+    "SYN_REPLY",
+    "RST_STREAM",
+    "SETTINGS",
+    "NOOP",
+    "PING",
+    "GOAWAY",
+    "HEADERS"
+  };
+  printf("recv %s frame ", ctrl_names[type-1]);
+  switch(type) {
+  case SPDYLAY_SYN_REPLY:
+    printf("(stream_id=%d, flags=%d, length=%d)\n",
+           frame->syn_reply.stream_id, frame->syn_reply.hd.flags,
+           frame->syn_reply.hd.length);
+    print_nv(frame->syn_reply.nv);
+    break;
+  default:
+    break;
+  }
+}
+
+void on_data_chunk_recv_callback
+(spdylay_session *session, int32_t stream_id, uint8_t flags,
+ const uint8_t *data, size_t len, void *user_data)
+{}
+
+void on_data_recv_callback
+(spdylay_session *session, int32_t stream_id, uint8_t flags, int32_t length,
+ void *user_data)
+{
+  printf("recv DATA frame (stream_id=%d, flags=%d, length=%d)\n",
+         stream_id, flags, length);
 }
 
 void ctl_epollev(int epollfd, int op, SpdylayClient& sc)
@@ -293,7 +348,7 @@ int communicate(const char *host, const char *service, const char *path,
     return -1;
   }
 
-  sc.req_submit(path);
+  sc.submit_request(path);
 
   ctl_epollev(epollfd, EPOLL_CTL_ADD, sc);
   static const size_t MAX_EVENTS = 1;
@@ -330,10 +385,13 @@ int communicate(const char *host, const char *service, const char *path,
 
 int run(const char *host, const char *service, const char *path)
 {
-  spdylay_session_callbacks callbacks = {
-    send_callback,
-    recv_callback,
-  };
+  spdylay_session_callbacks callbacks;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = send_callback;
+  callbacks.recv_callback = recv_callback;
+  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
+  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_data_recv_callback = on_data_recv_callback;
   return communicate(host, service, path, &callbacks);
 }
 

@@ -57,9 +57,9 @@ static void spdylay_frame_unpack_ctrl_hd(spdylay_ctrl_hd *hd,
                                          const uint8_t* buf)
 {
   hd->version = spdylay_get_uint16(buf) & SPDYLAY_VERSION_MASK;
-  hd->type = spdylay_get_uint16(buf+2);
+  hd->type = spdylay_get_uint16(&buf[2]);
   hd->flags = buf[4];
-  hd->length = spdylay_get_uint32(buf+5) & SPDYLAY_LENGTH_MASK;
+  hd->length = spdylay_get_uint32(&buf[4]) & SPDYLAY_LENGTH_MASK;
 }
 
 static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,

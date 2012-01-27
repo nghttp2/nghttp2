@@ -717,6 +717,7 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
   spdylay_session_close_stream(session, frame->rst_stream.stream_id);
+  return 0;
 }
 
 int spdylay_session_on_ping_received(spdylay_session *session,
@@ -881,10 +882,18 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
 
 int spdylay_session_process_data_frame(spdylay_session *session)
 {
-  /* printf("Received data frame, stream_id %d, %zu bytes, fin=%d\n", */
-  /*        spdylay_get_uint32(session->iframe.headbuf), */
-  /*        session->iframe.len, */
-  /*        session->iframe.headbuf[4] & SPDYLAY_FLAG_FIN); */
+  if(session->callbacks.on_data_recv_callback) {
+    int32_t stream_id;
+    uint8_t flags;
+    int32_t length;
+    stream_id = spdylay_get_uint32(session->iframe.headbuf) &
+      SPDYLAY_STREAM_ID_MASK;
+    flags = session->iframe.headbuf[4];
+    length = spdylay_get_uint32(&session->iframe.headbuf[4]) &
+      SPDYLAY_LENGTH_MASK;
+    session->callbacks.on_data_recv_callback
+      (session, stream_id, flags, length, session->user_data);
+  }
   return 0;
 }
 
@@ -909,7 +918,8 @@ int spdylay_session_recv(spdylay_session *session)
         }
       }
       session->iframe.state = SPDYLAY_RECV_PAYLOAD;
-      payloadlen = spdylay_get_uint32(&session->ibuf.mark[4]) & 0xffffff;
+      payloadlen = spdylay_get_uint32(&session->ibuf.mark[4]) &
+        SPDYLAY_LENGTH_MASK;
       memcpy(session->iframe.headbuf, session->ibuf.mark, SPDYLAY_HEAD_LEN);
       session->ibuf.mark += SPDYLAY_HEAD_LEN;
       if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
@@ -921,11 +931,6 @@ int spdylay_session_recv(spdylay_session *session)
         }
         session->iframe.off = 0;
       } else {
-        int32_t stream_id;
-        /* data frame */
-        /* For data frame, We dont' buffer data. Instead, just pass
-           received data to callback function. */
-        stream_id = spdylay_get_uint32(session->iframe.headbuf) & 0x7fffffff;
         /* TODO validate stream id here */
         session->iframe.len = payloadlen;
         session->iframe.off = 0;
@@ -947,8 +952,21 @@ int spdylay_session_recv(spdylay_session *session)
       }
       bufavail = spdylay_inbound_buffer_avail(&session->ibuf);
       readlen =  bufavail < rempayloadlen ? bufavail : rempayloadlen;
-      if(session->iframe.buf != NULL) {
+      if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
         memcpy(session->iframe.buf, session->ibuf.mark, readlen);
+      } else if(session->callbacks.on_data_chunk_recv_callback) {
+        int32_t stream_id;
+        uint8_t flags;
+        /* For data frame, We don't buffer data. Instead, just pass
+           received data to callback function. */
+        stream_id = spdylay_get_uint32(session->iframe.headbuf) &
+          SPDYLAY_STREAM_ID_MASK;
+        flags = session->iframe.headbuf[4];
+        session->callbacks.on_data_chunk_recv_callback(session, stream_id,
+                                                       flags,
+                                                       session->ibuf.mark,
+                                                       readlen,
+                                                       session->user_data);
       }
       session->iframe.off += readlen;
       session->ibuf.mark += readlen;
