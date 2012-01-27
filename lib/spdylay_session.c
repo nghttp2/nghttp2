@@ -713,6 +713,12 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
   return r;
 }
 
+int spdylay_session_on_rst_stream_received(spdylay_session *session,
+                                           spdylay_frame *frame)
+{
+  spdylay_session_close_stream(session, frame->rst_stream.stream_id);
+}
+
 int spdylay_session_on_ping_received(spdylay_session *session,
                                      spdylay_frame *frame)
 {
@@ -829,6 +835,17 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_syn_reply_received(session, &frame);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
+    }
+    break;
+  case SPDYLAY_RST_STREAM:
+    r = spdylay_frame_unpack_rst_stream(&frame.rst_stream,
+                                        session->iframe.headbuf,
+                                        sizeof(session->iframe.headbuf),
+                                        session->iframe.buf,
+                                        session->iframe.len);
+    if(r == 0) {
+      r = spdylay_session_on_rst_stream_received(session, &frame);
+      spdylay_frame_rst_stream_free(&frame.rst_stream);
     }
     break;
   case SPDYLAY_PING:

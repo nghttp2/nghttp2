@@ -156,6 +156,12 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
 
 
 /*
+ * Called when RST_STREAM is received. Received frame is |frame|.
+ */
+int spdylay_session_on_rst_stream_received(spdylay_session *session,
+                                           spdylay_frame *frame);
+
+/*
  * Called when HEADERS is recieved. Received frame is |frame|.
  */
 int spdylay_session_on_headers_received(spdylay_session *session,
