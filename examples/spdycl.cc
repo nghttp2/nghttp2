@@ -153,6 +153,7 @@ public:
       "method", "GET",
       "scheme", "https",
       "url", path,
+      "user-agent", "spdylay/0.0.0",
       "version", "HTTP/1.1",
       NULL
     };
@@ -237,6 +238,7 @@ void on_ctrl_recv_callback
   default:
     break;
   }
+  fflush(stdout);
 }
 
 void on_data_chunk_recv_callback
@@ -250,6 +252,10 @@ void on_data_recv_callback
 {
   printf("recv DATA frame (stream_id=%d, flags=%d, length=%d)\n",
          stream_id, flags, length);
+  if(flags & SPDYLAY_FLAG_FIN) {
+    spdylay_submit_goaway(session);
+  }
+  fflush(stdout);
 }
 
 void on_ctrl_send_callback
@@ -264,9 +270,12 @@ void on_ctrl_send_callback
            frame->syn_stream.hd.length);
     print_nv(frame->syn_stream.nv);
     break;
+  case SPDYLAY_GOAWAY:
+    printf("(last_good_stream_id=%d)\n", frame->goaway.last_good_stream_id);
   default:
     break;
   }
+  fflush(stdout);
 }
 
 void ctl_epollev(int epollfd, int op, SpdylayClient& sc)
@@ -372,7 +381,7 @@ int communicate(const char *host, const char *service, const char *path,
   static const size_t MAX_EVENTS = 1;
   epoll_event events[MAX_EVENTS];
   bool ok = true;
-  while(1) {
+  while(sc.want_read() || sc.want_write()) {
     int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
     if(nfds == -1) {
       perror("epoll_wait");
