@@ -137,6 +137,10 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
   case SPDYLAY_RST_STREAM:
     spdylay_frame_rst_stream_free(&item->frame->rst_stream);
     break;
+  case SPDYLAY_NOOP:
+    /* We don't have any public API to add NOOP, so here is
+       unreachable. */
+    abort();
   case SPDYLAY_PING:
     spdylay_frame_ping_free(&item->frame->ping);
     break;
@@ -203,6 +207,10 @@ int spdylay_session_add_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_NOOP:
+    /* We don't have any public API to add NOOP, so here is
+       unreachable. */
+    abort();
   case SPDYLAY_PING:
     /* Ping has "height" priority. Give it -1. */
     item->pri = -1;
@@ -351,6 +359,10 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_NOOP:
+    /* We don't have any public API to add NOOP, so here is
+       unreachable. */
+    abort();
   case SPDYLAY_PING:
     framebuflen = spdylay_frame_pack_ping(&framebuf, &item->frame->ping);
     if(framebuflen < 0) {
@@ -431,6 +443,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   case SPDYLAY_RST_STREAM:
     spdylay_session_close_stream(session, frame->rst_stream.stream_id);
     break;
+  case SPDYLAY_NOOP:
+    /* We don't have any public API to add NOOP, so here is
+       unreachable. */
+    abort();
   case SPDYLAY_PING:
     /* We record the time now and show application code RTT when
        reply PING is received. */
@@ -865,6 +881,8 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_rst_stream_received(session, &frame);
       spdylay_frame_rst_stream_free(&frame.rst_stream);
     }
+    break;
+  case SPDYLAY_NOOP:
     break;
   case SPDYLAY_PING:
     r = spdylay_frame_unpack_ping(&frame.ping,
