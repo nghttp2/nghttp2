@@ -86,10 +86,14 @@ int main()
                    test_spdylay_session_on_headers_received) ||
       !CU_add_test(pSuite, "session_on_ping_received",
                    test_spdylay_session_on_ping_received) ||
+      !CU_add_test(pSuite, "session_on_goaway_received",
+                   test_spdylay_session_on_goaway_received) ||
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||
       !CU_add_test(pSuite, "frame_pack_ping", test_spdylay_frame_pack_ping) ||
+      !CU_add_test(pSuite, "frame_pack_goaway",
+                   test_spdylay_frame_pack_goaway) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_spdylay_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_nv_sort", test_spdylay_frame_nv_sort)) {

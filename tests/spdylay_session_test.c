@@ -579,3 +579,34 @@ void test_spdylay_session_on_ping_received()
   spdylay_frame_ping_free(&frame.ping);
   spdylay_session_del(session);
 }
+
+void test_spdylay_session_on_goaway_received()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    NULL,
+    NULL,
+    on_ctrl_recv_callback,
+    on_invalid_ctrl_recv_callback,
+  };
+  my_user_data user_data;
+  spdylay_frame frame;
+  spdylay_outbound_item *top;
+  int32_t stream_id = 1000000007;
+  user_data.valid = 0;
+  user_data.invalid = 0;
+
+  spdylay_session_client_new(&session, &callbacks, &user_data);
+  spdylay_frame_goaway_init(&frame.goaway, stream_id);
+
+  CU_ASSERT(0 == spdylay_session_on_goaway_received(session, &frame));
+  CU_ASSERT(1 == user_data.valid);
+  CU_ASSERT(session->goaway_flags == SPDYLAY_GOAWAY_RECV);
+
+  top = spdylay_session_get_ob_pq_top(session);
+  CU_ASSERT(SPDYLAY_GOAWAY == top->frame_type);
+  CU_ASSERT(0 == top->frame->goaway.last_good_stream_id);
+
+  spdylay_frame_goaway_free(&frame.goaway);
+  spdylay_session_del(session);
+}

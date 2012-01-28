@@ -71,6 +71,28 @@ void test_spdylay_frame_pack_ping()
   spdylay_frame_ping_free(&frame.ping);
 }
 
+void test_spdylay_frame_pack_goaway()
+{
+  spdylay_frame frame, oframe;
+  uint8_t *buf;
+  ssize_t buflen;
+  spdylay_frame_goaway_init(&frame.goaway, 1000000007);
+  buflen = spdylay_frame_pack_goaway(&buf, &frame.goaway);
+  CU_ASSERT(0 == spdylay_frame_unpack_goaway
+            (&oframe.goaway,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             buflen-SPDYLAY_FRAME_HEAD_LENGTH));
+  CU_ASSERT(1000000007 == oframe.goaway.last_good_stream_id);
+  CU_ASSERT(SPDYLAY_PROTO_VERSION == oframe.headers.hd.version);
+  CU_ASSERT(SPDYLAY_GOAWAY == oframe.headers.hd.type);
+  CU_ASSERT(SPDYLAY_FLAG_NONE == oframe.headers.hd.flags);
+  CU_ASSERT(buflen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  free(buf);
+  spdylay_frame_goaway_free(&oframe.goaway);
+  spdylay_frame_goaway_free(&frame.goaway);
+}
+
 void test_spdylay_frame_pack_headers()
 {
   spdylay_zlib deflater, inflater;

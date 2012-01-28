@@ -79,6 +79,14 @@ typedef struct {
   uint8_t ign;
 } spdylay_inbound_frame;
 
+typedef enum {
+  SPDYLAY_GOAWAY_NONE = 0,
+  /* Flag means GOAWAY frame is sent to the remote peer. */
+  SPDYLAY_GOAWAY_SEND = 0x1,
+  /* Flag means GOAWAY frame is received from the remote peer. */
+  SPDYLAY_GOAWAY_RECV = 0x2
+} spdylay_goaway_flag;
+
 typedef struct spdylay_session {
   uint8_t server;
   int32_t next_stream_id;
@@ -103,6 +111,12 @@ typedef struct spdylay_session {
   /* Time stamp when last ping is sent. */
   struct timespec last_ping_time;
 
+  /* Flags indicating GOAWAY is sent and/or recieved. The flags are
+     composed by bitwise OR-ing spdylay_goaway_flag. */
+  uint8_t goaway_flags;
+  /* This is the value in GOAWAY frame sent by remote endpoint. */
+  int32_t last_good_stream_id;
+
   spdylay_session_callbacks callbacks;
   void *user_data;
 } spdylay_session;
@@ -117,6 +131,9 @@ int spdylay_session_add_rst_stream(spdylay_session *session,
                                    int32_t stream_id, uint32_t status_code);
 
 int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id);
+
+int spdylay_session_add_goaway(spdylay_session *session,
+                               int32_t last_good_stream_id);
 
 /*
  * Creates new stream in |session| with stream ID |stream_id|,
@@ -166,6 +183,12 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
  */
 int spdylay_session_on_ping_received(spdylay_session *session,
                                      spdylay_frame *frame);
+
+/*
+ * Called when GOAWAY is received. Received frame is |frame|.
+ */
+int spdylay_session_on_goaway_received(spdylay_session *session,
+                                       spdylay_frame *frame);
 
 /*
  * Called when HEADERS is recieved. Received frame is |frame|.

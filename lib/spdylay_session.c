@@ -80,6 +80,9 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
   (*session_ptr)->last_ping_unique_id = 0;
   memset(&(*session_ptr)->last_ping_time, 0, sizeof(struct timespec));
 
+  (*session_ptr)->goaway_flags = SPDYLAY_GOAWAY_NONE;
+  (*session_ptr)->last_good_stream_id = 0;
+
   r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater);
   if(r != 0) {
     free(*session_ptr);
@@ -143,6 +146,9 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
     abort();
   case SPDYLAY_PING:
     spdylay_frame_ping_free(&item->frame->ping);
+    break;
+  case SPDYLAY_GOAWAY:
+    spdylay_frame_goaway_free(&item->frame->goaway);
     break;
   case SPDYLAY_HEADERS:
     spdylay_frame_headers_free(&item->frame->headers);
@@ -214,6 +220,9 @@ int spdylay_session_add_frame(spdylay_session *session,
   case SPDYLAY_PING:
     /* Ping has "height" priority. Give it -1. */
     item->pri = -1;
+    break;
+  case SPDYLAY_GOAWAY:
+    /* Should GOAWAY have higher priority? */
     break;
   case SPDYLAY_HEADERS:
     /* Currently we don't have any API to send HEADERS frame, so this
@@ -328,6 +337,11 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
   int r;
   switch(item->frame_type) {
   case SPDYLAY_SYN_STREAM: {
+    if(session->goaway_flags) {
+      /* When GOAWAY is sent or received, peer must not send new
+         SYN_STREAM. */
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
     item->frame->syn_stream.stream_id = session->next_stream_id;
     session->next_stream_id += 2;
     framebuflen = spdylay_frame_pack_syn_stream(&framebuf,
@@ -373,6 +387,19 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     /* Currently we don't have any API to send HEADERS frame, so this
        is unreachable. */
     abort();
+  case SPDYLAY_GOAWAY:
+    if(session->goaway_flags & SPDYLAY_GOAWAY_SEND) {
+      /* TODO The spec does not mandate that both endpoints have to
+         exchange GOAWAY. This implementation allows receiver of first
+         GOAWAY can sent its own GOAWAY to tell the remote peer that
+         last-good-stream-id. */
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
+    framebuflen = spdylay_frame_pack_goaway(&framebuf, &item->frame->goaway);
+    if(framebuflen < 0) {
+      return framebuflen;
+    }
+    break;
   case SPDYLAY_DATA: {
     if(!spdylay_session_is_data_allowed(session, item->frame->data.stream_id)) {
       return SPDYLAY_ERR_INVALID_FRAME;
@@ -454,6 +481,9 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     /* TODO If clock_gettime() fails, what should we do? */
     clock_gettime(CLOCK_MONOTONIC, &session->last_ping_time);
     break;
+  case SPDYLAY_GOAWAY:
+    session->goaway_flags |= SPDYLAY_GOAWAY_SEND;
+    break;
   case SPDYLAY_HEADERS:
     /* Currently we don't have any API to send HEADERS frame, so this
        is unreachable. */
@@ -530,7 +560,11 @@ int spdylay_session_send(spdylay_session *session)
         /* TODO Call error callback? */
         spdylay_outbound_item_free(item);
         free(item);
-        continue;;
+        if(framebuflen <= SPDYLAY_ERR_FATAL) {
+          return framebuflen;
+        } else {
+          continue;;
+        }
       }
       session->aob.item = item;
       session->aob.framebuf = framebuf;
@@ -686,6 +720,10 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
   int r;
+  if(session->goaway_flags) {
+    /* We don't accept SYN_STREAM after GOAWAY is sent or received. */
+    return 0;
+  }
   if(spdylay_session_validate_syn_stream(session, &frame->syn_stream) == 0) {
     uint8_t flags = frame->syn_stream.hd.flags;
     if((flags & SPDYLAY_FLAG_FIN) && (flags & SPDYLAY_FLAG_UNIDIRECTIONAL)) {
@@ -784,6 +822,25 @@ int spdylay_session_on_ping_received(spdylay_session *session,
     }
   }
   return r;
+}
+
+int spdylay_session_on_goaway_received(spdylay_session *session,
+                                       spdylay_frame *frame)
+{
+  int r;
+  session->last_good_stream_id = frame->goaway.last_good_stream_id;
+  session->goaway_flags |= SPDYLAY_GOAWAY_RECV;
+  if(!(session->goaway_flags & SPDYLAY_GOAWAY_SEND)) {
+    /* TODO The spec does not mandate to send back GOAWAY. I think the
+       remote endpoint does not expect this, but sending GOAWAY does
+       not harm. */
+    r = spdylay_session_add_goaway(session, session->last_recv_stream_id);
+    if(r != 0) {
+      return r;
+    }
+  }
+  spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_GOAWAY, frame);
+  return 0;
 }
 
 int spdylay_session_on_headers_received(spdylay_session *session,
@@ -893,6 +950,17 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_ping_received(session, &frame);
       spdylay_frame_ping_free(&frame.ping);
+    }
+    break;
+  case SPDYLAY_GOAWAY:
+    r = spdylay_frame_unpack_goaway(&frame.goaway,
+                                    session->iframe.headbuf,
+                                    sizeof(session->iframe.headbuf),
+                                    session->iframe.buf,
+                                    session->iframe.len);
+    if(r == 0) {
+      r = spdylay_session_on_goaway_received(session, &frame);
+      spdylay_frame_goaway_free(&frame.goaway);
     }
     break;
   case SPDYLAY_HEADERS:
@@ -1025,12 +1093,19 @@ int spdylay_session_recv(spdylay_session *session)
 
 int spdylay_session_want_read(spdylay_session *session)
 {
-  return 1;
+  /* If GOAWAY is not sent or received, we always want to read
+     incoming frames. After GOAWAY is sent or received, we are only
+     interested in existing streams. */
+  return !(session->goaway_flags & SPDYLAY_GOAWAY_SEND) ||
+    spdylay_map_size(&session->streams) == 0;
 }
 
 int spdylay_session_want_write(spdylay_session *session)
 {
-  return session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq);
+  uint8_t goaway_sent = session->goaway_flags & SPDYLAY_GOAWAY_SEND;
+  return (!goaway_sent &&
+          (session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq))) ||
+    (goaway_sent && spdylay_map_size(&session->streams) == 0);
 }
 
 int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id)
@@ -1045,6 +1120,24 @@ int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id)
   r = spdylay_session_add_frame(session, SPDYLAY_PING, frame);
   if(r != 0) {
     spdylay_frame_ping_free(&frame->ping);
+    free(frame);
+  }
+  return r;
+}
+
+int spdylay_session_add_goaway(spdylay_session *session,
+                               int32_t last_good_stream_id)
+{
+  int r;
+  spdylay_frame *frame;
+  frame = malloc(sizeof(spdylay_frame));
+  if(frame == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_goaway_init(&frame->goaway, last_good_stream_id);
+  r = spdylay_session_add_frame(session, SPDYLAY_GOAWAY, frame);
+  if(r != 0) {
+    spdylay_frame_goaway_free(&frame->goaway);
     free(frame);
   }
   return r;
