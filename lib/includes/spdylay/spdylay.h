@@ -296,6 +296,8 @@ int spdylay_submit_response(spdylay_session *session,
 
 int spdylay_submit_ping(spdylay_session *session);
 
+int spdylay_submit_goaway(spdylay_session *session);
+
 #ifdef __cplusplus
 }
 #endif

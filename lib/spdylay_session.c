@@ -1149,6 +1149,11 @@ int spdylay_submit_ping(spdylay_session *session)
                                   spdylay_session_get_next_unique_id(session));
 }
 
+int spdylay_submit_goaway(spdylay_session *session)
+{
+  return spdylay_session_add_goaway(session, session->last_recv_stream_id);
+}
+
 int spdylay_submit_response(spdylay_session *session,
                             int32_t stream_id, const char **nv,
                             spdylay_data_provider *data_prd)
