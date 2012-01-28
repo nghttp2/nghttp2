@@ -221,6 +221,15 @@ typedef void (*spdylay_on_data_send_callback)
 (spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data);
 
+/*
+ * Callback function invoked before frame |frame| of type |type| is
+ * sent. This may be useful, for example, to know the stream ID of
+ * SYN_STREAM frame, which is not assigned when it was queued.
+ */
+typedef void (*spdylay_before_ctrl_send_callback)
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data);
+
 typedef struct {
   spdylay_send_callback send_callback;
   spdylay_recv_callback recv_callback;
@@ -229,6 +238,7 @@ typedef struct {
   spdylay_on_ping_recv_callback on_ping_recv_callback;
   spdylay_on_data_chunk_recv_callback on_data_chunk_recv_callback;
   spdylay_on_data_recv_callback on_data_recv_callback;
+  spdylay_before_ctrl_send_callback before_ctrl_send_callback;
   spdylay_on_ctrl_send_callback on_ctrl_send_callback;
   spdylay_on_data_send_callback on_data_send_callback;
 } spdylay_session_callbacks;

@@ -519,7 +519,12 @@ int spdylay_session_send(spdylay_session *session)
       session->aob.item = item;
       session->aob.framebuf = framebuf;
       session->aob.framebuflen = framebuflen;
-      /* TODO Call before_send callback */
+      /* Call before_send callback */
+      if(item->frame_type != SPDYLAY_DATA &&
+         session->callbacks.before_ctrl_send_callback) {
+        session->callbacks.before_ctrl_send_callback
+          (session, item->frame_type, item->frame, session->user_data);
+      }
     }
     data = session->aob.framebuf + session->aob.framebufoff;
     datalen = session->aob.framebuflen - session->aob.framebufoff;
