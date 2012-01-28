@@ -1339,6 +1339,7 @@ ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
 
 uint32_t spdylay_session_get_next_unique_id(spdylay_session *session)
 {
+  uint32_t ret_id;
   if(session->next_unique_id > SPDYLAY_MAX_UNIQUE_ID) {
     if(session->server) {
       session->next_unique_id = 2;
@@ -1346,5 +1347,7 @@ uint32_t spdylay_session_get_next_unique_id(spdylay_session *session)
       session->next_unique_id = 1;
     }
   }
-  return session->next_unique_id++;
+  ret_id = session->next_unique_id;
+  session->next_unique_id += 2;
+  return ret_id;
 }
