@@ -685,27 +685,30 @@ static int spdylay_session_is_new_peer_stream_id(spdylay_session *session,
 
 /*
  * Validates SYN_STREAM frame |frame|.  This function returns 0 if it
- * succeeds, or -1.
+ * succeeds, or non-zero spdylay_status_code.
  */
 static int spdylay_session_validate_syn_stream(spdylay_session *session,
                                                spdylay_syn_stream *frame)
 {
   /* TODO Check assoc_stream_id */
-  if(spdylay_session_is_new_peer_stream_id(session, frame->stream_id)) {
-    return 0;
-  } else {
-    return -1;
+  if(!spdylay_session_is_new_peer_stream_id(session, frame->stream_id)) {
+    return SPDYLAY_PROTOCOL_ERROR;
   }
+  if(frame->hd.version != SPDYLAY_PROTO_VERSION) {
+    return SPDYLAY_UNSUPPORTED_VERSION;
+  }
+  return 0;
 }
 
-static int spdylay_session_handle_invalid_ctrl_frame(spdylay_session *session,
-                                                     int32_t stream_id,
-                                                     spdylay_frame_type type,
-                                                     spdylay_frame *frame)
+static int spdylay_session_handle_invalid_stream
+(spdylay_session *session,
+ int32_t stream_id,
+ spdylay_frame_type type,
+ spdylay_frame *frame,
+ spdylay_status_code status_code)
 {
   int r;
-  r = spdylay_session_add_rst_stream(session, stream_id,
-                                     SPDYLAY_PROTOCOL_ERROR);
+  r = spdylay_session_add_rst_stream(session, stream_id, status_code);
   if(r != 0) {
     return r;
   }
@@ -724,7 +727,8 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
     /* We don't accept SYN_STREAM after GOAWAY is sent or received. */
     return 0;
   }
-  if(spdylay_session_validate_syn_stream(session, &frame->syn_stream) == 0) {
+  r = spdylay_session_validate_syn_stream(session, &frame->syn_stream);
+  if(r == 0) {
     uint8_t flags = frame->syn_stream.hd.flags;
     if((flags & SPDYLAY_FLAG_FIN) && (flags & SPDYLAY_FLAG_UNIDIRECTIONAL)) {
       /* If the stream is UNIDIRECTIONAL and FIN bit set, we can close
@@ -743,8 +747,8 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                                   frame);
     }
   } else {
-    r = spdylay_session_handle_invalid_ctrl_frame
-      (session, frame->syn_stream.stream_id, SPDYLAY_SYN_STREAM, frame);
+    r = spdylay_session_handle_invalid_stream
+      (session, frame->syn_stream.stream_id, SPDYLAY_SYN_STREAM, frame, r);
   }
   return r;
 }
@@ -778,8 +782,9 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
     }
   }
   if(!valid) {
-    r = spdylay_session_handle_invalid_ctrl_frame
-      (session, frame->syn_reply.stream_id, SPDYLAY_SYN_REPLY, frame);
+    r = spdylay_session_handle_invalid_stream
+      (session, frame->syn_reply.stream_id, SPDYLAY_SYN_REPLY, frame,
+       SPDYLAY_PROTOCOL_ERROR);
   }
   return r;
 }
@@ -886,13 +891,14 @@ int spdylay_session_on_headers_received(spdylay_session *session,
     }
   }
   if(!valid) {
-    r = spdylay_session_handle_invalid_ctrl_frame
-      (session, frame->headers.stream_id, SPDYLAY_HEADERS, frame);
+    r = spdylay_session_handle_invalid_stream
+      (session, frame->headers.stream_id, SPDYLAY_HEADERS, frame,
+       SPDYLAY_PROTOCOL_ERROR);
   }
   return r;
 }
 
-int spdylay_session_process_ctrl_frame(spdylay_session *session)
+static int spdylay_session_process_ctrl_frame(spdylay_session *session)
 {
   int r = 0;
   uint16_t type;
@@ -983,21 +989,49 @@ int spdylay_session_process_ctrl_frame(spdylay_session *session)
   }
 }
 
-int spdylay_session_process_data_frame(spdylay_session *session)
+static int spdylay_session_process_data_frame(spdylay_session *session)
 {
-  if(session->callbacks.on_data_recv_callback) {
-    int32_t stream_id;
-    uint8_t flags;
-    int32_t length;
-    stream_id = spdylay_get_uint32(session->iframe.headbuf) &
-      SPDYLAY_STREAM_ID_MASK;
-    flags = session->iframe.headbuf[4];
-    length = spdylay_get_uint32(&session->iframe.headbuf[4]) &
-      SPDYLAY_LENGTH_MASK;
-    session->callbacks.on_data_recv_callback
-      (session, flags, stream_id, length, session->user_data);
+  int32_t stream_id;
+  uint8_t flags;
+  int32_t length;
+  spdylay_stream *stream;
+  int status_code = 0;
+  int valid = 0;
+  int r = 0;
+  stream_id = spdylay_get_uint32(session->iframe.headbuf) &
+    SPDYLAY_STREAM_ID_MASK;
+  flags = session->iframe.headbuf[4];
+  length = spdylay_get_uint32(&session->iframe.headbuf[4]) &
+    SPDYLAY_LENGTH_MASK;
+  stream = spdylay_session_get_stream(session, stream_id);
+  if(stream) {
+    if(spdylay_session_is_my_stream_id(session, stream_id)) {
+      if(stream->state == SPDYLAY_STREAM_OPENED) {
+        valid = 1;
+      } else if(stream->state != SPDYLAY_STREAM_CLOSING) {
+        status_code = SPDYLAY_PROTOCOL_ERROR;
+      }
+    } else if(stream->flags & SPDYLAY_FLAG_FIN) {
+      status_code = SPDYLAY_PROTOCOL_ERROR;
+    } else {
+      valid = 1;
+    }
+  } else {
+    status_code = SPDYLAY_INVALID_STREAM;
   }
-  return 0;
+  if(valid) {
+    if(session->callbacks.on_data_recv_callback) {
+      session->callbacks.on_data_recv_callback
+        (session, flags, stream_id, length, session->user_data);
+    }
+  } else if(status_code != 0) {
+    r = spdylay_session_add_rst_stream(session, stream_id, status_code);
+  }
+  if(r < SPDYLAY_ERR_FATAL) {
+    return r;
+  } else {
+    return 0;
+  }
 }
 
 int spdylay_session_recv(spdylay_session *session)
@@ -1077,12 +1111,12 @@ int spdylay_session_recv(spdylay_session *session)
       if(session->iframe.len == session->iframe.off) {
         if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
           r = spdylay_session_process_ctrl_frame(session);
-          if(r < 0) {
-            /* Fatal error */
-            return r;
-          }
         } else {
-          spdylay_session_process_data_frame(session);
+          r = spdylay_session_process_data_frame(session);
+        }
+        if(r < 0) {
+          /* Fatal error */
+          return r;
         }
         spdylay_inbound_frame_reset(&session->iframe);
       }
