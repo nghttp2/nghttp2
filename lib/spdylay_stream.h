@@ -35,12 +35,15 @@
  * If local peer is stream initiator:
  * SPDYLAY_STREAM_OPENING : upon sending SYN_STREAM
  * SPDYLAY_STREAM_OPENED : upon receiving SYN_REPLY
+ * SPDYLAY_STREAM_CLOSING : upon queuing RST_STREAM
  *
  * If remote peer is stream initiator:
  * SPDYLAY_STREAM_OPENING : upon receiving SYN_STREAM
  * SPDYLAY_STREAM_OPENED : upon sending SYN_REPLY
+ * SPDYLAY_STREAM_CLOSING : upon queuing RST_STREAM
  */
 typedef enum {
+  /* Initial state */
   SPDYLAY_STREAM_INITIAL,
   /* For stream initiator: SYN_STREAM has been sent, but SYN_REPLY is
      not received yet.  For receiver: SYN_STREAM has been received,
@@ -54,6 +57,17 @@ typedef enum {
   SPDYLAY_STREAM_CLOSING
 } spdylay_stream_state;
 
+typedef enum {
+  SPDYLAY_SHUT_NONE = 0,
+  /* Indicates further receptions will be disallowed. */
+  SPDYLAY_SHUT_RD = 0x01,
+  /* Indicates further transmissions will be disallowed. */
+  SPDYLAY_SHUT_WR = 0x02,
+  /* Indicates both further receptions and transmissions will be
+     disallowed. */
+  SPDYLAY_SHUT_RDWR = SPDYLAY_SHUT_RD | SPDYLAY_SHUT_WR
+} spdylay_shut_flag;
+
 typedef struct {
   int32_t stream_id;
   spdylay_stream_state state;
@@ -61,6 +75,8 @@ typedef struct {
   uint8_t flags;
   /* Use same scheme in SYN_STREAM frame */
   uint8_t pri;
+  /* Bitwise OR of zero or more spdylay_shut_flag values */
+  uint8_t shut_flags;
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
@@ -68,5 +84,11 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
                          spdylay_stream_state initial_state);
 
 void spdylay_stream_free(spdylay_stream *stream);
+
+/*
+ * Disallow either further receptions or transmissions, or both.
+ * |flag| is bitwise OR of one or more of spdylay_shut_flag.
+ */
+void spdylay_stream_shutdown(spdylay_stream *stream, spdylay_shut_flag flag);
 
 #endif /* SPDYLAY_STREAM */

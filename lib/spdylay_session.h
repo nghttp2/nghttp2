@@ -156,6 +156,16 @@ int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id,
 int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id);
 
 /*
+ * If further receptions and transmissions over this stream are
+ * disallowed, close this stream. This function returns 0 if it
+ * succeeds, or negative error code. If either receptions or
+ * transmissions is allowed, this function returns 0 and the stream
+ * will not be closed.
+ */
+int spdylay_session_close_stream_if_shut_rdwr(spdylay_session *session,
+                                              spdylay_stream *stream);
+
+/*
  * Called when SYN_STREAM is received. Received frame is |frame|.
  * This function does first validate received frame and then open
  * stream and call callback functions.  This function returns 0 if it

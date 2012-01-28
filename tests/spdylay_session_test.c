@@ -503,6 +503,8 @@ void test_spdylay_session_on_headers_received()
   spdylay_session_client_new(&session, &callbacks, &user_data);
   spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 0,
                               SPDYLAY_STREAM_OPENED);
+  spdylay_stream_shutdown(spdylay_session_get_stream(session, 1),
+                          SPDYLAY_SHUT_WR);
   spdylay_frame_headers_init(&frame.headers, SPDYLAY_FLAG_NONE, 1,
                              dup_nv(nv));
 
@@ -531,7 +533,8 @@ void test_spdylay_session_on_headers_received()
   CU_ASSERT(3 == user_data.valid);
   CU_ASSERT(SPDYLAY_STREAM_OPENING ==
             spdylay_session_get_stream(session, 2)->state);
-  CU_ASSERT(spdylay_session_get_stream(session, 2)->flags & SPDYLAY_FLAG_FIN);
+  CU_ASSERT(spdylay_session_get_stream(session, 2)->shut_flags &
+            SPDYLAY_SHUT_RD);
 
   CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
   CU_ASSERT(2 == user_data.invalid);

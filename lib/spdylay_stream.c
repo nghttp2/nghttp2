@@ -32,7 +32,13 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
   stream->flags = flags;
   stream->pri = pri;
   stream->state = initial_state;
+  stream->shut_flags = SPDYLAY_SHUT_NONE;
 }
 
 void spdylay_stream_free(spdylay_stream *stream)
 {}
+
+void spdylay_stream_shutdown(spdylay_stream *stream, spdylay_shut_flag flag)
+{
+  stream->shut_flags |= flag;
+}
