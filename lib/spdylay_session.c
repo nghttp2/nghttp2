@@ -264,21 +264,23 @@ int spdylay_session_add_rst_stream(spdylay_session *session,
   return 0;
 }
 
-int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id,
-                                uint8_t flags, uint8_t pri,
-                                spdylay_stream_state initial_state)
+spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
+                                            int32_t stream_id,
+                                            uint8_t flags, uint8_t pri,
+                                            spdylay_stream_state initial_state)
 {
   int r;
   spdylay_stream *stream = malloc(sizeof(spdylay_stream));
   if(stream == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+    return NULL;
   }
   spdylay_stream_init(stream, stream_id, flags, pri, initial_state);
   r = spdylay_map_insert(&session->streams, stream_id, stream);
   if(r != 0) {
     free(stream);
+    stream = NULL;
   }
-  return r;
+  return stream;
 }
 
 int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id)
@@ -345,7 +347,6 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
   /* TODO Get or validate stream ID here */
   uint8_t *framebuf;
   ssize_t framebuflen;
-  int r;
   switch(item->frame_type) {
   case SPDYLAY_SYN_STREAM: {
     if(session->goaway_flags) {
@@ -361,13 +362,12 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     if(framebuflen < 0) {
       return framebuflen;
     }
-    r = spdylay_session_open_stream(session, item->frame->syn_stream.stream_id,
-                                    item->frame->syn_stream.hd.flags,
-                                    item->frame->syn_stream.pri,
-                                    SPDYLAY_STREAM_INITIAL);
-    if(r != 0) {
+    if(spdylay_session_open_stream(session, item->frame->syn_stream.stream_id,
+                                   item->frame->syn_stream.hd.flags,
+                                   item->frame->syn_stream.pri,
+                                   SPDYLAY_STREAM_INITIAL) == NULL) {
       free(framebuf);
-      return r;
+      return SPDYLAY_ERR_NOMEM;
     }
     break;
   }
@@ -751,13 +751,12 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
          be opened. */
       r = 0;
     } else {
-      r = spdylay_session_open_stream(session, frame->syn_stream.stream_id,
-                                      frame->syn_stream.hd.flags,
-                                      frame->syn_stream.pri,
-                                      SPDYLAY_STREAM_OPENING);
-      if(r == 0) {
-        spdylay_stream *stream = spdylay_session_get_stream
-          (session, frame->syn_stream.stream_id);
+      spdylay_stream *stream;
+      stream = spdylay_session_open_stream(session, frame->syn_stream.stream_id,
+                                           frame->syn_stream.hd.flags,
+                                           frame->syn_stream.pri,
+                                           SPDYLAY_STREAM_OPENING);
+      if(stream) {
         if(flags & SPDYLAY_FLAG_FIN) {
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
         }

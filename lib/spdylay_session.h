@@ -140,12 +140,14 @@ int spdylay_session_add_goaway(spdylay_session *session,
  * priority |pri| and flags |flags|. Currently, |flags| &
  * SPDYLAY_FLAG_UNIDIRECTIONAL is non-zero, this stream is
  * unidirectional. |flags| & SPDYLAY_FLAG_FIN is non-zero, the sender
- * of SYN_STREAM will not send any further data in this stream.
- * The state of stream is set to |initial_state|.
+ * of SYN_STREAM will not send any further data in this stream.  The
+ * state of stream is set to |initial_state|.  This function returns a
+ * pointer to created new stream object, or NULL.
  */
-int spdylay_session_open_stream(spdylay_session *session, int32_t stream_id,
-                                uint8_t flags, uint8_t pri,
-                                spdylay_stream_state initial_state);
+spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
+                                            int32_t stream_id,
+                                            uint8_t flags, uint8_t pri,
+                                            spdylay_stream_state initial_state);
 
 /*
  * Closes stream whose stream ID is |stream_id|. This function returns
