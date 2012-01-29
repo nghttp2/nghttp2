@@ -45,6 +45,7 @@ typedef enum {
   SPDYLAY_ERR_WOULDBLOCK = -504,
   SPDYLAY_ERR_PROTO = -505,
   SPDYLAY_ERR_INVALID_FRAME = -506,
+  SPDYLAY_ERR_EOF = -507,
 
   /* The errors < SPDYLAY_ERR_FATAL mean that the library is under
      unexpected condition that it cannot process any further data
@@ -165,6 +166,14 @@ typedef ssize_t (*spdylay_send_callback)
 (spdylay_session *session,
  const uint8_t *data, size_t length, int flags, void *user_data);
 
+/*
+ * Callback function invoked when the library want to read data from
+ * remote peer. The implementation of this function must read at most
+ * |length| bytes of data and store it in |buf|. It must return the
+ * number of bytes written in |buf| if it succeeds. If it gets EOF
+ * before it reads any single byte, return SPDYLAY_ERR_EOF. For other
+ * errors, return SPDYLAY_ERR_CALLBACK_FAILURE.
+ */
 typedef ssize_t (*spdylay_recv_callback)
 (spdylay_session *session,
  uint8_t *buf, size_t length, int flags, void *user_data);

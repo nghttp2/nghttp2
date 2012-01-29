@@ -1077,7 +1077,7 @@ int spdylay_session_recv(spdylay_session *session)
       uint32_t payloadlen;
       if(spdylay_inbound_buffer_avail(&session->ibuf) < SPDYLAY_HEAD_LEN) {
         r = spdylay_recv(session);
-        /* TODO handle EOF */
+        /* If EOF is reached, r == SPDYLAY_ERR_EOF */
         if(r < 0) {
           if(r == SPDYLAY_ERR_WOULDBLOCK) {
             return 0;
@@ -1114,12 +1114,10 @@ int spdylay_session_recv(spdylay_session *session)
       if(spdylay_inbound_buffer_avail(&session->ibuf) == 0 &&
          rempayloadlen > 0) {
         r = spdylay_recv(session);
-        if(r <= 0) {
-          if(r == SPDYLAY_ERR_WOULDBLOCK) {
-            return 0;
-          } else {
-            return r;
-          }
+        if(r == 0 || r == SPDYLAY_ERR_WOULDBLOCK) {
+          return 0;
+        } else if(r < 0) {
+          return r;
         }
       }
       bufavail = spdylay_inbound_buffer_avail(&session->ibuf);
