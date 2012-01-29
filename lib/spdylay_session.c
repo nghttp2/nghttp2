@@ -158,6 +158,7 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
     break;
   }
   free(item->frame);
+  free(item->aux_data);
 }
 
 void spdylay_session_del(spdylay_session *session)
@@ -180,7 +181,8 @@ void spdylay_session_del(spdylay_session *session)
 
 int spdylay_session_add_frame(spdylay_session *session,
                               spdylay_frame_type frame_type,
-                              spdylay_frame *frame)
+                              spdylay_frame *frame,
+                              void *aux_data)
 {
   int r;
   spdylay_outbound_item *item;
@@ -190,6 +192,7 @@ int spdylay_session_add_frame(spdylay_session *session,
   }
   item->frame_type = frame_type;
   item->frame = frame;
+  item->aux_data = aux_data;
   /* Set priority lowest at the moment. */
   item->pri = 3;
   switch(frame_type) {
@@ -255,7 +258,7 @@ int spdylay_session_add_rst_stream(spdylay_session *session,
     return SPDYLAY_ERR_NOMEM;
   }
   spdylay_frame_rst_stream_init(&frame->rst_stream, stream_id, status_code);
-  r = spdylay_session_add_frame(session, SPDYLAY_RST_STREAM, frame);
+  r = spdylay_session_add_frame(session, SPDYLAY_RST_STREAM, frame, NULL);
   if(r != 0) {
     spdylay_frame_rst_stream_free(&frame->rst_stream);
     free(frame);
@@ -349,12 +352,14 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
   ssize_t framebuflen;
   switch(item->frame_type) {
   case SPDYLAY_SYN_STREAM: {
+    uint32_t stream_id;
     if(session->goaway_flags) {
       /* When GOAWAY is sent or received, peer must not send new
          SYN_STREAM. */
       return SPDYLAY_ERR_INVALID_FRAME;
     }
-    item->frame->syn_stream.stream_id = session->next_stream_id;
+    stream_id = session->next_stream_id;
+    item->frame->syn_stream.stream_id = stream_id;
     session->next_stream_id += 2;
     framebuflen = spdylay_frame_pack_syn_stream(&framebuf,
                                                 &item->frame->syn_stream,
@@ -362,12 +367,23 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     if(framebuflen < 0) {
       return framebuflen;
     }
-    if(spdylay_session_open_stream(session, item->frame->syn_stream.stream_id,
+    if(spdylay_session_open_stream(session, stream_id,
                                    item->frame->syn_stream.hd.flags,
                                    item->frame->syn_stream.pri,
                                    SPDYLAY_STREAM_INITIAL) == NULL) {
       free(framebuf);
       return SPDYLAY_ERR_NOMEM;
+    }
+    if(item->aux_data) {
+      /* We assume aux_data is a pointer to spdylay_data_provider */
+      spdylay_data_provider *data_prd = (spdylay_data_provider*)item->aux_data;
+      int r;
+      r = spdylay_submit_data(session, stream_id, data_prd);
+      if(r != 0) {
+        free(framebuf);
+        spdylay_session_close_stream(session, stream_id);
+        return r;
+      }
     }
     break;
   }
@@ -1188,7 +1204,7 @@ int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id)
     return SPDYLAY_ERR_NOMEM;
   }
   spdylay_frame_ping_init(&frame->ping, unique_id);
-  r = spdylay_session_add_frame(session, SPDYLAY_PING, frame);
+  r = spdylay_session_add_frame(session, SPDYLAY_PING, frame, NULL);
   if(r != 0) {
     spdylay_frame_ping_free(&frame->ping);
     free(frame);
@@ -1206,7 +1222,7 @@ int spdylay_session_add_goaway(spdylay_session *session,
     return SPDYLAY_ERR_NOMEM;
   }
   spdylay_frame_goaway_init(&frame->goaway, last_good_stream_id);
-  r = spdylay_session_add_frame(session, SPDYLAY_GOAWAY, frame);
+  r = spdylay_session_add_frame(session, SPDYLAY_GOAWAY, frame, NULL);
   if(r != 0) {
     spdylay_frame_goaway_free(&frame->goaway);
     free(frame);
@@ -1248,60 +1264,76 @@ int spdylay_submit_response(spdylay_session *session,
   }
   spdylay_frame_syn_reply_init(&frame->syn_reply, flags, stream_id,
                                nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame);
+  r = spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame, NULL);
   if(r != 0) {
     spdylay_frame_syn_reply_free(&frame->syn_reply);
     free(frame);
     return r;
   }
   if(data_prd != NULL) {
-    spdylay_frame *data_frame;
+    r = spdylay_submit_data(session, stream_id, data_prd);
     /* TODO If error is not FATAL, we should add RST_STREAM frame to
        cancel this stream. */
-    data_frame = malloc(sizeof(spdylay_frame));
-    if(data_frame == NULL) {
-      return SPDYLAY_ERR_NOMEM;
-    }
-    spdylay_frame_data_init(&data_frame->data, stream_id, data_prd);
-    r = spdylay_session_add_frame(session, SPDYLAY_DATA, data_frame);
-    if(r != 0) {
-      spdylay_frame_data_free(&data_frame->data);
-      free(data_frame);
-      return r;
-    }
   }
-  return 0;
+  return r;
+}
+
+int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
+                        spdylay_data_provider *data_prd)
+{
+  int r;
+  spdylay_frame *frame;
+  frame = malloc(sizeof(spdylay_frame));
+  if(frame == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_data_init(&frame->data, stream_id, data_prd);
+  r = spdylay_session_add_frame(session, SPDYLAY_DATA, frame, NULL);
+  if(r != 0) {
+    spdylay_frame_data_free(&frame->data);
+    free(frame);
+  }
+  return r;
 }
 
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,
-                           const char **nv)
+                           const char **nv, spdylay_data_provider *data_prd)
 {
   int r;
   spdylay_frame *frame;
   char **nv_copy;
   uint8_t flags = 0;
+  spdylay_data_provider *data_prd_copy;
   if(pri > 3) {
     return SPDYLAY_ERR_INVALID_ARGUMENT;
   }
+  data_prd_copy = malloc(sizeof(spdylay_data_provider));
+  if(data_prd_copy == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  *data_prd_copy = *data_prd;
   frame = malloc(sizeof(spdylay_frame));
   if(frame == NULL) {
+    free(data_prd_copy);
     return SPDYLAY_ERR_NOMEM;
   }
   nv_copy = spdylay_frame_nv_copy(nv);
   if(nv_copy == NULL) {
     free(frame);
+    free(data_prd_copy);
     return SPDYLAY_ERR_NOMEM;
   }
   spdylay_frame_nv_sort(nv_copy);
-  /* When we support POST using spdylay_data_provider, flags should be
-     0 if data_prd is set. */
-  flags |= SPDYLAY_FLAG_FIN;
-  spdylay_frame_syn_stream_init(&frame->syn_stream,
-                                SPDYLAY_FLAG_FIN, 0, 0, pri, nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame);
+  if(data_prd == NULL) {
+    flags |= SPDYLAY_FLAG_FIN;
+  }
+  spdylay_frame_syn_stream_init(&frame->syn_stream, flags, 0, 0, pri, nv_copy);
+  r = spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame,
+                                data_prd_copy);
   if(r != 0) {
     spdylay_frame_syn_stream_free(&frame->syn_stream);
     free(frame);
+    free(data_prd_copy);
   }
   return r;
 }

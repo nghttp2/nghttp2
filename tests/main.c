@@ -80,6 +80,8 @@ int main()
       !CU_add_test(pSuite, "session_send_syn_reply",
                    test_spdylay_session_send_syn_reply) ||
       !CU_add_test(pSuite, "submit_response", test_spdylay_submit_response) ||
+      !CU_add_test(pSuite, "submit_request_with_data",
+                   test_spdylay_submit_request_with_data) ||
       !CU_add_test(pSuite, "session_reply_fail",
                    test_spdylay_session_reply_fail) ||
       !CU_add_test(pSuite, "session_on_headers_received",

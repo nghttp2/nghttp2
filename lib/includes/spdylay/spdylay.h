@@ -318,10 +318,24 @@ int spdylay_session_want_write(spdylay_session *session);
  *
  * This function creates copies of all name/value pairs in |nv|.
  *
+ * If |data_prd| is not NULL, it provides data which will be sent in
+ * subsequent DATA frames. In this case, "POST" must be specified with
+ * "method" key in |nv|. If |data_prd| is NULL, SYN_STREAM have
+ * FLAG_FIN.
+ *
  * This function returns 0 if it succeeds, or negative error code.
  */
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,
-                           const char **nv);
+                           const char **nv,
+                           spdylay_data_provider *data_prd);
+
+/*
+ * Submits DATA frame to stream |stream_id|.
+ *
+ * This function returns 0 if it succeeds, or negative error code.
+ */
+int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
+                        spdylay_data_provider *data_prd);
 
 /*
  * Submits SYN_REPLY frame against stream |stream_id|. |nv| must

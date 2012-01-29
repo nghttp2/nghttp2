@@ -41,6 +41,7 @@
 typedef struct {
   spdylay_frame_type frame_type;
   spdylay_frame *frame;
+  void *aux_data;
   int pri;
 } spdylay_outbound_item;
 
@@ -123,9 +124,17 @@ typedef struct spdylay_session {
 
 /* TODO stream timeout etc */
 
+/*
+ * Adds frame |frame| of type |frame_type| to tx queue in |session|.
+ * |aux_data| is a pointer to arbitrary data. Its interpretation is
+ * defined per |frame_type|. When this function succeeds, it takes
+ * ownership of |frame| and |aux_data|, so caller must not free them.
+ * This function returns 0 if it succeeds, or negative error code.
+ */
 int spdylay_session_add_frame(spdylay_session *session,
                               spdylay_frame_type frame_type,
-                              spdylay_frame *frame);
+                              spdylay_frame *frame,
+                              void *aux_data);
 
 int spdylay_session_add_rst_stream(spdylay_session *session,
                                    int32_t stream_id, uint32_t status_code);
