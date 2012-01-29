@@ -30,7 +30,6 @@
 #include <sys/epoll.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <signal.h>
 
 #include <cassert>
 #include <cstdio>
@@ -44,20 +43,99 @@
 #include <iomanip>
 #include <fstream>
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <spdylay/spdylay.h>
+#include "spdylay_ssl.h"
 
-int connect_to(const char *host, const char *service)
+namespace spdylay {
+
+bool ssl_debug = false;
+
+Spdylay::Spdylay(int fd, SSL *ssl, const spdylay_session_callbacks *callbacks)
+  : fd_(fd), ssl_(ssl), want_write_(false)
+{
+  spdylay_session_client_new(&session_, callbacks, this);
+}
+
+Spdylay::~Spdylay()
+{
+  spdylay_session_del(session_);
+}
+
+int Spdylay::recv()
+{
+  return spdylay_session_recv(session_);
+}
+
+int Spdylay::send()
+{
+  return spdylay_session_send(session_);
+}
+
+ssize_t Spdylay::send_data(const uint8_t *data, size_t len, int flags)
+{
+  ssize_t r;
+  r = SSL_write(ssl_, data, len);
+  return r;
+}
+
+ssize_t Spdylay::recv_data(uint8_t *data, size_t len, int flags)
+{
+  ssize_t r;
+  want_write_ = false;
+  r = SSL_read(ssl_, data, len);
+  if(r < 0) {
+    if(SSL_get_error(ssl_, r) == SSL_ERROR_WANT_WRITE) {
+      want_write_ = true;
+    }
+  }
+  return r;
+}
+
+bool Spdylay::want_read()
+{
+  return spdylay_session_want_read(session_);
+}
+
+bool Spdylay::want_write()
+{
+  return spdylay_session_want_write(session_) || want_write_;
+}
+
+int Spdylay::fd() const
+{
+  return fd_;
+}
+
+int Spdylay::submit_request(const std::string& path, uint8_t pri)
+{
+  const char *nv[] = {
+    "method", "GET",
+    "scheme", "https",
+    "url", path.c_str(),
+    "user-agent", "spdylay/0.0.0",
+    "version", "HTTP/1.1",
+    NULL
+  };
+  return spdylay_submit_request(session_, pri, nv, NULL);
+}
+
+bool Spdylay::would_block(int r)
+{
+  int e = SSL_get_error(ssl_, r);
+  return e == SSL_ERROR_WANT_WRITE || e == SSL_ERROR_WANT_READ;
+}
+
+int connect_to(const std::string& host, uint16_t port)
 {
   struct addrinfo hints;
   int fd = -1;
   int r;
+  char service[10];
+  snprintf(service, sizeof(service), "%u", port);
   memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   struct addrinfo *res;
-  r = getaddrinfo(host, service, &hints, &res);
+  r = getaddrinfo(host.c_str(), service, &hints, &res);
   if(r != 0) {
     std::cerr << "getaddrinfo: " << gai_strerror(r) << std::endl;
     return -1;
@@ -93,89 +171,11 @@ int make_non_block(int fd)
   return 0;
 }
 
-class SpdylayClient {
-public:
-  SpdylayClient(int fd, SSL *ssl,
-                const spdylay_session_callbacks *callbacks)
-    : fd_(fd), ssl_(ssl), want_write_(false)
-  {
-    spdylay_session_client_new(&session_, callbacks, this);
-  }
-  ~SpdylayClient()
-  {
-    spdylay_session_del(session_);
-    SSL_shutdown(ssl_);
-    shutdown(fd_, SHUT_WR);
-    close(fd_);
-    SSL_free(ssl_);
-  }
-  int on_read_event()
-  {
-    return spdylay_session_recv(session_);
-  }
-  int on_write_event()
-  {
-    return spdylay_session_send(session_);
-  }
-  ssize_t send_data(const uint8_t *data, size_t len, int flags)
-  {
-    ssize_t r;
-    r = SSL_write(ssl_, data, len);
-    return r;
-  }
-  ssize_t recv_data(uint8_t *data, size_t len, int flags)
-  {
-    ssize_t r;
-    want_write_ = false;
-    r = SSL_read(ssl_, data, len);
-    if(r < 0) {
-      if(SSL_get_error(ssl_, r) == SSL_ERROR_WANT_WRITE) {
-        want_write_ = true;
-      }
-    }
-    return r;
-  }
-  bool want_read()
-  {
-    return spdylay_session_want_read(session_);
-  }
-  bool want_write()
-  {
-    return spdylay_session_want_write(session_) || want_write_;
-  }
-  int fd() const
-  {
-    return fd_;
-  }
-  int submit_request(const char *path)
-  {
-    const char *nv[] = {
-      "method", "GET",
-      "scheme", "https",
-      "url", path,
-      "user-agent", "spdylay/0.0.0",
-      "version", "HTTP/1.1",
-      NULL
-    };
-    return spdylay_submit_request(session_, 3, nv);
-  }
-  bool would_block(int r)
-  {
-    int e = SSL_get_error(ssl_, r);
-    return e == SSL_ERROR_WANT_WRITE || e == SSL_ERROR_WANT_READ;
-  }
-private:
-  int fd_;
-  SSL *ssl_;
-  spdylay_session *session_;
-  bool want_write_;
-};
-
 ssize_t send_callback(spdylay_session *session,
                       const uint8_t *data, size_t len, int flags,
                       void *user_data)
 {
-  SpdylayClient *sc = (SpdylayClient*)user_data;
+  Spdylay *sc = (Spdylay*)user_data;
   ssize_t r = sc->send_data(data, len, flags);
   if(r < 0) {
     if(sc->would_block(r)) {
@@ -190,7 +190,7 @@ ssize_t send_callback(spdylay_session *session,
 ssize_t recv_callback(spdylay_session *session,
                       uint8_t *data, size_t len, int flags, void *user_data)
 {
-  SpdylayClient *sc = (SpdylayClient*)user_data;
+  Spdylay *sc = (Spdylay*)user_data;
   ssize_t r = sc->recv_data(data, len, flags);
   if(r < 0) {
     if(sc->would_block(r)) {
@@ -204,14 +204,6 @@ ssize_t recv_callback(spdylay_session *session,
   return r;
 }
 
-void print_nv(char **nv)
-{
-  int i;
-  for(i = 0; nv[i]; i += 2) {
-    printf("  %s: %s\n", nv[i], nv[i+1]);
-  }
-}
-
 static const char *ctrl_names[] = {
   "SYN_STREAM",
   "SYN_REPLY",
@@ -222,6 +214,14 @@ static const char *ctrl_names[] = {
   "GOAWAY",
   "HEADERS"
 };
+
+void print_nv(char **nv)
+{
+  int i;
+  for(i = 0; nv[i]; i += 2) {
+    printf("  %s: %s\n", nv[i], nv[i+1]);
+  }
+}
 
 void on_ctrl_recv_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
@@ -235,16 +235,15 @@ void on_ctrl_recv_callback
            frame->syn_reply.hd.length);
     print_nv(frame->syn_reply.nv);
     break;
+  case SPDYLAY_PING:
+    printf("(unique_id=%d)\n", frame->ping.unique_id);
+    break;
   default:
+    printf("\n");
     break;
   }
   fflush(stdout);
 }
-
-void on_data_chunk_recv_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id,
- const uint8_t *data, size_t len, void *user_data)
-{}
 
 void on_data_recv_callback
 (spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
@@ -252,9 +251,9 @@ void on_data_recv_callback
 {
   printf("recv DATA frame (stream_id=%d, flags=%d, length=%d)\n",
          stream_id, flags, length);
-  if(flags & SPDYLAY_FLAG_FIN) {
-    spdylay_submit_goaway(session);
-  }
+  // if(flags & SPDYLAY_FLAG_FIN) {
+  //   spdylay_submit_ping(session);
+  // }
   fflush(stdout);
 }
 
@@ -270,25 +269,30 @@ void on_ctrl_send_callback
            frame->syn_stream.hd.length);
     print_nv(frame->syn_stream.nv);
     break;
+  case SPDYLAY_PING:
+    printf("(unique_id=%d)\n", frame->ping.unique_id);
+    break;
   case SPDYLAY_GOAWAY:
     printf("(last_good_stream_id=%d)\n", frame->goaway.last_good_stream_id);
+    break;
   default:
+    printf("\n");
     break;
   }
   fflush(stdout);
 }
 
-void ctl_epollev(int epollfd, int op, SpdylayClient& sc)
+void ctl_epollev(int epollfd, int op, Spdylay *sc)
 {
   epoll_event ev;
   memset(&ev, 0, sizeof(ev));
-  if(sc.want_read()) {
+  if(sc->want_read()) {
     ev.events |= EPOLLIN;
   }
-  if(sc.want_write()) {
+  if(sc->want_write()) {
     ev.events |= EPOLLOUT;
   }
-  if(epoll_ctl(epollfd, op, sc.fd(), &ev) == -1) {
+  if(epoll_ctl(epollfd, op, sc->fd(), &ev) == -1) {
     perror("epoll_ctl");
     exit(EXIT_FAILURE);
   }
@@ -301,143 +305,44 @@ int select_next_proto_cb(SSL* ssl,
 {
   *out = (unsigned char*)in+1;
   *outlen = in[0];
-  std::cout << "NPN select next proto: server offers:" << std::endl;
+  if(ssl_debug) {
+    std::cout << "NPN select next proto: server offers:" << std::endl;
+  }
   for(unsigned int i = 0; i < inlen; i += in[i]+1) {
-    std::cout << "* " << std::string(&in[i+1], &in[i+1]+in[i]) << std::endl;
+    if(ssl_debug) {
+      std::cout << "  * ";
+      std::cout.write(reinterpret_cast<const char*>(&in[i+1]), in[i]);
+      std::cout << std::endl;
+    }
     if(in[i] == 6 && memcmp(&in[i+1], "spdy/2", in[i]) == 0) {
       *out = (unsigned char*)in+i+1;
       *outlen = in[i];
     }
   }
   return SSL_TLSEXT_ERR_OK;
-
-
-  int status = SSL_select_next_proto(out, outlen, in, inlen,
-                                     (const unsigned char*)"spdy/2", 6);
-  switch(status) {
-  case OPENSSL_NPN_UNSUPPORTED:
-    std::cerr << "npn unsupported" << std::endl;
-    break;
-  case OPENSSL_NPN_NEGOTIATED:
-    std::cout << "npn negotiated" << std::endl;
-    break;
-  case OPENSSL_NPN_NO_OVERLAP:
-    std::cout << "npn no overlap" << std::endl;
-    break;
-  default:
-    std::cout << "not reached?" << std::endl;
-  }
-  return SSL_TLSEXT_ERR_OK;
 }
 
-int communicate(const char *host, const char *service, const char *path,
-                const spdylay_session_callbacks *callbacks)
+void setup_ssl_ctx(SSL_CTX *ssl_ctx)
 {
-  int r;
-  int fd = connect_to(host, service);
-  if(fd == -1) {
-    std::cerr << "Could not connect to the host" << std::endl;
-    return -1;
-  }
-  SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
-  if(!ssl_ctx) {
-    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-    return -1;
-  }
   /* Disable SSLv2 and enable all workarounds for buggy servers */
   SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, 0);
+}
 
-  SSL *ssl = SSL_new(ssl_ctx);
-  if(!ssl) {
-    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-    return -1;
-  }
-
+int ssl_handshake(SSL *ssl, int fd)
+{
   if(SSL_set_fd(ssl, fd) == 0) {
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
   }
-  r = SSL_connect(ssl);
+  int r = SSL_connect(ssl);
   if(r <= 0) {
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
   }
-
-  make_non_block(fd);
-  SpdylayClient sc(fd, ssl, callbacks);
-  int epollfd = epoll_create(1);
-  if(epollfd == -1) {
-    perror("epoll_create");
-    return -1;
-  }
-
-  sc.submit_request(path);
-
-  ctl_epollev(epollfd, EPOLL_CTL_ADD, sc);
-  static const size_t MAX_EVENTS = 1;
-  epoll_event events[MAX_EVENTS];
-  bool ok = true;
-  while(sc.want_read() || sc.want_write()) {
-    int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
-    if(nfds == -1) {
-      perror("epoll_wait");
-      return -1;
-    }
-    for(int n = 0; n < nfds; ++n) {
-      if(((events[n].events & EPOLLIN) && sc.on_read_event() != 0) ||
-         ((events[n].events & EPOLLOUT) && sc.on_write_event() != 0)) {
-        ok = false;
-        std::cout << "Fatal" << std::endl;
-        break;
-      }
-      if((events[n].events & EPOLLHUP) || (events[n].events & EPOLLERR)) {
-        std::cout << "HUP" << std::endl;
-        ok = false;
-        break;
-      }
-    }
-    if(!ok) {
-      break;
-    }
-    ctl_epollev(epollfd, EPOLL_CTL_MOD, sc);
-  }
-
-
-  return ok ? 0 : -1;
-}
-
-int run(const char *host, const char *service, const char *path)
-{
-  spdylay_session_callbacks callbacks;
-  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
-  callbacks.send_callback = send_callback;
-  callbacks.recv_callback = recv_callback;
-  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
-  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_data_recv_callback = on_data_recv_callback;
-  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
-  return communicate(host, service, path, &callbacks);
-}
-
-int main(int argc, char **argv)
-{
-  if(argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " HOST PORT PATH" << std::endl;
-    exit(EXIT_FAILURE);
-  }
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
-  act.sa_handler = SIG_IGN;
-  sigaction(SIGPIPE, &act, 0);
-  const char *host = argv[1];
-  const char *service = argv[2];
-  const char *path = argv[3];
-  SSL_load_error_strings();
-  SSL_library_init();
-  run(host, service, path);
   return 0;
 }
+
+} // namespace spdylay
