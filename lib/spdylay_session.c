@@ -875,7 +875,7 @@ int spdylay_session_on_headers_received(spdylay_session *session,
   /* First we check readability from this stream. */
   if(stream && (stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
     if(spdylay_session_is_my_stream_id(session, frame->headers.stream_id)) {
-      if(stream && stream->state == SPDYLAY_STREAM_OPENED) {
+      if(stream->state == SPDYLAY_STREAM_OPENED) {
         valid = 1;
         spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
                                                     frame);
@@ -891,13 +891,17 @@ int spdylay_session_on_headers_received(spdylay_session *session,
       }
     } else {
       /* If this is remote peer initiated stream, it is OK unless it
-         have sent FIN frame already. */
+         have sent FIN frame already. But if stream is in
+         SPDYLAY_STREAM_CLOSING, we discard the frame. This is a race
+         condition. */
       valid = 1;
-      spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
-                                                  frame);
-      if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
-        spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
-        spdylay_session_close_stream_if_shut_rdwr(session, stream);
+      if(stream->state != SPDYLAY_STREAM_CLOSING) {
+        spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
+                                                    frame);
+        if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+          spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
+          spdylay_session_close_stream_if_shut_rdwr(session, stream);
+        }
       }
     }
   }
@@ -1000,20 +1004,14 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
   }
 }
 
-static int spdylay_session_process_data_frame(spdylay_session *session)
+int spdylay_session_on_data_received(spdylay_session *session,
+                                     uint8_t flags, int32_t length,
+                                     int32_t stream_id)
 {
-  int32_t stream_id;
-  uint8_t flags;
-  int32_t length;
-  spdylay_stream *stream;
-  int status_code = 0;
   int valid = 0;
   int r = 0;
-  stream_id = spdylay_get_uint32(session->iframe.headbuf) &
-    SPDYLAY_STREAM_ID_MASK;
-  flags = session->iframe.headbuf[4];
-  length = spdylay_get_uint32(&session->iframe.headbuf[4]) &
-    SPDYLAY_LENGTH_MASK;
+  spdylay_status_code status_code = 0;
+  spdylay_stream *stream;
   stream = spdylay_session_get_stream(session, stream_id);
   if(stream) {
     if((stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
@@ -1023,10 +1021,17 @@ static int spdylay_session_process_data_frame(spdylay_session *session)
         } else if(stream->state != SPDYLAY_STREAM_CLOSING) {
           status_code = SPDYLAY_PROTOCOL_ERROR;
         }
-      } else {
+      } else if(stream->state != SPDYLAY_STREAM_CLOSING) {
         /* It is OK if this is remote peer initiated stream and we did
-           not receive FIN. */
+           not receive FIN unless stream is in SPDYLAY_STREAM_CLOSING
+           state. This is a race condition. */
         valid = 1;
+      }
+      if(valid) {
+        if(flags & SPDYLAY_FLAG_FIN) {
+          spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
+          spdylay_session_close_stream_if_shut_rdwr(session, stream);
+        }
       }
     } else {
       status_code = SPDYLAY_PROTOCOL_ERROR;
@@ -1042,6 +1047,21 @@ static int spdylay_session_process_data_frame(spdylay_session *session)
   } else if(status_code != 0) {
     r = spdylay_session_add_rst_stream(session, stream_id, status_code);
   }
+  return r;
+}
+
+static int spdylay_session_process_data_frame(spdylay_session *session)
+{
+  uint8_t flags;
+  int32_t length;
+  int32_t stream_id;
+  int r;
+  stream_id = spdylay_get_uint32(session->iframe.headbuf) &
+    SPDYLAY_STREAM_ID_MASK;
+  flags = session->iframe.headbuf[4];
+  length = spdylay_get_uint32(&session->iframe.headbuf[4]) &
+    SPDYLAY_LENGTH_MASK;
+  r = spdylay_session_on_data_received(session, flags, length, stream_id);
   if(r < SPDYLAY_ERR_FATAL) {
     return r;
   } else {

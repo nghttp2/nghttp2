@@ -209,6 +209,13 @@ int spdylay_session_on_headers_received(spdylay_session *session,
                                         spdylay_frame *frame);
 
 /*
+ * Called when DATA is received.
+ */
+int spdylay_session_on_data_received(spdylay_session *session,
+                                     uint8_t flags, int32_t length,
+                                     int32_t stream_id);
+
+/*
  * Returns spdylay_stream* object whose stream ID is |stream_id|.  It
  * could be NULL if such stream does not exist.
  */
