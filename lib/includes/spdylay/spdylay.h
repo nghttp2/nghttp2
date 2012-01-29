@@ -78,6 +78,7 @@ typedef enum {
 } spdylay_flag;
 
 typedef enum {
+  SPDYLAY_OK = 0,
   SPDYLAY_PROTOCOL_ERROR = 1,
   SPDYLAY_INVALID_STREAM = 2,
   SPDYLAY_REFUSED_STREAM = 3,
@@ -256,6 +257,14 @@ typedef void (*spdylay_before_ctrl_send_callback)
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data);
 
+/*
+ * Callback function invoked when stream |stream_id| is closed. The
+ * reason of closure is indicated by |status_code|.
+ */
+typedef void (*spdylay_on_stream_close_callback)
+(spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
+ void *user_data);
+
 typedef struct {
   spdylay_send_callback send_callback;
   spdylay_recv_callback recv_callback;
@@ -267,6 +276,7 @@ typedef struct {
   spdylay_before_ctrl_send_callback before_ctrl_send_callback;
   spdylay_on_ctrl_send_callback on_ctrl_send_callback;
   spdylay_on_data_send_callback on_data_send_callback;
+  spdylay_on_stream_close_callback on_stream_close_callback;
 } spdylay_session_callbacks;
 
 /*

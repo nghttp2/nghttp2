@@ -286,11 +286,18 @@ spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
   return stream;
 }
 
-int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id)
+int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id,
+                                 spdylay_status_code status_code)
 {
   spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
   if(stream) {
     spdylay_map_erase(&session->streams, stream_id);
+    if(stream->state != SPDYLAY_STREAM_INITIAL &&
+       session->callbacks.on_stream_close_callback) {
+      session->callbacks.on_stream_close_callback(session, stream_id,
+                                                  status_code,
+                                                  session->user_data);
+    }
     spdylay_stream_free(stream);
     free(stream);
     return 0;
@@ -303,7 +310,8 @@ int spdylay_session_close_stream_if_shut_rdwr(spdylay_session *session,
                                               spdylay_stream *stream)
 {
   if((stream->shut_flags & SPDYLAY_SHUT_RDWR) == SPDYLAY_SHUT_RDWR) {
-    return spdylay_session_close_stream(session, stream->stream_id);
+    return spdylay_session_close_stream(session, stream->stream_id,
+                                        SPDYLAY_OK);
   } else {
     return 0;
   }
@@ -381,7 +389,7 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
       r = spdylay_submit_data(session, stream_id, data_prd);
       if(r != 0) {
         free(framebuf);
-        spdylay_session_close_stream(session, stream_id);
+        spdylay_session_close_stream(session, stream_id, SPDYLAY_OK);
         return r;
       }
     }
@@ -506,7 +514,8 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     break;
   }
   case SPDYLAY_RST_STREAM:
-    spdylay_session_close_stream(session, frame->rst_stream.stream_id);
+    spdylay_session_close_stream(session, frame->rst_stream.stream_id,
+                                 frame->rst_stream.status_code);
     break;
   case SPDYLAY_NOOP:
     /* We don't have any public API to add NOOP, so here is
@@ -835,7 +844,8 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
 int spdylay_session_on_rst_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
-  spdylay_session_close_stream(session, frame->rst_stream.stream_id);
+  spdylay_session_close_stream(session, frame->rst_stream.stream_id,
+                               frame->rst_stream.status_code);
   return 0;
 }
 

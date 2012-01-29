@@ -159,12 +159,14 @@ spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
                                             spdylay_stream_state initial_state);
 
 /*
- * Closes stream whose stream ID is |stream_id|. This function returns
- * 0 if it succeeds, or negative error code.  The possible error code
- * is SPDYLAY_ERR_INVALID_ARGUMENT, which is used when stream
- * |stream_id| does not exist. So the caller may ignore this error.
+ * Closes stream whose stream ID is |stream_id|. The reason of closure
+ * is indicated by |status_code|. This function returns 0 if it
+ * succeeds, or negative error code.  The possible error code is
+ * SPDYLAY_ERR_INVALID_ARGUMENT, which is used when stream |stream_id|
+ * does not exist. So the caller may ignore this error.
  */
-int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id);
+int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id,
+                                 spdylay_status_code status_code);
 
 /*
  * If further receptions and transmissions over this stream are
