@@ -859,18 +859,8 @@ int spdylay_session_on_ping_received(spdylay_session *session,
 int spdylay_session_on_goaway_received(spdylay_session *session,
                                        spdylay_frame *frame)
 {
-  int r;
   session->last_good_stream_id = frame->goaway.last_good_stream_id;
   session->goaway_flags |= SPDYLAY_GOAWAY_RECV;
-  if(!(session->goaway_flags & SPDYLAY_GOAWAY_SEND)) {
-    /* TODO The spec does not mandate to send back GOAWAY. I think the
-       remote endpoint does not expect this, but sending GOAWAY does
-       not harm. */
-    r = spdylay_session_add_goaway(session, session->last_recv_stream_id);
-    if(r != 0) {
-      return r;
-    }
-  }
   spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_GOAWAY, frame);
   return 0;
 }
@@ -1152,19 +1142,23 @@ int spdylay_session_recv(spdylay_session *session)
 
 int spdylay_session_want_read(spdylay_session *session)
 {
-  /* If GOAWAY is not sent or received, we always want to read
+  /* Unless GOAWAY is sent or received, we always want to read
      incoming frames. After GOAWAY is sent or received, we are only
-     interested in existing streams. */
-  return !(session->goaway_flags & SPDYLAY_GOAWAY_SEND) ||
-    spdylay_map_size(&session->streams) == 0;
+     interested in active streams. */
+  return !session->goaway_flags || spdylay_map_size(&session->streams) > 0;
 }
 
 int spdylay_session_want_write(spdylay_session *session)
 {
-  uint8_t goaway_sent = session->goaway_flags & SPDYLAY_GOAWAY_SEND;
-  return (!goaway_sent &&
-          (session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq))) ||
-    (goaway_sent && spdylay_map_size(&session->streams) == 0);
+  /*
+   * Unless GOAWAY is sent or received, we want to write frames if
+   * there is pending ones. After GOAWAY is sent or received, we want
+   * to write frames if there is pending ones AND there are active
+   * frames.
+   */
+  return (session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq)) &&
+    (!session->goaway_flags ||
+     spdylay_map_size(&session->streams) > 0);
 }
 
 int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id)

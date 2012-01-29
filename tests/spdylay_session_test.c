@@ -606,10 +606,6 @@ void test_spdylay_session_on_goaway_received()
   CU_ASSERT(1 == user_data.valid);
   CU_ASSERT(session->goaway_flags == SPDYLAY_GOAWAY_RECV);
 
-  top = spdylay_session_get_ob_pq_top(session);
-  CU_ASSERT(SPDYLAY_GOAWAY == top->frame_type);
-  CU_ASSERT(0 == top->frame->goaway.last_good_stream_id);
-
   spdylay_frame_goaway_free(&frame.goaway);
   spdylay_session_del(session);
 }
