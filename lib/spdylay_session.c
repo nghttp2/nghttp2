@@ -1303,15 +1303,17 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
   spdylay_frame *frame;
   char **nv_copy;
   uint8_t flags = 0;
-  spdylay_data_provider *data_prd_copy;
+  spdylay_data_provider *data_prd_copy = NULL;
   if(pri > 3) {
     return SPDYLAY_ERR_INVALID_ARGUMENT;
   }
-  data_prd_copy = malloc(sizeof(spdylay_data_provider));
-  if(data_prd_copy == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+  if(data_prd) {
+    data_prd_copy = malloc(sizeof(spdylay_data_provider));
+    if(data_prd_copy == NULL) {
+      return SPDYLAY_ERR_NOMEM;
+    }
+    *data_prd_copy = *data_prd;
   }
-  *data_prd_copy = *data_prd;
   frame = malloc(sizeof(spdylay_frame));
   if(frame == NULL) {
     free(data_prd_copy);
