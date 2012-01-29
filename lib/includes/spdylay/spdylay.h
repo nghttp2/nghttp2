@@ -162,17 +162,27 @@ typedef union {
   spdylay_data data;
 } spdylay_frame;
 
+/*
+ * Callback function invoked when |session| want to send data to
+ * remote peer. The implementation of this function must send at most
+ * |length| bytes of data stored in |data|. It must return the number
+ * of bytes sent if it succeeds.  If it cannot send any single byte
+ * without blocking, it must return SPDYLAY_ERR_WOULDBLOCK. For other
+ * errors, it must return SPDYLAY_ERR_CALLBACK_FAILURE.
+ */
 typedef ssize_t (*spdylay_send_callback)
 (spdylay_session *session,
  const uint8_t *data, size_t length, int flags, void *user_data);
 
 /*
- * Callback function invoked when the library want to read data from
+ * Callback function invoked when |session| want to receive data from
  * remote peer. The implementation of this function must read at most
  * |length| bytes of data and store it in |buf|. It must return the
- * number of bytes written in |buf| if it succeeds. If it gets EOF
- * before it reads any single byte, return SPDYLAY_ERR_EOF. For other
- * errors, return SPDYLAY_ERR_CALLBACK_FAILURE.
+ * number of bytes written in |buf| if it succeeds. If it cannot read
+ * any single byte without blocking, it must return
+ * SPDYLAY_ERR_WOULDBLOCK. If it gets EOF before it reads any single
+ * byte, it must return SPDYLAY_ERR_EOF. For other errors, it must
+ * return SPDYLAY_ERR_CALLBACK_FAILURE.
  */
 typedef ssize_t (*spdylay_recv_callback)
 (spdylay_session *session,
@@ -259,18 +269,41 @@ typedef struct {
   spdylay_on_data_send_callback on_data_send_callback;
 } spdylay_session_callbacks;
 
+/*
+ * Initializes |*session_ptr| for client use. This function returns 0
+ * if it succeeds, or negative error code.
+ */
 int spdylay_session_client_new(spdylay_session **session_ptr,
                                const spdylay_session_callbacks *callbacks,
                                void *user_data);
 
+/*
+ * Frees any resources allocated for |session|.
+ */
 void spdylay_session_del(spdylay_session *session);
 
+/*
+ * Sends pending frames to the remote peer. This function returns 0 if
+ * it succeeds, or negative error code.
+ */
 int spdylay_session_send(spdylay_session *session);
 
+/*
+ * Receives frames from the remote peer. This function returns 0 if it
+ * succeeds, or negative error code.
+ */
 int spdylay_session_recv(spdylay_session *session);
 
+/*
+ * Returns non-zero value if |session| want to receive data from the
+ * remote peer, or 0.
+ */
 int spdylay_session_want_read(spdylay_session *session);
 
+/*
+ * Returns non-zero value if |session| want to send data to the remote
+ * peer, or 0.
+ */
 int spdylay_session_want_write(spdylay_session *session);
 
 /*
@@ -278,7 +311,7 @@ int spdylay_session_want_write(spdylay_session *session);
  * must be in the range of [0, 3]. 0 means the higest priority. |nv|
  * must include following name/value pairs:
  *
- * "method": HTTP method (e.g., "GET")
+ * "method": HTTP method (e.g., "GET" or "POST")
  * "scheme": URI scheme (e.g., "https")
  * "url": Abosolute path of this request (e.g., "/foo")
  * "version": HTTP version (e.g., "HTTP/1.1")
@@ -292,19 +325,32 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
 
 /*
  * Submits SYN_REPLY frame against stream |stream_id|. |nv| must
- * include "status" and "version" key. "status" must be status code
- * (e.g., "200" or "200 OK"). "version" is HTTP response version
- * (e.g., "HTTP/1.1"). This function creates copies of all name/value
- * pairs in |nv|. If |data_prd| is not NULL, it provides data which
- * will be sent in subsequent DATA frames. If |data_prd| is NULL,
- * SYN_REPLY will have FLAG_FIN.
+ * include following name/value pairs:
+ *
+ * "status": HTTP status code (e.g., "200" or "200 OK")
+ * "version": HTTP response version (e.g., "HTTP/1.1")
+ *
+ * This function creates copies of all name/value pairs in |nv|. If
+ * |data_prd| is not NULL, it provides data which will be sent in
+ * subsequent DATA frames. If |data_prd| is NULL, SYN_REPLY will have
+ * FLAG_FIN.
+ *
+ * This function returns 0 if it succeeds, or negative error code.
  */
 int spdylay_submit_response(spdylay_session *session,
                             int32_t stream_id, const char **nv,
                             spdylay_data_provider *data_prd);
 
+/*
+ * Submits PING frame. This function returns 0 if it succeeds, or
+ * negative error code.
+ */
 int spdylay_submit_ping(spdylay_session *session);
 
+/*
+ * Submits GOAWAY frame. This function returns 0 if it succeeds, or
+ * negative error code.
+ */
 int spdylay_submit_goaway(spdylay_session *session);
 
 #ifdef __cplusplus
