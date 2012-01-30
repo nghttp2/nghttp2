@@ -526,7 +526,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
        reply PING is received. */
     session->last_ping_unique_id = frame->ping.unique_id;
     /* TODO If clock_gettime() fails, what should we do? */
-    clock_gettime(CLOCK_MONOTONIC, &session->last_ping_time);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &session->last_ping_time);
     break;
   case SPDYLAY_GOAWAY:
     session->goaway_flags |= SPDYLAY_GOAWAY_SEND;
@@ -857,7 +857,7 @@ int spdylay_session_on_ping_received(spdylay_session *session,
     if(session->last_ping_unique_id == frame->ping.unique_id) {
       /* This is ping reply from peer */
       struct timespec rtt;
-      clock_gettime(CLOCK_MONOTONIC, &rtt);
+      clock_gettime(CLOCK_MONOTONIC_RAW, &rtt);
       rtt.tv_nsec -= session->last_ping_time.tv_nsec;
       if(rtt.tv_nsec < 0) {
         rtt.tv_nsec += 1000000000;
