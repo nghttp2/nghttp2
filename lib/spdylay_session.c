@@ -382,17 +382,6 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
       free(framebuf);
       return SPDYLAY_ERR_NOMEM;
     }
-    if(item->aux_data) {
-      /* We assume aux_data is a pointer to spdylay_data_provider */
-      spdylay_data_provider *data_prd = (spdylay_data_provider*)item->aux_data;
-      int r;
-      r = spdylay_submit_data(session, stream_id, data_prd);
-      if(r != 0) {
-        free(framebuf);
-        spdylay_session_close_stream(session, stream_id, SPDYLAY_OK);
-        return r;
-      }
-    }
     break;
   }
   case SPDYLAY_SYN_REPLY: {
@@ -471,6 +460,7 @@ spdylay_outbound_item* spdylay_session_get_ob_pq_top
 static int spdylay_session_after_frame_sent(spdylay_session *session)
 {
   /* TODO handle FIN flag. */
+  spdylay_outbound_item *item = session->aob.item;
   spdylay_frame *frame = session->aob.item->frame;
   spdylay_frame_type type = session->aob.item->frame_type;
   if(type == SPDYLAY_DATA) {
@@ -498,6 +488,17 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
       }
       spdylay_session_close_stream_if_shut_rdwr(session, stream);
+      if(item->aux_data) {
+        /* We assume aux_data is a pointer to spdylay_data_provider */
+        spdylay_data_provider *data_prd =
+          (spdylay_data_provider*)item->aux_data;
+        int r;
+        r = spdylay_submit_data(session, frame->syn_stream.stream_id, data_prd);
+        if(r != 0) {
+          /* TODO If r is not FATAL, we should send RST_STREAM. */
+          return r;
+        }
+      }
     }
     break;
   }
@@ -510,6 +511,17 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         spdylay_stream_shutdown(stream, SPDYLAY_SHUT_WR);
       }
       spdylay_session_close_stream_if_shut_rdwr(session, stream);
+      if(item->aux_data) {
+        /* We assume aux_data is a pointer to spdylay_data_provider */
+        spdylay_data_provider *data_prd =
+          (spdylay_data_provider*)item->aux_data;
+        int r;
+        r = spdylay_submit_data(session, frame->syn_reply.stream_id, data_prd);
+        if(r != 0) {
+          /* TODO If r is not FATAL, we should send RST_STREAM. */
+          return r;
+        }
+      }
     }
     break;
   }
@@ -1259,13 +1271,23 @@ int spdylay_submit_response(spdylay_session *session,
   spdylay_frame *frame;
   char **nv_copy;
   uint8_t flags = 0;
+  spdylay_data_provider *data_prd_copy = NULL;
+  if(data_prd) {
+    data_prd_copy = malloc(sizeof(spdylay_data_provider));
+    if(data_prd_copy == NULL) {
+      return SPDYLAY_ERR_NOMEM;
+    }
+    *data_prd_copy = *data_prd;
+  }
   frame = malloc(sizeof(spdylay_frame));
   if(frame == NULL) {
+    free(data_prd_copy);
     return SPDYLAY_ERR_NOMEM;
   }
   nv_copy = spdylay_frame_nv_copy(nv);
   if(nv_copy == NULL) {
     free(frame);
+    free(data_prd_copy);
     return SPDYLAY_ERR_NOMEM;
   }
   spdylay_frame_nv_sort(nv_copy);
@@ -1274,16 +1296,12 @@ int spdylay_submit_response(spdylay_session *session,
   }
   spdylay_frame_syn_reply_init(&frame->syn_reply, flags, stream_id,
                                nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame, NULL);
+  r = spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame,
+                                data_prd_copy);
   if(r != 0) {
     spdylay_frame_syn_reply_free(&frame->syn_reply);
     free(frame);
-    return r;
-  }
-  if(data_prd != NULL) {
-    r = spdylay_submit_data(session, stream_id, data_prd);
-    /* TODO If error is not FATAL, we should add RST_STREAM frame to
-       cancel this stream. */
+    free(data_prd_copy);
   }
   return r;
 }
