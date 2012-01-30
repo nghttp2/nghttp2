@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <cstdlib>
+#include <time.h>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -92,6 +93,10 @@ int select_next_proto_cb(SSL* ssl,
 void setup_ssl_ctx(SSL_CTX *ssl_ctx);
 
 int ssl_handshake(SSL *ssl, int fd);
+
+void reset_timer();
+
+void get_timer(timespec *ts);
 
 } // namespace spdylay
 

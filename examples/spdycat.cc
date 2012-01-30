@@ -31,6 +31,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
+#include <getopt.h>
 
 #include <cassert>
 #include <cstdio>
@@ -43,6 +44,8 @@
 #include <set>
 #include <iomanip>
 #include <fstream>
+#include <map>
+#include <vector>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -53,16 +56,31 @@
 
 namespace spdylay {
 
-std::string target_path;
-int32_t target_stream_id;
-bool debug = false;
+struct Config {
+  bool null_out;
+  bool remote_name;
+  bool verbose;
+  Config():null_out(false), remote_name(false), verbose(false) {}
+};
+
+struct Request {
+  uri::UriStruct us;
+  Request(const uri::UriStruct& us):us(us) {}
+};
+
+std::map<int32_t, Request*> stream2req;
+std::map<std::string, Request*> path2req;
+size_t numreq, complete;
+
+Config config;
 extern bool ssl_debug;
 
 void on_data_chunk_recv_callback
 (spdylay_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
-  if(!debug && stream_id == target_stream_id) {
+  std::map<int32_t, Request*>::iterator itr = stream2req.find(stream_id);
+  if(itr != stream2req.end()) {
     std::cout.write(reinterpret_cast<const char*>(data), len);
   }
 }
@@ -72,8 +90,10 @@ void check_stream_id(spdylay_frame_type type, spdylay_frame *frame)
   if(type == SPDYLAY_SYN_STREAM) {
     for(int i = 0; frame->syn_stream.nv[i]; i += 2) {
       if(strcmp("url", frame->syn_stream.nv[i]) == 0) {
-        if(target_path == frame->syn_stream.nv[i+1]) {
-          target_stream_id = frame->syn_stream.stream_id;
+        std::map<std::string, Request*>::iterator itr = path2req.find
+          (frame->syn_stream.nv[i+1]);
+        if(itr != path2req.end()) {
+          stream2req[frame->syn_stream.stream_id] = (*itr).second;
         }
         break;
       }
@@ -100,17 +120,23 @@ void on_stream_close_callback
 (spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
  void *user_data)
 {
-  if(target_stream_id == stream_id) {
-    spdylay_submit_goaway(session);
+  std::map<int32_t, Request*>::iterator itr = stream2req.find(stream_id);
+  if(itr != stream2req.end()) {
+    ++complete;
+    if(complete == numreq) {
+      spdylay_submit_goaway(session);
+    }
   }
 }
 
 int communicate(const std::string& host, uint16_t port,
-                const std::string& path,
+                std::vector<Request>& reqvec,
                 const spdylay_session_callbacks *callbacks)
 {
-  target_path = path;
-  ssl_debug = debug;
+  numreq = reqvec.size();
+  complete = 0;
+  path2req.clear();
+  stream2req.clear();
   int fd = connect_to(host, port);
   if(fd == -1) {
     std::cerr << "Could not connect to the host" << std::endl;
@@ -138,8 +164,13 @@ int communicate(const std::string& host, uint16_t port,
     perror("epoll_create");
     return -1;
   }
-  sc.submit_request(path, 3);
-
+  for(int i = 0, n = reqvec.size(); i < n; ++i) {
+    uri::UriStruct& us = reqvec[i].us;
+    std::string path = us.dir+us.file+us.query;
+    int r = sc.submit_request(path, 3);
+    assert(r == 0);
+    path2req[path] = &reqvec[i];
+  }
   ctl_epollev(epollfd, EPOLL_CTL_ADD, &sc);
   static const size_t MAX_EVENTS = 1;
   epoll_event events[MAX_EVENTS];
@@ -177,48 +208,100 @@ int communicate(const std::string& host, uint16_t port,
   return ok ? 0 : -1;
 }
 
-int run(const std::string& host, uint16_t port, const std::string& path)
+int run(char **uris, int n)
 {
   spdylay_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
-  if(debug) {
+  if(config.verbose) {
     callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
     callbacks.on_data_recv_callback = on_data_recv_callback;
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback3;
   } else {
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback2;
+  }
+  if(!config.null_out) {
     callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   }
-  return communicate(host, port, path, &callbacks);
+  ssl_debug = config.verbose;
+  std::vector<Request> reqvec;
+  std::string prev_host;
+  uint16_t prev_port = 0;
+  for(int i = 0; i < n; ++i) {
+    uri::UriStruct us;
+    if(uri::parse(us, uris[i])) {
+      if(prev_host != us.host || prev_port != us.port) {
+        if(!reqvec.empty()) {
+          communicate(prev_host, prev_port, reqvec, &callbacks);
+          reqvec.clear();
+        }
+        prev_host = us.host;
+        prev_port = us.port;
+      }
+      reqvec.push_back(Request(us));
+    }
+  }
+  if(!reqvec.empty()) {
+    communicate(prev_host, prev_port, reqvec, &callbacks);
+  }
+  return 0;
 }
 
-} // namespace spdylay
-
-void print_usage(const char *prog)
+void print_usage(std::ostream& out)
 {
-  std::cerr << "Usage: " << prog << " [-d] URI" << std::endl;
-  std::cerr << "   Get the resource identified by URI via spdy/2 protocol and\n"
-            << "   output the resource.\n"
-            << "\n"
-            << "   -d: Output debug information instead of output the resource."
-            << std::endl;
+  out << "Usage: spdycat [-Onv] [URI...]" << std::endl;
+}
+
+void print_help(std::ostream& out)
+{
+  print_usage(out);
+  out << "\n"
+      << "OPTIONS:\n"
+      << "    -v, --verbose      Print debug information such as reception/\n"
+      << "                       transmission of frames and name/value pairs.\n"
+      << "    -n, --null-out     Discard downloaded data.\n"
+      << "    -O, --remote-name  Save download data in the current directory.\n"
+      << "                       The filename is dereived from URI. If URI\n"
+      << "                       ends with '/', 'index.html' is used as a\n"
+      << "                       filename. Not implemented yet.\n"
+      << std::endl;
 }
 
 int main(int argc, char **argv)
 {
-  std::string uri;
-  if(argc == 2) {
-    spdylay::debug = false;
-    uri = argv[1];
-  } else if(argc == 3 && strcmp(argv[1], "-d") == 0) {
-    spdylay::debug = true;
-    uri = argv[2];
-  } else {
-    print_usage(basename(argv[0]));
-    exit(EXIT_FAILURE);
+  while(1) {
+    static option long_options[] = {
+      {"verbose", no_argument, 0, 'v' },
+      {"null-out", no_argument, 0, 'n' },
+      {"remote-name", no_argument, 0, 'O' },
+      {"help", no_argument, 0, 'h' },
+      {0, 0, 0, 0 }
+    };
+    int option_index = 0;
+    int c = getopt_long(argc, argv, "Onhv", long_options, &option_index);
+    if(c == -1) {
+      break;
+    }
+    switch(c) {
+    case 'O':
+      config.remote_name = true;
+      break;
+    case 'h':
+      print_help(std::cout);
+      exit(EXIT_SUCCESS);
+    case 'n':
+      config.null_out = true;
+      break;
+    case 'v':
+      config.verbose = true;
+      break;
+    case '?':
+      exit(EXIT_FAILURE);
+    default:
+      break;
+    }
   }
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
@@ -226,11 +309,14 @@ int main(int argc, char **argv)
   sigaction(SIGPIPE, &act, 0);
   SSL_load_error_strings();
   SSL_library_init();
-  spdylay::uri::UriStruct us;
-  if(!spdylay::uri::parse(us, uri)) {
-    std::cerr << "Could not parse URI" << std::endl;
-    exit(EXIT_FAILURE);
-  }
-  spdylay::run(us.host, us.port, us.dir+us.file+us.query);
+  reset_timer();
+  run(argv+optind, argc-optind);
   return 0;
+}
+
+} // namespace spdylay
+
+int main(int argc, char **argv)
+{
+  return spdylay::main(argc, argv);
 }

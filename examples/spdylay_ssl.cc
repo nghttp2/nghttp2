@@ -204,7 +204,8 @@ ssize_t recv_callback(spdylay_session *session,
   return r;
 }
 
-static const char *ctrl_names[] = {
+namespace {
+const char *ctrl_names[] = {
   "SYN_STREAM",
   "SYN_REPLY",
   "RST_STREAM",
@@ -214,6 +215,7 @@ static const char *ctrl_names[] = {
   "GOAWAY",
   "HEADERS"
 };
+} // namespace
 
 void print_nv(char **nv)
 {
@@ -223,51 +225,29 @@ void print_nv(char **nv)
   }
 }
 
-void on_ctrl_recv_callback
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
- void *user_data)
+void print_timer()
 {
-  printf("recv %s frame ", ctrl_names[type-1]);
+  timespec ts;
+  get_timer(&ts);
+  printf("[%3ld.%03ld]", ts.tv_sec, ts.tv_nsec/1000000);
+}
+
+void print_frame(spdylay_frame_type type, spdylay_frame *frame)
+{
+  printf("%s frame ", ctrl_names[type-1]);
   switch(type) {
+  case SPDYLAY_SYN_STREAM:
+    printf("(stream_id=%d, assoc_stream_id=%d, flags=%u, length=%d, pri=%u)\n",
+           frame->syn_stream.stream_id, frame->syn_stream.assoc_stream_id,
+           frame->syn_stream.hd.flags,
+           frame->syn_stream.hd.length, frame->syn_stream.pri);
+    print_nv(frame->syn_stream.nv);
+    break;
   case SPDYLAY_SYN_REPLY:
-    printf("(stream_id=%d, flags=%d, length=%d)\n",
+    printf("(stream_id=%d, flags=%u, length=%d)\n",
            frame->syn_reply.stream_id, frame->syn_reply.hd.flags,
            frame->syn_reply.hd.length);
     print_nv(frame->syn_reply.nv);
-    break;
-  case SPDYLAY_PING:
-    printf("(unique_id=%d)\n", frame->ping.unique_id);
-    break;
-  default:
-    printf("\n");
-    break;
-  }
-  fflush(stdout);
-}
-
-void on_data_recv_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
- void *user_data)
-{
-  printf("recv DATA frame (stream_id=%d, flags=%d, length=%d)\n",
-         stream_id, flags, length);
-  // if(flags & SPDYLAY_FLAG_FIN) {
-  //   spdylay_submit_ping(session);
-  // }
-  fflush(stdout);
-}
-
-void on_ctrl_send_callback
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
- void *user_data)
-{
-  printf("send %s frame ", ctrl_names[type-1]);
-  switch(type) {
-  case SPDYLAY_SYN_STREAM:
-    printf("(stream_id=%d, flags=%d, length=%d)\n",
-           frame->syn_stream.stream_id, frame->syn_stream.hd.flags,
-           frame->syn_stream.hd.length);
-    print_nv(frame->syn_stream.nv);
     break;
   case SPDYLAY_PING:
     printf("(unique_id=%d)\n", frame->ping.unique_id);
@@ -279,6 +259,35 @@ void on_ctrl_send_callback
     printf("\n");
     break;
   }
+}
+
+void on_ctrl_recv_callback
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data)
+{
+  print_timer();
+  printf(" recv ");
+  print_frame(type, frame);
+  fflush(stdout);
+}
+
+void on_data_recv_callback
+(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+ void *user_data)
+{
+  print_timer();
+  printf(" recv DATA frame (stream_id=%d, flags=%d, length=%d)\n",
+         stream_id, flags, length);
+  fflush(stdout);
+}
+
+void on_ctrl_send_callback
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data)
+{
+  print_timer();
+  printf(" send ");
+  print_frame(type, frame);
   fflush(stdout);
 }
 
@@ -306,7 +315,9 @@ int select_next_proto_cb(SSL* ssl,
   *out = (unsigned char*)in+1;
   *outlen = in[0];
   if(ssl_debug) {
-    std::cout << "NPN select next proto: server offers:" << std::endl;
+    print_timer();
+    std::cout << " NPN select next protocol: the remote server offers:"
+              << std::endl;
   }
   for(unsigned int i = 0; i < inlen; i += in[i]+1) {
     if(ssl_debug) {
@@ -343,6 +354,26 @@ int ssl_handshake(SSL *ssl, int fd)
     return -1;
   }
   return 0;
+}
+
+namespace {
+timespec basets;
+} // namespace
+
+void reset_timer()
+{
+  clock_gettime(CLOCK_MONOTONIC_RAW, &basets);
+}
+
+void get_timer(timespec* ts)
+{
+  clock_gettime(CLOCK_MONOTONIC_RAW, ts);
+  ts->tv_nsec -= basets.tv_nsec;
+  ts->tv_sec -= basets.tv_sec;
+  if(ts->tv_nsec < 0) {
+    ts->tv_nsec += 1000000000;
+    --ts->tv_sec;
+  }
 }
 
 } // namespace spdylay
