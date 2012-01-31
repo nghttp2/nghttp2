@@ -36,5 +36,5 @@ get a resource given in the command-line::
     [  0.091] send GOAWAY frame (last_good_stream_id=0)
 
 Please note that OpenSSL with
-`NPN <http://technotes.googlecode.com/git/nextprotoneg.html>`
+`NPN <http://technotes.googlecode.com/git/nextprotoneg.html>`_
 support is required in order to build and run ``spdycat``.
