@@ -20,34 +20,12 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-CC = gcc
-CXX = g++
-CFLAGS = -Wall -g -O2 -I../lib/includes
-CXXFLAGS = $(CFLAGS)
-LDFLAGS = -L../lib/.libs
-LIBS = -lspdylay -lssl -lcrypto
 
-PROGRAMS = spdycat
-SPDYCAT_OBJS = spdycat.o spdylay_ssl.o util.o uri.o
+AM_CFLAGS = -Wall
+AM_CPPFLAGS = -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes `pkg-config --cflags libssl`
+AM_LDFLAGS = `pkg-config --libs libssl`
+LDADD = $(top_builddir)/lib/libspdylay.la
 
-.PHONY: all
-all: $(PROGRAMS)
+bin_PROGRAMS = spdycat
 
-util.o: util.cc util.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c $<
-
-uri.o: uri.cc uri.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c $<
-
-spdylay_ssl.o: spdylay_ssl.cc spdylay_ssl.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c $<
-
-spdycat.o: spdycat.cc
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c $<
-
-spdycat: $(SPDYCAT_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(SPDYCAT_OBJS) -o $@ $(LIBS)
-
-.PHONY: clean
-clean:
-	rm -f *.o $(PROGRAMS)
+spdycat_SOURCES = uri.cc spdylay_ssl.cc util.cc spdycat.cc
