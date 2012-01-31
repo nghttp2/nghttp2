@@ -28,6 +28,7 @@ LDFLAGS = -L../lib/.libs
 LIBS = -lspdylay -lssl -lcrypto
 
 PROGRAMS = spdycat
+SPDYCAT_OBJS = spdycat.o spdylay_ssl.o util.o uri.o
 
 .PHONY: all
 all: $(PROGRAMS)
@@ -44,8 +45,8 @@ spdylay_ssl.o: spdylay_ssl.cc spdylay_ssl.h
 spdycat.o: spdycat.cc
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c $<
 
-spdycat: spdycat.o spdylay_ssl.o util.o uri.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS)
+spdycat: $(SPDYCAT_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(SPDYCAT_OBJS) -o $@ $(LIBS)
 
 .PHONY: clean
 clean:
