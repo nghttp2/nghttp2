@@ -41,6 +41,7 @@ typedef struct {
   spdylay_frame *frame;
   void *aux_data;
   int pri;
+  int64_t seq;
 } spdylay_outbound_item;
 
 typedef struct {
@@ -93,6 +94,10 @@ struct spdylay_session {
   /* Counter of unique ID of PING. Wraps when it exceeds
      SPDYLAY_MAX_UNIQUE_ID */
   uint32_t next_unique_id;
+
+  /* Sequence number of outbound frame to maintain the order of
+     enqueue if priority is equal. */
+  int64_t next_seq;
 
   spdylay_map /* <spdylay_stream*> */ streams;
   spdylay_pq /* <spdylay_outbound_item*> */ ob_pq;

@@ -58,7 +58,11 @@ int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
   const spdylay_outbound_item *lhs, *rhs;
   lhs = (const spdylay_outbound_item*)lhsx;
   rhs = (const spdylay_outbound_item*)rhsx;
-  return lhs->pri-rhs->pri;
+  if(lhs->pri == rhs->pri) {
+    return (lhs->seq < rhs->seq) ? -1 : ((lhs->seq > rhs->seq) ? 1 : 0);
+  } else {
+    return lhs->pri-rhs->pri;
+  }
 }
 
 int spdylay_session_client_new(spdylay_session **session_ptr,
@@ -78,6 +82,8 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
   (*session_ptr)->next_unique_id = 1;
 
   (*session_ptr)->last_ping_unique_id = 0;
+
+  (*session_ptr)->next_seq = 0;
 
   (*session_ptr)->goaway_flags = SPDYLAY_GOAWAY_NONE;
   (*session_ptr)->last_good_stream_id = 0;
@@ -192,6 +198,7 @@ int spdylay_session_add_frame(spdylay_session *session,
   item->frame_type = frame_type;
   item->frame = frame;
   item->aux_data = aux_data;
+  item->seq = session->next_seq++;
   /* Set priority lowest at the moment. */
   item->pri = 3;
   switch(frame_type) {
