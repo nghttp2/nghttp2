@@ -27,11 +27,11 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/epoll.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
 #include <getopt.h>
+#include <poll.h>
 
 #include <cassert>
 #include <cstdio>
@@ -159,11 +159,10 @@ int communicate(const std::string& host, uint16_t port,
   }
   make_non_block(fd);
   Spdylay sc(fd, ssl, callbacks);
-  int epollfd = epoll_create(1);
-  if(epollfd == -1) {
-    perror("epoll_create");
-    return -1;
-  }
+
+  nfds_t npollfds = 1;
+  pollfd pollfds[1];
+
   for(int i = 0, n = reqvec.size(); i < n; ++i) {
     uri::UriStruct& us = reqvec[i].us;
     std::string path = us.dir+us.file+us.query;
@@ -171,33 +170,31 @@ int communicate(const std::string& host, uint16_t port,
     assert(r == 0);
     path2req[path] = &reqvec[i];
   }
-  ctl_epollev(epollfd, EPOLL_CTL_ADD, &sc);
-  static const size_t MAX_EVENTS = 1;
-  epoll_event events[MAX_EVENTS];
+  pollfds[0].fd = fd;
+  ctl_poll(pollfds, &sc);
+
   bool ok = true;
   while(sc.want_read() || sc.want_write()) {
-    int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+    int nfds = poll(pollfds, npollfds, -1);
     if(nfds == -1) {
-      perror("epoll_wait");
+      perror("poll");
       return -1;
     }
-    for(int n = 0; n < nfds; ++n) {
-      if(((events[n].events & EPOLLIN) && sc.recv() != 0) ||
-         ((events[n].events & EPOLLOUT) && sc.send() != 0)) {
+    if(((pollfds[0].revents & POLLIN) && sc.recv() != 0) ||
+       ((pollfds[0].revents & POLLOUT) && sc.send() != 0)) {
         ok = false;
         std::cout << "Fatal" << std::endl;
         break;
-      }
-      if((events[n].events & EPOLLHUP) || (events[n].events & EPOLLERR)) {
-        std::cout << "HUP" << std::endl;
-        ok = false;
-        break;
-      }
+    }
+    if((pollfds[0].revents & POLLHUP) || (pollfds[0].revents & POLLERR)) {
+      std::cout << "HUP" << std::endl;
+      ok = false;
+      break;
     }
     if(!ok) {
       break;
     }
-    ctl_epollev(epollfd, EPOLL_CTL_MOD, &sc);
+    ctl_poll(pollfds, &sc);
   }
 
   SSL_shutdown(ssl);

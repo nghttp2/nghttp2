@@ -27,7 +27,8 @@
 
 #include <stdint.h>
 #include <cstdlib>
-#include <time.h>
+#include <sys/time.h>
+#include <poll.h>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -83,7 +84,7 @@ void on_ctrl_send_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data);
 
-void ctl_epollev(int epollfd, int op, Spdylay *sc);
+void ctl_poll(pollfd *pollfd, Spdylay *sc);
 
 int select_next_proto_cb(SSL* ssl,
                          unsigned char **out, unsigned char *outlen,
@@ -96,7 +97,7 @@ int ssl_handshake(SSL *ssl, int fd);
 
 void reset_timer();
 
-void get_timer(timespec *ts);
+void get_timer(timeval *tv);
 
 } // namespace spdylay
 

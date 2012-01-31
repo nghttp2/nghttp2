@@ -27,7 +27,6 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/epoll.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
@@ -227,9 +226,9 @@ void print_nv(char **nv)
 
 void print_timer()
 {
-  timespec ts;
-  get_timer(&ts);
-  printf("[%3ld.%03ld]", ts.tv_sec, ts.tv_nsec/1000000);
+  timeval tv;
+  get_timer(&tv);
+  printf("[%3ld.%03ld]", tv.tv_sec, tv.tv_usec/1000);
 }
 
 void print_frame(spdylay_frame_type type, spdylay_frame *frame)
@@ -291,19 +290,14 @@ void on_ctrl_send_callback
   fflush(stdout);
 }
 
-void ctl_epollev(int epollfd, int op, Spdylay *sc)
+void ctl_poll(pollfd *pollfd, Spdylay *sc)
 {
-  epoll_event ev;
-  memset(&ev, 0, sizeof(ev));
+  pollfd->events = 0;
   if(sc->want_read()) {
-    ev.events |= EPOLLIN;
+    pollfd->events |= POLLIN;
   }
   if(sc->want_write()) {
-    ev.events |= EPOLLOUT;
-  }
-  if(epoll_ctl(epollfd, op, sc->fd(), &ev) == -1) {
-    perror("epoll_ctl");
-    exit(EXIT_FAILURE);
+    pollfd->events |= POLLOUT;
   }
 }
 
@@ -357,22 +351,22 @@ int ssl_handshake(SSL *ssl, int fd)
 }
 
 namespace {
-timespec basets;
+timeval base_tv;
 } // namespace
 
 void reset_timer()
 {
-  clock_gettime(CLOCK_MONOTONIC_RAW, &basets);
+  gettimeofday(&base_tv, 0);
 }
 
-void get_timer(timespec* ts)
+void get_timer(timeval* tv)
 {
-  clock_gettime(CLOCK_MONOTONIC_RAW, ts);
-  ts->tv_nsec -= basets.tv_nsec;
-  ts->tv_sec -= basets.tv_sec;
-  if(ts->tv_nsec < 0) {
-    ts->tv_nsec += 1000000000;
-    --ts->tv_sec;
+  gettimeofday(tv, 0);
+  tv->tv_usec -= base_tv.tv_usec;
+  tv->tv_sec -= base_tv.tv_sec;
+  if(tv->tv_usec < 0) {
+    tv->tv_usec += 1000000;
+    --tv->tv_sec;
   }
 }
 
