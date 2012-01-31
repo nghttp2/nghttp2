@@ -248,11 +248,33 @@ void print_frame(spdylay_frame_type type, spdylay_frame *frame)
            frame->syn_reply.hd.length);
     print_nv(frame->syn_reply.nv);
     break;
+  case SPDYLAY_RST_STREAM:
+    printf("(stream_id=%d, status_code=%u, flags=%u, length=%d)\n",
+           frame->rst_stream.stream_id, frame->rst_stream.status_code,
+           frame->rst_stream.hd.flags,
+           frame->rst_stream.hd.length);
+    break;
+  case SPDYLAY_SETTINGS:
+    printf("(flags=%u, length=%d, niv=%lu)\n",
+           frame->settings.hd.flags, frame->settings.hd.length,
+           static_cast<unsigned long>(frame->settings.niv));
+    for(size_t i = 0; i < frame->settings.niv; ++i) {
+      printf("  [%d(%u):%u]\n",
+             frame->settings.iv[i].settings_id,
+             frame->settings.iv[i].flags, frame->settings.iv[i].value);
+    }
+    break;
   case SPDYLAY_PING:
     printf("(unique_id=%d)\n", frame->ping.unique_id);
     break;
   case SPDYLAY_GOAWAY:
     printf("(last_good_stream_id=%d)\n", frame->goaway.last_good_stream_id);
+    break;
+  case SPDYLAY_HEADERS:
+    printf("(stream_id=%d, flags=%u, length=%d)\n",
+           frame->headers.stream_id, frame->headers.hd.flags,
+           frame->headers.hd.length);
+    print_nv(frame->headers.nv);
     break;
   default:
     printf("\n");
