@@ -145,6 +145,9 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
   case SPDYLAY_RST_STREAM:
     spdylay_frame_rst_stream_free(&item->frame->rst_stream);
     break;
+  case SPDYLAY_SETTINGS:
+    spdylay_frame_settings_free(&item->frame->settings);
+    break;
   case SPDYLAY_NOOP:
     /* We don't have any public API to add NOOP, so here is
        unreachable. */
@@ -222,6 +225,9 @@ int spdylay_session_add_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_SETTINGS:
+    /* Should SPDYLAY_SETTINGS have higher priority? */
+    break;
   case SPDYLAY_NOOP:
     /* We don't have any public API to add NOOP, so here is
        unreachable. */
@@ -403,6 +409,20 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     break;
   }
+  case SPDYLAY_RST_STREAM:
+    framebuflen = spdylay_frame_pack_rst_stream(&framebuf,
+                                                &item->frame->rst_stream);
+    if(framebuflen < 0) {
+      return framebuflen;
+    }
+    break;
+  case SPDYLAY_SETTINGS:
+    framebuflen = spdylay_frame_pack_settings(&framebuf,
+                                              &item->frame->settings);
+    if(framebuflen < 0) {
+      return framebuflen;
+    }
+    break;
   case SPDYLAY_NOOP:
     /* We don't have any public API to add NOOP, so here is
        unreachable. */
@@ -534,6 +554,9 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   case SPDYLAY_RST_STREAM:
     spdylay_session_close_stream(session, frame->rst_stream.stream_id,
                                  frame->rst_stream.status_code);
+    break;
+  case SPDYLAY_SETTINGS:
+    /* nothing to do */
     break;
   case SPDYLAY_NOOP:
     /* We don't have any public API to add NOOP, so here is
@@ -865,6 +888,14 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
   return 0;
 }
 
+int spdylay_session_on_settings_received(spdylay_session *session,
+                                         spdylay_frame *frame)
+{
+  /* TODO Check ID/value pairs and persist them if necessary. */
+  spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SETTINGS, frame);
+  return 0;
+}
+
 int spdylay_session_on_ping_received(spdylay_session *session,
                                      spdylay_frame *frame)
 {
@@ -988,6 +1019,17 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_rst_stream_received(session, &frame);
       spdylay_frame_rst_stream_free(&frame.rst_stream);
+    }
+    break;
+  case SPDYLAY_SETTINGS:
+    r = spdylay_frame_unpack_settings(&frame.settings,
+                                      session->iframe.headbuf,
+                                      sizeof(session->iframe.headbuf),
+                                      session->iframe.buf,
+                                      session->iframe.len);
+    if(r == 0) {
+      r = spdylay_session_on_settings_received(session, &frame);
+      spdylay_frame_settings_free(&frame.settings);
     }
     break;
   case SPDYLAY_NOOP:

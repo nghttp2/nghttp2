@@ -203,6 +203,12 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
                                            spdylay_frame *frame);
 
 /*
+ * Called when SETTINGS is received. Received frame is |frame|.
+ */
+int spdylay_session_on_settings_received(spdylay_session *session,
+                                         spdylay_frame *frame);
+
+/*
  * Called when PING is received. Received frame is |frame|.
  */
 int spdylay_session_on_ping_received(spdylay_session *session,
