@@ -30,6 +30,7 @@ void test_spdylay_frame_count_nv_space();
 void test_spdylay_frame_pack_ping();
 void test_spdylay_frame_pack_goaway();
 void test_spdylay_frame_pack_headers();
+void test_spdylay_frame_pack_settings();
 void test_spdylay_frame_nv_sort();
 
 #endif /* SPDYLAY_FRAME_TEST_H */

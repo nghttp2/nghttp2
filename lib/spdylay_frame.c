@@ -444,6 +444,23 @@ void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
 void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame)
 {}
 
+void spdylay_frame_settings_init(spdylay_settings *frame, uint8_t flags,
+                                 spdylay_settings_entry *iv, size_t niv)
+{
+  memset(frame, 0, sizeof(spdylay_settings));
+  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.type = SPDYLAY_SETTINGS;
+  frame->hd.flags = flags;
+  frame->hd.length = 4+niv*8;
+  frame->niv = niv;
+  frame->iv = iv;
+}
+
+void spdylay_frame_settings_free(spdylay_settings *frame)
+{
+  free(frame->iv);
+}
+
 void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
                              spdylay_data_provider *data_prd)
 {
@@ -657,4 +674,65 @@ int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   frame->status_code = spdylay_get_uint32(payload+4);
   return 0;
+}
+
+ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, spdylay_settings *frame)
+{
+  uint8_t *framebuf;
+  ssize_t framelen = SPDYLAY_FRAME_HEAD_LENGTH+frame->hd.length;
+  int i;
+  framebuf = malloc(framelen);
+  if(framebuf == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  memset(framebuf, 0, framelen);
+  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
+  spdylay_put_uint32be(&framebuf[8], frame->niv);
+  for(i = 0; i < frame->niv; ++i) {
+    int off = i*8;
+    spdylay_put_uint32be(&framebuf[12+off], frame->iv[i].settings_id << 8);
+    framebuf[15+off] = frame->iv[i].flags;
+    spdylay_put_uint32be(&framebuf[16+off], frame->iv[i].value);
+  }
+  *buf_ptr = framebuf;
+  return framelen;
+}
+
+int spdylay_frame_unpack_settings(spdylay_settings *frame,
+                                  const uint8_t *head, size_t headlen,
+                                  const uint8_t *payload, size_t payloadlen)
+{
+  int i;
+  if(payloadlen < 4) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
+  spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  frame->niv = spdylay_get_uint32(payload);
+  if(payloadlen != 4+frame->niv*8) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
+  frame->iv = malloc(frame->niv*sizeof(spdylay_settings_entry));
+  if(frame->iv == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  for(i = 0; i < frame->niv; ++i) {
+    int off = i*8;
+    frame->iv[i].settings_id = (spdylay_get_uint32(&payload[4+off]) >> 8);
+    frame->iv[i].flags = payload[7+off];
+    frame->iv[i].value = spdylay_get_uint32(&payload[8+off]);
+  }
+  return 0;
+}
+
+spdylay_settings_entry* spdylay_frame_iv_copy(const spdylay_settings_entry *iv,
+                                              size_t niv)
+{
+  spdylay_settings_entry *iv_copy;
+  size_t len = niv*sizeof(spdylay_settings_entry);
+  iv_copy = malloc(len);
+  if(iv_copy == NULL) {
+    return NULL;
+  }
+  memcpy(iv_copy, iv, len);
+  return iv_copy;
 }

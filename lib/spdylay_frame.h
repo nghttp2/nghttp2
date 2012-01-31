@@ -156,6 +156,22 @@ int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
                                     const uint8_t *payload, size_t payloadlen);
 
 /*
+ * Packs SETTINGS frame |frame| in wire format and store it in
+ * |*buf_ptr|. This function allocates enough memory to store given
+ * frame in |*buf_ptr|. This function returns the size of packed frame
+ * if it succeeds, or negative error code.
+ */
+ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, spdylay_settings *frame);
+
+/*
+ * Unpacks SETTINGS wire format into |frame|. This function returns 0
+ * if it succeeds, or negative error code.
+ */
+int spdylay_frame_unpack_settings(spdylay_settings *frame,
+                                  const uint8_t *head, size_t headlen,
+                                  const uint8_t *payload, size_t payloadlen);
+
+/*
  * Returns number of bytes to pack name/value pairs |nv|. This
  * function expects |nv| is sorted in ascending order of key.  This
  * function can handles duplicate keys and concatenation of thier
@@ -212,6 +228,15 @@ void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
 
 void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame);
 
+/*
+ * Initializes SETTINGS frame |frame| with given values. |frame| takes
+ * ownership of |iv|, so caller must not free it.
+ */
+void spdylay_frame_settings_init(spdylay_settings *frame, uint8_t flags,
+                                 spdylay_settings_entry *iv, size_t niv);
+
+void spdylay_frame_settings_free(spdylay_settings *frame);
+
 void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
                              spdylay_data_provider *data_prd);
 
@@ -238,5 +263,13 @@ char** spdylay_frame_nv_copy(const char **nv);
  * Sorts |nv| in the ascending order of name.
  */
 void spdylay_frame_nv_sort(char **nv);
+
+/*
+ * Makes copy of |iv| and return the copy. The |niv| is the number of
+ * entries in |iv|. This function returns the pointer to the copy if
+ * it succeeds, or NULL.
+ */
+spdylay_settings_entry* spdylay_frame_iv_copy(const spdylay_settings_entry *iv,
+                                              size_t niv);
 
 #endif /* SPDYLAY_FRAME_H */

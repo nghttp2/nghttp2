@@ -79,6 +79,27 @@ typedef enum {
 } spdylay_flag;
 
 typedef enum {
+  SPDYLAY_FLAG_SETTINGS_NONE = 0,
+  SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS = 1
+} spdylay_settings_flag;
+
+typedef enum {
+  SPDYLAY_ID_FLAG_SETTINGS_NONE = 0,
+  SPDYLAY_ID_FLAG_SETTINGS_PERSIST_VALUE = 1,
+  SPDYLAY_ID_FLAG_SETTINGS_PERSISTED = 2
+} spdylay_settings_id_flag;
+
+typedef enum {
+  SPDYLAY_SETTINGS_UPLOAD_BANDWIDTH = 1,
+  SPDYLAY_SETTINGS_DOWNLOAD_BANDWIDTH = 2,
+  SPDYLAY_SETTINGS_ROUND_TRIP_TIME = 3,
+  SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS = 4,
+  SPDYLAY_SETTINGS_CURRENT_CWND = 5,
+  SPDYLAY_SETTINGS_DOWNLOAD_RETRANS_RATE = 6,
+  SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE = 7
+} spdylay_settings_id;
+
+typedef enum {
   SPDYLAY_OK = 0,
   SPDYLAY_PROTOCOL_ERROR = 1,
   SPDYLAY_INVALID_STREAM = 2,
@@ -124,6 +145,19 @@ typedef struct {
 } spdylay_rst_stream;
 
 typedef struct {
+  int32_t settings_id;
+  uint8_t flags;
+  uint32_t value;
+} spdylay_settings_entry;
+
+typedef struct {
+  spdylay_ctrl_hd hd;
+  /* Number of entries in |iv| */
+  size_t niv;
+  spdylay_settings_entry *iv;
+} spdylay_settings;
+
+typedef struct {
   spdylay_ctrl_hd hd;
   uint32_t unique_id;
 } spdylay_ping;
@@ -158,6 +192,7 @@ typedef union {
   spdylay_syn_stream syn_stream;
   spdylay_syn_reply syn_reply;
   spdylay_rst_stream rst_stream;
+  spdylay_settings settings;
   spdylay_ping ping;
   spdylay_goaway goaway;
   spdylay_headers headers;

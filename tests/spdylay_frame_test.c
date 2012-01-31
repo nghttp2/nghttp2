@@ -125,6 +125,54 @@ void test_spdylay_frame_pack_headers()
   spdylay_zlib_deflate_free(&deflater);
 }
 
+void test_spdylay_frame_pack_settings()
+{
+  spdylay_frame frame, oframe;
+  uint8_t *buf;
+  ssize_t buflen;
+  int i;
+  spdylay_settings_entry iv[3];
+  iv[0].settings_id = SPDYLAY_SETTINGS_UPLOAD_BANDWIDTH;
+  iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_PERSIST_VALUE;
+  iv[0].value = 256;
+  iv[1].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  iv[1].value = 100;
+  iv[2].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[2].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  iv[2].value = 65536;
+
+  spdylay_frame_settings_init
+    (&frame.settings,
+     SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS,
+     spdylay_frame_iv_copy(iv, 3), 3);
+  buflen = spdylay_frame_pack_settings(&buf, &frame.settings);
+  CU_ASSERT(8+4+3*8 == buflen);
+
+  CU_ASSERT(0 == spdylay_frame_unpack_settings
+            (&oframe.settings,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             buflen-SPDYLAY_FRAME_HEAD_LENGTH));
+
+  CU_ASSERT(SPDYLAY_PROTO_VERSION == oframe.settings.hd.version);
+  CU_ASSERT(SPDYLAY_SETTINGS == oframe.settings.hd.type);
+  CU_ASSERT(SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS ==
+            oframe.settings.hd.flags);
+  CU_ASSERT(buflen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.settings.hd.length);
+
+  CU_ASSERT(3 == oframe.settings.niv);
+  for(i = 0; i < 3; ++i) {
+    CU_ASSERT(iv[i].settings_id == oframe.settings.iv[i].settings_id);
+    CU_ASSERT(iv[i].flags == oframe.settings.iv[i].flags);
+    CU_ASSERT(iv[i].value == oframe.settings.iv[i].value);
+  }
+
+  free(buf);
+  spdylay_frame_settings_free(&frame.settings);
+  spdylay_frame_settings_free(&oframe.settings);
+}
+
 void test_spdylay_frame_nv_sort()
 {
   char *nv[7];
