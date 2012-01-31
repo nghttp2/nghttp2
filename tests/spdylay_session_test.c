@@ -418,15 +418,11 @@ void test_spdylay_submit_response()
   };
   const char *nv[] = { NULL };
   int32_t stream_id = 2;
-  spdylay_data_source source;
-  spdylay_data_provider data_prd = {
-    source,
-    fixed_length_data_source_read_callback
-  };
+  spdylay_data_provider data_prd;
   my_user_data ud;
 
+  data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 64*1024;
-
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
   spdylay_session_open_stream(session, stream_id, SPDYLAY_FLAG_NONE, 3,
                               SPDYLAY_STREAM_OPENING);
@@ -445,15 +441,11 @@ void test_spdylay_submit_request_with_data()
     NULL
   };
   const char *nv[] = { NULL };
-  spdylay_data_source source;
-  spdylay_data_provider data_prd = {
-    source,
-    fixed_length_data_source_read_callback
-  };
+  spdylay_data_provider data_prd;
   my_user_data ud;
 
+  data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 64*1024;
-
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd));
   CU_ASSERT(0 == spdylay_session_send(session));
@@ -473,12 +465,10 @@ void test_spdylay_session_reply_fail()
   };
   const char *nv[] = { NULL };
   int32_t stream_id = 2;
-  spdylay_data_source source;
-  spdylay_data_provider data_prd = {
-    source,
-    fixed_length_data_source_read_callback
-  };
+  spdylay_data_provider data_prd;
   my_user_data ud;
+
+  data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 4*1024;
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_response(session, stream_id, nv, &data_prd));
@@ -631,7 +621,6 @@ void test_spdylay_session_on_goaway_received()
   };
   my_user_data user_data;
   spdylay_frame frame;
-  spdylay_outbound_item *top;
   int32_t stream_id = 1000000007;
   user_data.valid = 0;
   user_data.invalid = 0;
