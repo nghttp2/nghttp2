@@ -86,7 +86,7 @@ typedef enum {
   SPDYLAY_GOAWAY_RECV = 0x2
 } spdylay_goaway_flag;
 
-typedef struct spdylay_session {
+struct spdylay_session {
   uint8_t server;
   int32_t next_stream_id;
   int32_t last_recv_stream_id;
@@ -116,7 +116,7 @@ typedef struct spdylay_session {
 
   spdylay_session_callbacks callbacks;
   void *user_data;
-} spdylay_session;
+};
 
 /* TODO stream timeout etc */
 
