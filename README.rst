@@ -38,3 +38,16 @@ get a resource given in the command-line::
 Please note that OpenSSL with
 `NPN <http://technotes.googlecode.com/git/nextprotoneg.html>`_
 support is required in order to build and run ``spdycat``.
+
+==============
+Build from git
+==============
+
+Building from git is easy, but please be sure that at least autoconf 2.68 is
+used.
+
+autoreconf -i
+automake
+autoconf
+./configure
+make
