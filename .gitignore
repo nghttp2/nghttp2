@@ -1,6 +1,7 @@
 *~
 *.o
 *.lo
+*.la
 depcomp
 *.m4
 Makefile
@@ -17,6 +18,7 @@ config.sub
 configure
 install-sh
 .deps/
+.libs
 lib/includes/spdylay/spdylayver.h
 lib/libspdylay.pc
 ltmain.sh
