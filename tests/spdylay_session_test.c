@@ -49,7 +49,7 @@ typedef struct {
 typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
-  int valid, invalid, ping_recv;
+  int valid, invalid;
   size_t data_source_length;
 } my_user_data;
 
@@ -120,14 +120,6 @@ static void on_invalid_ctrl_recv_callback(spdylay_session *session,
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->invalid;
-}
-
-static void on_ping_recv_callback(spdylay_session *session,
-                                  const struct timespec *rtt,
-                                  void *user_data)
-{
-  my_user_data *ud = (my_user_data*)user_data;
-  ++ud->ping_recv;
 }
 
 static ssize_t fixed_length_data_source_read_callback
@@ -599,8 +591,7 @@ void test_spdylay_session_on_ping_received()
     NULL,
     NULL,
     on_ctrl_recv_callback,
-    on_invalid_ctrl_recv_callback,
-    on_ping_recv_callback
+    on_invalid_ctrl_recv_callback
   };
   my_user_data user_data;
   spdylay_frame frame;
@@ -608,7 +599,6 @@ void test_spdylay_session_on_ping_received()
   uint32_t unique_id;
   user_data.valid = 0;
   user_data.invalid = 0;
-  user_data.ping_recv = 0;
 
   spdylay_session_client_new(&session, &callbacks, &user_data);
   unique_id = 2;
@@ -616,7 +606,6 @@ void test_spdylay_session_on_ping_received()
 
   CU_ASSERT(0 == spdylay_session_on_ping_received(session, &frame));
   CU_ASSERT(1 == user_data.valid);
-  CU_ASSERT(0 == user_data.ping_recv);
   top = spdylay_session_get_ob_pq_top(session);
   CU_ASSERT(SPDYLAY_PING == top->frame_type);
   CU_ASSERT(unique_id == top->frame->ping.unique_id);
@@ -626,7 +615,6 @@ void test_spdylay_session_on_ping_received()
 
   CU_ASSERT(0 == spdylay_session_on_ping_received(session, &frame));
   CU_ASSERT(2 == user_data.valid);
-  CU_ASSERT(1 == user_data.ping_recv);
 
   spdylay_frame_ping_free(&frame.ping);
   spdylay_session_del(session);
