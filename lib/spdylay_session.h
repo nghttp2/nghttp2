@@ -29,8 +29,6 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include <time.h>
-
 #include <spdylay/spdylay.h>
 #include "spdylay_pq.h"
 #include "spdylay_map.h"
@@ -109,8 +107,6 @@ typedef struct spdylay_session {
 
   /* The last unique ID sent to the peer. */
   uint32_t last_ping_unique_id;
-  /* Time stamp when last ping is sent. */
-  struct timespec last_ping_time;
 
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
      composed by bitwise OR-ing spdylay_goaway_flag. */

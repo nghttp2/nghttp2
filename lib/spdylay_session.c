@@ -78,7 +78,6 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
   (*session_ptr)->next_unique_id = 1;
 
   (*session_ptr)->last_ping_unique_id = 0;
-  memset(&(*session_ptr)->last_ping_time, 0, sizeof(struct timespec));
 
   (*session_ptr)->goaway_flags = SPDYLAY_GOAWAY_NONE;
   (*session_ptr)->last_good_stream_id = 0;
@@ -537,8 +536,6 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     /* We record the time now and show application code RTT when
        reply PING is received. */
     session->last_ping_unique_id = frame->ping.unique_id;
-    /* TODO If clock_gettime() fails, what should we do? */
-    clock_gettime(CLOCK_MONOTONIC_RAW, &session->last_ping_time);
     break;
   case SPDYLAY_GOAWAY:
     session->goaway_flags |= SPDYLAY_GOAWAY_SEND;
@@ -868,21 +865,9 @@ int spdylay_session_on_ping_received(spdylay_session *session,
   if(frame->ping.unique_id != 0) {
     if(session->last_ping_unique_id == frame->ping.unique_id) {
       /* This is ping reply from peer */
-      struct timespec rtt;
-      clock_gettime(CLOCK_MONOTONIC_RAW, &rtt);
-      rtt.tv_nsec -= session->last_ping_time.tv_nsec;
-      if(rtt.tv_nsec < 0) {
-        rtt.tv_nsec += 1000000000;
-        --rtt.tv_sec;
-      }
-      rtt.tv_sec -= session->last_ping_time.tv_sec;
       /* Assign 0 to last_ping_unique_id so that we can ignore same
          ID. */
       session->last_ping_unique_id = 0;
-      if(session->callbacks.on_ping_recv_callback) {
-        session->callbacks.on_ping_recv_callback(session, &rtt,
-                                                 session->user_data);
-      }
       spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_PING, frame);
     } else if((session->server && frame->ping.unique_id % 2 == 1) ||
               (!session->server && frame->ping.unique_id % 2 == 0)) {

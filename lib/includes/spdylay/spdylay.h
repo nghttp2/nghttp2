@@ -208,12 +208,6 @@ typedef void (*spdylay_on_invalid_ctrl_recv_callback)
  void *user_data);
 
 /*
- * Callback function invoked when PING reply is received from peer.
- */
-typedef void (*spdylay_on_ping_recv_callback)
-(spdylay_session *session, const struct timespec *rtt, void *user_data);
-
-/*
  * Callback function invoked when data chunk of DATA frame is
  * received. |stream_id| is the stream ID of this DATA frame belongs
  * to. |flags| is the flags of DATA frame which this data chunk is
@@ -271,7 +265,6 @@ typedef struct {
   spdylay_recv_callback recv_callback;
   spdylay_on_ctrl_recv_callback on_ctrl_recv_callback;
   spdylay_on_invalid_ctrl_recv_callback on_invalid_ctrl_recv_callback;
-  spdylay_on_ping_recv_callback on_ping_recv_callback;
   spdylay_on_data_chunk_recv_callback on_data_chunk_recv_callback;
   spdylay_on_data_recv_callback on_data_recv_callback;
   spdylay_before_ctrl_send_callback before_ctrl_send_callback;
