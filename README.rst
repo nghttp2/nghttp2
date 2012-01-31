@@ -34,3 +34,7 @@ get a resource given in the command-line::
     [  0.084] recv DATA frame (stream_id=1, flags=0, length=4096)
     [  0.091] recv DATA frame (stream_id=1, flags=1, length=3114)
     [  0.091] send GOAWAY frame (last_good_stream_id=0)
+
+Please note that OpenSSL with
+`NPN <http://technotes.googlecode.com/git/nextprotoneg.html>`
+support is required in order to build and run ``spdycat``.
