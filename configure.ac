@@ -36,6 +36,7 @@ AC_CONFIG_HEADERS([config.h])
 
 dnl Checks for programs
 AC_PROG_CC
+AC_PROG_CXX
 AM_PROG_LIBTOOL
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -86,6 +87,7 @@ AC_CONFIG_FILES([
   lib/includes/Makefile
   lib/includes/spdylay/spdylayver.h
   tests/Makefile
+  examples/Makefile
 ])
 AC_OUTPUT
 
