@@ -44,10 +44,10 @@ Build from git
 ==============
 
 Building from git is easy, but please be sure that at least autoconf 2.68 is
-used.
+used.::
 
-autoreconf -i
-automake
-autoconf
-./configure
-make
+    $ autoreconf -i
+    $ automake
+    $ autoconf
+    $ ./configure
+    $ make
