@@ -49,7 +49,8 @@ public:
   bool want_read();
   bool want_write();
   int fd() const;
-  int submit_request(const std::string& path, uint8_t pri);
+  int submit_request(const std::string& hostport, const std::string& path,
+                     uint8_t pri);
   bool would_block(int r);
 private:
   int fd_;

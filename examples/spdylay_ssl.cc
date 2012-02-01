@@ -104,9 +104,11 @@ int Spdylay::fd() const
   return fd_;
 }
 
-int Spdylay::submit_request(const std::string& path, uint8_t pri)
+int Spdylay::submit_request(const std::string& hostport,
+                            const std::string& path, uint8_t pri)
 {
   const char *nv[] = {
+    "host", hostport.c_str(),
     "method", "GET",
     "scheme", "https",
     "url", path.c_str(),

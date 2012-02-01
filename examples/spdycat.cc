@@ -46,6 +46,7 @@
 #include <fstream>
 #include <map>
 #include <vector>
+#include <sstream>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -163,10 +164,14 @@ int communicate(const std::string& host, uint16_t port,
   nfds_t npollfds = 1;
   pollfd pollfds[1];
 
+  std::stringstream ss;
+  ss << host << ":" << port;
+  std::string hostport = ss.str();
+
   for(int i = 0, n = reqvec.size(); i < n; ++i) {
     uri::UriStruct& us = reqvec[i].us;
     std::string path = us.dir+us.file+us.query;
-    int r = sc.submit_request(path, 3);
+    int r = sc.submit_request(hostport, path, 3);
     assert(r == 0);
     path2req[path] = &reqvec[i];
   }
