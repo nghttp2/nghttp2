@@ -22,8 +22,8 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 AM_CFLAGS = -Wall
-AM_CPPFLAGS = -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes `pkg-config --cflags libssl`
-AM_LDFLAGS = `pkg-config --libs libssl`
+AM_CPPFLAGS = -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes `pkg-config --cflags libssl libcrypto`
+AM_LDFLAGS = `pkg-config --libs libssl libcrypto`
 LDADD = $(top_builddir)/lib/libspdylay.la
 
 bin_PROGRAMS = spdycat
