@@ -218,11 +218,19 @@ const char *ctrl_names[] = {
 };
 } // namespace
 
+namespace {
+void print_frame_attr_indent()
+{
+  printf("          ");
+}
+} // namespace
+
 void print_nv(char **nv)
 {
   int i;
   for(i = 0; nv[i]; i += 2) {
-    printf("  %s: %s\n", nv[i], nv[i+1]);
+    print_frame_attr_indent();
+    printf("%s: %s\n", nv[i], nv[i+1]);
   }
 }
 
@@ -233,49 +241,57 @@ void print_timer()
   printf("[%3ld.%03ld]", tv.tv_sec, tv.tv_usec/1000);
 }
 
+namespace {
+void print_ctrl_hd(const spdylay_ctrl_hd& hd)
+{
+  printf("<version=%u, flags=%u, length=%d>\n",
+         hd.version, hd.flags, hd.length);
+}
+} // namespace
+
 void print_frame(spdylay_frame_type type, spdylay_frame *frame)
 {
   printf("%s frame ", ctrl_names[type-1]);
+  print_ctrl_hd(frame->syn_stream.hd);
   switch(type) {
   case SPDYLAY_SYN_STREAM:
-    printf("(stream_id=%d, assoc_stream_id=%d, flags=%u, length=%d, pri=%u)\n",
+    print_frame_attr_indent();
+    printf("(stream_id=%d, assoc_stream_id=%d, pri=%u)\n",
            frame->syn_stream.stream_id, frame->syn_stream.assoc_stream_id,
-           frame->syn_stream.hd.flags,
-           frame->syn_stream.hd.length, frame->syn_stream.pri);
+           frame->syn_stream.pri);
     print_nv(frame->syn_stream.nv);
     break;
   case SPDYLAY_SYN_REPLY:
-    printf("(stream_id=%d, flags=%u, length=%d)\n",
-           frame->syn_reply.stream_id, frame->syn_reply.hd.flags,
-           frame->syn_reply.hd.length);
+    print_frame_attr_indent();
+    printf("(stream_id=%d)\n", frame->syn_reply.stream_id);
     print_nv(frame->syn_reply.nv);
     break;
   case SPDYLAY_RST_STREAM:
-    printf("(stream_id=%d, status_code=%u, flags=%u, length=%d)\n",
-           frame->rst_stream.stream_id, frame->rst_stream.status_code,
-           frame->rst_stream.hd.flags,
-           frame->rst_stream.hd.length);
+    print_frame_attr_indent();
+    printf("(stream_id=%d, status_code=%u)\n",
+           frame->rst_stream.stream_id, frame->rst_stream.status_code);
     break;
   case SPDYLAY_SETTINGS:
-    printf("(flags=%u, length=%d, niv=%lu)\n",
-           frame->settings.hd.flags, frame->settings.hd.length,
-           static_cast<unsigned long>(frame->settings.niv));
+    print_frame_attr_indent();
+    printf("(niv=%lu)\n", static_cast<unsigned long>(frame->settings.niv));
     for(size_t i = 0; i < frame->settings.niv; ++i) {
-      printf("  [%d(%u):%u]\n",
+      print_frame_attr_indent();
+      printf("[%d(%u):%u]\n",
              frame->settings.iv[i].settings_id,
              frame->settings.iv[i].flags, frame->settings.iv[i].value);
     }
     break;
   case SPDYLAY_PING:
+    print_frame_attr_indent();
     printf("(unique_id=%d)\n", frame->ping.unique_id);
     break;
   case SPDYLAY_GOAWAY:
+    print_frame_attr_indent();
     printf("(last_good_stream_id=%d)\n", frame->goaway.last_good_stream_id);
     break;
   case SPDYLAY_HEADERS:
-    printf("(stream_id=%d, flags=%u, length=%d)\n",
-           frame->headers.stream_id, frame->headers.hd.flags,
-           frame->headers.hd.length);
+    print_frame_attr_indent();
+    printf("(stream_id=%d)\n", frame->headers.stream_id);
     print_nv(frame->headers.nv);
     break;
   default:
@@ -339,7 +355,7 @@ int select_next_proto_cb(SSL* ssl,
   }
   for(unsigned int i = 0; i < inlen; i += in[i]+1) {
     if(ssl_debug) {
-      std::cout << "  * ";
+      std::cout << "          * ";
       std::cout.write(reinterpret_cast<const char*>(&in[i+1]), in[i]);
       std::cout << std::endl;
     }
