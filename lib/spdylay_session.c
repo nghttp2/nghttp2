@@ -65,7 +65,7 @@ int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
   }
 }
 
-int spdylay_session_client_new(spdylay_session **session_ptr,
+static int spdylay_session_new(spdylay_session **session_ptr,
                                const spdylay_session_callbacks *callbacks,
                                void *user_data)
 {
@@ -76,10 +76,9 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
   }
   memset(*session_ptr, 0, sizeof(spdylay_session));
 
-  /* IDs for use in client */
-  (*session_ptr)->next_stream_id = 1;
-  (*session_ptr)->last_recv_stream_id = 0;
-  (*session_ptr)->next_unique_id = 1;
+  /* next_stream_id, last_recv_stream_id and next_unique_id are
+     initialized in either spdylay_session_client_new or
+     spdylay_session_server_new */
 
   (*session_ptr)->last_ping_unique_id = 0;
 
@@ -122,6 +121,37 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
   
   (*session_ptr)->iframe.state = SPDYLAY_RECV_HEAD;
   return 0;
+}
+
+int spdylay_session_client_new(spdylay_session **session_ptr,
+                               const spdylay_session_callbacks *callbacks,
+                               void *user_data)
+{
+  int r;
+  r = spdylay_session_new(session_ptr, callbacks, user_data);
+  if(r == 0) {
+    /* IDs for use in client */
+    (*session_ptr)->next_stream_id = 1;
+    (*session_ptr)->last_recv_stream_id = 0;
+    (*session_ptr)->next_unique_id = 1;
+  }
+  return r;
+}
+
+int spdylay_session_server_new(spdylay_session **session_ptr,
+                               const spdylay_session_callbacks *callbacks,
+                               void *user_data)
+{
+  int r;
+  r = spdylay_session_new(session_ptr, callbacks, user_data);
+  if(r == 0) {
+    (*session_ptr)->server = 1;
+    /* IDs for use in client */
+    (*session_ptr)->next_stream_id = 2;
+    (*session_ptr)->last_recv_stream_id = 0;
+    (*session_ptr)->next_unique_id = 2;
+  }
+  return r;
 }
 
 static void spdylay_free_streams(key_type key, void *val)
@@ -769,12 +799,30 @@ static int spdylay_session_is_new_peer_stream_id(spdylay_session *session,
 static int spdylay_session_validate_syn_stream(spdylay_session *session,
                                                spdylay_syn_stream *frame)
 {
-  /* TODO Check assoc_stream_id */
   if(!spdylay_session_is_new_peer_stream_id(session, frame->stream_id)) {
     return SPDYLAY_PROTOCOL_ERROR;
   }
   if(frame->hd.version != SPDYLAY_PROTO_VERSION) {
     return SPDYLAY_UNSUPPORTED_VERSION;
+  }
+  if(session->server) {
+    if(frame->assoc_stream_id != 0) {
+      return SPDYLAY_PROTOCOL_ERROR;
+    }
+  } else {
+    if(frame->assoc_stream_id == 0) {
+      /* spdy/2 spec: When a client receives a SYN_STREAM from the
+         server with an Associated-To-Stream-ID of 0, it must reply with
+         a RST_STREAM with error code INVALID_STREAM. */
+      return SPDYLAY_INVALID_STREAM;
+    }
+    if((frame->hd.flags & SPDYLAY_FLAG_UNIDIRECTIONAL) == 0 ||
+       frame->assoc_stream_id % 2 == 0 ||
+       spdylay_session_get_stream(session, frame->assoc_stream_id) == NULL) {
+      /* It seems spdy/2 spec does not say which status code should be
+         returned in these cases. */
+      return SPDYLAY_PROTOCOL_ERROR;
+    }
   }
   return 0;
 }

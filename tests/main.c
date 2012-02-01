@@ -73,6 +73,8 @@ int main()
                    test_spdylay_session_add_frame) ||
       !CU_add_test(pSuite, "session_on_syn_stream_received",
                    test_spdylay_session_on_syn_stream_received) ||
+      !CU_add_test(pSuite, "session_on_syn_stream_received_with_push",
+                   test_spdylay_session_on_syn_stream_received_with_push) ||
       !CU_add_test(pSuite, "session_on_syn_reply_received",
                    test_spdylay_session_on_syn_reply_received) ||
       !CU_add_test(pSuite, "session_send_syn_stream",

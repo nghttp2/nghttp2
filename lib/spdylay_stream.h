@@ -77,6 +77,9 @@ typedef struct {
   uint8_t pri;
   /* Bitwise OR of zero or more spdylay_shut_flag values */
   uint8_t shut_flags;
+  /* TODO spdylay_stream should remember pushed stream ID, so that if
+     RST_STREAM with CANCEL (mandatory?) is sent, we can close all of
+     them. */
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,

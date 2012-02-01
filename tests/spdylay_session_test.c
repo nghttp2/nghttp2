@@ -279,33 +279,92 @@ void test_spdylay_session_recv_invalid_stream_id()
 void test_spdylay_session_on_syn_stream_received()
 {
   spdylay_session *session;
-  spdylay_session_callbacks callbacks = {
-    NULL,
-    NULL,
-    on_ctrl_recv_callback,
-    on_invalid_ctrl_recv_callback
-  };
+  spdylay_session_callbacks callbacks;
   my_user_data user_data;
   const char *nv[] = { NULL };
   spdylay_frame frame;
   spdylay_stream *stream;
+  int32_t stream_id = 1;
+  uint8_t pri = 3;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
+  callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
+  user_data.valid = 0;
+  user_data.invalid = 0;
+
+  spdylay_session_server_new(&session, &callbacks, &user_data);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE,
+                                stream_id, 0, pri, dup_nv(nv));
+
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(1 == user_data.valid);
+  stream = spdylay_session_get_stream(session, stream_id);
+  CU_ASSERT(SPDYLAY_STREAM_OPENING == stream->state);
+  CU_ASSERT(pri == stream->pri);
+
+  /* Same stream ID twice leads stream closing */
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(1 == user_data.invalid);
+  CU_ASSERT(SPDYLAY_STREAM_CLOSING ==
+            spdylay_session_get_stream(session, stream_id)->state);
+
+  /* assoc_stream_id != 0 from client is invalid. */
+  frame.syn_stream.assoc_stream_id = 1;
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(2 == user_data.invalid);
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_on_syn_stream_received_with_push()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  my_user_data user_data;
+  const char *nv[] = { NULL };
+  spdylay_frame frame;
+  spdylay_stream *stream;
+  int32_t stream_id = 2;
+  int32_t assoc_stream_id = 1;
+  uint8_t pri = 3;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
+  callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
   user_data.valid = 0;
   user_data.invalid = 0;
 
   spdylay_session_client_new(&session, &callbacks, &user_data);
-  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE,
-                                2, 0, 3, dup_nv(nv));
+  spdylay_session_open_stream(session, assoc_stream_id, SPDYLAY_FLAG_NONE,
+                              pri, SPDYLAY_STREAM_OPENED);
+  spdylay_frame_syn_stream_init(&frame.syn_stream,
+                                SPDYLAY_FLAG_UNIDIRECTIONAL,
+                                stream_id, assoc_stream_id, pri, dup_nv(nv));
 
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
   CU_ASSERT(1 == user_data.valid);
-  stream = (spdylay_stream*)spdylay_map_find(&session->streams, 2);
+  stream = spdylay_session_get_stream(session, stream_id);
   CU_ASSERT(SPDYLAY_STREAM_OPENING == stream->state);
-  CU_ASSERT(3 == stream->pri);
 
+  /* assoc_stream_id == 0 is invalid */
+  frame.syn_stream.stream_id = 4;
+  frame.syn_stream.assoc_stream_id = 0;
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid);
-  CU_ASSERT(SPDYLAY_STREAM_CLOSING ==
-            ((spdylay_stream*)spdylay_map_find(&session->streams, 2))->state);
+
+  /* Push without SPDYLAY_FLAG_UNIDIRECTIONAL is invalid */
+  frame.syn_stream.stream_id = 6;
+  frame.syn_stream.assoc_stream_id = 1;
+  frame.syn_stream.hd.flags = SPDYLAY_FLAG_FIN;
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(2 == user_data.invalid);
+
+  /* Push to non-existent stream is invalid */
+  frame.syn_stream.stream_id = 8;
+  frame.syn_stream.assoc_stream_id = 3;
+  frame.syn_stream.hd.flags = SPDYLAY_FLAG_UNIDIRECTIONAL;
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(3 == user_data.invalid);
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
@@ -473,36 +532,6 @@ void test_spdylay_session_reply_fail()
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_response(session, stream_id, nv, &data_prd));
   CU_ASSERT(0 == spdylay_session_send(session));
-  spdylay_session_del(session);
-}
-
-void test_spdylay_session_on_syn_stream_received_with_unidir_fin()
-{
-  spdylay_session *session;
-  spdylay_session_callbacks callbacks = {
-    NULL,
-    NULL,
-    on_ctrl_recv_callback,
-    NULL
-  };
-  my_user_data user_data;
-  const char *nv[] = { NULL };
-  spdylay_frame frame;
-  spdylay_stream *stream;
-  user_data.valid = 0;
-  user_data.invalid = 0;
-
-  spdylay_session_client_new(&session, &callbacks, &user_data);
-  spdylay_frame_syn_stream_init(&frame.syn_stream,
-                                SPDYLAY_FLAG_FIN | SPDYLAY_FLAG_UNIDIRECTIONAL,
-                                2, 0, 3, dup_nv(nv));
-
-  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
-  CU_ASSERT(1 == user_data.valid);
-  stream = (spdylay_stream*)spdylay_map_find(&session->streams, 2);
-  CU_ASSERT(NULL == stream);
-
-  spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
 }
 

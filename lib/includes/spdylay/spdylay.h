@@ -317,6 +317,14 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
                                void *user_data);
 
 /*
+ * Initializes |*session_ptr| for server use. This function returns 0
+ * if it succeeds, or negative error code.
+ */
+int spdylay_session_server_new(spdylay_session **session_ptr,
+                               const spdylay_session_callbacks *callbacks,
+                               void *user_data);
+
+/*
  * Frees any resources allocated for |session|.
  */
 void spdylay_session_del(spdylay_session *session);
