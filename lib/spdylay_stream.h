@@ -77,9 +77,14 @@ typedef struct {
   uint8_t pri;
   /* Bitwise OR of zero or more spdylay_shut_flag values */
   uint8_t shut_flags;
-  /* TODO spdylay_stream should remember pushed stream ID, so that if
-     RST_STREAM with CANCEL (mandatory?) is sent, we can close all of
-     them. */
+  /* The array of server-pushed stream IDs which associate them to
+     this stream. */
+  int32_t *pushed_streams;
+  /* The number of stored pushed stream ID in |pushed_streams| */
+  size_t pushed_streams_length;
+  /* The maximum number of stream ID the |pushed_streams| can
+     store. */
+  size_t pushed_streams_capacity;
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
@@ -93,5 +98,12 @@ void spdylay_stream_free(spdylay_stream *stream);
  * |flag| is bitwise OR of one or more of spdylay_shut_flag.
  */
 void spdylay_stream_shutdown(spdylay_stream *stream, spdylay_shut_flag flag);
+
+/*
+ * Add server-pushed |stream_id| to this stream. This happens when
+ * server-pushed stream is associated to this stream. This function
+ * returns 0 if it succeeds, or negative error code.
+ */
+int spdylay_stream_add_pushed_stream(spdylay_stream *stream, int32_t stream_id);
 
 #endif /* SPDYLAY_STREAM */

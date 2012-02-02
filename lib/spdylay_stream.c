@@ -33,12 +33,34 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
   stream->pri = pri;
   stream->state = initial_state;
   stream->shut_flags = SPDYLAY_SHUT_NONE;
+  stream->pushed_streams = NULL;
+  stream->pushed_streams_length = 0;
+  stream->pushed_streams_capacity = 0;
 }
 
 void spdylay_stream_free(spdylay_stream *stream)
-{}
+{
+  free(stream->pushed_streams);
+}
 
 void spdylay_stream_shutdown(spdylay_stream *stream, spdylay_shut_flag flag)
 {
   stream->shut_flags |= flag;
+}
+
+int spdylay_stream_add_pushed_stream(spdylay_stream *stream, int32_t stream_id)
+{
+  if(stream->pushed_streams_capacity == stream->pushed_streams_length) {
+    int32_t *streams;
+    size_t capacity = stream->pushed_streams_capacity == 0 ?
+      5 : stream->pushed_streams_capacity*2;
+    streams = realloc(stream->pushed_streams, capacity*sizeof(uint32_t));
+    if(streams == NULL) {
+      return SPDYLAY_ERR_NOMEM;
+    }
+    stream->pushed_streams = streams;
+    stream->pushed_streams_capacity = capacity;
+  }
+  stream->pushed_streams[stream->pushed_streams_length++] = stream_id;
+  return 0;
 }

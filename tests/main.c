@@ -33,6 +33,7 @@
 #include "spdylay_zlib_test.h"
 #include "spdylay_session_test.h"
 #include "spdylay_frame_test.h"
+#include "spdylay_stream_test.h"
 
 int init_suite1(void)
 {
@@ -104,7 +105,9 @@ int main()
                    test_spdylay_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_settings",
                    test_spdylay_frame_pack_settings) ||
-      !CU_add_test(pSuite, "frame_nv_sort", test_spdylay_frame_nv_sort)) {
+      !CU_add_test(pSuite, "frame_nv_sort", test_spdylay_frame_nv_sort) ||
+      !CU_add_test(pSuite, "stream_add_pushed_stream",
+                   test_spdylay_stream_add_pushed_stream)) {
      CU_cleanup_registry();
      return CU_get_error();
    }
