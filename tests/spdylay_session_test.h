@@ -40,5 +40,8 @@ void test_spdylay_session_on_headers_received();
 void test_spdylay_session_on_ping_received();
 void test_spdylay_session_on_goaway_received();
 void test_spdylay_session_on_data_received();
+void test_spdylay_session_on_rst_received();
+void test_spdylay_session_is_my_stream_id();
+void test_spdylay_session_send_rst_stream();
 
 #endif // SPDYLAY_SESSION_TEST_H

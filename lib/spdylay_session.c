@@ -32,19 +32,15 @@
 
 #include "spdylay_helper.h"
 
-/*
- * Returns non-zero value if |stream_id| is initiated by local host.
- * Otherwrise returns 0.
- */
-static int spdylay_session_is_my_stream_id(spdylay_session *session,
-                                           int32_t stream_id)
+int spdylay_session_is_my_stream_id(spdylay_session *session,
+                                    int32_t stream_id)
 {
   int r;
   if(stream_id == 0) {
     return 0;
   }
   r = stream_id % 2;
-  return (session->server && r == 0) || r == 1;
+  return (session->server && r == 0) || (!session->server && r == 1);
 }
 
 spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
@@ -359,6 +355,21 @@ int spdylay_session_close_stream_if_shut_rdwr(spdylay_session *session,
   }
 }
 
+void spdylay_session_close_pushed_streams(spdylay_session *session,
+                                          int32_t stream_id,
+                                          spdylay_status_code status_code)
+{
+  spdylay_stream *stream;
+  stream = spdylay_session_get_stream(session, stream_id);
+  if(stream) {
+    int i;
+    for(i = 0; i < stream->pushed_streams_length; ++i) {
+      spdylay_session_close_stream(session, stream->pushed_streams[i],
+                                   status_code);
+    }
+  }
+}
+
 /*
  * Returns non-zero value if local peer can send SYN_REPLY with stream
  * ID |stream_id| at the moment, or 0.
@@ -398,6 +409,7 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                    uint8_t **framebuf_ptr)
 {
   /* TODO Get or validate stream ID here */
+  /* TODO Validate assoc_stream_id here */
   uint8_t *framebuf;
   ssize_t framebuflen;
   switch(item->frame_type) {
@@ -582,6 +594,12 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     break;
   }
   case SPDYLAY_RST_STREAM:
+    if(!session->server &&
+       spdylay_session_is_my_stream_id(session, frame->rst_stream.stream_id) &&
+       frame->rst_stream.status_code == SPDYLAY_CANCEL) {
+      spdylay_session_close_pushed_streams(session, frame->rst_stream.stream_id,
+                                           frame->rst_stream.status_code);
+    }
     spdylay_session_close_stream(session, frame->rst_stream.stream_id,
                                  frame->rst_stream.status_code);
     break;
@@ -931,6 +949,12 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
 int spdylay_session_on_rst_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
+  if(session->server &&
+     !spdylay_session_is_my_stream_id(session, frame->rst_stream.stream_id) &&
+     frame->rst_stream.status_code == SPDYLAY_CANCEL) {
+    spdylay_session_close_pushed_streams(session, frame->rst_stream.stream_id,
+                                         frame->rst_stream.status_code);
+  }
   spdylay_session_close_stream(session, frame->rst_stream.stream_id,
                                frame->rst_stream.status_code);
   return 0;

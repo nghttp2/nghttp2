@@ -126,6 +126,13 @@ struct spdylay_session {
 /* TODO stream timeout etc */
 
 /*
+ * Returns non-zero value if |stream_id| is initiated by local host.
+ * Otherwrise returns 0.
+ */
+int spdylay_session_is_my_stream_id(spdylay_session *session,
+                                    int32_t stream_id);
+
+/*
  * Adds frame |frame| of type |frame_type| to tx queue in |session|.
  * |aux_data| is a pointer to arbitrary data. Its interpretation is
  * defined per |frame_type|. When this function succeeds, it takes
@@ -168,6 +175,14 @@ spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
  */
 int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id,
                                  spdylay_status_code status_code);
+
+/*
+ * Closes all pushed streams which associate them to stream
+ * |stream_id| with the status code |status_code|.
+ */
+void spdylay_session_close_pushed_streams(spdylay_session *session,
+                                          int32_t stream_id,
+                                          spdylay_status_code status_code);
 
 /*
  * If further receptions and transmissions over this stream are
