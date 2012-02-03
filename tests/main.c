@@ -34,6 +34,7 @@
 #include "spdylay_session_test.h"
 #include "spdylay_frame_test.h"
 #include "spdylay_stream_test.h"
+#include "spdylay_npn_test.h"
 
 int init_suite1(void)
 {
@@ -46,7 +47,7 @@ int clean_suite1(void)
 }
 
 
-int main()
+int main(int argc, char* argv[])
 {
    CU_pSuite pSuite = NULL;
 
@@ -67,6 +68,7 @@ int main()
       !CU_add_test(pSuite, "queue", test_spdylay_queue) ||
       !CU_add_test(pSuite, "buffer", test_spdylay_buffer) ||
       !CU_add_test(pSuite, "zlib", test_spdylay_zlib) ||
+      !CU_add_test(pSuite, "npn", test_spdylay_npn) ||
       !CU_add_test(pSuite, "session_recv", test_spdylay_session_recv) ||
       !CU_add_test(pSuite, "session_recv_invalid_stream_id",
                    test_spdylay_session_recv_invalid_stream_id) ||

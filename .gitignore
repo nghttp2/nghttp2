@@ -25,3 +25,5 @@ ltmain.sh
 stamp-h1
 .deps/
 INSTALL
+.DS_STORE
+tests/main
