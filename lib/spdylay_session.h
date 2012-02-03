@@ -123,6 +123,11 @@ struct spdylay_session {
   void *user_data;
 };
 
+typedef struct {
+  spdylay_data_provider *data_prd;
+  void *stream_user_data;
+} spdylay_syn_stream_aux_data;
+
 /* TODO stream timeout etc */
 
 /*
@@ -164,7 +169,8 @@ int spdylay_session_add_goaway(spdylay_session *session,
 spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
                                             int32_t stream_id,
                                             uint8_t flags, uint8_t pri,
-                                            spdylay_stream_state initial_state);
+                                            spdylay_stream_state initial_state,
+                                            void *stream_user_data);
 
 /*
  * Closes stream whose stream ID is |stream_id|. The reason of closure

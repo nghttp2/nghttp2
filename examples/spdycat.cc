@@ -70,7 +70,6 @@ struct Request {
 };
 
 std::map<int32_t, Request*> stream2req;
-std::map<std::string, Request*> path2req;
 size_t numreq, complete;
 
 Config config;
@@ -86,34 +85,31 @@ void on_data_chunk_recv_callback
   }
 }
 
-void check_stream_id(spdylay_frame_type type, spdylay_frame *frame)
+void check_stream_id(spdylay_session *session,
+                     spdylay_frame_type type, spdylay_frame *frame)
 {
-  if(type == SPDYLAY_SYN_STREAM) {
-    for(int i = 0; frame->syn_stream.nv[i]; i += 2) {
-      if(strcmp("url", frame->syn_stream.nv[i]) == 0) {
-        std::map<std::string, Request*>::iterator itr = path2req.find
-          (frame->syn_stream.nv[i+1]);
-        if(itr != path2req.end()) {
-          stream2req[frame->syn_stream.stream_id] = (*itr).second;
-        }
-        break;
-      }
-    }
-  }
+  int32_t stream_id = frame->syn_stream.stream_id;
+  Request *req = (Request*)spdylay_session_get_stream_user_data(session,
+                                                                stream_id);
+  stream2req[stream_id] = req;
 }
 
 void on_ctrl_send_callback2
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
-  check_stream_id(type, frame);
+  if(type == SPDYLAY_SYN_STREAM) {
+    check_stream_id(session, type, frame);
+  }
 }
 
 void on_ctrl_send_callback3
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
-  check_stream_id(type, frame);
+  if(type == SPDYLAY_SYN_STREAM) {
+    check_stream_id(session, type, frame);
+  }
   on_ctrl_send_callback(session, type, frame, user_data);
 }
 
@@ -136,7 +132,6 @@ int communicate(const std::string& host, uint16_t port,
 {
   numreq = reqvec.size();
   complete = 0;
-  path2req.clear();
   stream2req.clear();
   int fd = connect_to(host, port);
   if(fd == -1) {
@@ -171,9 +166,8 @@ int communicate(const std::string& host, uint16_t port,
   for(int i = 0, n = reqvec.size(); i < n; ++i) {
     uri::UriStruct& us = reqvec[i].us;
     std::string path = us.dir+us.file+us.query;
-    int r = sc.submit_request(hostport, path, 3);
+    int r = sc.submit_request(hostport, path, 3, &reqvec[i]);
     assert(r == 0);
-    path2req[path] = &reqvec[i];
   }
   pollfds[0].fd = fd;
   ctl_poll(pollfds, &sc);

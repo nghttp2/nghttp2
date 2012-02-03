@@ -50,7 +50,7 @@ public:
   bool want_write();
   int fd() const;
   int submit_request(const std::string& hostport, const std::string& path,
-                     uint8_t pri);
+                     uint8_t pri, void *stream_user_data);
   bool would_block(int r);
 private:
   int fd_;

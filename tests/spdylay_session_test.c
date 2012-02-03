@@ -200,10 +200,13 @@ void test_spdylay_session_add_frame()
     NULL
   };
   spdylay_frame *frame;
+  spdylay_syn_stream_aux_data *aux_data =
+    malloc(sizeof(spdylay_syn_stream_aux_data));
   const uint8_t hd_ans1[] = {
     0x80, 0x02, 0x00, 0x01
   };
   uint32_t temp32;
+  memset(aux_data, 0, sizeof(spdylay_syn_stream_aux_data));
   acc.length = 0;
   user_data.acc = &acc;
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &user_data));
@@ -213,7 +216,7 @@ void test_spdylay_session_add_frame()
                                 dup_nv(nv));
 
   CU_ASSERT(0 == spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame,
-                                           NULL));
+                                           aux_data));
   CU_ASSERT(0 == spdylay_pq_empty(&session->ob_pq));
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(memcmp(hd_ans1, acc.buf, 4) == 0);
@@ -336,7 +339,7 @@ void test_spdylay_session_on_syn_stream_received_with_push()
 
   spdylay_session_client_new(&session, &callbacks, &user_data);
   spdylay_session_open_stream(session, assoc_stream_id, SPDYLAY_FLAG_NONE,
-                              pri, SPDYLAY_STREAM_OPENED);
+                              pri, SPDYLAY_STREAM_OPENED, NULL);
   spdylay_frame_syn_stream_init(&frame.syn_stream,
                                 SPDYLAY_FLAG_UNIDIRECTIONAL,
                                 stream_id, assoc_stream_id, pri, dup_nv(nv));
@@ -388,7 +391,7 @@ void test_spdylay_session_on_syn_reply_received()
 
   spdylay_session_client_new(&session, &callbacks, &user_data);
   spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 0,
-                              SPDYLAY_STREAM_OPENING);
+                              SPDYLAY_STREAM_OPENING, NULL);
   spdylay_frame_syn_reply_init(&frame.syn_reply, SPDYLAY_FLAG_NONE, 1,
                                dup_nv(nv));
 
@@ -405,7 +408,7 @@ void test_spdylay_session_on_syn_reply_received()
   /* Check the situation when SYN_REPLY is received after peer sends
      FIN */
   stream = spdylay_session_open_stream(session, 3, SPDYLAY_FLAG_NONE, 0,
-                                       SPDYLAY_STREAM_OPENED);
+                                       SPDYLAY_STREAM_OPENED, NULL);
   spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
   frame.syn_reply.stream_id = 3;
 
@@ -428,11 +431,14 @@ void test_spdylay_session_send_syn_stream()
   const char *nv[] = { NULL };
   spdylay_frame *frame = malloc(sizeof(spdylay_frame));
   spdylay_stream *stream;
+  spdylay_syn_stream_aux_data *aux_data =
+    malloc(sizeof(spdylay_syn_stream_aux_data));
+  memset(aux_data, 0, sizeof(spdylay_syn_stream_aux_data));
 
   spdylay_session_client_new(&session, &callbacks, NULL);
   spdylay_frame_syn_stream_init(&frame->syn_stream, SPDYLAY_FLAG_NONE,
                                 0, 0, 3, dup_nv(nv));
-  spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame, NULL);
+  spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame, aux_data);
   CU_ASSERT(0 == spdylay_session_send(session));
   stream = spdylay_session_get_stream(session, 1);
   CU_ASSERT(SPDYLAY_STREAM_OPENING == stream->state);
@@ -455,7 +461,7 @@ void test_spdylay_session_send_syn_reply()
 
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, NULL));
   spdylay_session_open_stream(session, 2, SPDYLAY_FLAG_NONE, 3,
-                              SPDYLAY_STREAM_OPENING);
+                              SPDYLAY_STREAM_OPENING, NULL);
   spdylay_frame_syn_reply_init(&frame->syn_reply, SPDYLAY_FLAG_NONE,
                                2, dup_nv(nv));
   spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame, NULL);
@@ -484,7 +490,7 @@ void test_spdylay_submit_response()
   ud.data_source_length = 64*1024;
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
   spdylay_session_open_stream(session, stream_id, SPDYLAY_FLAG_NONE, 3,
-                              SPDYLAY_STREAM_OPENING);
+                              SPDYLAY_STREAM_OPENING, NULL);
   CU_ASSERT(0 == spdylay_submit_response(session, stream_id, nv, &data_prd));
   CU_ASSERT(0 == spdylay_session_send(session));
   spdylay_session_del(session);
@@ -506,7 +512,7 @@ void test_spdylay_submit_request_with_data()
   data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 64*1024;
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
-  CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd));
+  CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd, NULL));
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(0 == ud.data_source_length);
 
@@ -552,7 +558,7 @@ void test_spdylay_session_on_headers_received()
 
   spdylay_session_client_new(&session, &callbacks, &user_data);
   spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 0,
-                              SPDYLAY_STREAM_OPENED);
+                              SPDYLAY_STREAM_OPENED, NULL);
   spdylay_stream_shutdown(spdylay_session_get_stream(session, 1),
                           SPDYLAY_SHUT_WR);
   spdylay_frame_headers_init(&frame.headers, SPDYLAY_FLAG_NONE, 1,
@@ -575,7 +581,7 @@ void test_spdylay_session_on_headers_received()
   /* Check to see when SPDYLAY_STREAM_CLOSING, incoming HEADERS is
      discarded. */
   spdylay_session_open_stream(session, 3, SPDYLAY_FLAG_NONE, 0,
-                              SPDYLAY_STREAM_CLOSING);
+                              SPDYLAY_STREAM_CLOSING, NULL);
   frame.headers.stream_id = 3;
   frame.headers.hd.flags = SPDYLAY_FLAG_NONE;
   CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
@@ -584,7 +590,7 @@ void test_spdylay_session_on_headers_received()
 
   /* Server initiated stream */
   spdylay_session_open_stream(session, 2, SPDYLAY_FLAG_NONE, 0,
-                              SPDYLAY_STREAM_OPENING);
+                              SPDYLAY_STREAM_OPENING, NULL);
 
   frame.headers.hd.flags = SPDYLAY_FLAG_FIN;
   frame.headers.stream_id = 2;
@@ -677,7 +683,7 @@ void test_spdylay_session_on_data_received()
 
   spdylay_session_client_new(&session, &callbacks, &user_data);
   stream = spdylay_session_open_stream(session, stream_id, SPDYLAY_FLAG_NONE,
-                                       3, SPDYLAY_STREAM_OPENING);
+                                       3, SPDYLAY_STREAM_OPENING, NULL);
   CU_ASSERT(0 == spdylay_session_on_data_received(session, SPDYLAY_FLAG_NONE,
                                                   4096, stream_id));
   CU_ASSERT(0 == stream->shut_flags);
@@ -690,7 +696,7 @@ void test_spdylay_session_on_data_received()
   stream_id = 4;
 
   spdylay_session_open_stream(session, stream_id, SPDYLAY_FLAG_NONE,
-                              3, SPDYLAY_STREAM_CLOSING);
+                              3, SPDYLAY_STREAM_CLOSING, NULL);
   CU_ASSERT(0 == spdylay_session_on_data_received(session, SPDYLAY_FLAG_NONE,
                                                   4096, stream_id));
   CU_ASSERT(NULL == spdylay_session_get_ob_pq_top(session));
@@ -740,13 +746,13 @@ void test_spdylay_session_on_rst_received()
   memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
   spdylay_session_server_new(&session, &callbacks, &user_data);
   stream = spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE,
-                                       3, SPDYLAY_STREAM_OPENING);
+                                       3, SPDYLAY_STREAM_OPENING, NULL);
   /* server push */
   spdylay_session_open_stream(session, 2, SPDYLAY_FLAG_NONE,
-                              3, SPDYLAY_STREAM_OPENING);
+                              3, SPDYLAY_STREAM_OPENING, NULL);
   spdylay_stream_add_pushed_stream(stream, 2);
   spdylay_session_open_stream(session, 4, SPDYLAY_FLAG_NONE,
-                              3, SPDYLAY_STREAM_OPENING);
+                              3, SPDYLAY_STREAM_OPENING, NULL);
   spdylay_stream_add_pushed_stream(stream, 4);
 
   spdylay_frame_rst_stream_init(&frame.rst_stream, 1, SPDYLAY_CANCEL);
@@ -772,13 +778,13 @@ void test_spdylay_session_send_rst_stream()
   callbacks.send_callback = null_send_callback;
   spdylay_session_client_new(&session, &callbacks, &user_data);
   stream = spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE,
-                                       3, SPDYLAY_STREAM_OPENING);
+                                       3, SPDYLAY_STREAM_OPENING, NULL);
   /* server push */
   spdylay_session_open_stream(session, 2, SPDYLAY_FLAG_NONE,
-                              3, SPDYLAY_STREAM_OPENING);
+                              3, SPDYLAY_STREAM_OPENING, NULL);
   spdylay_stream_add_pushed_stream(stream, 2);
   spdylay_session_open_stream(session, 4, SPDYLAY_FLAG_NONE,
-                              3, SPDYLAY_STREAM_OPENING);
+                              3, SPDYLAY_STREAM_OPENING, NULL);
   spdylay_stream_add_pushed_stream(stream, 4);
 
   frame = malloc(sizeof(spdylay_frame));

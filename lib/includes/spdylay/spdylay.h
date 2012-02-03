@@ -281,7 +281,8 @@ typedef void (*spdylay_on_data_send_callback)
 /*
  * Callback function invoked before frame |frame| of type |type| is
  * sent. This may be useful, for example, to know the stream ID of
- * SYN_STREAM frame, which is not assigned when it was queued.
+ * SYN_STREAM frame (see also spdylay_session_get_stream_user_data),
+ * which is not assigned when it was queued.
  */
 typedef void (*spdylay_before_ctrl_send_callback)
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
@@ -354,6 +355,18 @@ int spdylay_session_want_read(spdylay_session *session);
 int spdylay_session_want_write(spdylay_session *session);
 
 /*
+ * Returns stream_user_data for the stream |stream_id|. The
+ * stream_user_data is provided by spdylay_submit_request().  If the
+ * stream is initiated by the remote endpoint, stream_user_data is
+ * always NULL. If the stream is initiated by the local endpoint and
+ * NULL is given in spdylay_submit_request(), then this function
+ * returns NULL. If the stream does not exist, this function returns
+ * NULL.
+ */
+void* spdylay_session_get_stream_user_data(spdylay_session *session,
+                                           int32_t stream_id);
+
+/*
  * Submits SYN_STREAM frame. |pri| is priority of this request and it
  * must be in the range of [0, 3]. 0 means the higest priority. |nv|
  * must include following name/value pairs:
@@ -368,13 +381,20 @@ int spdylay_session_want_write(spdylay_session *session);
  * If |data_prd| is not NULL, it provides data which will be sent in
  * subsequent DATA frames. In this case, "POST" must be specified with
  * "method" key in |nv|. If |data_prd| is NULL, SYN_STREAM have
- * FLAG_FIN.
+ * FLAG_FIN.  |stream_user_data| can be an arbitrary pointer, which
+ * can be retrieved by spdylay_session_get_stream_user_data(). Since
+ * stream ID is not known before sending SYN_STREAM frame and the
+ * application code has to compare url, and possibly other header
+ * field values, to identify stream ID for the request in
+ * spdylay_on_ctrl_send_callback(). With |stream_user_data|, the
+ * application can easily identifies stream ID for the request.
  *
  * This function returns 0 if it succeeds, or negative error code.
  */
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,
                            const char **nv,
-                           spdylay_data_provider *data_prd);
+                           spdylay_data_provider *data_prd,
+                           void *stream_user_data);
 
 /*
  * Submits DATA frame to stream |stream_id|.

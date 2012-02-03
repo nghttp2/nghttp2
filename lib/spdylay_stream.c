@@ -26,7 +26,8 @@
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
                          uint8_t flags, uint8_t pri,
-                         spdylay_stream_state initial_state)
+                         spdylay_stream_state initial_state,
+                         void *stream_user_data)
 {
   stream->stream_id = stream_id;
   stream->flags = flags;
@@ -36,6 +37,7 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
   stream->pushed_streams = NULL;
   stream->pushed_streams_length = 0;
   stream->pushed_streams_capacity = 0;
+  stream->stream_user_data = stream_user_data;
 }
 
 void spdylay_stream_free(spdylay_stream *stream)

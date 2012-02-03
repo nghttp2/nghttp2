@@ -85,11 +85,14 @@ typedef struct {
   /* The maximum number of stream ID the |pushed_streams| can
      store. */
   size_t pushed_streams_capacity;
+  /* The arbitrary data provided by user for this stream. */
+  void *stream_user_data;
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
                          uint8_t flags, uint8_t pri,
-                         spdylay_stream_state initial_state);
+                         spdylay_stream_state initial_state,
+                         void *stream_user_data);
 
 void spdylay_stream_free(spdylay_stream *stream);
 

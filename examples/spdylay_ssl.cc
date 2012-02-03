@@ -105,7 +105,8 @@ int Spdylay::fd() const
 }
 
 int Spdylay::submit_request(const std::string& hostport,
-                            const std::string& path, uint8_t pri)
+                            const std::string& path, uint8_t pri,
+                            void *stream_user_data)
 {
   const char *nv[] = {
     "host", hostport.c_str(),
@@ -116,7 +117,7 @@ int Spdylay::submit_request(const std::string& hostport,
     "version", "HTTP/1.1",
     NULL
   };
-  return spdylay_submit_request(session_, pri, nv, NULL);
+  return spdylay_submit_request(session_, pri, nv, NULL, stream_user_data);
 }
 
 bool Spdylay::would_block(int r)
