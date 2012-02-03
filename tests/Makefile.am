@@ -27,17 +27,17 @@ check_PROGRAMS = main
 
 OBJECTS = main.c spdylay_pq_test.c spdylay_map_test.c spdylay_queue_test.c \
 	spdylay_buffer_test.c spdylay_zlib_test.c spdylay_session_test.c \
-	spdylay_frame_test.c
+	spdylay_frame_test.c spdylay_npn_test.c
 
 HFILES = spdylay_pq_test.h spdylay_map_test.h spdylay_queue_test.h \
 	spdylay_buffer_test.h spdylay_zlib_test.h spdylay_session_test.h \
-	spdylay_frame_test.h
+	spdylay_frame_test.h spdylay_npn_test.h
 
 main_SOURCES = $(HFILES) $(OBJECTS)
 
-main_LDADD = ${top_builddir}/lib/libspdylay.la -lcunit
-main_LDFLAGS = -static
-AM_CFLAGS = -Wall -g -O2 -I${top_srcdir}/lib -I${top_srcdir}/lib/includes
+main_LDADD = ${top_builddir}/lib/libspdylay.la
+main_LDFLAGS = -static `pkg-config --libs cunit` -lncurses
+AM_CFLAGS = -Wall -g -O2 -I${top_srcdir}/lib -I${top_srcdir}/lib/includes `pkg-config --cflags cunit`
 TESTS = main
 
 endif # HAVE_CUNIT

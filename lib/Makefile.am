@@ -33,7 +33,7 @@ lib_LTLIBRARIES = libspdylay.la
 
 OBJECTS = spdylay_pq.c spdylay_map.c spdylay_queue.c \
 	spdylay_buffer.c spdylay_frame.c spdylay_zlib.c \
-	spdylay_session.c spdylay_helper.c spdylay_stream.c
+	spdylay_session.c spdylay_helper.c spdylay_stream.c spdylay_npn.c
 
 HFILES = spdylay_pq.h spdylay_int.h spdylay_map.h spdylay_queue.h \
 	spdylay_buffer.h spdylay_frame.h spdylay_zlib.h \

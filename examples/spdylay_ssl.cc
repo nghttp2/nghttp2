@@ -328,23 +328,15 @@ int select_next_proto_cb(SSL* ssl,
                          const unsigned char *in, unsigned int inlen,
                          void *arg)
 {
-  *out = (unsigned char*)in+1;
-  *outlen = in[0];
+  if (spdylay_select_next_protocol(out, outlen, in, inlen) == 0) {
+    std::cerr << "Invalid protocol: "
+              << std::string((const char*)*out, (size_t)*outlen) << std::endl;
+    abort();
+  }
   if(ssl_debug) {
     print_timer();
-    std::cout << " NPN select next protocol: the remote server offers:"
-              << std::endl;
-  }
-  for(unsigned int i = 0; i < inlen; i += in[i]+1) {
-    if(ssl_debug) {
-      std::cout << "  * ";
-      std::cout.write(reinterpret_cast<const char*>(&in[i+1]), in[i]);
-      std::cout << std::endl;
-    }
-    if(in[i] == 6 && memcmp(&in[i+1], "spdy/2", in[i]) == 0) {
-      *out = (unsigned char*)in+i+1;
-      *outlen = in[i];
-    }
+    std::cout << " NPN selected the protocol: "
+              << std::string((const char*)*out, (size_t)*outlen) << std::endl;
   }
   return SSL_TLSEXT_ERR_OK;
 }

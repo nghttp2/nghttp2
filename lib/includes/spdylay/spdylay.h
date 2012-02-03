@@ -406,6 +406,24 @@ int spdylay_submit_ping(spdylay_session *session);
  */
 int spdylay_submit_goaway(spdylay_session *session);
 
+/* A helper function for dealing with NPN.  Returns the version of spdy that
+ * was negotiated.  To use this method you should do something like:
+ * static int select_next_proto_cb(SSL* ssl,
+ *                                 unsigned char **out, unsigned char *outlen,
+ *                                 const unsigned char *in, unsigned int inlen,
+ *                                 void *arg)
+ * {
+ *   if (spdylay_select_next_protocol(out, outlen, in, inlen) > 0) {
+ *     ((MyType*)arg)->spdy = 1;
+ *   }
+ *   return SSL_TLSEXT_ERR_OK;
+ * }
+ * ...
+ * SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, my_obj);
+ */
+int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
+                                 const unsigned char *in, unsigned int inlen);
+
 #ifdef __cplusplus
 }
 #endif
