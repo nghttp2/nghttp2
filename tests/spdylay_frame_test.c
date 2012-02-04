@@ -27,6 +27,7 @@
 #include <CUnit/CUnit.h>
 
 #include "spdylay_frame.h"
+#include "spdylay_helper.h"
 
 static const char *headers[] = {
   "method", "GET",
@@ -69,10 +70,26 @@ void test_spdylay_frame_count_unpack_nv_space()
   size_t nvlen, buflen;
   uint8_t out[1024];
   size_t inlen = spdylay_frame_pack_nv(out, (char**)headers);
+  uint16_t temp;
   CU_ASSERT(0 == spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
                                                      out, inlen));
   CU_ASSERT(6 == nvlen);
   CU_ASSERT(166 == buflen);
+  /* Change number of nv pair to a bogus value */
+  temp = spdylay_get_uint16(out);
+  spdylay_put_uint16be(out, temp+1);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
+  spdylay_put_uint16be(out, temp);
+
+  /* Change the length of name to a bogus value */
+  temp = spdylay_get_uint16(out+2);
+  spdylay_put_uint16be(out+2, temp+1);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
+  spdylay_put_uint16be(out+2, 65536);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
 }
 
 void test_spdylay_frame_pack_ping()
