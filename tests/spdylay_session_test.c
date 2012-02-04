@@ -142,15 +142,7 @@ static ssize_t fixed_length_data_source_read_callback
 
 static char** dup_nv(const char **src)
 {
-  int i;
-  char **dst;
-  for(i = 0; src[i]; ++i);
-  dst = malloc((i+1)*sizeof(char*));
-  for(i = 0; src[i]; ++i) {
-    dst[i] = strdup(src[i]);
-  }
-  dst[i] = NULL;
-  return dst;
+  return spdylay_frame_nv_copy(src);
 }
 
 void test_spdylay_session_recv()

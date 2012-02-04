@@ -106,6 +106,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||
+      !CU_add_test(pSuite, "frame_count_unpack_nv_space",
+                   test_spdylay_frame_count_unpack_nv_space) ||
       !CU_add_test(pSuite, "frame_pack_ping", test_spdylay_frame_pack_ping) ||
       !CU_add_test(pSuite, "frame_pack_goaway",
                    test_spdylay_frame_pack_goaway) ||

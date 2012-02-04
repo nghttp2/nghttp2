@@ -44,13 +44,35 @@ void test_spdylay_frame_unpack_nv()
   char **nv;
   size_t inlen = spdylay_frame_pack_nv(out, (char**)headers);
   CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, out, inlen));
-  spdylay_frame_nv_free(nv);
-  free(nv);
+  CU_ASSERT(strcmp("method", nv[0]) == 0);
+  CU_ASSERT(strcmp("GET", nv[1]) == 0);
+  CU_ASSERT(strcmp("scheme", nv[2]) == 0);
+  CU_ASSERT(strcmp("https", nv[3]) == 0);
+  CU_ASSERT(strcmp("url", nv[4]) == 0);
+  CU_ASSERT(strcmp("/", nv[5]) == 0);
+  CU_ASSERT(strcmp("x-head", nv[6]) == 0);
+  CU_ASSERT(strcmp("foo", nv[7]) == 0);
+  CU_ASSERT(strcmp("x-head", nv[8]) == 0);
+  CU_ASSERT(strcmp("bar", nv[9]) == 0);
+  CU_ASSERT(strcmp("version", nv[10]) == 0);
+  CU_ASSERT(strcmp("HTTP/1.1", nv[11]) == 0);
+  spdylay_frame_nv_del(nv);
 }
 
 void test_spdylay_frame_count_nv_space()
 {
   CU_ASSERT(83 == spdylay_frame_count_nv_space((char**)headers));
+}
+
+void test_spdylay_frame_count_unpack_nv_space()
+{
+  size_t nvlen, buflen;
+  uint8_t out[1024];
+  size_t inlen = spdylay_frame_pack_nv(out, (char**)headers);
+  CU_ASSERT(0 == spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
+                                                     out, inlen));
+  CU_ASSERT(6 == nvlen);
+  CU_ASSERT(166 == buflen);
 }
 
 void test_spdylay_frame_pack_ping()

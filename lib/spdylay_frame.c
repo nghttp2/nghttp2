@@ -87,138 +87,106 @@ static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
   return framelen;
 }
 
+int spdylay_frame_count_unpack_nv_space
+(size_t *nvlen_ptr, size_t *buflen_ptr, const uint8_t *in, size_t inlen)
+{
+  uint16_t n;
+  size_t buflen = 0;
+  size_t nvlen = 0;
+  size_t off = 0;
+  const size_t len_size = sizeof(uint16_t);
+  int i;
+  if(inlen < len_size) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
+  n = spdylay_get_uint16(in);
+  off += len_size;
+  for(i = 0; i < n; ++i) {
+    uint16_t len;
+    int j;
+    for(j = 0; j < 2; ++j) {
+      if(inlen-off < len_size) {
+        return SPDYLAY_ERR_INVALID_ARGUMENT;
+      }
+      len = spdylay_get_uint16(in+off);
+      off += 2;
+      if(inlen-off < len) {
+        return SPDYLAY_ERR_INVALID_ARGUMENT;
+      }
+      buflen += len+1;
+      off += len;
+    }
+    for(off -= len, j = off+len; off != j; ++off) {
+      if(in[off] == '\0') {
+        /* spdy/2 spec says it does not allow multiple, in-sequence
+           NULL characters */
+        if(off+1 != j && in[off+1] == '\0') {
+          return SPDYLAY_ERR_INVALID_ARGUMENT;
+        }
+        ++nvlen;
+      }
+    }
+    ++nvlen;
+  }
+  *nvlen_ptr = nvlen;
+  *buflen_ptr = buflen+(nvlen*2+1)*sizeof(char*);
+  return 0;
+}
+
 int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen)
 {
-  int r = 0;
+  size_t nvlen, buflen;
+  int r, i;
+  char *buf, **index, *data;
   uint16_t n;
-  size_t off;
-  size_t nv_max = 126;
-  int i, j, k;
-  char *name = NULL, *val = NULL;
-  if(inlen < 2) {
-    return SPDYLAY_ERR_PROTO;
+  r = spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, in, inlen);
+  if(r != 0) {
+    return r;
   }
-  memcpy(&n, in, sizeof(uint16_t));
-  n = ntohs(n);
-  if(n > nv_max) {
-    nv_max = n;
-  }
-  *nv_ptr = malloc(nv_max*sizeof(char*)+1);
-  if(*nv_ptr == NULL) {
+  buf = malloc(buflen);
+  if(buf == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
-  off = 2;
-  for(i = 0, j = 0; i < n; ++i) {
-    uint16_t nlen, vlen;
-    size_t last, len;
-    if(off+2 > inlen) {
-      r = SPDYLAY_ERR_PROTO;
-      break;
-    }
-    /* For NULL delimited values, they are splitted with each name */
-    memcpy(&nlen, &in[off], sizeof(uint16_t));
-    nlen = ntohs(nlen);
-    off += 2;
-    if(off+nlen > inlen || nlen == 0) {
-      r = SPDYLAY_ERR_PROTO;
-      break;
-    }
-    name = malloc(nlen+1);
-    if(name == NULL) {
-      r = SPDYLAY_ERR_NOMEM;
-      break;
-    }
-    memcpy(name, &in[off], nlen);
-    name[nlen] = '\0';
-    off += nlen;
-    if(off+2 > inlen) {
-      r = SPDYLAY_ERR_PROTO;
-      break;
-    }
-    memcpy(&vlen, &in[off], sizeof(uint16_t));
-    vlen = ntohs(vlen);
-    off += 2;
-    if(off+vlen > inlen) {
-      r = SPDYLAY_ERR_PROTO;
-      break;
-    }
-    for(k = 0, last = off; k < vlen; ++k) {
-      size_t len;
-      if(in[off+k] == '\0') {
-        len = off+k-last;
-        if(len == 0) {
-          r = SPDYLAY_ERR_PROTO;
-          break;
-        }
-        val = malloc(len+1);
-        if(val == NULL) {
-          r = SPDYLAY_ERR_NOMEM;
-          break;
-        }
-        memcpy(val, &in[last], len);
-        val[len] = '\0';
-        if(j >= nv_max) {
-          char **nnv;
-          nv_max *= 2;
-          nnv = realloc(*nv_ptr, nv_max+1);
-          if(nnv == NULL) {
-            r = SPDYLAY_ERR_NOMEM;
-            break;
-          } else {
-            *nv_ptr = nnv;
-          }
-        }
-        (*nv_ptr)[j] = strdup(name);
-        (*nv_ptr)[j+1] = val;
-        val = NULL;
-        last = off+k+1;
-        j += 2;
+  index = (char**)buf;
+  data = buf+(nvlen*2+1)*sizeof(char*);
+  n = spdylay_get_uint16(in);
+  in += 2;
+  for(i = 0; i < n; ++i) {
+    uint16_t len;
+    char *name, *val;
+    char *stop;
+    len = spdylay_get_uint16(in);
+    in += 2;
+    name = data;
+    memcpy(data, in, len);
+    data += len;
+    *data = '\0';
+    ++data;
+    in += len;
+
+    len = spdylay_get_uint16(in);
+    in += 2;
+    val = data;
+    memcpy(data, in, len);
+
+    for(stop = data+len; data != stop; ++data) {
+      if(*data == '\0') {
+        *index++ = name;
+        *index++ = val;
+        val = data+1;
       }
     }
-    if(r != 0) {
-      break;
-    }
-    len = vlen-(last-off);
-    if(len == 0) {
-      r = SPDYLAY_ERR_PROTO;
-      break;
-    }
-    val = malloc(len+1);
-    if(val == NULL) {
-      free(name);
-      r = SPDYLAY_ERR_NOMEM;
-      break;
-    }
-    memcpy(val, &in[last], len);
-    val[len] = '\0';
-    if(j >= nv_max) {
-      char **nnv;
-      nv_max *= 2;
-      nnv = realloc(*nv_ptr, nv_max+1);
-      if(nnv == NULL) {
-        r = SPDYLAY_ERR_NOMEM;
-        break;
-      } else {
-        *nv_ptr = nnv;
-      }
-    }
-    (*nv_ptr)[j] = name;
-    (*nv_ptr)[j+1] = val;
-    name = val = NULL;
-    j += 2;
-    off += vlen;
+    *data = '\0';
+    ++data;
+    in += len;
+
+    *index++ = name;
+    *index++ = val;
   }
-  free(name);
-  free(val);
-  if(r == 0) {
-    (*nv_ptr)[j] = NULL;
-  } else {
-    for(i = 0; i < j; ++i) {
-      free((*nv_ptr)[i]);
-    }
-    free(*nv_ptr);
-  }
-  return r;
+  *index = NULL;
+  assert((char*)index-buf == (nvlen*2)*sizeof(char*));
+  *nv_ptr = (char**)buf;
+  return 0;
 }
 
 static int spdylay_frame_alloc_unpack_nv(char ***nv_ptr,
@@ -308,33 +276,36 @@ int spdylay_frame_is_ctrl_frame(uint8_t first_byte)
   return first_byte & 0x80;
 }
 
-void spdylay_frame_nv_free(char **nv)
+void spdylay_frame_nv_del(char **nv)
 {
-  int i;
-  for(i = 0; nv[i]; ++i) {
-    free(nv[i]);
-  }
+  free(nv);
 }
 
 char** spdylay_frame_nv_copy(const char **nv)
 {
-  int n, i;
-  char **nnv;
-  for(n = 0;nv[n]; ++n);
-  nnv = malloc((n+1)*sizeof(char*));
-  if(nnv == NULL) {
+  int i;
+  char *buf;
+  char **index, *data;
+  size_t buflen = 0;
+  for(i = 0; nv[i]; ++i) {
+    buflen += strlen(nv[i])+1;
+  }
+  buflen += (i+1)*sizeof(char*);
+  buf = malloc(buflen);
+  if(buf == NULL) {
     return NULL;
   }
-  for(i = 0; i < n; ++i) {
-    nnv[i] = strdup(nv[i]);
-    if(nnv[i] == NULL) {
-      spdylay_frame_nv_free(nnv);
-      free(nnv);
-      return NULL;
-    }
+  index = (char**)buf;
+  data = buf+(i+1)*sizeof(char*);
+
+  for(i = 0; nv[i]; ++i) {
+    size_t len = strlen(nv[i])+1;
+    memcpy(data, nv[i], len);
+    *index++ = data;
+    data += len;
   }
-  nnv[n] = NULL;
-  return nnv;
+  *index = NULL;
+  return (char**)buf;
 }
 
 static int spdylay_string_compar(const void *lhs, const void *rhs)
@@ -365,8 +336,7 @@ void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
 
 void spdylay_frame_syn_stream_free(spdylay_syn_stream *frame)
 {
-  spdylay_frame_nv_free(frame->nv);
-  free(frame->nv);
+  spdylay_frame_nv_del(frame->nv);
 }
 
 void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
@@ -382,8 +352,7 @@ void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
 
 void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame)
 {
-  spdylay_frame_nv_free(frame->nv);
-  free(frame->nv);
+  spdylay_frame_nv_del(frame->nv);
 }
 
 void spdylay_frame_ping_init(spdylay_ping *frame, uint32_t unique_id)
@@ -425,8 +394,7 @@ void spdylay_frame_headers_init(spdylay_headers *frame, uint8_t flags,
 
 void spdylay_frame_headers_free(spdylay_headers *frame)
 {
-  spdylay_frame_nv_free(frame->nv);
-  free(frame->nv);
+  spdylay_frame_nv_del(frame->nv);
 }
 
 void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,

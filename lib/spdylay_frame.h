@@ -186,6 +186,33 @@ size_t spdylay_frame_count_nv_space(char **nv);
 ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv);
 
 /*
+ * Counts number of name/value pair in |in| and computes length of
+ * buffers to store unpacked name/value pair and store them in
+ * |*num_nv_ptr| and |*buf_size_ptr| respectively.  We use folloing
+ * data structure in |*buf_size_ptr|.  First part of the data is array
+ * of pointer to name/value pair.  Supporse the buf pointer points to
+ * the data region and N is the number of name/value pair.  First
+ * (N*2+1)*sizeof(char*) bytes contain array of pointer to name/value
+ * pair and terminating NULL.  Each pointer to name/value pair points
+ * to the string in remaining data.  For each name/value pair, the
+ * name is copied to the remaining data with terminating NULL
+ * character. The value is also copied to the position after the data
+ * with terminating NULL character. The corresponding index is
+ * assigned to these pointers. If the value contains multiple values
+ * (delimited by single NULL), for each such data, corresponding index
+ * is assigned to name/value pointers. In this case, the name string
+ * is reused.
+ *
+ * With the above stragety, |*buf_size_ptr| is calculated as
+ * (N*2+1)*sizeof(char*)+sum(strlen(name)+1+strlen(value)+1){for each
+ * name/value pair}.
+ *
+ * This function returns 0 if it succeeds, or negative error code.
+ */
+int spdylay_frame_count_unpack_nv_space
+(size_t *num_nv_ptr, size_t *buf_size_ptr, const uint8_t *in, size_t inlen);
+
+/*
  * Unpacks name/value pairs in wire format |in| with length |inlen|
  * and stores them in |*nv_ptr|.  Thif function allocates enough
  * memory to store name/value pairs in |*nv_ptr|.  This function
@@ -249,13 +276,14 @@ void spdylay_frame_data_free(spdylay_data *frame);
 int spdylay_frame_is_ctrl_frame(uint8_t first_byte);
 
 /*
- * Deallocates memory of key/value pairs in |nv|.
+ * Deallocates memory of name/value pair |nv|.
  */
-void spdylay_frame_nv_free(char **nv);
+void spdylay_frame_nv_del(char **nv);
 
 /*
  * Makes a deep copy of |nv| and returns the copy.  This function
- * returns the pointer to the copy if it succeeds, or NULL.
+ * returns the pointer to the copy if it succeeds, or NULL.  To free
+ * allocated memory, use spdylay_frame_nv_del().
  */
 char** spdylay_frame_nv_copy(const char **nv);
 
