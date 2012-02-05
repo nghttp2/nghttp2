@@ -435,16 +435,37 @@ int spdylay_submit_ping(spdylay_session *session);
 int spdylay_submit_goaway(spdylay_session *session);
 
 /*
- * A helper function for dealing with NPN. This function returns the
- * version of spdy that was negotiated, or -1. To use this method you
- * should do something like:
+ * A helper function for dealing with NPN.  This function always
+ * selects "spdy/2" protocol.  NPN draft permits that client can
+ * select any protocol even if server does not advertise it at the
+ * time of this writing:
+ *
+ *   It's expected that a client will have a list of protocols that it
+ *   supports, in preference order, and will only select a protocol if
+ *   the server supports it. In that case, the client SHOULD select
+ *   the first protocol advertised by the server that it also
+ *   supports. In the event that the client doesn't support any of
+ *   server's protocols, or the server doesn't advertise any, it
+ *   SHOULD select the first protocol that it supports.
+ *
+ *   There are cases where the client knows that a server supports an
+ *   unadvertised protocol. In these cases the client should simply
+ *   select that protocol.
+ *
+ * Selecting "spdy/2" means that "spdy/2" is written into |*out| and
+ * length of "spdy/2" (which is 6) is assigned to |*outlen|.
+ *
+ * This function returns 0 if server advertised "spdy/2" and it is
+ * selected, or -1.
+ *
+ * To use this method you should do something like:
  *
  * static int select_next_proto_cb(SSL* ssl,
  *                                 unsigned char **out, unsigned char *outlen,
  *                                 const unsigned char *in, unsigned int inlen,
  *                                 void *arg)
  * {
- *   if (spdylay_select_next_protocol(out, outlen, in, inlen) > 0) {
+ *   if (spdylay_select_next_protocol(out, outlen, in, inlen) == 0) {
  *     ((MyType*)arg)->spdy = 1;
  *   }
  *   return SSL_TLSEXT_ERR_OK;

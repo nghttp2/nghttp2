@@ -36,10 +36,10 @@ static void spdy2()
   };
   unsigned char outlen;
   unsigned char* out;
-  CU_ASSERT(2 == spdylay_select_next_protocol(&out, &outlen,
+  CU_ASSERT(0 == spdylay_select_next_protocol(&out, &outlen,
                                               spdy, sizeof(spdy)));
   CU_ASSERT(6 == outlen);
-  CU_ASSERT(memcmp("spdy/2", out, 6) == 0);
+  CU_ASSERT(memcmp("spdy/2", out, outlen) == 0);
 }
 
 static void spdy4()
@@ -53,8 +53,8 @@ static void spdy4()
   unsigned char* out;
   CU_ASSERT(-1 == spdylay_select_next_protocol(&out, &outlen,
                                                spdy, sizeof(spdy)));
-  CU_ASSERT(8 == outlen);
-  CU_ASSERT(memcmp("http/1.0", out, outlen) == 0);
+  CU_ASSERT(6 == outlen);
+  CU_ASSERT(memcmp("spdy/2", out, outlen) == 0);
 }
 
 void test_spdylay_npn()

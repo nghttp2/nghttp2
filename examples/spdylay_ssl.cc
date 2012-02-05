@@ -360,8 +360,7 @@ int select_next_proto_cb(SSL* ssl,
     }
   }
   if(spdylay_select_next_protocol(out, outlen, in, inlen) == -1) {
-    std::cerr << "Invalid protocol: "
-              << std::string((const char*)*out, (size_t)*outlen) << std::endl;
+    std::cerr << "Server did not advertise spdy/2 protocol." << std::endl;
     abort();
   }
   if(ssl_debug) {
