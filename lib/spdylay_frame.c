@@ -118,11 +118,6 @@ int spdylay_frame_count_unpack_nv_space
     }
     for(off -= len, j = off+len; off != j; ++off) {
       if(in[off] == '\0') {
-        /* spdy/2 spec says it does not allow multiple, in-sequence
-           NULL characters */
-        if(off+1 != j && in[off+1] == '\0') {
-          return SPDYLAY_ERR_INVALID_ARGUMENT;
-        }
         ++nvlen;
       }
     }
