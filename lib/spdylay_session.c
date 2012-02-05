@@ -109,6 +109,20 @@ static int spdylay_session_new(spdylay_session **session_ptr,
     free(*session_ptr);
     return r;
   }
+  r = spdylay_pq_init(&(*session_ptr)->ob_ss_pq, spdylay_outbound_item_compar);
+  if(r != 0) {
+    spdylay_pq_free(&(*session_ptr)->ob_pq);
+    spdylay_map_free(&(*session_ptr)->streams);
+    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
+    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
+    free(*session_ptr);
+    return r;
+  }
+
+  memset((*session_ptr)->settings, 0, sizeof((*session_ptr)->settings));
+  (*session_ptr)->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
+    SPDYLAY_CONCURRENT_STREAMS_MAX;
+
   (*session_ptr)->callbacks = *callbacks;
   (*session_ptr)->user_data = user_data;
 
@@ -156,7 +170,7 @@ static void spdylay_free_streams(key_type key, void *val)
   free(val);
 }
 
-static void spdylay_outbound_item_free(spdylay_outbound_item *item)
+void spdylay_outbound_item_free(spdylay_outbound_item *item)
 {
   if(item == NULL) {
     return;
@@ -196,18 +210,26 @@ static void spdylay_outbound_item_free(spdylay_outbound_item *item)
   free(item->aux_data);
 }
 
-void spdylay_session_del(spdylay_session *session)
+static void spdylay_session_ob_pq_free(spdylay_pq *pq)
 {
-  spdylay_map_each(&session->streams, spdylay_free_streams);
-  spdylay_map_free(&session->streams);
-  while(!spdylay_pq_empty(&session->ob_pq)) {
-    spdylay_outbound_item *item = (spdylay_outbound_item*)
-      spdylay_pq_top(&session->ob_pq);
+  while(!spdylay_pq_empty(pq)) {
+    spdylay_outbound_item *item = (spdylay_outbound_item*)spdylay_pq_top(pq);
     spdylay_outbound_item_free(item);
     free(item);
-    spdylay_pq_pop(&session->ob_pq);
+    spdylay_pq_pop(pq);
   }
-  spdylay_pq_free(&session->ob_pq);
+  spdylay_pq_free(pq);
+}
+
+void spdylay_session_del(spdylay_session *session)
+{
+  if(session == NULL) {
+    return;
+  }
+  spdylay_map_each(&session->streams, spdylay_free_streams);
+  spdylay_map_free(&session->streams);
+  spdylay_session_ob_pq_free(&session->ob_pq);
+  spdylay_session_ob_pq_free(&session->ob_ss_pq);
   spdylay_zlib_deflate_free(&session->hd_deflater);
   spdylay_zlib_inflate_free(&session->hd_inflater);
   free(session->iframe.buf);
@@ -279,7 +301,11 @@ int spdylay_session_add_frame(spdylay_session *session,
     break;
   }
   };
-  r = spdylay_pq_push(&session->ob_pq, item);
+  if(frame_type == SPDYLAY_SYN_STREAM) {
+    r = spdylay_pq_push(&session->ob_ss_pq, item);
+  } else {
+    r = spdylay_pq_push(&session->ob_pq, item);
+  }
   if(r != 0) {
     free(item);
     return r;
@@ -531,6 +557,86 @@ spdylay_outbound_item* spdylay_session_get_ob_pq_top
   return (spdylay_outbound_item*)spdylay_pq_top(&session->ob_pq);
 }
 
+spdylay_outbound_item* spdylay_session_get_next_ob_item
+(spdylay_session *session)
+{
+  if(spdylay_pq_empty(&session->ob_pq)) {
+    if(spdylay_pq_empty(&session->ob_ss_pq)) {
+      return NULL;
+    } else {
+      /* Return item only when concurrent connection limit is not
+         reached */
+      if(session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+         > spdylay_map_size(&session->streams)) {
+        return spdylay_pq_top(&session->ob_ss_pq);
+      } else {
+        return NULL;
+      }
+    }
+  } else {
+    if(spdylay_pq_empty(&session->ob_ss_pq)) {
+      return spdylay_pq_top(&session->ob_pq);
+    } else {
+      spdylay_outbound_item *item, *syn_stream_item;
+      item = spdylay_pq_top(&session->ob_pq);
+      syn_stream_item = spdylay_pq_top(&session->ob_ss_pq);
+      if(session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+         <= spdylay_map_size(&session->streams) ||
+         item->pri < syn_stream_item->pri ||
+         (item->pri == syn_stream_item->pri &&
+          item->seq < syn_stream_item->seq)) {
+        return item;
+      } else {
+        return syn_stream_item;
+      }
+    }
+  }
+}
+
+spdylay_outbound_item* spdylay_session_pop_next_ob_item
+(spdylay_session *session)
+{
+  if(spdylay_pq_empty(&session->ob_pq)) {
+    if(spdylay_pq_empty(&session->ob_ss_pq)) {
+      return NULL;
+    } else {
+      /* Pop item only when concurrent connection limit is not
+         reached */
+      if(session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+         > spdylay_map_size(&session->streams)) {
+        spdylay_outbound_item *item;
+        item = spdylay_pq_top(&session->ob_ss_pq);
+        spdylay_pq_pop(&session->ob_ss_pq);
+        return item;
+      } else {
+        return NULL;
+      }
+    }
+  } else {
+    if(spdylay_pq_empty(&session->ob_ss_pq)) {
+      spdylay_outbound_item *item;
+      item = spdylay_pq_top(&session->ob_pq);
+      spdylay_pq_pop(&session->ob_pq);
+      return item;
+    } else {
+      spdylay_outbound_item *item, *syn_stream_item;
+      item = spdylay_pq_top(&session->ob_pq);
+      syn_stream_item = spdylay_pq_top(&session->ob_ss_pq);
+      if(session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+         <= spdylay_map_size(&session->streams) ||
+         item->pri < syn_stream_item->pri ||
+         (item->pri == syn_stream_item->pri &&
+          item->seq < syn_stream_item->seq)) {
+        spdylay_pq_pop(&session->ob_pq);
+        return item;
+      } else {
+        spdylay_pq_pop(&session->ob_ss_pq);
+        return syn_stream_item;
+      }
+    }
+  }
+}
+
 static int spdylay_session_after_frame_sent(spdylay_session *session)
 {
   /* TODO handle FIN flag. */
@@ -645,31 +751,32 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     int r;
     if(frame->data.flags & SPDYLAY_FLAG_FIN) {
       spdylay_active_outbound_item_reset(&session->aob);
-    } else if(spdylay_pq_empty(&session->ob_pq) ||
-              session->aob.item->pri <=
-              spdylay_session_get_ob_pq_top(session)->pri) {
-      /* If priority of this stream is higher or equal to other stream
-         waiting at the top of the queue, we continue to send this
-         data. */
-      /* We assume that buffer has at least
-         SPDYLAY_DATA_FRAME_LENGTH. */
-      r = spdylay_session_pack_data_overwrite(session,
-                                              session->aob.framebuf,
-                                              SPDYLAY_DATA_FRAME_LENGTH,
-                                              &frame->data);
-      if(r < 0) {
-        spdylay_active_outbound_item_reset(&session->aob);
-        return r;
-      }
-      session->aob.framebufoff = 0;
     } else {
-      r = spdylay_pq_push(&session->ob_pq, session->aob.item);
-      if(r == 0) {
-        session->aob.item = NULL;
-        spdylay_active_outbound_item_reset(&session->aob);
+      spdylay_outbound_item* item = spdylay_session_get_next_ob_item(session);
+      if(item == NULL || session->aob.item->pri <= item->pri) {
+        /* If priority of this stream is higher or equal to other stream
+           waiting at the top of the queue, we continue to send this
+           data. */
+        /* We assume that buffer has at least
+           SPDYLAY_DATA_FRAME_LENGTH. */
+        r = spdylay_session_pack_data_overwrite(session,
+                                                session->aob.framebuf,
+                                                SPDYLAY_DATA_FRAME_LENGTH,
+                                                &frame->data);
+        if(r < 0) {
+          spdylay_active_outbound_item_reset(&session->aob);
+          return r;
+        }
+        session->aob.framebufoff = 0;
       } else {
-        spdylay_active_outbound_item_reset(&session->aob);
-        return r;
+        r = spdylay_pq_push(&session->ob_pq, session->aob.item);
+        if(r == 0) {
+          session->aob.item = NULL;
+          spdylay_active_outbound_item_reset(&session->aob);
+        } else {
+          spdylay_active_outbound_item_reset(&session->aob);
+          return r;
+        }
       }
     }
   } else {
@@ -681,15 +788,18 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
 int spdylay_session_send(spdylay_session *session)
 {
   int r;
-  while(session->aob.item || !spdylay_pq_empty(&session->ob_pq)) {
+  while(1) {
     const uint8_t *data;
     size_t datalen;
     ssize_t sentlen;
     if(session->aob.item == NULL) {
-      spdylay_outbound_item *item = spdylay_pq_top(&session->ob_pq);
+      spdylay_outbound_item *item;
       uint8_t *framebuf;
       ssize_t framebuflen;
-      spdylay_pq_pop(&session->ob_pq);
+      item = spdylay_session_pop_next_ob_item(session);
+      if(item == NULL) {
+        break;
+      }
       framebuflen = spdylay_session_prep_frame(session, item, &framebuf);
       if(framebuflen < 0) {
         /* TODO Call error callback? */
@@ -1323,13 +1433,16 @@ int spdylay_session_want_write(spdylay_session *session)
 {
   /*
    * Unless GOAWAY is sent or received, we want to write frames if
-   * there is pending ones. After GOAWAY is sent or received, we want
-   * to write frames if there is pending ones AND there are active
-   * frames.
+   * there is pending ones. If pending frame is SYN_STREAM and
+   * concurrent stream limit is reached, we don't want to write
+   * SYN_STREAM.  After GOAWAY is sent or received, we want to write
+   * frames if there is pending ones AND there are active frames.
    */
-  return (session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq)) &&
-    (!session->goaway_flags ||
-     spdylay_map_size(&session->streams) > 0);
+  return (session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq) ||
+          (!spdylay_pq_empty(&session->ob_ss_pq) &&
+           session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+           > spdylay_map_size(&session->streams))) &&
+    (!session->goaway_flags || spdylay_map_size(&session->streams) > 0);
 }
 
 int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id)

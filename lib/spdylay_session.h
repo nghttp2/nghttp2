@@ -100,7 +100,10 @@ struct spdylay_session {
   int64_t next_seq;
 
   spdylay_map /* <spdylay_stream*> */ streams;
+  /* Queue for outbound frames other than SYN_STREAM */
   spdylay_pq /* <spdylay_outbound_item*> */ ob_pq;
+  /* Queue for outbound SYN_STREAM frame */
+  spdylay_pq /* <spdylay_outbound_item*> */ ob_ss_pq;
 
   spdylay_active_outbound_item aob;
 
@@ -118,6 +121,10 @@ struct spdylay_session {
   uint8_t goaway_flags;
   /* This is the value in GOAWAY frame sent by remote endpoint. */
   int32_t last_good_stream_id;
+
+  /* Settings value store. We just use ID as index. The index = 0 is
+     unused. */
+  uint32_t settings[SPDYLAY_SETTINGS_MAX+1];
 
   spdylay_session_callbacks callbacks;
   void *user_data;
@@ -292,5 +299,31 @@ uint32_t spdylay_session_get_next_unique_id(spdylay_session *session);
  * queue is empty.
  */
 spdylay_outbound_item* spdylay_session_get_ob_pq_top(spdylay_session *session);
+
+/*
+ * Pops and returns next item to send. If there is no such item,
+ * returns NULL.  This function takes into account max concurrent
+ * streams. That means if session->ob_pq is empty but
+ * session->ob_ss_pq has item and max concurrent streams is reached,
+ * then this function returns NULL.
+ */
+spdylay_outbound_item* spdylay_session_pop_next_ob_item
+(spdylay_session *session);
+
+/*
+ * Returns next item to send. If there is no such item, this function
+ * returns NULL.  This function takes into account max concurrent
+ * streams. That means if session->ob_pq is empty but
+ * session->ob_ss_pq has item and max concurrent streams is reached,
+ * then this function returns NULL.
+ */
+spdylay_outbound_item* spdylay_session_get_next_ob_item
+(spdylay_session *session);
+
+/*
+ * Deallocates resource for |item|. If |item| is NULL, this function
+ * does nothing.
+ */
+void spdylay_outbound_item_free(spdylay_outbound_item *item);
 
 #endif /* SPDYLAY_SESSION_H */

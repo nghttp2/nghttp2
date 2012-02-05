@@ -99,6 +99,12 @@ typedef enum {
   SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE = 7
 } spdylay_settings_id;
 
+/* Maximum ID of spdylay_settings_id. */
+#define SPDYLAY_SETTINGS_MAX 7
+
+/* Default maximum concurrent streams */
+#define SPDYLAY_CONCURRENT_STREAMS_MAX 100
+
 typedef enum {
   SPDYLAY_OK = 0,
   SPDYLAY_PROTOCOL_ERROR = 1,

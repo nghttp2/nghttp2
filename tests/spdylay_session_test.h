@@ -43,5 +43,7 @@ void test_spdylay_session_on_data_received();
 void test_spdylay_session_on_rst_received();
 void test_spdylay_session_is_my_stream_id();
 void test_spdylay_session_send_rst_stream();
+void test_spdylay_session_get_next_ob_item();
+void test_spdylay_session_pop_next_ob_item();
 
 #endif // SPDYLAY_SESSION_TEST_H
