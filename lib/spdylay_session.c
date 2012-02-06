@@ -767,6 +767,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
           spdylay_active_outbound_item_reset(&session->aob);
           return r;
         }
+        session->aob.framebuflen = r;
         session->aob.framebufoff = 0;
       } else {
         r = spdylay_pq_push(&session->ob_pq, session->aob.item);
@@ -1628,8 +1629,9 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
                                                  frame);
   if(framelen < 0) {
     free(framebuf);
+  } else {
+    *buf_ptr = framebuf;
   }
-  *buf_ptr = framebuf;
   return framelen;
 }
 
@@ -1647,9 +1649,9 @@ ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
   } else if(len < r) {
     return SPDYLAY_ERR_CALLBACK_FAILURE;
   }
-  memset(buf, 0, len);
+  memset(buf, 0, SPDYLAY_HEAD_LEN);
   spdylay_put_uint32be(&buf[0], frame->stream_id);
-  spdylay_put_uint32be(&buf[4], 8+r);
+  spdylay_put_uint32be(&buf[4], r);
   if(eof) {
     flags |= SPDYLAY_FLAG_FIN;
   }
