@@ -214,6 +214,7 @@ bool parse(UriStruct& result, const std::string& uri)
     } else if(65535 < tempPort) {
       return false;
     }
+    result.port = tempPort;
   }
   if(result.ipv6LiteralAddress) {
     result.host.assign(hostPortFirst+1, hostLast-1);
