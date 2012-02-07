@@ -304,6 +304,15 @@ typedef void (*spdylay_on_stream_close_callback)
 (spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
  void *user_data);
 
+/*
+ * Callback function invoked when request from remote peer is
+ * received.  In other words, frame with FIN flag set is received.  In
+ * HTTP, this means HTTP request, including request body, is fully
+ * received.
+ */
+typedef void (*spdylay_on_request_recv_callback)
+(spdylay_session *session, int32_t stream_id, void *user_data);
+
 typedef struct {
   spdylay_send_callback send_callback;
   spdylay_recv_callback recv_callback;
@@ -315,6 +324,7 @@ typedef struct {
   spdylay_on_ctrl_send_callback on_ctrl_send_callback;
   spdylay_on_data_send_callback on_data_send_callback;
   spdylay_on_stream_close_callback on_stream_close_callback;
+  spdylay_on_request_recv_callback on_request_recv_callback;
 } spdylay_session_callbacks;
 
 /*

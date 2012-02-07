@@ -51,6 +51,7 @@ typedef struct {
   scripted_data_feed *df;
   int valid, invalid;
   size_t data_source_length;
+  int32_t stream_id;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -138,6 +139,14 @@ static ssize_t fixed_length_data_source_read_callback
     *eof = 1;
   }
   return wlen;
+}
+
+static void on_request_recv_callback(spdylay_session *session,
+                                     int32_t stream_id,
+                                     void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ud->stream_id = stream_id;
 }
 
 static char** dup_nv(const char **src)
@@ -536,15 +545,13 @@ void test_spdylay_session_reply_fail()
 void test_spdylay_session_on_headers_received()
 {
   spdylay_session *session;
-  spdylay_session_callbacks callbacks = {
-    NULL,
-    NULL,
-    on_ctrl_recv_callback,
-    on_invalid_ctrl_recv_callback
-  };
+  spdylay_session_callbacks callbacks;
   my_user_data user_data;
   const char *nv[] = { NULL };
   spdylay_frame frame;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
+  callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
   user_data.valid = 0;
   user_data.invalid = 0;
 
@@ -880,6 +887,62 @@ void test_spdylay_session_pop_next_ob_item()
   CU_ASSERT(SPDYLAY_SYN_STREAM == item->frame_type);
   spdylay_outbound_item_free(item);
   free(item);
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_on_request_recv_callback()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  my_user_data user_data;
+  const char *nv[] = { NULL };
+  spdylay_frame frame;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_request_recv_callback = on_request_recv_callback;
+  user_data.stream_id = 0;
+
+  spdylay_session_server_new(&session, &callbacks, &user_data);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE, 1, 0, 3,
+                                dup_nv(nv));
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == user_data.stream_id);
+
+  frame.syn_stream.stream_id = 3;
+  frame.syn_stream.hd.flags |= SPDYLAY_FLAG_FIN;
+
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(3 == user_data.stream_id);
+
+  user_data.stream_id = 0;
+
+  frame.syn_stream.stream_id = 0;
+
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == user_data.stream_id);
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  user_data.stream_id = 0;
+
+  spdylay_session_open_stream(session, 5, SPDYLAY_FLAG_NONE, 0,
+                              SPDYLAY_STREAM_OPENING, NULL);
+  spdylay_frame_headers_init(&frame.headers, SPDYLAY_FLAG_NONE, 5, dup_nv(nv));
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(0 == user_data.stream_id);
+
+  frame.headers.hd.flags |= SPDYLAY_FLAG_FIN;
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(5 == user_data.stream_id);
+
+  user_data.stream_id = 0;
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(0 == user_data.stream_id);
+
+  spdylay_frame_headers_free(&frame.headers);
 
   spdylay_session_del(session);
 }

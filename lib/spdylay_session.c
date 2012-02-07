@@ -903,6 +903,15 @@ static void spdylay_debug_print_nv(char **nv)
   }
 }
 
+static void spdylay_session_call_on_request_recv
+(spdylay_session *session, int32_t stream_id)
+{
+  if(session->callbacks.on_request_recv_callback) {
+    session->callbacks.on_request_recv_callback(session, stream_id,
+                                                session->user_data);
+  }
+}
+
 static void spdylay_session_call_on_ctrl_frame_received
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame)
 {
@@ -1022,6 +1031,10 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
       session->last_recv_stream_id = frame->syn_stream.stream_id;
       spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
                                                   frame);
+      if(flags & SPDYLAY_FLAG_FIN) {
+        spdylay_session_call_on_request_recv(session,
+                                             frame->syn_stream.stream_id);
+      }
     }
   } else {
     r = spdylay_session_handle_invalid_stream
@@ -1152,6 +1165,8 @@ int spdylay_session_on_headers_received(spdylay_session *session,
         spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
                                                     frame);
         if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+          spdylay_session_call_on_request_recv(session,
+                                               frame->headers.stream_id);
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
           spdylay_session_close_stream_if_shut_rdwr(session, stream);
         }
@@ -1272,16 +1287,20 @@ int spdylay_session_on_data_received(spdylay_session *session,
                                      uint8_t flags, int32_t length,
                                      int32_t stream_id)
 {
-  int valid = 0;
   int r = 0;
   spdylay_status_code status_code = 0;
   spdylay_stream *stream;
   stream = spdylay_session_get_stream(session, stream_id);
   if(stream) {
     if((stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
+      int valid = 0;
       if(spdylay_session_is_my_stream_id(session, stream_id)) {
         if(stream->state == SPDYLAY_STREAM_OPENED) {
           valid = 1;
+          if(session->callbacks.on_data_recv_callback) {
+            session->callbacks.on_data_recv_callback
+              (session, flags, stream_id, length, session->user_data);
+          }
         } else if(stream->state != SPDYLAY_STREAM_CLOSING) {
           status_code = SPDYLAY_PROTOCOL_ERROR;
         }
@@ -1290,6 +1309,13 @@ int spdylay_session_on_data_received(spdylay_session *session,
            not receive FIN unless stream is in SPDYLAY_STREAM_CLOSING
            state. This is a race condition. */
         valid = 1;
+        if(session->callbacks.on_data_recv_callback) {
+          session->callbacks.on_data_recv_callback
+            (session, flags, stream_id, length, session->user_data);
+        }
+        if(flags & SPDYLAY_FLAG_FIN) {
+          spdylay_session_call_on_request_recv(session, stream_id);
+        }
       }
       if(valid) {
         if(flags & SPDYLAY_FLAG_FIN) {
@@ -1303,12 +1329,7 @@ int spdylay_session_on_data_received(spdylay_session *session,
   } else {
     status_code = SPDYLAY_INVALID_STREAM;
   }
-  if(valid) {
-    if(session->callbacks.on_data_recv_callback) {
-      session->callbacks.on_data_recv_callback
-        (session, flags, stream_id, length, session->user_data);
-    }
-  } else if(status_code != 0) {
+  if(status_code != 0) {
     r = spdylay_session_add_rst_stream(session, stream_id, status_code);
   }
   return r;
