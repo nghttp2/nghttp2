@@ -33,6 +33,8 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <spdylay/spdylayver.h>
+
 struct spdylay_session;
 typedef struct spdylay_session spdylay_session;
 
