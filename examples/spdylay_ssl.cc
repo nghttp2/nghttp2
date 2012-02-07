@@ -159,6 +159,52 @@ int connect_to(const std::string& host, uint16_t port)
   return fd;
 }
 
+int make_listen_socket(uint16_t port)
+{
+  addrinfo hints;
+  int fd = -1;
+  int r;
+  char service[10];
+  snprintf(service, sizeof(service), "%u", port);
+  memset(&hints, 0, sizeof(addrinfo));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_ADDRCONFIG | AI_PASSIVE;
+  addrinfo *res, *rp;
+  r = getaddrinfo(0, service, &hints, &res);
+  if(r != 0) {
+    std::cerr << "getaddrinfo: " << gai_strerror(r) << std::endl;
+    return -1;
+  }
+  for(rp = res; rp; rp = rp->ai_next) {
+    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if(fd == -1) {
+      continue;
+    }
+    int val = 1;
+    if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
+                  static_cast<socklen_t>(sizeof(val))) == -1) {
+      close(fd);
+      continue;
+    }
+    if(bind(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+      break;
+    }
+    close(fd);
+  }
+  freeaddrinfo(res);
+  if(rp == 0) {
+    return -1;
+  } else {
+    if(listen(fd, 16) == -1) {
+      close(fd);
+      return -1;
+    } else {
+      return fd;
+    }
+  }
+}
+
 int make_non_block(int fd)
 {
   int flags, r;
@@ -171,6 +217,12 @@ int make_non_block(int fd)
     return -1;
   }
   return 0;
+}
+
+int set_tcp_nodelay(int fd)
+{
+  int val = 1;
+  return setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, (socklen_t)sizeof(val));
 }
 
 ssize_t send_callback(spdylay_session *session,
@@ -250,6 +302,7 @@ void print_ctrl_hd(const spdylay_ctrl_hd& hd)
 }
 } // namespace
 
+namespace {
 void print_frame(spdylay_frame_type type, spdylay_frame *frame)
 {
   printf("%s frame ", ctrl_names[type-1]);
@@ -300,6 +353,7 @@ void print_frame(spdylay_frame_type type, spdylay_frame *frame)
     break;
   }
 }
+} // namespace
 
 void on_ctrl_recv_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
@@ -311,16 +365,6 @@ void on_ctrl_recv_callback
   fflush(stdout);
 }
 
-void on_data_recv_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
- void *user_data)
-{
-  print_timer();
-  printf(" recv DATA frame (stream_id=%d, flags=%d, length=%d)\n",
-         stream_id, flags, length);
-  fflush(stdout);
-}
-
 void on_ctrl_send_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
@@ -328,6 +372,34 @@ void on_ctrl_send_callback
   print_timer();
   printf(" send ");
   print_frame(type, frame);
+  fflush(stdout);
+}
+
+namespace {
+void print_data_frame(uint8_t flags, int32_t stream_id, int32_t length)
+{
+  printf("DATA frame (stream_id=%d, flags=%d, length=%d)\n",
+         stream_id, flags, length);
+}
+} // namespace
+
+void on_data_recv_callback
+(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+ void *user_data)
+{
+  print_timer();
+  printf(" recv ");
+  print_data_frame(flags, stream_id, length);
+  fflush(stdout);
+}
+
+void on_data_send_callback
+(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+ void *user_data)
+{
+  print_timer();
+  printf(" send ");
+  print_data_frame(flags, stream_id, length);
   fflush(stdout);
 }
 

@@ -24,7 +24,10 @@
  */
 #include "util.h"
 
+#include <time.h>
+
 #include <cstdio>
+#include <cstring>
 
 namespace spdylay {
 
@@ -95,6 +98,30 @@ std::string percentDecode
     }
   }
   return result;
+}
+
+std::string http_date(time_t t)
+{
+  char buf[32];
+  tm* tms = gmtime(&t); // returned struct is statically allocated.
+  size_t r = strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", tms);
+  return std::string(&buf[0], &buf[r]);
+}
+
+time_t parse_http_date(const std::string& s)
+{
+  tm tm;
+  memset(&tm, 0, sizeof(tm));
+  char* r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
+  if(r == 0) {
+    return 0;
+  }
+  return timegm(&tm);
+}
+
+bool endsWith(const std::string& a, const std::string& b)
+{
+  return endsWith(a.begin(), a.end(), b.begin(), b.end());
 }
 
 } // namespace util

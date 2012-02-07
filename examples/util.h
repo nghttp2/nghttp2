@@ -28,6 +28,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <sstream>
 
 namespace spdylay {
 
@@ -160,6 +161,33 @@ std::string percentEncode(const std::string& target);
 
 std::string percentDecode
 (std::string::const_iterator first, std::string::const_iterator last);
+
+std::string http_date(time_t t);
+
+time_t parse_http_date(const std::string& s);
+
+template<typename T>
+std::string to_str(T value)
+{
+  std::stringstream ss;
+  ss << value;
+  return ss.str();
+}
+
+template<typename InputIterator1, typename InputIterator2>
+bool endsWith
+(InputIterator1 first1,
+ InputIterator1 last1,
+ InputIterator2 first2,
+ InputIterator2 last2)
+{
+  if(last1-first1 < last2-first2) {
+    return false;
+  }
+  return std::equal(first2, last2, last1-(last2-first2));
+}
+
+bool endsWith(const std::string& a, const std::string& b);
 
 } // namespace util
 

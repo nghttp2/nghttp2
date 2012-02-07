@@ -26,6 +26,8 @@ AM_CPPFLAGS = -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes `pkg-con
 AM_LDFLAGS = `pkg-config --libs libssl libcrypto`
 LDADD = $(top_builddir)/lib/libspdylay.la
 
-bin_PROGRAMS = spdycat
+bin_PROGRAMS = spdycat spdyd
 
 spdycat_SOURCES = uri.cc spdylay_ssl.cc util.cc spdycat.cc
+
+spdyd_SOURCES = uri.cc spdylay_ssl.cc util.cc spdyd.cc

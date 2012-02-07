@@ -62,7 +62,11 @@ private:
 
 int connect_to(const std::string& host, uint16_t port);
 
+int make_listen_socket(uint16_t port);
+
 int make_non_block(int fd);
+
+int set_tcp_nodelay(int fd);
 
 ssize_t send_callback(spdylay_session *session,
                       const uint8_t *data, size_t len, int flags,
@@ -77,12 +81,16 @@ void on_ctrl_recv_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data);
 
+void on_ctrl_send_callback
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data);
+
 void on_data_recv_callback
 (spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data);
 
-void on_ctrl_send_callback
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+void on_data_send_callback
+(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data);
 
 void ctl_poll(pollfd *pollfd, Spdylay *sc);
@@ -99,6 +107,8 @@ int ssl_handshake(SSL *ssl, int fd);
 void reset_timer();
 
 void get_timer(timeval *tv);
+
+void print_timer();
 
 } // namespace spdylay
 
