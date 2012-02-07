@@ -62,10 +62,11 @@ namespace spdylay {
 struct Config {
   std::string htdocs;
   bool verbose;
+  bool daemon;
   uint16_t port;
   std::string private_key_file;
   std::string cert_file;
-  Config(): verbose(false), port(0) {}
+  Config(): verbose(false), daemon(false), port(0) {}
 };
 
 extern bool ssl_debug;
@@ -861,7 +862,7 @@ int reactor()
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdyd [-hv] PORT PRIVATE_KEY CERT" << std::endl;
+  out << "Usage: spdyd [-Ddhv] PORT PRIVATE_KEY CERT" << std::endl;
 }
 } // namespace
 
@@ -871,32 +872,42 @@ void print_help(std::ostream& out)
   print_usage(out);
   out << "\n"
       << "OPTIONS:\n"
+      << "    -D, --daemon       Run in a background. If -D is used, the\n"
+      << "                       current working directory is changed to '/'.\n"
+      << "                       Therefore if this option is used, -d option\n"
+      << "                       must be specified.\n"
+      << "\n"
       << "    -d, --htdocs=PATH  Specify document root. If this option is not\n"
       << "                       specified, the document root is the current\n"
       << "                       working directory.\n"
       << "\n"
       << "    -v, --verbose      Print debug information such as reception/\n"
       << "                       transmission of frames and name/value pairs.\n"
+      << "\n"
+      << "    -h, --help         Print this help.\n"
       << std::endl;
 }
 } // namespace
 
 int main(int argc, char **argv)
 {
-  config.htdocs = "./";
   while(1) {
     static option long_options[] = {
-      {"verbose", no_argument, 0, 'v' },
+      {"daemon", no_argument, 0, 'D' },
       {"htdocs", required_argument, 0, 'd' },
       {"help", no_argument, 0, 'h' },
+      {"verbose", no_argument, 0, 'v' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "dhv", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Dd:hv", long_options, &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
+    case 'D':
+      config.daemon = true;
+      break;
     case 'd':
       config.htdocs = optarg;
       break;
@@ -917,6 +928,20 @@ int main(int argc, char **argv)
     std::cerr << "Too few arguments" << std::endl;
     exit(EXIT_FAILURE);
   }
+  if(config.daemon) {
+    if(config.htdocs.empty()) {
+      print_usage(std::cerr);
+      std::cerr << "-d option must be specified when -D is used." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    if(daemon(0, 0) == -1) {
+      perror("daemon");
+      exit(EXIT_FAILURE);
+    }
+  }
+  if(config.htdocs.empty()) {
+    config.htdocs = "./";
+  }
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
@@ -935,6 +960,7 @@ int main(int argc, char **argv)
   proto_list[0] = 6;
   memcpy(&proto_list[1], "spdy/2", 6);
   reactor();
+  delete [] proto_list;
   return 0;
 }
 
