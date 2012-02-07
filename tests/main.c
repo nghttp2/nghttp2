@@ -107,6 +107,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_get_next_ob_item) ||
       !CU_add_test(pSuite, "session_pop_next_ob_item",
                    test_spdylay_session_pop_next_ob_item) ||
+      !CU_add_test(pSuite, "session_on_stream_close",
+                   test_spdylay_session_on_stream_close) ||
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||

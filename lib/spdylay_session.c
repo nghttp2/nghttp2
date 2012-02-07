@@ -358,13 +358,13 @@ int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id,
 {
   spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
   if(stream) {
-    spdylay_map_erase(&session->streams, stream_id);
     if(stream->state != SPDYLAY_STREAM_INITIAL &&
        session->callbacks.on_stream_close_callback) {
       session->callbacks.on_stream_close_callback(session, stream_id,
                                                   status_code,
                                                   session->user_data);
     }
+    spdylay_map_erase(&session->streams, stream_id);
     spdylay_stream_free(stream);
     free(stream);
     return 0;
