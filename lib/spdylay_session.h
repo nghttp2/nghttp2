@@ -51,8 +51,12 @@ typedef struct {
   size_t framebufoff;
 } spdylay_active_outbound_item;
 
+/* Buffer length for inbound SPDY frames. Same value for the size of
+   message block of SSLv3/TLSv1 */
+#define SPDYLAY_INBOUND_BUFFER_LENGTH 16384
+
 typedef struct {
-  uint8_t buf[4096];
+  uint8_t buf[SPDYLAY_INBOUND_BUFFER_LENGTH];
   uint8_t *mark;
   uint8_t *limit;
 } spdylay_inbound_buffer;
