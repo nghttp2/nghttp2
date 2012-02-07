@@ -179,11 +179,12 @@ int communicate(const std::string& host, uint16_t port,
       perror("poll");
       return -1;
     }
-    if(((pollfds[0].revents & POLLIN) && sc.recv() != 0) ||
-       ((pollfds[0].revents & POLLOUT) && sc.send() != 0)) {
+    if(pollfds[0].revents & (POLLIN | POLLOUT)) {
+      if(sc.recv() != 0 || sc.send() != 0) {
         ok = false;
         std::cout << "Fatal" << std::endl;
         break;
+      }
     }
     if((pollfds[0].revents & POLLHUP) || (pollfds[0].revents & POLLERR)) {
       std::cout << "HUP" << std::endl;
