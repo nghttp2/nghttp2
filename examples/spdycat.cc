@@ -154,6 +154,7 @@ int communicate(const std::string& host, uint16_t port,
     return -1;
   }
   make_non_block(fd);
+  set_tcp_nodelay(fd);
   Spdylay sc(fd, ssl, callbacks);
 
   nfds_t npollfds = 1;
