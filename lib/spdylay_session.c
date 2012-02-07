@@ -895,14 +895,6 @@ static void spdylay_inbound_frame_reset(spdylay_inbound_frame *iframe)
   iframe->ign = 0;
 }
 
-static void spdylay_debug_print_nv(char **nv)
-{
-  int i;
-  for(i = 0; nv[i]; i += 2) {
-    printf("%s: %s\n", nv[i], nv[i+1]);
-  }
-}
-
 static void spdylay_session_call_on_request_recv
 (spdylay_session *session, int32_t stream_id)
 {
