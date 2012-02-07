@@ -37,7 +37,8 @@
 #define SPDYLAY_LENGTH_MASK 0xffffff
 #define SPDYLAY_VERSION_MASK 0x7fff
 
-#define SPDYLAY_DATA_FRAME_LENGTH 4096
+/* DATA frame length. This is 8+4KiB */
+#define SPDYLAY_DATA_FRAME_LENGTH 4104
 
 /* The number of bytes of frame header. */
 #define SPDYLAY_FRAME_HEAD_LENGTH 8
