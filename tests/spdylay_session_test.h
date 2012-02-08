@@ -46,5 +46,6 @@ void test_spdylay_session_send_rst_stream();
 void test_spdylay_session_get_next_ob_item();
 void test_spdylay_session_pop_next_ob_item();
 void test_spdylay_session_on_request_recv_callback();
+void test_spdylay_session_on_stream_close();
 
 #endif // SPDYLAY_SESSION_TEST_H
