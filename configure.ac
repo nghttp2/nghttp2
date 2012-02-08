@@ -44,13 +44,31 @@ AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG([0.20])
 
 # Checks for libraries.
+
+# zlib
 PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
 LIBS=$ZLIB_LIBS $LIBS
 CFLAGS=$CFLAGS $ZLIB_CFLAGS
 
-AC_CHECK_LIB([cunit], [CU_initialize_registry],
-             [have_cunit=yes], [have_cunit=no])
+# cunit
+PKG_CHECK_MODULES([CUNIT], [cunit >= 2.1], [have_cunit=yes], [have_cunit=no])
+# If pkg-config does not find cunit, check it using AC_CHECK_LIB.  We
+# do this because Debian (Ubuntu) lacks pkg-config file for cunit.
+if test "x${have_cunit}" = "xno"; then
+  AC_MSG_WARN([${CUNIT_PKG_ERRORS}])
+  AC_CHECK_LIB([cunit], [CU_initialize_registry],
+               [have_cunit=yes], [have_cunit=no])
+  if test "x${have_cunit}" = "xyes"; then
+    CUNIT_LIBS="-lcunit"
+    CUNIT_CFLAGS=""
+    AC_SUBST([CUNIT_LIBS])
+    AC_SUBST([CUNIT_CFLAGS])
+  fi
+fi
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
+
+# openssl (for examples)
+PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.0])
 
 # Checks for header files.
 AC_CHECK_HEADERS([ \
