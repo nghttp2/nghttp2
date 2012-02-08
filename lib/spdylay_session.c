@@ -1049,13 +1049,24 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
   return r;
 }
 
+/*
+ * Returns non-zero iff version == SPDYLAY_PROTOCOL_ERROR.
+ */
+static int spdylay_session_check_version(uint16_t version)
+{
+  return version == SPDYLAY_PROTO_VERSION;
+}
+
 int spdylay_session_on_syn_reply_received(spdylay_session *session,
                                           spdylay_frame *frame)
 {
   int r = 0;
   int valid = 0;
-  spdylay_stream *stream = spdylay_session_get_stream
-    (session, frame->syn_reply.stream_id);
+  spdylay_stream *stream;
+  if(!spdylay_session_check_version(frame->syn_reply.hd.version)) {
+    return 0;
+  }
+  stream = spdylay_session_get_stream(session, frame->syn_reply.stream_id);
   if(stream && (stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
     if(spdylay_session_is_my_stream_id(session, frame->syn_reply.stream_id)) {
       if(stream->state == SPDYLAY_STREAM_OPENING) {
@@ -1088,6 +1099,9 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
 int spdylay_session_on_rst_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
+  if(!spdylay_session_check_version(frame->rst_stream.hd.version)) {
+    return 0;
+  }
   if(session->server &&
      !spdylay_session_is_my_stream_id(session, frame->rst_stream.stream_id) &&
      frame->rst_stream.status_code == SPDYLAY_CANCEL) {
@@ -1102,6 +1116,9 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
 int spdylay_session_on_settings_received(spdylay_session *session,
                                          spdylay_frame *frame)
 {
+  if(!spdylay_session_check_version(frame->settings.hd.version)) {
+    return 0;
+  }
   /* TODO Check ID/value pairs and persist them if necessary. */
   spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SETTINGS, frame);
   return 0;
@@ -1111,6 +1128,9 @@ int spdylay_session_on_ping_received(spdylay_session *session,
                                      spdylay_frame *frame)
 {
   int r = 0;
+  if(!spdylay_session_check_version(frame->ping.hd.version)) {
+    return 0;
+  }
   if(frame->ping.unique_id != 0) {
     if(session->last_ping_unique_id == frame->ping.unique_id) {
       /* This is ping reply from peer */
@@ -1131,6 +1151,9 @@ int spdylay_session_on_ping_received(spdylay_session *session,
 int spdylay_session_on_goaway_received(spdylay_session *session,
                                        spdylay_frame *frame)
 {
+  if(!spdylay_session_check_version(frame->goaway.hd.version)) {
+    return 0;
+  }
   session->last_good_stream_id = frame->goaway.last_good_stream_id;
   session->goaway_flags |= SPDYLAY_GOAWAY_RECV;
   spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_GOAWAY, frame);
@@ -1142,8 +1165,11 @@ int spdylay_session_on_headers_received(spdylay_session *session,
 {
   int r = 0;
   int valid = 0;
-  spdylay_stream *stream = spdylay_session_get_stream
-    (session, frame->headers.stream_id);
+  spdylay_stream *stream;
+  if(!spdylay_session_check_version(frame->headers.hd.version)) {
+    return 0;
+  }
+  stream = spdylay_session_get_stream(session, frame->headers.stream_id);
   /* First we check readability from this stream. */
   if(stream && (stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
     if(spdylay_session_is_my_stream_id(session, frame->headers.stream_id)) {
