@@ -977,3 +977,30 @@ void test_spdylay_session_on_stream_close()
   CU_ASSERT(user_data.stream_close_cb_called == 1);
   spdylay_session_del(session);
 }
+
+void test_spdylay_session_max_concurrent_streams()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  spdylay_frame frame;
+  const char *nv[] = { NULL };
+  spdylay_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  spdylay_session_server_new(&session, &callbacks, NULL);
+  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 3,
+                              SPDYLAY_STREAM_OPENED, NULL);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE,
+                                3, 0, 3, dup_nv(nv));
+  session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+
+  item = spdylay_session_get_ob_pq_top(session);
+  CU_ASSERT(SPDYLAY_RST_STREAM == item->frame_type);
+  CU_ASSERT(SPDYLAY_REFUSED_STREAM == item->frame->rst_stream.status_code)
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  spdylay_session_del(session);
+}
