@@ -431,7 +431,7 @@ int select_next_proto_cb(SSL* ssl,
       std::cout << std::endl;
     }
   }
-  if(spdylay_select_next_protocol(out, outlen, in, inlen) == -1) {
+  if(spdylay_select_next_protocol(out, outlen, in, inlen) != 1) {
     std::cerr << "Server did not advertise spdy/2 protocol." << std::endl;
     abort();
   }
