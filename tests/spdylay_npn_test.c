@@ -30,19 +30,34 @@
 static void spdy2()
 {
   const unsigned char spdy[] = {
-    8, 'h', 't', 't', 'p', '/', '1', '.', '0',
+    8, 'h', 't', 't', 'p', '/', '1', '.', '1',
     6, 's', 'p', 'd', 'y', '/', '2',
     6, 's', 'p', 'd', 'y', '/', '3'
   };
   unsigned char outlen;
   unsigned char* out;
-  CU_ASSERT(0 == spdylay_select_next_protocol(&out, &outlen,
+  CU_ASSERT(1 == spdylay_select_next_protocol(&out, &outlen,
                                               spdy, sizeof(spdy)));
   CU_ASSERT(6 == outlen);
   CU_ASSERT(memcmp("spdy/2", out, outlen) == 0);
 }
 
-static void spdy4()
+static void http11()
+{
+  const unsigned char spdy[] = {
+    6, 's', 'p', 'd', 'y', '/', '4',
+    8, 's', 'p', 'd', 'y', '/', '2', '.', '1',
+    8, 'h', 't', 't', 'p', '/', '1', '.', '1',
+  };
+  unsigned char outlen;
+  unsigned char* out;
+  CU_ASSERT(0 == spdylay_select_next_protocol(&out, &outlen,
+                                              spdy, sizeof(spdy)));
+  CU_ASSERT(8 == outlen);
+  CU_ASSERT(memcmp("http/1.1", out, outlen) == 0);
+}
+
+static void no_overlap()
 {
   const unsigned char spdy[] = {
     6, 's', 'p', 'd', 'y', '/', '4',
@@ -60,5 +75,6 @@ static void spdy4()
 void test_spdylay_npn()
 {
   spdy2();
-  spdy4();
+  http11();
+  no_overlap();
 }

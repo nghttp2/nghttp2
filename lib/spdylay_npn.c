@@ -29,13 +29,27 @@
 int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
                                  const unsigned char *in, unsigned int inlen)
 {
+  int http_selected = 0;
   unsigned int i = 0;
+  /* For non-overlap case */
   *out = (unsigned char*)"spdy/2";
   *outlen = 6;
   for(; i < inlen; i += in[i]+1) {
     if(in[i] == 6 && memcmp(&in[i+1], "spdy/2", in[i]) == 0) {
-      return 0;
+      *out = &in[i+1];
+      *outlen = in[i];
+      return 1;
+    } else if(in[i] == 8 && memcmp(&in[i+1], "http/1.1", in[i]) == 0) {
+      http_selected = 1;
+      *out = &in[i+1];
+      *outlen = in[i];
+      /* Go through to the next iteration, because "spdy/2" may be
+         there */
     }
   }
-  return -1;
+  if(http_selected) {
+    return 0;
+  } else {
+    return -1;
+  }
 }

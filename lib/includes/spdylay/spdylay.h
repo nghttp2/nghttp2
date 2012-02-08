@@ -461,10 +461,35 @@ int spdylay_submit_ping(spdylay_session *session);
 int spdylay_submit_goaway(spdylay_session *session);
 
 /*
- * A helper function for dealing with NPN.  This function always
- * selects "spdy/2" protocol.  NPN draft permits that client can
- * select any protocol even if server does not advertise it at the
- * time of this writing:
+ * A helper function for dealing with NPN in client side.
+ * |in| contains server's protocol in preferable order.
+ * The format of |in| is length-prefixed and not null-terminated.
+ * For example, "spdy/2" are "http/1.1" stored in |in| like this:
+ *
+ *  in[0] = 6
+ *  in[1..6] = "spdy/2"
+ *  in[7] = 8
+ *  in[8..15] = "http/1.1"
+ *  inlen = 16
+ *
+ * The selection algorithm is as follows:
+ *
+ * 1. If server's list contains "spdy/2", this function selects
+ *    "spdy/2" and returns 1. The following steps are not taken.
+ *
+ * 2. If server's list contains "http/1.1", this function selects
+ *    "http/1.1" and returns 0. The following step is not taken.
+ *
+ * 3. This function selects "spdy/2" and returns -1. (So called
+ *    non-overlap case).
+ *
+ * When spdylay supports updated version of SPDY in the future, this
+ * function may select updated protocol and application code which
+ * relies on spdylay for SPDY stuff needs not be modified.
+ *
+ * For rationale of step 3, NPN draft permits that client can select
+ * any protocol even if server does not advertise it at the time of
+ * this writing:
  *
  *   It's expected that a client will have a list of protocols that it
  *   supports, in preference order, and will only select a protocol if
@@ -481,9 +506,6 @@ int spdylay_submit_goaway(spdylay_session *session);
  * Selecting "spdy/2" means that "spdy/2" is written into |*out| and
  * length of "spdy/2" (which is 6) is assigned to |*outlen|.
  *
- * This function returns 0 if server advertised "spdy/2" and it is
- * selected, or -1.
- *
  * To use this method you should do something like:
  *
  * static int select_next_proto_cb(SSL* ssl,
@@ -491,7 +513,7 @@ int spdylay_submit_goaway(spdylay_session *session);
  *                                 const unsigned char *in, unsigned int inlen,
  *                                 void *arg)
  * {
- *   if (spdylay_select_next_protocol(out, outlen, in, inlen) == 0) {
+ *   if (spdylay_select_next_protocol(out, outlen, in, inlen) == 1) {
  *     ((MyType*)arg)->spdy = 1;
  *   }
  *   return SSL_TLSEXT_ERR_OK;
