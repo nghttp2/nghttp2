@@ -298,7 +298,8 @@ typedef void (*spdylay_before_ctrl_send_callback)
 
 /*
  * Callback function invoked when stream |stream_id| is closed. The
- * reason of closure is indicated by |status_code|.
+ * reason of closure is indicated by |status_code|. stream_user_data
+ * is still available in this function.
  */
 typedef void (*spdylay_on_stream_close_callback)
 (spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
