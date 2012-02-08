@@ -181,6 +181,14 @@ typedef union {
   void *ptr;
 } spdylay_data_source;
 
+/*
+ * Callback function invoked when the library wants to read data from
+ * |source|. The implementation of this function must read at most
+ * |length| bytes of data from |source| (or possibly other places) and
+ * store them in |buf| and return number of data stored in |buf|. If
+ * EOF is reached, set |*eof| to 1. In case of error, return
+ * SPDYLAY_ERR_CALLBACK_FAILURE, which leads to session failure.
+ */
 typedef ssize_t (*spdylay_data_source_read_callback)
 (spdylay_session *session, uint8_t *buf, size_t length, int *eof,
  spdylay_data_source *source, void *user_data);
