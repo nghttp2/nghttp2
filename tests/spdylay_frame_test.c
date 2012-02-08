@@ -87,7 +87,7 @@ void test_spdylay_frame_count_unpack_nv_space()
   spdylay_put_uint16be(out+2, temp+1);
   CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
             spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
-  spdylay_put_uint16be(out+2, 65536);
+  spdylay_put_uint16be(out+2, 65535);
   CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
             spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
 }
