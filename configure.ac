@@ -70,10 +70,12 @@ if test "x${have_cunit}" = "xyes"; then
   # needed because cunit in Mac OS X requires it.
   LIBS_TEMP=${LIBS}
   LIBS=${CUNIT_LIBS}
-  AC_SEARCH_LIBS([CU_initialize_registry], [ncurses])
-  CUNIT_LIBS=${LIBS}
-  AC_SUBST([CUNIT_LIBS])
+  CFLAGS_TEMP=${CFLAGS}
+  CFLAGS=${CUNIT_CFLAGS}
+  AC_RUN_IFELSE(AC_LANG_PROGRAM([[#include "CUnit/Basic.h"]], [CU_initialize_registry()]), [],
+                [CUNIT_LIBS="${LIBS} -lncurses"])
   LIBS=${LIBS_TEMP}
+  CFLAGS=${CFLAGS_TEMP}
 fi
 
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
