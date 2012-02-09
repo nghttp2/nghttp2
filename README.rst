@@ -99,5 +99,4 @@ serves static contents. It only speaks ``spdy/2``::
               (last_good_stream_id=0)
     [id=1] [  1.634] closed
 
-Currently, ``spdyd`` depends on ``epoll`` facility which only exists
-in Linux. I'll add ``kqueue`` support.
+Currently, ``spdyd`` needs ``epoll`` or ``kqueue``.
