@@ -62,7 +62,7 @@ private:
 
 int connect_to(const std::string& host, uint16_t port);
 
-int make_listen_socket(uint16_t port);
+int make_listen_socket(uint16_t port, int family);
 
 int make_non_block(int fd);
 

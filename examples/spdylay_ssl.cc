@@ -159,7 +159,7 @@ int connect_to(const std::string& host, uint16_t port)
   return fd;
 }
 
-int make_listen_socket(uint16_t port)
+int make_listen_socket(uint16_t port, int family)
 {
   addrinfo hints;
   int fd = -1;
@@ -167,7 +167,7 @@ int make_listen_socket(uint16_t port)
   char service[10];
   snprintf(service, sizeof(service), "%u", port);
   memset(&hints, 0, sizeof(addrinfo));
-  hints.ai_family = AF_UNSPEC;
+  hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 #ifdef AI_ADDRCONFIG
@@ -190,6 +190,16 @@ int make_listen_socket(uint16_t port)
       close(fd);
       continue;
     }
+#ifdef IPV6_V6ONLY
+    if(family == AF_INET6) {
+      if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
+                    static_cast<socklen_t>(sizeof(val))) == -1) {
+        close(fd);
+        continue;
+      }
+    }
+#endif // IPV6_V6ONLY
+
     if(bind(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
       break;
     }

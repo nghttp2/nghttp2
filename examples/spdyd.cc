@@ -118,6 +118,10 @@ private:
   bool mark_del_;
 };
 
+namespace {
+void on_close(Sessions &sessions, EventHandler *hd);
+} // namespace
+
 class Sessions {
 public:
   Sessions(int max_events, SSL_CTX *ssl_ctx)
@@ -126,6 +130,11 @@ public:
   {}
   ~Sessions()
   {
+    for(std::set<EventHandler*>::iterator i = handlers_.begin(),
+          eoi = handlers_.end(); i != eoi; ++i) {
+      on_close(*this, *i);
+      delete *i;
+    }
     SSL_CTX_free(ssl_ctx_);
   }
   void add_handler(EventHandler *handler)
@@ -829,21 +838,37 @@ int reactor()
     return -1;
   }
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, 0);
-  int sfd = make_listen_socket(config.port);
-  if(sfd == -1) {
-    std::cerr << "Could not listen on port " << config.port << std::endl;
-    return -1;
-  }
-  make_non_block(sfd);
 
   const size_t MAX_EVENTS = 256;
   Sessions sessions(MAX_EVENTS, ssl_ctx);
-  ListenEventHandler *listen_hd = new ListenEventHandler(sfd);
-  if(sessions.add_poll(listen_hd) == -1) {
-    std::cerr << "Adding listening socket to poll failed." << std::endl;
+
+  int families[] = { AF_INET, AF_INET6 };
+  bool bind_ok = false;
+  for(int i = 0; i < 2; ++i) {
+    const char* ipv = (families[i] == AF_INET ? "IPv4" : "IPv6");
+    int sfd = make_listen_socket(config.port, families[i]);
+    if(sfd == -1) {
+      std::cerr << ipv << ": Could not listen on port " << config.port
+                << std::endl;
+    }
+    make_non_block(sfd);
+
+    ListenEventHandler *listen_hd = new ListenEventHandler(sfd);
+    if(sessions.add_poll(listen_hd) == -1) {
+      std::cerr <<  ipv << ": Adding listening socket to poll failed."
+                << std::endl;
+      delete listen_hd;
+    }
+    sessions.add_handler(listen_hd);
+    if(config.verbose) {
+      std::cout << ipv << ": listen on port " << config.port << std::endl;
+    }
+    bind_ok = true;
+  }
+  if(!bind_ok) {
     return -1;
   }
-  sessions.add_handler(listen_hd);
+
   std::vector<EventHandler*> del_list;
   while(1) {
     int n = sessions.poll(-1);
@@ -880,7 +905,6 @@ int reactor()
       del_list.clear();
     }
   }
-  on_close(sessions, listen_hd);
   return 0;
 }
 } // namespace
