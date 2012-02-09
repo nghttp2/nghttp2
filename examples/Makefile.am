@@ -29,11 +29,14 @@ LDADD = $(top_builddir)/lib/libspdylay.la
 
 bin_PROGRAMS = spdycat
 
-spdycat_SOURCES = uri.cc spdylay_ssl.cc util.cc spdycat.cc
+HELPER_OBJECTS = uri.cc util.cc spdylay_ssl.cc
+HELPER_HFILES = uri.h util.h spdylay_ssl.h
+
+spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc
 
 if HAVE_EPOLL
 
-spdyd_SOURCES = uri.cc spdylay_ssl.cc util.cc spdyd.cc EventPoll.h \
+spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdyd.cc EventPoll.h \
 	EventPollEvent.h
 
 spdyd_SOURCES += EventPoll_epoll.cc EventPoll_epoll.h
