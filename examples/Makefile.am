@@ -27,8 +27,13 @@ AM_CPPFLAGS = -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
 AM_LDFLAGS = @OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libspdylay.la
 
-bin_PROGRAMS = spdycat spdyd
+bin_PROGRAMS = spdycat
 
 spdycat_SOURCES = uri.cc spdylay_ssl.cc util.cc spdycat.cc
 
+if HAVE_EPOLL
+
 spdyd_SOURCES = uri.cc spdylay_ssl.cc util.cc spdyd.cc
+bin_PROGRAMS += spdyd
+
+endif # HAVE_EPOLL

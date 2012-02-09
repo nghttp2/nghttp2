@@ -66,9 +66,11 @@ if test "x${have_cunit}" = "xno"; then
   fi
 fi
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
+AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
+AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
 
 # openssl (for examples)
-PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.0])
+PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])
 
 # Checks for header files.
 AC_CHECK_HEADERS([ \
