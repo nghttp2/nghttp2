@@ -27,20 +27,24 @@ AM_CPPFLAGS = -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
 AM_LDFLAGS = @OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libspdylay.la
 
-bin_PROGRAMS = spdycat
+bin_PROGRAMS = spdycat spdyd
 
 HELPER_OBJECTS = uri.cc util.cc spdylay_ssl.cc
 HELPER_HFILES = uri.h util.h spdylay_ssl.h
 
 spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc
 
-if HAVE_EPOLL
-
 spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdyd.cc EventPoll.h \
 	EventPollEvent.h
 
+if HAVE_EPOLL
+
 spdyd_SOURCES += EventPoll_epoll.cc EventPoll_epoll.h
 
-bin_PROGRAMS += spdyd
-
 endif # HAVE_EPOLL
+
+if HAVE_KQUEUE
+
+spdyd_SOURCES += EventPoll_kqueue.cc EventPoll_kqueue.h
+
+endif # HAVE_KQUEUE

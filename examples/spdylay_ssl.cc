@@ -169,7 +169,10 @@ int make_listen_socket(uint16_t port)
   memset(&hints, 0, sizeof(addrinfo));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_ADDRCONFIG | AI_PASSIVE;
+  hints.ai_flags = AI_PASSIVE;
+#ifdef AI_ADDRCONFIG
+  hints.ai_flags |= AI_ADDRCONFIG;
+#endif // AI_ADDRCONFIG
   addrinfo *res, *rp;
   r = getaddrinfo(0, service, &hints, &res);
   if(r != 0) {

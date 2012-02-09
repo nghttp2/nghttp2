@@ -77,11 +77,6 @@ if test "x${have_cunit}" = "xyes"; then
 fi
 
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
-AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
-if test "x${have_epoll}" = "xyes"; then
-  AC_DEFINE([HAVE_EPOLL], [1], [Define to 1 if you have the `epoll`.])
-fi
-AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
 
 # openssl (for examples)
 PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])
@@ -113,6 +108,15 @@ AC_CHECK_FUNCS([ \
   memmove \
   memset \
 ])
+
+AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
+if test "x${have_epoll}" = "xyes"; then
+  AC_DEFINE([HAVE_EPOLL], [1], [Define to 1 if you have the `epoll`.])
+fi
+AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
+
+AC_CHECK_FUNCS([kqueue], [have_kqueue=yes])
+AM_CONDITIONAL([HAVE_KQUEUE], [test "x${have_kqueue}" = "xyes"])
 
 AC_CONFIG_FILES([
   Makefile

@@ -22,17 +22,41 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef EVENT_POLL_H
-#define EVENT_POLL_H
+#ifndef EVENT_POLL_KQUEUE_H
+#define EVENT_POLL_KQUEUE_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif // HAVE_CONFIG_H
+#include <cstdlib>
 
-#ifdef HAVE_EPOLL
-#  include "EventPoll_epoll.h"
-#elif HAVE_KQUEUE
-#  include "EventPoll_kqueue.h"
-#endif // HAVE_KQUEUE
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
 
-#endif // EVENT_POLL_H
+#include "EventPollEvent.h"
+
+namespace spdylay {
+
+class EventPoll {
+public:
+  EventPoll(size_t max_events);
+  ~EventPoll();
+  // Returns 0 if this function succeeds, or -1.
+  // On success
+  int poll(int timeout);
+  // Returns number of events detected in previous call of poll().
+  int get_num_events();
+  // Returns events of p-eth event.
+  int get_events(size_t p);
+  // Returns user data of p-th event.
+  void* get_user_data(size_t p);
+  // Adds/Modifies event to watch.
+  int ctl_event(int op, int fd, int events, void *user_data);
+private:
+  int kq_;
+  size_t max_events_;
+  struct kevent *evlist_;
+  size_t num_events_;
+};
+
+} // namespace spdylay
+
+#endif // EVENT_POLL_KQUEUE_H
