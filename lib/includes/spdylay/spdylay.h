@@ -489,31 +489,19 @@ int spdylay_submit_goaway(spdylay_session *session);
  * 2. If server's list contains "http/1.1", this function selects
  *    "http/1.1" and returns 0. The following step is not taken.
  *
- * 3. This function selects "spdy/2" and returns -1. (So called
- *    non-overlap case).
+ * 3. This function selects nothing and returns -1. (So called
+ *    non-overlap case). In this case, |out| and |outlen| are left
+ *    untouched.
  *
  * When spdylay supports updated version of SPDY in the future, this
  * function may select updated protocol and application code which
  * relies on spdylay for SPDY stuff needs not be modified.
  *
- * For rationale of step 3, NPN draft permits that client can select
- * any protocol even if server does not advertise it at the time of
- * this writing:
- *
- *   It's expected that a client will have a list of protocols that it
- *   supports, in preference order, and will only select a protocol if
- *   the server supports it. In that case, the client SHOULD select
- *   the first protocol advertised by the server that it also
- *   supports. In the event that the client doesn't support any of
- *   server's protocols, or the server doesn't advertise any, it
- *   SHOULD select the first protocol that it supports.
- *
- *   There are cases where the client knows that a server supports an
- *   unadvertised protocol. In these cases the client should simply
- *   select that protocol.
- *
  * Selecting "spdy/2" means that "spdy/2" is written into |*out| and
  * length of "spdy/2" (which is 6) is assigned to |*outlen|.
+ *
+ * See http://technotes.googlecode.com/git/nextprotoneg.html for more
+ * details about NPN.
  *
  * To use this method you should do something like:
  *

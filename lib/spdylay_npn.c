@@ -31,9 +31,6 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
 {
   int http_selected = 0;
   unsigned int i = 0;
-  /* For non-overlap case */
-  *out = (unsigned char*)"spdy/2";
-  *outlen = 6;
   for(; i < inlen; i += in[i]+1) {
     if(in[i] == 6 && memcmp(&in[i+1], "spdy/2", in[i]) == 0) {
       *out = (unsigned char*)&in[i+1];

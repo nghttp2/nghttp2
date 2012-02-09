@@ -64,12 +64,12 @@ static void no_overlap()
     8, 's', 'p', 'd', 'y', '/', '2', '.', '1',
     8, 'h', 't', 't', 'p', '/', '1', '.', '0',
   };
-  unsigned char outlen;
-  unsigned char* out;
+  unsigned char outlen = 0;
+  unsigned char* out = NULL;
   CU_ASSERT(-1 == spdylay_select_next_protocol(&out, &outlen,
                                                spdy, sizeof(spdy)));
-  CU_ASSERT(6 == outlen);
-  CU_ASSERT(memcmp("spdy/2", out, outlen) == 0);
+  CU_ASSERT(0 == outlen);
+  CU_ASSERT(NULL == out);
 }
 
 void test_spdylay_npn()
