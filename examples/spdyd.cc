@@ -32,7 +32,6 @@
 #include <netinet/tcp.h>
 #include <signal.h>
 #include <getopt.h>
-#include <sys/epoll.h>
 
 #include <cassert>
 #include <cstdio>
@@ -56,6 +55,7 @@
 #include "spdylay_ssl.h"
 #include "uri.h"
 #include "util.h"
+#include "EventPoll.h"
 
 namespace spdylay {
 
@@ -99,17 +99,30 @@ class Sessions;
 
 class EventHandler {
 public:
+  EventHandler() : mark_del_(false) {}
   virtual ~EventHandler() {}
   virtual int execute(Sessions *sessions) = 0;
   virtual bool want_read() = 0;
   virtual bool want_write() = 0;
   virtual int fd() const = 0;
   virtual bool finish() = 0;
+  bool mark_del()
+  {
+    return mark_del_;
+  }
+  void mark_del(bool d)
+  {
+    mark_del_ = d;
+  }
+private:
+  bool mark_del_;
 };
 
 class Sessions {
 public:
-  Sessions(int epfd, SSL_CTX *ssl_ctx) : epfd_(epfd), ssl_ctx_(ssl_ctx)
+  Sessions(int max_events, SSL_CTX *ssl_ctx)
+    : eventPoll_(max_events),
+      ssl_ctx_(ssl_ctx)
   {}
   ~Sessions()
   {
@@ -134,31 +147,40 @@ public:
   }
   int add_poll(EventHandler *handler)
   {
-    return update_poll_internal(handler, EPOLL_CTL_ADD);
+    return update_poll_internal(handler, EP_ADD);
   }
   int mod_poll(EventHandler *handler)
   {
-    return update_poll_internal(handler, EPOLL_CTL_MOD);
+    return update_poll_internal(handler, EP_MOD);
+  }
+  int poll(int timeout)
+  {
+    return eventPoll_.poll(timeout);
+  }
+  void* get_user_data(int p)
+  {
+    return eventPoll_.get_user_data(p);
+  }
+  int get_events(int p)
+  {
+    return eventPoll_.get_events(p);
   }
 private:
   int update_poll_internal(EventHandler *handler, int op)
   {
-    epoll_event ev;
-    ev.events = 0;
+    int events = 0;
     if(handler->want_read()) {
-      ev.events |= EPOLLIN;
+      events |= EP_POLLIN;
     }
     if(handler->want_write()) {
-      ev.events |= EPOLLOUT;
+      events |= EP_POLLOUT;
     }
-    ev.data.ptr = handler;
-    int r = epoll_ctl(epfd_, op, handler->fd(), &ev);
-    return r;
+    return eventPoll_.ctl_event(op, handler->fd(), events, handler);
   }
 
   std::set<EventHandler*> handlers_;
+  EventPoll eventPoll_;
   SSL_CTX *ssl_ctx_;
-  int epfd_;
 };
 
 namespace {
@@ -814,47 +836,51 @@ int reactor()
   }
   make_non_block(sfd);
 
-  int epfd = epoll_create(1);
-  if(epfd == -1) {
-    perror("epoll_create");
-    return -1;
-  }
-  Sessions sessions(epfd, ssl_ctx);
+  const size_t MAX_EVENTS = 256;
+  Sessions sessions(MAX_EVENTS, ssl_ctx);
   ListenEventHandler *listen_hd = new ListenEventHandler(sfd);
   if(sessions.add_poll(listen_hd) == -1) {
     std::cerr << "Adding listening socket to poll failed." << std::endl;
     return -1;
   }
   sessions.add_handler(listen_hd);
-  const int MAX_EVENTS = 256;
-  epoll_event events[MAX_EVENTS];
+  std::vector<EventHandler*> del_list;
   while(1) {
-    int n = epoll_wait(epfd, events, MAX_EVENTS, -1);
+    int n = sessions.poll(-1);
     if(n == -1) {
-      perror("epoll_wait");
+      perror("EventPoll");
     } else {
       for(int i = 0; i < n; ++i) {
-        EventHandler *hd = reinterpret_cast<EventHandler*>(events[i].data.ptr);
+        EventHandler *hd = reinterpret_cast<EventHandler*>
+          (sessions.get_user_data(i));
+        int events = sessions.get_events(i);
         int r = 0;
-        if((events[i].events & EPOLLIN) || (events[i].events & EPOLLOUT)) {
+        if(hd->mark_del()) {
+          continue;
+        }
+        if((events & EP_POLLIN) || (events & EP_POLLOUT)) {
           r = hd->execute(&sessions);
-        } else if(events[i].events & (EPOLLERR | EPOLLHUP)) {
-          on_close(sessions, hd);
+        } else if(events & (EP_POLLERR | EP_POLLHUP)) {
+          hd->mark_del(true);
         }
         if(r != 0) {
-          on_close(sessions, hd);
+          hd->mark_del(true);
         } else {
           if(hd->finish()) {
-            on_close(sessions, hd);
+            hd->mark_del(true);
           } else {
             sessions.mod_poll(hd);
           }
         }
       }
+      for(std::vector<EventHandler*>::iterator i = del_list.begin(),
+            eoi = del_list.end(); i != eoi; ++i) {
+        on_close(sessions, *i);
+      }
+      del_list.clear();
     }
   }
   on_close(sessions, listen_hd);
-  close(epfd);
   return 0;
 }
 } // namespace

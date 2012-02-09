@@ -33,7 +33,11 @@ spdycat_SOURCES = uri.cc spdylay_ssl.cc util.cc spdycat.cc
 
 if HAVE_EPOLL
 
-spdyd_SOURCES = uri.cc spdylay_ssl.cc util.cc spdyd.cc
+spdyd_SOURCES = uri.cc spdylay_ssl.cc util.cc spdyd.cc EventPoll.h \
+	EventPollEvent.h
+
+spdyd_SOURCES += EventPoll_epoll.cc EventPoll_epoll.h
+
 bin_PROGRAMS += spdyd
 
 endif # HAVE_EPOLL
