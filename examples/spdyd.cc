@@ -727,9 +727,12 @@ private:
   int64_t session_id_;
 };
 
+// Global
+int64_t session_id_seed = 0;
+
 class ListenEventHandler : public EventHandler {
 public:
-  ListenEventHandler(int fd) : fd_(fd), session_id_seed_(0) {}
+  ListenEventHandler(int fd) : fd_(fd) {}
   virtual ~ListenEventHandler()
   {
     close(fd_);
@@ -773,7 +776,7 @@ private:
       return;
     }
     SSLAcceptEventHandler *hd = new SSLAcceptEventHandler(cfd, ssl,
-                                                          ++session_id_seed_);
+                                                          ++session_id_seed);
     if(sessions->add_poll(hd) == -1) {
       delete hd;
       SSL_free(ssl);
@@ -784,7 +787,6 @@ private:
   }
 
   int fd_;
-  int64_t session_id_seed_;
 };
 
 namespace {
