@@ -50,9 +50,12 @@ typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
   int ctrl_recv_cb_called, invalid_ctrl_recv_cb_called;
+  int ctrl_send_cb_called;
+  spdylay_frame_type sent_frame_type;
   int stream_close_cb_called;
   size_t data_source_length;
   int32_t stream_id;
+  size_t block_count;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -122,6 +125,16 @@ static void on_invalid_ctrl_recv_callback(spdylay_session *session,
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->invalid_ctrl_recv_cb_called;
+}
+
+static void on_ctrl_send_callback(spdylay_session *session,
+                                  spdylay_frame_type type,
+                                  spdylay_frame *frame,
+                                  void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->ctrl_send_cb_called;
+  ud->sent_frame_type = type;
 }
 
 static ssize_t fixed_length_data_source_read_callback
@@ -1001,6 +1014,67 @@ void test_spdylay_session_max_concurrent_streams()
   CU_ASSERT(SPDYLAY_REFUSED_STREAM == item->frame->rst_stream.status_code)
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  spdylay_session_del(session);
+}
+
+static ssize_t block_count_send_callback(spdylay_session* session,
+                                         const uint8_t *data, size_t len,
+                                         int flags,
+                                         void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  int r;
+  if(ud->block_count == 0) {
+    r = SPDYLAY_ERR_WOULDBLOCK;
+  } else {
+    --ud->block_count;
+    r = len;
+  }
+  return r;
+}
+
+void test_spdylay_session_data_backoff_by_high_pri_frame()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { NULL };
+  my_user_data ud;
+  spdylay_data_provider data_prd;
+  spdylay_stream *stream;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = block_count_send_callback;
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
+  data_prd.read_callback = fixed_length_data_source_read_callback;
+
+  ud.ctrl_send_cb_called = 0;
+  ud.data_source_length = 16*1024;
+
+  spdylay_session_client_new(&session, &callbacks, &ud);
+  spdylay_submit_request(session, 3, nv, &data_prd, NULL);
+
+  ud.block_count = 2;
+  /* Sends SYN_STREAM + DATA[0] */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(SPDYLAY_SYN_STREAM == ud.sent_frame_type);
+  /* data for DATA[1] is read from data_prd but it is not sent */
+  CU_ASSERT(ud.data_source_length == 8*1024);
+
+  spdylay_submit_ping(session);
+  ud.block_count = 2;
+  /* Sends DATA[1] + PING, PING is interleaved in DATA sequence */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(SPDYLAY_PING == ud.sent_frame_type);
+  /* data for DATA[2] is read from data_prd but it is not sent */
+  CU_ASSERT(ud.data_source_length == 4*1024);
+
+  ud.block_count = 2;
+  /* Sends DATA[2..3] */
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  stream = spdylay_session_get_stream(session, 1);
+  CU_ASSERT(stream->shut_flags & SPDYLAY_SHUT_WR);
 
   spdylay_session_del(session);
 }
