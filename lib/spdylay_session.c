@@ -756,7 +756,9 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   };
   if(type == SPDYLAY_DATA) {
     int r;
-    if(frame->data.flags & SPDYLAY_FLAG_FIN) {
+    /* If session is canceled by RST_STREAM, we won't send further data. */
+    if((frame->data.flags & SPDYLAY_FLAG_FIN) ||
+       spdylay_session_get_stream(session, frame->data.stream_id) == NULL) {
       spdylay_active_outbound_item_reset(&session->aob);
     } else {
       spdylay_outbound_item* item = spdylay_session_get_next_ob_item(session);

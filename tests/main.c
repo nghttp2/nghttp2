@@ -115,6 +115,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_max_concurrent_streams) ||
       !CU_add_test(pSuite, "session_data_backoff_by_high_pri_frame",
                    test_spdylay_session_data_backoff_by_high_pri_frame) ||
+      !CU_add_test(pSuite, "session_stop_data_with_rst_stream",
+                   test_spdylay_session_stop_data_with_rst_stream) ||
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||
