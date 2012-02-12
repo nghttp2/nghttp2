@@ -403,6 +403,8 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * "url": Abosolute path of this request (e.g., "/foo")
  * "version": HTTP version (e.g., "HTTP/1.1")
  *
+ * "host" name/value pair is also required by some hosts.
+ *
  * This function creates copies of all name/value pairs in |nv|.
  *
  * If |data_prd| is not NULL, it provides data which will be sent in
