@@ -60,7 +60,7 @@ spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
   return (spdylay_stream*)spdylay_map_find(&session->streams, stream_id);
 }
 
-int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
+static int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
 {
   const spdylay_outbound_item *lhs, *rhs;
   lhs = (const spdylay_outbound_item*)lhsx;
