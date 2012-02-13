@@ -654,7 +654,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     if(session->callbacks.on_data_send_callback) {
       session->callbacks.on_data_send_callback
         (session, frame->data.flags, frame->data.stream_id,
-         session->aob.framebuflen, session->user_data);
+         session->aob.framebuflen-SPDYLAY_HEAD_LEN, session->user_data);
     }
   } else {
     if(session->callbacks.on_ctrl_send_callback) {
