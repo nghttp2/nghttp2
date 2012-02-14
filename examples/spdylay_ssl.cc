@@ -159,7 +159,7 @@ int connect_to(const std::string& host, uint16_t port)
   return fd;
 }
 
-int make_listen_socket(uint16_t port, int family)
+int make_listen_socket(const std::string& host, uint16_t port, int family)
 {
   addrinfo hints;
   int fd = -1;
@@ -174,7 +174,13 @@ int make_listen_socket(uint16_t port, int family)
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
   addrinfo *res, *rp;
-  r = getaddrinfo(0, service, &hints, &res);
+  const char* host_ptr;
+  if(host.empty()) {
+    host_ptr = 0;
+  } else {
+    host_ptr = host.c_str();
+  }
+  r = getaddrinfo(host_ptr, service, &hints, &res);
   if(r != 0) {
     std::cerr << "getaddrinfo: " << gai_strerror(r) << std::endl;
     return -1;

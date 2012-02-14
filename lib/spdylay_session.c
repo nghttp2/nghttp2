@@ -60,7 +60,7 @@ spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
   return (spdylay_stream*)spdylay_map_find(&session->streams, stream_id);
 }
 
-int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
+static int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
 {
   const spdylay_outbound_item *lhs, *rhs;
   lhs = (const spdylay_outbound_item*)lhsx;
@@ -437,7 +437,16 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
     return 0;
   }
   if(spdylay_session_is_my_stream_id(session, stream_id)) {
-    return (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
+    /* If stream->state is SPDYLAY_STREAM_CLOSING, RST_STREAM was
+       queued but not yet sent. In this case, we won't send DATA
+       frames. This is because in the current architecture, DATA and
+       RST_STREAM in the same stream have same priority and DATA is
+       small seq number. So RST_STREAM will not be sent until all DATA
+       frames are sent. This is not desirable situation; we want to
+       close stream as soon as possible. To achieve this, we remove
+       DATA frame before RST_STREAM. */
+    return stream->state != SPDYLAY_STREAM_CLOSING &&
+      (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
   } else {
     return stream->state == SPDYLAY_STREAM_OPENED &&
       (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
@@ -654,7 +663,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     if(session->callbacks.on_data_send_callback) {
       session->callbacks.on_data_send_callback
         (session, frame->data.flags, frame->data.stream_id,
-         session->aob.framebuflen, session->user_data);
+         session->aob.framebuflen-SPDYLAY_HEAD_LEN, session->user_data);
     }
   } else {
     if(session->callbacks.on_ctrl_send_callback) {
@@ -756,7 +765,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   };
   if(type == SPDYLAY_DATA) {
     int r;
-    if(frame->data.flags & SPDYLAY_FLAG_FIN) {
+    /* If session is closed or RST_STREAM was queued, we won't send
+       further data. */
+    if((frame->data.flags & SPDYLAY_FLAG_FIN) ||
+       !spdylay_session_is_data_allowed(session, frame->data.stream_id)) {
       spdylay_active_outbound_item_reset(&session->aob);
     } else {
       spdylay_outbound_item* item = spdylay_session_get_next_ob_item(session);
@@ -1001,19 +1013,20 @@ static int spdylay_session_handle_invalid_stream
 int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
-  int r;
+  int r = 0;
+  int status_code;
   if(session->goaway_flags) {
     /* We don't accept SYN_STREAM after GOAWAY is sent or received. */
     return 0;
   }
-  r = spdylay_session_validate_syn_stream(session, &frame->syn_stream);
-  if(r == 0) {
+  status_code = spdylay_session_validate_syn_stream(session,
+                                                    &frame->syn_stream);
+  if(status_code == 0) {
     uint8_t flags = frame->syn_stream.hd.flags;
     if((flags & SPDYLAY_FLAG_FIN) && (flags & SPDYLAY_FLAG_UNIDIRECTIONAL)) {
       /* If the stream is UNIDIRECTIONAL and FIN bit set, we can close
          stream upon receiving SYN_STREAM. So, the stream needs not to
          be opened. */
-      r = 0;
     } else {
       spdylay_stream *stream;
       stream = spdylay_session_open_stream(session, frame->syn_stream.stream_id,
@@ -1033,18 +1046,26 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
            SPDYLAY_FLAG_UNIDIRECTIONAL is not set here. */
       }
     }
-    if(r == 0) {
-      session->last_recv_stream_id = frame->syn_stream.stream_id;
-      spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
-                                                  frame);
-      if(flags & SPDYLAY_FLAG_FIN) {
-        spdylay_session_call_on_request_recv(session,
-                                             frame->syn_stream.stream_id);
+    session->last_recv_stream_id = frame->syn_stream.stream_id;
+    spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
+                                                frame);
+    if(flags & SPDYLAY_FLAG_FIN) {
+      spdylay_session_call_on_request_recv(session,
+                                           frame->syn_stream.stream_id);
+      if(flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
+        /* Note that we call on_stream_close_callback without opening
+           stream. */
+        if(session->callbacks.on_stream_close_callback) {
+          session->callbacks.on_stream_close_callback
+            (session, frame->syn_stream.stream_id, SPDYLAY_OK,
+             session->user_data);
+        }
       }
     }
   } else {
     r = spdylay_session_handle_invalid_stream
-      (session, frame->syn_stream.stream_id, SPDYLAY_SYN_STREAM, frame, r);
+      (session, frame->syn_stream.stream_id, SPDYLAY_SYN_STREAM, frame,
+       status_code);
   }
   return r;
 }
@@ -1529,141 +1550,6 @@ int spdylay_session_add_goaway(spdylay_session *session,
   if(r != 0) {
     spdylay_frame_goaway_free(&frame->goaway);
     free(frame);
-  }
-  return r;
-}
-
-int spdylay_submit_ping(spdylay_session *session)
-{
-  return spdylay_session_add_ping(session,
-                                  spdylay_session_get_next_unique_id(session));
-}
-
-int spdylay_submit_cancel(spdylay_session *session, int32_t stream_id,
-                          uint32_t status_code)
-{
-  return spdylay_session_add_rst_stream(session, stream_id, status_code);
-}
-
-int spdylay_submit_goaway(spdylay_session *session)
-{
-  return spdylay_session_add_goaway(session, session->last_recv_stream_id);
-}
-
-int spdylay_submit_response(spdylay_session *session,
-                            int32_t stream_id, const char **nv,
-                            spdylay_data_provider *data_prd)
-{
-  int r;
-  spdylay_frame *frame;
-  char **nv_copy;
-  uint8_t flags = 0;
-  spdylay_data_provider *data_prd_copy = NULL;
-  if(data_prd) {
-    data_prd_copy = malloc(sizeof(spdylay_data_provider));
-    if(data_prd_copy == NULL) {
-      return SPDYLAY_ERR_NOMEM;
-    }
-    *data_prd_copy = *data_prd;
-  }
-  frame = malloc(sizeof(spdylay_frame));
-  if(frame == NULL) {
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  nv_copy = spdylay_frame_nv_copy(nv);
-  if(nv_copy == NULL) {
-    free(frame);
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  spdylay_frame_nv_sort(nv_copy);
-  if(data_prd == NULL) {
-    flags |= SPDYLAY_FLAG_FIN;
-  }
-  spdylay_frame_syn_reply_init(&frame->syn_reply, flags, stream_id,
-                               nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame,
-                                data_prd_copy);
-  if(r != 0) {
-    spdylay_frame_syn_reply_free(&frame->syn_reply);
-    free(frame);
-    free(data_prd_copy);
-  }
-  return r;
-}
-
-int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
-                        spdylay_data_provider *data_prd)
-{
-  int r;
-  spdylay_frame *frame;
-  frame = malloc(sizeof(spdylay_frame));
-  if(frame == NULL) {
-    return SPDYLAY_ERR_NOMEM;
-  }
-  spdylay_frame_data_init(&frame->data, stream_id, data_prd);
-  r = spdylay_session_add_frame(session, SPDYLAY_DATA, frame, NULL);
-  if(r != 0) {
-    spdylay_frame_data_free(&frame->data);
-    free(frame);
-  }
-  return r;
-}
-
-int spdylay_submit_request(spdylay_session *session, uint8_t pri,
-                           const char **nv, spdylay_data_provider *data_prd,
-                           void *stream_user_data)
-{
-  int r;
-  spdylay_frame *frame;
-  char **nv_copy;
-  uint8_t flags = 0;
-  spdylay_data_provider *data_prd_copy = NULL;
-  spdylay_syn_stream_aux_data *aux_data;
-  if(pri > 3) {
-    return SPDYLAY_ERR_INVALID_ARGUMENT;
-  }
-  if(data_prd) {
-    data_prd_copy = malloc(sizeof(spdylay_data_provider));
-    if(data_prd_copy == NULL) {
-      return SPDYLAY_ERR_NOMEM;
-    }
-    *data_prd_copy = *data_prd;
-  }
-  aux_data = malloc(sizeof(spdylay_syn_stream_aux_data));
-  if(aux_data == NULL) {
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  aux_data->data_prd = data_prd_copy;
-  aux_data->stream_user_data = stream_user_data;
-
-  frame = malloc(sizeof(spdylay_frame));
-  if(frame == NULL) {
-    free(aux_data);
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  nv_copy = spdylay_frame_nv_copy(nv);
-  if(nv_copy == NULL) {
-    free(frame);
-    free(aux_data);
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  spdylay_frame_nv_sort(nv_copy);
-  if(data_prd == NULL) {
-    flags |= SPDYLAY_FLAG_FIN;
-  }
-  spdylay_frame_syn_stream_init(&frame->syn_stream, flags, 0, 0, pri, nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame,
-                                aux_data);
-  if(r != 0) {
-    spdylay_frame_syn_stream_free(&frame->syn_stream);
-    free(frame);
-    free(aux_data);
-    free(data_prd_copy);
   }
   return r;
 }

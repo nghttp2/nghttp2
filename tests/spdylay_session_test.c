@@ -50,9 +50,12 @@ typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
   int ctrl_recv_cb_called, invalid_ctrl_recv_cb_called;
+  int ctrl_send_cb_called;
+  spdylay_frame_type sent_frame_type;
   int stream_close_cb_called;
   size_t data_source_length;
   int32_t stream_id;
+  size_t block_count;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -124,6 +127,16 @@ static void on_invalid_ctrl_recv_callback(spdylay_session *session,
   ++ud->invalid_ctrl_recv_cb_called;
 }
 
+static void on_ctrl_send_callback(spdylay_session *session,
+                                  spdylay_frame_type type,
+                                  spdylay_frame *frame,
+                                  void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->ctrl_send_cb_called;
+  ud->sent_frame_type = type;
+}
+
 static ssize_t fixed_length_data_source_read_callback
 (spdylay_session *session, uint8_t *buf, size_t len, int *eof,
  spdylay_data_source *source, void *user_data)
@@ -148,6 +161,16 @@ static void on_request_recv_callback(spdylay_session *session,
 {
   my_user_data *ud = (my_user_data*)user_data;
   ud->stream_id = stream_id;
+}
+
+static void no_stream_user_data_stream_close_callback
+(spdylay_session *session,
+ int32_t stream_id,
+ spdylay_status_code status_code,
+ void *user_data)
+{
+  my_user_data* my_data = (my_user_data*)user_data;
+  ++my_data->stream_close_cb_called;
 }
 
 static char** dup_nv(const char **src)
@@ -947,8 +970,9 @@ void test_spdylay_session_on_request_recv_callback()
   spdylay_session_del(session);
 }
 
-void stream_close_callback(spdylay_session *session, int32_t stream_id,
-                           spdylay_status_code status_code, void *user_data)
+static void stream_close_callback(spdylay_session *session, int32_t stream_id,
+                                  spdylay_status_code status_code,
+                                  void *user_data)
 {
   my_user_data* my_data = (my_user_data*)user_data;
   void *stream_data = spdylay_session_get_stream_user_data(session, stream_id);
@@ -1002,5 +1026,142 @@ void test_spdylay_session_max_concurrent_streams()
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
 
+  spdylay_session_del(session);
+}
+
+static ssize_t block_count_send_callback(spdylay_session* session,
+                                         const uint8_t *data, size_t len,
+                                         int flags,
+                                         void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  int r;
+  if(ud->block_count == 0) {
+    r = SPDYLAY_ERR_WOULDBLOCK;
+  } else {
+    --ud->block_count;
+    r = len;
+  }
+  return r;
+}
+
+void test_spdylay_session_data_backoff_by_high_pri_frame()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { NULL };
+  my_user_data ud;
+  spdylay_data_provider data_prd;
+  spdylay_stream *stream;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = block_count_send_callback;
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
+  data_prd.read_callback = fixed_length_data_source_read_callback;
+
+  ud.ctrl_send_cb_called = 0;
+  ud.data_source_length = 16*1024;
+
+  spdylay_session_client_new(&session, &callbacks, &ud);
+  spdylay_submit_request(session, 3, nv, &data_prd, NULL);
+
+  ud.block_count = 2;
+  /* Sends SYN_STREAM + DATA[0] */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(SPDYLAY_SYN_STREAM == ud.sent_frame_type);
+  /* data for DATA[1] is read from data_prd but it is not sent */
+  CU_ASSERT(ud.data_source_length == 8*1024);
+
+  spdylay_submit_ping(session);
+  ud.block_count = 2;
+  /* Sends DATA[1] + PING, PING is interleaved in DATA sequence */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(SPDYLAY_PING == ud.sent_frame_type);
+  /* data for DATA[2] is read from data_prd but it is not sent */
+  CU_ASSERT(ud.data_source_length == 4*1024);
+
+  ud.block_count = 2;
+  /* Sends DATA[2..3] */
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  stream = spdylay_session_get_stream(session, 1);
+  CU_ASSERT(stream->shut_flags & SPDYLAY_SHUT_WR);
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_stop_data_with_rst_stream()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { NULL };
+  my_user_data ud;
+  spdylay_data_provider data_prd;
+  spdylay_frame frame;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
+  callbacks.send_callback = block_count_send_callback;
+  data_prd.read_callback = fixed_length_data_source_read_callback;
+
+  ud.ctrl_send_cb_called = 0;
+  ud.data_source_length = 16*1024;
+
+  spdylay_session_server_new(&session, &callbacks, &ud);
+  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 3,
+                              SPDYLAY_STREAM_OPENING, NULL);
+  spdylay_submit_response(session, 1, nv, &data_prd);
+
+  ud.block_count = 2;
+  /* Sends SYN_REPLY + DATA[0] */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(SPDYLAY_SYN_REPLY == ud.sent_frame_type);
+  /* data for DATA[1] is read from data_prd but it is not sent */
+  CU_ASSERT(ud.data_source_length == 8*1024);
+
+  spdylay_frame_rst_stream_init(&frame.rst_stream, 1, SPDYLAY_CANCEL);
+  CU_ASSERT(0 == spdylay_session_on_rst_stream_received(session, &frame));
+  spdylay_frame_rst_stream_free(&frame.rst_stream);
+
+  /* Big enough number to send all DATA frames potentially. */
+  ud.block_count = 100;
+  /* Nothing will be sent in the following call. */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  /* With RST_STREAM, stream is canceled and further DATA on that
+     stream are not sent. */
+  CU_ASSERT(ud.data_source_length == 8*1024);
+
+  CU_ASSERT(NULL == spdylay_session_get_stream(session, 1));
+
+  spdylay_session_del(session);
+}
+
+/*
+ * Check that on_stream_close_callback is called when server pushed
+ * SYN_STREAM have SPDYLAY_FLAG_FIN.
+ */
+void test_spdylay_session_stream_close_on_syn_stream()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { NULL };
+  my_user_data ud;
+  spdylay_frame frame;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_stream_close_callback =
+    no_stream_user_data_stream_close_callback;
+  ud.stream_close_cb_called = 0;
+
+  spdylay_session_client_new(&session, &callbacks, &ud);
+  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 3,
+                              SPDYLAY_STREAM_OPENING, NULL);
+  spdylay_frame_syn_stream_init(&frame.syn_stream,
+                                SPDYLAY_FLAG_FIN | SPDYLAY_FLAG_UNIDIRECTIONAL,
+                                2, 1, 3, dup_nv(nv));
+
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
 }

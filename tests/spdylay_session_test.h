@@ -48,5 +48,8 @@ void test_spdylay_session_pop_next_ob_item();
 void test_spdylay_session_on_request_recv_callback();
 void test_spdylay_session_on_stream_close();
 void test_spdylay_session_max_concurrent_streams();
+void test_spdylay_session_data_backoff_by_high_pri_frame();
+void test_spdylay_session_stop_data_with_rst_stream();
+void test_spdylay_session_stream_close_on_syn_stream();
 
 #endif // SPDYLAY_SESSION_TEST_H

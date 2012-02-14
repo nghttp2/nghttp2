@@ -100,3 +100,29 @@ serves static contents. It only speaks ``spdy/2``::
     [id=1] [  1.634] closed
 
 Currently, ``spdyd`` needs ``epoll`` or ``kqueue``.
+
+There is another SPDY server called ``spdynative``, which is
+`node.native <https://github.com/d5/node.native>`_ style simple SPDY
+server::
+
+    #include <iostream>
+
+    #include "spdy.h"
+
+    int main()
+    {
+      spdy server;
+      if(!server.listen("localhost", 8080, "server.key", "server.crt",
+                        [](request& req, response& res) {
+                          res.set_status(200);
+                          res.set_header("content-type", "text/plain");
+                          res.end("C++ FTW\n");
+                        }))
+        return EXIT_FAILURE;
+
+      std::cout << "Server running at http://localhost:8080/" << std::endl;
+      return reactor::run(server);
+    }
+
+Don't expect much from ``spdynative``. It is just an example and does
+not support asynchronous I/O at all.

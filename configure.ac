@@ -43,6 +43,10 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG([0.20])
 
+AC_COMPILE_STDCXX_11
+AM_CONDITIONAL([HAVE_STDCXX_11],
+               [ test "x$ac_cv_cxx_compile_cxx11_cxx" = "xyes" ])
+
 # Checks for libraries.
 
 # zlib
@@ -66,16 +70,15 @@ if test "x${have_cunit}" = "xno"; then
   fi
 fi
 if test "x${have_cunit}" = "xyes"; then
-  # Check whether the installed cunit requires ncurses.  This is
-  # needed because cunit in Mac OS X requires it.
-  LIBS_TEMP=${LIBS}
-  LIBS=${CUNIT_LIBS}
-  CFLAGS_TEMP=${CFLAGS}
-  CFLAGS=${CUNIT_CFLAGS}
-  AC_RUN_IFELSE(AC_LANG_PROGRAM([[#include "CUnit/Basic.h"]], [CU_initialize_registry()]), [],
-                [CUNIT_LIBS="${LIBS} -lncurses"])
-  LIBS=${LIBS_TEMP}
-  CFLAGS=${CFLAGS_TEMP}
+  # cunit in Mac OS X requires ncurses. Note that in Mac OS X, test
+  # program can be built without -lncurses, but it emits runtime
+  # error.
+  case "${build}" in
+    *-apple-darwin*)
+      CUNIT_LIBS="$CUNIT_LIBS -lncurses"
+      AC_SUBST([CUNIT_LIBS])
+      ;;
+  esac
 fi
 
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])

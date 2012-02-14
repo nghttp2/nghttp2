@@ -400,8 +400,10 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  *
  * "method": HTTP method (e.g., "GET" or "POST")
  * "scheme": URI scheme (e.g., "https")
- * "url": Abosolute path of this request (e.g., "/foo")
+ * "url": Absolute path of this request (e.g., "/foo")
  * "version": HTTP version (e.g., "HTTP/1.1")
+ *
+ * "host" name/value pair is also required by some hosts.
  *
  * This function creates copies of all name/value pairs in |nv|.
  *
