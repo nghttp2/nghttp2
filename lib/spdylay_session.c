@@ -437,7 +437,16 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
     return 0;
   }
   if(spdylay_session_is_my_stream_id(session, stream_id)) {
-    return (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
+    /* If stream->state is SPDYLAY_STREAM_CLOSING, RST_STREAM was
+       queued but not yet sent. In this case, we won't send DATA
+       frames. This is because in the current architecture, DATA and
+       RST_STREAM in the same stream have same priority and DATA is
+       small seq number. So RST_STREAM will not be sent until all DATA
+       frames are sent. This is not desirable situation; we want to
+       close stream as soon as possible. To achieve this, we remove
+       DATA frame before RST_STREAM. */
+    return stream->state != SPDYLAY_STREAM_CLOSING &&
+      (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
   } else {
     return stream->state == SPDYLAY_STREAM_OPENED &&
       (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
@@ -756,9 +765,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   };
   if(type == SPDYLAY_DATA) {
     int r;
-    /* If session is canceled by RST_STREAM, we won't send further data. */
+    /* If session is closed or RST_STREAM was queued, we won't send
+       further data. */
     if((frame->data.flags & SPDYLAY_FLAG_FIN) ||
-       spdylay_session_get_stream(session, frame->data.stream_id) == NULL) {
+       !spdylay_session_is_data_allowed(session, frame->data.stream_id)) {
       spdylay_active_outbound_item_reset(&session->aob);
     } else {
       spdylay_outbound_item* item = spdylay_session_get_next_ob_item(session);
