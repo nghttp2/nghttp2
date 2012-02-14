@@ -161,7 +161,14 @@ int communicate(const std::string& host, uint16_t port,
   pollfd pollfds[1];
 
   std::stringstream ss;
-  ss << host << ":" << port;
+  if(reqvec[0].us.ipv6LiteralAddress) {
+    ss << "[";
+  }
+  ss << host;
+  if(reqvec[0].us.ipv6LiteralAddress) {
+    ss << "]";
+  }
+  ss << ":" << port;
   std::string hostport = ss.str();
 
   for(int i = 0, n = reqvec.size(); i < n; ++i) {
