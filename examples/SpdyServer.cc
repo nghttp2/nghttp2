@@ -431,7 +431,7 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
   bool method_found = false;
   bool scheme_found = false;
   bool version_found = false;
-  time_t last_mod;
+  time_t last_mod = 0;
   bool last_mod_found = false;
   for(int i = 0; i < (int)req->headers.size(); ++i) {
     const std::string &field = req->headers[i].first;
@@ -607,8 +607,8 @@ public:
   SSLAcceptEventHandler(const Config *config,
                         int fd, SSL *ssl, int64_t session_id)
     : EventHandler(config),
-      fd_(fd), ssl_(ssl), fail_(false),
-      want_read_(true), want_write_(true), finish_(false),
+      fd_(fd), ssl_(ssl), fail_(false), finish_(false),
+      want_read_(true), want_write_(true),
       session_id_(session_id)
   {}
   virtual ~SSLAcceptEventHandler()
