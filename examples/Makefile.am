@@ -32,19 +32,25 @@ bin_PROGRAMS = spdycat spdyd
 HELPER_OBJECTS = uri.cc util.cc spdylay_ssl.cc
 HELPER_HFILES = uri.h util.h spdylay_ssl.h
 
-spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc
-
-spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdyd.cc EventPoll.h \
-	EventPollEvent.h
+EVENT_OBJECTS =
+EVENT_HFILES = EventPoll.h EventPollEvent.h
 
 if HAVE_EPOLL
-
-spdyd_SOURCES += EventPoll_epoll.cc EventPoll_epoll.h
-
+EVENT_OBJECTS += EventPoll_epoll.cc
+EVENT_HFILES += EventPoll_epoll.h
 endif # HAVE_EPOLL
 
 if HAVE_KQUEUE
-
-spdyd_SOURCES += EventPoll_kqueue.cc EventPoll_kqueue.h
-
+EVENT_OBJECTS += EventPoll_kqueue.cc
+EVENT_HFILES += EventPoll_kqueue.h
 endif # HAVE_KQUEUE
+
+SPDY_SERVER_OBJECTS = SpdyServer.cc
+SPDY_SERVER_HFILES = SpdyServer.h
+
+spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc
+
+spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
+	${EVENT_OBJECTS} ${EVENT_HFILES} \
+	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES}\
+	spdyd.cc
