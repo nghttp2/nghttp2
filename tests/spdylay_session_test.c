@@ -163,6 +163,16 @@ static void on_request_recv_callback(spdylay_session *session,
   ud->stream_id = stream_id;
 }
 
+static void no_stream_user_data_stream_close_callback
+(spdylay_session *session,
+ int32_t stream_id,
+ spdylay_status_code status_code,
+ void *user_data)
+{
+  my_user_data* my_data = (my_user_data*)user_data;
+  ++my_data->stream_close_cb_called;
+}
+
 static char** dup_nv(const char **src)
 {
   return spdylay_frame_nv_copy(src);
@@ -960,8 +970,9 @@ void test_spdylay_session_on_request_recv_callback()
   spdylay_session_del(session);
 }
 
-void stream_close_callback(spdylay_session *session, int32_t stream_id,
-                           spdylay_status_code status_code, void *user_data)
+static void stream_close_callback(spdylay_session *session, int32_t stream_id,
+                                  spdylay_status_code status_code,
+                                  void *user_data)
 {
   my_user_data* my_data = (my_user_data*)user_data;
   void *stream_data = spdylay_session_get_stream_user_data(session, stream_id);
@@ -1122,5 +1133,35 @@ void test_spdylay_session_stop_data_with_rst_stream()
 
   CU_ASSERT(NULL == spdylay_session_get_stream(session, 1));
 
+  spdylay_session_del(session);
+}
+
+/*
+ * Check that on_stream_close_callback is called when server pushed
+ * SYN_STREAM have SPDYLAY_FLAG_FIN.
+ */
+void test_spdylay_session_stream_close_on_syn_stream()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { NULL };
+  my_user_data ud;
+  spdylay_frame frame;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_stream_close_callback =
+    no_stream_user_data_stream_close_callback;
+  ud.stream_close_cb_called = 0;
+
+  spdylay_session_client_new(&session, &callbacks, &ud);
+  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 3,
+                              SPDYLAY_STREAM_OPENING, NULL);
+  spdylay_frame_syn_stream_init(&frame.syn_stream,
+                                SPDYLAY_FLAG_FIN | SPDYLAY_FLAG_UNIDIRECTIONAL,
+                                2, 1, 3, dup_nv(nv));
+
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
 }

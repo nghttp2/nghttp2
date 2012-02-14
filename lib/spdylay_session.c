@@ -1003,19 +1003,20 @@ static int spdylay_session_handle_invalid_stream
 int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
-  int r;
+  int r = 0;
+  int status_code;
   if(session->goaway_flags) {
     /* We don't accept SYN_STREAM after GOAWAY is sent or received. */
     return 0;
   }
-  r = spdylay_session_validate_syn_stream(session, &frame->syn_stream);
-  if(r == 0) {
+  status_code = spdylay_session_validate_syn_stream(session,
+                                                    &frame->syn_stream);
+  if(status_code == 0) {
     uint8_t flags = frame->syn_stream.hd.flags;
     if((flags & SPDYLAY_FLAG_FIN) && (flags & SPDYLAY_FLAG_UNIDIRECTIONAL)) {
       /* If the stream is UNIDIRECTIONAL and FIN bit set, we can close
          stream upon receiving SYN_STREAM. So, the stream needs not to
          be opened. */
-      r = 0;
     } else {
       spdylay_stream *stream;
       stream = spdylay_session_open_stream(session, frame->syn_stream.stream_id,
@@ -1035,18 +1036,26 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
            SPDYLAY_FLAG_UNIDIRECTIONAL is not set here. */
       }
     }
-    if(r == 0) {
-      session->last_recv_stream_id = frame->syn_stream.stream_id;
-      spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
-                                                  frame);
-      if(flags & SPDYLAY_FLAG_FIN) {
-        spdylay_session_call_on_request_recv(session,
-                                             frame->syn_stream.stream_id);
+    session->last_recv_stream_id = frame->syn_stream.stream_id;
+    spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
+                                                frame);
+    if(flags & SPDYLAY_FLAG_FIN) {
+      spdylay_session_call_on_request_recv(session,
+                                           frame->syn_stream.stream_id);
+      if(flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
+        /* Note that we call on_stream_close_callback without opening
+           stream. */
+        if(session->callbacks.on_stream_close_callback) {
+          session->callbacks.on_stream_close_callback
+            (session, frame->syn_stream.stream_id, SPDYLAY_OK,
+             session->user_data);
+        }
       }
     }
   } else {
     r = spdylay_session_handle_invalid_stream
-      (session, frame->syn_stream.stream_id, SPDYLAY_SYN_STREAM, frame, r);
+      (session, frame->syn_stream.stream_id, SPDYLAY_SYN_STREAM, frame,
+       status_code);
   }
   return r;
 }
