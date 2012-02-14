@@ -66,14 +66,15 @@ if test "x${have_cunit}" = "xno"; then
   fi
 fi
 if test "x${have_cunit}" = "xyes"; then
-  # Check whether the installed cunit requires ncurses.  This is
-  # needed because cunit in Mac OS X requires it.
-  LIBS_TEMP=${LIBS}
-  LIBS=${CUNIT_LIBS}
-  AC_SEARCH_LIBS([CU_initialize_registry], [ncurses])
-  CUNIT_LIBS=${LIBS}
-  AC_SUBST([CUNIT_LIBS])
-  LIBS=${LIBS_TEMP}
+  # cunit in Mac OS X requires ncurses. Note that in Mac OS X, test
+  # program can be built without -lncurses, but it emits runtime
+  # error.
+  case "${build}" in
+    *-apple-darwin*)
+      CUNIT_LIBS="$CUNIT_LIBS -lncurses"
+      AC_SUBST([CUNIT_LIBS])
+      ;;
+  esac
 fi
 
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
