@@ -282,7 +282,7 @@ int SpdyEventHandler::submit_response
   nv[3] = "HTTP/1.1";
   nv[4] = "server";
   nv[5] = SPDYD_SERVER.c_str();
-  nv[6] = "data";
+  nv[6] = "date";
   nv[7] = util::http_date(time(0)).c_str();
   for(int i = 0; i < (int)headers.size(); ++i) {
     nv[8+i*2] = headers[i].first.c_str();
@@ -803,10 +803,11 @@ int SpdyServer::listen()
   bool bind_ok = false;
   for(int i = 0; i < 2; ++i) {
     const char* ipv = (families[i] == AF_INET ? "IPv4" : "IPv6");
-    int sfd = make_listen_socket(config_->port, families[i]);
+    int sfd = make_listen_socket(config_->host, config_->port, families[i]);
     if(sfd == -1) {
       std::cerr << ipv << ": Could not listen on port " << config_->port
                 << std::endl;
+      continue;
     }
     make_non_block(sfd);
     sfd_[i] = sfd;

@@ -44,6 +44,7 @@ struct Config {
   std::string htdocs;
   bool verbose;
   bool daemon;
+  std::string host;
   uint16_t port;
   std::string private_key_file;
   std::string cert_file;
@@ -84,6 +85,7 @@ struct Request {
   int32_t stream_id;
   std::vector<std::pair<std::string, std::string> > headers;
   int file;
+  std::pair<std::string, size_t> response_body;
   Request(int32_t stream_id);
   ~Request();
 };

@@ -43,6 +43,10 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG([0.20])
 
+AC_COMPILE_STDCXX_11
+AM_CONDITIONAL([HAVE_STDCXX_11],
+               [ test "x$ac_cv_cxx_compile_cxx11_cxx" = "xyes" ])
+
 # Checks for libraries.
 
 # zlib

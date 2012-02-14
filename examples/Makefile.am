@@ -22,7 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 AM_CFLAGS = -Wall
-AM_CPPFLAGS = -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
+AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
 	@OPENSSL_CFLAGS@
 AM_LDFLAGS = @OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libspdylay.la
@@ -52,5 +52,14 @@ spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc
 
 spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	${EVENT_OBJECTS} ${EVENT_HFILES} \
-	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES}\
+	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES} \
 	spdyd.cc
+
+if HAVE_STDCXX_11
+bin_PROGRAMS += spdynative
+spdynative_CXXFLAGS = -std=c++0x
+spdynative_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
+	${EVENT_OBJECTS} ${EVENT_HFILES} \
+	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES} \
+	spdy.h spdynative.cc
+endif # HAVE_STDCXX_11
