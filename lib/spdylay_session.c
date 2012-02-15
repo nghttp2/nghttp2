@@ -950,6 +950,33 @@ static int spdylay_session_is_new_peer_stream_id(spdylay_session *session,
 }
 
 /*
+ * Returns non-zero iff version == SPDYLAY_PROTO_VERSION
+ */
+static int spdylay_session_check_version(uint16_t version)
+{
+  return version == SPDYLAY_PROTO_VERSION;
+}
+
+/*
+ * Returns non-zero iff name/value pairs |nv| are good shape.
+ * Currently, we only checks whether names are lower cased. The spdy/2
+ * spec requires that names must be lower cased.
+ */
+static int spdylay_session_check_nv(char **nv)
+{
+  int i;
+  for(i = 0; nv[i]; i += 2) {
+    int j;
+    for(j = 0; nv[i][j] != '\0'; ++j) {
+      if('A' <= nv[i][j] && nv[i][j] <= 'Z') {
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
+/*
  * Validates SYN_STREAM frame |frame|.  This function returns 0 if it
  * succeeds, or non-zero spdylay_status_code.
  */
@@ -959,7 +986,7 @@ static int spdylay_session_validate_syn_stream(spdylay_session *session,
   if(!spdylay_session_is_new_peer_stream_id(session, frame->stream_id)) {
     return SPDYLAY_PROTOCOL_ERROR;
   }
-  if(frame->hd.version != SPDYLAY_PROTO_VERSION) {
+  if(!spdylay_session_check_version(frame->hd.version)) {
     return SPDYLAY_UNSUPPORTED_VERSION;
   }
   if(session->server) {
@@ -988,8 +1015,12 @@ static int spdylay_session_validate_syn_stream(spdylay_session *session,
        follow it. */
     return SPDYLAY_REFUSED_STREAM;
   }
+  if(!spdylay_session_check_nv(frame->nv)) {
+    return SPDYLAY_PROTOCOL_ERROR;
+  }
   return 0;
 }
+
 
 static int spdylay_session_handle_invalid_stream
 (spdylay_session *session,
@@ -1070,14 +1101,6 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
   return r;
 }
 
-/*
- * Returns non-zero iff version == SPDYLAY_PROTOCOL_ERROR.
- */
-static int spdylay_session_check_version(uint16_t version)
-{
-  return version == SPDYLAY_PROTO_VERSION;
-}
-
 int spdylay_session_on_syn_reply_received(spdylay_session *session,
                                           spdylay_frame *frame)
 {
@@ -1087,8 +1110,10 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
   if(!spdylay_session_check_version(frame->syn_reply.hd.version)) {
     return 0;
   }
-  stream = spdylay_session_get_stream(session, frame->syn_reply.stream_id);
-  if(stream && (stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
+  if((stream = spdylay_session_get_stream(session,
+                                          frame->syn_reply.stream_id)) &&
+     (stream->shut_flags & SPDYLAY_SHUT_RD) == 0 &&
+     spdylay_session_check_nv(frame->syn_reply.nv)) {
     if(spdylay_session_is_my_stream_id(session, frame->syn_reply.stream_id)) {
       if(stream->state == SPDYLAY_STREAM_OPENING) {
         valid = 1;
@@ -1190,9 +1215,10 @@ int spdylay_session_on_headers_received(spdylay_session *session,
   if(!spdylay_session_check_version(frame->headers.hd.version)) {
     return 0;
   }
-  stream = spdylay_session_get_stream(session, frame->headers.stream_id);
-  /* First we check readability from this stream. */
-  if(stream && (stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
+  if((stream = spdylay_session_get_stream(session,
+                                          frame->headers.stream_id)) &&
+     (stream->shut_flags & SPDYLAY_SHUT_RD) == 0 &&
+     spdylay_session_check_nv(frame->headers.nv)) {
     if(spdylay_session_is_my_stream_id(session, frame->headers.stream_id)) {
       if(stream->state == SPDYLAY_STREAM_OPENED) {
         valid = 1;

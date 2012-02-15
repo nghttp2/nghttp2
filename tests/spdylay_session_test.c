@@ -310,6 +310,7 @@ void test_spdylay_session_on_syn_stream_received()
   spdylay_session_callbacks callbacks;
   my_user_data user_data;
   const char *nv[] = { NULL };
+  const char *upcase_nv[] = { "version", "http/1.1", "methoD", "get", NULL };
   spdylay_frame frame;
   spdylay_stream *stream;
   int32_t stream_id = 1;
@@ -340,6 +341,14 @@ void test_spdylay_session_on_syn_stream_received()
   frame.syn_stream.assoc_stream_id = 1;
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
   CU_ASSERT(2 == user_data.invalid_ctrl_recv_cb_called);
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  /* Upper cased name/value pairs */
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE, 3, 0, 3,
+                                dup_nv(upcase_nv));
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(3 == user_data.invalid_ctrl_recv_cb_called);
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
@@ -409,6 +418,7 @@ void test_spdylay_session_on_syn_reply_received()
   };
   my_user_data user_data;
   const char *nv[] = { NULL };
+  const char *upcase_nv[] = { "version", "http/1.1", "methoD", "get", NULL };
   spdylay_frame frame;
   spdylay_stream *stream;
   user_data.ctrl_recv_cb_called = 0;
@@ -441,6 +451,17 @@ void test_spdylay_session_on_syn_reply_received()
   CU_ASSERT(2 == user_data.invalid_ctrl_recv_cb_called);
 
   spdylay_frame_syn_reply_free(&frame.syn_reply);
+
+  /* Upper cased name/value pairs */
+  spdylay_session_open_stream(session, 5, SPDYLAY_FLAG_NONE, 0,
+                              SPDYLAY_STREAM_OPENING, NULL);
+  spdylay_frame_syn_reply_init(&frame.syn_reply, SPDYLAY_FLAG_NONE, 5,
+                               dup_nv(upcase_nv));
+  CU_ASSERT(0 == spdylay_session_on_syn_reply_received(session, &frame));
+  CU_ASSERT(3 == user_data.invalid_ctrl_recv_cb_called);
+
+  spdylay_frame_syn_reply_free(&frame.syn_reply);
+
   spdylay_session_del(session);
 }
 
@@ -572,6 +593,7 @@ void test_spdylay_session_on_headers_received()
   spdylay_session_callbacks callbacks;
   my_user_data user_data;
   const char *nv[] = { NULL };
+  const char *upcase_nv[] = { "version", "http/1.1", "methoD", "get", NULL };
   spdylay_frame frame;
   memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
   callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
@@ -629,6 +651,18 @@ void test_spdylay_session_on_headers_received()
   CU_ASSERT(2 == user_data.invalid_ctrl_recv_cb_called);
 
   spdylay_frame_headers_free(&frame.headers);
+
+  /* Upper cased name/value pairs */
+  spdylay_session_open_stream(session, 5, SPDYLAY_FLAG_NONE, 0,
+                              SPDYLAY_STREAM_OPENED, NULL);
+  spdylay_frame_headers_init(&frame.headers, SPDYLAY_FLAG_NONE, 5,
+                             dup_nv(upcase_nv));
+
+  CU_ASSERT(0 == spdylay_session_on_headers_received(session, &frame));
+  CU_ASSERT(3 == user_data.invalid_ctrl_recv_cb_called);
+
+  spdylay_frame_headers_free(&frame.headers);
+
   spdylay_session_del(session);
 }
 
