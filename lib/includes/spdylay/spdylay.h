@@ -394,9 +394,10 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
                                            int32_t stream_id);
 
 /*
- * Submits SYN_STREAM frame. |pri| is priority of this request and it
- * must be in the range of [0, 3]. 0 means the higest priority. |nv|
- * must include following name/value pairs:
+ * Submits SYN_STREAM frame and optionally one or more DATA
+ * frames. |pri| is priority of this request and it must be in the
+ * range of [0, 3]. 0 means the higest priority. |nv| must include
+ * following name/value pairs:
  *
  * "method": HTTP method (e.g., "GET" or "POST")
  * "scheme": URI scheme (e.g., "https")
@@ -405,7 +406,8 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  *
  * "host" name/value pair is also required by some hosts.
  *
- * This function creates copies of all name/value pairs in |nv|.
+ * This function creates copies of all name/value pairs in |nv|.  It
+ * also lower-cases all names in |nv|.
  *
  * If |data_prd| is not NULL, it provides data which will be sent in
  * subsequent DATA frames. In this case, "POST" must be specified with
@@ -426,22 +428,17 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
                            void *stream_user_data);
 
 /*
- * Submits DATA frame to stream |stream_id|.
- *
- * This function returns 0 if it succeeds, or negative error code.
- */
-int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
-                        spdylay_data_provider *data_prd);
-
-/*
- * Submits SYN_REPLY frame against stream |stream_id|. |nv| must
- * include following name/value pairs:
+ * Submits SYN_REPLY frame and optionally one or more DATA frames
+ * against stream |stream_id|. |nv| must include following name/value
+ * pairs:
  *
  * "status": HTTP status code (e.g., "200" or "200 OK")
  * "version": HTTP response version (e.g., "HTTP/1.1")
  *
- * This function creates copies of all name/value pairs in |nv|. If
- * |data_prd| is not NULL, it provides data which will be sent in
+ * This function creates copies of all name/value pairs in |nv|.  It
+ * also lower-cases all names in |nv|.
+ *
+ * If |data_prd| is not NULL, it provides data which will be sent in
  * subsequent DATA frames. If |data_prd| is NULL, SYN_REPLY will have
  * FLAG_FIN.
  *
@@ -452,12 +449,23 @@ int spdylay_submit_response(spdylay_session *session,
                             spdylay_data_provider *data_prd);
 
 /*
- * Submits RST_STREAM frame to cancel/reset stream |stream_id| with
+ * Submits 1 or more DATA frames to the stream |stream_id|.  The data
+ * to be sent are provided by |data_prd|.  Depending on the length of
+ * data, 1 or more DATA frames will be sent.  If |flags| contains
+ * SPDYLAY_FLAG_FIN, the last DATA frame has FLAG_FIN set.
+ *
+ * This function returns 0 if it succeeds, or negative error code.
+ */
+int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
+                        uint8_t flags, spdylay_data_provider *data_prd);
+
+/*
+ * Submits RST_STREAM frame to cancel/reject stream |stream_id| with
  * status code |status_code|. This function returns 0 if it succeeds,
  * or negative error code.
  */
-int spdylay_submit_cancel(spdylay_session *session, int32_t stream_id,
-                          uint32_t status_code);
+int spdylay_submit_rst_stream(spdylay_session *session, int32_t stream_id,
+                              uint32_t status_code);
 
 /*
  * Submits PING frame. This function returns 0 if it succeeds, or

@@ -266,7 +266,7 @@ void spdylay_frame_settings_init(spdylay_settings *frame, uint8_t flags,
 void spdylay_frame_settings_free(spdylay_settings *frame);
 
 void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
-                             spdylay_data_provider *data_prd);
+                             uint8_t flags, spdylay_data_provider *data_prd);
 
 void spdylay_frame_data_free(spdylay_data *frame);
 
@@ -292,6 +292,11 @@ char** spdylay_frame_nv_copy(const char **nv);
  * Sorts |nv| in the ascending order of name.
  */
 void spdylay_frame_nv_sort(char **nv);
+
+/*
+ * Makes names in |nv| lower cased.
+ */
+void spdylay_frame_nv_downcase(char **nv);
 
 /*
  * Makes copy of |iv| and return the copy. The |niv| is the number of
