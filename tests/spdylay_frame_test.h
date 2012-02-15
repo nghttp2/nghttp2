@@ -33,5 +33,6 @@ void test_spdylay_frame_pack_goaway();
 void test_spdylay_frame_pack_headers();
 void test_spdylay_frame_pack_settings();
 void test_spdylay_frame_nv_sort();
+void test_spdylay_frame_nv_downcase();
 
 #endif /* SPDYLAY_FRAME_TEST_H */

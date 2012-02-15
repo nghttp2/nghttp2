@@ -71,6 +71,7 @@ int spdylay_submit_response(spdylay_session *session,
     free(data_prd_copy);
     return SPDYLAY_ERR_NOMEM;
   }
+  spdylay_frame_nv_downcase(nv_copy);
   spdylay_frame_nv_sort(nv_copy);
   if(data_prd == NULL) {
     flags |= SPDYLAY_FLAG_FIN;
@@ -151,6 +152,7 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
     free(data_prd_copy);
     return SPDYLAY_ERR_NOMEM;
   }
+  spdylay_frame_nv_downcase(nv_copy);
   spdylay_frame_nv_sort(nv_copy);
   if(data_prd == NULL) {
     flags |= SPDYLAY_FLAG_FIN;

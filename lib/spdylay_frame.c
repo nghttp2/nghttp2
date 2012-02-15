@@ -315,6 +315,18 @@ void spdylay_frame_nv_sort(char **nv)
   qsort(nv, n/2, 2*sizeof(char*), spdylay_string_compar);
 }
 
+void spdylay_frame_nv_downcase(char **nv)
+{
+  int i, j;
+  for(i = 0; nv[i]; i += 2) {
+    for(j = 0; nv[i][j] != '\0'; ++j) {
+      if('A' <= nv[i][j] && nv[i][j] <= 'Z') {
+        nv[i][j] += 'a'-'A';
+      }
+    }
+  }
+}
+
 void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
                                    int32_t stream_id, int32_t assoc_stream_id,
                                    uint8_t pri, char **nv)

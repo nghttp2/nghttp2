@@ -527,10 +527,11 @@ void test_spdylay_submit_response()
     NULL,
     NULL
   };
-  const char *nv[] = { NULL };
+  const char *nv[] = { "Content-Length", "1024", NULL };
   int32_t stream_id = 2;
   spdylay_data_provider data_prd;
   my_user_data ud;
+  spdylay_outbound_item *item;
 
   data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 64*1024;
@@ -538,6 +539,8 @@ void test_spdylay_submit_response()
   spdylay_session_open_stream(session, stream_id, SPDYLAY_FLAG_NONE, 3,
                               SPDYLAY_STREAM_OPENING, NULL);
   CU_ASSERT(0 == spdylay_submit_response(session, stream_id, nv, &data_prd));
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(0 == strcmp("content-length", item->frame->syn_reply.nv[0]));
   CU_ASSERT(0 == spdylay_session_send(session));
   spdylay_session_del(session);
 }
@@ -551,14 +554,17 @@ void test_spdylay_submit_request_with_data()
     NULL,
     NULL
   };
-  const char *nv[] = { NULL };
+  const char *nv[] = { "Version", "HTTP/1.1", NULL };
   spdylay_data_provider data_prd;
   my_user_data ud;
+  spdylay_outbound_item *item;
 
   data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 64*1024;
   CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd, NULL));
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(0 == strcmp("version", item->frame->syn_stream.nv[0]));
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(0 == ud.data_source_length);
 

@@ -230,3 +230,20 @@ void test_spdylay_frame_nv_sort()
   CU_ASSERT(strcmp("version", nv[4]) == 0);
   CU_ASSERT(strcmp("HTTP/1.1", nv[5]) == 0);
 }
+
+void test_spdylay_frame_nv_downcase()
+{
+  const char *nv_src[] = {
+    "VERSION", "HTTP/1.1",
+    "Content-Length", "1000000007",
+    NULL
+  };
+  char **nv;
+  nv = spdylay_frame_nv_copy(nv_src);
+  spdylay_frame_nv_downcase(nv);
+  CU_ASSERT(0 == strcmp("version", nv[0]));
+  CU_ASSERT(0 == strcmp("HTTP/1.1", nv[1]));
+  CU_ASSERT(0 == strcmp("content-length", nv[2]));
+  CU_ASSERT(0 == strcmp("1000000007", nv[3]));
+  spdylay_frame_nv_del(nv);
+}
