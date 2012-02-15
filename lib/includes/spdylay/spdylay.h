@@ -455,12 +455,12 @@ int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
                         uint8_t flags, spdylay_data_provider *data_prd);
 
 /*
- * Submits RST_STREAM frame to cancel/reset stream |stream_id| with
+ * Submits RST_STREAM frame to cancel/reject stream |stream_id| with
  * status code |status_code|. This function returns 0 if it succeeds,
  * or negative error code.
  */
-int spdylay_submit_cancel(spdylay_session *session, int32_t stream_id,
-                          uint32_t status_code);
+int spdylay_submit_rst_stream(spdylay_session *session, int32_t stream_id,
+                              uint32_t status_code);
 
 /*
  * Submits PING frame. This function returns 0 if it succeeds, or
