@@ -60,6 +60,92 @@ void test_spdylay_frame_unpack_nv()
   spdylay_frame_nv_del(nv);
 }
 
+void test_spdylay_frame_pack_nv_duplicate_keys()
+{
+  int i;
+  uint8_t out[1024];
+  const char *nv_src[] = {
+    "method", "GET",
+    "scheme", "https",
+    "url", "/",
+    "X-hEad", "foo",
+    "x-heaD", "bar",
+    "version", "HTTP/1.1",
+    NULL
+  };
+  char **nv = spdylay_frame_nv_copy(nv_src);
+  spdylay_frame_nv_downcase(nv);
+  spdylay_frame_nv_sort(nv);
+  size_t inlen = spdylay_frame_pack_nv(out, nv);
+  const uint8_t *outptr = out;
+  int pairs = spdylay_get_uint16(outptr);
+  CU_ASSERT(pairs == 5);
+  outptr += 2;
+
+  int len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 6);
+  CU_ASSERT(memcmp(outptr, "method", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 3);
+  CU_ASSERT(memcmp(outptr, "GET", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 6);
+  CU_ASSERT(memcmp(outptr, "scheme", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 5);
+  CU_ASSERT(memcmp(outptr, "https", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 3);
+  CU_ASSERT(memcmp(outptr, "url", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 1);
+  CU_ASSERT(memcmp(outptr, "/", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 7);
+  CU_ASSERT(memcmp(outptr, "version", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 8);
+  CU_ASSERT(memcmp(outptr, "HTTP/1.1", len) == 0);
+  outptr += len;
+
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 6);
+  CU_ASSERT(memcmp(outptr, "x-head", len) == 0);
+  outptr += len;
+
+  len = spdylay_get_uint16(outptr);
+  outptr += 2;
+  CU_ASSERT(len == 7);
+  CU_ASSERT(memcmp(outptr, "foo\0bar", len) == 0);
+  outptr += len;
+
+  spdylay_frame_nv_del(nv);
+}
+
 void test_spdylay_frame_count_nv_space()
 {
   CU_ASSERT(83 == spdylay_frame_count_nv_space((char**)headers));

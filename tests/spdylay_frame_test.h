@@ -26,6 +26,7 @@
 #define SPDYLAY_FRAME_TEST_H
 
 void test_spdylay_frame_unpack_nv();
+void test_spdylay_frame_pack_nv_duplicate_keys();
 void test_spdylay_frame_count_nv_space();
 void test_spdylay_frame_count_unpack_nv_space();
 void test_spdylay_frame_pack_ping();
