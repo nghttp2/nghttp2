@@ -399,9 +399,10 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * range of [0, 3]. 0 means the higest priority. |nv| must include
  * following name/value pairs:
  *
- * "method": HTTP method (e.g., "GET" or "POST")
+ * "method": HTTP method (e.g., "GET", "POST", "HEAD", etc)
  * "scheme": URI scheme (e.g., "https")
- * "url": Absolute path of this request (e.g., "/foo")
+ * "url": Absolute path and parameters of this request (e.g., "/foo",
+ * "/foo;bar;haz?h=j&y=123")
  * "version": HTTP version (e.g., "HTTP/1.1")
  *
  * "host" name/value pair is also required by some hosts.
