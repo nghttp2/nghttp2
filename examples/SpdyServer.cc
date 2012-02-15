@@ -922,10 +922,14 @@ int SpdyServer::run()
             sessions.mod_poll(hd);
           }
         }
+        if(hd->mark_del()) {
+          del_list.push_back(hd);
+        }
       }
       for(std::vector<EventHandler*>::iterator i = del_list.begin(),
             eoi = del_list.end(); i != eoi; ++i) {
         on_close(sessions, *i);
+        sessions.remove_handler(*i);
       }
       del_list.clear();
     }
