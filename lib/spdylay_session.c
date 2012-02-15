@@ -691,7 +691,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         int r;
         /* spdylay_submit_data() makes a copy of aux_data->data_prd */
         r = spdylay_submit_data(session, frame->syn_stream.stream_id,
-                                aux_data->data_prd);
+                                SPDYLAY_FLAG_FIN, aux_data->data_prd);
         if(r != 0) {
           /* TODO If r is not FATAL, we should send RST_STREAM. */
           return r;
@@ -714,7 +714,8 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         spdylay_data_provider *data_prd =
           (spdylay_data_provider*)item->aux_data;
         int r;
-        r = spdylay_submit_data(session, frame->syn_reply.stream_id, data_prd);
+        r = spdylay_submit_data(session, frame->syn_reply.stream_id,
+                                SPDYLAY_FLAG_FIN, data_prd);
         if(r != 0) {
           /* TODO If r is not FATAL, we should send RST_STREAM. */
           return r;

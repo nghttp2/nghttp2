@@ -88,15 +88,20 @@ int spdylay_submit_response(spdylay_session *session,
 }
 
 int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
+                        uint8_t flags,
                         spdylay_data_provider *data_prd)
 {
   int r;
   spdylay_frame *frame;
+  uint8_t nflags = 0;
   frame = malloc(sizeof(spdylay_frame));
   if(frame == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
-  spdylay_frame_data_init(&frame->data, stream_id, data_prd);
+  if(flags & SPDYLAY_FLAG_FIN) {
+    nflags |= SPDYLAY_FLAG_FIN;
+  }
+  spdylay_frame_data_init(&frame->data, stream_id, nflags, data_prd);
   r = spdylay_session_add_frame(session, SPDYLAY_DATA, frame, NULL);
   if(r != 0) {
     spdylay_frame_data_free(&frame->data);

@@ -426,14 +426,6 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
                            void *stream_user_data);
 
 /*
- * Submits DATA frame to stream |stream_id|.
- *
- * This function returns 0 if it succeeds, or negative error code.
- */
-int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
-                        spdylay_data_provider *data_prd);
-
-/*
  * Submits SYN_REPLY frame against stream |stream_id|. |nv| must
  * include following name/value pairs:
  *
@@ -450,6 +442,17 @@ int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
 int spdylay_submit_response(spdylay_session *session,
                             int32_t stream_id, const char **nv,
                             spdylay_data_provider *data_prd);
+
+/*
+ * Submits 1 or more DATA frames to the stream |stream_id|.  The data
+ * to be sent are provided by |data_prd|.  Depending on the length of
+ * data, 1 or more DATA frames will be sent.  If |flags| contains
+ * SPDYLAY_FLAG_FIN, the last DATA frame has FLAG_FIN set.
+ *
+ * This function returns 0 if it succeeds, or negative error code.
+ */
+int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
+                        uint8_t flags, spdylay_data_provider *data_prd);
 
 /*
  * Submits RST_STREAM frame to cancel/reset stream |stream_id| with
