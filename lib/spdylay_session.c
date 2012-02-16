@@ -79,7 +79,7 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   int r;
   *session_ptr = malloc(sizeof(spdylay_session));
   if(*session_ptr == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+    goto fail_session;
   }
   memset(*session_ptr, 0, sizeof(spdylay_session));
 
@@ -96,62 +96,34 @@ static int spdylay_session_new(spdylay_session **session_ptr,
 
   r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater);
   if(r != 0) {
-    free(*session_ptr);
-    return r;
+    goto fail_hd_deflater;
   }
   r = spdylay_zlib_inflate_hd_init(&(*session_ptr)->hd_inflater);
   if(r != 0) {
-    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
-    free(*session_ptr);
-    return r;
+    goto fail_hd_inflater;
   }
   r = spdylay_map_init(&(*session_ptr)->streams);
   if(r != 0) {
-    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
-    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
-    free(*session_ptr);
-    return r;
+    goto fail_streams;
   }
   r = spdylay_pq_init(&(*session_ptr)->ob_pq, spdylay_outbound_item_compar);
   if(r != 0) {
-    spdylay_map_free(&(*session_ptr)->streams);
-    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
-    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
-    free(*session_ptr);
-    return r;
+    goto fail_ob_pq;
   }
   r = spdylay_pq_init(&(*session_ptr)->ob_ss_pq, spdylay_outbound_item_compar);
   if(r != 0) {
-    spdylay_pq_free(&(*session_ptr)->ob_pq);
-    spdylay_map_free(&(*session_ptr)->streams);
-    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
-    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
-    free(*session_ptr);
-    return r;
+    goto fail_ob_ss_pq;
   }
 
   (*session_ptr)->aob.framebuf = malloc(SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH);
   if((*session_ptr)->aob.framebuf == NULL) {
-    spdylay_pq_free(&(*session_ptr)->ob_ss_pq);
-    spdylay_pq_free(&(*session_ptr)->ob_pq);
-    spdylay_map_free(&(*session_ptr)->streams);
-    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
-    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
-    free(*session_ptr);
-    return r;
+    goto fail_aob_framebuf;
   }
   (*session_ptr)->aob.framebufmax = SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH;
 
   (*session_ptr)->nvbuf = malloc(SPDYLAY_INITIAL_NV_BUFFER_LENGTH);
   if((*session_ptr)->nvbuf == NULL) {
-    free((*session_ptr)->aob.framebuf);
-    spdylay_pq_free(&(*session_ptr)->ob_ss_pq);
-    spdylay_pq_free(&(*session_ptr)->ob_pq);
-    spdylay_map_free(&(*session_ptr)->streams);
-    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
-    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
-    free(*session_ptr);
-    return r;
+    goto fail_nvbuf;
   }
   (*session_ptr)->nvbuflen = SPDYLAY_INITIAL_NV_BUFFER_LENGTH;
 
@@ -169,6 +141,23 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   
   (*session_ptr)->iframe.state = SPDYLAY_RECV_HEAD;
   return 0;
+
+ fail_nvbuf:
+  free((*session_ptr)->aob.framebuf);
+ fail_aob_framebuf:
+  spdylay_pq_free(&(*session_ptr)->ob_ss_pq);
+ fail_ob_ss_pq:
+  spdylay_pq_free(&(*session_ptr)->ob_pq);
+ fail_ob_pq:
+  spdylay_map_free(&(*session_ptr)->streams);
+ fail_streams:
+  spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
+ fail_hd_inflater:
+  spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
+ fail_hd_deflater:
+  free(*session_ptr);
+ fail_session:
+  return SPDYLAY_ERR_NOMEM;
 }
 
 int spdylay_session_client_new(spdylay_session **session_ptr,
