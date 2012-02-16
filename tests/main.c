@@ -134,6 +134,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "frame_nv_sort", test_spdylay_frame_nv_sort) ||
       !CU_add_test(pSuite, "frame_nv_downcase",
                    test_spdylay_frame_nv_downcase) ||
+      !CU_add_test(pSuite, "frame_nv_downcase",
+                   test_spdylay_frame_pack_nv_duplicate_keys) ||
       !CU_add_test(pSuite, "stream_add_pushed_stream",
                    test_spdylay_stream_add_pushed_stream)) {
      CU_cleanup_registry();
