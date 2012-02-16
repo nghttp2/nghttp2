@@ -1082,6 +1082,7 @@ static int spdylay_session_handle_invalid_stream
 int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
+  /* TODO Check SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS */
   int r = 0;
   int status_code;
   if(session->goaway_flags) {
