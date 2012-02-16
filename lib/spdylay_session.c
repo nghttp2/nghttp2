@@ -115,11 +115,12 @@ static int spdylay_session_new(spdylay_session **session_ptr,
     goto fail_ob_ss_pq;
   }
 
-  (*session_ptr)->aob.framebuf = malloc(SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH);
+  (*session_ptr)->aob.framebuf = malloc
+    (SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH);
   if((*session_ptr)->aob.framebuf == NULL) {
     goto fail_aob_framebuf;
   }
-  (*session_ptr)->aob.framebufmax = SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH;
+  (*session_ptr)->aob.framebufmax = SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH;
 
   (*session_ptr)->nvbuf = malloc(SPDYLAY_INITIAL_NV_BUFFER_LENGTH);
   if((*session_ptr)->nvbuf == NULL) {
@@ -140,8 +141,16 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->ibuf.limit = (*session_ptr)->ibuf.buf;
   
   (*session_ptr)->iframe.state = SPDYLAY_RECV_HEAD;
+  (*session_ptr)->iframe.buf = malloc(SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH);
+  if((*session_ptr)->iframe.buf == NULL) {
+    goto fail_iframe_buf;
+  }
+  (*session_ptr)->iframe.bufmax = SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH;
+
   return 0;
 
+ fail_iframe_buf:
+  free((*session_ptr)->nvbuf);
  fail_nvbuf:
   free((*session_ptr)->aob.framebuf);
  fail_aob_framebuf:
@@ -259,10 +268,10 @@ void spdylay_session_del(spdylay_session *session)
   spdylay_session_ob_pq_free(&session->ob_ss_pq);
   spdylay_zlib_deflate_free(&session->hd_deflater);
   spdylay_zlib_inflate_free(&session->hd_inflater);
-  free(session->iframe.buf);
   free(session->aob.framebuf);
   free(session->nvbuf);
   spdylay_buffer_free(&session->inflatebuf);
+  free(session->iframe.buf);
   free(session);
 }
 
@@ -936,8 +945,6 @@ static size_t spdylay_inbound_buffer_avail(spdylay_inbound_buffer *ibuf)
 static void spdylay_inbound_frame_reset(spdylay_inbound_frame *iframe)
 {
   iframe->state = SPDYLAY_RECV_HEAD;
-  free(iframe->buf);
-  iframe->buf = NULL;
   iframe->len = iframe->off = 0;
   iframe->ign = 0;
 }
@@ -1501,9 +1508,11 @@ int spdylay_session_recv(spdylay_session *session)
       if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
         /* control frame */
         session->iframe.len = payloadlen;
-        session->iframe.buf = malloc(session->iframe.len);
-        if(session->iframe.buf == NULL) {
-          return SPDYLAY_ERR_NOMEM;
+        r = spdylay_reserve_buffer(&session->iframe.buf,
+                                   &session->iframe.bufmax,
+                                   session->iframe.len);
+        if(r != 0) {
+          return r;
         }
         session->iframe.off = 0;
       } else {

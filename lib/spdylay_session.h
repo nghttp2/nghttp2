@@ -64,7 +64,9 @@ typedef struct {
    message block of SSLv3/TLSv1 */
 #define SPDYLAY_INBOUND_BUFFER_LENGTH 16384
 
-#define SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH SPDYLAY_DATA_FRAME_LENGTH
+#define SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH SPDYLAY_DATA_FRAME_LENGTH
+#define SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH \
+  SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH
 #define SPDYLAY_INITIAL_NV_BUFFER_LENGTH 4096
 
 typedef struct {
@@ -87,8 +89,10 @@ typedef enum {
 typedef struct {
   spdylay_inbound_state state;
   uint8_t headbuf[SPDYLAY_HEAD_LEN];
-  /* NULL if inbound frame is data frame */
+  /* Payload for control frames. It is not used for DATA frames */
   uint8_t *buf;
+  /* Capacity of buf */
+  size_t bufmax;
   /* length in Length field */
   size_t len;
   size_t off;
