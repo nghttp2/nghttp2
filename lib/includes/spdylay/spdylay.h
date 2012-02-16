@@ -201,6 +201,8 @@ typedef struct {
 typedef struct {
   int32_t stream_id;
   uint8_t flags;
+  /* Initially eof is 0. It becomes 1 if all data are read. */
+  uint8_t eof;
   spdylay_data_provider data_prd;
 } spdylay_data;
 

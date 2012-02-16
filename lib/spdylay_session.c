@@ -700,7 +700,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   if(type == SPDYLAY_DATA) {
     if(session->callbacks.on_data_send_callback) {
       session->callbacks.on_data_send_callback
-        (session, frame->data.flags, frame->data.stream_id,
+        (session,
+         frame->data.eof ? frame->data.flags :
+         (frame->data.flags & (~SPDYLAY_FLAG_FIN)),
+         frame->data.stream_id,
          session->aob.framebuflen-SPDYLAY_HEAD_LEN, session->user_data);
     }
   } else {
@@ -792,7 +795,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
        is unreachable. */
     abort();
   case SPDYLAY_DATA:
-    if(frame->data.flags & SPDYLAY_FLAG_FIN) {
+    if(frame->data.eof && (frame->data.flags & SPDYLAY_FLAG_FIN)) {
       spdylay_stream *stream =
         spdylay_session_get_stream(session, frame->data.stream_id);
       if(stream) {
@@ -806,7 +809,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     int r;
     /* If session is closed or RST_STREAM was queued, we won't send
        further data. */
-    if((frame->data.flags & SPDYLAY_FLAG_FIN) ||
+    if(frame->data.eof ||
        !spdylay_session_is_data_allowed(session, frame->data.stream_id)) {
       spdylay_active_outbound_item_reset(&session->aob);
     } else {
@@ -1662,10 +1665,12 @@ ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
   spdylay_put_uint32be(&buf[0], frame->stream_id);
   spdylay_put_uint32be(&buf[4], r);
   if(eof) {
-    flags |= SPDYLAY_FLAG_FIN;
+    frame->eof = 1;
+    if(frame->flags & SPDYLAY_FLAG_FIN) {
+      flags |= SPDYLAY_FLAG_FIN;
+    }
   }
   buf[4] = flags;
-  frame->flags = flags;
   return r+8;
 }
 
