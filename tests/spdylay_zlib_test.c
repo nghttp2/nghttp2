@@ -64,7 +64,8 @@ void test_spdylay_zlib()
   free(deflatebuf);
   spdylay_buffer_serialize(&buf, inflatebuf);
 
-
   spdylay_zlib_deflate_free(&deflater);
   spdylay_zlib_inflate_free(&inflater);
+
+  spdylay_buffer_free(&buf);
 }

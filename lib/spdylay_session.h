@@ -35,6 +35,7 @@
 #include "spdylay_frame.h"
 #include "spdylay_zlib.h"
 #include "spdylay_stream.h"
+#include "spdylay_buffer.h"
 
 typedef struct {
   spdylay_frame_type frame_type;
@@ -130,6 +131,9 @@ struct spdylay_session {
   uint8_t *nvbuf;
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
+  /* Buffer used to store name/value pairs while inflating them using
+     zlib on unpack */
+  spdylay_buffer inflatebuf;
 
   spdylay_zlib hd_deflater;
   spdylay_zlib hd_inflater;

@@ -70,9 +70,19 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
  * Unpacks SYN_STREAM frame byte sequence into |frame|.  Header is
  * given in head and headlen. In spdy/2 spec, headlen is 8
  * bytes. |payload| is the data after length field of the header.
+ *
+ * |inflatebuf| is used to buffer name/value pairs while inflating
+ * them using |inflater|.  The caller must reset |inflatebuf| before
+ * the call.  |*nvbuf_ptr|, |*nvbuflen_ptr| is used to store temporal
+ * inflated name/value pairs. This function expands |*nvbuf_ptr| as
+ * necessary and updates these variables.
+ *
  * This function returns 0 if it succeeds or negative error code.
  */
 int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
+                                    spdylay_buffer *inflatebuf,
+                                    uint8_t **nvbuf_ptr,
+                                    size_t *nvbuflen_ptr,
                                     const uint8_t *head, size_t headlen,
                                     const uint8_t *payload, size_t payloadlen,
                                     spdylay_zlib *inflater);
@@ -99,10 +109,20 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
                                      spdylay_zlib *deflater);
 
 /*
- * Unpacks SYN_REPLY frame byte sequence into |frame|.  This function
- * returns 0 if it succeeds or negative error code.
+ * Unpacks SYN_REPLY frame byte sequence into |frame|.
+ *
+ * |inflatebuf| is used to buffer name/value pairs while inflating
+ * them using |inflater|.  The caller must reset |inflatebuf| before
+ * the call.  |*nvbuf_ptr|, |*nvbuflen_ptr| is used to store temporal
+ * inflated name/value pairs. This function expands |*nvbuf_ptr| as
+ * necessary and updates these variables.
+ *
+ * This function returns 0 if it succeeds or negative error code.
  */
 int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
+                                   spdylay_buffer *inflatebuf,
+                                   uint8_t **nvbuf_ptr,
+                                   size_t *nvbuflen_ptr,
                                    const uint8_t *head, size_t headlen,
                                    const uint8_t *payload, size_t payloadlen,
                                    spdylay_zlib *inflater);
@@ -163,10 +183,20 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
                                    spdylay_zlib *deflater);
 
 /*
- * Unpacks HEADERS wire format into |frame|. This function returns 0
- * if it succeeds or negative error code.
+ * Unpacks HEADERS wire format into |frame|.
+ *
+ * |inflatebuf| is used to buffer name/value pairs while inflating
+ * them using |inflater|.  The caller must reset |inflatebuf| before
+ * the call.  |*nvbuf_ptr|, |*nvbuflen_ptr| is used to store temporal
+ * inflated name/value pairs. This function expands |*nvbuf_ptr| as
+ * necessary and updates these variables.
+ *
+ * This function returns 0 if it succeeds or negative error code.
  */
 int spdylay_frame_unpack_headers(spdylay_headers *frame,
+                                 spdylay_buffer *inflatebuf,
+                                 uint8_t **nvbuf_ptr,
+                                 size_t *nvbuflen_ptr,
                                  const uint8_t *head, size_t headlen,
                                  const uint8_t *payload, size_t payloadlen,
                                  spdylay_zlib *inflater);

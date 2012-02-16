@@ -32,14 +32,22 @@
 #include <spdylay/spdylay.h>
 #include "spdylay_queue.h"
 
+typedef struct spdylay_buffer_chunk {
+  uint8_t *data;
+  struct spdylay_buffer_chunk *next;
+} spdylay_buffer_chunk;
+
 /*
- * Fixed sized buffers backed by queue.
+ * List of fixed sized chunks
  */
 typedef struct {
   /* Capacity of each chunk buffer */
   size_t capacity;
-  /* Queue of chunk buffers */
-  spdylay_queue q;
+  /* Root of list of chunk buffers. The root is dummy and its data
+     member is always NULL. */
+  spdylay_buffer_chunk root;
+  /* Points to the current chunk to write */
+  spdylay_buffer_chunk *current;
   /* Total length of this buffer */
   size_t len;
   /* Offset of last chunk buffer */
@@ -66,20 +74,17 @@ int spdylay_buffer_alloc(spdylay_buffer *buffer);
 
 /* Returns total length of buffer */
 size_t spdylay_buffer_length(spdylay_buffer *buffer);
-/* Returns first chunk buffer length. If the chunk buffer is the last
-   one, last_offset will be returned. */
-size_t spdylay_buffer_front_length(spdylay_buffer *buffer);
-/* Returns first chunk buffer pointer */
-uint8_t* spdylay_buffer_front_data(spdylay_buffer *buffer);
-/* Pops first chunk buffer and decreases total length of buffer by the
-   size of poped chunk buffer. */
-void spdylay_buffer_pop(spdylay_buffer *buffer);
 
 /* Returns capacity of each fixed chunk buffer */
 size_t spdylay_buffer_capacity(spdylay_buffer *buffer);
 
-/* Stores the contents of buffer into buf. buf must be at least
+/* Stores the contents of buffer into |buf|. |buf| must be at least
    spdylay_buffer_length(buffer) bytes long. */
 void spdylay_buffer_serialize(spdylay_buffer *buffer, uint8_t *buf);
+
+/* Reset |buffer| for reuse.  Set the total length of buffer to 0.
+   Next spdylay_buffer_avail() returns 0. This function does not free
+   allocated memory space; they are reused. */
+void spdylay_buffer_reset(spdylay_buffer *buffer);
 
 #endif /* SPDYLAY_BUFFER_H */

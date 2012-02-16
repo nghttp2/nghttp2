@@ -155,6 +155,8 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   }
   (*session_ptr)->nvbuflen = SPDYLAY_INITIAL_NV_BUFFER_LENGTH;
 
+  spdylay_buffer_init(&(*session_ptr)->inflatebuf, 4096);
+
   memset((*session_ptr)->settings, 0, sizeof((*session_ptr)->settings));
   (*session_ptr)->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
     SPDYLAY_CONCURRENT_STREAMS_MAX;
@@ -271,6 +273,7 @@ void spdylay_session_del(spdylay_session *session)
   free(session->iframe.buf);
   free(session->aob.framebuf);
   free(session->nvbuf);
+  spdylay_buffer_free(&session->inflatebuf);
   free(session);
 }
 
@@ -1305,7 +1308,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
   type = ntohs(type);
   switch(type) {
   case SPDYLAY_SYN_STREAM:
+    spdylay_buffer_reset(&session->inflatebuf);
     r = spdylay_frame_unpack_syn_stream(&frame.syn_stream,
+                                        &session->inflatebuf,
+                                        &session->nvbuf,
+                                        &session->nvbuflen,
                                         session->iframe.headbuf,
                                         sizeof(session->iframe.headbuf),
                                         session->iframe.buf,
@@ -1321,7 +1328,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     }
     break;
   case SPDYLAY_SYN_REPLY:
+    spdylay_buffer_reset(&session->inflatebuf);
     r = spdylay_frame_unpack_syn_reply(&frame.syn_reply,
+                                       &session->inflatebuf,
+                                       &session->nvbuf,
+                                       &session->nvbuflen,
                                        session->iframe.headbuf,
                                        sizeof(session->iframe.headbuf),
                                        session->iframe.buf,
@@ -1379,7 +1390,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     }
     break;
   case SPDYLAY_HEADERS:
+    spdylay_buffer_reset(&session->inflatebuf);
     r = spdylay_frame_unpack_headers(&frame.headers,
+                                     &session->inflatebuf,
+                                     &session->nvbuf,
+                                     &session->nvbuflen,
                                      session->iframe.headbuf,
                                      sizeof(session->iframe.headbuf),
                                      session->iframe.buf,

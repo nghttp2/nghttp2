@@ -29,7 +29,9 @@
 
 void spdylay_buffer_init(spdylay_buffer *buffer, size_t chunk_capacity)
 {
-  spdylay_queue_init(&buffer->q);
+  buffer->root.data = NULL;
+  buffer->root.next = NULL;
+  buffer->current = &buffer->root;
   buffer->capacity = chunk_capacity;
   buffer->len = 0;
   /*
@@ -41,22 +43,35 @@ void spdylay_buffer_init(spdylay_buffer *buffer, size_t chunk_capacity)
 
 void spdylay_buffer_free(spdylay_buffer *buffer)
 {
-  while(!spdylay_queue_empty(&buffer->q)) {
-    free(spdylay_queue_front(&buffer->q));
-    spdylay_queue_pop(&buffer->q);
+  spdylay_buffer_chunk *p = buffer->root.next;
+  while(p) {
+    spdylay_buffer_chunk *next = p->next;
+    free(p->data);
+    free(p);
+    p = next;
   }
 }
 
 int spdylay_buffer_alloc(spdylay_buffer *buffer)
 {
-  int r;
-  uint8_t *buf = (uint8_t*)malloc(buffer->capacity);
-  if(buf == NULL) {
-    return SPDYLAY_ERR_NOMEM;
-  }
-  if((r = spdylay_queue_push(&buffer->q, buf)) != 0) {
-    free(buf);
-    return r;
+  if(buffer->current->next == NULL) {
+    spdylay_buffer_chunk *chunk;
+    uint8_t *buf;
+    chunk = malloc(sizeof(spdylay_buffer_chunk));
+    if(chunk == NULL) {
+      return SPDYLAY_ERR_NOMEM;
+    }
+    buf = malloc(buffer->capacity);
+    if(buf == NULL) {
+      free(chunk);
+      return SPDYLAY_ERR_NOMEM;
+    }
+    chunk->data = buf;
+    chunk->next = NULL;
+    buffer->current->next = chunk;
+    buffer->current = chunk;
+  } else {
+    buffer->current = buffer->current->next;
   }
   buffer->len += buffer->capacity-buffer->last_offset;
   buffer->last_offset = 0;
@@ -65,10 +80,10 @@ int spdylay_buffer_alloc(spdylay_buffer *buffer)
 
 uint8_t* spdylay_buffer_get(spdylay_buffer *buffer)
 {
-  if(spdylay_queue_empty(&buffer->q)) {
+  if(buffer->current->data == NULL) {
     return NULL;
   } else {
-    return spdylay_queue_back(&buffer->q)+buffer->last_offset;
+    return buffer->current->data+buffer->last_offset;
   }
 }
 
@@ -89,40 +104,6 @@ size_t spdylay_buffer_length(spdylay_buffer *buffer)
   return buffer->len;
 }
 
-size_t spdylay_buffer_front_length(spdylay_buffer *buffer)
-{
-  if(spdylay_queue_empty(&buffer->q)) {
-    return 0;
-  } else if(buffer->len >= buffer->capacity) {
-    return buffer->capacity;
-  } else {
-    return buffer->len;
-  }
-}
-
-uint8_t* spdylay_buffer_front_data(spdylay_buffer *buffer)
-{
-  if(spdylay_queue_empty(&buffer->q)) {
-    return NULL;
-  } else {
-    return spdylay_queue_front(&buffer->q);
-  }
-}
-
-void spdylay_buffer_pop(spdylay_buffer *buffer)
-{
-  if(!spdylay_queue_empty(&buffer->q)) {
-    if(buffer->len >= buffer->capacity) {
-      buffer->len -= buffer->capacity;
-    } else {
-      buffer->len = 0;
-      buffer->last_offset = buffer->capacity;
-    }
-    free(spdylay_queue_front(&buffer->q));
-    spdylay_queue_pop(&buffer->q);
-  }
-}
-
 size_t spdylay_buffer_capacity(spdylay_buffer *buffer)
 {
   return buffer->capacity;
@@ -130,10 +111,22 @@ size_t spdylay_buffer_capacity(spdylay_buffer *buffer)
 
 void spdylay_buffer_serialize(spdylay_buffer *buffer, uint8_t *buf)
 {
-  while(spdylay_buffer_length(buffer)) {
-    size_t len = spdylay_buffer_front_length(buffer);
-    memcpy(buf, spdylay_buffer_front_data(buffer), len);
+  spdylay_buffer_chunk *p = buffer->root.next;
+  for(; p; p = p->next) {
+    size_t len;
+    if(p == buffer->current) {
+      len = buffer->last_offset;
+    } else {
+      len = buffer->capacity;
+    }
+    memcpy(buf, p->data, len);
     buf += len;
-    spdylay_buffer_pop(buffer);
   }
+}
+
+void spdylay_buffer_reset(spdylay_buffer *buffer)
+{
+  buffer->current = &buffer->root;
+  buffer->len = 0;
+  buffer->last_offset = buffer->capacity;
 }

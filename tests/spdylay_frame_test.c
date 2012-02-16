@@ -140,7 +140,9 @@ void test_spdylay_frame_pack_headers()
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL, *nvbuf = NULL;
   size_t buflen = 0, nvbuflen = 0;
+  spdylay_buffer inflatebuf;
   ssize_t framelen;
+  spdylay_buffer_init(&inflatebuf, 4096);
   spdylay_zlib_deflate_hd_init(&deflater);
   spdylay_zlib_inflate_hd_init(&inflater);
   spdylay_frame_headers_init(&frame.headers, SPDYLAY_FLAG_FIN, 3,
@@ -150,6 +152,8 @@ void test_spdylay_frame_pack_headers()
                                         &frame.headers, &deflater);
   CU_ASSERT(0 == spdylay_frame_unpack_headers
             (&oframe.headers,
+             &inflatebuf,
+             &nvbuf, &nvbuflen,
              &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
              &buf[SPDYLAY_FRAME_HEAD_LENGTH],
              framelen-SPDYLAY_FRAME_HEAD_LENGTH,
@@ -168,6 +172,7 @@ void test_spdylay_frame_pack_headers()
   spdylay_frame_headers_free(&frame.headers);
   spdylay_zlib_inflate_free(&inflater);
   spdylay_zlib_deflate_free(&deflater);
+  spdylay_buffer_free(&inflatebuf);
 }
 
 void test_spdylay_frame_pack_settings()

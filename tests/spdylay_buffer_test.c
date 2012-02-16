@@ -33,6 +33,7 @@
 void test_spdylay_buffer()
 {
   spdylay_buffer buffer;
+  uint8_t out[1024];
   spdylay_buffer_init(&buffer, 8);
   CU_ASSERT(0 == spdylay_buffer_length(&buffer));
   CU_ASSERT(0 == spdylay_buffer_avail(&buffer));
@@ -58,26 +59,23 @@ void test_spdylay_buffer()
 
   CU_ASSERT(1 == spdylay_buffer_avail(&buffer));
   
-  CU_ASSERT(8 == spdylay_buffer_front_length(&buffer));
-  CU_ASSERT(memcmp("01234567", spdylay_buffer_front_data(&buffer), 8) == 0);
-  spdylay_buffer_pop(&buffer);
+  spdylay_buffer_serialize(&buffer, out);
+  CU_ASSERT(0 == memcmp("0123456789ABCDE", out, 15));
 
-  CU_ASSERT(7 == spdylay_buffer_length(&buffer));
-  CU_ASSERT(memcmp("89ABCDE", spdylay_buffer_front_data(&buffer), 7) == 0);
-  spdylay_buffer_pop(&buffer);
+  spdylay_buffer_reset(&buffer);
 
   CU_ASSERT(0 == spdylay_buffer_length(&buffer));
-
   CU_ASSERT(0 == spdylay_buffer_avail(&buffer));
   CU_ASSERT(NULL == spdylay_buffer_get(&buffer));
-
   CU_ASSERT(0 == spdylay_buffer_alloc(&buffer));
 
   CU_ASSERT(8 == spdylay_buffer_avail(&buffer));
-  memcpy(spdylay_buffer_get(&buffer), "34567", 5);
+  memcpy(spdylay_buffer_get(&buffer), "Hello", 5);
   spdylay_buffer_advance(&buffer, 5);
   CU_ASSERT(5 == spdylay_buffer_length(&buffer));
-  CU_ASSERT(memcmp("34567", spdylay_buffer_front_data(&buffer), 5) == 0);
+
+  spdylay_buffer_serialize(&buffer, out);
+  CU_ASSERT(0 == memcmp("Hello", out, 5));
 
   spdylay_buffer_free(&buffer);
 }
