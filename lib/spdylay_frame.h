@@ -44,14 +44,25 @@
 #define SPDYLAY_FRAME_HEAD_LENGTH 8
 
 /*
- * Packs SYN_STREAM frame |frame| in wire frame format and store it in
- * |*buf_ptr|. This function allocates enough memory to store given
- * frame in |*buf_ptr|.  This function returns the size of packed
- * frame if it succeeds, or returns negative error
+ * Packs SYN_STREAM frame |frame| in wire format and store it in
+ * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
+ * The |*nvbuf_ptr| is used to store inflated name/value pairs in wire
+ * format temporarily. Its length is |*nvbuflen_ptr| bytes.  This
+ * function expands |*buf_ptr| and |*nvbuf_ptr| as necessary to store
+ * frame and name/value pairs. When expansion occurred, memory
+ * previously pointed by |*buf_ptr| and |*nvbuf_ptr| is freed.
+ * |*buf_ptr|, |*buflen_ptr|, |*nvbuf_ptr| and |*nvbuflen_ptr| are
+ * updated accordingly.
+ *
+ * This function returns the size of
+ * packed frame if it succeeds, or returns negative error
  * code. frame->hd.length is assigned after length is determined
  * during packing process.
  */
 ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
+                                      size_t *buflen_ptr,
+                                      uint8_t **nvbuf_ptr,
+                                      size_t *nvbuflen_ptr,
                                       spdylay_syn_stream *frame,
                                       spdylay_zlib *deflater);
 
@@ -68,12 +79,22 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
 
 /*
  * Packs SYN_REPLY frame |frame| in wire frame format and store it in
- * |*buf_ptr|. This function allocates enough memory to store given
- * frame in |*buf_ptr|. This function returns the size of packed frame
- * it it succeeds, or returns negative error code. frame->hd.length is
- * assigned after length is determined during packing process.
+ * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
+ * The |*nvbuf_ptr| is used to store inflated name/value pairs in wire
+ * format temporarily. Its length is |*nvbuflen_ptr| bytes.  This
+ * function expands |*buf_ptr| and |*nvbuf_ptr| as necessary to store
+ * frame and name/value pairs. When expansion occurred, memory
+ * previously pointed by |*buf_ptr| and |*nvbuf_ptr| is freed.
+ * |*buf_ptr|, |*buflen_ptr|, |*nvbuf_ptr| and |*nvbuflen_ptr| are
+ * updated accordingly.  This function returns the size of packed
+ * frame it it succeeds, or returns negative error
+ * code. frame->hd.length is assigned after length is determined
+ * during packing process.
  */
 ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
+                                     size_t *buflen_ptr,
+                                     uint8_t **nvbuf_ptr,
+                                     size_t *nvbuflen_ptr,
                                      spdylay_syn_reply *frame,
                                      spdylay_zlib *deflater);
 
@@ -88,11 +109,13 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
 
 /*
  * Packs PING frame |frame| in wire format and store it in
- * |*buf_ptr|. This function allocates enough memory in |*buf_ptr| to
- * store given |frame|. This function returns the size of packed frame
- * if it succeeds, or negative error code.
+ * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
+ * length. This function expands |*buf_ptr| as necessary to store
+ * given |frame|. This function returns the size of packed frame if it
+ * succeeds, or negative error code.
  */
-ssize_t spdylay_frame_pack_ping(uint8_t **buf_ptr, spdylay_ping *frame);
+ssize_t spdylay_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                spdylay_ping *frame);
 
 /*
  * Unpacks PING wire format into |frame|. This function returns 0 if
@@ -104,11 +127,13 @@ int spdylay_frame_unpack_ping(spdylay_ping *frame,
 
 /*
  * Packs GOAWAY frame |frame | in wire format and store it in
- * |*buf_ptr|. This function allocates enough memory in |*buf_ptr| to
- * store given |frame|. This function returns the size of packed frame
- * if it succeeds, or negative error code.
+ * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
+ * length. This function expands |*buf_ptr| as necessary to store
+ * given |frame|. This function returns the size of packed frame if it
+ * succeeds, or negative error code.
  */
-ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, spdylay_goaway *frame);
+ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  spdylay_goaway *frame);
 
 /*
  * Unpacks GOAWAY wire format into |frame|. This function returns 0 if
@@ -120,12 +145,20 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
 
 /*
  * Packs HEADERS frame |frame| in wire format and store it in
- * |*buf_ptr|. This function allocates enough memory in |*buf_ptr| to
- * store given |frame|. This function returns the size of packed frame
- * it it succeeds, or returns negative error code. frame->hd.length is
- * assigned after length is determined during packing process.
+ * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
+ * The |*nvbuf_ptr| is used to store inflated name/value pairs in wire
+ * format temporarily. Its length is |*nvbuflen_ptr| bytes.  This
+ * function expands |*buf_ptr| and |*nvbuf_ptr| as necessary to store
+ * frame and name/value pairs. When expansion occurred, memory
+ * previously pointed by |*buf_ptr| and |*nvbuf_ptr| is freed.
+ * |*buf_ptr|, |*buflen_ptr|, |*nvbuf_ptr| and |*nvbuflen_ptr| are
+ * updated accordingly.  This function returns the size of packed
+ * frame it it succeeds, or returns negative error
+ * code. frame->hd.length is assigned after length is determined
+ * during packing process.
  */
-ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr,
+ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                   uint8_t **nvbuf_ptr, size_t *nvbuflen_ptr,
                                    spdylay_headers *frame,
                                    spdylay_zlib *deflater);
 
@@ -140,12 +173,13 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
 
 /*
  * Packs RST_STREAM frame |frame| in wire frame format and store it in
- * |*buf_ptr|. This function allocates enough memory to store given
- * frame in |*buf_ptr|. In spdy/2 spc, RST_STREAM wire format is
- * always 16 bytes long. This function returns the size of packed
- * frame if it succeeds, or negative error code.
+ * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
+ * length. This function expands |*buf_ptr| as necessary to store
+ * given |frame|. In spdy/2 spc, RST_STREAM wire format is always 16
+ * bytes long. This function returns the size of packed frame if it
+ * succeeds, or negative error code.
  */
-ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr,
+ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
                                       spdylay_rst_stream *frame);
 
 /*
@@ -158,11 +192,13 @@ int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
 
 /*
  * Packs SETTINGS frame |frame| in wire format and store it in
- * |*buf_ptr|. This function allocates enough memory to store given
- * frame in |*buf_ptr|. This function returns the size of packed frame
- * if it succeeds, or negative error code.
+ * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
+ * length. This function expands |*buf_ptr| as necessary to store
+ * given |frame|. This function returns the size of packed frame if it
+ * succeeds, or negative error code.
  */
-ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, spdylay_settings *frame);
+ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                    spdylay_settings *frame);
 
 /*
  * Unpacks SETTINGS wire format into |frame|. This function returns 0

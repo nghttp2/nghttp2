@@ -52,3 +52,19 @@ uint32_t spdylay_get_uint32(const uint8_t *data)
   memcpy(&n, data, sizeof(uint32_t));
   return ntohl(n);
 }
+
+int spdylay_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
+                           size_t min_length)
+{
+  if(min_length > *buflen_ptr) {
+    uint8_t *temp = malloc(min_length);
+    if(temp == NULL) {
+      return SPDYLAY_ERR_NOMEM;
+    } else {
+      free(*buf_ptr);
+      *buf_ptr = temp;
+      *buflen_ptr = min_length;
+    }
+  }
+  return 0;
+}

@@ -63,27 +63,35 @@ static void spdylay_frame_unpack_ctrl_hd(spdylay_ctrl_hd *hd,
 }
 
 static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
+                                           size_t *buflen_ptr,
+                                           uint8_t **nvbuf_ptr,
+                                           size_t *nvbuflen_ptr,
                                            char **nv, size_t nv_offset,
                                            spdylay_zlib *deflater)
 {
-  size_t nvbuflen = spdylay_frame_count_nv_space(nv);
-  uint8_t *nvbuf = malloc(nvbuflen);
-  size_t maxframelen = nv_offset+
-    spdylay_zlib_deflate_hd_bound(deflater, nvbuflen);
-  uint8_t *framebuf = malloc(maxframelen);
+  size_t nvspace;
+  size_t maxframelen;
   ssize_t framelen;
-  spdylay_frame_pack_nv(nvbuf, nv);
+  int r;
+  nvspace = spdylay_frame_count_nv_space(nv);
+  r = spdylay_reserve_buffer(nvbuf_ptr, nvbuflen_ptr, nvspace);
+  if(r != 0) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  maxframelen = nv_offset+spdylay_zlib_deflate_hd_bound(deflater, nvspace);
+  r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, maxframelen);
+  if(r != 0) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_pack_nv(*nvbuf_ptr, nv);
   framelen = spdylay_zlib_deflate_hd(deflater,
-                                     framebuf+nv_offset,
+                                     (*buf_ptr)+nv_offset,
                                      maxframelen-nv_offset,
-                                     nvbuf, nvbuflen);
-  free(nvbuf);
+                                     *nvbuf_ptr, nvspace);
   if(framelen < 0) {
-    free(framebuf);
     return framelen;
   }
   framelen += nv_offset;
-  *buf_ptr = framebuf;
   return framelen;
 }
 
@@ -451,26 +459,28 @@ void spdylay_frame_data_free(spdylay_data *frame)
 #define SPDYLAY_SYN_STREAM_NV_OFFSET 18
 
 ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
+                                      size_t *buflen_ptr,
+                                      uint8_t **nvbuf_ptr,
+                                      size_t *nvbuflen_ptr,
                                       spdylay_syn_stream *frame,
                                       spdylay_zlib *deflater)
 {
-  uint8_t *framebuf = NULL;
   ssize_t framelen;
-  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv,
+  framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
+                                         nvbuf_ptr, nvbuflen_ptr,
+                                         frame->nv,
                                          SPDYLAY_SYN_STREAM_NV_OFFSET,
                                          deflater);
   if(framelen < 0) {
     return framelen;
   }
   frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
-  memset(framebuf, 0, SPDYLAY_SYN_STREAM_NV_OFFSET);
+  memset(*buf_ptr, 0, SPDYLAY_SYN_STREAM_NV_OFFSET);
   /* pack ctrl header after length is determined */
-  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
-  spdylay_put_uint32be(&framebuf[8], frame->stream_id);
-  spdylay_put_uint32be(&framebuf[12], frame->assoc_stream_id);
-  framebuf[16] = (frame->pri << 6);
-
-  *buf_ptr = framebuf;
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
+  spdylay_put_uint32be(&(*buf_ptr)[12], frame->assoc_stream_id);
+  (*buf_ptr)[16] = (frame->pri << 6);
   return framelen;
 }
 
@@ -496,21 +506,24 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
 #define SPDYLAY_SYN_REPLY_NV_OFFSET 14
 
 ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
+                                     size_t *buflen_ptr,
+                                     uint8_t **nvbuf_ptr,
+                                     size_t *nvbuflen_ptr,
                                      spdylay_syn_reply *frame,
                                      spdylay_zlib *deflater)
 {
-  uint8_t *framebuf = NULL;
   ssize_t framelen;
-  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv,
+  framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
+                                         nvbuf_ptr, nvbuflen_ptr,
+                                         frame->nv,
                                          SPDYLAY_SYN_REPLY_NV_OFFSET, deflater);
   if(framelen < 0) {
     return framelen;
   }
   frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
-  memset(framebuf, 0, SPDYLAY_SYN_REPLY_NV_OFFSET);
-  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
-  spdylay_put_uint32be(&framebuf[8], frame->stream_id);
-  *buf_ptr = framebuf;
+  memset(*buf_ptr, 0, SPDYLAY_SYN_REPLY_NV_OFFSET);
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
   return framelen;
 }
 
@@ -530,18 +543,18 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
   return r;
 }
 
-ssize_t spdylay_frame_pack_ping(uint8_t **buf_ptr, spdylay_ping *frame)
+ssize_t spdylay_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                spdylay_ping *frame)
 {
-  uint8_t *framebuf = NULL;
   ssize_t framelen = 12;
-  framebuf = malloc(framelen);
-  if(framebuf == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+  int r;
+  r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(r != 0) {
+    return r;
   }
-  memset(framebuf, 0, framelen);
-  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
-  spdylay_put_uint32be(&framebuf[8], frame->unique_id);
-  *buf_ptr = framebuf;
+  memset(*buf_ptr, 0, framelen);
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  spdylay_put_uint32be(&(*buf_ptr)[8], frame->unique_id);
   return framelen;
 }
 
@@ -557,18 +570,18 @@ int spdylay_frame_unpack_ping(spdylay_ping *frame,
   return 0;
 }
 
-ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, spdylay_goaway *frame)
+ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  spdylay_goaway *frame)
 {
-  uint8_t *framebuf = NULL;
   ssize_t framelen = 12;
-  framebuf = malloc(framelen);
-  if(framebuf == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+  int r;
+  r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(r != 0) {
+    return r;
   }
-  memset(framebuf, 0, framelen);
-  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
-  spdylay_put_uint32be(&framebuf[8], frame->last_good_stream_id);
-  *buf_ptr = framebuf;
+  memset(*buf_ptr, 0, framelen);
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  spdylay_put_uint32be(&(*buf_ptr)[8], frame->last_good_stream_id);
   return framelen;
 }
 
@@ -587,22 +600,23 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
 
 #define SPDYLAY_HEADERS_NV_OFFSET 14
 
-ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr,
+ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                   uint8_t **nvbuf_ptr, size_t *nvbuflen_ptr,
                                    spdylay_headers *frame,
                                    spdylay_zlib *deflater)
 {
-  uint8_t *framebuf = NULL;
   ssize_t framelen;
-  framelen = spdylay_frame_alloc_pack_nv(&framebuf, frame->nv,
+  framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
+                                         nvbuf_ptr, nvbuflen_ptr,
+                                         frame->nv,
                                          SPDYLAY_HEADERS_NV_OFFSET, deflater);
   if(framelen < 0) {
     return framelen;
   }
   frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
-  memset(framebuf, 0, SPDYLAY_HEADERS_NV_OFFSET);
-  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
-  spdylay_put_uint32be(&framebuf[8], frame->stream_id);
-  *buf_ptr = framebuf;
+  memset(*buf_ptr, 0, SPDYLAY_HEADERS_NV_OFFSET);
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
   return framelen;
 }
 
@@ -622,20 +636,19 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
   return r;
 }
 
-ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr,
+ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
                                       spdylay_rst_stream *frame)
 {
-  uint8_t *framebuf;
   ssize_t framelen = 16;
-  framebuf = malloc(framelen);
-  if(framebuf == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+  int r;
+  r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(r != 0) {
+    return r;
   }
-  memset(framebuf, 0, framelen);
-  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
-  spdylay_put_uint32be(&framebuf[8], frame->stream_id);
-  spdylay_put_uint32be(&framebuf[12], frame->status_code);
-  *buf_ptr = framebuf;
+  memset(*buf_ptr, 0, framelen);
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
+  spdylay_put_uint32be(&(*buf_ptr)[12], frame->status_code);
   return framelen;
 }
 
@@ -652,34 +665,33 @@ int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
   return 0;
 }
 
-ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, spdylay_settings *frame)
+ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                    spdylay_settings *frame)
 {
-  uint8_t *framebuf;
   ssize_t framelen = SPDYLAY_FRAME_HEAD_LENGTH+frame->hd.length;
-  int i;
-  framebuf = malloc(framelen);
-  if(framebuf == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+  int i, r;
+  r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(r != 0) {
+    return r;
   }
-  memset(framebuf, 0, framelen);
-  spdylay_frame_pack_ctrl_hd(framebuf, &frame->hd);
-  spdylay_put_uint32be(&framebuf[8], frame->niv);
+  memset(*buf_ptr, 0, framelen);
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  spdylay_put_uint32be(&(*buf_ptr)[8], frame->niv);
   for(i = 0; i < frame->niv; ++i) {
     int off = i*8;
     /* spdy/2 spec says ID is network byte order, but publicly
        deployed server sends little endian host byte order. */
     char *id_ptr = (char*)(&frame->iv[i].settings_id);
 #ifdef WORDS_BIGENDIAN
-    framebuf[12+off] = id_ptr[3];
-    framebuf[12+off+1] = id_ptr[2];
-    framebuf[12+off+2] = id_ptr[1];
+    (*buf_ptr)[12+off] = id_ptr[3];
+    (*buf_ptr)[12+off+1] = id_ptr[2];
+    (*buf_ptr)[12+off+2] = id_ptr[1];
 #else /* !WORDS_BIGENDIAN */
-    memcpy(&framebuf[12+off], id_ptr, 3);
+    memcpy(&(*buf_ptr)[12+off], id_ptr, 3);
 #endif /* !WORDS_BIGENDIAN */
-    framebuf[15+off] = frame->iv[i].flags;
-    spdylay_put_uint32be(&framebuf[16+off], frame->iv[i].value);
+    (*buf_ptr)[15+off] = frame->iv[i].flags;
+    spdylay_put_uint32be(&(*buf_ptr)[16+off], frame->iv[i].value);
   }
-  *buf_ptr = framebuf;
   return framelen;
 }
 

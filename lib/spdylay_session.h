@@ -46,14 +46,25 @@ typedef struct {
 
 typedef struct {
   spdylay_outbound_item *item;
+  /* Buffer for outbound frames. Used to pack one frame. The memory
+     pointed by framebuf is initially allocated by
+     spdylay_session_{client,server}_new() and deallocated by
+     spdylay_session_del() */
   uint8_t *framebuf;
+  /* The capacity of framebuf in bytes */
+  size_t framebufmax;
+  /* The length of the frame stored in framebuf */
   size_t framebuflen;
+  /* The number of bytes has been sent */
   size_t framebufoff;
 } spdylay_active_outbound_item;
 
 /* Buffer length for inbound SPDY frames. Same value for the size of
    message block of SSLv3/TLSv1 */
 #define SPDYLAY_INBOUND_BUFFER_LENGTH 16384
+
+#define SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH SPDYLAY_DATA_FRAME_LENGTH
+#define SPDYLAY_INITIAL_NV_BUFFER_LENGTH 4096
 
 typedef struct {
   uint8_t buf[SPDYLAY_INBOUND_BUFFER_LENGTH];
@@ -113,6 +124,12 @@ struct spdylay_session {
 
   spdylay_inbound_buffer ibuf;
   spdylay_inbound_frame iframe;
+
+  /* Buffer used to store inflated name/value pairs in wire format
+     temporarily on pack/unpack. */
+  uint8_t *nvbuf;
+  /* The number of bytes allocated for nvbuf */
+  size_t nvbuflen;
 
   spdylay_zlib hd_deflater;
   spdylay_zlib hd_inflater;
@@ -274,14 +291,15 @@ spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
 
 /*
  * Packs DATA frame |frame| in wire frame format and store it in
- * |*buf_ptr|.  This function always allocates
- * 8+SPDYLAY_DATA_CHUNK_LENGTH bytes. It packs header in first 8
- * bytes. Remaining bytes are filled using frame->data_prd.  This
- * function returns the size of packed frame if it succeeds, or
- * negative error code.
+ * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
+ * length. This function expands |*buf_ptr| as necessary to store
+ * given |frame|. It packs header in first 8 bytes. Remaining bytes
+ * are filled using frame->data_prd.  This function returns the size
+ * of packed frame if it succeeds, or negative error code.
  */
 ssize_t spdylay_session_pack_data(spdylay_session *session,
-                                  uint8_t **buf_ptr, spdylay_data *frame);
+                                  uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  spdylay_data *frame);
 
 /*
  * Packs DATA frame |frame| in wire frame format and store it in

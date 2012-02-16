@@ -130,6 +130,31 @@ static int spdylay_session_new(spdylay_session **session_ptr,
     return r;
   }
 
+  (*session_ptr)->aob.framebuf = malloc(SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH);
+  if((*session_ptr)->aob.framebuf == NULL) {
+    spdylay_pq_free(&(*session_ptr)->ob_ss_pq);
+    spdylay_pq_free(&(*session_ptr)->ob_pq);
+    spdylay_map_free(&(*session_ptr)->streams);
+    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
+    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
+    free(*session_ptr);
+    return r;
+  }
+  (*session_ptr)->aob.framebufmax = SPDYLAY_INITIAL_OUTBOUND_BUFFER_LENGTH;
+
+  (*session_ptr)->nvbuf = malloc(SPDYLAY_INITIAL_NV_BUFFER_LENGTH);
+  if((*session_ptr)->nvbuf == NULL) {
+    free((*session_ptr)->aob.framebuf);
+    spdylay_pq_free(&(*session_ptr)->ob_ss_pq);
+    spdylay_pq_free(&(*session_ptr)->ob_pq);
+    spdylay_map_free(&(*session_ptr)->streams);
+    spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
+    spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
+    free(*session_ptr);
+    return r;
+  }
+  (*session_ptr)->nvbuflen = SPDYLAY_INITIAL_NV_BUFFER_LENGTH;
+
   memset((*session_ptr)->settings, 0, sizeof((*session_ptr)->settings));
   (*session_ptr)->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
     SPDYLAY_CONCURRENT_STREAMS_MAX;
@@ -244,6 +269,8 @@ void spdylay_session_del(spdylay_session *session)
   spdylay_zlib_deflate_free(&session->hd_deflater);
   spdylay_zlib_inflate_free(&session->hd_inflater);
   free(session->iframe.buf);
+  free(session->aob.framebuf);
+  free(session->nvbuf);
   free(session);
 }
 
@@ -454,12 +481,10 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
 }
 
 ssize_t spdylay_session_prep_frame(spdylay_session *session,
-                                   spdylay_outbound_item *item,
-                                   uint8_t **framebuf_ptr)
+                                   spdylay_outbound_item *item)
 {
   /* TODO Get or validate stream ID here */
   /* TODO Validate assoc_stream_id here */
-  uint8_t *framebuf;
   ssize_t framebuflen;
   switch(item->frame_type) {
   case SPDYLAY_SYN_STREAM: {
@@ -473,7 +498,10 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     stream_id = session->next_stream_id;
     item->frame->syn_stream.stream_id = stream_id;
     session->next_stream_id += 2;
-    framebuflen = spdylay_frame_pack_syn_stream(&framebuf,
+    framebuflen = spdylay_frame_pack_syn_stream(&session->aob.framebuf,
+                                                &session->aob.framebufmax,
+                                                &session->nvbuf,
+                                                &session->nvbuflen,
                                                 &item->frame->syn_stream,
                                                 &session->hd_deflater);
     if(framebuflen < 0) {
@@ -485,7 +513,6 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                    item->frame->syn_stream.pri,
                                    SPDYLAY_STREAM_INITIAL,
                                    aux_data->stream_user_data) == NULL) {
-      free(framebuf);
       return SPDYLAY_ERR_NOMEM;
     }
     break;
@@ -495,7 +522,10 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                          item->frame->syn_reply.stream_id)) {
       return SPDYLAY_ERR_INVALID_FRAME;
     }
-    framebuflen = spdylay_frame_pack_syn_reply(&framebuf,
+    framebuflen = spdylay_frame_pack_syn_reply(&session->aob.framebuf,
+                                               &session->aob.framebufmax,
+                                               &session->nvbuf,
+                                               &session->nvbuflen,
                                                &item->frame->syn_reply,
                                                &session->hd_deflater);
     if(framebuflen < 0) {
@@ -504,14 +534,16 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     break;
   }
   case SPDYLAY_RST_STREAM:
-    framebuflen = spdylay_frame_pack_rst_stream(&framebuf,
+    framebuflen = spdylay_frame_pack_rst_stream(&session->aob.framebuf,
+                                                &session->aob.framebufmax,
                                                 &item->frame->rst_stream);
     if(framebuflen < 0) {
       return framebuflen;
     }
     break;
   case SPDYLAY_SETTINGS:
-    framebuflen = spdylay_frame_pack_settings(&framebuf,
+    framebuflen = spdylay_frame_pack_settings(&session->aob.framebuf,
+                                              &session->aob.framebufmax,
                                               &item->frame->settings);
     if(framebuflen < 0) {
       return framebuflen;
@@ -522,7 +554,9 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
        unreachable. */
     abort();
   case SPDYLAY_PING:
-    framebuflen = spdylay_frame_pack_ping(&framebuf, &item->frame->ping);
+    framebuflen = spdylay_frame_pack_ping(&session->aob.framebuf,
+                                          &session->aob.framebufmax,
+                                          &item->frame->ping);
     if(framebuflen < 0) {
       return framebuflen;
     }
@@ -539,7 +573,9 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
          last-good-stream-id. */
       return SPDYLAY_ERR_INVALID_FRAME;
     }
-    framebuflen = spdylay_frame_pack_goaway(&framebuf, &item->frame->goaway);
+    framebuflen = spdylay_frame_pack_goaway(&session->aob.framebuf,
+                                            &session->aob.framebufmax,
+                                            &item->frame->goaway);
     if(framebuflen < 0) {
       return framebuflen;
     }
@@ -548,7 +584,9 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     if(!spdylay_session_is_data_allowed(session, item->frame->data.stream_id)) {
       return SPDYLAY_ERR_INVALID_FRAME;
     }
-    framebuflen = spdylay_session_pack_data(session, &framebuf,
+    framebuflen = spdylay_session_pack_data(session,
+                                            &session->aob.framebuf,
+                                            &session->aob.framebufmax,
                                             &item->frame->data);
     if(framebuflen < 0) {
       return framebuflen;
@@ -558,7 +596,6 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
   default:
     framebuflen = SPDYLAY_ERR_INVALID_ARGUMENT;
   }
-  *framebuf_ptr = framebuf;
   return framebuflen;
 }
 
@@ -567,8 +604,8 @@ static void spdylay_active_outbound_item_reset
 {
   spdylay_outbound_item_free(aob->item);
   free(aob->item);
-  free(aob->framebuf);
-  memset(aob, 0, sizeof(spdylay_active_outbound_item));
+  aob->item = NULL;
+  aob->framebuflen = aob->framebufoff = 0;
 }
 
 spdylay_outbound_item* spdylay_session_get_ob_pq_top
@@ -815,13 +852,12 @@ int spdylay_session_send(spdylay_session *session)
     ssize_t sentlen;
     if(session->aob.item == NULL) {
       spdylay_outbound_item *item;
-      uint8_t *framebuf;
       ssize_t framebuflen;
       item = spdylay_session_pop_next_ob_item(session);
       if(item == NULL) {
         break;
       }
-      framebuflen = spdylay_session_prep_frame(session, item, &framebuf);
+      framebuflen = spdylay_session_prep_frame(session, item);
       if(framebuflen < 0) {
         /* TODO Call error callback? */
         spdylay_outbound_item_free(item);
@@ -833,7 +869,6 @@ int spdylay_session_send(spdylay_session *session)
         }
       }
       session->aob.item = item;
-      session->aob.framebuf = framebuf;
       session->aob.framebuflen = framebuflen;
       /* Call before_send callback */
       if(item->frame_type != SPDYLAY_DATA &&
@@ -1582,21 +1617,17 @@ int spdylay_session_add_goaway(spdylay_session *session,
 }
 
 ssize_t spdylay_session_pack_data(spdylay_session *session,
-                                  uint8_t **buf_ptr, spdylay_data *frame)
+                                  uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  spdylay_data *frame)
 {
-  uint8_t *framebuf;
   ssize_t framelen = SPDYLAY_DATA_FRAME_LENGTH;
-  framebuf = malloc(framelen);
-  if(framebuf == NULL) {
-    return SPDYLAY_ERR_NOMEM;
+  int r;
+  r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(r != 0) {
+    return r;
   }
-  framelen = spdylay_session_pack_data_overwrite(session, framebuf, framelen,
+  framelen = spdylay_session_pack_data_overwrite(session, *buf_ptr, framelen,
                                                  frame);
-  if(framelen < 0) {
-    free(framebuf);
-  } else {
-    *buf_ptr = framebuf;
-  }
   return framelen;
 }
 
