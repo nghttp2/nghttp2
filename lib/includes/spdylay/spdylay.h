@@ -414,15 +414,17 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  *
  * If |data_prd| is not NULL, it provides data which will be sent in
  * subsequent DATA frames. In this case, a method that allows request
- * message bodies (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9)
- * must be specified with "method" key in |nv| (e.g. POST). If |data_prd| is
- * NULL, SYN_STREAM have * FLAG_FIN.  |stream_user_data| can be an arbitrary
- * pointer, which can be retrieved by spdylay_session_get_stream_user_data().
- * Since stream ID is not known before sending SYN_STREAM frame and the
- * application code has to compare url, and possibly other header
- * field values, to identify stream ID for the request in
- * spdylay_on_ctrl_send_callback(). With |stream_user_data|, the
- * application can easily identifies stream ID for the request.
+ * message bodies
+ * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must
+ * be specified with "method" key in |nv| (e.g. POST). If |data_prd|
+ * is NULL, SYN_STREAM have FLAG_FIN.  |stream_user_data| can be an
+ * arbitrary pointer, which can be retrieved by
+ * spdylay_session_get_stream_user_data().  Since stream ID is not
+ * known before sending SYN_STREAM frame and the application code has
+ * to compare url, and possibly other header field values, to identify
+ * stream ID for the request in spdylay_on_ctrl_send_callback(). With
+ * |stream_user_data|, the application can easily identifies stream ID
+ * for the request.
  *
  * This function returns 0 if it succeeds, or negative error code.
  */
