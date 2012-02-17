@@ -43,8 +43,6 @@ typedef struct spdylay_session spdylay_session;
 
 typedef enum {
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
-  SPDYLAY_ERR_ZLIB = -502,
-  SPDYLAY_ERR_ZLIB_BUF = -503,
   SPDYLAY_ERR_WOULDBLOCK = -504,
   SPDYLAY_ERR_PROTO = -505,
   SPDYLAY_ERR_INVALID_FRAME = -506,
@@ -56,6 +54,7 @@ typedef enum {
   SPDYLAY_ERR_FATAL = -900,
   SPDYLAY_ERR_NOMEM = -901,
   SPDYLAY_ERR_CALLBACK_FAILURE = -902,
+  SPDYLAY_ERR_ZLIB = -903,
 } spdylay_error;
 
 typedef enum {
