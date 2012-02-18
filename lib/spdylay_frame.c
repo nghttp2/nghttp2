@@ -575,7 +575,7 @@ int spdylay_frame_unpack_ping(spdylay_ping *frame,
                               const uint8_t *head, size_t headlen,
                               const uint8_t *payload, size_t payloadlen)
 {
-  if(payloadlen < 4) {
+  if(payloadlen != 4) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
@@ -602,7 +602,7 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
                                 const uint8_t *head, size_t headlen,
                                 const uint8_t *payload, size_t payloadlen)
 {
-  if(payloadlen < 4) {
+  if(payloadlen != 4) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
@@ -674,7 +674,7 @@ int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
                                     const uint8_t *head, size_t headlen,
                                     const uint8_t *payload, size_t payloadlen)
 {
-  if(payloadlen < 8) {
+  if(payloadlen != 8) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
