@@ -119,6 +119,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_stop_data_with_rst_stream) ||
       !CU_add_test(pSuite, "session_stream_close_on_syn_stream",
                    test_spdylay_session_stream_close_on_syn_stream) ||
+      !CU_add_test(pSuite, "session_recv_invalid_frame",
+                   test_spdylay_session_recv_invalid_frame) ||
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||

@@ -1299,6 +1299,25 @@ int spdylay_session_on_headers_received(spdylay_session *session,
   return r;
 }
 
+/*
+ * This function should be called when the session wants to drop
+ * connection after sending GOAWAY. For example, when it receives bad
+ * zlib data.
+ */
+static int spdylay_session_fail_session(spdylay_session *session)
+{
+  session->goaway_flags |= SPDYLAY_GOAWAY_FAIL_ON_SEND;
+  return spdylay_submit_goaway(session);
+}
+
+/*
+ * Returns non-zero if |error| is non-fatal error.
+ */
+static int spdylay_is_non_fatal(int error)
+{
+  return error < 0 && error > SPDYLAY_ERR_FATAL;
+}
+
 static int spdylay_session_process_ctrl_frame(spdylay_session *session)
 {
   int r = 0;
@@ -1321,10 +1340,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_syn_stream_received(session, &frame);
       spdylay_frame_syn_stream_free(&frame.syn_stream);
-    } else {
       /* TODO if r indicates mulformed NV pairs (multiple nulls) or
          invalid frame, send RST_STREAM with PROTOCOL_ERROR. Same for
          other control frames. */
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session);
     }
     break;
   case SPDYLAY_SYN_REPLY:
@@ -1341,6 +1361,8 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_syn_reply_received(session, &frame);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session);
     }
     break;
   case SPDYLAY_RST_STREAM:
@@ -1352,6 +1374,8 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_rst_stream_received(session, &frame);
       spdylay_frame_rst_stream_free(&frame.rst_stream);
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session);
     }
     break;
   case SPDYLAY_SETTINGS:
@@ -1363,6 +1387,8 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_settings_received(session, &frame);
       spdylay_frame_settings_free(&frame.settings);
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session);
     }
     break;
   case SPDYLAY_NOOP:
@@ -1376,6 +1402,8 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_ping_received(session, &frame);
       spdylay_frame_ping_free(&frame.ping);
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session);
     }
     break;
   case SPDYLAY_GOAWAY:
@@ -1387,6 +1415,8 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_goaway_received(session, &frame);
       spdylay_frame_goaway_free(&frame.goaway);
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session);
     }
     break;
   case SPDYLAY_HEADERS:
@@ -1403,6 +1433,8 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_headers_received(session, &frame);
       spdylay_frame_headers_free(&frame.headers);
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session);
     }
     break;
   }
@@ -1577,6 +1609,12 @@ int spdylay_session_recv(spdylay_session *session)
 
 int spdylay_session_want_read(spdylay_session *session)
 {
+  /* If these flags are set, we don't want to read. The application
+     should drop the connection. */
+  if((session->goaway_flags & SPDYLAY_GOAWAY_FAIL_ON_SEND) &&
+     (session->goaway_flags & SPDYLAY_GOAWAY_SEND)) {
+    return 0;
+  }
   /* Unless GOAWAY is sent or received, we always want to read
      incoming frames. After GOAWAY is sent or received, we are only
      interested in active streams. */
@@ -1585,6 +1623,12 @@ int spdylay_session_want_read(spdylay_session *session)
 
 int spdylay_session_want_write(spdylay_session *session)
 {
+  /* If these flags are set, we don't want to write any data. The
+     application should drop the connection. */
+  if((session->goaway_flags & SPDYLAY_GOAWAY_FAIL_ON_SEND) &&
+     (session->goaway_flags & SPDYLAY_GOAWAY_SEND)) {
+    return 0;
+  }
   /*
    * Unless GOAWAY is sent or received, we want to write frames if
    * there is pending ones. If pending frame is SYN_STREAM and

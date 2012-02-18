@@ -104,7 +104,9 @@ typedef enum {
   /* Flag means GOAWAY frame is sent to the remote peer. */
   SPDYLAY_GOAWAY_SEND = 0x1,
   /* Flag means GOAWAY frame is received from the remote peer. */
-  SPDYLAY_GOAWAY_RECV = 0x2
+  SPDYLAY_GOAWAY_RECV = 0x2,
+  /* Flag means connection should be dropped after sending GOAWAY. */
+  SPDYLAY_GOAWAY_FAIL_ON_SEND = 0x4
 } spdylay_goaway_flag;
 
 struct spdylay_session {

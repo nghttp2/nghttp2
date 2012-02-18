@@ -1214,3 +1214,52 @@ void test_spdylay_session_stream_close_on_syn_stream()
   spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
 }
+
+void test_spdylay_session_recv_invalid_frame()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  scripted_data_feed df;
+  my_user_data user_data;
+  const char *nv[] = {
+    "url", "/", NULL
+  };
+  uint8_t *framedata = NULL, *nvbuf = NULL;
+  size_t framedatalen = 0, nvbuflen = 0;
+  ssize_t framelen;
+  spdylay_frame frame;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.recv_callback = scripted_recv_callback;
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
+
+  user_data.df = &df;
+  user_data.ctrl_send_cb_called = 0;
+  spdylay_session_server_new(&session, &callbacks, &user_data);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE, 1, 0, 3,
+                                dup_nv(nv));
+  framelen = spdylay_frame_pack_syn_stream(&framedata, &framedatalen,
+                                           &nvbuf, &nvbuflen,
+                                           &frame.syn_stream,
+                                           &session->hd_deflater);
+  scripted_data_feed_init(&df, framedata, framelen);
+
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(0 == user_data.ctrl_send_cb_called);
+
+  /* Receive exactly same bytes of SYN_STREAM causes error */
+  scripted_data_feed_init(&df, framedata, framelen);
+
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_send_cb_called);
+  CU_ASSERT(SPDYLAY_GOAWAY == user_data.sent_frame_type);
+
+  free(framedata);
+  free(nvbuf);
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  spdylay_session_del(session);
+}

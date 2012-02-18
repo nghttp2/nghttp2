@@ -43,6 +43,7 @@ typedef struct spdylay_session spdylay_session;
 
 typedef enum {
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
+  SPDYLAY_ERR_ZLIB = -502,
   SPDYLAY_ERR_WOULDBLOCK = -504,
   SPDYLAY_ERR_PROTO = -505,
   SPDYLAY_ERR_INVALID_FRAME = -506,
@@ -54,7 +55,6 @@ typedef enum {
   SPDYLAY_ERR_FATAL = -900,
   SPDYLAY_ERR_NOMEM = -901,
   SPDYLAY_ERR_CALLBACK_FAILURE = -902,
-  SPDYLAY_ERR_ZLIB = -903,
 } spdylay_error;
 
 typedef enum {
@@ -373,12 +373,20 @@ int spdylay_session_recv(spdylay_session *session);
 /*
  * Returns non-zero value if |session| want to receive data from the
  * remote peer, or 0.
+ *
+ * if both spdylay_session_want_read() and
+ * spdylay_session_want_write() return 0, the application should drop
+ * the connection.
  */
 int spdylay_session_want_read(spdylay_session *session);
 
 /*
  * Returns non-zero value if |session| want to send data to the remote
  * peer, or 0.
+ *
+ * if both spdylay_session_want_read() and
+ * spdylay_session_want_write() return 0, the application should drop
+ * the connection.
  */
 int spdylay_session_want_write(spdylay_session *session);
 
