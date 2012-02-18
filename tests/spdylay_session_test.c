@@ -181,10 +181,7 @@ static char** dup_nv(const char **src)
 void test_spdylay_session_recv()
 {
   spdylay_session *session;
-  spdylay_session_callbacks callbacks = {
-    NULL,
-    scripted_recv_callback
-  };
+  spdylay_session_callbacks callbacks;
   scripted_data_feed df;
   my_user_data user_data;
   const char *nv[] = {
@@ -194,21 +191,33 @@ void test_spdylay_session_recv()
   size_t framedatalen = 0, nvbuflen = 0;
   ssize_t framelen;
   spdylay_frame frame;
+  int i;
 
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.recv_callback = scripted_recv_callback;
+  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
   user_data.df = &df;
-  spdylay_session_client_new(&session, &callbacks, &user_data);
-  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE, 0, 0, 3,
+  spdylay_session_server_new(&session, &callbacks, &user_data);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_FLAG_NONE, 1, 0, 3,
                                 dup_nv(nv));
   framelen = spdylay_frame_pack_syn_stream(&framedata, &framedatalen,
                                            &nvbuf, &nvbuflen,
                                            &frame.syn_stream,
                                            &session->hd_deflater);
   scripted_data_feed_init(&df, framedata, framelen);
+  /* Send 1 byte per each read */
+  for(i = 0; i < framelen; ++i) {
+    df.feedseq[i] = 1;
+  }
   free(framedata);
   free(nvbuf);
   spdylay_frame_syn_stream_free(&frame.syn_stream);
 
-  CU_ASSERT(0 == spdylay_session_recv(session));
+  user_data.ctrl_recv_cb_called = 0;
+  while(df.seqidx < framelen) {
+    CU_ASSERT(0 == spdylay_session_recv(session));
+  }
+  CU_ASSERT(1 == user_data.ctrl_recv_cb_called);
   spdylay_session_del(session);
 }
 

@@ -1572,7 +1572,8 @@ int spdylay_session_recv(spdylay_session *session)
       bufavail = spdylay_inbound_buffer_avail(&session->ibuf);
       readlen =  bufavail < rempayloadlen ? bufavail : rempayloadlen;
       if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
-        memcpy(session->iframe.buf, session->ibuf.mark, readlen);
+        memcpy(session->iframe.buf+session->iframe.off,
+               session->ibuf.mark, readlen);
       } else if(session->callbacks.on_data_chunk_recv_callback) {
         int32_t stream_id;
         uint8_t flags;
