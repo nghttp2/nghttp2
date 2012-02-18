@@ -242,7 +242,8 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
  * Returns number of bytes to pack name/value pairs |nv|. This
  * function expects |nv| is sorted in ascending order of key.  This
  * function can handles duplicate keys and concatenation of thier
- * values with '\0'.
+ * values with '\0'. This function returns 0 if it succeeds, or
+ * negative error code.
  */
 size_t spdylay_frame_count_nv_space(char **nv);
 

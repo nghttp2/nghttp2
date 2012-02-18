@@ -105,7 +105,7 @@ int spdylay_frame_count_unpack_nv_space
   const size_t len_size = sizeof(uint16_t);
   int i;
   if(inlen < len_size) {
-    return SPDYLAY_ERR_INVALID_ARGUMENT;
+    return SPDYLAY_ERR_INVALID_FRAME;
   }
   n = spdylay_get_uint16(in);
   off += len_size;
@@ -114,26 +114,30 @@ int spdylay_frame_count_unpack_nv_space
     int j;
     for(j = 0; j < 2; ++j) {
       if(inlen-off < len_size) {
-        return SPDYLAY_ERR_INVALID_ARGUMENT;
+        return SPDYLAY_ERR_INVALID_FRAME;
       }
       len = spdylay_get_uint16(in+off);
       off += 2;
       if(inlen-off < len) {
-        return SPDYLAY_ERR_INVALID_ARGUMENT;
+        return SPDYLAY_ERR_INVALID_FRAME;
       }
       buflen += len+1;
       off += len;
     }
-    for(off -= len, j = off+len; off != j; ++off) {
+    for(j = off, off -= len; off != j; ++off) {
       if(in[off] == '\0') {
         ++nvlen;
       }
     }
     ++nvlen;
   }
-  *nvlen_ptr = nvlen;
-  *buflen_ptr = buflen+(nvlen*2+1)*sizeof(char*);
-  return 0;
+  if(inlen == off) {
+    *nvlen_ptr = nvlen;
+    *buflen_ptr = buflen+(nvlen*2+1)*sizeof(char*);
+    return 0;
+  } else {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
 }
 
 int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen)
@@ -231,6 +235,7 @@ size_t spdylay_frame_count_nv_space(char **nv)
       sum += vallen+1;
     } else {
       prev = key;
+      prevlen = keylen;
       /* SPDY NV header does not include terminating NULL byte */
       sum += keylen+vallen+4;
     }

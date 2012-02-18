@@ -148,7 +148,7 @@ void test_spdylay_frame_pack_nv_duplicate_keys()
 
 void test_spdylay_frame_count_nv_space()
 {
-  CU_ASSERT(83 == spdylay_frame_count_nv_space((char**)headers));
+  CU_ASSERT(74 == spdylay_frame_count_nv_space((char**)headers));
 }
 
 void test_spdylay_frame_count_unpack_nv_space()
@@ -161,20 +161,26 @@ void test_spdylay_frame_count_unpack_nv_space()
                                                      out, inlen));
   CU_ASSERT(6 == nvlen);
   CU_ASSERT(166 == buflen);
+
+  /* Trailing garbage */
+  CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
+                                                out, inlen+2));
+
   /* Change number of nv pair to a bogus value */
   temp = spdylay_get_uint16(out);
   spdylay_put_uint16be(out, temp+1);
-  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+  CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
             spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
   spdylay_put_uint16be(out, temp);
 
   /* Change the length of name to a bogus value */
   temp = spdylay_get_uint16(out+2);
   spdylay_put_uint16be(out+2, temp+1);
-  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+  CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
             spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
   spdylay_put_uint16be(out+2, 65535);
-  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+  CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
             spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
 }
 
