@@ -367,7 +367,8 @@ ssize_t hd_recv_callback(spdylay_session *session,
 } // namespace
 
 ssize_t file_read_callback
-(spdylay_session *session, uint8_t *buf, size_t length, int *eof,
+(spdylay_session *session, int32_t stream_id,
+ uint8_t *buf, size_t length, int *eof,
  spdylay_data_source *source, void *user_data)
 {
   int fd = source->fd;

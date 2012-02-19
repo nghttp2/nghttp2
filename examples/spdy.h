@@ -135,7 +135,8 @@ private:
 };
 
 ssize_t string_read_callback
-(spdylay_session *session, uint8_t *buf, size_t length, int *eof,
+(spdylay_session *session, int32_t stream_id,
+ uint8_t *buf, size_t length, int *eof,
  spdylay_data_source *source, void *user_data)
 {
   std::pair<std::string, size_t>& body_pair =

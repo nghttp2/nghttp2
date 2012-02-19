@@ -1686,7 +1686,8 @@ ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
   int eof = 0;
   uint8_t flags = 0;
   r = frame->data_prd.read_callback
-    (session, buf+8, len-8, &eof, &frame->data_prd.source, session->user_data);
+    (session, frame->stream_id, buf+8, len-8, &eof, &frame->data_prd.source,
+     session->user_data);
   if(r < 0) {
     return r;
   } else if(len < r) {
