@@ -62,7 +62,6 @@ void test_spdylay_frame_unpack_nv()
 
 void test_spdylay_frame_pack_nv_duplicate_keys()
 {
-  int i;
   uint8_t out[1024];
   const char *nv_src[] = {
     "method", "GET",
@@ -76,7 +75,7 @@ void test_spdylay_frame_pack_nv_duplicate_keys()
   char **nv = spdylay_frame_nv_copy(nv_src);
   spdylay_frame_nv_downcase(nv);
   spdylay_frame_nv_sort(nv);
-  size_t inlen = spdylay_frame_pack_nv(out, nv);
+  /* size_t inlen = */ spdylay_frame_pack_nv(out, nv);
   const uint8_t *outptr = out;
   int pairs = spdylay_get_uint16(outptr);
   CU_ASSERT(pairs == 5);
