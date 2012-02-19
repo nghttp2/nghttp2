@@ -1272,3 +1272,77 @@ void test_spdylay_session_recv_invalid_frame()
 
   spdylay_session_del(session);
 }
+
+static ssize_t defer_data_source_read_callback
+(spdylay_session *session, uint8_t *buf, size_t len, int *eof,
+ spdylay_data_source *source, void *user_data)
+{
+  return SPDYLAY_ERR_DEFERRED;
+}
+
+void test_spdylay_session_defer_data()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { NULL };
+  my_user_data ud;
+  spdylay_data_provider data_prd;
+  spdylay_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
+  callbacks.send_callback = block_count_send_callback;
+  data_prd.read_callback = defer_data_source_read_callback;
+
+  ud.ctrl_send_cb_called = 0;
+  ud.data_source_length = 16*1024;
+
+  spdylay_session_server_new(&session, &callbacks, &ud);
+  spdylay_session_open_stream(session, 1, SPDYLAY_FLAG_NONE, 3,
+                              SPDYLAY_STREAM_OPENING, NULL);
+  spdylay_submit_response(session, 1, nv, &data_prd);
+
+  ud.block_count = 1;
+  /* Sends SYN_REPLY */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(SPDYLAY_SYN_REPLY == ud.sent_frame_type);
+  /* No data is read */
+  CU_ASSERT(ud.data_source_length == 16*1024);
+
+  ud.block_count = 1;
+  spdylay_submit_ping(session);
+  /* Sends PING */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(SPDYLAY_PING == ud.sent_frame_type);
+
+  /* Resume deferred DATA */
+  CU_ASSERT(0 == spdylay_session_resume_data(session, 1));
+  item = spdylay_session_get_ob_pq_top(session);
+  item->frame->data.data_prd.read_callback =
+    fixed_length_data_source_read_callback;
+  ud.block_count = 1;
+  /* Reads 2 4KiB blocks */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(ud.data_source_length == 8*1024);
+
+  /* Deferred again */
+  item->frame->data.data_prd.read_callback = defer_data_source_read_callback;
+  /* This is needed since 4KiB block is already read and waiting to be
+     sent. No read_callback invocation. */
+  ud.block_count = 1;
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(ud.data_source_length == 8*1024);
+
+  /* Resume deferred DATA */
+
+  CU_ASSERT(0 == spdylay_session_resume_data(session, 1));
+  item = spdylay_session_get_ob_pq_top(session);
+  item->frame->data.data_prd.read_callback =
+    fixed_length_data_source_read_callback;
+  ud.block_count = 1;
+  /* Reads 2 4KiB blocks */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(ud.data_source_length == 0);
+
+  spdylay_session_del(session);
+}

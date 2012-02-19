@@ -36,14 +36,7 @@
 #include "spdylay_zlib.h"
 #include "spdylay_stream.h"
 #include "spdylay_buffer.h"
-
-typedef struct {
-  spdylay_frame_type frame_type;
-  spdylay_frame *frame;
-  void *aux_data;
-  int pri;
-  int64_t seq;
-} spdylay_outbound_item;
+#include "spdylay_outbound_item.h"
 
 typedef struct {
   spdylay_outbound_item *item;
@@ -160,11 +153,6 @@ struct spdylay_session {
   spdylay_session_callbacks callbacks;
   void *user_data;
 };
-
-typedef struct {
-  spdylay_data_provider *data_prd;
-  void *stream_user_data;
-} spdylay_syn_stream_aux_data;
 
 /* TODO stream timeout etc */
 
@@ -351,11 +339,5 @@ spdylay_outbound_item* spdylay_session_pop_next_ob_item
  */
 spdylay_outbound_item* spdylay_session_get_next_ob_item
 (spdylay_session *session);
-
-/*
- * Deallocates resource for |item|. If |item| is NULL, this function
- * does nothing.
- */
-void spdylay_outbound_item_free(spdylay_outbound_item *item);
 
 #endif /* SPDYLAY_SESSION_H */

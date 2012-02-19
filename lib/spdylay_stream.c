@@ -24,6 +24,8 @@
  */
 #include "spdylay_stream.h"
 
+#include <assert.h>
+
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
                          uint8_t flags, uint8_t pri,
                          spdylay_stream_state initial_state,
@@ -38,11 +40,14 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
   stream->pushed_streams_length = 0;
   stream->pushed_streams_capacity = 0;
   stream->stream_user_data = stream_user_data;
+  stream->deferred_data = NULL;
 }
 
 void spdylay_stream_free(spdylay_stream *stream)
 {
   free(stream->pushed_streams);
+  spdylay_outbound_item_free(stream->deferred_data);
+  free(stream->deferred_data);
 }
 
 void spdylay_stream_shutdown(spdylay_stream *stream, spdylay_shut_flag flag)
@@ -65,4 +70,16 @@ int spdylay_stream_add_pushed_stream(spdylay_stream *stream, int32_t stream_id)
   }
   stream->pushed_streams[stream->pushed_streams_length++] = stream_id;
   return 0;
+}
+
+void spdylay_stream_defer_data(spdylay_stream *stream,
+                               spdylay_outbound_item *data)
+{
+  assert(stream->deferred_data == NULL);
+  stream->deferred_data = data;
+}
+
+void spdylay_stream_detach_deferred_data(spdylay_stream *stream)
+{
+  stream->deferred_data = NULL;
 }

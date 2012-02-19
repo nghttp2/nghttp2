@@ -30,6 +30,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <spdylay/spdylay.h>
+#include "spdylay_outbound_item.h"
 
 /*
  * If local peer is stream initiator:
@@ -87,6 +88,8 @@ typedef struct {
   size_t pushed_streams_capacity;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
+  /* Deferred DATA frame */
+  spdylay_outbound_item *deferred_data;
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
@@ -114,5 +117,18 @@ void spdylay_stream_shutdown(spdylay_stream *stream, spdylay_shut_flag flag);
  *     Out of memory.
  */
 int spdylay_stream_add_pushed_stream(spdylay_stream *stream, int32_t stream_id);
+
+/*
+ * Defer DATA frame |data|. We won't call this function in the
+ * situation where stream->deferred_data != NULL.
+ */
+void spdylay_stream_defer_data(spdylay_stream *stream,
+                               spdylay_outbound_item *data);
+
+/*
+ * Detaches deferred data from this stream. This function does not
+ * free deferred data.
+ */
+void spdylay_stream_detach_deferred_data(spdylay_stream *stream);
 
 #endif /* SPDYLAY_STREAM */

@@ -48,7 +48,7 @@ typedef enum {
   SPDYLAY_ERR_PROTO = -505,
   SPDYLAY_ERR_INVALID_FRAME = -506,
   SPDYLAY_ERR_EOF = -507,
-
+  SPDYLAY_ERR_DEFERRED = -508,
   /* The errors < SPDYLAY_ERR_FATAL mean that the library is under
      unexpected condition that it cannot process any further data
      reliably (e.g., out of memory). */
@@ -185,7 +185,13 @@ typedef union {
  * |source|. The implementation of this function must read at most
  * |length| bytes of data from |source| (or possibly other places) and
  * store them in |buf| and return number of data stored in |buf|. If
- * EOF is reached, set |*eof| to 1. In case of error, return
+ * EOF is reached, set |*eof| to 1.  If the application wants to
+ * postpone DATA frames, (e.g., asynchronous I/O, or reading data
+ * blocks for long time), it is achieved by returning
+ * SPDYLAY_ERR_DEFERRED without reading any data in this invocation.
+ * The library removes DATA frame from outgoing queue temporarily.  To
+ * move back deferred DATA frame to outgoing queue, call
+ * spdylay_session_resume_data().  In case of error, return
  * SPDYLAY_ERR_CALLBACK_FAILURE, which leads to session failure.
  */
 typedef ssize_t (*spdylay_data_source_read_callback)
@@ -543,6 +549,13 @@ int spdylay_submit_goaway(spdylay_session *session);
  */
 int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
                                  const unsigned char *in, unsigned int inlen);
+
+/*
+ * Put back previously deferred DATA frame in the stream |stream_id|
+ * to outbound queue. This function returns 0 if it succeeds, or
+ * negative error code.
+ */
+int spdylay_session_resume_data(spdylay_session *session, int32_t stream_id);
 
 #ifdef __cplusplus
 }

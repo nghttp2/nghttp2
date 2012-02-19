@@ -52,5 +52,6 @@ void test_spdylay_session_data_backoff_by_high_pri_frame();
 void test_spdylay_session_stop_data_with_rst_stream();
 void test_spdylay_session_stream_close_on_syn_stream();
 void test_spdylay_session_recv_invalid_frame();
+void test_spdylay_session_defer_data();
 
 #endif // SPDYLAY_SESSION_TEST_H

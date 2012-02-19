@@ -206,46 +206,6 @@ static void spdylay_free_streams(key_type key, void *val)
   free(val);
 }
 
-void spdylay_outbound_item_free(spdylay_outbound_item *item)
-{
-  if(item == NULL) {
-    return;
-  }
-  switch(item->frame_type) {
-  case SPDYLAY_SYN_STREAM:
-    spdylay_frame_syn_stream_free(&item->frame->syn_stream);
-    free(((spdylay_syn_stream_aux_data*)item->aux_data)->data_prd);
-    break;
-  case SPDYLAY_SYN_REPLY:
-    spdylay_frame_syn_reply_free(&item->frame->syn_reply);
-    break;
-  case SPDYLAY_RST_STREAM:
-    spdylay_frame_rst_stream_free(&item->frame->rst_stream);
-    break;
-  case SPDYLAY_SETTINGS:
-    spdylay_frame_settings_free(&item->frame->settings);
-    break;
-  case SPDYLAY_NOOP:
-    /* We don't have any public API to add NOOP, so here is
-       unreachable. */
-    abort();
-  case SPDYLAY_PING:
-    spdylay_frame_ping_free(&item->frame->ping);
-    break;
-  case SPDYLAY_GOAWAY:
-    spdylay_frame_goaway_free(&item->frame->goaway);
-    break;
-  case SPDYLAY_HEADERS:
-    spdylay_frame_headers_free(&item->frame->headers);
-    break;
-  case SPDYLAY_DATA:
-    spdylay_frame_data_free(&item->frame->data);
-    break;
-  }
-  free(item->frame);
-  free(item->aux_data);
-}
-
 static void spdylay_session_ob_pq_free(spdylay_pq *pq)
 {
   while(!spdylay_pq_empty(pq)) {
@@ -255,6 +215,15 @@ static void spdylay_session_ob_pq_free(spdylay_pq *pq)
     spdylay_pq_pop(pq);
   }
   spdylay_pq_free(pq);
+}
+
+static void spdylay_active_outbound_item_reset
+(spdylay_active_outbound_item *aob)
+{
+  spdylay_outbound_item_free(aob->item);
+  free(aob->item);
+  aob->item = NULL;
+  aob->framebuflen = aob->framebufoff = 0;
 }
 
 void spdylay_session_del(spdylay_session *session)
@@ -268,6 +237,7 @@ void spdylay_session_del(spdylay_session *session)
   spdylay_session_ob_pq_free(&session->ob_ss_pq);
   spdylay_zlib_deflate_free(&session->hd_deflater);
   spdylay_zlib_inflate_free(&session->hd_inflater);
+  spdylay_active_outbound_item_reset(&session->aob);
   free(session->aob.framebuf);
   free(session->nvbuf);
   spdylay_buffer_free(&session->inflatebuf);
@@ -464,6 +434,12 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
   if(stream == NULL) {
     return 0;
   }
+  if(stream->deferred_data != NULL) {
+    /* stream->deferred_data != NULL means previously queued DATA
+       frame has not been sent. We don't allow new DATA frame is sent
+       in this case. */
+    return 0;
+  }
   if(spdylay_session_is_my_stream_id(session, stream_id)) {
     /* If stream->state is SPDYLAY_STREAM_CLOSING, RST_STREAM was
        queued but not yet sent. In this case, we won't send DATA
@@ -589,7 +565,14 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                             &session->aob.framebuf,
                                             &session->aob.framebufmax,
                                             &item->frame->data);
-    if(framebuflen < 0) {
+    if(framebuflen == SPDYLAY_ERR_DEFERRED) {
+      spdylay_stream *stream = spdylay_session_get_stream
+        (session, item->frame->data.stream_id);
+      /* Assuming stream is not NULL */
+      assert(stream);
+      spdylay_stream_defer_data(stream, item);
+      return SPDYLAY_ERR_DEFERRED;
+    } else if(framebuflen < 0) {
       return framebuflen;
     }
     break;
@@ -598,15 +581,6 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     framebuflen = SPDYLAY_ERR_INVALID_ARGUMENT;
   }
   return framebuflen;
-}
-
-static void spdylay_active_outbound_item_reset
-(spdylay_active_outbound_item *aob)
-{
-  spdylay_outbound_item_free(aob->item);
-  free(aob->item);
-  aob->item = NULL;
-  aob->framebuflen = aob->framebufoff = 0;
 }
 
 spdylay_outbound_item* spdylay_session_get_ob_pq_top
@@ -824,12 +798,21 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
                                                 session->aob.framebuf,
                                                 SPDYLAY_DATA_FRAME_LENGTH,
                                                 &frame->data);
-        if(r < 0) {
+        if(r == SPDYLAY_ERR_DEFERRED) {
+          spdylay_stream *stream =
+            spdylay_session_get_stream(session, frame->data.stream_id);
+          /* Assuming stream is not NULL */
+          assert(stream);
+          spdylay_stream_defer_data(stream, session->aob.item);
+          session->aob.item = NULL;
+          spdylay_active_outbound_item_reset(&session->aob);
+        } else if(r < 0) {
           spdylay_active_outbound_item_reset(&session->aob);
           return r;
+        } else {
+          session->aob.framebuflen = r;
+          session->aob.framebufoff = 0;
         }
-        session->aob.framebuflen = r;
-        session->aob.framebufoff = 0;
       } else {
         r = spdylay_pq_push(&session->ob_pq, session->aob.item);
         if(r == 0) {
@@ -862,14 +845,16 @@ int spdylay_session_send(spdylay_session *session)
         break;
       }
       framebuflen = spdylay_session_prep_frame(session, item);
-      if(framebuflen < 0) {
+      if(framebuflen == SPDYLAY_ERR_DEFERRED) {
+        continue;
+      } else if(framebuflen < 0) {
         /* TODO Call error callback? */
         spdylay_outbound_item_free(item);
         free(item);
         if(framebuflen <= SPDYLAY_ERR_FATAL) {
           return framebuflen;
         } else {
-          continue;;
+          continue;
         }
       }
       session->aob.item = item;
@@ -1745,4 +1730,19 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
   } else {
     return NULL;
   }
+}
+
+int spdylay_session_resume_data(spdylay_session *session, int32_t stream_id)
+{
+  int r;
+  spdylay_stream *stream;
+  stream = spdylay_session_get_stream(session, stream_id);
+  if(stream == NULL || stream->deferred_data == NULL) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
+  r = spdylay_pq_push(&session->ob_pq, stream->deferred_data);
+  if(r == 0) {
+    spdylay_stream_detach_deferred_data(stream);
+  }
+  return r;
 }
