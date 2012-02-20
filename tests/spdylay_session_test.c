@@ -590,6 +590,28 @@ void test_spdylay_submit_request_with_data()
   spdylay_session_del(session);
 }
 
+void test_spdylay_submit_request_with_null_data_read_callback()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks = {
+    null_send_callback,
+    NULL,
+    NULL,
+    NULL
+  };
+  const char *nv[] = { "Version", "HTTP/1.1", NULL };
+  spdylay_data_provider data_prd = {{-1}, NULL};
+  spdylay_outbound_item *item;
+
+  CU_ASSERT(0 == spdylay_session_client_new(&session, &callbacks, NULL));
+  CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd, NULL));
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(0 == strcmp("version", item->frame->syn_stream.nv[0]));
+  CU_ASSERT(item->frame->syn_stream.hd.flags & SPDYLAY_FLAG_FIN);
+
+  spdylay_session_del(session);
+}
+
 void test_spdylay_session_reply_fail()
 {
   spdylay_session *session;

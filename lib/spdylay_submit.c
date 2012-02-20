@@ -154,7 +154,7 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
   }
   spdylay_frame_nv_downcase(nv_copy);
   spdylay_frame_nv_sort(nv_copy);
-  if(data_prd == NULL) {
+  if(data_prd_copy == NULL) {
     flags |= SPDYLAY_FLAG_FIN;
   }
   spdylay_frame_syn_stream_init(&frame->syn_stream, flags, 0, 0, pri, nv_copy);
