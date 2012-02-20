@@ -476,22 +476,7 @@ int ssl_handshake(SSL *ssl, int fd)
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
   }
-  int loop_count = 0;
   int r = SSL_connect(ssl);
-  nfds_t npollfds = 1;
-  pollfd pollfds[1];
-  pollfds[0].fd = fd;
-
-  while(r == -1) {
-    ++loop_count;
-    int nfds = poll(pollfds, npollfds, -1);
-    if(nfds == -1)
-      continue;
-    r = SSL_connect(ssl);
-  }
-  std::cerr << "Loop iterated #" << loop_count << " times." << std::endl;
-  //std::cerr << "Event is " << pollfds[0].events << ":" << pollfds[0].revents << std::endl;
-
   if(r <= 0) {
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;

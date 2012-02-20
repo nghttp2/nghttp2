@@ -138,8 +138,6 @@ int communicate(const std::string& host, uint16_t port,
     std::cerr << "Could not connect to the host" << std::endl;
     return -1;
   }
-  make_non_block(fd);
-  set_tcp_nodelay(fd);
   SSL_CTX *ssl_ctx;
   ssl_ctx = SSL_CTX_new(SSLv23_client_method());
   if(!ssl_ctx) {
@@ -155,6 +153,8 @@ int communicate(const std::string& host, uint16_t port,
   if(ssl_handshake(ssl, fd) == -1) {
     return -1;
   }
+  make_non_block(fd);
+  set_tcp_nodelay(fd);
   Spdylay sc(fd, ssl, callbacks);
 
   nfds_t npollfds = 1;
