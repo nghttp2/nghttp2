@@ -53,7 +53,7 @@ int spdylay_submit_response(spdylay_session *session,
   char **nv_copy;
   uint8_t flags = 0;
   spdylay_data_provider *data_prd_copy = NULL;
-  if(data_prd) {
+  if(data_prd != NULL && data_prd->read_callback != NULL) {
     data_prd_copy = malloc(sizeof(spdylay_data_provider));
     if(data_prd_copy == NULL) {
       return SPDYLAY_ERR_NOMEM;
@@ -73,7 +73,7 @@ int spdylay_submit_response(spdylay_session *session,
   }
   spdylay_frame_nv_downcase(nv_copy);
   spdylay_frame_nv_sort(nv_copy);
-  if(data_prd == NULL) {
+  if(data_prd_copy == NULL) {
     flags |= SPDYLAY_FLAG_FIN;
   }
   spdylay_frame_syn_reply_init(&frame->syn_reply, flags, stream_id,
