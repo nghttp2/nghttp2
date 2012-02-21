@@ -31,7 +31,7 @@
 void test_spdylay_map()
 {
   spdylay_map map;
-  CU_ASSERT(0 == spdylay_map_init(&map));
+  spdylay_map_init(&map);
   CU_ASSERT(0 == spdylay_map_insert(&map, 1, "foo"));
   CU_ASSERT(strcmp("foo", spdylay_map_find(&map, 1)) == 0);
   CU_ASSERT(1 == spdylay_map_size(&map));

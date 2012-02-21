@@ -49,18 +49,59 @@ typedef struct {
   size_t size;
 } spdylay_map;
 
-int spdylay_map_init(spdylay_map *map);
+/*
+ * Initializes the map |map|.
+ */
+void spdylay_map_init(spdylay_map *map);
 
+/*
+ * Deallocates any resources allocated for |map|. The stored items are
+ * not freed by this function. Use spdylay_map_each() to free each
+ * item.
+ */
 void spdylay_map_free(spdylay_map *map);
 
+/*
+ * Inserts the new item |val| with the key |key| to the map |map|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error code:
+ *
+ * SPDYLAY_ERR_INVALID_ARGUMENT
+ *     The item associated by |key| already exists.
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 int spdylay_map_insert(spdylay_map *map, key_type key, void *val);
 
+/*
+ * Returns the item associated by the key |key|.  If there is no such
+ * item, this function returns NULL.
+ */
 void* spdylay_map_find(spdylay_map *map, key_type key);
 
+/*
+ * Erases the item associated by the key |key|.  The erased item is
+ * not freed by this function.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_ARGUMENT
+ *     The item associated by |key| does not exist.
+ */
 void spdylay_map_erase(spdylay_map *map, key_type key);
 
+/*
+ * Returns the number of items stored in the map |map|.
+ */
 size_t spdylay_map_size(spdylay_map *map);
 
+/*
+ * Applies the function |func| to each key/item pair in the map |map|.
+ * This function is useful to free item in the map.
+ */
 void spdylay_map_each(spdylay_map *map, void (*func)(key_type key, void *val));
 
 #endif /* SPDYLAY_MAP_H */

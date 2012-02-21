@@ -24,11 +24,10 @@
  */
 #include "spdylay_map.h"
 
-int spdylay_map_init(spdylay_map *map)
+void spdylay_map_init(spdylay_map *map)
 {
   map->root = NULL;
   map->size = 0;
-  return 0;
 }
 
 static void spdylay_map_entry_free(spdylay_map_entry *entry)
