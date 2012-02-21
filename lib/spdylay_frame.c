@@ -62,6 +62,21 @@ static void spdylay_frame_unpack_ctrl_hd(spdylay_ctrl_hd *hd,
   hd->length = spdylay_get_uint32(&buf[4]) & SPDYLAY_LENGTH_MASK;
 }
 
+/*
+ * Packs name/value pairs in |nv| in |*buf_ptr| with offset
+ * |nv_offset|.  It means first byte of packed name/value pairs is
+ * stored in |*buf_ptr|+|nv_offset|.  |*buf_ptr| and |*nvbuf_ptr| are
+ * expanded as necessary.
+ *
+ * This function returns the number of the bytes for the frame
+ * containing this name/value pairs if it succeeds, or one of the
+ * following negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The deflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
                                            size_t *buflen_ptr,
                                            uint8_t **nvbuf_ptr,
@@ -196,6 +211,21 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen)
   return 0;
 }
 
+/*
+ * Unpacks name/value pairs from buffer |in| with length |inlen|.  The
+ * necessary memory area required for output is allocated and its
+ * pointer is assigned to |nv_ptr|. |inflatebuf| is used for inflate
+ * operation. |*nvbuf_ptr| is used for temporarily stored inflated
+ * name/value pair in wire format. It is expanded as necessary.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The inflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 static int spdylay_frame_alloc_unpack_nv(char ***nv_ptr,
                                          spdylay_buffer *inflatebuf,
                                          uint8_t **nvbuf_ptr,

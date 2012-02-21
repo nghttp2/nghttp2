@@ -54,10 +54,16 @@
  * |*buf_ptr|, |*buflen_ptr|, |*nvbuf_ptr| and |*nvbuflen_ptr| are
  * updated accordingly.
  *
- * This function returns the size of
- * packed frame if it succeeds, or returns negative error
- * code. frame->hd.length is assigned after length is determined
- * during packing process.
+ * frame->hd.length is assigned after length is determined during
+ * packing process.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * returns one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The deflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
                                       size_t *buflen_ptr,
@@ -77,7 +83,15 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
  * inflated name/value pairs. This function expands |*nvbuf_ptr| as
  * necessary and updates these variables.
  *
- * This function returns 0 if it succeeds or negative error code.
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ * SPDYLAY_ERR_ZLIB
+ *     The inflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
                                     spdylay_buffer *inflatebuf,
@@ -96,10 +110,18 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
  * frame and name/value pairs. When expansion occurred, memory
  * previously pointed by |*buf_ptr| and |*nvbuf_ptr| is freed.
  * |*buf_ptr|, |*buflen_ptr|, |*nvbuf_ptr| and |*nvbuflen_ptr| are
- * updated accordingly.  This function returns the size of packed
- * frame it it succeeds, or returns negative error
- * code. frame->hd.length is assigned after length is determined
- * during packing process.
+ * updated accordingly.
+ *
+ * frame->hd.length is assigned after length is determined during
+ * packing process.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * returns one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The deflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
                                      size_t *buflen_ptr,
@@ -117,7 +139,15 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
  * inflated name/value pairs. This function expands |*nvbuf_ptr| as
  * necessary and updates these variables.
  *
- * This function returns 0 if it succeeds or negative error code.
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ * SPDYLAY_ERR_ZLIB
+ *     The inflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    spdylay_buffer *inflatebuf,
@@ -131,15 +161,25 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
  * Packs PING frame |frame| in wire format and store it in
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. This function returns the size of packed frame if it
- * succeeds, or negative error code.
+ * given |frame|.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 ssize_t spdylay_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
                                 spdylay_ping *frame);
 
 /*
- * Unpacks PING wire format into |frame|. This function returns 0 if
- * it succeeds, or negative error code.
+ * Unpacks PING wire format into |frame|.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
  */
 int spdylay_frame_unpack_ping(spdylay_ping *frame,
                               const uint8_t *head, size_t headlen,
@@ -149,15 +189,25 @@ int spdylay_frame_unpack_ping(spdylay_ping *frame,
  * Packs GOAWAY frame |frame | in wire format and store it in
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. This function returns the size of packed frame if it
- * succeeds, or negative error code.
+ * given |frame|.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
                                   spdylay_goaway *frame);
 
 /*
- * Unpacks GOAWAY wire format into |frame|. This function returns 0 if
- * it succeeds, or negative error code.
+ * Unpacks GOAWAY wire format into |frame|.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
  */
 int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
                                 const uint8_t *head, size_t headlen,
@@ -172,10 +222,18 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
  * frame and name/value pairs. When expansion occurred, memory
  * previously pointed by |*buf_ptr| and |*nvbuf_ptr| is freed.
  * |*buf_ptr|, |*buflen_ptr|, |*nvbuf_ptr| and |*nvbuflen_ptr| are
- * updated accordingly.  This function returns the size of packed
- * frame it it succeeds, or returns negative error
- * code. frame->hd.length is assigned after length is determined
- * during packing process.
+ * updated accordingly.
+ *
+ * frame->hd.length is assigned after length is determined during
+ * packing process.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * returns one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The deflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
                                    uint8_t **nvbuf_ptr, size_t *nvbuflen_ptr,
@@ -191,7 +249,15 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
  * inflated name/value pairs. This function expands |*nvbuf_ptr| as
  * necessary and updates these variables.
  *
- * This function returns 0 if it succeeds or negative error code.
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ * SPDYLAY_ERR_ZLIB
+ *     The inflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_frame_unpack_headers(spdylay_headers *frame,
                                  spdylay_buffer *inflatebuf,
@@ -206,15 +272,25 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
  * given |frame|. In spdy/2 spc, RST_STREAM wire format is always 16
- * bytes long. This function returns the size of packed frame if it
- * succeeds, or negative error code.
+ * bytes long.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * returns one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
                                       spdylay_rst_stream *frame);
 
 /*
- * Unpacks RST_STREAM frame byte sequence into |frame|.  This function
- * returns 0 if it succeeds, or negative error code.
+ * Unpacks RST_STREAM frame byte sequence into |frame|.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
  */
 int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
                                     const uint8_t *head, size_t headlen,
@@ -224,15 +300,27 @@ int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
  * Packs SETTINGS frame |frame| in wire format and store it in
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. This function returns the size of packed frame if it
- * succeeds, or negative error code.
+ * given |frame|.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * returns one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
                                     spdylay_settings *frame);
 
 /*
- * Unpacks SETTINGS wire format into |frame|. This function returns 0
- * if it succeeds, or negative error code.
+ * Unpacks SETTINGS wire format into |frame|.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_frame_unpack_settings(spdylay_settings *frame,
                                   const uint8_t *head, size_t headlen,
@@ -242,8 +330,7 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
  * Returns number of bytes to pack name/value pairs |nv|. This
  * function expects |nv| is sorted in ascending order of key.  This
  * function can handles duplicate keys and concatenation of thier
- * values with '\0'. This function returns 0 if it succeeds, or
- * negative error code.
+ * values with '\0'.
  */
 size_t spdylay_frame_count_nv_space(char **nv);
 
@@ -275,7 +362,11 @@ ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv);
  * (N*2+1)*sizeof(char*)+sum(strlen(name)+1+strlen(value)+1){for each
  * name/value pair}.
  *
- * This function returns 0 if it succeeds, or negative error code.
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
  */
 int spdylay_frame_count_unpack_nv_space
 (size_t *num_nv_ptr, size_t *buf_size_ptr, const uint8_t *in, size_t inlen);
@@ -283,8 +374,13 @@ int spdylay_frame_count_unpack_nv_space
 /*
  * Unpacks name/value pairs in wire format |in| with length |inlen|
  * and stores them in |*nv_ptr|.  Thif function allocates enough
- * memory to store name/value pairs in |*nv_ptr|.  This function
- * returns 0 if it succeeds, or negative error code.
+ * memory to store name/value pairs in |*nv_ptr|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen);
 
