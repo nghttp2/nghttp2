@@ -72,14 +72,14 @@ int spdylay_zlib_inflate_hd_init(spdylay_zlib *inflater)
   return 0;
 }
 
-void spdylay_zlib_deflate_free(spdylay_zlib *zlib)
+void spdylay_zlib_deflate_free(spdylay_zlib *deflater)
 {
-  deflateEnd(&zlib->zst);
+  deflateEnd(&deflater->zst);
 }
 
-void spdylay_zlib_inflate_free(spdylay_zlib *zlib)
+void spdylay_zlib_inflate_free(spdylay_zlib *inflater)
 {
-  inflateEnd(&zlib->zst);
+  inflateEnd(&inflater->zst);
 }
 
 ssize_t spdylay_zlib_deflate_hd(spdylay_zlib *deflater,

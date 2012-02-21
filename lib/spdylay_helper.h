@@ -61,10 +61,15 @@ uint32_t spdylay_get_uint32(const uint8_t *data);
  * allocates new buffer having at least |min_length| bytes and assigns
  * its pointer to |*buf_ptr| and allocated number of bytes to
  * |*buflen_ptr|. The memory pointed by |*buf_ptr| previously is
- * freed. No memory copy is done between old and new buffer.  This
- * function returns 0 if it succeeds, or negative error code.
+ * freed. No memory copy is done between old and new buffer.
  * |*buf_ptr| and |*buflen_ptr| are only updated iff this function
  * succeeds.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
                            size_t min_length);

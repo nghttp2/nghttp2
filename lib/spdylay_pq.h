@@ -35,22 +35,60 @@
 /* Implementation of priority queue */
 
 typedef struct {
+  /* The pointer to the pointer to the item stored */
   void **q;
+  /* The number of items sotred */
   size_t length;
+  /* The maximum number of items this pq can store. This is
+     automatically extended when length is reached to this value. */
   size_t capacity;
+  /* The compare function between items */
   spdylay_compar compar;
 } spdylay_pq;
 
+/*
+ * Initializes priority queue |pq| with compare function |cmp|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 int spdylay_pq_init(spdylay_pq *pq, spdylay_compar cmp);
 
+/*
+ * Deallocates any resources allocated for |pq|.  The stored items are
+ * not freed by this function.
+ */
 void spdylay_pq_free(spdylay_pq *pq);
 
+/*
+ * Adds |item| to the priority queue |pq|.
+ *
+ * This function returns 0 if it succeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 int spdylay_pq_push(spdylay_pq *pq, void *item);
 
+/*
+ * Returns item at the top of the queue |pq|. If the queue is empty,
+ * this function returns NULL.
+ */
 void* spdylay_pq_top(spdylay_pq *pq);
 
+/*
+ * Pops item at the top of the queue |pq|. The popped item is not
+ * freed by this function.
+ */
 void spdylay_pq_pop(spdylay_pq *pq);
 
+/*
+ * Returns nonzero if the queue |pq| is empty.
+ */
 int spdylay_pq_empty(spdylay_pq *pq);
 
 #endif /* SPDYLAY_PQ_H */

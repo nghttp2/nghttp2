@@ -32,24 +32,81 @@
 
 #include "spdylay_buffer.h"
 
+/* This structure is used for both deflater and inflater. */
 typedef struct {
   z_stream zst;
 } spdylay_zlib;
 
+/*
+ * Initializes |deflater| for deflating name/values pairs in the
+ * frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The z_stream initialization failed.
+ */
 int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater);
 
+/*
+ * Initializes |inflater| for inflating name/values pairs in the
+ * frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The z_stream initialization failed.
+ */
 int spdylay_zlib_inflate_hd_init(spdylay_zlib *inflater);
 
-void spdylay_zlib_deflate_free(spdylay_zlib *zlib);
+/*
+ * Deallocates any resources allocated for |deflater|.
+ */
+void spdylay_zlib_deflate_free(spdylay_zlib *deflater);
 
-void spdylay_zlib_inflate_free(spdylay_zlib *zlib);
+/*
+ * Deallocates any resources allocated for |inflater|.
+ */
+void spdylay_zlib_inflate_free(spdylay_zlib *inflater);
 
+/*
+ * Returns the maximum length when |len| bytes of data are deflated by
+ * |deflater|.
+ */
 size_t spdylay_zlib_deflate_hd_bound(spdylay_zlib *deflater, size_t len);
 
+/*
+ * Deflates data stored in |in| with length |inlen|. The output is
+ * written to |out| with length |outlen|. This is not a strict
+ * requirement but |outlen| should have at least
+ * spdylay_zlib_deflate_hd_bound(|inlen|) bytes for successful
+ * operation.
+ *
+ * This function returns the number of bytes outputted if it succeeds,
+ * or one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The deflate operation failed.
+ */
 ssize_t spdylay_zlib_deflate_hd(spdylay_zlib *deflater,
                                 uint8_t *out, size_t outlen,
                                 const uint8_t *in, size_t inlen);
 
+/*
+ * Inflates data stored in |in| with length |inlen|.  The output is
+ * added to |buf|.
+ *
+ * This function returns the number of bytes outputted if it succeeds,
+ * or one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The inflate operation failed.
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 ssize_t spdylay_zlib_inflate_hd(spdylay_zlib *inflater,
                                 spdylay_buffer* buf,
                                 const uint8_t *in, size_t inlen);

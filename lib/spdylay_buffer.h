@@ -30,7 +30,6 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <spdylay/spdylay.h>
-#include "spdylay_queue.h"
 
 typedef struct spdylay_buffer_chunk {
   uint8_t *data;
@@ -67,9 +66,17 @@ size_t spdylay_buffer_avail(spdylay_buffer *buffer);
 /* Advances buffer pointer by amount. This reduces available buffer
    length. */
 void spdylay_buffer_advance(spdylay_buffer *buffer, size_t amount);
-/* Allocate new chunk buffer. This will increase total length of
-   buffer (returned by spdylay_buffer_length) by capacity-last_offset.
-   It means untouched buffer is assumued to be written. */
+/*
+ * Allocate new chunk buffer. This will increase total length of
+ * buffer (returned by spdylay_buffer_length) by capacity-last_offset.
+ * It means untouched buffer is assumued to be written.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative eror codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 int spdylay_buffer_alloc(spdylay_buffer *buffer);
 
 /* Returns total length of buffer */
