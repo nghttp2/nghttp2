@@ -157,40 +157,84 @@ struct spdylay_session {
 /* TODO stream timeout etc */
 
 /*
- * Returns non-zero value if |stream_id| is initiated by local host.
- * Otherwrise returns 0.
+ * Returns nonzero value if |stream_id| is initiated by local
+ * endpoint.
  */
 int spdylay_session_is_my_stream_id(spdylay_session *session,
                                     int32_t stream_id);
 
 /*
- * Adds frame |frame| of type |frame_type| to tx queue in |session|.
- * |aux_data| is a pointer to arbitrary data. Its interpretation is
- * defined per |frame_type|. When this function succeeds, it takes
- * ownership of |frame| and |aux_data|, so caller must not free them.
- * This function returns 0 if it succeeds, or negative error code.
+ * Adds frame |frame| of type |frame_type| to the outbound queue in
+ * |session|.  |aux_data| is a pointer to the arbitrary data. Its
+ * interpretation is defined per |frame_type|. When this function
+ * succeeds, it takes ownership of |frame| and |aux_data|, so caller
+ * must not free them on success.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_add_frame(spdylay_session *session,
                               spdylay_frame_type frame_type,
                               spdylay_frame *frame,
                               void *aux_data);
 
+/*
+ * Adds RST_STREAM frame for the stream |stream_id| with status code
+ * |status_code|. This is a convenient function built on top of
+ * spdylay_session_add_frame() to add RST_STREAM easily.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 int spdylay_session_add_rst_stream(spdylay_session *session,
                                    int32_t stream_id, uint32_t status_code);
 
+/*
+ * Adds PING frame with unique ID |unique_id|. This is a convenient
+ * functin built on top of spdylay_session_add_frame() to add PING
+ * easily.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id);
 
+/*
+ * Adds GOAWAY frame with last-good-stream-ID
+ * |last_good_stream_id|. This is a convenient function built on top
+ * of spdylay_session_add_frame() to add GOAWAY easily.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
 int spdylay_session_add_goaway(spdylay_session *session,
                                int32_t last_good_stream_id);
 
 /*
  * Creates new stream in |session| with stream ID |stream_id|,
- * priority |pri| and flags |flags|. Currently, |flags| &
- * SPDYLAY_FLAG_UNIDIRECTIONAL is non-zero, this stream is
- * unidirectional. |flags| & SPDYLAY_FLAG_FIN is non-zero, the sender
- * of SYN_STREAM will not send any further data in this stream.  The
- * state of stream is set to |initial_state|.  This function returns a
- * pointer to created new stream object, or NULL.
+ * priority |pri| and flags |flags|.  SPDYLAY_FLAG_UNIDIRECTIONAL flag
+ * is set in |flags|, this stream is unidirectional. SPDYLAY_FLAG_FIN
+ * flag is set in |flags|, the sender of SYN_STREAM will not send any
+ * further data in this stream. Since this function is called when
+ * SYN_STREAM is sent or received, these flags are taken from
+ * SYN_STREAM.  The state of stream is set to |initial_state|.
+ * |stream_user_data| is a pointer to the arbitrary user supplied data
+ * to be associated to this stream.
+ *
+ * This function returns a pointer to created new stream object, or
+ * NULL.
  */
 spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
                                             int32_t stream_id,
@@ -200,10 +244,14 @@ spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
 
 /*
  * Closes stream whose stream ID is |stream_id|. The reason of closure
- * is indicated by |status_code|. This function returns 0 if it
- * succeeds, or negative error code.  The possible error code is
- * SPDYLAY_ERR_INVALID_ARGUMENT, which is used when stream |stream_id|
- * does not exist. So the caller may ignore this error.
+ * is indicated by |status_code|. When closing the stream,
+ * on_stream_close_callback will be called.
+ *
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_ARGUMENT
+ *     The specified stream does not exist.
  */
 int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id,
                                  spdylay_status_code status_code);
@@ -217,64 +265,108 @@ void spdylay_session_close_pushed_streams(spdylay_session *session,
                                           spdylay_status_code status_code);
 
 /*
- * If further receptions and transmissions over this stream are
- * disallowed, close this stream. This function returns 0 if it
- * succeeds, or negative error code. If either receptions or
- * transmissions is allowed, this function returns 0 and the stream
- * will not be closed.
+ * If further receptions and transmissions over the stream |stream_id|
+ * are disallowed, close the stream with status code |status_code|.
+ *
+ * This function returns 0 if it
+ * succeeds, or one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_ARGUMENT
+ *     The specified stream does not exist.
  */
 int spdylay_session_close_stream_if_shut_rdwr(spdylay_session *session,
                                               spdylay_stream *stream);
 
 /*
- * Called when SYN_STREAM is received. Received frame is |frame|.
- * This function does first validate received frame and then open
- * stream and call callback functions.  This function returns 0 if it
- * succeeds, or negative error code.  This function does not return
- * error if frame is not valid.
+ * Called when SYN_STREAM is received, assuming |frame.syn_stream| is
+ * properly initialized.  This function does first validate received
+ * frame and then open stream and call callback functions. This
+ * function does not return error if frame is not valid.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            spdylay_frame *frame);
 
 /*
- * Called when SYN_REPLY is received. Received frame is |frame|.
+ * Called when SYN_REPLY is received, assuming |frame.syn_reply| is
+ * properly initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_on_syn_reply_received(spdylay_session *session,
                                           spdylay_frame *frame);
 
 
 /*
- * Called when RST_STREAM is received. Received frame is |frame|.
+ * Called when RST_STREAM is received, assuming |frame.rst_stream| is
+ * properly initialized.
+ *
+ * This function returns 0 and never fail.
  */
 int spdylay_session_on_rst_stream_received(spdylay_session *session,
                                            spdylay_frame *frame);
 
 /*
- * Called when SETTINGS is received. Received frame is |frame|.
+ * Called when SETTINGS is received, assuming |frame.settings| is
+ * properly initialized.
+ *
+ * This function returns 0 and never fail.
  */
 int spdylay_session_on_settings_received(spdylay_session *session,
                                          spdylay_frame *frame);
 
 /*
- * Called when PING is received. Received frame is |frame|.
+ * Called when PING is received, assuming |frame.ping| is properly
+ * initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_on_ping_received(spdylay_session *session,
                                      spdylay_frame *frame);
 
 /*
- * Called when GOAWAY is received. Received frame is |frame|.
+ * Called when GOAWAY is received, assuming |frame.goaway| is properly
+ * initialized.
+ *
+ * This function returns 0 and never fail.
  */
 int spdylay_session_on_goaway_received(spdylay_session *session,
                                        spdylay_frame *frame);
 
 /*
- * Called when HEADERS is recieved. Received frame is |frame|.
+ * Called when HEADERS is recieved, assuming |frame.headers| is
+ * properly initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_on_headers_received(spdylay_session *session,
                                         spdylay_frame *frame);
 
 /*
  * Called when DATA is received.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_on_data_received(spdylay_session *session,
                                      uint8_t flags, int32_t length,
@@ -288,12 +380,21 @@ spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
                                            int32_t stream_id);
 
 /*
- * Packs DATA frame |frame| in wire frame format and store it in
+ * Packs DATA frame |frame| in wire frame format and stores it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
  * given |frame|. It packs header in first 8 bytes. Remaining bytes
- * are filled using frame->data_prd.  This function returns the size
- * of packed frame if it succeeds, or negative error code.
+ * are filled using frame->data_prd.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ * SPDYLAY_ERR_DEFERRED
+ *     The DATA frame is postponed.
+ * SPDYLAY_ERR_CALLBACK_FAILURE
+ *     The read_callback failed.
  */
 ssize_t spdylay_session_pack_data(spdylay_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
@@ -301,9 +402,17 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
 
 /*
  * Packs DATA frame |frame| in wire frame format and store it in
- * |buf|.  |len| must be greater than or equal to 8.  This function
- * returns the sizeof packed frame if it succeeds, or negative error
- * code.
+ * |buf|.  |len| must be greater than or equal to 8.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ * SPDYLAY_ERR_DEFERRED
+ *     The DATA frame is postponed.
+ * SPDYLAY_ERR_CALLBACK_FAILURE
+ *     The read_callback failed.
  */
 ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
                                             uint8_t *buf, size_t len,
