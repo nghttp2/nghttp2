@@ -560,6 +560,7 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
     framebuflen = spdylay_session_pack_data(session,
                                             &session->aob.framebuf,
                                             &session->aob.framebufmax,
+                                            SPDYLAY_DATA_PAYLOAD_LENGTH,
                                             &item->frame->data);
     if(framebuflen == SPDYLAY_ERR_DEFERRED) {
       spdylay_stream *stream = spdylay_session_get_stream
@@ -788,12 +789,11 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         /* If priority of this stream is higher or equal to other stream
            waiting at the top of the queue, we continue to send this
            data. */
-        /* We assume that buffer has at least
-           SPDYLAY_DATA_FRAME_LENGTH. */
-        r = spdylay_session_pack_data_overwrite(session,
-                                                session->aob.framebuf,
-                                                SPDYLAY_DATA_FRAME_LENGTH,
-                                                &frame->data);
+        r = spdylay_session_pack_data(session,
+                                      &session->aob.framebuf,
+                                      &session->aob.framebufmax,
+                                      SPDYLAY_DATA_PAYLOAD_LENGTH,
+                                      &frame->data);
         if(r == SPDYLAY_ERR_DEFERRED) {
           spdylay_stream *stream =
             spdylay_session_get_stream(session, frame->data.stream_id);
@@ -1661,44 +1661,36 @@ int spdylay_session_add_goaway(spdylay_session *session,
 
 ssize_t spdylay_session_pack_data(spdylay_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  size_t datamax,
                                   spdylay_data *frame)
 {
-  ssize_t framelen = SPDYLAY_DATA_FRAME_LENGTH;
-  int r;
+  ssize_t framelen = datamax+8, r;
+  int eof;
+  uint8_t flags;
   r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
   if(r != 0) {
     return r;
   }
-  framelen = spdylay_session_pack_data_overwrite(session, *buf_ptr, framelen,
-                                                 frame);
-  return framelen;
-}
-
-ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
-                                            uint8_t *buf, size_t len,
-                                            spdylay_data *frame)
-{
-  ssize_t r;
-  int eof = 0;
-  uint8_t flags = 0;
+  eof = 0;
   r = frame->data_prd.read_callback
-    (session, frame->stream_id, buf+8, len-8, &eof, &frame->data_prd.source,
-     session->user_data);
+    (session, frame->stream_id, (*buf_ptr)+8, datamax,
+     &eof, &frame->data_prd.source, session->user_data);
   if(r < 0) {
     return r;
-  } else if(len < r) {
+  } else if(datamax < r) {
     return SPDYLAY_ERR_CALLBACK_FAILURE;
   }
-  memset(buf, 0, SPDYLAY_HEAD_LEN);
-  spdylay_put_uint32be(&buf[0], frame->stream_id);
-  spdylay_put_uint32be(&buf[4], r);
+  memset(*buf_ptr, 0, SPDYLAY_HEAD_LEN);
+  spdylay_put_uint32be(&(*buf_ptr)[0], frame->stream_id);
+  spdylay_put_uint32be(&(*buf_ptr)[4], r);
+  flags = 0;
   if(eof) {
     frame->eof = 1;
     if(frame->flags & SPDYLAY_FLAG_FIN) {
       flags |= SPDYLAY_FLAG_FIN;
     }
   }
-  buf[4] = flags;
+  (*buf_ptr)[4] = flags;
   return r+8;
 }
 

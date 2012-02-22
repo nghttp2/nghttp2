@@ -57,7 +57,7 @@ typedef struct {
    message block of SSLv3/TLSv1 */
 #define SPDYLAY_INBOUND_BUFFER_LENGTH 16384
 
-#define SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH SPDYLAY_DATA_FRAME_LENGTH
+#define SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH (SPDYLAY_DATA_PAYLOAD_LENGTH+8)
 #define SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH \
   SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH
 #define SPDYLAY_INITIAL_NV_BUFFER_LENGTH 4096
@@ -384,7 +384,8 @@ spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
  * given |frame|. It packs header in first 8 bytes. Remaining bytes
- * are filled using frame->data_prd.
+ * are the DATA apyload and are filled using |frame->data_prd|. The
+ * length of payload is at most |datamax| bytes.
  *
  * This function returns the size of packed frame if it succeeds, or
  * one of the following negative error codes:
@@ -398,25 +399,8 @@ spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
  */
 ssize_t spdylay_session_pack_data(spdylay_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  size_t datamax,
                                   spdylay_data *frame);
-
-/*
- * Packs DATA frame |frame| in wire frame format and store it in
- * |buf|.  |len| must be greater than or equal to 8.
- *
- * This function returns the size of packed frame if it succeeds, or
- * one of the following negative error codes:
- *
- * SPDYLAY_ERR_NOMEM
- *     Out of memory.
- * SPDYLAY_ERR_DEFERRED
- *     The DATA frame is postponed.
- * SPDYLAY_ERR_CALLBACK_FAILURE
- *     The read_callback failed.
- */
-ssize_t spdylay_session_pack_data_overwrite(spdylay_session *session,
-                                            uint8_t *buf, size_t len,
-                                            spdylay_data *frame);
 
 /*
  * Returns next unique ID which can be used with PING.
