@@ -518,6 +518,8 @@ int spdylay_submit_response(spdylay_session *session,
  * SPDYLAY_FLAG_FIN
  * SPDYLAY_FLAG_UNIDIRECTIONAL
  *
+ * If |flags| includes SPDYLAY_FLAG_FIN, this frame has FIN flag set.
+ *
  * The |assoc_stream_id| is used for server-push. If |session| is
  * initialized for client use, |assoc_stream_id| is ignored. The |pri|
  * is the priority of this frame and it must be between 0 and 3,
