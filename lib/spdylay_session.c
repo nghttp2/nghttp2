@@ -416,14 +416,13 @@ static int spdylay_session_is_reply_allowed(spdylay_session *session,
                                             int32_t stream_id)
 {
   spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
-  if(stream == NULL) {
+  if(stream == NULL || (stream->shut_flags & SPDYLAY_SHUT_WR)) {
     return 0;
   }
   if(spdylay_session_is_my_stream_id(session, stream_id)) {
     return 0;
   } else {
-    return stream->state == SPDYLAY_STREAM_OPENING &&
-      (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
+    return stream->state == SPDYLAY_STREAM_OPENING;
   }
 }
 
@@ -449,7 +448,7 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
                                            int32_t stream_id)
 {
   spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
-  if(stream == NULL) {
+  if(stream == NULL || (stream->shut_flags & SPDYLAY_SHUT_WR)) {
     return 0;
   }
   if(stream->deferred_data != NULL) {
@@ -467,11 +466,9 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
        frames are sent. This is not desirable situation; we want to
        close stream as soon as possible. To achieve this, we remove
        DATA frame before RST_STREAM. */
-    return stream->state != SPDYLAY_STREAM_CLOSING &&
-      (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
+    return stream->state != SPDYLAY_STREAM_CLOSING;
   } else {
-    return stream->state == SPDYLAY_STREAM_OPENED &&
-      (stream->shut_flags & SPDYLAY_SHUT_WR) == 0;
+    return stream->state == SPDYLAY_STREAM_OPENED;
   }
 }
 
