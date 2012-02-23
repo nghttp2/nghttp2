@@ -538,7 +538,7 @@ int spdylay_submit_response(spdylay_session *session,
  *     Out of memory.
  */
 int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
-                              uint32_t assoc_stream_id, uint8_t pri,
+                              int32_t assoc_stream_id, uint8_t pri,
                               const char **nv, void *stream_user_data);
 
 /*
