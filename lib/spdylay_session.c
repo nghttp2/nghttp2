@@ -662,6 +662,17 @@ spdylay_outbound_item* spdylay_session_pop_next_ob_item
   }
 }
 
+/*
+ * Called after a frame is sent.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ * SPDYLAY_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ */
 static int spdylay_session_after_frame_sent(spdylay_session *session)
 {
   /* TODO handle FIN flag. */
@@ -705,6 +716,8 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         r = spdylay_submit_data(session, frame->syn_stream.stream_id,
                                 SPDYLAY_FLAG_FIN, aux_data->data_prd);
         if(r != 0) {
+          /* FATAL error */
+          assert(r < SPDYLAY_ERR_FATAL);
           /* TODO If r is not FATAL, we should send RST_STREAM. */
           return r;
         }
@@ -729,6 +742,8 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         r = spdylay_submit_data(session, frame->syn_reply.stream_id,
                                 SPDYLAY_FLAG_FIN, data_prd);
         if(r != 0) {
+          /* FATAL error */
+          assert(r < SPDYLAY_ERR_FATAL);
           /* TODO If r is not FATAL, we should send RST_STREAM. */
           return r;
         }
@@ -803,8 +818,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
           session->aob.item = NULL;
           spdylay_active_outbound_item_reset(&session->aob);
         } else if(r < 0) {
+          /* We don't return other error code other than
+             SPDYLAY_ERR_CALLBACK_FAILURE here. */
           spdylay_active_outbound_item_reset(&session->aob);
-          return r;
+          return SPDYLAY_ERR_CALLBACK_FAILURE;
         } else {
           session->aob.framebuflen = r;
           session->aob.framebufoff = 0;
@@ -815,6 +832,8 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
           session->aob.item = NULL;
           spdylay_active_outbound_item_reset(&session->aob);
         } else {
+          /* FATAL error */
+          assert(r < SPDYLAY_ERR_FATAL);
           spdylay_active_outbound_item_reset(&session->aob);
           return r;
         }
@@ -847,7 +866,7 @@ int spdylay_session_send(spdylay_session *session)
         /* TODO Call error callback? */
         spdylay_outbound_item_free(item);
         free(item);
-        if(framebuflen <= SPDYLAY_ERR_FATAL) {
+        if(framebuflen < SPDYLAY_ERR_FATAL) {
           return framebuflen;
         } else {
           continue;
@@ -870,7 +889,7 @@ int spdylay_session_send(spdylay_session *session)
       if(sentlen == SPDYLAY_ERR_WOULDBLOCK) {
         return 0;
       } else {
-        return sentlen;
+        return SPDYLAY_ERR_CALLBACK_FAILURE;
       }
     } else {
       session->aob.framebufoff += sentlen;
@@ -878,6 +897,8 @@ int spdylay_session_send(spdylay_session *session)
         /* Frame has completely sent */
         r = spdylay_session_after_frame_sent(session);
         if(r < 0) {
+          /* FATAL */
+          assert(r < SPDYLAY_ERR_FATAL);
           return r;
         }
       } else {
@@ -1299,6 +1320,7 @@ static int spdylay_is_non_fatal(int error)
   return error < 0 && error > SPDYLAY_ERR_FATAL;
 }
 
+/* For errors, this function only returns FATAL error. */
 static int spdylay_session_process_ctrl_frame(spdylay_session *session)
 {
   int r = 0;
@@ -1478,6 +1500,7 @@ int spdylay_session_on_data_received(spdylay_session *session,
   return r;
 }
 
+/* For errors, this function only returns FATAL error. */
 static int spdylay_session_process_data_frame(spdylay_session *session)
 {
   uint8_t flags;
@@ -1509,8 +1532,10 @@ int spdylay_session_recv(spdylay_session *session)
         if(r < 0) {
           if(r == SPDYLAY_ERR_WOULDBLOCK) {
             return 0;
-          } else {
+          } else if(r == SPDYLAY_ERR_EOF) {
             return r;
+          } else {
+            return SPDYLAY_ERR_CALLBACK_FAILURE;
           }
         }
         if(spdylay_inbound_buffer_avail(&session->ibuf) < SPDYLAY_HEAD_LEN) {
@@ -1529,6 +1554,8 @@ int spdylay_session_recv(spdylay_session *session)
                                    &session->iframe.bufmax,
                                    session->iframe.len);
         if(r != 0) {
+          /* FATAL */
+          assert(r < SPDYLAY_ERR_FATAL);
           return r;
         }
         session->iframe.off = 0;
@@ -1546,8 +1573,10 @@ int spdylay_session_recv(spdylay_session *session)
         r = spdylay_recv(session);
         if(r == 0 || r == SPDYLAY_ERR_WOULDBLOCK) {
           return 0;
-        } else if(r < 0) {
+        } else if(r == SPDYLAY_ERR_EOF) {
           return r;
+        } else if(r < 0) {
+          return SPDYLAY_ERR_CALLBACK_FAILURE;
         }
       }
       bufavail = spdylay_inbound_buffer_avail(&session->ibuf);
@@ -1579,7 +1608,8 @@ int spdylay_session_recv(spdylay_session *session)
           r = spdylay_session_process_data_frame(session);
         }
         if(r < 0) {
-          /* Fatal error */
+          /* FATAL */
+          assert(r < SPDYLAY_ERR_FATAL);
           return r;
         }
         spdylay_inbound_frame_reset(&session->iframe);

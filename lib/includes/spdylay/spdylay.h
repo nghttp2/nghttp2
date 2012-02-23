@@ -346,16 +346,32 @@ typedef struct {
 } spdylay_session_callbacks;
 
 /*
- * Initializes |*session_ptr| for client use. This function returns 0
- * if it succeeds, or negative error code.
+ * Initializes |*session_ptr| for client use. The all members of
+ * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|
+ * does not store |callbacks|. |user_data| is an arbitrary user
+ * supplied data, which will be passed to the callback functions.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_client_new(spdylay_session **session_ptr,
                                const spdylay_session_callbacks *callbacks,
                                void *user_data);
 
 /*
- * Initializes |*session_ptr| for server use. This function returns 0
- * if it succeeds, or negative error code.
+ * Initializes |*session_ptr| for server use. The all members of
+ * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|
+ * does not store |callbacks|. |user_data| is an arbitrary user
+ * supplied data, which will be passed to the callback functions.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_server_new(spdylay_session **session_ptr,
                                const spdylay_session_callbacks *callbacks,
@@ -367,32 +383,48 @@ int spdylay_session_server_new(spdylay_session **session_ptr,
 void spdylay_session_del(spdylay_session *session);
 
 /*
- * Sends pending frames to the remote peer. This function returns 0 if
- * it succeeds, or negative error code.
+ * Sends pending frames to the remote peer.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ * SPDYLAY_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
  */
 int spdylay_session_send(spdylay_session *session);
 
 /*
- * Receives frames from the remote peer. This function returns 0 if it
- * succeeds, or negative error code.
+ * Receives frames from the remote peer.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_EOF
+ *     The remote peer did shutdown on the connection.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ * SPDYLAY_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
  */
 int spdylay_session_recv(spdylay_session *session);
 
 /*
- * Returns non-zero value if |session| want to receive data from the
- * remote peer, or 0.
+ * Returns nonzero value if |session| want to receive data from the
+ * remote peer.
  *
- * if both spdylay_session_want_read() and
+ * If both spdylay_session_want_read() and
  * spdylay_session_want_write() return 0, the application should drop
  * the connection.
  */
 int spdylay_session_want_read(spdylay_session *session);
 
 /*
- * Returns non-zero value if |session| want to send data to the remote
+ * Returns nonzero value if |session| want to send data to the remote
  * peer, or 0.
  *
- * if both spdylay_session_want_read() and
+ * If both spdylay_session_want_read() and
  * spdylay_session_want_write() return 0, the application should drop
  * the connection.
  */
@@ -441,7 +473,13 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * |stream_user_data|, the application can easily identifies stream ID
  * for the request.
  *
- * This function returns 0 if it succeeds, or negative error code.
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     |pri| is invalid.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,
                            const char **nv,
@@ -463,7 +501,11 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  * subsequent DATA frames. If |data_prd| is NULL, SYN_REPLY will have
  * FLAG_FIN.
  *
- * This function returns 0 if it succeeds, or negative error code.
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_submit_response(spdylay_session *session,
                             int32_t stream_id, const char **nv,
@@ -475,28 +517,47 @@ int spdylay_submit_response(spdylay_session *session,
  * data, 1 or more DATA frames will be sent.  If |flags| contains
  * SPDYLAY_FLAG_FIN, the last DATA frame has FLAG_FIN set.
  *
- * This function returns 0 if it succeeds, or negative error code.
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
                         uint8_t flags, spdylay_data_provider *data_prd);
 
 /*
  * Submits RST_STREAM frame to cancel/reject stream |stream_id| with
- * status code |status_code|. This function returns 0 if it succeeds,
- * or negative error code.
+ * status code |status_code|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_submit_rst_stream(spdylay_session *session, int32_t stream_id,
                               uint32_t status_code);
 
 /*
- * Submits PING frame. This function returns 0 if it succeeds, or
- * negative error code.
+ * Submits PING frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_submit_ping(spdylay_session *session);
 
 /*
- * Submits GOAWAY frame. This function returns 0 if it succeeds, or
- * negative error code.
+ * Submits GOAWAY frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_submit_goaway(spdylay_session *session);
 
@@ -554,8 +615,15 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
 
 /*
  * Put back previously deferred DATA frame in the stream |stream_id|
- * to outbound queue. This function returns 0 if it succeeds, or
- * negative error code.
+ * to outbound queue.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_ARGUMENT
+ *     The stream does not exist or no deferred data exist.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
 int spdylay_session_resume_data(spdylay_session *session, int32_t stream_id);
 
