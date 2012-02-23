@@ -478,7 +478,8 @@ void spdylay_frame_settings_free(spdylay_settings *frame)
 }
 
 void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
-                             uint8_t flags, spdylay_data_provider *data_prd)
+                             uint8_t flags,
+                             const spdylay_data_provider *data_prd)
 {
   memset(frame, 0, sizeof(spdylay_data));
   frame->stream_id = stream_id;

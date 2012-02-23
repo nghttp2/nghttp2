@@ -483,7 +483,7 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  */
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,
                            const char **nv,
-                           spdylay_data_provider *data_prd,
+                           const spdylay_data_provider *data_prd,
                            void *stream_user_data);
 
 /*
@@ -509,7 +509,7 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  */
 int spdylay_submit_response(spdylay_session *session,
                             int32_t stream_id, const char **nv,
-                            spdylay_data_provider *data_prd);
+                            const spdylay_data_provider *data_prd);
 
 /*
  * Submits SYN_STREAM frame. The |flags| is bitwise OR of the
@@ -554,7 +554,7 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
  *     Out of memory.
  */
 int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
-                        uint8_t flags, spdylay_data_provider *data_prd);
+                        uint8_t flags, const spdylay_data_provider *data_prd);
 
 /*
  * Submits RST_STREAM frame to cancel/reject stream |stream_id| with
