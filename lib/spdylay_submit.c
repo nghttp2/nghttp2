@@ -27,6 +27,85 @@
 #include "spdylay_session.h"
 #include "spdylay_frame.h"
 
+static int spdylay_submit_syn_stream_shared
+(spdylay_session *session,
+ uint8_t flags,
+ int32_t assoc_stream_id,
+ uint8_t pri,
+ const char **nv,
+ const spdylay_data_provider *data_prd,
+ void *stream_user_data)
+{
+  int r;
+  spdylay_frame *frame;
+  char **nv_copy;
+  uint8_t flags_copy;
+  spdylay_data_provider *data_prd_copy = NULL;
+  spdylay_syn_stream_aux_data *aux_data;
+  if(pri > 3) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
+  if(session->server == 0) {
+    assoc_stream_id = 0;
+  }
+  if(data_prd != NULL && data_prd->read_callback != NULL) {
+    data_prd_copy = malloc(sizeof(spdylay_data_provider));
+    if(data_prd_copy == NULL) {
+      return SPDYLAY_ERR_NOMEM;
+    }
+    *data_prd_copy = *data_prd;
+  }
+  aux_data = malloc(sizeof(spdylay_syn_stream_aux_data));
+  if(aux_data == NULL) {
+    free(data_prd_copy);
+    return SPDYLAY_ERR_NOMEM;
+  }
+  aux_data->data_prd = data_prd_copy;
+  aux_data->stream_user_data = stream_user_data;
+
+  frame = malloc(sizeof(spdylay_frame));
+  if(frame == NULL) {
+    free(aux_data);
+    free(data_prd_copy);
+    return SPDYLAY_ERR_NOMEM;
+  }
+  nv_copy = spdylay_frame_nv_copy(nv);
+  if(nv_copy == NULL) {
+    free(frame);
+    free(aux_data);
+    free(data_prd_copy);
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_nv_downcase(nv_copy);
+  spdylay_frame_nv_sort(nv_copy);
+  flags_copy = 0;
+  if(flags & SPDYLAY_FLAG_FIN) {
+    flags_copy |= SPDYLAY_FLAG_FIN;
+  }
+  if(flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
+    flags_copy |= SPDYLAY_FLAG_UNIDIRECTIONAL;
+  }
+  spdylay_frame_syn_stream_init(&frame->syn_stream, flags_copy,
+                                0, assoc_stream_id, pri, nv_copy);
+  r = spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame,
+                                aux_data);
+  if(r != 0) {
+    spdylay_frame_syn_stream_free(&frame->syn_stream);
+    free(frame);
+    free(aux_data);
+    free(data_prd_copy);
+  }
+  return r;
+}
+
+int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
+                              uint32_t assoc_stream_id, uint8_t pri,
+                              const char **nv, void *stream_user_data)
+{
+  return spdylay_submit_syn_stream_shared(session, flags, assoc_stream_id,
+                                          pri, nv, NULL, stream_user_data);
+}
+
 int spdylay_submit_ping(spdylay_session *session)
 {
   return spdylay_session_add_ping(session,
@@ -42,6 +121,19 @@ int spdylay_submit_rst_stream(spdylay_session *session, int32_t stream_id,
 int spdylay_submit_goaway(spdylay_session *session)
 {
   return spdylay_session_add_goaway(session, session->last_recv_stream_id);
+}
+
+int spdylay_submit_request(spdylay_session *session, uint8_t pri,
+                           const char **nv, spdylay_data_provider *data_prd,
+                           void *stream_user_data)
+{
+  int flags;
+  flags = 0;
+  if(data_prd == NULL || data_prd->read_callback == NULL) {
+    flags |= SPDYLAY_FLAG_FIN;
+  }
+  return spdylay_submit_syn_stream_shared(session, flags, 0, pri, nv, data_prd,
+                                          stream_user_data);
 }
 
 int spdylay_submit_response(spdylay_session *session,
@@ -107,64 +199,6 @@ int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
   if(r != 0) {
     spdylay_frame_data_free(&frame->data);
     free(frame);
-  }
-  return r;
-}
-
-int spdylay_submit_request(spdylay_session *session, uint8_t pri,
-                           const char **nv, spdylay_data_provider *data_prd,
-                           void *stream_user_data)
-{
-  int r;
-  spdylay_frame *frame;
-  char **nv_copy;
-  uint8_t flags = 0;
-  spdylay_data_provider *data_prd_copy = NULL;
-  spdylay_syn_stream_aux_data *aux_data;
-  if(pri > 3) {
-    return SPDYLAY_ERR_INVALID_ARGUMENT;
-  }
-  if(data_prd != NULL && data_prd->read_callback != NULL) {
-    data_prd_copy = malloc(sizeof(spdylay_data_provider));
-    if(data_prd_copy == NULL) {
-      return SPDYLAY_ERR_NOMEM;
-    }
-    *data_prd_copy = *data_prd;
-  }
-  aux_data = malloc(sizeof(spdylay_syn_stream_aux_data));
-  if(aux_data == NULL) {
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  aux_data->data_prd = data_prd_copy;
-  aux_data->stream_user_data = stream_user_data;
-
-  frame = malloc(sizeof(spdylay_frame));
-  if(frame == NULL) {
-    free(aux_data);
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  nv_copy = spdylay_frame_nv_copy(nv);
-  if(nv_copy == NULL) {
-    free(frame);
-    free(aux_data);
-    free(data_prd_copy);
-    return SPDYLAY_ERR_NOMEM;
-  }
-  spdylay_frame_nv_downcase(nv_copy);
-  spdylay_frame_nv_sort(nv_copy);
-  if(data_prd_copy == NULL) {
-    flags |= SPDYLAY_FLAG_FIN;
-  }
-  spdylay_frame_syn_stream_init(&frame->syn_stream, flags, 0, 0, pri, nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame,
-                                aux_data);
-  if(r != 0) {
-    spdylay_frame_syn_stream_free(&frame->syn_stream);
-    free(frame);
-    free(aux_data);
-    free(data_prd_copy);
   }
   return r;
 }

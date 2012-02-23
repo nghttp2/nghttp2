@@ -91,6 +91,8 @@ int main(int argc, char* argv[])
                    test_spdylay_submit_request_with_data) ||
       !CU_add_test(pSuite, "submit_request_without_data",
                    test_spdylay_submit_request_with_null_data_read_callback) ||
+      !CU_add_test(pSuite, "submit_syn_stream",
+                   test_spdylay_submit_syn_stream) ||
       !CU_add_test(pSuite, "session_reply_fail",
                    test_spdylay_session_reply_fail) ||
       !CU_add_test(pSuite, "session_on_headers_received",

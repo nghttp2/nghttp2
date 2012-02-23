@@ -512,6 +512,36 @@ int spdylay_submit_response(spdylay_session *session,
                             spdylay_data_provider *data_prd);
 
 /*
+ * Submits SYN_STREAM frame. The |flags| is bitwise OR of the
+ * following values:
+ *
+ * SPDYLAY_FLAG_FIN
+ * SPDYLAY_FLAG_UNIDIRECTIONAL
+ *
+ * The |assoc_stream_id| is used for server-push. If |session| is
+ * initialized for client use, |assoc_stream_id| is ignored. The |pri|
+ * is the priority of this frame and it must be between 0 and 3,
+ * inclusive. 0 is the highest. The |nv| is the name/value pairs in
+ * this frame. The |stream_user_data| is a pointer to an arbitrary
+ * data which is associated to the stream this frame will open.
+ *
+ * This function is low-level in a sense that the application code can
+ * specify flags and assoc-stream-ID directly. For usual HTTP request,
+ * spdylay_submit_request() is useful.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     |pri| is invalid.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
+                              uint32_t assoc_stream_id, uint8_t pri,
+                              const char **nv, void *stream_user_data);
+
+/*
  * Submits 1 or more DATA frames to the stream |stream_id|.  The data
  * to be sent are provided by |data_prd|.  Depending on the length of
  * data, 1 or more DATA frames will be sent.  If |flags| contains
