@@ -106,6 +106,37 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
                                           pri, nv, NULL, stream_user_data);
 }
 
+int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
+                           int32_t stream_id, const char **nv)
+{
+  int r;
+  spdylay_frame *frame;
+  char **nv_copy;
+  uint8_t flags_copy;
+  frame = malloc(sizeof(spdylay_frame));
+  if(frame == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  nv_copy = spdylay_frame_nv_copy(nv);
+  if(nv_copy == NULL) {
+    free(frame);
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_nv_downcase(nv_copy);
+  spdylay_frame_nv_sort(nv_copy);
+  flags_copy = 0;
+  if(flags & SPDYLAY_FLAG_FIN) {
+    flags_copy |= SPDYLAY_FLAG_FIN;
+  }
+  spdylay_frame_headers_init(&frame->headers, flags_copy, stream_id, nv_copy);
+  r = spdylay_session_add_frame(session, SPDYLAY_HEADERS, frame, NULL);
+  if(r != 0) {
+    spdylay_frame_headers_free(&frame->headers);
+    free(frame);
+  }
+  return r;
+}
+
 int spdylay_submit_ping(spdylay_session *session)
 {
   return spdylay_session_add_ping(session,

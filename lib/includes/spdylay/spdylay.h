@@ -542,6 +542,26 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
                               const char **nv, void *stream_user_data);
 
 /*
+ * Submits HEADERS frame. The |flags| is bitwise OR of the following
+ * values:
+ *
+ * SPDYLAY_FLAG_FIN
+ *
+ * If |flags| includes SPDYLAY_FLAG_FIN, this frame has FIN flag set.
+ *
+ * The stream this frame belongs to is given in |stream_id|. The |nv|
+ * is the name/value pairs in this frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
+                           int32_t stream_id, const char **nv);
+
+/*
  * Submits 1 or more DATA frames to the stream |stream_id|.  The data
  * to be sent are provided by |data_prd|.  Depending on the length of
  * data, 1 or more DATA frames will be sent.  If |flags| contains

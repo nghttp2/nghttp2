@@ -293,10 +293,14 @@ int spdylay_session_add_frame(spdylay_session *session,
   case SPDYLAY_GOAWAY:
     /* Should GOAWAY have higher priority? */
     break;
-  case SPDYLAY_HEADERS:
-    /* Currently we don't have any API to send HEADERS frame, so this
-       is unreachable. */
-    abort();
+  case SPDYLAY_HEADERS: {
+    spdylay_stream *stream = spdylay_session_get_stream
+      (session, frame->headers.stream_id);
+    if(stream) {
+      item->pri = stream->pri;
+    }
+    break;
+  }
   case SPDYLAY_DATA: {
     spdylay_stream *stream = spdylay_session_get_stream
       (session, frame->data.stream_id);
@@ -423,6 +427,24 @@ static int spdylay_session_is_reply_allowed(spdylay_session *session,
   }
 }
 
+/*
+ * Returns nonzero value if local endpoint can send HEADERS with
+ * stream ID |stream_id| at the moment.
+ */
+static int spdylay_session_is_headers_allowed(spdylay_session *session,
+                                              int32_t stream_id)
+{
+  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
+  if(stream == NULL || (stream->shut_flags & SPDYLAY_SHUT_WR)) {
+    return 0;
+  }
+  if(spdylay_session_is_my_stream_id(session, stream_id)) {
+    return stream->state != SPDYLAY_STREAM_CLOSING;
+  } else {
+    return stream->state == SPDYLAY_STREAM_OPENED;
+  }
+}
+
 static int spdylay_session_is_data_allowed(spdylay_session *session,
                                            int32_t stream_id)
 {
@@ -534,10 +556,22 @@ ssize_t spdylay_session_prep_frame(spdylay_session *session,
       return framebuflen;
     }
     break;
-  case SPDYLAY_HEADERS:
-    /* Currently we don't have any API to send HEADERS frame, so this
-       is unreachable. */
-    abort();
+  case SPDYLAY_HEADERS: {
+    if(!spdylay_session_is_headers_allowed(session,
+                                           item->frame->headers.stream_id)) {
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
+    framebuflen = spdylay_frame_pack_headers(&session->aob.framebuf,
+                                             &session->aob.framebufmax,
+                                             &session->nvbuf,
+                                             &session->nvbuflen,
+                                             &item->frame->headers,
+                                             &session->hd_deflater);
+    if(framebuflen < 0) {
+      return framebuflen;
+    }
+    break;
+  }
   case SPDYLAY_GOAWAY:
     if(session->goaway_flags & SPDYLAY_GOAWAY_SEND) {
       /* TODO The spec does not mandate that both endpoints have to
@@ -776,10 +810,17 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
   case SPDYLAY_GOAWAY:
     session->goaway_flags |= SPDYLAY_GOAWAY_SEND;
     break;
-  case SPDYLAY_HEADERS:
-    /* Currently we don't have any API to send HEADERS frame, so this
-       is unreachable. */
-    abort();
+  case SPDYLAY_HEADERS: {
+    spdylay_stream *stream =
+      spdylay_session_get_stream(session, frame->headers.stream_id);
+    if(stream) {
+      if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+        spdylay_stream_shutdown(stream, SPDYLAY_SHUT_WR);
+      }
+      spdylay_session_close_stream_if_shut_rdwr(session, stream);
+    }
+    break;
+  }
   case SPDYLAY_DATA:
     if(frame->data.eof && (frame->data.flags & SPDYLAY_FLAG_FIN)) {
       spdylay_stream *stream =
