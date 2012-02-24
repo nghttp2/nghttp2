@@ -38,6 +38,21 @@
   (LEN_SIZE == 2 ?                                                      \
    spdylay_put_uint16be(OUT, VAL) : spdylay_put_uint32be(OUT, VAL))
 
+/* Returns the number of bytes in length of name/value pair for the
+   given protocol version |version|. If |version| is not supported,
+   returns 0. */
+static size_t spdylay_frame_get_len_size(uint16_t version)
+{
+  if(SPDYLAY_PROTO_SPDY2 == version) {
+    return 2;
+  } else if(SPDYLAY_PROTO_SPDY3 == version) {
+    return 4;
+  } else {
+    /* Unsupported version */
+    return 0;
+  }
+}
+
 static uint8_t spdylay_unpack_pri(const uint8_t *data)
 {
   return (data[0] >> 6) & 0x3;
@@ -441,6 +456,7 @@ void spdylay_frame_goaway_init(spdylay_goaway *frame,
   frame->hd.type = SPDYLAY_GOAWAY;
   frame->hd.length = 4;
   frame->last_good_stream_id = last_good_stream_id;
+  frame->status_code = 0; /* TODO Add status_code arg for spdy/3 */
 }
 
 void spdylay_frame_goaway_free(spdylay_goaway *frame)
@@ -520,11 +536,15 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
                                       spdylay_zlib *deflater)
 {
   ssize_t framelen;
+  size_t len_size = spdylay_frame_get_len_size(frame->hd.version);
+  if(len_size == 0) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
   framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
                                          frame->nv,
                                          SPDYLAY_SYN_STREAM_NV_OFFSET,
-                                         2,
+                                         len_size,
                                          deflater);
   if(framelen < 0) {
     return framelen;
@@ -536,6 +556,9 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
   spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
   spdylay_put_uint32be(&(*buf_ptr)[12], frame->assoc_stream_id);
   (*buf_ptr)[16] = (frame->pri << 6);
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    (*buf_ptr)[17] = frame->slot;
+  }
   return framelen;
 }
 
@@ -548,23 +571,34 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
                                     spdylay_zlib *inflater)
 {
   int r;
+  size_t len_size;
   if(payloadlen < 12) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  len_size = spdylay_frame_get_len_size(frame->hd.version);
+  if(len_size == 0) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   frame->assoc_stream_id =
     spdylay_get_uint32(payload+4) & SPDYLAY_STREAM_ID_MASK;
   frame->pri = spdylay_unpack_pri(payload+8);
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    frame->slot = payload[9];
+  } else {
+    frame->slot = 0;
+  }
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
                                     nvbuf_ptr, nvbuflen_ptr,
                                     payload+10, payloadlen-10,
-                                    2,
+                                    len_size,
                                     inflater);
   return r;
 }
 
-#define SPDYLAY_SYN_REPLY_NV_OFFSET 14
+#define SPDYLAY_SPDY2_SYN_REPLY_NV_OFFSET 14
+#define SPDYLAY_SPDY3_SYN_REPLY_NV_OFFSET 12
 
 ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
                                      size_t *buflen_ptr,
@@ -574,17 +608,24 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
                                      spdylay_zlib *deflater)
 {
   ssize_t framelen;
+  size_t len_size;
+  size_t nv_offset;
+  len_size = spdylay_frame_get_len_size(frame->hd.version);
+  if(len_size == 0) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
+  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ?
+    SPDYLAY_SPDY2_SYN_REPLY_NV_OFFSET : SPDYLAY_SPDY3_SYN_REPLY_NV_OFFSET;
+
   framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
-                                         frame->nv,
-                                         SPDYLAY_SYN_REPLY_NV_OFFSET,
-                                         2,
-                                         deflater);
+                                         frame->nv, nv_offset,
+                                         len_size, deflater);
   if(framelen < 0) {
     return framelen;
   }
   frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
-  memset(*buf_ptr, 0, SPDYLAY_SYN_REPLY_NV_OFFSET);
+  memset(*buf_ptr, 0, nv_offset);
   spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
   spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
   return framelen;
@@ -599,16 +640,22 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    spdylay_zlib *inflater)
 {
   int r;
+  size_t len_size;
+  size_t nv_offset;
   if(payloadlen < 8) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  len_size = spdylay_frame_get_len_size(frame->hd.version);
+  if(len_size == 0) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
+  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ? 6 : 4;
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
                                     nvbuf_ptr, nvbuflen_ptr,
-                                    payload+6, payloadlen-6,
-                                    2,
-                                    inflater);
+                                    payload+nv_offset, payloadlen-nv_offset,
+                                    len_size, inflater);
   return r;
 }
 
@@ -642,8 +689,15 @@ int spdylay_frame_unpack_ping(spdylay_ping *frame,
 ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
                                   spdylay_goaway *frame)
 {
-  ssize_t framelen = 12;
+  ssize_t framelen;
   int r;
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY2) {
+    framelen = 12;
+  } else if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    framelen = 16;
+  } else {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
   r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
   if(r != 0) {
     return r;
@@ -651,6 +705,9 @@ ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
   memset(*buf_ptr, 0, framelen);
   spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
   spdylay_put_uint32be(&(*buf_ptr)[8], frame->last_good_stream_id);
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    spdylay_put_uint32be(&(*buf_ptr)[12], frame->status_code);
+  }
   return framelen;
 }
 
@@ -658,16 +715,28 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
                                 const uint8_t *head, size_t headlen,
                                 const uint8_t *payload, size_t payloadlen)
 {
-  if(payloadlen != 4) {
-    return SPDYLAY_ERR_INVALID_FRAME;
-  }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY2) {
+    if(payloadlen != 4) {
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
+  } else if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    if(payloadlen != 8) {
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
+  } else {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
   frame->last_good_stream_id = spdylay_get_uint32(payload) &
     SPDYLAY_STREAM_ID_MASK;
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    frame->status_code = spdylay_get_uint32(payload+4);
+  }
   return 0;
 }
 
-#define SPDYLAY_HEADERS_NV_OFFSET 14
+#define SPDYLAY_SPDY2_HEADERS_NV_OFFSET 14
+#define SPDYLAY_SPDY3_HEADERS_NV_OFFSET 12
 
 ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
                                    uint8_t **nvbuf_ptr, size_t *nvbuflen_ptr,
@@ -675,17 +744,23 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
                                    spdylay_zlib *deflater)
 {
   ssize_t framelen;
+  size_t len_size;
+  size_t nv_offset;
+  len_size = spdylay_frame_get_len_size(frame->hd.version);
+  if(len_size == 0) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
+  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ?
+    SPDYLAY_SPDY2_HEADERS_NV_OFFSET : SPDYLAY_SPDY3_HEADERS_NV_OFFSET;
   framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
-                                         frame->nv,
-                                         SPDYLAY_HEADERS_NV_OFFSET,
-                                         2,
-                                         deflater);
+                                         frame->nv, nv_offset,
+                                         len_size, deflater);
   if(framelen < 0) {
     return framelen;
   }
   frame->hd.length = framelen-SPDYLAY_FRAME_HEAD_LENGTH;
-  memset(*buf_ptr, 0, SPDYLAY_HEADERS_NV_OFFSET);
+  memset(*buf_ptr, 0, nv_offset);
   spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
   spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
   return framelen;
@@ -700,16 +775,22 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
                                  spdylay_zlib *inflater)
 {
   int r;
+  size_t len_size;
+  size_t nv_offset;
   if(payloadlen < 8) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  len_size = spdylay_frame_get_len_size(frame->hd.version);
+  if(len_size == 0) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
+  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ? 6 : 4;
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
                                     nvbuf_ptr, nvbuflen_ptr,
-                                    payload+6, payloadlen-6,
-                                    2,
-                                    inflater);
+                                    payload+nv_offset, payloadlen-nv_offset,
+                                    len_size, inflater);
   return r;
 }
 

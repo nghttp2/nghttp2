@@ -60,6 +60,8 @@
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_ZLIB
  *     The deflate operation failed.
  * SPDYLAY_ERR_NOMEM
@@ -88,6 +90,8 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
  *
  * SPDYLAY_ERR_INVALID_FRAME
  *     The input data are invalid.
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_ZLIB
  *     The inflate operation failed.
  * SPDYLAY_ERR_NOMEM
@@ -118,6 +122,8 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_ZLIB
  *     The deflate operation failed.
  * SPDYLAY_ERR_NOMEM
@@ -142,6 +148,8 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_INVALID_FRAME
  *     The input data are invalid.
  * SPDYLAY_ERR_ZLIB
@@ -194,6 +202,8 @@ int spdylay_frame_unpack_ping(spdylay_ping *frame,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
  */
@@ -206,6 +216,8 @@ ssize_t spdylay_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_INVALID_FRAME
  *     The input data are invalid.
  */
@@ -230,6 +242,8 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_ZLIB
  *     The deflate operation failed.
  * SPDYLAY_ERR_NOMEM
@@ -252,6 +266,8 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_INVALID_FRAME
  *     The input data are invalid.
  * SPDYLAY_ERR_ZLIB

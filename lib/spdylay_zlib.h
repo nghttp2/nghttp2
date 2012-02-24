@@ -35,31 +35,37 @@
 /* This structure is used for both deflater and inflater. */
 typedef struct {
   z_stream zst;
+  /* The protocol version to select the dictionary later. */
+  uint16_t version;
 } spdylay_zlib;
 
 /*
  * Initializes |deflater| for deflating name/values pairs in the
- * frame.
+ * frame of the protocol version |version|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * SPDYLAY_ERR_ZLIB
  *     The z_stream initialization failed.
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  */
-int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater);
+int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater, uint16_t version);
 
 /*
  * Initializes |inflater| for inflating name/values pairs in the
- * frame.
+ * frame of the protocol version |version|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * SPDYLAY_ERR_ZLIB
  *     The z_stream initialization failed.
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  */
-int spdylay_zlib_inflate_hd_init(spdylay_zlib *inflater);
+int spdylay_zlib_inflate_hd_init(spdylay_zlib *inflater, uint16_t version);
 
 /*
  * Deallocates any resources allocated for |deflater|.

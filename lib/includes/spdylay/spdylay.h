@@ -46,6 +46,7 @@ typedef struct spdylay_session spdylay_session;
 typedef enum {
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
   SPDYLAY_ERR_ZLIB = -502,
+  SPDYLAY_ERR_UNSUPPORTED_VERSION = -503,
   SPDYLAY_ERR_WOULDBLOCK = -504,
   SPDYLAY_ERR_PROTO = -505,
   SPDYLAY_ERR_INVALID_FRAME = -506,
@@ -370,6 +371,10 @@ typedef struct {
  *
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
+ * SPDYLAY_ERR_ZLIB
+ *     The z_stream initialization failed.
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  */
 int spdylay_session_client_new(spdylay_session **session_ptr,
                                const spdylay_session_callbacks *callbacks,
@@ -386,6 +391,10 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
  *
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
+ * SPDYLAY_ERR_ZLIB
+ *     The z_stream initialization failed.
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  */
 int spdylay_session_server_new(spdylay_session **session_ptr,
                                const spdylay_session_callbacks *callbacks,

@@ -31,6 +31,8 @@ void test_spdylay_frame_count_nv_space();
 void test_spdylay_frame_count_unpack_nv_space();
 void test_spdylay_frame_pack_ping();
 void test_spdylay_frame_pack_goaway();
+void test_spdylay_frame_pack_syn_stream();
+void test_spdylay_frame_pack_syn_reply();
 void test_spdylay_frame_pack_headers();
 void test_spdylay_frame_pack_settings();
 void test_spdylay_frame_nv_sort();

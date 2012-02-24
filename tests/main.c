@@ -67,7 +67,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "map", test_spdylay_map) ||
       !CU_add_test(pSuite, "queue", test_spdylay_queue) ||
       !CU_add_test(pSuite, "buffer", test_spdylay_buffer) ||
-      !CU_add_test(pSuite, "zlib", test_spdylay_zlib) ||
+      !CU_add_test(pSuite, "zlib_spdy2", test_spdylay_zlib_spdy2) ||
+      !CU_add_test(pSuite, "zlib_spdy3", test_spdylay_zlib_spdy3) ||
       !CU_add_test(pSuite, "npn", test_spdylay_npn) ||
       !CU_add_test(pSuite, "session_recv", test_spdylay_session_recv) ||
       !CU_add_test(pSuite, "session_recv_invalid_stream_id",
@@ -138,6 +139,10 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "frame_pack_ping", test_spdylay_frame_pack_ping) ||
       !CU_add_test(pSuite, "frame_pack_goaway",
                    test_spdylay_frame_pack_goaway) ||
+      !CU_add_test(pSuite, "frame_pack_syn_stream",
+                   test_spdylay_frame_pack_syn_stream) ||
+      !CU_add_test(pSuite, "frame_pack_syn_reply",
+                   test_spdylay_frame_pack_syn_reply) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_spdylay_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_settings",

@@ -25,6 +25,7 @@
 #ifndef SPDYLAY_ZLIB_TEST_H
 #define SPDYLAY_ZLIB_TEST_H
 
-void test_spdylay_zlib();
+void test_spdylay_zlib_spdy2();
+void test_spdylay_zlib_spdy3();
 
 #endif // SPDYLAY_ZLIB_TEST_H

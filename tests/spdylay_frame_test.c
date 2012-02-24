@@ -39,11 +39,10 @@ static const char *headers[] = {
   NULL
 };
 
-void test_spdylay_frame_unpack_nv()
+void test_spdylay_frame_unpack_nv_with(size_t len_size)
 {
   uint8_t out[1024];
   char **nv;
-  size_t len_size = 2;
   size_t inlen = spdylay_frame_pack_nv(out, (char**)headers, len_size);
   CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, out, inlen, len_size));
   CU_ASSERT(strcmp("method", nv[0]) == 0);
@@ -59,6 +58,12 @@ void test_spdylay_frame_unpack_nv()
   CU_ASSERT(strcmp("version", nv[10]) == 0);
   CU_ASSERT(strcmp("HTTP/1.1", nv[11]) == 0);
   spdylay_frame_nv_del(nv);
+}
+
+void test_spdylay_frame_unpack_nv()
+{
+  test_spdylay_frame_unpack_nv_with(2);
+  test_spdylay_frame_unpack_nv_with(4);
 }
 
 void test_spdylay_frame_pack_nv_duplicate_keys()
@@ -151,6 +156,8 @@ void test_spdylay_frame_count_nv_space()
 {
   size_t len_size = 2;
   CU_ASSERT(74 == spdylay_frame_count_nv_space((char**)headers, len_size));
+  len_size = 4;
+  CU_ASSERT(96 == spdylay_frame_count_nv_space((char**)headers, len_size));
 }
 
 void test_spdylay_frame_count_unpack_nv_space()
@@ -232,7 +239,7 @@ void test_spdylay_frame_pack_goaway()
   spdylay_frame_goaway_free(&frame.goaway);
 }
 
-void test_spdylay_frame_pack_headers()
+void test_spdylay_frame_pack_syn_stream_with(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   spdylay_frame frame, oframe;
@@ -241,9 +248,106 @@ void test_spdylay_frame_pack_headers()
   spdylay_buffer inflatebuf;
   ssize_t framelen;
   spdylay_buffer_init(&inflatebuf, 4096);
-  spdylay_zlib_deflate_hd_init(&deflater);
-  spdylay_zlib_inflate_hd_init(&inflater);
-  spdylay_frame_headers_init(&frame.headers, SPDYLAY_PROTO_SPDY2,
+  spdylay_zlib_deflate_hd_init(&deflater, version);
+  spdylay_zlib_inflate_hd_init(&inflater, version);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, version,
+                                SPDYLAY_CTRL_FLAG_FIN, 65536, 1000000007, 3,
+                                spdylay_frame_nv_copy(headers));
+  framelen = spdylay_frame_pack_syn_stream(&buf, &buflen,
+                                           &nvbuf, &nvbuflen,
+                                           &frame.syn_stream, &deflater);
+  CU_ASSERT(0 == spdylay_frame_unpack_syn_stream
+            (&oframe.syn_stream,
+             &inflatebuf,
+             &nvbuf, &nvbuflen,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             framelen-SPDYLAY_FRAME_HEAD_LENGTH,
+             &inflater));
+  CU_ASSERT(65536 == oframe.syn_stream.stream_id);
+  CU_ASSERT(1000000007 == oframe.syn_stream.assoc_stream_id);
+  CU_ASSERT(version == oframe.syn_stream.hd.version);
+  CU_ASSERT(SPDYLAY_SYN_STREAM == oframe.syn_stream.hd.type);
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.syn_stream.hd.flags);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  CU_ASSERT(strcmp("method", oframe.syn_stream.nv[0]) == 0);
+  CU_ASSERT(strcmp("GET", oframe.syn_stream.nv[1]) == 0);
+  CU_ASSERT(NULL == oframe.syn_stream.nv[12]);
+  free(buf);
+  free(nvbuf);
+  spdylay_frame_syn_stream_free(&oframe.syn_stream);
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+  spdylay_zlib_inflate_free(&inflater);
+  spdylay_zlib_deflate_free(&deflater);
+  spdylay_buffer_free(&inflatebuf);
+}
+
+void test_spdylay_frame_pack_syn_stream()
+{
+  test_spdylay_frame_pack_syn_stream_with(SPDYLAY_PROTO_SPDY2);
+  test_spdylay_frame_pack_syn_stream_with(SPDYLAY_PROTO_SPDY3);
+}
+
+void test_spdylay_frame_pack_syn_reply_with(uint16_t version)
+{
+  spdylay_zlib deflater, inflater;
+  spdylay_frame frame, oframe;
+  uint8_t *buf = NULL, *nvbuf = NULL;
+  size_t buflen = 0, nvbuflen = 0;
+  spdylay_buffer inflatebuf;
+  ssize_t framelen;
+  spdylay_buffer_init(&inflatebuf, 4096);
+  spdylay_zlib_deflate_hd_init(&deflater, version);
+  spdylay_zlib_inflate_hd_init(&inflater, version);
+  spdylay_frame_syn_reply_init(&frame.syn_reply, version,
+                               SPDYLAY_CTRL_FLAG_FIN, 3,
+                               spdylay_frame_nv_copy(headers));
+  framelen = spdylay_frame_pack_syn_reply(&buf, &buflen,
+                                          &nvbuf, &nvbuflen,
+                                          &frame.syn_reply, &deflater);
+  CU_ASSERT(0 == spdylay_frame_unpack_syn_reply
+            (&oframe.syn_reply,
+             &inflatebuf,
+             &nvbuf, &nvbuflen,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             framelen-SPDYLAY_FRAME_HEAD_LENGTH,
+             &inflater));
+  CU_ASSERT(3 == oframe.syn_reply.stream_id);
+  CU_ASSERT(version == oframe.syn_reply.hd.version);
+  CU_ASSERT(SPDYLAY_SYN_REPLY == oframe.syn_reply.hd.type);
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.syn_reply.hd.flags);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  CU_ASSERT(strcmp("method", oframe.syn_reply.nv[0]) == 0);
+  CU_ASSERT(strcmp("GET", oframe.syn_reply.nv[1]) == 0);
+  CU_ASSERT(NULL == oframe.syn_reply.nv[12]);
+  free(buf);
+  free(nvbuf);
+  spdylay_frame_syn_reply_free(&oframe.syn_reply);
+  spdylay_frame_syn_reply_free(&frame.syn_reply);
+  spdylay_zlib_inflate_free(&inflater);
+  spdylay_zlib_deflate_free(&deflater);
+  spdylay_buffer_free(&inflatebuf);
+}
+
+void test_spdylay_frame_pack_syn_reply()
+{
+  test_spdylay_frame_pack_syn_reply_with(SPDYLAY_PROTO_SPDY2);
+  test_spdylay_frame_pack_syn_reply_with(SPDYLAY_PROTO_SPDY3);
+}
+
+void test_spdylay_frame_pack_headers_with(uint16_t version)
+{
+  spdylay_zlib deflater, inflater;
+  spdylay_frame frame, oframe;
+  uint8_t *buf = NULL, *nvbuf = NULL;
+  size_t buflen = 0, nvbuflen = 0;
+  spdylay_buffer inflatebuf;
+  ssize_t framelen;
+  spdylay_buffer_init(&inflatebuf, 4096);
+  spdylay_zlib_deflate_hd_init(&deflater, version);
+  spdylay_zlib_inflate_hd_init(&inflater, version);
+  spdylay_frame_headers_init(&frame.headers, version,
                              SPDYLAY_CTRL_FLAG_FIN, 3,
                              spdylay_frame_nv_copy(headers));
   framelen = spdylay_frame_pack_headers(&buf, &buflen,
@@ -258,7 +362,7 @@ void test_spdylay_frame_pack_headers()
              framelen-SPDYLAY_FRAME_HEAD_LENGTH,
              &inflater));
   CU_ASSERT(3 == oframe.headers.stream_id);
-  CU_ASSERT(SPDYLAY_PROTO_SPDY2 == oframe.headers.hd.version);
+  CU_ASSERT(version == oframe.headers.hd.version);
   CU_ASSERT(SPDYLAY_HEADERS == oframe.headers.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.headers.hd.flags);
   CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
@@ -272,6 +376,12 @@ void test_spdylay_frame_pack_headers()
   spdylay_zlib_inflate_free(&inflater);
   spdylay_zlib_deflate_free(&deflater);
   spdylay_buffer_free(&inflatebuf);
+}
+
+void test_spdylay_frame_pack_headers()
+{
+  test_spdylay_frame_pack_headers_with(SPDYLAY_PROTO_SPDY2);
+  test_spdylay_frame_pack_headers_with(SPDYLAY_PROTO_SPDY3);
 }
 
 void test_spdylay_frame_pack_settings()

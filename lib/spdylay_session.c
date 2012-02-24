@@ -95,11 +95,13 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->goaway_flags = SPDYLAY_GOAWAY_NONE;
   (*session_ptr)->last_good_stream_id = 0;
 
-  r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater);
+  r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater,
+                                   (*session_ptr)->version);
   if(r != 0) {
     goto fail_hd_deflater;
   }
-  r = spdylay_zlib_inflate_hd_init(&(*session_ptr)->hd_inflater);
+  r = spdylay_zlib_inflate_hd_init(&(*session_ptr)->hd_inflater,
+                                   (*session_ptr)->version);
   if(r != 0) {
     goto fail_hd_inflater;
   }
@@ -163,7 +165,7 @@ static int spdylay_session_new(spdylay_session **session_ptr,
  fail_hd_deflater:
   free(*session_ptr);
  fail_session:
-  return SPDYLAY_ERR_NOMEM;
+  return r;
 }
 
 int spdylay_session_client_new(spdylay_session **session_ptr,
@@ -474,8 +476,8 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
   }
 }
 
-ssize_t spdylay_session_prep_frame(spdylay_session *session,
-                                   spdylay_outbound_item *item)
+static ssize_t spdylay_session_prep_frame(spdylay_session *session,
+                                          spdylay_outbound_item *item)
 {
   /* TODO Get or validate stream ID here */
   /* TODO Validate assoc_stream_id here */

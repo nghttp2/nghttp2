@@ -30,7 +30,7 @@
 
 #include "spdylay_zlib.h"
 
-void test_spdylay_zlib()
+void test_spdylay_zlib_with(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   const char msg[] =
@@ -53,8 +53,8 @@ void test_spdylay_zlib()
   deflatebuf_max = spdylay_zlib_deflate_hd_bound(&deflater, sizeof(msg));
   deflatebuf = malloc(deflatebuf_max);
 
-  CU_ASSERT(0 == spdylay_zlib_deflate_hd_init(&deflater));
-  CU_ASSERT(0 == spdylay_zlib_inflate_hd_init(&inflater));
+  CU_ASSERT(0 == spdylay_zlib_deflate_hd_init(&deflater, version));
+  CU_ASSERT(0 == spdylay_zlib_inflate_hd_init(&inflater, version));
 
   CU_ASSERT(0 < (deflatebuf_len = spdylay_zlib_deflate_hd
                  (&deflater, deflatebuf, deflatebuf_max,
@@ -68,4 +68,14 @@ void test_spdylay_zlib()
   spdylay_zlib_inflate_free(&inflater);
 
   spdylay_buffer_free(&buf);
+}
+
+void test_spdylay_zlib_spdy2()
+{
+  test_spdylay_zlib_with(SPDYLAY_PROTO_SPDY2);
+}
+
+void test_spdylay_zlib_spdy3()
+{
+  test_spdylay_zlib_with(SPDYLAY_PROTO_SPDY3);
 }
