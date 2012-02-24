@@ -328,35 +328,40 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
 
 /*
  * Returns number of bytes to pack name/value pairs |nv|. This
- * function expects |nv| is sorted in ascending order of key.  This
- * function can handles duplicate keys and concatenation of thier
+ * function expects |nv| is sorted in ascending order of key.
+ * |len_size| is the number of bytes in length of name/value pair and
+ * it must be 2 or 4.
+ *
+ * This function can handles duplicate keys and concatenation of thier
  * values with '\0'.
  */
-size_t spdylay_frame_count_nv_space(char **nv);
+size_t spdylay_frame_count_nv_space(char **nv, size_t len_size);
 
 /*
  * Packs name/value pairs in |nv| in |buf|. |buf| must have at least
- * spdylay_frame_count_nv_space(nv) bytes.
+ * spdylay_frame_count_nv_space(nv) bytes.  |len_size| is the number
+ * of bytes in length of name/value pair and it must be 2 or 4.
  */
-ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv);
+ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size);
 
 /*
  * Counts number of name/value pair in |in| and computes length of
  * buffers to store unpacked name/value pair and store them in
- * |*num_nv_ptr| and |*buf_size_ptr| respectively.  We use folloing
- * data structure in |*buf_size_ptr|.  First part of the data is array
- * of pointer to name/value pair.  Supporse the buf pointer points to
- * the data region and N is the number of name/value pair.  First
- * (N*2+1)*sizeof(char*) bytes contain array of pointer to name/value
- * pair and terminating NULL.  Each pointer to name/value pair points
- * to the string in remaining data.  For each name/value pair, the
- * name is copied to the remaining data with terminating NULL
- * character. The value is also copied to the position after the data
- * with terminating NULL character. The corresponding index is
- * assigned to these pointers. If the value contains multiple values
- * (delimited by single NULL), for each such data, corresponding index
- * is assigned to name/value pointers. In this case, the name string
- * is reused.
+ * |*num_nv_ptr| and |*buf_size_ptr| respectively. |len_size| is the
+ * number of bytes in length of name/value pair and it must be 2 or
+ * 4. We use folloing data structure in |*buf_size_ptr|.  First part
+ * of the data is array of pointer to name/value pair.  Supporse the
+ * buf pointer points to the data region and N is the number of
+ * name/value pair.  First (N*2+1)*sizeof(char*) bytes contain array
+ * of pointer to name/value pair and terminating NULL.  Each pointer
+ * to name/value pair points to the string in remaining data.  For
+ * each name/value pair, the name is copied to the remaining data with
+ * terminating NULL character. The value is also copied to the
+ * position after the data with terminating NULL character. The
+ * corresponding index is assigned to these pointers. If the value
+ * contains multiple values (delimited by single NULL), for each such
+ * data, corresponding index is assigned to name/value pointers. In
+ * this case, the name string is reused.
  *
  * With the above stragety, |*buf_size_ptr| is calculated as
  * (N*2+1)*sizeof(char*)+sum(strlen(name)+1+strlen(value)+1){for each
@@ -369,12 +374,14 @@ ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv);
  *     The input data are invalid.
  */
 int spdylay_frame_count_unpack_nv_space
-(size_t *num_nv_ptr, size_t *buf_size_ptr, const uint8_t *in, size_t inlen);
+(size_t *num_nv_ptr, size_t *buf_size_ptr, const uint8_t *in, size_t inlen,
+ size_t len_size);
 
 /*
  * Unpacks name/value pairs in wire format |in| with length |inlen|
  * and stores them in |*nv_ptr|.  Thif function allocates enough
- * memory to store name/value pairs in |*nv_ptr|.
+ * memory to store name/value pairs in |*nv_ptr|.  |len_size| is the
+ * number of bytes in length of name/value pair and it must be 2 or 4.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -382,7 +389,8 @@ int spdylay_frame_count_unpack_nv_space
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
  */
-int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen);
+int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
+                            size_t len_size);
 
 /*
  * Initializes SYN_STREAM frame |frame| with given values.  |frame|

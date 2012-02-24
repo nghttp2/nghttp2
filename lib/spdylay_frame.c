@@ -31,15 +31,23 @@
 
 #include "spdylay_helper.h"
 
+#define spdylay_frame_get_nv_len(IN, LEN_SIZE)                          \
+  (LEN_SIZE == 2 ? spdylay_get_uint16(IN) : spdylay_get_uint32(IN))
+
+#define spdylay_frame_put_nv_len(OUT, VAL, LEN_SIZE)                    \
+  (LEN_SIZE == 2 ?                                                      \
+   spdylay_put_uint16be(OUT, VAL) : spdylay_put_uint32be(OUT, VAL))
+
 static uint8_t spdylay_unpack_pri(const uint8_t *data)
 {
   return (data[0] >> 6) & 0x3;
 }
 
-static uint8_t* spdylay_pack_str(uint8_t *buf, const char *str, size_t len)
+static uint8_t* spdylay_pack_str(uint8_t *buf, const char *str, size_t len,
+                                 size_t len_size)
 {
-  spdylay_put_uint16be(buf, len);
-  buf += 2;
+  spdylay_frame_put_nv_len(buf, len, len_size);
+  buf += len_size;
   memcpy(buf, str, len);
   return buf+len;
 }
@@ -82,13 +90,14 @@ static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
                                            uint8_t **nvbuf_ptr,
                                            size_t *nvbuflen_ptr,
                                            char **nv, size_t nv_offset,
+                                           size_t len_size,
                                            spdylay_zlib *deflater)
 {
   size_t nvspace;
   size_t maxframelen;
   ssize_t framelen;
   int r;
-  nvspace = spdylay_frame_count_nv_space(nv);
+  nvspace = spdylay_frame_count_nv_space(nv, len_size);
   r = spdylay_reserve_buffer(nvbuf_ptr, nvbuflen_ptr, nvspace);
   if(r != 0) {
     return SPDYLAY_ERR_NOMEM;
@@ -98,7 +107,7 @@ static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
   if(r != 0) {
     return SPDYLAY_ERR_NOMEM;
   }
-  spdylay_frame_pack_nv(*nvbuf_ptr, nv);
+  spdylay_frame_pack_nv(*nvbuf_ptr, nv, len_size);
   framelen = spdylay_zlib_deflate_hd(deflater,
                                      (*buf_ptr)+nv_offset,
                                      maxframelen-nv_offset,
@@ -111,28 +120,29 @@ static ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
 }
 
 int spdylay_frame_count_unpack_nv_space
-(size_t *nvlen_ptr, size_t *buflen_ptr, const uint8_t *in, size_t inlen)
+(size_t *nvlen_ptr, size_t *buflen_ptr, const uint8_t *in, size_t inlen,
+ size_t len_size)
 {
-  uint16_t n;
+  uint32_t n;
   size_t buflen = 0;
   size_t nvlen = 0;
   size_t off = 0;
-  const size_t len_size = sizeof(uint16_t);
   int i;
   if(inlen < len_size) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
-  n = spdylay_get_uint16(in);
+  /* TODO limit n in a reasonable number */
+  n = spdylay_frame_get_nv_len(in, len_size);
   off += len_size;
   for(i = 0; i < n; ++i) {
-    uint16_t len;
+    uint32_t len;
     int j;
     for(j = 0; j < 2; ++j) {
       if(inlen-off < len_size) {
         return SPDYLAY_ERR_INVALID_FRAME;
       }
-      len = spdylay_get_uint16(in+off);
-      off += 2;
+      len = spdylay_frame_get_nv_len(in+off, len_size);
+      off += len_size;
       if(inlen-off < len) {
         return SPDYLAY_ERR_INVALID_FRAME;
       }
@@ -155,13 +165,14 @@ int spdylay_frame_count_unpack_nv_space
   }
 }
 
-int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen)
+int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
+                            size_t len_size)
 {
   size_t nvlen, buflen;
   int r, i;
   char *buf, **index, *data;
-  uint16_t n;
-  r = spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, in, inlen);
+  uint32_t n;
+  r = spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, in, inlen, len_size);
   if(r != 0) {
     return r;
   }
@@ -171,14 +182,14 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen)
   }
   index = (char**)buf;
   data = buf+(nvlen*2+1)*sizeof(char*);
-  n = spdylay_get_uint16(in);
-  in += 2;
+  n = spdylay_frame_get_nv_len(in, len_size);
+  in += len_size;
   for(i = 0; i < n; ++i) {
-    uint16_t len;
+    uint32_t len;
     char *name, *val;
     char *stop;
-    len = spdylay_get_uint16(in);
-    in += 2;
+    len = spdylay_frame_get_nv_len(in, len_size);
+    in += len_size;
     name = data;
     memcpy(data, in, len);
     data += len;
@@ -186,8 +197,8 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen)
     ++data;
     in += len;
 
-    len = spdylay_get_uint16(in);
-    in += 2;
+    len = spdylay_frame_get_nv_len(in, len_size);
+    in += len_size;
     val = data;
     memcpy(data, in, len);
 
@@ -217,6 +228,8 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen)
  * pointer is assigned to |nv_ptr|. |inflatebuf| is used for inflate
  * operation. |*nvbuf_ptr| is used for temporarily stored inflated
  * name/value pair in wire format. It is expanded as necessary.
+ * |len_size| is the number of bytes used in name/value length. It
+ * must be either 2 or 4.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -231,6 +244,7 @@ static int spdylay_frame_alloc_unpack_nv(char ***nv_ptr,
                                          uint8_t **nvbuf_ptr,
                                          size_t *nvbuflen_ptr,
                                          const uint8_t *in, size_t inlen,
+                                         size_t len_size,
                                          spdylay_zlib *inflater)
 {
   ssize_t nvspace;
@@ -244,14 +258,14 @@ static int spdylay_frame_alloc_unpack_nv(char ***nv_ptr,
       return SPDYLAY_ERR_NOMEM;
     }
     spdylay_buffer_serialize(inflatebuf, *nvbuf_ptr);
-    r = spdylay_frame_unpack_nv(nv_ptr, *nvbuf_ptr, nvspace);
+    r = spdylay_frame_unpack_nv(nv_ptr, *nvbuf_ptr, nvspace, len_size);
     return r;
   }
 }
 
-size_t spdylay_frame_count_nv_space(char **nv)
+size_t spdylay_frame_count_nv_space(char **nv, size_t len_size)
 {
-  size_t sum = 2;
+  size_t sum = len_size;
   int i;
   const char *prev = "";
   size_t prevlen = 0;
@@ -267,21 +281,21 @@ size_t spdylay_frame_count_nv_space(char **nv)
       prev = key;
       prevlen = keylen;
       /* SPDY NV header does not include terminating NULL byte */
-      sum += keylen+vallen+4;
+      sum += keylen+vallen+len_size*2;
     }
   }
   return sum;
 }
 
-ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv)
+ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size)
 {
   int i;
-  uint8_t *bufp = buf+2;
-  uint16_t num_nv = 0;
+  uint8_t *bufp = buf+len_size;
+  uint32_t num_nv = 0;
   /* TODO Join values with same keys, using '\0' as a delimiter */
   const char *prev = "";
   uint8_t *prev_vallen_buf = NULL;
-  uint16_t prev_vallen = 0;
+  uint32_t prev_vallen = 0;
   for(i = 0; nv[i]; i += 2) {
     const char *key = nv[i];
     const char *val = nv[i+1];
@@ -289,21 +303,21 @@ ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv)
     size_t vallen = strlen(val);
     if(strcmp(prev, key) == 0) {
       prev_vallen += vallen+1;
-      spdylay_put_uint16be(prev_vallen_buf, prev_vallen);
+      spdylay_frame_put_nv_len(prev_vallen_buf, prev_vallen, len_size);
       *bufp = '\0';
       ++bufp;
       memcpy(bufp, val, vallen);
       bufp += vallen;
     } else {
       ++num_nv;
-      bufp = spdylay_pack_str(bufp, key, keylen);
+      bufp = spdylay_pack_str(bufp, key, keylen, len_size);
       prev = key;
       prev_vallen_buf = bufp;
       prev_vallen = vallen;
-      bufp = spdylay_pack_str(bufp, val, vallen);
+      bufp = spdylay_pack_str(bufp, val, vallen, len_size);
     }
   }
-  spdylay_put_uint16be(buf, num_nv);
+  spdylay_frame_put_nv_len(buf, num_nv, len_size);
   return bufp-buf;
 }
 
@@ -504,6 +518,7 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
                                          frame->nv,
                                          SPDYLAY_SYN_STREAM_NV_OFFSET,
+                                         2,
                                          deflater);
   if(framelen < 0) {
     return framelen;
@@ -538,6 +553,7 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
                                     nvbuf_ptr, nvbuflen_ptr,
                                     payload+10, payloadlen-10,
+                                    2,
                                     inflater);
   return r;
 }
@@ -555,7 +571,9 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
   framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
                                          frame->nv,
-                                         SPDYLAY_SYN_REPLY_NV_OFFSET, deflater);
+                                         SPDYLAY_SYN_REPLY_NV_OFFSET,
+                                         2,
+                                         deflater);
   if(framelen < 0) {
     return framelen;
   }
@@ -583,6 +601,7 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
                                     nvbuf_ptr, nvbuflen_ptr,
                                     payload+6, payloadlen-6,
+                                    2,
                                     inflater);
   return r;
 }
@@ -653,7 +672,9 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
   framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
                                          frame->nv,
-                                         SPDYLAY_HEADERS_NV_OFFSET, deflater);
+                                         SPDYLAY_HEADERS_NV_OFFSET,
+                                         2,
+                                         deflater);
   if(framelen < 0) {
     return framelen;
   }
@@ -681,6 +702,7 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
   r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
                                     nvbuf_ptr, nvbuflen_ptr,
                                     payload+6, payloadlen-6,
+                                    2,
                                     inflater);
   return r;
 }

@@ -43,8 +43,9 @@ void test_spdylay_frame_unpack_nv()
 {
   uint8_t out[1024];
   char **nv;
-  size_t inlen = spdylay_frame_pack_nv(out, (char**)headers);
-  CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, out, inlen));
+  size_t len_size = 2;
+  size_t inlen = spdylay_frame_pack_nv(out, (char**)headers, len_size);
+  CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, out, inlen, len_size));
   CU_ASSERT(strcmp("method", nv[0]) == 0);
   CU_ASSERT(strcmp("GET", nv[1]) == 0);
   CU_ASSERT(strcmp("scheme", nv[2]) == 0);
@@ -63,6 +64,7 @@ void test_spdylay_frame_unpack_nv()
 void test_spdylay_frame_pack_nv_duplicate_keys()
 {
   uint8_t out[1024];
+  size_t len_size = 2;
   const char *nv_src[] = {
     "method", "GET",
     "scheme", "https",
@@ -75,7 +77,7 @@ void test_spdylay_frame_pack_nv_duplicate_keys()
   char **nv = spdylay_frame_nv_copy(nv_src);
   spdylay_frame_nv_downcase(nv);
   spdylay_frame_nv_sort(nv);
-  /* size_t inlen = */ spdylay_frame_pack_nv(out, nv);
+  /* size_t inlen = */ spdylay_frame_pack_nv(out, nv, len_size);
   const uint8_t *outptr = out;
   int pairs = spdylay_get_uint16(outptr);
   CU_ASSERT(pairs == 5);
@@ -147,40 +149,45 @@ void test_spdylay_frame_pack_nv_duplicate_keys()
 
 void test_spdylay_frame_count_nv_space()
 {
-  CU_ASSERT(74 == spdylay_frame_count_nv_space((char**)headers));
+  size_t len_size = 2;
+  CU_ASSERT(74 == spdylay_frame_count_nv_space((char**)headers, len_size));
 }
 
 void test_spdylay_frame_count_unpack_nv_space()
 {
   size_t nvlen, buflen;
   uint8_t out[1024];
-  size_t inlen = spdylay_frame_pack_nv(out, (char**)headers);
+  size_t len_size = 2;
+  size_t inlen = spdylay_frame_pack_nv(out, (char**)headers, len_size);
   uint16_t temp;
   CU_ASSERT(0 == spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
-                                                     out, inlen));
+                                                     out, inlen, len_size));
   CU_ASSERT(6 == nvlen);
   CU_ASSERT(166 == buflen);
 
   /* Trailing garbage */
   CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
             spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
-                                                out, inlen+2));
+                                                out, inlen+2, len_size));
 
   /* Change number of nv pair to a bogus value */
   temp = spdylay_get_uint16(out);
   spdylay_put_uint16be(out, temp+1);
   CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
-            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen,
+                                                len_size));
   spdylay_put_uint16be(out, temp);
 
   /* Change the length of name to a bogus value */
   temp = spdylay_get_uint16(out+2);
   spdylay_put_uint16be(out+2, temp+1);
   CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
-            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen,
+                                                len_size));
   spdylay_put_uint16be(out+2, 65535);
   CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
-            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen));
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen,
+                                                len_size));
 }
 
 void test_spdylay_frame_pack_ping()
