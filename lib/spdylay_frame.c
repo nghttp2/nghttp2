@@ -382,12 +382,13 @@ void spdylay_frame_nv_downcase(char **nv)
   }
 }
 
-void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
+void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame,
+                                   uint16_t version, uint8_t flags,
                                    int32_t stream_id, int32_t assoc_stream_id,
                                    uint8_t pri, char **nv)
 {
   memset(frame, 0, sizeof(spdylay_syn_stream));
-  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.version = version;
   frame->hd.type = SPDYLAY_SYN_STREAM;
   frame->hd.flags = flags;
   frame->stream_id = stream_id;
@@ -401,11 +402,12 @@ void spdylay_frame_syn_stream_free(spdylay_syn_stream *frame)
   spdylay_frame_nv_del(frame->nv);
 }
 
-void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
+void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame,
+                                  uint16_t version, uint8_t flags,
                                   int32_t stream_id, char **nv)
 {
   memset(frame, 0, sizeof(spdylay_syn_reply));
-  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.version = version;
   frame->hd.type = SPDYLAY_SYN_REPLY;
   frame->hd.flags = flags;
   frame->stream_id = stream_id;
@@ -417,10 +419,11 @@ void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame)
   spdylay_frame_nv_del(frame->nv);
 }
 
-void spdylay_frame_ping_init(spdylay_ping *frame, uint32_t unique_id)
+void spdylay_frame_ping_init(spdylay_ping *frame,
+                             uint16_t version, uint32_t unique_id)
 {
   memset(frame, 0, sizeof(spdylay_ping));
-  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.version = version;
   frame->hd.type = SPDYLAY_PING;
   frame->hd.flags = SPDYLAY_CTRL_FLAG_NONE;
   frame->hd.length = 4;
@@ -431,10 +434,10 @@ void spdylay_frame_ping_free(spdylay_ping *frame)
 {}
 
 void spdylay_frame_goaway_init(spdylay_goaway *frame,
-                               int32_t last_good_stream_id)
+                               uint16_t version, int32_t last_good_stream_id)
 {
   memset(frame, 0, sizeof(spdylay_goaway));
-  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.version = version;
   frame->hd.type = SPDYLAY_GOAWAY;
   frame->hd.length = 4;
   frame->last_good_stream_id = last_good_stream_id;
@@ -443,11 +446,12 @@ void spdylay_frame_goaway_init(spdylay_goaway *frame,
 void spdylay_frame_goaway_free(spdylay_goaway *frame)
 {}
 
-void spdylay_frame_headers_init(spdylay_headers *frame, uint8_t flags,
+void spdylay_frame_headers_init(spdylay_headers *frame,
+                                uint16_t version, uint8_t flags,
                                 int32_t stream_id, char **nv)
 {
   memset(frame, 0, sizeof(spdylay_headers));
-  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.version = version;
   frame->hd.type = SPDYLAY_HEADERS;
   frame->hd.flags = flags;
   frame->stream_id = stream_id;
@@ -460,10 +464,11 @@ void spdylay_frame_headers_free(spdylay_headers *frame)
 }
 
 void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
+                                   uint16_t version,
                                    int32_t stream_id, uint32_t status_code)
 {
   memset(frame, 0, sizeof(spdylay_rst_stream));
-  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.version = version;
   frame->hd.type = SPDYLAY_RST_STREAM;
   frame->hd.flags = 0;
   frame->hd.length = 8;
@@ -474,11 +479,12 @@ void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
 void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame)
 {}
 
-void spdylay_frame_settings_init(spdylay_settings *frame, uint8_t flags,
+void spdylay_frame_settings_init(spdylay_settings *frame,
+                                 uint16_t version, uint8_t flags,
                                  spdylay_settings_entry *iv, size_t niv)
 {
   memset(frame, 0, sizeof(spdylay_settings));
-  frame->hd.version = SPDYLAY_PROTO_VERSION;
+  frame->hd.version = version;
   frame->hd.type = SPDYLAY_SETTINGS;
   frame->hd.flags = flags;
   frame->hd.length = 4+niv*8;

@@ -103,6 +103,9 @@ typedef enum {
 } spdylay_goaway_flag;
 
 struct spdylay_session {
+  /* The protocol version: either SPDYLAY_PROTO_SPDY2 or
+     SPDYLAY_PROTO_SPDY3  */
+  uint16_t version;
   uint8_t server;
   int32_t next_stream_id;
   int32_t last_recv_stream_id;

@@ -397,32 +397,37 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
  * takes ownership of |nv|, so caller must not free it. If stream_id
  * is not assigned yet, it must be 0.
  */
-void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame, uint8_t flags,
+void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame,
+                                   uint16_t version, uint8_t flags,
                                    int32_t stream_id, int32_t assoc_stream_id,
                                    uint8_t pri, char **nv);
 
 void spdylay_frame_syn_stream_free(spdylay_syn_stream *frame);
 
-void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame, uint8_t flags,
+void spdylay_frame_syn_reply_init(spdylay_syn_reply *frame,
+                                  uint16_t version, uint8_t flags,
                                   int32_t stream_id, char **nv);
 
 void spdylay_frame_syn_reply_free(spdylay_syn_reply *frame);
 
-void spdylay_frame_ping_init(spdylay_ping *frame, uint32_t unique_id);
+void spdylay_frame_ping_init(spdylay_ping *frame, uint16_t version,
+                             uint32_t unique_id);
 
 void spdylay_frame_ping_free(spdylay_ping *frame);
 
-void spdylay_frame_goaway_init(spdylay_goaway *frame,
+void spdylay_frame_goaway_init(spdylay_goaway *frame, uint16_t version,
                                int32_t last_good_stream_id);
 
 void spdylay_frame_goaway_free(spdylay_goaway *frame);
 
-void spdylay_frame_headers_init(spdylay_headers *frame, uint8_t flags,
+void spdylay_frame_headers_init(spdylay_headers *frame, uint16_t version,
+                                uint8_t flags,
                                 int32_t stream_id, char **nv);
 
 void spdylay_frame_headers_free(spdylay_headers *frame);
 
 void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
+                                   uint16_t version,
                                    int32_t stream_id, uint32_t status_code);
 
 void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame);
@@ -431,7 +436,8 @@ void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame);
  * Initializes SETTINGS frame |frame| with given values. |frame| takes
  * ownership of |iv|, so caller must not free it.
  */
-void spdylay_frame_settings_init(spdylay_settings *frame, uint8_t flags,
+void spdylay_frame_settings_init(spdylay_settings *frame,
+                                 uint16_t version, uint8_t flags,
                                  spdylay_settings_entry *iv, size_t niv);
 
 void spdylay_frame_settings_free(spdylay_settings *frame);

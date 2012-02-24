@@ -39,7 +39,9 @@ struct spdylay_session;
 typedef struct spdylay_session spdylay_session;
 
 /* SPDY protocol version 2 */
-#define SPDYLAY_PROTO_VERSION 2
+#define SPDYLAY_PROTO_SPDY2 2
+/* SPDY protocol version 3 */
+#define SPDYLAY_PROTO_SPDY3 3
 
 typedef enum {
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
@@ -122,6 +124,9 @@ typedef enum {
   SPDYLAY_FLOW_CONTROL_ERROR = 7
 } spdylay_status_code;
 
+#define SPDYLAY_SPDY2_LOWEST_PRI 3
+#define SPDYLAY_SPDY3_LOWEST_PRI 7
+
 typedef struct {
   uint16_t version;
   uint16_t type;
@@ -133,8 +138,12 @@ typedef struct {
   spdylay_ctrl_hd hd;
   int32_t stream_id;
   int32_t assoc_stream_id;
-  /* 0 (Highest) to 3 (Lowest). Looks like spdy/2 spec is wrong. */
+  /* 0 (Highest) to SPDYLAY_SPDY2_LOWEST_PRI or
+     SPDYLAY_SPDY3_LOWEST_PRI (loweset), depending on the protocol
+     version. */
   uint8_t pri;
+  /* Use in spdy/3 only */
+  uint8_t slot;
   char **nv;
 } spdylay_syn_stream;
 
@@ -177,6 +186,7 @@ typedef struct {
 typedef struct {
   spdylay_ctrl_hd hd;
   int32_t last_good_stream_id;
+  /* spdy/3 only */
   uint32_t status_code;
 } spdylay_goaway;
 

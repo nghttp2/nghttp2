@@ -196,7 +196,7 @@ void test_spdylay_frame_pack_ping()
   uint8_t *buf = NULL;
   size_t buflen = 0;
   ssize_t framelen;
-  spdylay_frame_ping_init(&frame.ping, 1);
+  spdylay_frame_ping_init(&frame.ping, SPDYLAY_PROTO_SPDY2, 1);
   framelen = spdylay_frame_pack_ping(&buf, &buflen, &frame.ping);
   CU_ASSERT(0 == spdylay_frame_unpack_ping
             (&oframe.ping,
@@ -215,7 +215,7 @@ void test_spdylay_frame_pack_goaway()
   uint8_t *buf = NULL;
   size_t buflen = 0;
   ssize_t framelen;
-  spdylay_frame_goaway_init(&frame.goaway, 1000000007);
+  spdylay_frame_goaway_init(&frame.goaway, SPDYLAY_PROTO_SPDY2, 1000000007);
   framelen = spdylay_frame_pack_goaway(&buf, &buflen, &frame.goaway);
   CU_ASSERT(0 == spdylay_frame_unpack_goaway
             (&oframe.goaway,
@@ -223,7 +223,7 @@ void test_spdylay_frame_pack_goaway()
              &buf[SPDYLAY_FRAME_HEAD_LENGTH],
              framelen-SPDYLAY_FRAME_HEAD_LENGTH));
   CU_ASSERT(1000000007 == oframe.goaway.last_good_stream_id);
-  CU_ASSERT(SPDYLAY_PROTO_VERSION == oframe.headers.hd.version);
+  CU_ASSERT(SPDYLAY_PROTO_SPDY2 == oframe.headers.hd.version);
   CU_ASSERT(SPDYLAY_GOAWAY == oframe.headers.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.headers.hd.flags);
   CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
@@ -243,7 +243,8 @@ void test_spdylay_frame_pack_headers()
   spdylay_buffer_init(&inflatebuf, 4096);
   spdylay_zlib_deflate_hd_init(&deflater);
   spdylay_zlib_inflate_hd_init(&inflater);
-  spdylay_frame_headers_init(&frame.headers, SPDYLAY_CTRL_FLAG_FIN, 3,
+  spdylay_frame_headers_init(&frame.headers, SPDYLAY_PROTO_SPDY2,
+                             SPDYLAY_CTRL_FLAG_FIN, 3,
                              spdylay_frame_nv_copy(headers));
   framelen = spdylay_frame_pack_headers(&buf, &buflen,
                                         &nvbuf, &nvbuflen,
@@ -257,7 +258,7 @@ void test_spdylay_frame_pack_headers()
              framelen-SPDYLAY_FRAME_HEAD_LENGTH,
              &inflater));
   CU_ASSERT(3 == oframe.headers.stream_id);
-  CU_ASSERT(SPDYLAY_PROTO_VERSION == oframe.headers.hd.version);
+  CU_ASSERT(SPDYLAY_PROTO_SPDY2 == oframe.headers.hd.version);
   CU_ASSERT(SPDYLAY_HEADERS == oframe.headers.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.headers.hd.flags);
   CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
@@ -292,7 +293,7 @@ void test_spdylay_frame_pack_settings()
   iv[2].value = 65536;
 
   spdylay_frame_settings_init
-    (&frame.settings,
+    (&frame.settings, SPDYLAY_PROTO_SPDY2,
      SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS,
      spdylay_frame_iv_copy(iv, 3), 3);
   framelen = spdylay_frame_pack_settings(&buf, &buflen, &frame.settings);
@@ -304,7 +305,7 @@ void test_spdylay_frame_pack_settings()
              &buf[SPDYLAY_FRAME_HEAD_LENGTH],
              framelen-SPDYLAY_FRAME_HEAD_LENGTH));
 
-  CU_ASSERT(SPDYLAY_PROTO_VERSION == oframe.settings.hd.version);
+  CU_ASSERT(SPDYLAY_PROTO_SPDY2 == oframe.settings.hd.version);
   CU_ASSERT(SPDYLAY_SETTINGS == oframe.settings.hd.type);
   CU_ASSERT(SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS ==
             oframe.settings.hd.flags);
