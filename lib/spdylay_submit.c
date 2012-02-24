@@ -79,11 +79,11 @@ static int spdylay_submit_syn_stream_shared
   spdylay_frame_nv_downcase(nv_copy);
   spdylay_frame_nv_sort(nv_copy);
   flags_copy = 0;
-  if(flags & SPDYLAY_FLAG_FIN) {
-    flags_copy |= SPDYLAY_FLAG_FIN;
+  if(flags & SPDYLAY_CTRL_FLAG_FIN) {
+    flags_copy |= SPDYLAY_CTRL_FLAG_FIN;
   }
-  if(flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
-    flags_copy |= SPDYLAY_FLAG_UNIDIRECTIONAL;
+  if(flags & SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL) {
+    flags_copy |= SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL;
   }
   spdylay_frame_syn_stream_init(&frame->syn_stream, flags_copy,
                                 0, assoc_stream_id, pri, nv_copy);
@@ -125,8 +125,8 @@ int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
   spdylay_frame_nv_downcase(nv_copy);
   spdylay_frame_nv_sort(nv_copy);
   flags_copy = 0;
-  if(flags & SPDYLAY_FLAG_FIN) {
-    flags_copy |= SPDYLAY_FLAG_FIN;
+  if(flags & SPDYLAY_CTRL_FLAG_FIN) {
+    flags_copy |= SPDYLAY_CTRL_FLAG_FIN;
   }
   spdylay_frame_headers_init(&frame->headers, flags_copy, stream_id, nv_copy);
   r = spdylay_session_add_frame(session, SPDYLAY_HEADERS, frame, NULL);
@@ -162,7 +162,7 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
   int flags;
   flags = 0;
   if(data_prd == NULL || data_prd->read_callback == NULL) {
-    flags |= SPDYLAY_FLAG_FIN;
+    flags |= SPDYLAY_CTRL_FLAG_FIN;
   }
   return spdylay_submit_syn_stream_shared(session, flags, 0, pri, nv, data_prd,
                                           stream_user_data);
@@ -198,7 +198,7 @@ int spdylay_submit_response(spdylay_session *session,
   spdylay_frame_nv_downcase(nv_copy);
   spdylay_frame_nv_sort(nv_copy);
   if(data_prd_copy == NULL) {
-    flags |= SPDYLAY_FLAG_FIN;
+    flags |= SPDYLAY_CTRL_FLAG_FIN;
   }
   spdylay_frame_syn_reply_init(&frame->syn_reply, flags, stream_id,
                                nv_copy);
@@ -223,8 +223,8 @@ int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
   if(frame == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
-  if(flags & SPDYLAY_FLAG_FIN) {
-    nflags |= SPDYLAY_FLAG_FIN;
+  if(flags & SPDYLAY_DATA_FLAG_FIN) {
+    nflags |= SPDYLAY_DATA_FLAG_FIN;
   }
   spdylay_frame_data_init(&frame->data, stream_id, nflags, data_prd);
   r = spdylay_session_add_frame(session, SPDYLAY_DATA, frame, NULL);

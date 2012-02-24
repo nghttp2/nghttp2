@@ -408,7 +408,7 @@ void spdylay_frame_ping_init(spdylay_ping *frame, uint32_t unique_id)
   memset(frame, 0, sizeof(spdylay_ping));
   frame->hd.version = SPDYLAY_PROTO_VERSION;
   frame->hd.type = SPDYLAY_PING;
-  frame->hd.flags = SPDYLAY_FLAG_NONE;
+  frame->hd.flags = SPDYLAY_CTRL_FLAG_NONE;
   frame->hd.length = 4;
   frame->unique_id = unique_id;
 }

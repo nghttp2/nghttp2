@@ -715,7 +715,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
       session->callbacks.on_data_send_callback
         (session,
          frame->data.eof ? frame->data.flags :
-         (frame->data.flags & (~SPDYLAY_FLAG_FIN)),
+         (frame->data.flags & (~SPDYLAY_DATA_FLAG_FIN)),
          frame->data.stream_id,
          session->aob.framebuflen-SPDYLAY_HEAD_LEN, session->user_data);
     }
@@ -732,10 +732,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     if(stream) {
       spdylay_syn_stream_aux_data *aux_data;
       stream->state = SPDYLAY_STREAM_OPENING;
-      if(frame->syn_stream.hd.flags & SPDYLAY_FLAG_FIN) {
+      if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
         spdylay_stream_shutdown(stream, SPDYLAY_SHUT_WR);
       }
-      if(frame->syn_stream.hd.flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
+      if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL) {
         spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
       }
       spdylay_session_close_stream_if_shut_rdwr(session, stream);
@@ -745,7 +745,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
         int r;
         /* spdylay_submit_data() makes a copy of aux_data->data_prd */
         r = spdylay_submit_data(session, frame->syn_stream.stream_id,
-                                SPDYLAY_FLAG_FIN, aux_data->data_prd);
+                                SPDYLAY_DATA_FLAG_FIN, aux_data->data_prd);
         if(r != 0) {
           /* FATAL error */
           assert(r < SPDYLAY_ERR_FATAL);
@@ -761,7 +761,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
       spdylay_session_get_stream(session, frame->syn_reply.stream_id);
     if(stream) {
       stream->state = SPDYLAY_STREAM_OPENED;
-      if(frame->syn_reply.hd.flags & SPDYLAY_FLAG_FIN) {
+      if(frame->syn_reply.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
         spdylay_stream_shutdown(stream, SPDYLAY_SHUT_WR);
       }
       spdylay_session_close_stream_if_shut_rdwr(session, stream);
@@ -771,7 +771,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
           (spdylay_data_provider*)item->aux_data;
         int r;
         r = spdylay_submit_data(session, frame->syn_reply.stream_id,
-                                SPDYLAY_FLAG_FIN, data_prd);
+                                SPDYLAY_DATA_FLAG_FIN, data_prd);
         if(r != 0) {
           /* FATAL error */
           assert(r < SPDYLAY_ERR_FATAL);
@@ -811,7 +811,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     spdylay_stream *stream =
       spdylay_session_get_stream(session, frame->headers.stream_id);
     if(stream) {
-      if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+      if(frame->headers.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
         spdylay_stream_shutdown(stream, SPDYLAY_SHUT_WR);
       }
       spdylay_session_close_stream_if_shut_rdwr(session, stream);
@@ -819,7 +819,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     break;
   }
   case SPDYLAY_DATA:
-    if(frame->data.eof && (frame->data.flags & SPDYLAY_FLAG_FIN)) {
+    if(frame->data.eof && (frame->data.flags & SPDYLAY_DATA_FLAG_FIN)) {
       spdylay_stream *stream =
         spdylay_session_get_stream(session, frame->data.stream_id);
       if(stream) {
@@ -1078,7 +1078,7 @@ static int spdylay_session_validate_syn_stream(spdylay_session *session,
          a RST_STREAM with error code INVALID_STREAM. */
       return SPDYLAY_INVALID_STREAM;
     }
-    if((frame->hd.flags & SPDYLAY_FLAG_UNIDIRECTIONAL) == 0 ||
+    if((frame->hd.flags & SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL) == 0 ||
        frame->assoc_stream_id % 2 == 0 ||
        spdylay_session_get_stream(session, frame->assoc_stream_id) == NULL) {
       /* It seems spdy/2 spec does not say which status code should be
@@ -1133,7 +1133,8 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                                     &frame->syn_stream);
   if(status_code == 0) {
     uint8_t flags = frame->syn_stream.hd.flags;
-    if((flags & SPDYLAY_FLAG_FIN) && (flags & SPDYLAY_FLAG_UNIDIRECTIONAL)) {
+    if((flags & SPDYLAY_CTRL_FLAG_FIN) &&
+       (flags & SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL)) {
       /* If the stream is UNIDIRECTIONAL and FIN bit set, we can close
          stream upon receiving SYN_STREAM. So, the stream needs not to
          be opened. */
@@ -1145,24 +1146,24 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            SPDYLAY_STREAM_OPENING,
                                            NULL);
       if(stream) {
-        if(flags & SPDYLAY_FLAG_FIN) {
+        if(flags & SPDYLAY_CTRL_FLAG_FIN) {
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
         }
-        if(flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
+        if(flags & SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL) {
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_WR);
         }
         /* We don't call spdylay_session_close_stream_if_shut_rdwr()
-           here because either SPDYLAY_FLAG_FIN or
-           SPDYLAY_FLAG_UNIDIRECTIONAL is not set here. */
+           here because either SPDYLAY_CTRL_FLAG_FIN or
+           SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL is not set here. */
       }
     }
     session->last_recv_stream_id = frame->syn_stream.stream_id;
     spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
                                                 frame);
-    if(flags & SPDYLAY_FLAG_FIN) {
+    if(flags & SPDYLAY_CTRL_FLAG_FIN) {
       spdylay_session_call_on_request_recv(session,
                                            frame->syn_stream.stream_id);
-      if(flags & SPDYLAY_FLAG_UNIDIRECTIONAL) {
+      if(flags & SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL) {
         /* Note that we call on_stream_close_callback without opening
            stream. */
         if(session->callbacks.on_stream_close_callback) {
@@ -1199,7 +1200,7 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
         stream->state = SPDYLAY_STREAM_OPENED;
         spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_REPLY,
                                                     frame);
-        if(frame->syn_reply.hd.flags & SPDYLAY_FLAG_FIN) {
+        if(frame->syn_reply.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
           /* This is the last frame of this stream, so disallow
              further receptions. */
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
@@ -1303,7 +1304,7 @@ int spdylay_session_on_headers_received(spdylay_session *session,
         valid = 1;
         spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
                                                     frame);
-        if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+        if(frame->headers.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
           spdylay_session_close_stream_if_shut_rdwr(session, stream);
         }
@@ -1322,7 +1323,7 @@ int spdylay_session_on_headers_received(spdylay_session *session,
       if(stream->state != SPDYLAY_STREAM_CLOSING) {
         spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_HEADERS,
                                                     frame);
-        if(frame->headers.hd.flags & SPDYLAY_FLAG_FIN) {
+        if(frame->headers.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
           spdylay_session_call_on_request_recv(session,
                                                frame->headers.stream_id);
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
@@ -1516,12 +1517,12 @@ int spdylay_session_on_data_received(spdylay_session *session,
           session->callbacks.on_data_recv_callback
             (session, flags, stream_id, length, session->user_data);
         }
-        if(flags & SPDYLAY_FLAG_FIN) {
+        if(flags & SPDYLAY_DATA_FLAG_FIN) {
           spdylay_session_call_on_request_recv(session, stream_id);
         }
       }
       if(valid) {
-        if(flags & SPDYLAY_FLAG_FIN) {
+        if(flags & SPDYLAY_DATA_FLAG_FIN) {
           spdylay_stream_shutdown(stream, SPDYLAY_SHUT_RD);
           spdylay_session_close_stream_if_shut_rdwr(session, stream);
         }
@@ -1754,8 +1755,8 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
   flags = 0;
   if(eof) {
     frame->eof = 1;
-    if(frame->flags & SPDYLAY_FLAG_FIN) {
-      flags |= SPDYLAY_FLAG_FIN;
+    if(frame->flags & SPDYLAY_DATA_FLAG_FIN) {
+      flags |= SPDYLAY_DATA_FLAG_FIN;
     }
   }
   (*buf_ptr)[4] = flags;

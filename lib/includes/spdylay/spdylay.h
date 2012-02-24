@@ -74,10 +74,15 @@ typedef enum {
 } spdylay_frame_type;
 
 typedef enum {
-  SPDYLAY_FLAG_NONE = 0,
-  SPDYLAY_FLAG_FIN = 1,
-  SPDYLAY_FLAG_UNIDIRECTIONAL = 2
-} spdylay_flag;
+  SPDYLAY_CTRL_FLAG_NONE = 0,
+  SPDYLAY_CTRL_FLAG_FIN = 0x1,
+  SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL = 0x2
+} spdylay_ctrl_flag;
+
+typedef enum {
+  SPDYLAY_DATA_FLAG_NONE = 0,
+  SPDYLAY_DATA_FLAG_FIN = 0x1
+} spdylay_data_flag;
 
 typedef enum {
   SPDYLAY_FLAG_SETTINGS_NONE = 0,
@@ -271,10 +276,9 @@ typedef void (*spdylay_on_invalid_ctrl_recv_callback)
  * Callback function invoked when data chunk of DATA frame is
  * received. |stream_id| is the stream ID of this DATA frame belongs
  * to. |flags| is the flags of DATA frame which this data chunk is
- * contained. flags & SPDYLAY_FLAG_FIN does not necessarily mean this
- * chunk of data is the last one in the stream. You should use
- * spdylay_on_data_recv_callback to know all data frame is received
- * whose flags contains SPDYLAY_FLAG_FIN.
+ * contained. flags & SPDYLAY_DATA_FLAG_FIN does not necessarily mean
+ * this chunk of data is the last one in the stream. You should use
+ * spdylay_on_data_recv_callback to know all data frames are received.
  */
 typedef void (*spdylay_on_data_chunk_recv_callback)
 (spdylay_session *session, uint8_t flags, int32_t stream_id,
@@ -515,10 +519,11 @@ int spdylay_submit_response(spdylay_session *session,
  * Submits SYN_STREAM frame. The |flags| is bitwise OR of the
  * following values:
  *
- * SPDYLAY_FLAG_FIN
- * SPDYLAY_FLAG_UNIDIRECTIONAL
+ * SPDYLAY_CTRL_FLAG_FIN
+ * SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL
  *
- * If |flags| includes SPDYLAY_FLAG_FIN, this frame has FIN flag set.
+ * If |flags| includes SPDYLAY_CTRL_FLAG_FIN, this frame has FIN flag
+ * set.
  *
  * The |assoc_stream_id| is used for server-push. If |session| is
  * initialized for client use, |assoc_stream_id| is ignored. The |pri|
@@ -547,9 +552,10 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
  * Submits HEADERS frame. The |flags| is bitwise OR of the following
  * values:
  *
- * SPDYLAY_FLAG_FIN
+ * SPDYLAY_CTRL_FLAG_FIN
  *
- * If |flags| includes SPDYLAY_FLAG_FIN, this frame has FIN flag set.
+ * If |flags| includes SPDYLAY_CTRL_FLAG_FIN, this frame has FIN flag
+ * set.
  *
  * The stream this frame belongs to is given in |stream_id|. The |nv|
  * is the name/value pairs in this frame.
@@ -567,7 +573,7 @@ int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
  * Submits 1 or more DATA frames to the stream |stream_id|.  The data
  * to be sent are provided by |data_prd|.  Depending on the length of
  * data, 1 or more DATA frames will be sent.  If |flags| contains
- * SPDYLAY_FLAG_FIN, the last DATA frame has FLAG_FIN set.
+ * SPDYLAY_DATA_FLAG_FIN, the last DATA frame has FLAG_FIN set.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
