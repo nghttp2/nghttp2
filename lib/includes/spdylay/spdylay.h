@@ -73,6 +73,8 @@ typedef enum {
   SPDYLAY_PING = 6,
   SPDYLAY_GOAWAY = 7,
   SPDYLAY_HEADERS = 8,
+  /* Since SPDY/3 */
+  SPDYLAY_WINDOW_UPDATE = 9,
   SPDYLAY_DATA = 100,
 } spdylay_frame_type;
 
@@ -143,7 +145,7 @@ typedef struct {
      SPDYLAY_SPDY3_LOWEST_PRI (loweset), depending on the protocol
      version. */
   uint8_t pri;
-  /* Use in spdy/3 only */
+  /* Since SPDY/3 */
   uint8_t slot;
   char **nv;
 } spdylay_syn_stream;
@@ -187,9 +189,16 @@ typedef struct {
 typedef struct {
   spdylay_ctrl_hd hd;
   int32_t last_good_stream_id;
-  /* spdy/3 only */
+  /* Since SPDY/3 */
   uint32_t status_code;
 } spdylay_goaway;
+
+/* WINDOW_UPDATE is introduced since SPDY/3 */
+typedef struct {
+  spdylay_ctrl_hd hd;
+  int32_t stream_id;
+  int32_t delta_window_size;
+} spdylay_window_update;
 
 typedef union {
   int fd;
@@ -237,6 +246,8 @@ typedef union {
   spdylay_ping ping;
   spdylay_goaway goaway;
   spdylay_headers headers;
+  /* Since SPDY/3 */
+  spdylay_window_update window_update;
   spdylay_data data;
 } spdylay_frame;
 

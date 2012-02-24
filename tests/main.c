@@ -145,6 +145,8 @@ int main(int argc, char* argv[])
                    test_spdylay_frame_pack_syn_reply) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_spdylay_frame_pack_headers) ||
+      !CU_add_test(pSuite, "frame_pack_window_update",
+                   test_spdylay_frame_pack_window_update) ||
       !CU_add_test(pSuite, "frame_pack_settings",
                    test_spdylay_frame_pack_settings) ||
       !CU_add_test(pSuite, "frame_nv_sort", test_spdylay_frame_nv_sort) ||

@@ -384,6 +384,33 @@ void test_spdylay_frame_pack_headers()
   test_spdylay_frame_pack_headers_with(SPDYLAY_PROTO_SPDY3);
 }
 
+void test_spdylay_frame_pack_window_update()
+{
+  spdylay_frame frame, oframe;
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  ssize_t framelen;
+  spdylay_frame_window_update_init(&frame.window_update, SPDYLAY_PROTO_SPDY3,
+                                   1000000007, 4096);
+  framelen = spdylay_frame_pack_window_update(&buf, &buflen,
+                                              &frame.window_update);
+  CU_ASSERT(0 == spdylay_frame_unpack_window_update
+            (&oframe.window_update,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             framelen-SPDYLAY_FRAME_HEAD_LENGTH));
+  CU_ASSERT(1000000007 == oframe.window_update.stream_id);
+  CU_ASSERT(4096 == oframe.window_update.delta_window_size);
+  CU_ASSERT(SPDYLAY_PROTO_SPDY3 == oframe.headers.hd.version);
+  CU_ASSERT(SPDYLAY_WINDOW_UPDATE == oframe.headers.hd.type);
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.headers.hd.flags);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  free(buf);
+  spdylay_frame_window_update_free(&oframe.window_update);
+  spdylay_frame_window_update_free(&frame.window_update);
+}
+
+
 void test_spdylay_frame_pack_settings()
 {
   spdylay_frame frame, oframe;

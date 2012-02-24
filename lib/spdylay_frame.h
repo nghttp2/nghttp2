@@ -36,6 +36,7 @@
 #define SPDYLAY_STREAM_ID_MASK 0x7fffffff
 #define SPDYLAY_LENGTH_MASK 0xffffff
 #define SPDYLAY_VERSION_MASK 0x7fff
+#define SPDYLAY_DELTA_WINDOW_SIZE_MASK 0x7fffffff
 
 /* The length of DATA frame payload. */
 #define SPDYLAY_DATA_PAYLOAD_LENGTH 4096
@@ -287,7 +288,7 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
  * Packs RST_STREAM frame |frame| in wire frame format and store it in
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. In spdy/2 spc, RST_STREAM wire format is always 16
+ * given |frame|. In spdy/2 spec, RST_STREAM wire format is always 16
  * bytes long.
  *
  * This function returns the size of packed frame if it succeeds, or
@@ -311,6 +312,37 @@ ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
 int spdylay_frame_unpack_rst_stream(spdylay_rst_stream *frame,
                                     const uint8_t *head, size_t headlen,
                                     const uint8_t *payload, size_t payloadlen);
+
+
+/*
+ * Packs WINDOW_UPDATE frame |frame| in wire frame format and store it
+ * in |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
+ * length. This function expands |*buf_ptr| as necessary to store
+ * given |frame|. In SPDY/3 spec, WINDOW_UPDATE wire format is always 16
+ * bytes long.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * returns one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+ssize_t spdylay_frame_pack_window_update(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                         spdylay_window_update *frame);
+
+/*
+ * Unpacks WINDOW_UPDATE frame byte sequence into |frame|.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ */
+int spdylay_frame_unpack_window_update(spdylay_window_update *frame,
+                                       const uint8_t *head, size_t headlen,
+                                       const uint8_t *payload,
+                                       size_t payloadlen);
 
 /*
  * Packs SETTINGS frame |frame| in wire format and store it in
@@ -447,6 +479,13 @@ void spdylay_frame_rst_stream_init(spdylay_rst_stream *frame,
                                    int32_t stream_id, uint32_t status_code);
 
 void spdylay_frame_rst_stream_free(spdylay_rst_stream *frame);
+
+void spdylay_frame_window_update_init(spdylay_window_update *frame,
+                                      uint16_t version,
+                                      int32_t stream_id,
+                                      int32_t delta_window_size);
+
+void spdylay_frame_window_update_free(spdylay_window_update *frame);
 
 /*
  * Initializes SETTINGS frame |frame| with given values. |frame| takes
