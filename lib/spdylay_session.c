@@ -79,6 +79,7 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   int r;
   *session_ptr = malloc(sizeof(spdylay_session));
   if(*session_ptr == NULL) {
+    r = SPDYLAY_ERR_NOMEM;
     goto fail_session;
   }
   memset(*session_ptr, 0, sizeof(spdylay_session));
@@ -118,12 +119,14 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->aob.framebuf = malloc
     (SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH);
   if((*session_ptr)->aob.framebuf == NULL) {
+    r = SPDYLAY_ERR_NOMEM;
     goto fail_aob_framebuf;
   }
   (*session_ptr)->aob.framebufmax = SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH;
 
   (*session_ptr)->nvbuf = malloc(SPDYLAY_INITIAL_NV_BUFFER_LENGTH);
   if((*session_ptr)->nvbuf == NULL) {
+    r = SPDYLAY_ERR_NOMEM;
     goto fail_nvbuf;
   }
   (*session_ptr)->nvbuflen = SPDYLAY_INITIAL_NV_BUFFER_LENGTH;
@@ -143,6 +146,7 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->iframe.state = SPDYLAY_RECV_HEAD;
   (*session_ptr)->iframe.buf = malloc(SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH);
   if((*session_ptr)->iframe.buf == NULL) {
+    r = SPDYLAY_ERR_NOMEM;
     goto fail_iframe_buf;
   }
   (*session_ptr)->iframe.bufmax = SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH;
