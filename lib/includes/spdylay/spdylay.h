@@ -127,8 +127,8 @@ typedef enum {
   SPDYLAY_FLOW_CONTROL_ERROR = 7
 } spdylay_status_code;
 
-#define SPDYLAY_SPDY2_LOWEST_PRI 3
-#define SPDYLAY_SPDY3_LOWEST_PRI 7
+#define SPDYLAY_SPDY2_PRI_LOWEST 3
+#define SPDYLAY_SPDY3_PRI_LOWEST 7
 
 typedef struct {
   uint16_t version;
@@ -141,8 +141,8 @@ typedef struct {
   spdylay_ctrl_hd hd;
   int32_t stream_id;
   int32_t assoc_stream_id;
-  /* 0 (Highest) to SPDYLAY_SPDY2_LOWEST_PRI or
-     SPDYLAY_SPDY3_LOWEST_PRI (loweset), depending on the protocol
+  /* 0 (Highest) to SPDYLAY_SPDY2_PRI_LOWEST or
+     SPDYLAY_SPDY3_PRI_LOWEST (loweset), depending on the protocol
      version. */
   uint8_t pri;
   /* Since SPDY/3 */
@@ -372,10 +372,11 @@ typedef struct {
 } spdylay_session_callbacks;
 
 /*
- * Initializes |*session_ptr| for client use. The all members of
- * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|
- * does not store |callbacks|. |user_data| is an arbitrary user
- * supplied data, which will be passed to the callback functions.
+ * Initializes |*session_ptr| for client use, using the protocol
+ * version |version|. The all members of |callbacks| are copied to
+ * |*session_ptr|. Therefore |*session_ptr| does not store
+ * |callbacks|. |user_data| is an arbitrary user supplied data, which
+ * will be passed to the callback functions.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -388,14 +389,16 @@ typedef struct {
  *     The version is not supported.
  */
 int spdylay_session_client_new(spdylay_session **session_ptr,
+                               uint16_t version,
                                const spdylay_session_callbacks *callbacks,
                                void *user_data);
 
 /*
- * Initializes |*session_ptr| for server use. The all members of
- * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|
- * does not store |callbacks|. |user_data| is an arbitrary user
- * supplied data, which will be passed to the callback functions.
+ * Initializes |*session_ptr| for server use, using the protocol
+ * version |version|. The all members of |callbacks| are copied to
+ * |*session_ptr|. Therefore |*session_ptr| does not store
+ * |callbacks|. |user_data| is an arbitrary user supplied data, which
+ * will be passed to the callback functions.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -408,6 +411,7 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
  *     The version is not supported.
  */
 int spdylay_session_server_new(spdylay_session **session_ptr,
+                               uint16_t version,
                                const spdylay_session_callbacks *callbacks,
                                void *user_data);
 

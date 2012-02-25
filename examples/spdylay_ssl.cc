@@ -51,7 +51,7 @@ bool ssl_debug = false;
 Spdylay::Spdylay(int fd, SSL *ssl, const spdylay_session_callbacks *callbacks)
   : fd_(fd), ssl_(ssl), want_write_(false)
 {
-  spdylay_session_client_new(&session_, callbacks, this);
+  spdylay_session_client_new(&session_, SPDYLAY_PROTO_SPDY2, callbacks, this);
 }
 
 Spdylay::~Spdylay()
@@ -286,7 +286,8 @@ const char *ctrl_names[] = {
   "NOOP",
   "PING",
   "GOAWAY",
-  "HEADERS"
+  "HEADERS",
+  "WINDOW_UPDATE"
 };
 } // namespace
 
@@ -366,6 +367,12 @@ void print_frame(spdylay_frame_type type, spdylay_frame *frame)
     print_frame_attr_indent();
     printf("(stream_id=%d)\n", frame->headers.stream_id);
     print_nv(frame->headers.nv);
+    break;
+  case SPDYLAY_WINDOW_UPDATE:
+    print_frame_attr_indent();
+    printf("(stream_id=%d, delta_window_size=%d)\n",
+           frame->window_update.stream_id,
+           frame->window_update.delta_window_size);
     break;
   default:
     printf("\n");

@@ -32,7 +32,7 @@ void test_spdylay_stream_add_pushed_stream()
 {
   spdylay_stream stream;
   int i, n;
-  spdylay_stream_init(&stream, 1, SPDYLAY_CTRL_FLAG_NONE, 3,
+  spdylay_stream_init(&stream, 1, SPDYLAY_CTRL_FLAG_NONE, 3, 65536,
                       SPDYLAY_STREAM_OPENING, NULL);
   n = 26;
   for(i = 2; i < n; i += 2) {

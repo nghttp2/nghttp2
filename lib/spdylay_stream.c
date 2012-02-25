@@ -29,6 +29,7 @@
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
                          uint8_t flags, uint8_t pri,
                          spdylay_stream_state initial_state,
+                         int32_t initial_window_size,
                          void *stream_user_data)
 {
   stream->stream_id = stream_id;
@@ -41,6 +42,9 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
   stream->pushed_streams_capacity = 0;
   stream->stream_user_data = stream_user_data;
   stream->deferred_data = NULL;
+  stream->deferred_flags = SPDYLAY_DEFERRED_NONE;
+  stream->initial_window_size = stream->window_size = initial_window_size;
+  stream->recv_window_size = 0;
 }
 
 void spdylay_stream_free(spdylay_stream *stream)
@@ -73,13 +77,16 @@ int spdylay_stream_add_pushed_stream(spdylay_stream *stream, int32_t stream_id)
 }
 
 void spdylay_stream_defer_data(spdylay_stream *stream,
-                               spdylay_outbound_item *data)
+                               spdylay_outbound_item *data,
+                               uint8_t flags)
 {
   assert(stream->deferred_data == NULL);
   stream->deferred_data = data;
+  stream->deferred_flags = flags;
 }
 
 void spdylay_stream_detach_deferred_data(spdylay_stream *stream)
 {
   stream->deferred_data = NULL;
+  stream->deferred_flags = SPDYLAY_DEFERRED_NONE;
 }

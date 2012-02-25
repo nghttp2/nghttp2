@@ -31,6 +31,7 @@ void test_spdylay_session_add_frame();
 void test_spdylay_session_on_syn_stream_received();
 void test_spdylay_session_on_syn_stream_received_with_push();
 void test_spdylay_session_on_syn_reply_received();
+void test_spdylay_session_on_window_update_received();
 void test_spdylay_session_send_syn_stream();
 void test_spdylay_session_send_syn_reply();
 void test_spdylay_submit_response();
@@ -57,5 +58,6 @@ void test_spdylay_session_stop_data_with_rst_stream();
 void test_spdylay_session_stream_close_on_syn_stream();
 void test_spdylay_session_recv_invalid_frame();
 void test_spdylay_session_defer_data();
+void test_spdylay_session_flow_control();
 
 #endif // SPDYLAY_SESSION_TEST_H

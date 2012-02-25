@@ -42,7 +42,7 @@ static int spdylay_submit_syn_stream_shared
   uint8_t flags_copy;
   spdylay_data_provider *data_prd_copy = NULL;
   spdylay_syn_stream_aux_data *aux_data;
-  if(pri > 3) {
+  if(pri > spdylay_session_get_pri_lowest(session)) {
     return SPDYLAY_ERR_INVALID_ARGUMENT;
   }
   if(session->server == 0) {

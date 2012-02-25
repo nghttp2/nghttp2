@@ -69,6 +69,12 @@ typedef enum {
   SPDYLAY_SHUT_RDWR = SPDYLAY_SHUT_RD | SPDYLAY_SHUT_WR
 } spdylay_shut_flag;
 
+typedef enum {
+  SPDYLAY_DEFERRED_NONE = 0,
+  /* Indicates the DATA is deferred due to flow control. */
+  SPDYLAY_DEFERRED_FLOW_CONTROL = 0x01
+} spdylay_deferred_flag;
+
 typedef struct {
   int32_t stream_id;
   spdylay_stream_state state;
@@ -90,11 +96,27 @@ typedef struct {
   void *stream_user_data;
   /* Deferred DATA frame */
   spdylay_outbound_item *deferred_data;
+  /* The flags for defered DATA. Bitwise OR of zero or more
+     spdylay_deferred_flag values */
+  uint8_t deferred_flags;
+  /* Initial window size where window_size is compuated
+     against. Initially, window_size = initial_window_size. When N
+     bytes are sent, window_size -= N. After that, when the initial
+     window size is changed, say, new_initial_window_size, then
+     window_size becomes
+     new_initial_window_size-(initial_window_size-window_size) */
+  int32_t initial_window_size;
+  /* Current sender window size */
+  int32_t window_size;
+  /* Keep track of the number of bytes received without
+     WINDOW_UPDATE. */
+  int32_t recv_window_size;
 } spdylay_stream;
 
 void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
                          uint8_t flags, uint8_t pri,
                          spdylay_stream_state initial_state,
+                         int32_t initial_window_size,
                          void *stream_user_data);
 
 void spdylay_stream_free(spdylay_stream *stream);
@@ -120,10 +142,12 @@ int spdylay_stream_add_pushed_stream(spdylay_stream *stream, int32_t stream_id);
 
 /*
  * Defer DATA frame |data|. We won't call this function in the
- * situation where stream->deferred_data != NULL.
+ * situation where stream->deferred_data != NULL.  If |flags| is
+ * bitwise OR of zero or more spdylay_deferred_flag values.
  */
 void spdylay_stream_defer_data(spdylay_stream *stream,
-                               spdylay_outbound_item *data);
+                               spdylay_outbound_item *data,
+                               uint8_t flags);
 
 /*
  * Detaches deferred data from this stream. This function does not

@@ -173,7 +173,7 @@ SpdyEventHandler::SpdyEventHandler(const Config* config,
   : EventHandler(config),
     fd_(fd), ssl_(ssl), session_id_(session_id), want_write_(false)
 {
-  spdylay_session_server_new(&session_, callbacks, this);
+  spdylay_session_server_new(&session_, SPDYLAY_PROTO_SPDY2, callbacks, this);
 }
     
 SpdyEventHandler::~SpdyEventHandler()

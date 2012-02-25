@@ -99,6 +99,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_reply_fail) ||
       !CU_add_test(pSuite, "session_on_headers_received",
                    test_spdylay_session_on_headers_received) ||
+      !CU_add_test(pSuite, "session_on_window_update_received",
+                   test_spdylay_session_on_window_update_received) ||
       !CU_add_test(pSuite, "session_on_ping_received",
                    test_spdylay_session_on_ping_received) ||
       !CU_add_test(pSuite, "session_on_goaway_received",
@@ -131,6 +133,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_recv_invalid_frame) ||
       !CU_add_test(pSuite, "session_defer_data",
                    test_spdylay_session_defer_data) ||
+      !CU_add_test(pSuite, "session_flow_control",
+                   test_spdylay_session_flow_control) ||
       !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||

@@ -62,6 +62,8 @@ typedef struct {
   SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH
 #define SPDYLAY_INITIAL_NV_BUFFER_LENGTH 4096
 
+#define SPDYLAY_INITIAL_WINDOW_SIZE 65536
+
 typedef struct {
   uint8_t buf[SPDYLAY_INBOUND_BUFFER_LENGTH];
   uint8_t *mark;
@@ -149,6 +151,10 @@ struct spdylay_session {
   /* This is the value in GOAWAY frame sent by remote endpoint. */
   int32_t last_good_stream_id;
 
+  /* Flag to indicate whether this session enforces flow
+     control. Nonzero for flow control enabled. */
+  uint8_t flow_control;
+
   /* Settings value store. We just use ID as index. The index = 0 is
      unused. */
   uint32_t settings[SPDYLAY_SETTINGS_MAX+1];
@@ -224,6 +230,22 @@ int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id);
  */
 int spdylay_session_add_goaway(spdylay_session *session,
                                int32_t last_good_stream_id);
+
+/*
+ * Adds WINDOW_UPDATE frame with stream ID |stream_id| and
+ * delta-window-size |delta_window_size|. This is a convenient
+ * function built on top of spdylay_session_add_frame() to add
+ * WINDOW_UPDATE easily.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_session_add_window_update(spdylay_session *session,
+                                      int32_t stream_id,
+                                      int32_t delta_window_size);
 
 /*
  * Creates new stream in |session| with stream ID |stream_id|,
@@ -364,6 +386,19 @@ int spdylay_session_on_headers_received(spdylay_session *session,
                                         spdylay_frame *frame);
 
 /*
+ * Called when WINDOW_UPDATE is recieved, assuming
+ * |frame.window_update| is properly initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_session_on_window_update_received(spdylay_session *session,
+                                              spdylay_frame *frame);
+
+/*
  * Called when DATA is received.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -436,5 +471,10 @@ spdylay_outbound_item* spdylay_session_pop_next_ob_item
  */
 spdylay_outbound_item* spdylay_session_get_next_ob_item
 (spdylay_session *session);
+
+/*
+ * Returns lowest priority value.
+ */
+uint8_t spdylay_session_get_pri_lowest(spdylay_session *session);
 
 #endif /* SPDYLAY_SESSION_H */
