@@ -2,7 +2,7 @@ Spdylay - SPDY C Library
 ========================
 
 This is an experimental implementation of Google's SPDY protocol
-version 2 in C.
+version 2 and 3 in C.
 
 The current status of development is in a beta stage now. As described
 below, we can create SPDY client and server with the current Spdylay
