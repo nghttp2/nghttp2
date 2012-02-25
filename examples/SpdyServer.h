@@ -50,6 +50,7 @@ struct Config {
   std::string cert_file;
   spdylay_on_request_recv_callback on_request_recv_callback;
   void *data_ptr;
+  bool spdy3_only;
   Config();
 };
 
@@ -93,7 +94,8 @@ struct Request {
 class SpdyEventHandler : public EventHandler {
 public:
   SpdyEventHandler(const Config* config,
-                   int fd, SSL *ssl, const spdylay_session_callbacks *callbacks,
+                   int fd, SSL *ssl, uint16_t version,
+                   const spdylay_session_callbacks *callbacks,
                    int64_t session_id);
   virtual ~SpdyEventHandler();
   virtual int execute(Sessions *sessions);
@@ -101,6 +103,8 @@ public:
   virtual bool want_write();
   virtual int fd() const;
   virtual bool finish();
+
+  uint16_t version() const;
 
   ssize_t send_data(const uint8_t *data, size_t len, int flags);
 
@@ -132,6 +136,7 @@ private:
   spdylay_session *session_;
   int fd_;
   SSL* ssl_;
+  uint16_t version_;
   int64_t session_id_;
   bool want_write_;
   std::map<int32_t, Request*> id2req_;

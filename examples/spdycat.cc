@@ -144,7 +144,8 @@ int communicate(const std::string& host, uint16_t port,
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
   }
-  setup_ssl_ctx(ssl_ctx);
+  std::string next_proto;
+  setup_ssl_ctx(ssl_ctx, &next_proto);
   SSL *ssl = SSL_new(ssl_ctx);
   if(!ssl) {
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
@@ -155,7 +156,10 @@ int communicate(const std::string& host, uint16_t port,
   }
   make_non_block(fd);
   set_tcp_nodelay(fd);
-  Spdylay sc(fd, ssl, callbacks);
+  Spdylay sc(fd, ssl,
+             spdylay_npn_get_version(reinterpret_cast<const unsigned char*>
+                                     (next_proto.c_str()), next_proto.size()),
+             callbacks);
 
   nfds_t npollfds = 1;
   pollfd pollfds[1];

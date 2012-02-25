@@ -38,9 +38,29 @@ namespace spdylay {
 
 extern bool ssl_debug;
 
+enum HeaderField {
+  HD_METHOD = 0,
+  HD_PATH = 1,
+  HD_VERSION = 2,
+  HD_HOST = 3,
+  HD_SCHEME = 4,
+  HD_STATUS = 5
+};
+
+const std::string header_fields_spdy2[] = {
+  "method", "url", "version", "host", "scheme", "status", "version"
+};
+
+const std::string header_fields_spdy3[] = {
+  ":method", ":path", ":version", ":host", ":scheme", ":status", ":version"
+};
+
+const std::string& get_header_field(uint16_t version, size_t field);
+
 class Spdylay {
 public:
-  Spdylay(int fd, SSL *ssl, const spdylay_session_callbacks *callbacks);
+  Spdylay(int fd, SSL *ssl, uint16_t version,
+          const spdylay_session_callbacks *callbacks);
   ~Spdylay();
   int recv();
   int send();
@@ -55,6 +75,7 @@ public:
 private:
   int fd_;
   SSL *ssl_;
+  uint16_t version_;
   spdylay_session *session_;
   bool want_write_;
   bool debug_;
@@ -100,7 +121,7 @@ int select_next_proto_cb(SSL* ssl,
                          const unsigned char *in, unsigned int inlen,
                          void *arg);
 
-void setup_ssl_ctx(SSL_CTX *ssl_ctx);
+void setup_ssl_ctx(SSL_CTX *ssl_ctx, void *next_proto_select_cb_arg);
 
 int ssl_handshake(SSL *ssl, int fd);
 

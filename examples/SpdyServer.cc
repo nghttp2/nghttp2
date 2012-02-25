@@ -32,6 +32,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
+#include <cassert>
 #include <set>
 #include <iostream>
 
@@ -54,7 +55,8 @@ const std::string DEFAULT_HTML = "index.html";
 const std::string SPDYD_SERVER = "spdyd spdylay/"SPDYLAY_VERSION;
 } // namespace
 
-Config::Config(): verbose(false), daemon(false), port(0), data_ptr(0)
+Config::Config(): verbose(false), daemon(false), port(0), data_ptr(0),
+                  spdy3_only(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -168,12 +170,16 @@ void on_session_closed(EventHandler *hd, int64_t session_id)
 
 SpdyEventHandler::SpdyEventHandler(const Config* config,
                                    int fd, SSL *ssl,
+                                   uint16_t version,
                                    const spdylay_session_callbacks *callbacks,
                                    int64_t session_id)
   : EventHandler(config),
-    fd_(fd), ssl_(ssl), session_id_(session_id), want_write_(false)
+    fd_(fd), ssl_(ssl), version_(version), session_id_(session_id),
+    want_write_(false)
 {
-  spdylay_session_server_new(&session_, SPDYLAY_PROTO_SPDY2, callbacks, this);
+  int r;
+  r = spdylay_session_server_new(&session_, version, callbacks, this);
+  assert(r == 0);
 }
     
 SpdyEventHandler::~SpdyEventHandler()
@@ -188,6 +194,11 @@ SpdyEventHandler::~SpdyEventHandler()
   SSL_free(ssl_);
   shutdown(fd_, SHUT_WR);
   close(fd_);
+}
+
+uint16_t SpdyEventHandler::version() const
+{
+  return version_;
 }
 
 int SpdyEventHandler::execute(Sessions *sessions)
@@ -253,8 +264,8 @@ int SpdyEventHandler::submit_file_response(const std::string& status,
                                            spdylay_data_provider *data_prd)
 {
   const char *nv[] = {
-    "status", status.c_str(),
-    "version", "HTTP/1.1",
+    get_header_field(version_, HD_STATUS).c_str(), status.c_str(),
+    get_header_field(version_, HD_VERSION).c_str(), "HTTP/1.1",
     "server", SPDYD_SERVER.c_str(),
     "content-length", util::to_str(file_length).c_str(),
     "cache-control", "max-age=3600",
@@ -276,9 +287,9 @@ int SpdyEventHandler::submit_response
  spdylay_data_provider *data_prd)
 {
   const char **nv = new const char*[8+headers.size()*2+1];
-  nv[0] = "status";
+  nv[0] = get_header_field(version_, HD_STATUS).c_str();
   nv[1] = status.c_str();
-  nv[2] = "version";
+  nv[2] = get_header_field(version_, HD_VERSION).c_str();
   nv[3] = "HTTP/1.1";
   nv[4] = "server";
   nv[5] = SPDYD_SERVER.c_str();
@@ -299,8 +310,8 @@ int SpdyEventHandler::submit_response(const std::string& status,
                                       spdylay_data_provider *data_prd)
 {
   const char *nv[] = {
-    "status", status.c_str(),
-    "version", "HTTP/1.1",
+    get_header_field(version_, HD_STATUS).c_str(), status.c_str(),
+    get_header_field(version_, HD_VERSION).c_str(), "HTTP/1.1",
     "server", SPDYD_SERVER.c_str(),
     0
   };
@@ -432,26 +443,30 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
   bool method_found = false;
   bool scheme_found = false;
   bool version_found = false;
+  bool host_found = false;
   time_t last_mod = 0;
   bool last_mod_found = false;
   for(int i = 0; i < (int)req->headers.size(); ++i) {
     const std::string &field = req->headers[i].first;
     const std::string &value = req->headers[i].second;
-    if(!url_found && field == "url") {
+    if(!url_found && field == get_header_field(hd->version(), HD_PATH)) {
       url_found = true;
       url = value;
-    } else if(field == "method") {
+    } else if(field == get_header_field(hd->version(), HD_METHOD)) {
       method_found = true;
-    } else if(field == "scheme") {
+    } else if(field == get_header_field(hd->version(), HD_SCHEME)) {
       scheme_found = true;
-    } else if(field == "version") {
+    } else if(field == get_header_field(hd->version(), HD_VERSION)) {
       version_found = true;
+    } else if(field == get_header_field(hd->version(), HD_HOST)) {
+      host_found = true;
     } else if(!last_mod_found && field == "if-modified-since") {
       last_mod_found = true;
       last_mod = util::parse_http_date(value);
     }
   }
-  if(!url_found || !method_found || !scheme_found || !version_found) {
+  if(!url_found || !method_found || !scheme_found || !version_found ||
+     !host_found) {
     prepare_status_response(req, hd, STATUS_400);
     return;
   }
@@ -608,7 +623,7 @@ public:
   SSLAcceptEventHandler(const Config *config,
                         int fd, SSL *ssl, int64_t session_id)
     : EventHandler(config),
-      fd_(fd), ssl_(ssl), fail_(false), finish_(false),
+      fd_(fd), ssl_(ssl), version_(0), fail_(false), finish_(false),
       want_read_(true), want_write_(true),
       session_id_(session_id)
   {}
@@ -636,7 +651,8 @@ public:
         if(config()->verbose) {
           std::cout << "The negotiated next protocol: " << proto << std::endl;
         }
-        if(proto == "spdy/2") {
+        version_ = spdylay_npn_get_version(next_proto, next_proto_len);
+        if(version_) {
           add_next_handler(sessions);
         } else {
           fail_ = true;
@@ -697,7 +713,7 @@ private:
     callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
     callbacks.on_request_recv_callback = config()->on_request_recv_callback;
     SpdyEventHandler *hd = new SpdyEventHandler(config(),
-                                                fd_, ssl_, &callbacks,
+                                                fd_, ssl_, version_, &callbacks,
                                                 session_id_);
     if(sessions->mod_poll(hd) == -1) {
       // fd_, ssl_ are freed by ~SpdyEventHandler()
@@ -709,6 +725,7 @@ private:
   
   int fd_;
   SSL *ssl_;
+  uint16_t version_;
   bool fail_, finish_;
   bool want_read_, want_write_;
   int64_t session_id_;
@@ -862,13 +879,23 @@ int SpdyServer::run()
     return -1;
   }
 
-  // We only speak "spdy/2".
+  // We speaks "spdy/2" and "spdy/3".
   std::pair<unsigned char*, size_t> next_proto;
-  unsigned char proto_list[7];
-  proto_list[0] = 6;
-  memcpy(&proto_list[1], "spdy/2", 6);
-  next_proto.first = proto_list;
-  next_proto.second = sizeof(proto_list);
+  unsigned char proto_list[14];
+
+  if(config_->spdy3_only) {
+    proto_list[0] = 6;
+    memcpy(&proto_list[1], "spdy/3", 6);
+    next_proto.first = proto_list;
+    next_proto.second = 7;
+  } else {
+    proto_list[0] = 6;
+    memcpy(&proto_list[1], "spdy/2", 6);
+    proto_list[7] = 6;
+    memcpy(&proto_list[8], "spdy/3", 6);
+    next_proto.first = proto_list;
+    next_proto.second = sizeof(proto_list);
+  }
 
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
 

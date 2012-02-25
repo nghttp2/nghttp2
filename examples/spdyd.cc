@@ -28,6 +28,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cassert>
 #include <string>
 #include <iostream>
 #include <string>
@@ -68,6 +69,8 @@ void print_help(std::ostream& out)
       << "    -v, --verbose      Print debug information such as reception/\n"
       << "                       transmission of frames and name/value pairs.\n"
       << "\n"
+      << "    -3, --spdy3        Only use SPDY/3.\n"
+      << "\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -82,10 +85,11 @@ int main(int argc, char **argv)
       {"htdocs", required_argument, 0, 'd' },
       {"help", no_argument, 0, 'h' },
       {"verbose", no_argument, 0, 'v' },
+      {"spdy3", no_argument, 0, '3' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Dd:hv", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Dd:hv3", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -101,6 +105,9 @@ int main(int argc, char **argv)
       exit(EXIT_SUCCESS);
     case 'v':
       config.verbose = true;
+      break;
+    case '3':
+      config.spdy3_only = true;
       break;
     case '?':
       exit(EXIT_FAILURE);
