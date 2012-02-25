@@ -706,6 +706,16 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
                                  const unsigned char *in, unsigned int inlen);
 
 /*
+ * Returns spdy version which spdylay library supports from given
+ * protocol name. The |proto| is the pointer to the protocol name and
+ * |protolen| is its length. Currently, "spdy/2" and "spdy/3" are
+ * supported.
+ *
+ * This function returns nonzero spdy version if it succeeds, or 0.
+ */
+uint16_t spdylay_npn_get_version(const unsigned char *proto, size_t protolen);
+
+/*
  * Put back previously deferred DATA frame in the stream |stream_id|
  * to outbound queue.
  *

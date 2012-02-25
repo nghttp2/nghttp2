@@ -26,17 +26,31 @@
 
 #include <string.h>
 
+typedef struct {
+  const unsigned char *proto;
+  uint8_t len;
+} spdylay_npn_proto;
+
 int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
                                  const unsigned char *in, unsigned int inlen)
 {
   int http_selected = 0;
   unsigned int i = 0;
+  static const spdylay_npn_proto proto_list[] = {
+    { (const unsigned char*)"spdy/2", 6 },
+    { (const unsigned char*)"spdy/3", 6 }
+  };
   for(; i < inlen; i += in[i]+1) {
-    if(in[i] == 6 && memcmp(&in[i+1], "spdy/2", in[i]) == 0) {
-      *out = (unsigned char*)&in[i+1];
-      *outlen = in[i];
-      return 1;
-    } else if(in[i] == 8 && memcmp(&in[i+1], "http/1.1", in[i]) == 0) {
+    int j;
+    for(j = 0; j < sizeof(proto_list)/sizeof(spdylay_npn_proto); ++j) {
+      if(in[i] == proto_list[j].len &&
+         memcmp(&in[i+1], proto_list[j].proto, in[i]) == 0) {
+        *out = (unsigned char*)&in[i+1];
+        *outlen = in[i];
+        return 1;
+      }
+    }
+    if(in[i] == 8 && memcmp(&in[i+1], "http/1.1", in[i]) == 0) {
       http_selected = 1;
       *out = (unsigned char*)&in[i+1];
       *outlen = in[i];
@@ -48,5 +62,21 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
     return 0;
   } else {
     return -1;
+  }
+}
+
+uint16_t spdylay_npn_get_version(const unsigned char *proto, size_t protolen)
+{
+  if(proto == NULL) {
+    return 0;
+  } else {
+    if(protolen == 6) {
+      if(memcmp("spdy/2", proto, 6) == 0) {
+        return SPDYLAY_PROTO_SPDY2;
+      } else if(memcmp("spdy/3", proto, 6) == 0) {
+        return SPDYLAY_PROTO_SPDY3;
+      }
+    }
+    return 0;
   }
 }
