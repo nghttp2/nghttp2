@@ -454,7 +454,13 @@ void spdylay_frame_goaway_init(spdylay_goaway *frame,
   memset(frame, 0, sizeof(spdylay_goaway));
   frame->hd.version = version;
   frame->hd.type = SPDYLAY_GOAWAY;
-  frame->hd.length = 4;
+  if(version == SPDYLAY_PROTO_SPDY2) {
+    frame->hd.length = 4;
+  } else if(version == SPDYLAY_PROTO_SPDY3) {
+    frame->hd.length = 8;
+  } else {
+    frame->hd.length = 0;
+  }
   frame->last_good_stream_id = last_good_stream_id;
   frame->status_code = 0; /* TODO Add status_code arg for spdy/3 */
 }
