@@ -151,9 +151,10 @@ int spdylay_submit_rst_stream(spdylay_session *session, int32_t stream_id,
   return spdylay_session_add_rst_stream(session, stream_id, status_code);
 }
 
-int spdylay_submit_goaway(spdylay_session *session)
+int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code)
 {
-  return spdylay_session_add_goaway(session, session->last_recv_stream_id);
+  return spdylay_session_add_goaway(session, session->last_recv_stream_id,
+                                    status_code);
 }
 
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,

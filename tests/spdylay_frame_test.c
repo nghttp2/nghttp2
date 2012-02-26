@@ -216,13 +216,14 @@ void test_spdylay_frame_pack_ping()
   spdylay_frame_ping_free(&frame.ping);
 }
 
-void test_spdylay_frame_pack_goaway()
+void test_spdylay_frame_pack_goaway_version(uint16_t version)
 {
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL;
   size_t buflen = 0;
   ssize_t framelen;
-  spdylay_frame_goaway_init(&frame.goaway, SPDYLAY_PROTO_SPDY2, 1000000007);
+  spdylay_frame_goaway_init(&frame.goaway, version, 1000000007,
+                            SPDYLAY_GOAWAY_PROTOCOL_ERROR);
   framelen = spdylay_frame_pack_goaway(&buf, &buflen, &frame.goaway);
   CU_ASSERT(0 == spdylay_frame_unpack_goaway
             (&oframe.goaway,
@@ -230,13 +231,29 @@ void test_spdylay_frame_pack_goaway()
              &buf[SPDYLAY_FRAME_HEAD_LENGTH],
              framelen-SPDYLAY_FRAME_HEAD_LENGTH));
   CU_ASSERT(1000000007 == oframe.goaway.last_good_stream_id);
-  CU_ASSERT(SPDYLAY_PROTO_SPDY2 == oframe.headers.hd.version);
+  if(version == SPDYLAY_PROTO_SPDY2) {
+    /* The status code is ignored in SPDY/2 */
+    CU_ASSERT(0 == oframe.goaway.status_code);
+  } else if(version == SPDYLAY_PROTO_SPDY3) {
+    CU_ASSERT(SPDYLAY_GOAWAY_PROTOCOL_ERROR == oframe.goaway.status_code);
+  }
+  CU_ASSERT(version == oframe.headers.hd.version);
   CU_ASSERT(SPDYLAY_GOAWAY == oframe.headers.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.headers.hd.flags);
   CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
   free(buf);
   spdylay_frame_goaway_free(&oframe.goaway);
   spdylay_frame_goaway_free(&frame.goaway);
+}
+
+void test_spdylay_frame_pack_goaway_spdy2()
+{
+  test_spdylay_frame_pack_goaway_version(SPDYLAY_PROTO_SPDY2);
+}
+
+void test_spdylay_frame_pack_goaway_spdy3()
+{
+  test_spdylay_frame_pack_goaway_version(SPDYLAY_PROTO_SPDY3);
 }
 
 void test_spdylay_frame_pack_syn_stream_with(uint16_t version)

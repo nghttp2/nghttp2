@@ -218,9 +218,11 @@ int spdylay_session_add_rst_stream(spdylay_session *session,
 int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id);
 
 /*
- * Adds GOAWAY frame with last-good-stream-ID
- * |last_good_stream_id|. This is a convenient function built on top
- * of spdylay_session_add_frame() to add GOAWAY easily.
+ * Adds GOAWAY frame with last-good-stream-ID |last_good_stream_id|
+ * and the status code |status_code|. The |status_code| is ignored if
+ * the protocol version is SPDYLAY_PROTO_SPDY2. This is a convenient
+ * function built on top of spdylay_session_add_frame() to add GOAWAY
+ * easily.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -229,7 +231,8 @@ int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id);
  *     Out of memory.
  */
 int spdylay_session_add_goaway(spdylay_session *session,
-                               int32_t last_good_stream_id);
+                               int32_t last_good_stream_id,
+                               uint32_t status_code);
 
 /*
  * Adds WINDOW_UPDATE frame with stream ID |stream_id| and

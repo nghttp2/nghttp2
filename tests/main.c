@@ -141,8 +141,10 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "frame_count_unpack_nv_space",
                    test_spdylay_frame_count_unpack_nv_space) ||
       !CU_add_test(pSuite, "frame_pack_ping", test_spdylay_frame_pack_ping) ||
-      !CU_add_test(pSuite, "frame_pack_goaway",
-                   test_spdylay_frame_pack_goaway) ||
+      !CU_add_test(pSuite, "frame_pack_goaway_spdy2",
+                   test_spdylay_frame_pack_goaway_spdy2) ||
+      !CU_add_test(pSuite, "frame_pack_goaway_spdy3",
+                   test_spdylay_frame_pack_goaway_spdy3) ||
       !CU_add_test(pSuite, "frame_pack_syn_stream",
                    test_spdylay_frame_pack_syn_stream) ||
       !CU_add_test(pSuite, "frame_pack_syn_reply",

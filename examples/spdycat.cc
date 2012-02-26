@@ -121,7 +121,7 @@ void on_stream_close_callback
   if(itr != stream2req.end()) {
     ++complete;
     if(complete == numreq) {
-      spdylay_submit_goaway(session);
+      spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
     }
   }
 }

@@ -913,7 +913,8 @@ void test_spdylay_session_on_goaway_received()
 
   spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY2, &callbacks,
                              &user_data);
-  spdylay_frame_goaway_init(&frame.goaway, SPDYLAY_PROTO_SPDY2, stream_id);
+  spdylay_frame_goaway_init(&frame.goaway, SPDYLAY_PROTO_SPDY2, stream_id,
+                            SPDYLAY_GOAWAY_OK);
 
   CU_ASSERT(0 == spdylay_session_on_goaway_received(session, &frame));
   CU_ASSERT(1 == user_data.ctrl_recv_cb_called);

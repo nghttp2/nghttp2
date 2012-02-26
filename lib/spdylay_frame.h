@@ -463,8 +463,13 @@ void spdylay_frame_ping_init(spdylay_ping *frame, uint16_t version,
 
 void spdylay_frame_ping_free(spdylay_ping *frame);
 
+/*
+ * Initializes GOAWAY frame |frame| with given values.  The
+ * |status_code| is ignored if |version| == SPDYLAY_PROTO_SPDY2.
+ */
 void spdylay_frame_goaway_init(spdylay_goaway *frame, uint16_t version,
-                               int32_t last_good_stream_id);
+                               int32_t last_good_stream_id,
+                               uint32_t status_code);
 
 void spdylay_frame_goaway_free(spdylay_goaway *frame);
 

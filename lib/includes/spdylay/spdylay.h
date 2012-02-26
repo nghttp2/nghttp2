@@ -116,7 +116,10 @@ typedef enum {
 /* Default maximum concurrent streams */
 #define SPDYLAY_CONCURRENT_STREAMS_MAX 100
 
+/* Status code for RST_STREAM */
 typedef enum {
+  /* SPDYLAY_OK is not valid status code for RST_STREAM. It is defined
+     just for spdylay library use. */
   SPDYLAY_OK = 0,
   SPDYLAY_PROTOCOL_ERROR = 1,
   SPDYLAY_INVALID_STREAM = 2,
@@ -124,8 +127,20 @@ typedef enum {
   SPDYLAY_UNSUPPORTED_VERSION = 4,
   SPDYLAY_CANCEL = 5,
   SPDYLAY_INTERNAL_ERROR = 6,
-  SPDYLAY_FLOW_CONTROL_ERROR = 7
+  SPDYLAY_FLOW_CONTROL_ERROR = 7,
+  /* Following status codes were introduced in SPDY/3 */
+  SPDYLAY_STREAM_IN_USE = 8,
+  SPDYLAY_STREAM_ALREADY_CLOSED = 9,
+  SPDYLAY_INVALID_CREDENTIALS = 10,
+  FRAME_TOO_LARGE = 11
 } spdylay_status_code;
+
+/* Status code for GOAWAY, introduced in SPDY/3 */
+typedef enum {
+  SPDYLAY_GOAWAY_OK = 0,
+  SPDYLAY_GOAWAY_PROTOCOL_ERROR = 1,
+  SPDYLAY_GOAWAY_INTERNAL_ERROR = 11
+} spdylay_goaway_status_code;
 
 #define SPDYLAY_SPDY2_PRI_LOWEST 3
 #define SPDYLAY_SPDY3_PRI_LOWEST 7
@@ -643,7 +658,8 @@ int spdylay_submit_rst_stream(spdylay_session *session, int32_t stream_id,
 int spdylay_submit_ping(spdylay_session *session);
 
 /*
- * Submits GOAWAY frame.
+ * Submits GOAWAY frame. The status code |status_code| is ignored if
+ * the protocol version is SPDYLAY_PROTO_SPDY2.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -651,7 +667,7 @@ int spdylay_submit_ping(spdylay_session *session);
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
  */
-int spdylay_submit_goaway(spdylay_session *session);
+int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code);
 
 /*
  * A helper function for dealing with NPN in client side.

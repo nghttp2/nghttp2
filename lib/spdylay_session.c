@@ -1489,13 +1489,14 @@ int spdylay_session_on_headers_received(spdylay_session *session,
 
 /*
  * This function should be called when the session wants to drop
- * connection after sending GOAWAY. For example, when it receives bad
- * zlib data.
+ * connection after sending GOAWAY. These cases are called as the
+ * session error.  For example, when it receives bad zlib data.
  */
-static int spdylay_session_fail_session(spdylay_session *session)
+static int spdylay_session_fail_session(spdylay_session *session,
+                                        uint32_t status_code)
 {
   session->goaway_flags |= SPDYLAY_GOAWAY_FAIL_ON_SEND;
-  return spdylay_submit_goaway(session);
+  return spdylay_submit_goaway(session, status_code);
 }
 
 /*
@@ -1533,7 +1534,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
          invalid frame, send RST_STREAM with PROTOCOL_ERROR. Same for
          other control frames. */
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   case SPDYLAY_SYN_REPLY:
@@ -1551,7 +1552,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_syn_reply_received(session, &frame);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   case SPDYLAY_RST_STREAM:
@@ -1564,7 +1565,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_rst_stream_received(session, &frame);
       spdylay_frame_rst_stream_free(&frame.rst_stream);
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   case SPDYLAY_SETTINGS:
@@ -1577,7 +1578,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_settings_received(session, &frame);
       spdylay_frame_settings_free(&frame.settings);
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   case SPDYLAY_NOOP:
@@ -1592,7 +1593,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_ping_received(session, &frame);
       spdylay_frame_ping_free(&frame.ping);
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   case SPDYLAY_GOAWAY:
@@ -1605,7 +1606,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_goaway_received(session, &frame);
       spdylay_frame_goaway_free(&frame.goaway);
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   case SPDYLAY_HEADERS:
@@ -1623,7 +1624,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_headers_received(session, &frame);
       spdylay_frame_headers_free(&frame.headers);
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   case SPDYLAY_WINDOW_UPDATE:
@@ -1636,7 +1637,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_window_update_received(session, &frame);
       spdylay_frame_window_update_free(&frame.window_update);
     } else if(spdylay_is_non_fatal(r)) {
-      r = spdylay_session_fail_session(session);
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
   }
@@ -1923,7 +1924,8 @@ int spdylay_session_add_ping(spdylay_session *session, uint32_t unique_id)
 }
 
 int spdylay_session_add_goaway(spdylay_session *session,
-                               int32_t last_good_stream_id)
+                               int32_t last_good_stream_id,
+                               uint32_t status_code)
 {
   int r;
   spdylay_frame *frame;
@@ -1932,7 +1934,7 @@ int spdylay_session_add_goaway(spdylay_session *session,
     return SPDYLAY_ERR_NOMEM;
   }
   spdylay_frame_goaway_init(&frame->goaway, session->version,
-                            last_good_stream_id);
+                            last_good_stream_id, status_code);
   r = spdylay_session_add_frame(session, SPDYLAY_GOAWAY, frame, NULL);
   if(r != 0) {
     spdylay_frame_goaway_free(&frame->goaway);
