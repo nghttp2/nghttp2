@@ -68,8 +68,38 @@ command-line::
     [  0.094] send GOAWAY frame <version=2, flags=0, length=4>
               (last_good_stream_id=0)
 
+``spdycat`` can speak SPDY/3. Note that SPDY/3 is still moving target
+and thus considered highly experimental. ``-3`` option forces ``spdycat``
+to use SPDY/3 only::
+
+    $ ./spdycat -nv3 https://localhost:3000/
+    [  0.000] NPN select next protocol: the remote server offers:
+              * spdy/2
+              * spdy/3
+              NPN selected the protocol: spdy/3
+    [  0.002] send SYN_STREAM frame <version=3, flags=1, length=95>
+              (stream_id=1, assoc_stream_id=0, pri=3)
+              :host: localhost:3000
+              :method: GET
+              :path: /
+              :scheme: https
+              :version: HTTP/1.1
+              user-agent: spdylay/0.0.0
+    [  0.003] recv SYN_REPLY frame <version=3, flags=0, length=95>
+              (stream_id=1)
+              :status: 404 Not Found
+              :version: HTTP/1.1
+              cache-control: max-age=3600
+              content-length: 144
+              date: Sun, 26 Feb 2012 09:16:51 GMT
+              server: spdyd spdylay/0.1.0
+    [  0.003] recv DATA frame (stream_id=1, flags=0, length=144)
+    [  0.003] recv DATA frame (stream_id=1, flags=1, length=0)
+    [  0.003] send GOAWAY frame <version=3, flags=0, length=8>
+              (last_good_stream_id=0)
+
 SPDY server is called ``spdyd``. It is a non-blocking server and only
-serves static contents. It only speaks ``spdy/2``::
+serves static contents. It can speak SPDY/2 and SPDY/3::
 
     $ ./spdyd --htdocs=/your/htdocs/ -v 3000 server.key server.crt
     The negotiated next protocol: spdy/2
