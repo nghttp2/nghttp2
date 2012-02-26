@@ -60,9 +60,13 @@ void test_spdylay_frame_unpack_nv_with(size_t len_size)
   spdylay_frame_nv_del(nv);
 }
 
-void test_spdylay_frame_unpack_nv()
+void test_spdylay_frame_unpack_nv_spdy2()
 {
   test_spdylay_frame_unpack_nv_with(2);
+}
+
+void test_spdylay_frame_unpack_nv_spdy3()
+{
   test_spdylay_frame_unpack_nv_with(4);
 }
 
@@ -256,7 +260,7 @@ void test_spdylay_frame_pack_goaway_spdy3()
   test_spdylay_frame_pack_goaway_version(SPDYLAY_PROTO_SPDY3);
 }
 
-void test_spdylay_frame_pack_syn_stream_with(uint16_t version)
+void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   spdylay_frame frame, oframe;
@@ -299,13 +303,17 @@ void test_spdylay_frame_pack_syn_stream_with(uint16_t version)
   spdylay_buffer_free(&inflatebuf);
 }
 
-void test_spdylay_frame_pack_syn_stream()
+void test_spdylay_frame_pack_syn_stream_spdy2()
 {
-  test_spdylay_frame_pack_syn_stream_with(SPDYLAY_PROTO_SPDY2);
-  test_spdylay_frame_pack_syn_stream_with(SPDYLAY_PROTO_SPDY3);
+  test_spdylay_frame_pack_syn_stream_version(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_frame_pack_syn_reply_with(uint16_t version)
+void test_spdylay_frame_pack_syn_stream_spdy3()
+{
+  test_spdylay_frame_pack_syn_stream_version(SPDYLAY_PROTO_SPDY3);
+}
+
+void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   spdylay_frame frame, oframe;
@@ -347,13 +355,17 @@ void test_spdylay_frame_pack_syn_reply_with(uint16_t version)
   spdylay_buffer_free(&inflatebuf);
 }
 
-void test_spdylay_frame_pack_syn_reply()
+void test_spdylay_frame_pack_syn_reply_spdy2()
 {
-  test_spdylay_frame_pack_syn_reply_with(SPDYLAY_PROTO_SPDY2);
-  test_spdylay_frame_pack_syn_reply_with(SPDYLAY_PROTO_SPDY3);
+  test_spdylay_frame_pack_syn_reply_version(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_frame_pack_headers_with(uint16_t version)
+void test_spdylay_frame_pack_syn_reply_spdy3()
+{
+  test_spdylay_frame_pack_syn_reply_version(SPDYLAY_PROTO_SPDY3);
+}
+
+void test_spdylay_frame_pack_headers_version(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   spdylay_frame frame, oframe;
@@ -395,10 +407,14 @@ void test_spdylay_frame_pack_headers_with(uint16_t version)
   spdylay_buffer_free(&inflatebuf);
 }
 
-void test_spdylay_frame_pack_headers()
+void test_spdylay_frame_pack_headers_spdy2()
 {
-  test_spdylay_frame_pack_headers_with(SPDYLAY_PROTO_SPDY2);
-  test_spdylay_frame_pack_headers_with(SPDYLAY_PROTO_SPDY3);
+  test_spdylay_frame_pack_headers_version(SPDYLAY_PROTO_SPDY2);
+}
+
+void test_spdylay_frame_pack_headers_spdy3()
+{
+  test_spdylay_frame_pack_headers_version(SPDYLAY_PROTO_SPDY3);
 }
 
 void test_spdylay_frame_pack_window_update()

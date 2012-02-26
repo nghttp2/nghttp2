@@ -25,16 +25,20 @@
 #ifndef SPDYLAY_FRAME_TEST_H
 #define SPDYLAY_FRAME_TEST_H
 
-void test_spdylay_frame_unpack_nv();
+void test_spdylay_frame_unpack_nv_spdy2();
+void test_spdylay_frame_unpack_nv_spdy3();
 void test_spdylay_frame_pack_nv_duplicate_keys();
 void test_spdylay_frame_count_nv_space();
 void test_spdylay_frame_count_unpack_nv_space();
 void test_spdylay_frame_pack_ping();
 void test_spdylay_frame_pack_goaway_spdy2();
 void test_spdylay_frame_pack_goaway_spdy3();
-void test_spdylay_frame_pack_syn_stream();
-void test_spdylay_frame_pack_syn_reply();
-void test_spdylay_frame_pack_headers();
+void test_spdylay_frame_pack_syn_stream_spdy2();
+void test_spdylay_frame_pack_syn_stream_spdy3();
+void test_spdylay_frame_pack_syn_reply_spdy2();
+void test_spdylay_frame_pack_syn_reply_spdy3();
+void test_spdylay_frame_pack_headers_spdy2();
+void test_spdylay_frame_pack_headers_spdy3();
 void test_spdylay_frame_pack_window_update();
 void test_spdylay_frame_pack_settings();
 void test_spdylay_frame_nv_sort();

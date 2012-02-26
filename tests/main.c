@@ -135,7 +135,10 @@ int main(int argc, char* argv[])
                    test_spdylay_session_defer_data) ||
       !CU_add_test(pSuite, "session_flow_control",
                    test_spdylay_session_flow_control) ||
-      !CU_add_test(pSuite, "frame_unpack_nv", test_spdylay_frame_unpack_nv) ||
+      !CU_add_test(pSuite, "frame_unpack_nv_spdy2",
+                   test_spdylay_frame_unpack_nv_spdy2) ||
+      !CU_add_test(pSuite, "frame_unpack_nv_spdy3",
+                   test_spdylay_frame_unpack_nv_spdy3) ||
       !CU_add_test(pSuite, "frame_count_nv_space",
                    test_spdylay_frame_count_nv_space) ||
       !CU_add_test(pSuite, "frame_count_unpack_nv_space",
@@ -145,12 +148,18 @@ int main(int argc, char* argv[])
                    test_spdylay_frame_pack_goaway_spdy2) ||
       !CU_add_test(pSuite, "frame_pack_goaway_spdy3",
                    test_spdylay_frame_pack_goaway_spdy3) ||
-      !CU_add_test(pSuite, "frame_pack_syn_stream",
-                   test_spdylay_frame_pack_syn_stream) ||
-      !CU_add_test(pSuite, "frame_pack_syn_reply",
-                   test_spdylay_frame_pack_syn_reply) ||
-      !CU_add_test(pSuite, "frame_pack_headers",
-                   test_spdylay_frame_pack_headers) ||
+      !CU_add_test(pSuite, "frame_pack_syn_stream_spdy2",
+                   test_spdylay_frame_pack_syn_stream_spdy2) ||
+      !CU_add_test(pSuite, "frame_pack_syn_stream_spdy3",
+                   test_spdylay_frame_pack_syn_stream_spdy3) ||
+      !CU_add_test(pSuite, "frame_pack_syn_reply_spdy2",
+                   test_spdylay_frame_pack_syn_reply_spdy2) ||
+      !CU_add_test(pSuite, "frame_pack_syn_reply_spdy3",
+                   test_spdylay_frame_pack_syn_reply_spdy3) ||
+      !CU_add_test(pSuite, "frame_pack_headers_spdy2",
+                   test_spdylay_frame_pack_headers_spdy2) ||
+      !CU_add_test(pSuite, "frame_pack_headers_spdy3",
+                   test_spdylay_frame_pack_headers_spdy3) ||
       !CU_add_test(pSuite, "frame_pack_window_update",
                    test_spdylay_frame_pack_window_update) ||
       !CU_add_test(pSuite, "frame_pack_settings",
