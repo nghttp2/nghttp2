@@ -470,13 +470,18 @@ int select_next_proto_cb(SSL* ssl,
       std::cout << std::endl;
     }
   }
-  if(spdylay_select_next_protocol(out, outlen, in, inlen) != 1) {
-    std::cerr << "Server did not advertise spdy/2 or spdy/3 protocol."
-              << std::endl;
-    abort();
+  std::string& next_proto = *(std::string*)arg;
+  if(next_proto.empty()) {
+    if(spdylay_select_next_protocol(out, outlen, in, inlen) != 1) {
+      std::cerr << "Server did not advertise spdy/2 or spdy/3 protocol."
+                << std::endl;
+      abort();
+    } else {
+      next_proto.assign(&(*out)[0], &(*out)[*outlen]);
+    }
   } else {
-    std::string& next_proto = *(std::string*)arg;
-    next_proto.assign(&(*out)[0], &(*out)[*outlen]);
+    *out = (unsigned char*)(next_proto.c_str());
+    *outlen = next_proto.size();
   }
   if(ssl_debug) {
     std::cout << "          NPN selected the protocol: "

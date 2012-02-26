@@ -61,7 +61,9 @@ struct Config {
   bool null_out;
   bool remote_name;
   bool verbose;
-  Config():null_out(false), remote_name(false), verbose(false) {}
+  bool spdy3_only;
+  Config():null_out(false), remote_name(false), verbose(false),
+           spdy3_only(false) {}
 };
 
 struct Request {
@@ -145,6 +147,9 @@ int communicate(const std::string& host, uint16_t port,
     return -1;
   }
   std::string next_proto;
+  if(config.spdy3_only) {
+    next_proto = "spdy/3";
+  }
   setup_ssl_ctx(ssl_ctx, &next_proto);
   SSL *ssl = SSL_new(ssl_ctx);
   if(!ssl) {
@@ -275,6 +280,8 @@ void print_help(std::ostream& out)
       << "                       The filename is dereived from URI. If URI\n"
       << "                       ends with '/', 'index.html' is used as a\n"
       << "                       filename. Not implemented yet.\n"
+      << "    -3, --spdy3        Only use SPDY/3.\n"
+      << "\n"
       << std::endl;
 }
 
@@ -285,11 +292,12 @@ int main(int argc, char **argv)
       {"verbose", no_argument, 0, 'v' },
       {"null-out", no_argument, 0, 'n' },
       {"remote-name", no_argument, 0, 'O' },
+      {"spdy3", no_argument, 0, '3' },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Onhv", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Onhv3", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -305,6 +313,9 @@ int main(int argc, char **argv)
       break;
     case 'v':
       config.verbose = true;
+      break;
+    case '3':
+      config.spdy3_only = true;
       break;
     case '?':
       exit(EXIT_FAILURE);
