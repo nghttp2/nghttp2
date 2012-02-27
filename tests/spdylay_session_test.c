@@ -1545,6 +1545,8 @@ void test_spdylay_session_flow_control()
   my_user_data ud;
   spdylay_data_provider data_prd;
   spdylay_frame frame;
+  spdylay_stream *stream;
+  int32_t new_initial_window_size;
 
   memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -1554,6 +1556,7 @@ void test_spdylay_session_flow_control()
   ud.ctrl_send_cb_called = 0;
   ud.data_source_length = 128*1024;
 
+  /* Initial window size is 64KiB */
   spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks, &ud);
   spdylay_submit_request(session, 3, nv, &data_prd, NULL);
 
@@ -1561,6 +1564,7 @@ void test_spdylay_session_flow_control()
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(64*1024 == ud.data_source_length);
 
+  /* Back 32KiB */
   spdylay_frame_window_update_init(&frame.window_update, SPDYLAY_PROTO_SPDY3,
                                    1, 32*1024);
   spdylay_session_on_window_update_received(session, &frame);
@@ -1569,9 +1573,35 @@ void test_spdylay_session_flow_control()
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(32*1024 == ud.data_source_length);
 
+  stream = spdylay_session_get_stream(session, 1);
+  /* Change initial window size to 16KiB. The window_size becomes
+     negative. */
+  new_initial_window_size = 16*1024;
+  stream->window_size = new_initial_window_size-
+    (stream->initial_window_size-stream->window_size);
+  CU_ASSERT(-48*1024 == stream->window_size);
+
+  /* Back 48KiB */
+  frame.window_update.delta_window_size = 48*1024;
   spdylay_session_on_window_update_received(session, &frame);
 
-  /* Sends another 32KiB data */
+  /* Nothing is sent because window_size is less than 0 */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(32*1024 == ud.data_source_length);
+
+  /* Back 16KiB */
+  frame.window_update.delta_window_size = 16*1024;
+  spdylay_session_on_window_update_received(session, &frame);
+
+  /* Sends another 16KiB data */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(16*1024 == ud.data_source_length);
+
+  /* Back 16KiB */
+  frame.window_update.delta_window_size = 16*1024;
+  spdylay_session_on_window_update_received(session, &frame);
+
+  /* Sends another 16KiB data */
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(0 == ud.data_source_length);
   CU_ASSERT(spdylay_session_get_stream(session, 1)->shut_flags &
