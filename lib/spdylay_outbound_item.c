@@ -56,6 +56,9 @@ void spdylay_outbound_item_free(spdylay_outbound_item *item)
   case SPDYLAY_HEADERS:
     spdylay_frame_headers_free(&item->frame->headers);
     break;
+  case SPDYLAY_WINDOW_UPDATE:
+    spdylay_frame_window_update_free(&item->frame->window_update);
+    break;
   case SPDYLAY_DATA:
     spdylay_frame_data_free(&item->frame->data);
     break;
