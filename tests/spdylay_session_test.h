@@ -39,6 +39,7 @@ void test_spdylay_submit_response_with_null_data_read_callback();
 void test_spdylay_submit_request_with_data();
 void test_spdylay_submit_request_with_null_data_read_callback();
 void test_spdylay_submit_syn_stream();
+void test_spdylay_submit_syn_reply();
 void test_spdylay_submit_headers();
 void test_spdylay_session_reply_fail();
 void test_spdylay_session_on_headers_received();
