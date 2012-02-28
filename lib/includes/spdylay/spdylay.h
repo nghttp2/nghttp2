@@ -464,6 +464,20 @@ int spdylay_session_send(spdylay_session *session);
 int spdylay_session_recv(spdylay_session *session);
 
 /*
+ * Put back previously deferred DATA frame in the stream |stream_id|
+ * to outbound queue.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_ARGUMENT
+ *     The stream does not exist or no deferred data exist.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_session_resume_data(spdylay_session *session, int32_t stream_id);
+
+/*
  * Returns nonzero value if |session| want to receive data from the
  * remote peer.
  *
@@ -730,20 +744,6 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
  * This function returns nonzero spdy version if it succeeds, or 0.
  */
 uint16_t spdylay_npn_get_version(const unsigned char *proto, size_t protolen);
-
-/*
- * Put back previously deferred DATA frame in the stream |stream_id|
- * to outbound queue.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * SPDYLAY_ERR_INVALID_ARGUMENT
- *     The stream does not exist or no deferred data exist.
- * SPDYLAY_ERR_NOMEM
- *     Out of memory.
- */
-int spdylay_session_resume_data(spdylay_session *session, int32_t stream_id);
 
 #ifdef __cplusplus
 }
