@@ -537,6 +537,17 @@ void spdylay_frame_nv_sort(char **nv);
 void spdylay_frame_nv_downcase(char **nv);
 
 /*
+ * This function first makes a copy of |nv| using
+ * spdylay_frame_nv_copy().  If it succeeds, then call
+ * spdylay_frame_nv_downcase() and spdylay_frame_nv_sort() with the
+ * copied name/value pairs.
+ *
+ * This function returns the copied name/value pairs if it succeeds,
+ * or NULL.
+ */
+char** spdylay_frame_nv_norm_copy(const char **nv);
+
+/*
  * Makes copy of |iv| and return the copy. The |niv| is the number of
  * entries in |iv|. This function returns the pointer to the copy if
  * it succeeds, or NULL.

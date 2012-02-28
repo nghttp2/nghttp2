@@ -83,9 +83,7 @@ void test_spdylay_frame_pack_nv_duplicate_keys()
     "version", "HTTP/1.1",
     NULL
   };
-  char **nv = spdylay_frame_nv_copy(nv_src);
-  spdylay_frame_nv_downcase(nv);
-  spdylay_frame_nv_sort(nv);
+  char **nv = spdylay_frame_nv_norm_copy(nv_src);
   /* size_t inlen = */ spdylay_frame_pack_nv(out, nv, len_size);
   const uint8_t *outptr = out;
   int pairs = spdylay_get_uint16(outptr);
