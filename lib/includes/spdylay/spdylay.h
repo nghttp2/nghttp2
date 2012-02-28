@@ -511,17 +511,45 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
 
 /*
  * Submits SYN_STREAM frame and optionally one or more DATA
- * frames. |pri| is priority of this request and it must be in the
- * range of [0, 3]. 0 means the higest priority. |nv| must include
- * following name/value pairs:
+ * frames.
  *
- * "method": HTTP method (e.g., "GET", "POST", "HEAD", etc)
- * "scheme": URI scheme (e.g., "https")
- * "url": Absolute path and parameters of this request (e.g., "/foo",
- * "/foo;bar;haz?h=j&y=123")
- * "version": HTTP version (e.g., "HTTP/1.1")
+ * |pri| is priority of this request. 0 is the highest priority.  If
+ * the |session| is initialized with the version SPDYLAY_PROTO_SPDY2,
+ * the lowest priority is 3.  If the |session| is initialized with the
+ * version SPDYLAY_PROTO_SPDY3, the lowest priority is 7.
  *
- * "host" name/value pair is also required by some hosts.
+ * If |session| is initialized with the version SPDYLAY_PROTO_SPDY2,
+ * |nv| must include following name/value pairs:
+ *
+ * "method"
+ *     HTTP method (e.g., "GET", "POST", "HEAD", etc)
+ * "scheme"
+ *     URI scheme (e.g., "https")
+ * "url"
+ *     Absolute path and parameters of this request (e.g., "/foo",
+ *     "/foo;bar;haz?h=j&y=123")
+ * "version"
+ *     HTTP version (e.g., "HTTP/1.1")
+ *
+ * The "host" name/value pair (this is the same as the HTTP "Host"
+ * header field) is also required by some hosts.
+ *
+ * If |session| is initialized with the version SPDYLAY_PROTO_SPDY3,
+ * |nv| must include following name/value pairs:
+ *
+ * ":method"
+ *     HTTP method (e.g., "GET", "POST", "HEAD", etc)
+ * ":scheme"
+ *     URI scheme (e.g., "https")
+ * ":path"
+ *     Absolute path and parameters of this request (e.g., "/foo",
+ *     "/foo;bar;haz?h=j&y=123")
+ * ":version"
+ *     HTTP version (e.g., "HTTP/1.1")
+ * ":host"
+ *     The hostport portion of the URI for this request (e.g.,
+ *     "example.org:443"). This is the same as the HTTP "Host" header
+ *     field.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
@@ -555,11 +583,23 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
 
 /*
  * Submits SYN_REPLY frame and optionally one or more DATA frames
- * against stream |stream_id|. |nv| must include following name/value
- * pairs:
+ * against stream |stream_id|.
  *
- * "status": HTTP status code (e.g., "200" or "200 OK")
- * "version": HTTP response version (e.g., "HTTP/1.1")
+ * If |session| is initialized with the version SPDYLAY_PROTO_SPDY2,
+ * |nv| must include following name/value pairs:
+ *
+ * "status"
+ *     HTTP status code (e.g., "200" or "200 OK")
+ * "version"
+ *     HTTP response version (e.g., "HTTP/1.1")
+ *
+ * If |session| is initialized with the version SPDYLAY_PROTO_SPDY3,
+ * |nv| must include following name/value pairs:
+ *
+ * ":status"
+ *     HTTP status code (e.g., "200" or "200 OK")
+ * ":version"
+ *     HTTP response version (e.g., "HTTP/1.1")
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
