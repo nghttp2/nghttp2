@@ -489,20 +489,20 @@ static int spdylay_session_is_window_update_allowed(spdylay_session *session,
 }
 
 /*
- * Returns the available window size.
+ * Returns the maximum length of next data read. If the flow control
+ * is enabled, the return value takes into account the current window
+ * size.
  */
-static size_t spdylay_session_avail_window(spdylay_session *session,
-                                           spdylay_stream *stream)
+static size_t spdylay_session_next_data_read(spdylay_session *session,
+                                             spdylay_stream *stream)
 {
   if(session->flow_control == 0) {
     return SPDYLAY_DATA_PAYLOAD_LENGTH;
+  } else if(stream->window_size > 0) {
+    return stream->window_size < SPDYLAY_DATA_PAYLOAD_LENGTH ?
+      stream->window_size : SPDYLAY_DATA_PAYLOAD_LENGTH;
   } else {
-    if(stream->window_size >= SPDYLAY_DATA_PAYLOAD_LENGTH ||
-       stream->initial_window_size < stream->window_size*2) {
-      return stream->window_size;
-    } else {
-      return 0;
-    }
+    return 0;
   }
 }
 
@@ -660,7 +660,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     break;
   case SPDYLAY_DATA: {
-    size_t avail_window;
+    size_t next_readmax;
     spdylay_stream *stream;
     if(!spdylay_session_is_data_allowed(session, item->frame->data.stream_id)) {
       return SPDYLAY_ERR_INVALID_FRAME;
@@ -668,18 +668,16 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     stream = spdylay_session_get_stream(session, item->frame->data.stream_id);
     /* Assuming stream is not NULL */
     assert(stream);
-    avail_window = spdylay_session_avail_window(session, stream);
-    if(avail_window == 0) {
+    next_readmax = spdylay_session_next_data_read(session, stream);
+    if(next_readmax == 0) {
       spdylay_stream_defer_data(stream, item, SPDYLAY_DEFERRED_FLOW_CONTROL);
       return SPDYLAY_ERR_DEFERRED;
     }
-    framebuflen = spdylay_session_pack_data
-      (session,
-       &session->aob.framebuf,
-       &session->aob.framebufmax,
-       (avail_window < SPDYLAY_DATA_PAYLOAD_LENGTH) ?
-       avail_window : SPDYLAY_DATA_PAYLOAD_LENGTH,
-       &item->frame->data);
+    framebuflen = spdylay_session_pack_data(session,
+                                            &session->aob.framebuf,
+                                            &session->aob.framebufmax,
+                                            next_readmax,
+                                            &item->frame->data);
     if(framebuflen == SPDYLAY_ERR_DEFERRED) {
       spdylay_stream_defer_data(stream, item, SPDYLAY_DEFERRED_NONE);
       return SPDYLAY_ERR_DEFERRED;
@@ -927,26 +925,24 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
          waiting at the top of the queue, we continue to send this
          data. */
       if(item == NULL || session->aob.item->pri <= item->pri) {
-        size_t avail_window;
+        size_t next_readmax;
         spdylay_stream *stream;
         stream = spdylay_session_get_stream(session, frame->data.stream_id);
         /* Assuming stream is not NULL */
         assert(stream);
-        avail_window = spdylay_session_avail_window(session, stream);
-        if(avail_window == 0) {
+        next_readmax = spdylay_session_next_data_read(session, stream);
+        if(next_readmax == 0) {
           spdylay_stream_defer_data(stream, session->aob.item,
                                     SPDYLAY_DEFERRED_FLOW_CONTROL);
           session->aob.item = NULL;
           spdylay_active_outbound_item_reset(&session->aob);
           return 0;
         }
-        r = spdylay_session_pack_data
-          (session,
-           &session->aob.framebuf,
-           &session->aob.framebufmax,
-           (avail_window < SPDYLAY_DATA_PAYLOAD_LENGTH ?
-            avail_window : SPDYLAY_DATA_PAYLOAD_LENGTH),
-           &frame->data);
+        r = spdylay_session_pack_data(session,
+                                      &session->aob.framebuf,
+                                      &session->aob.framebufmax,
+                                      next_readmax,
+                                      &frame->data);
         if(r == SPDYLAY_ERR_DEFERRED) {
           spdylay_stream_defer_data(stream, session->aob.item,
                                     SPDYLAY_DEFERRED_NONE);
