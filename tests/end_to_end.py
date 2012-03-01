@@ -20,15 +20,15 @@ import unittest
 _PORT = 9893
 
 
-def _run_server(port):
+def _run_server(port, args):
   srcdir = os.environ.get('srcdir', '.')
   testdata = '%s/testdata' % srcdir
   top_builddir = os.environ.get('top_builddir', '..')
-  return subprocess.Popen([
-      '%s/examples/spdyd' % top_builddir, str(port),
-      '-d', testdata,
-      '%s/privkey.pem' % testdata,
-      '%s/cacert.pem' % testdata])
+  base_args = ['%s/examples/spdyd' % top_builddir, str(port), '-d', testdata,
+               '%s/privkey.pem' % testdata, '%s/cacert.pem' % testdata]
+  if args:
+    base_args.extend(args)
+  return subprocess.Popen(base_args)
 
 def _check_server_up(port):
   # Check this check for now.
@@ -42,6 +42,15 @@ def _kill_server(server):
 
 
 class EndToEndSpdyTests(unittest.TestCase):
+  @classmethod
+  def setUpClass(cls):
+    cls.server = _run_server(_PORT, None)
+    _check_server_up(_PORT)
+
+  @classmethod
+  def tearDownClass(cls):
+    _kill_server(cls.server)
+
   def setUp(self):
     build_dir = os.environ.get('top_builddir', '..')
     self.client = '%s/examples/spdycat' % build_dir
@@ -51,19 +60,24 @@ class EndToEndSpdyTests(unittest.TestCase):
         0, subprocess.call([self.client, 'http://localhost:%d/' % _PORT]))
 
 
-class TestProgram(unittest.TestProgram):
-  def runTests(self):
-    self.testRunner = unittest.TextTestRunner()
-    result = self.testRunner.run(self.test)
-    self.successful = result.wasSuccessful()
+class EndToEndSpdy3Tests(unittest.TestCase):
+  @classmethod
+  def setUpClass(cls):
+    cls.server = _run_server(_PORT, '-3')
+    _check_server_up(_PORT)
 
+  @classmethod
+  def tearDownClass(cls):
+    _kill_server(cls.server)
 
-def main():
-  server = _run_server(_PORT)
-  _check_server_up(_PORT)
-  result = TestProgram()
-  _kill_server(server)
-  return not result.successful
+  def setUp(self):
+    build_dir = os.environ.get('top_builddir', '..')
+    self.client = '%s/examples/spdycat' % build_dir
+
+  def testSimpleRequest(self):
+    self.assertEquals(
+        0, subprocess.call([self.client, 'http://localhost:%d/' % _PORT]))
+
 
 if __name__ == '__main__':
-  sys.exit(main())
+  unittest.main()
