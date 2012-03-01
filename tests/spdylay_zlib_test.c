@@ -50,11 +50,11 @@ void test_spdylay_zlib_with(uint16_t version)
   ssize_t deflatebuf_len;
   spdylay_buffer_init(&buf, 4096);
   
-  deflatebuf_max = spdylay_zlib_deflate_hd_bound(&deflater, sizeof(msg));
-  deflatebuf = malloc(deflatebuf_max);
-
   CU_ASSERT(0 == spdylay_zlib_deflate_hd_init(&deflater, version));
   CU_ASSERT(0 == spdylay_zlib_inflate_hd_init(&inflater, version));
+
+  deflatebuf_max = spdylay_zlib_deflate_hd_bound(&deflater, sizeof(msg));
+  deflatebuf = malloc(deflatebuf_max);
 
   CU_ASSERT(0 < (deflatebuf_len = spdylay_zlib_deflate_hd
                  (&deflater, deflatebuf, deflatebuf_max,
