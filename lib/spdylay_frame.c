@@ -766,6 +766,8 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
     SPDYLAY_STREAM_ID_MASK;
   if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
     frame->status_code = spdylay_get_uint32(payload+4);
+  } else {
+    frame->status_code = 0;
   }
   return 0;
 }
