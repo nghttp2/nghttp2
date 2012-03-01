@@ -786,7 +786,7 @@ int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code);
  *                                 void *arg)
  * {
  *   if (spdylay_select_next_protocol(out, outlen, in, inlen) == 1) {
- *     ((MyType*)arg)->spdy = 1;
+ *     ((MyType*)arg)->spdy_version = spdylay_npn_get_version(*out, *outlen);
  *   }
  *   return SSL_TLSEXT_ERR_OK;
  * }
