@@ -393,6 +393,29 @@ size_t spdylay_frame_count_nv_space(char **nv, size_t len_size);
 ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size);
 
 /*
+ * Packs name/value pairs in |nv| in |*buf_ptr| with offset
+ * |nv_offset|.  It means first byte of packed name/value pairs is
+ * stored in |*buf_ptr|+|nv_offset|.  |*buf_ptr| and |*nvbuf_ptr| are
+ * expanded as necessary.
+ *
+ * This function returns the number of the bytes for the frame
+ * containing this name/value pairs if it succeeds, or one of the
+ * following negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The deflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
+                                    size_t *buflen_ptr,
+                                    uint8_t **nvbuf_ptr,
+                                    size_t *nvbuflen_ptr,
+                                    char **nv, size_t nv_offset,
+                                    size_t len_size,
+                                    spdylay_zlib *deflater);
+
+/*
  * Counts number of name/value pair in |in| and computes length of
  * buffers to store unpacked name/value pair and store them in
  * |*num_nv_ptr| and |*buf_size_ptr| respectively. |len_size| is the
@@ -439,6 +462,31 @@ int spdylay_frame_count_unpack_nv_space
  */
 int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
                             size_t len_size);
+
+/*
+ * Unpacks name/value pairs from buffer |in| with length |inlen|.  The
+ * necessary memory area required for output is allocated and its
+ * pointer is assigned to |nv_ptr|. |inflatebuf| is used for inflate
+ * operation. |*nvbuf_ptr| is used for temporarily stored inflated
+ * name/value pair in wire format. It is expanded as necessary.
+ * |len_size| is the number of bytes used in name/value length. It
+ * must be either 2 or 4.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_ZLIB
+ *     The inflate operation failed.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_frame_alloc_unpack_nv(char ***nv_ptr,
+                                  spdylay_buffer *inflatebuf,
+                                  uint8_t **nvbuf_ptr,
+                                  size_t *nvbuflen_ptr,
+                                  const uint8_t *in, size_t inlen,
+                                  size_t len_size,
+                                  spdylay_zlib *inflater);
 
 /*
  * Initializes SYN_STREAM frame |frame| with given values.  |frame|
