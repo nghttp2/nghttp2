@@ -51,8 +51,8 @@ AM_CONDITIONAL([HAVE_STDCXX_11],
 
 # zlib
 PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
-LIBS=$ZLIB_LIBS $LIBS
-CFLAGS=$CFLAGS $ZLIB_CFLAGS
+LIBS="$ZLIB_LIBS $LIBS"
+CFLAGS="$CFLAGS $ZLIB_CFLAGS"
 
 # cunit
 PKG_CHECK_MODULES([CUNIT], [cunit >= 2.1], [have_cunit=yes], [have_cunit=no])
