@@ -12,7 +12,6 @@ __author__ = 'Jim Morrison <jim@twist.com>'
 
 import os
 import subprocess
-import sys
 import time
 import unittest
 
@@ -24,10 +23,11 @@ def _run_server(port, args):
   srcdir = os.environ.get('srcdir', '.')
   testdata = '%s/testdata' % srcdir
   top_builddir = os.environ.get('top_builddir', '..')
-  base_args = ['%s/examples/spdyd' % top_builddir, str(port), '-d', testdata,
-               '%s/privkey.pem' % testdata, '%s/cacert.pem' % testdata]
+  base_args = ['%s/examples/spdyd' % top_builddir, '-d', testdata]
   if args:
     base_args.extend(args)
+  base_args.extend([str(port), '%s/privkey.pem' % testdata,
+                    '%s/cacert.pem' % testdata])
   return subprocess.Popen(base_args)
 
 def _check_server_up(port):
@@ -44,7 +44,11 @@ def _kill_server(server):
 class EndToEndSpdyTests(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    cls.server = _run_server(_PORT, None)
+    cls.setUpServer([])
+
+  @classmethod
+  def setUpServer(cls, args):
+    cls.server = _run_server(_PORT, args)
     _check_server_up(_PORT)
 
   @classmethod
@@ -54,29 +58,33 @@ class EndToEndSpdyTests(unittest.TestCase):
   def setUp(self):
     build_dir = os.environ.get('top_builddir', '..')
     self.client = '%s/examples/spdycat' % build_dir
+    self.stdout = 'No output'
 
+  def call(self, path, args):
+     full_args = [self.client,'http://localhost:%d%s' % (_PORT, path)] + args
+     p = subprocess.Popen(full_args, stdout=subprocess.PIPE,
+                          stdin=subprocess.PIPE)
+     self.stdout, self.stderr = p.communicate()
+     return p.returncode
+
+
+class EndToEndSpdy2Tests(EndToEndSpdyTests):
   def testSimpleRequest(self):
-    self.assertEquals(
-        0, subprocess.call([self.client, 'http://localhost:%d/' % _PORT]))
+    self.assertEquals(0, self.call('/', []))
+
+  def testSimpleRequestSpdy3(self):
+    self.assertEquals(0, self.call('/', ['-v', '-3']))
+    self.assertIn('NPN selected the protocol: spdy/3', self.stdout)
 
 
-class EndToEndSpdy3Tests(unittest.TestCase):
+class EndToEndSpdy3Tests(EndToEndSpdyTests):
   @classmethod
   def setUpClass(cls):
-    cls.server = _run_server(_PORT, '-3')
-    _check_server_up(_PORT)
-
-  @classmethod
-  def tearDownClass(cls):
-    _kill_server(cls.server)
-
-  def setUp(self):
-    build_dir = os.environ.get('top_builddir', '..')
-    self.client = '%s/examples/spdycat' % build_dir
+    cls.setUpServer(['-3'])
 
   def testSimpleRequest(self):
-    self.assertEquals(
-        0, subprocess.call([self.client, 'http://localhost:%d/' % _PORT]))
+    self.assertEquals(0, self.call('/', ['-v']))
+    self.assertIn('NPN selected the protocol: spdy/3', self.stdout)
 
 
 if __name__ == '__main__':
