@@ -76,6 +76,13 @@ class EndToEndSpdy2Tests(EndToEndSpdyTests):
     self.assertEquals(0, self.call('/', ['-v', '-3']))
     self.assertIn('NPN selected the protocol: spdy/3', self.stdout)
 
+  def testFailedRequests(self):
+    self.assertEquals(
+        2, self.call('/', ['https://localhost:25/', 'http://localhost:79']))
+
+  def testOneFailedRequest(self):
+    self.assertEquals(1, subprocess.call([self.client, 'http://localhost:2/']))
+
 
 class EndToEndSpdy3Tests(EndToEndSpdyTests):
   @classmethod
