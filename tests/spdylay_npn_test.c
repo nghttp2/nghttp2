@@ -36,8 +36,8 @@ static void spdy2()
   };
   unsigned char outlen;
   unsigned char* out;
-  CU_ASSERT(1 == spdylay_select_next_protocol(&out, &outlen,
-                                              spdy, sizeof(spdy)));
+  CU_ASSERT(SPDYLAY_PROTO_SPDY2 ==
+            spdylay_select_next_protocol(&out, &outlen, spdy, sizeof(spdy)));
   CU_ASSERT(6 == outlen);
   CU_ASSERT(memcmp("spdy/2", out, outlen) == 0);
 }

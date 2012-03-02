@@ -758,8 +758,11 @@ int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code);
  *
  * The selection algorithm is as follows:
  *
- * 1. If server's list contains "spdy/2", this function selects
- *    "spdy/2" and returns 1. The following steps are not taken.
+ * 1. If server's list contains SPDY versions the spdylay library
+ *    supports, this function selects one of them and returns its SPDY
+ *    protocol version which can be used directly with
+ *    spdylay_session_client_new() and spdylay_session_server_new()
+ *    . The following steps are not taken.
  *
  * 2. If server's list contains "http/1.1", this function selects
  *    "http/1.1" and returns 0. The following step is not taken.
@@ -785,8 +788,10 @@ int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code);
  *                                 const unsigned char *in, unsigned int inlen,
  *                                 void *arg)
  * {
- *   if (spdylay_select_next_protocol(out, outlen, in, inlen) == 1) {
- *     ((MyType*)arg)->spdy_version = spdylay_npn_get_version(*out, *outlen);
+ *   int version;
+ *   version = spdylay_select_next_protocol(out, outlen, in, inlen);
+ *   if(version > 0) {
+ *     ((MyType*)arg)->spdy_version = version;
  *   }
  *   return SSL_TLSEXT_ERR_OK;
  * }

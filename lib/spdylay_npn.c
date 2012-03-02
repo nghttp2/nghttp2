@@ -29,6 +29,7 @@
 typedef struct {
   const unsigned char *proto;
   uint8_t len;
+  uint16_t version;
 } spdylay_npn_proto;
 
 int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
@@ -37,8 +38,8 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
   int http_selected = 0;
   unsigned int i = 0;
   static const spdylay_npn_proto proto_list[] = {
-    { (const unsigned char*)"spdy/2", 6 },
-    { (const unsigned char*)"spdy/3", 6 }
+    { (const unsigned char*)"spdy/2", 6, SPDYLAY_PROTO_SPDY2 },
+    { (const unsigned char*)"spdy/3", 6, SPDYLAY_PROTO_SPDY3 }
   };
   for(; i < inlen; i += in[i]+1) {
     int j;
@@ -47,7 +48,7 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
          memcmp(&in[i+1], proto_list[j].proto, in[i]) == 0) {
         *out = (unsigned char*)&in[i+1];
         *outlen = in[i];
-        return 1;
+        return proto_list[j].version;
       }
     }
     if(in[i] == 8 && memcmp(&in[i+1], "http/1.1", in[i]) == 0) {
