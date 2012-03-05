@@ -161,10 +161,13 @@ int communicate(const std::string& host, uint16_t port,
   }
   make_non_block(fd);
   set_tcp_nodelay(fd);
-  Spdylay sc(fd, ssl,
-             spdylay_npn_get_version(reinterpret_cast<const unsigned char*>
-                                     (next_proto.c_str()), next_proto.size()),
-             callbacks);
+  int spdy_version = spdylay_npn_get_version(
+      reinterpret_cast<const unsigned char*>(next_proto.c_str()),
+      next_proto.size());
+  if (spdy_version <= 0) {
+    return -1;
+  }
+  Spdylay sc(fd, ssl, spdy_version, callbacks);
 
   nfds_t npollfds = 1;
   pollfd pollfds[1];
@@ -243,12 +246,15 @@ int run(char **uris, int n)
   std::vector<Request> reqvec;
   std::string prev_host;
   uint16_t prev_port = 0;
+  int failures = 0;
   for(int i = 0; i < n; ++i) {
     uri::UriStruct us;
     if(uri::parse(us, uris[i])) {
       if(prev_host != us.host || prev_port != us.port) {
         if(!reqvec.empty()) {
-          communicate(prev_host, prev_port, reqvec, &callbacks);
+          if (communicate(prev_host, prev_port, reqvec, &callbacks) != 0) {
+            ++failures;
+          }
           reqvec.clear();
         }
         prev_host = us.host;
@@ -258,9 +264,11 @@ int run(char **uris, int n)
     }
   }
   if(!reqvec.empty()) {
-    communicate(prev_host, prev_port, reqvec, &callbacks);
+    if (communicate(prev_host, prev_port, reqvec, &callbacks) != 0) {
+      ++failures;
+    }
   }
-  return 0;
+  return failures;
 }
 
 void print_usage(std::ostream& out)
@@ -330,8 +338,7 @@ int main(int argc, char **argv)
   SSL_load_error_strings();
   SSL_library_init();
   reset_timer();
-  run(argv+optind, argc-optind);
-  return 0;
+  return run(argv+optind, argc-optind);
 }
 
 } // namespace spdylay

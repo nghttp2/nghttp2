@@ -263,13 +263,15 @@ int SpdyEventHandler::submit_file_response(const std::string& status,
                                            off_t file_length,
                                            spdylay_data_provider *data_prd)
 {
+  std::string date_str = util::http_date(time(0));
+  std::string content_length = util::to_str(file_length);
   const char *nv[] = {
     get_header_field(version_, HD_STATUS).c_str(), status.c_str(),
     get_header_field(version_, HD_VERSION).c_str(), "HTTP/1.1",
     "server", SPDYD_SERVER.c_str(),
-    "content-length", util::to_str(file_length).c_str(),
+    "content-length", content_length.c_str(),
     "cache-control", "max-age=3600",
-    "date", util::http_date(time(0)).c_str(),
+    "date", date_str.c_str(),
     0, 0,
     0
   };
@@ -286,6 +288,7 @@ int SpdyEventHandler::submit_response
  const std::vector<std::pair<std::string, std::string> >& headers,
  spdylay_data_provider *data_prd)
 {
+  std::string date_str = util::http_date(time(0));
   const char **nv = new const char*[8+headers.size()*2+1];
   nv[0] = get_header_field(version_, HD_STATUS).c_str();
   nv[1] = status.c_str();
@@ -294,7 +297,7 @@ int SpdyEventHandler::submit_response
   nv[4] = "server";
   nv[5] = SPDYD_SERVER.c_str();
   nv[6] = "date";
-  nv[7] = util::http_date(time(0)).c_str();
+  nv[7] = date_str.c_str();
   for(int i = 0; i < (int)headers.size(); ++i) {
     nv[8+i*2] = headers[i].first.c_str();
     nv[8+i*2+1] = headers[i].second.c_str();
