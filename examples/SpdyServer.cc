@@ -266,8 +266,8 @@ int SpdyEventHandler::submit_file_response(const std::string& status,
   std::string date_str = util::http_date(time(0));
   std::string content_length = util::to_str(file_length);
   const char *nv[] = {
-    get_header_field(version_, HD_STATUS).c_str(), status.c_str(),
-    get_header_field(version_, HD_VERSION).c_str(), "HTTP/1.1",
+    ":status", status.c_str(),
+    ":version", "HTTP/1.1",
     "server", SPDYD_SERVER.c_str(),
     "content-length", content_length.c_str(),
     "cache-control", "max-age=3600",
@@ -290,9 +290,9 @@ int SpdyEventHandler::submit_response
 {
   std::string date_str = util::http_date(time(0));
   const char **nv = new const char*[8+headers.size()*2+1];
-  nv[0] = get_header_field(version_, HD_STATUS).c_str();
+  nv[0] = ":status";
   nv[1] = status.c_str();
-  nv[2] = get_header_field(version_, HD_VERSION).c_str();
+  nv[2] = ":version";
   nv[3] = "HTTP/1.1";
   nv[4] = "server";
   nv[5] = SPDYD_SERVER.c_str();
@@ -313,8 +313,8 @@ int SpdyEventHandler::submit_response(const std::string& status,
                                       spdylay_data_provider *data_prd)
 {
   const char *nv[] = {
-    get_header_field(version_, HD_STATUS).c_str(), status.c_str(),
-    get_header_field(version_, HD_VERSION).c_str(), "HTTP/1.1",
+    ":status", status.c_str(),
+    ":version", "HTTP/1.1",
     "server", SPDYD_SERVER.c_str(),
     0
   };
@@ -452,16 +452,16 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
   for(int i = 0; i < (int)req->headers.size(); ++i) {
     const std::string &field = req->headers[i].first;
     const std::string &value = req->headers[i].second;
-    if(!url_found && field == get_header_field(hd->version(), HD_PATH)) {
+    if(!url_found && field == ":path") {
       url_found = true;
       url = value;
-    } else if(field == get_header_field(hd->version(), HD_METHOD)) {
+    } else if(field == ":method") {
       method_found = true;
-    } else if(field == get_header_field(hd->version(), HD_SCHEME)) {
+    } else if(field == ":scheme") {
       scheme_found = true;
-    } else if(field == get_header_field(hd->version(), HD_VERSION)) {
+    } else if(field == ":version") {
       version_found = true;
-    } else if(field == get_header_field(hd->version(), HD_HOST)) {
+    } else if(field == ":host") {
       host_found = true;
     } else if(!last_mod_found && field == "if-modified-since") {
       last_mod_found = true;

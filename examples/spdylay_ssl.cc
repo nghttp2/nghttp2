@@ -48,17 +48,6 @@ namespace spdylay {
 
 bool ssl_debug = false;
 
-const std::string& get_header_field(uint16_t version, size_t field)
-{
-  if(version == SPDYLAY_PROTO_SPDY2) {
-    return header_fields_spdy2[field];
-  } else if(version == SPDYLAY_PROTO_SPDY3) {
-    return header_fields_spdy3[field];
-  } else {
-    abort();
-  }
-}
-
 Spdylay::Spdylay(int fd, SSL *ssl, uint16_t version,
                  const spdylay_session_callbacks *callbacks)
   : fd_(fd), ssl_(ssl), version_(version), want_write_(false)
@@ -122,11 +111,11 @@ int Spdylay::submit_request(const std::string& hostport,
                             void *stream_user_data)
 {
   const char *nv[] = {
-    get_header_field(version_, HD_METHOD).c_str(), "GET",
-    get_header_field(version_, HD_PATH).c_str(), path.c_str(),
-    get_header_field(version_, HD_VERSION).c_str(), "HTTP/1.1",
-    get_header_field(version_, HD_SCHEME).c_str(), "https",
-    get_header_field(version_, HD_HOST).c_str(), hostport.c_str(),
+    ":method", "GET",
+    ":path", path.c_str(),
+    ":version", "HTTP/1.1",
+    ":scheme", "https",
+    ":host", hostport.c_str(),
     "user-agent", "spdylay/0.0.0",
     NULL
   };

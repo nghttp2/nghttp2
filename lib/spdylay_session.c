@@ -1539,6 +1539,9 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
                                         session->iframe.len,
                                         &session->hd_inflater);
     if(r == 0) {
+      if(session->version == SPDYLAY_PROTO_SPDY2) {
+        spdylay_frame_nv_2to3(frame.syn_stream.nv);
+      }
       r = spdylay_session_on_syn_stream_received(session, &frame);
       spdylay_frame_syn_stream_free(&frame.syn_stream);
       /* TODO if r indicates mulformed NV pairs (multiple nulls) or
@@ -1560,6 +1563,9 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
                                        session->iframe.len,
                                        &session->hd_inflater);
     if(r == 0) {
+      if(session->version == SPDYLAY_PROTO_SPDY2) {
+        spdylay_frame_nv_2to3(frame.syn_reply.nv);
+      }
       r = spdylay_session_on_syn_reply_received(session, &frame);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
     } else if(spdylay_is_non_fatal(r)) {
@@ -1632,6 +1638,9 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
                                      session->iframe.len,
                                      &session->hd_inflater);
     if(r == 0) {
+      if(session->version == SPDYLAY_PROTO_SPDY2) {
+        spdylay_frame_nv_2to3(frame.headers.nv);
+      }
       r = spdylay_session_on_headers_received(session, &frame);
       spdylay_frame_headers_free(&frame.headers);
     } else if(spdylay_is_non_fatal(r)) {
