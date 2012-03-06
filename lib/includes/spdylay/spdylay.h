@@ -563,24 +563,7 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * the lowest priority is 3.  If the |session| is initialized with the
  * version SPDYLAY_PROTO_SPDY3, the lowest priority is 7.
  *
- * If |session| is initialized with the version SPDYLAY_PROTO_SPDY2,
- * |nv| must include following name/value pairs:
- *
- * "method"
- *     HTTP method (e.g., "GET", "POST", "HEAD", etc)
- * "scheme"
- *     URI scheme (e.g., "https")
- * "url"
- *     Absolute path and parameters of this request (e.g., "/foo",
- *     "/foo;bar;haz?h=j&y=123")
- * "version"
- *     HTTP version (e.g., "HTTP/1.1")
- *
- * The "host" name/value pair (this is the same as the HTTP "Host"
- * header field) is also required by some hosts.
- *
- * If |session| is initialized with the version SPDYLAY_PROTO_SPDY3,
- * |nv| must include following name/value pairs:
+ * The |nv| must include following name/value pairs:
  *
  * ":method"
  *     HTTP method (e.g., "GET", "POST", "HEAD", etc)
@@ -595,6 +578,10 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  *     The hostport portion of the URI for this request (e.g.,
  *     "example.org:443"). This is the same as the HTTP "Host" header
  *     field.
+ *
+ * If the |session| is initialized with the version
+ * SPDYLAY_PROTO_SPDY2, the above names are translated to "method",
+ * "scheme", "url", "version" and "host" respectively.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
@@ -637,21 +624,16 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  * Submits SYN_REPLY frame and optionally one or more DATA frames
  * against stream |stream_id|.
  *
- * If |session| is initialized with the version SPDYLAY_PROTO_SPDY2,
- * |nv| must include following name/value pairs:
- *
- * "status"
- *     HTTP status code (e.g., "200" or "200 OK")
- * "version"
- *     HTTP response version (e.g., "HTTP/1.1")
- *
- * If |session| is initialized with the version SPDYLAY_PROTO_SPDY3,
- * |nv| must include following name/value pairs:
+ * The |nv| must include following name/value pairs:
  *
  * ":status"
  *     HTTP status code (e.g., "200" or "200 OK")
  * ":version"
  *     HTTP response version (e.g., "HTTP/1.1")
+ *
+ * If the |session| is initialized with the version
+ * SPDYLAY_PROTO_SPDY2, the above names are translated to "status" and
+ * "version" respectively.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.

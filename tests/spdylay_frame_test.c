@@ -526,3 +526,53 @@ void test_spdylay_frame_nv_downcase()
   CU_ASSERT(0 == strcmp("1000000007", nv[3]));
   spdylay_frame_nv_del(nv);
 }
+
+void test_spdylay_frame_nv_2to3()
+{
+  const char *nv_src[] = {
+    "host", "localhost",
+    "method", "GET",
+    "url", "/",
+    "accept", "*/*",
+    "scheme", "https",
+    "status", "200 OK",
+    "version", "HTTP/1.1",
+    NULL
+  };
+  char **nv;
+  nv = spdylay_frame_nv_copy(nv_src);
+  spdylay_frame_nv_2to3(nv);
+  CU_ASSERT(0 == strcmp(":host", nv[0]));
+  CU_ASSERT(0 == strcmp(":method", nv[2]));
+  CU_ASSERT(0 == strcmp(":path", nv[4]));
+  CU_ASSERT(0 == strcmp("accept", nv[6]));
+  CU_ASSERT(0 == strcmp(":scheme", nv[8]));
+  CU_ASSERT(0 == strcmp(":status", nv[10]));
+  CU_ASSERT(0 == strcmp(":version", nv[12]));
+  spdylay_frame_nv_del(nv);
+}
+
+void test_spdylay_frame_nv_3to2()
+{
+  const char *nv_src[] = {
+    ":host", "localhost",
+    ":method", "GET",
+    ":path", "/",
+    "accept", "*/*",
+    ":scheme", "https",
+    ":status", "200 OK",
+    ":version", "HTTP/1.1",
+    NULL
+  };
+  char **nv;
+  nv = spdylay_frame_nv_copy(nv_src);
+  spdylay_frame_nv_3to2(nv);
+  CU_ASSERT(0 == strcmp("host", nv[0]));
+  CU_ASSERT(0 == strcmp("method", nv[2]));
+  CU_ASSERT(0 == strcmp("url", nv[4]));
+  CU_ASSERT(0 == strcmp("accept", nv[6]));
+  CU_ASSERT(0 == strcmp("scheme", nv[8]));
+  CU_ASSERT(0 == strcmp("status", nv[10]));
+  CU_ASSERT(0 == strcmp("version", nv[12]));
+  spdylay_frame_nv_del(nv);
+}

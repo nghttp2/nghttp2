@@ -552,12 +552,18 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     stream_id = session->next_stream_id;
     item->frame->syn_stream.stream_id = stream_id;
     session->next_stream_id += 2;
+    if(session->version == SPDYLAY_PROTO_SPDY2) {
+      spdylay_frame_nv_3to2(item->frame->syn_stream.nv);
+    }
     framebuflen = spdylay_frame_pack_syn_stream(&session->aob.framebuf,
                                                 &session->aob.framebufmax,
                                                 &session->nvbuf,
                                                 &session->nvbuflen,
                                                 &item->frame->syn_stream,
                                                 &session->hd_deflater);
+    if(session->version == SPDYLAY_PROTO_SPDY2) {
+      spdylay_frame_nv_2to3(item->frame->syn_stream.nv);
+    }
     if(framebuflen < 0) {
       return framebuflen;
     }
@@ -576,12 +582,18 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                          item->frame->syn_reply.stream_id)) {
       return SPDYLAY_ERR_INVALID_FRAME;
     }
+    if(session->version == SPDYLAY_PROTO_SPDY2) {
+      spdylay_frame_nv_3to2(item->frame->syn_reply.nv);
+    }
     framebuflen = spdylay_frame_pack_syn_reply(&session->aob.framebuf,
                                                &session->aob.framebufmax,
                                                &session->nvbuf,
                                                &session->nvbuflen,
                                                &item->frame->syn_reply,
                                                &session->hd_deflater);
+    if(session->version == SPDYLAY_PROTO_SPDY2) {
+      spdylay_frame_nv_2to3(item->frame->syn_reply.nv);
+    }
     if(framebuflen < 0) {
       return framebuflen;
     }
@@ -620,12 +632,18 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                            item->frame->headers.stream_id)) {
       return SPDYLAY_ERR_INVALID_FRAME;
     }
+    if(session->version == SPDYLAY_PROTO_SPDY2) {
+      spdylay_frame_nv_3to2(item->frame->headers.nv);
+    }
     framebuflen = spdylay_frame_pack_headers(&session->aob.framebuf,
                                              &session->aob.framebufmax,
                                              &session->nvbuf,
                                              &session->nvbuflen,
                                              &item->frame->headers,
                                              &session->hd_deflater);
+    if(session->version == SPDYLAY_PROTO_SPDY2) {
+      spdylay_frame_nv_2to3(item->frame->headers.nv);
+    }
     if(framebuflen < 0) {
       return framebuflen;
     }

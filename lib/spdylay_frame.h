@@ -596,6 +596,16 @@ void spdylay_frame_nv_downcase(char **nv);
 char** spdylay_frame_nv_norm_copy(const char **nv);
 
 /*
+ * Translates the |nv| in SPDY/3 header names into SPDY/2.
+ */
+void spdylay_frame_nv_3to2(char **nv);
+
+/*
+ * Translates the |nv| in SPDY/2 header names into SPDY/3.
+ */
+void spdylay_frame_nv_2to3(char **nv);
+
+/*
  * Makes copy of |iv| and return the copy. The |niv| is the number of
  * entries in |iv|. This function returns the pointer to the copy if
  * it succeeds, or NULL.

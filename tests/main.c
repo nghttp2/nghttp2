@@ -170,6 +170,8 @@ int main(int argc, char* argv[])
                    test_spdylay_frame_nv_downcase) ||
       !CU_add_test(pSuite, "frame_pack_nv_duplicate_keys",
                    test_spdylay_frame_pack_nv_duplicate_keys) ||
+      !CU_add_test(pSuite, "frame_nv_2to3", test_spdylay_frame_nv_2to3) ||
+      !CU_add_test(pSuite, "frame_nv_3to2", test_spdylay_frame_nv_3to2) ||
       !CU_add_test(pSuite, "stream_add_pushed_stream",
                    test_spdylay_stream_add_pushed_stream)) {
      CU_cleanup_registry();

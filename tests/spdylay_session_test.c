@@ -579,21 +579,36 @@ void test_spdylay_submit_response_with_null_data_read_callback()
 {
   spdylay_session *session;
   spdylay_session_callbacks callbacks;
-  const char *nv[] = { "Version", "HTTP/1.1", NULL };
+  accumulator acc;
+  const char *nv[] = { ":Version", "HTTP/1.1", NULL };
   spdylay_data_provider data_prd = {{-1}, NULL};
   spdylay_outbound_item *item;
+  my_user_data ud;
+  spdylay_frame frame;
 
+  acc.length = 0;
+  ud.acc = &acc;
   memset(&callbacks, 0, sizeof(callbacks));
-  callbacks.send_callback = null_send_callback;
+  callbacks.send_callback = accumulator_send_callback;
   CU_ASSERT(0 == spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY2,
-                                            &callbacks, NULL));
+                                            &callbacks, &ud));
   spdylay_session_open_stream(session, 1, SPDYLAY_CTRL_FLAG_FIN, 3,
                               SPDYLAY_STREAM_OPENING, NULL);
   CU_ASSERT(0 == spdylay_submit_response(session, 1, nv, &data_prd));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("version", item->frame->syn_reply.nv[0]));
+  CU_ASSERT(0 == strcmp(":version", item->frame->syn_reply.nv[0]));
   CU_ASSERT(item->frame->syn_reply.hd.flags & SPDYLAY_CTRL_FLAG_FIN);
 
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(0 == spdylay_frame_unpack_syn_reply(&frame.syn_reply,
+                                                &session->inflatebuf,
+                                                &session->nvbuf,
+                                                &session->nvbuflen,
+                                                &acc.buf[0], SPDYLAY_HEAD_LEN,
+                                                &acc.buf[SPDYLAY_HEAD_LEN],
+                                                acc.length-SPDYLAY_HEAD_LEN,
+                                                &session->hd_inflater));
+  CU_ASSERT(0 == strcmp("version", frame.syn_reply.nv[0]));
   spdylay_session_del(session);
 }
 
@@ -627,22 +642,35 @@ void test_spdylay_submit_request_with_data()
 void test_spdylay_submit_request_with_null_data_read_callback()
 {
   spdylay_session *session;
-  spdylay_session_callbacks callbacks = {
-    null_send_callback,
-    NULL,
-    NULL,
-    NULL
-  };
-  const char *nv[] = { "Version", "HTTP/1.1", NULL };
+  spdylay_session_callbacks callbacks;
+  accumulator acc;
+  const char *nv[] = { ":Version", "HTTP/1.1", NULL };
   spdylay_data_provider data_prd = {{-1}, NULL};
   spdylay_outbound_item *item;
+  my_user_data ud;
+  spdylay_frame frame;
 
+  acc.length = 0;
+  ud.acc = &acc;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = accumulator_send_callback;
   CU_ASSERT(0 == spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY2,
-                                            &callbacks, NULL));
+                                            &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd, NULL));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("version", item->frame->syn_stream.nv[0]));
+  CU_ASSERT(0 == strcmp(":version", item->frame->syn_stream.nv[0]));
   CU_ASSERT(item->frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN);
+
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(0 == spdylay_frame_unpack_syn_stream(&frame.syn_stream,
+                                                 &session->inflatebuf,
+                                                 &session->nvbuf,
+                                                 &session->nvbuflen,
+                                                 &acc.buf[0], SPDYLAY_HEAD_LEN,
+                                                 &acc.buf[SPDYLAY_HEAD_LEN],
+                                                 acc.length-SPDYLAY_HEAD_LEN,
+                                                 &session->hd_inflater));
+  CU_ASSERT(0 == strcmp("version", frame.syn_stream.nv[0]));
 
   spdylay_session_del(session);
 }
@@ -724,20 +752,24 @@ void test_spdylay_submit_headers()
 {
   spdylay_session *session;
   spdylay_session_callbacks callbacks;
-  const char *nv[] = { "version", "HTTP/1.1", NULL };
+  const char *nv[] = { ":Version", "HTTP/1.1", NULL };
   my_user_data ud;
   spdylay_outbound_item *item;
   spdylay_stream *stream;
+  accumulator acc;
+  spdylay_frame frame;
 
+  acc.length = 0;
+  ud.acc = &acc;
   memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
-  callbacks.send_callback = null_send_callback;
+  callbacks.send_callback = accumulator_send_callback;
   callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
 
   CU_ASSERT(0 == spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY2,
                                             &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_headers(session, SPDYLAY_CTRL_FLAG_FIN, 1, nv));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("version", item->frame->headers.nv[0]));
+  CU_ASSERT(0 == strcmp(":version", item->frame->headers.nv[0]));
   CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == item->frame->headers.hd.flags);
 
   ud.ctrl_send_cb_called = 0;
@@ -753,6 +785,16 @@ void test_spdylay_submit_headers()
   CU_ASSERT(1 == ud.ctrl_send_cb_called);
   CU_ASSERT(SPDYLAY_HEADERS == ud.sent_frame_type);
   CU_ASSERT(stream->shut_flags & SPDYLAY_SHUT_WR);
+
+  CU_ASSERT(0 == spdylay_frame_unpack_headers(&frame.headers,
+                                              &session->inflatebuf,
+                                              &session->nvbuf,
+                                              &session->nvbuflen,
+                                              &acc.buf[0], SPDYLAY_HEAD_LEN,
+                                              &acc.buf[SPDYLAY_HEAD_LEN],
+                                              acc.length-SPDYLAY_HEAD_LEN,
+                                              &session->hd_inflater));
+  CU_ASSERT(0 == strcmp("version", frame.headers.nv[0]));
 
   spdylay_session_del(session);
 }

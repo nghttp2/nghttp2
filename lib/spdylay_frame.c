@@ -376,6 +376,43 @@ char** spdylay_frame_nv_norm_copy(const char **nv)
   return nv_copy;
 }
 
+/* Table to translate SPDY/3 header names to SPDY/2. */
+static char *spdylay_nv_3to2[] = {
+  ":host", "host",
+  ":method", "method",
+  ":path", "url",
+  ":scheme", "scheme",
+  ":status", "status",
+  ":version", "version",
+  NULL
+};
+
+void spdylay_frame_nv_3to2(char **nv)
+{
+  int i, j;
+  for(i = 0; nv[i]; i += 2) {
+    for(j = 0; spdylay_nv_3to2[j]; j += 2) {
+      if(strcmp(nv[i], spdylay_nv_3to2[j]) == 0) {
+        nv[i] = spdylay_nv_3to2[j+1];
+        break;
+      }
+    }
+  }
+}
+
+void spdylay_frame_nv_2to3(char **nv)
+{
+  int i, j;
+  for(i = 0; nv[i]; i += 2) {
+    for(j = 0; spdylay_nv_3to2[j]; j += 2) {
+      if(strcmp(nv[i], spdylay_nv_3to2[j+1]) == 0) {
+        nv[i] = spdylay_nv_3to2[j];
+        break;
+      }
+    }
+  }
+}
+
 void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame,
                                    uint16_t version, uint8_t flags,
                                    int32_t stream_id, int32_t assoc_stream_id,
