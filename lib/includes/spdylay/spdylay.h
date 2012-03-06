@@ -157,7 +157,7 @@ typedef struct {
   int32_t stream_id;
   int32_t assoc_stream_id;
   /* 0 (Highest) to SPDYLAY_SPDY2_PRI_LOWEST or
-     SPDYLAY_SPDY3_PRI_LOWEST (loweset), depending on the protocol
+     SPDYLAY_SPDY3_PRI_LOWEST (lowest), depending on the protocol
      version. */
   uint8_t pri;
   /* Since SPDY/3 */
