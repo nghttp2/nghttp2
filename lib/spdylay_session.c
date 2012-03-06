@@ -1042,9 +1042,6 @@ int spdylay_session_send(spdylay_session *session)
           assert(r < SPDYLAY_ERR_FATAL);
           return r;
         }
-      } else {
-        /* partial write */
-        break;
       }
     }
   }
