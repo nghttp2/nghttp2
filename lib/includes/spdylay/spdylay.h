@@ -438,6 +438,25 @@ void spdylay_session_del(spdylay_session *session);
 /*
  * Sends pending frames to the remote peer.
  *
+ * This function retrieves the highest prioritized frame from the
+ * outbound queue and sends it to the remote peer. It does this as
+ * many as possible until the user callback send_callback returns
+ * SPDYLAY_ERR_WOULDBLOCK or the outbound queue becomes empty.  This
+ * function calls several callback functions which are passed when
+ * initializing the |session|. Here is the simple time chart which
+ * tells when each callback is invoked:
+ *
+ * 1. Get the next frame to send from outbound queue.
+ * 2. Prepare transmission of the frame.
+ * 3. If the frame is SYN_STREAM, the stream is opened here.
+ * 4. before_ctrl_send_callback is invoked.
+ * 5. send_callback is invoked one or more times (while the frame is
+ *    completely sent).
+ * 6. If the frame is a control frame, on_ctrl_send_callback is invoked.
+ * 7. If the frame is a DATA frame, on_data_send_callback is invoked.
+ * 8. If the transmission of the frame triggers closure of the stream,
+ *    the stream is closed and on_stream_close_callback is invoked.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -450,6 +469,32 @@ int spdylay_session_send(spdylay_session *session);
 
 /*
  * Receives frames from the remote peer.
+ *
+ * This function receives as many frames as possible until the user
+ * callback recv_callback returns SPDYLAY_ERR_WOULDBLOCK. This
+ * function calls several callback functions which are passed when
+ * initializing the |session|. Here is the simple time chart which
+ * tells when each callback is invoked:
+ *
+ * 1. recv_callback is invoked one or more times to receive frame header.
+ * 2. If the frame is DATA frame:
+ *   2.1. recv_callback is invoked to receive DATA payload. For each
+ *        chunk of data, on_data_chunk_recv_callback is invoked.
+ *   2.2. If one DATA frame is completely received, on_data_recv_callback
+ *        is invoked.
+ *        If the frame is the final frame of the request,
+ *        on_request_recv_callback is invoked.
+ *        If the reception of the frame triggers the closure of the stream,
+ *        on_stream_close_callback is invoked.
+ * 3. If the frame is the control frame:
+ *   3.1. recv_callback is invoked one or more times to receive whole frame.
+ *   3.2. If the received frame is valid, on_ctrl_recv_callback is invoked.
+ *        If the frame is the final frame of the request,
+ *        on_request_recv_callback is invoked.
+ *        If the reception of the frame triggers the closure of the stream,
+ *        on_stream_close_callback is invoked.
+ *   3.3. If the received frame is unpacked but is interpreted as invalid,
+ *        on_invalid_ctrl_recv_callback is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -559,14 +604,21 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * message bodies
  * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must
  * be specified with "method" key in |nv| (e.g. POST). If |data_prd|
- * is NULL, SYN_STREAM have FLAG_FIN.  |stream_user_data| can be an
+ * is NULL, SYN_STREAM have FLAG_FIN. The |stream_user_data| is data
+ * associated to the stream opened by this request and can be an
  * arbitrary pointer, which can be retrieved by
- * spdylay_session_get_stream_user_data().  Since stream ID is not
- * known before sending SYN_STREAM frame and the application code has
- * to compare url, and possibly other header field values, to identify
- * stream ID for the request in spdylay_on_ctrl_send_callback(). With
- * |stream_user_data|, the application can easily identifies stream ID
- * for the request.
+ * spdylay_session_get_stream_user_data().
+ *
+ * Since the library reorders the frames and tries to send the highest
+ * prioritized one first and the SPDY specification requires the
+ * stream ID must be strictly increasing, the stream ID of this
+ * request cannot be known until it is about to sent.  To know the
+ * stream ID of the request, the application can use
+ * before_ctrl_send_callback. This callback is called just before the
+ * frame is sent. For SYN_STREAM frame, the argument frame has stream
+ * ID assigned. Also since the stream is already opened,
+ * spdylay_session_get_stream_user_data() can be used to get
+ * |stream_user_data| to identify which SYN_STREAM we are processing.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
