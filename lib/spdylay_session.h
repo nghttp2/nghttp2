@@ -109,7 +109,8 @@ struct spdylay_session {
      SPDYLAY_PROTO_SPDY3  */
   uint16_t version;
   uint8_t server;
-  int32_t next_stream_id;
+  /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
+  uint32_t next_stream_id;
   int32_t last_recv_stream_id;
   /* Counter of unique ID of PING. Wraps when it exceeds
      SPDYLAY_MAX_UNIQUE_ID */

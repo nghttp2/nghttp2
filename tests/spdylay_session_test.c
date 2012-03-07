@@ -52,6 +52,9 @@ typedef struct {
   int ctrl_recv_cb_called, invalid_ctrl_recv_cb_called;
   int ctrl_send_cb_called;
   spdylay_frame_type sent_frame_type;
+  int ctrl_not_send_cb_called;
+  spdylay_frame_type not_sent_frame_type;
+  int not_sent_error;
   int stream_close_cb_called;
   size_t data_source_length;
   int32_t stream_id;
@@ -135,6 +138,18 @@ static void on_ctrl_send_callback(spdylay_session *session,
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->ctrl_send_cb_called;
   ud->sent_frame_type = type;
+}
+
+static void on_ctrl_not_send_callback(spdylay_session *session,
+                                      spdylay_frame_type type,
+                                      spdylay_frame *frame,
+                                      int error,
+                                      void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->ctrl_not_send_cb_called;
+  ud->not_sent_frame_type = type;
+  ud->not_sent_error = error;
 }
 
 static ssize_t fixed_length_data_source_read_callback
@@ -1689,5 +1704,118 @@ void test_spdylay_session_flow_control()
             SPDYLAY_SHUT_WR);
 
   spdylay_frame_window_update_free(&frame.window_update);
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_on_ctrl_not_send()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  my_user_data user_data;
+  spdylay_stream *stream;
+  const char *nv[] = { NULL };
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_ctrl_not_send_callback = on_ctrl_not_send_callback;
+  callbacks.send_callback = null_send_callback;
+  user_data.ctrl_not_send_cb_called = 0;
+  user_data.not_sent_frame_type = 0;
+  user_data.not_sent_error = 0;
+
+  CU_ASSERT(spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY2,
+                                       &callbacks, &user_data) == 0);
+  stream = spdylay_session_open_stream(session, 1,
+                                       SPDYLAY_CTRL_FLAG_NONE,
+                                       3, SPDYLAY_STREAM_OPENED, &user_data);
+  /* Check SYN_REPLY */
+  CU_ASSERT(0 ==
+            spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_FIN, 1, nv));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_REPLY == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_STREAM_STATE == user_data.not_sent_error);
+
+  stream->state = SPDYLAY_STREAM_OPENING;
+  user_data.ctrl_not_send_cb_called = 0;
+  /* Send bogus stream ID */
+  CU_ASSERT(0 ==
+            spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_FIN, 3, nv));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_REPLY == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_STREAM_ALREADY_CLOSED == user_data.not_sent_error);
+
+  user_data.ctrl_not_send_cb_called = 0;
+  /* Shutdown transmission */
+  stream->shut_flags |= SPDYLAY_SHUT_WR;
+  CU_ASSERT(0 ==
+            spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_FIN, 1, nv));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_REPLY == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_STREAM_SHUT_WR == user_data.not_sent_error);
+
+  stream->shut_flags = SPDYLAY_SHUT_NONE;
+  user_data.ctrl_not_send_cb_called = 0;
+  /* Queue RST_STREAM */
+  CU_ASSERT(0 ==
+            spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_FIN, 1, nv));
+  CU_ASSERT(0 == spdylay_submit_rst_stream(session, 1, SPDYLAY_INTERNAL_ERROR));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_REPLY == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_STREAM_CLOSING == user_data.not_sent_error);
+
+  stream = spdylay_session_open_stream(session, 3,
+                                       SPDYLAY_CTRL_FLAG_NONE,
+                                       3, SPDYLAY_STREAM_OPENED, &user_data);
+
+  /* Check HEADERS */
+  user_data.ctrl_not_send_cb_called = 0;
+  stream->state = SPDYLAY_STREAM_OPENING;
+  CU_ASSERT(0 ==
+            spdylay_submit_headers(session, SPDYLAY_CTRL_FLAG_FIN, 3, nv));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_HEADERS == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_STREAM_STATE == user_data.not_sent_error);
+
+  stream->state = SPDYLAY_STREAM_OPENED;
+  user_data.ctrl_not_send_cb_called = 0;
+  /* Queue RST_STREAM */
+  CU_ASSERT(0 ==
+            spdylay_submit_headers(session, SPDYLAY_CTRL_FLAG_FIN, 3, nv));
+  CU_ASSERT(0 == spdylay_submit_rst_stream(session, 3, SPDYLAY_INTERNAL_ERROR));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_HEADERS == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_STREAM_CLOSING == user_data.not_sent_error);
+
+  spdylay_session_del(session);
+
+  /* Check SYN_STREAM */
+  user_data.ctrl_not_send_cb_called = 0;
+  CU_ASSERT(spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY2,
+                                       &callbacks, &user_data) == 0);
+  /* Maximum Stream ID is reached */
+  session->next_stream_id = (1u << 31)+1;
+  CU_ASSERT(0 == spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 0,
+                                           3, nv, NULL));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_STREAM == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE == user_data.not_sent_error);
+
+  session->next_stream_id = 1;
+  user_data.ctrl_not_send_cb_called = 0;
+  /* Send GOAWAY */
+  CU_ASSERT(0 == spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK));
+  CU_ASSERT(0 == spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 0,
+                                           3, nv, NULL));
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_STREAM == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED == user_data.not_sent_error);
+
   spdylay_session_del(session);
 }

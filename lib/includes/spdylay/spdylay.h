@@ -52,6 +52,15 @@ typedef enum {
   SPDYLAY_ERR_INVALID_FRAME = -506,
   SPDYLAY_ERR_EOF = -507,
   SPDYLAY_ERR_DEFERRED = -508,
+  SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE = -509,
+  SPDYLAY_ERR_STREAM_ALREADY_CLOSED = -510,
+  SPDYLAY_ERR_STREAM_CLOSING = -511,
+  SPDYLAY_ERR_STREAM_SHUT_WR = -512,
+  SPDYLAY_ERR_INVALID_STREAM_ID = -513,
+  SPDYLAY_ERR_INVALID_STREAM_STATE = -514,
+  SPDYLAY_ERR_DEFERRED_DATA_EXIST = -515,
+  SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED = -516,
+  SPDYLAY_ERR_GOAWAY_ALREADY_SENT = -517,
   /* The errors < SPDYLAY_ERR_FATAL mean that the library is under
      unexpected condition that it cannot process any further data
      reliably (e.g., out of memory). */
@@ -338,6 +347,15 @@ typedef void (*spdylay_on_ctrl_send_callback)
  void *user_data);
 
 /*
+ * Callback function invoked after the control frame |frame| of type
+ * |type| is not sent because of the error. The error is indicated by
+ * the |error|, which is one of the values defined in spdylay_error.
+ */
+typedef void (*spdylay_on_ctrl_not_send_callback)
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ int error, void *user_data);
+
+/*
  * Callback function invoked after DATA frame is sent.
  */
 typedef void (*spdylay_on_data_send_callback)
@@ -381,6 +399,7 @@ typedef struct {
   spdylay_on_data_recv_callback on_data_recv_callback;
   spdylay_before_ctrl_send_callback before_ctrl_send_callback;
   spdylay_on_ctrl_send_callback on_ctrl_send_callback;
+  spdylay_on_ctrl_not_send_callback on_ctrl_not_send_callback;
   spdylay_on_data_send_callback on_data_send_callback;
   spdylay_on_stream_close_callback on_stream_close_callback;
   spdylay_on_request_recv_callback on_request_recv_callback;

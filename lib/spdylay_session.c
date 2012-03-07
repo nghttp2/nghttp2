@@ -43,6 +43,14 @@ static int spdylay_session_get_max_concurrent_streams_reached
     <= spdylay_map_size(&session->streams);
 }
 
+/*
+ * Returns non-zero if |error| is non-fatal error.
+ */
+static int spdylay_is_non_fatal(int error)
+{
+  return error < 0 && error > SPDYLAY_ERR_FATAL;
+}
+
 int spdylay_session_is_my_stream_id(spdylay_session *session,
                                     int32_t stream_id)
 {
@@ -438,54 +446,129 @@ void spdylay_session_close_pushed_streams(spdylay_session *session,
   }
 }
 
-/*
- * Returns non-zero value if local peer can send SYN_REPLY with stream
- * ID |stream_id| at the moment, or 0.
- */
-static int spdylay_session_is_reply_allowed(spdylay_session *session,
-                                            int32_t stream_id)
+static int spdylay_predicate_stream_for_send(spdylay_stream *stream)
 {
-  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
-  if(stream == NULL || (stream->shut_flags & SPDYLAY_SHUT_WR)) {
-    return 0;
-  }
-  if(spdylay_session_is_my_stream_id(session, stream_id)) {
-    return 0;
+  if(stream == NULL) {
+    return SPDYLAY_ERR_STREAM_ALREADY_CLOSED;
+  } else if(stream->shut_flags & SPDYLAY_SHUT_WR) {
+    return SPDYLAY_ERR_STREAM_SHUT_WR;
   } else {
-    return stream->state == SPDYLAY_STREAM_OPENING;
+    return 0;
   }
 }
 
 /*
- * Returns nonzero value if local endpoint can send HEADERS with
- * stream ID |stream_id| at the moment.
+ * This function checks SYN_REPLY with the stream ID |stream_id| can
+ * be sent at this time.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ *     The stream is already closed or does not exist.
+ * SPDYLAY_ERR_STREAM_SHUT_WR
+ *     The transmission is not allowed for this stream (e.g., a frame
+ *     with FIN flag set has already sent)
+ * SPDYLAY_ERR_INVALID_STREAM_ID
+ *     The stream ID is invalid.
+ * SPDYLAY_ERR_STREAM_CLOSING
+ *     RST_STREAM was queued for this stream.
+ * SPDYLAY_ERR_INVALID_STREAM_STATE
+ *     The state of the stream is not valid (e.g., SYN_REPLY has
+ *     already sent).
  */
-static int spdylay_session_is_headers_allowed(spdylay_session *session,
-                                              int32_t stream_id)
-{
-  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
-  if(stream == NULL || (stream->shut_flags & SPDYLAY_SHUT_WR)) {
-    return 0;
-  }
-  if(spdylay_session_is_my_stream_id(session, stream_id)) {
-    return stream->state != SPDYLAY_STREAM_CLOSING;
-  } else {
-    return stream->state == SPDYLAY_STREAM_OPENED;
-  }
-}
-
-/*
- * Returns nonzero value if local endpoint can send WINDOW_UPDATE with
- * stream ID |stream_id| at the moment.
- */
-static int spdylay_session_is_window_update_allowed(spdylay_session *session,
+static int spdylay_session_predicate_syn_reply_send(spdylay_session *session,
                                                     int32_t stream_id)
 {
   spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
-  if(stream == NULL) {
-    return 0;
+  int r;
+  r = spdylay_predicate_stream_for_send(stream);
+  if(r != 0) {
+    return r;
   }
-  return stream->state != SPDYLAY_STREAM_CLOSING;
+  if(spdylay_session_is_my_stream_id(session, stream_id)) {
+    return SPDYLAY_ERR_INVALID_STREAM_ID;
+  } else {
+    if(stream->state == SPDYLAY_STREAM_OPENING) {
+      return 0;
+    } else if(stream->state == SPDYLAY_STREAM_CLOSING) {
+      return SPDYLAY_ERR_STREAM_CLOSING;
+    } else {
+      return SPDYLAY_ERR_INVALID_STREAM_STATE;
+    }
+  }
+}
+
+/*
+ * This function checks HEADERS with the stream ID |stream_id| can
+ * be sent at this time.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ *     The stream is already closed or does not exist.
+ * SPDYLAY_ERR_STREAM_SHUT_WR
+ *     The transmission is not allowed for this stream (e.g., a frame
+ *     with FIN flag set has already sent)
+ * SPDYLAY_ERR_STREAM_CLOSING
+ *     RST_STREAM was queued for this stream.
+ * SPDYLAY_ERR_INVALID_STREAM_STATE
+ *     The state of the stream is not valid (e.g., if the local peer
+ *     is receiving side and SYN_REPLY has not been sent).
+ */
+static int spdylay_session_predicate_headers_send(spdylay_session *session,
+                                                  int32_t stream_id)
+{
+  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
+  int r;
+  r = spdylay_predicate_stream_for_send(stream);
+  if(r != 0) {
+    return r;
+  }
+  if(spdylay_session_is_my_stream_id(session, stream_id)) {
+    if(stream->state != SPDYLAY_STREAM_CLOSING) {
+      return 0;
+    } else {
+      return SPDYLAY_ERR_STREAM_CLOSING;
+    }
+  } else {
+    if(stream->state == SPDYLAY_STREAM_OPENED) {
+      return 0;
+    } else if(stream->state == SPDYLAY_STREAM_CLOSING) {
+      return SPDYLAY_ERR_STREAM_CLOSING;
+    } else {
+      return SPDYLAY_ERR_INVALID_STREAM_STATE;
+    }
+  }
+}
+
+/*
+ * This function checks WINDOW_UPDATE with the stream ID |stream_id|
+ * can be sent at this time. Note that FIN flag of the previous frame
+ * does not affect the transmission of the WINDOW_UPDATE frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ *     The stream is already closed or does not exist.
+ * SPDYLAY_ERR_STREAM_CLOSING
+ *     RST_STREAM was queued for this stream.
+ */
+static int spdylay_session_predicate_window_update_send
+(spdylay_session *session,
+ int32_t stream_id)
+{
+  spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return SPDYLAY_ERR_STREAM_ALREADY_CLOSED;
+  }
+  if(stream->state != SPDYLAY_STREAM_CLOSING) {
+    return 0;
+  } else {
+    return SPDYLAY_ERR_STREAM_CLOSING;
+  }
 }
 
 /*
@@ -506,18 +589,40 @@ static size_t spdylay_session_next_data_read(spdylay_session *session,
   }
 }
 
-static int spdylay_session_is_data_allowed(spdylay_session *session,
-                                           int32_t stream_id)
+/*
+ * This function checks DATA with the stream ID |stream_id| can be
+ * sent at this time.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ *     The stream is already closed or does not exist.
+ * SPDYLAY_ERR_STREAM_SHUT_WR
+ *     The transmission is not allowed for this stream (e.g., a frame
+ *     with FIN flag set has already sent)
+ * SPDYLAY_ERR_DEFERRED_DATA_EXIST
+ *     Another DATA frame has already been deferred.
+ * SPDYLAY_ERR_STREAM_CLOSING
+ *     RST_STREAM was queued for this stream.
+ * SPDYLAY_ERR_INVALID_STREAM_STATE
+ *     The state of the stream is not valid (e.g., if the local peer
+ *     is receiving side and SYN_REPLY has not been sent).
+ */
+static int spdylay_session_predicate_data_send(spdylay_session *session,
+                                               int32_t stream_id)
 {
   spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
-  if(stream == NULL || (stream->shut_flags & SPDYLAY_SHUT_WR)) {
-    return 0;
+  int r;
+  r = spdylay_predicate_stream_for_send(stream);
+  if(r != 0) {
+    return r;
   }
   if(stream->deferred_data != NULL) {
     /* stream->deferred_data != NULL means previously queued DATA
        frame has not been sent. We don't allow new DATA frame is sent
        in this case. */
-    return 0;
+    return SPDYLAY_ERR_DEFERRED_DATA_EXIST;
   }
   if(spdylay_session_is_my_stream_id(session, stream_id)) {
     /* If stream->state is SPDYLAY_STREAM_CLOSING, RST_STREAM was
@@ -528,9 +633,19 @@ static int spdylay_session_is_data_allowed(spdylay_session *session,
        frames are sent. This is not desirable situation; we want to
        close stream as soon as possible. To achieve this, we remove
        DATA frame before RST_STREAM. */
-    return stream->state != SPDYLAY_STREAM_CLOSING;
+    if(stream->state != SPDYLAY_STREAM_CLOSING) {
+      return 0;
+    } else {
+      return SPDYLAY_ERR_STREAM_CLOSING;
+    }
   } else {
-    return stream->state == SPDYLAY_STREAM_OPENED;
+    if(stream->state == SPDYLAY_STREAM_OPENED) {
+      return 0;
+    } else if(stream->state == SPDYLAY_STREAM_CLOSING) {
+      return SPDYLAY_ERR_STREAM_CLOSING;
+    } else {
+      return SPDYLAY_ERR_INVALID_STREAM_STATE;
+    }
   }
 }
 
@@ -542,14 +657,19 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
   ssize_t framebuflen;
   switch(item->frame_type) {
   case SPDYLAY_SYN_STREAM: {
-    uint32_t stream_id;
+    int32_t stream_id;
     spdylay_syn_stream_aux_data *aux_data;
     if(session->goaway_flags) {
       /* When GOAWAY is sent or received, peer must not send new
          SYN_STREAM. */
-      return SPDYLAY_ERR_INVALID_FRAME;
+      return SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED;
+    }
+    /* All 32bit signed stream IDs are spent. */
+    if(session->next_stream_id > INT32_MAX) {
+      return SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE;
     }
     stream_id = session->next_stream_id;
+
     item->frame->syn_stream.stream_id = stream_id;
     session->next_stream_id += 2;
     if(session->version == SPDYLAY_PROTO_SPDY2) {
@@ -578,9 +698,11 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     break;
   }
   case SPDYLAY_SYN_REPLY: {
-    if(!spdylay_session_is_reply_allowed(session,
-                                         item->frame->syn_reply.stream_id)) {
-      return SPDYLAY_ERR_INVALID_FRAME;
+    int r;
+    r = spdylay_session_predicate_syn_reply_send
+      (session, item->frame->syn_reply.stream_id);
+    if(r != 0) {
+      return r;
     }
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_3to2(item->frame->syn_reply.nv);
@@ -628,9 +750,11 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     break;
   case SPDYLAY_HEADERS: {
-    if(!spdylay_session_is_headers_allowed(session,
-                                           item->frame->headers.stream_id)) {
-      return SPDYLAY_ERR_INVALID_FRAME;
+    int r;
+    r = spdylay_session_predicate_headers_send(session,
+                                               item->frame->headers.stream_id);
+    if(r != 0) {
+      return r;
     }
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_3to2(item->frame->headers.nv);
@@ -650,9 +774,11 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     break;
   }
   case SPDYLAY_WINDOW_UPDATE: {
-    if(!spdylay_session_is_window_update_allowed
-       (session, item->frame->window_update.stream_id)) {
-      return SPDYLAY_ERR_INVALID_FRAME;
+    int r;
+    r = spdylay_session_predicate_window_update_send
+      (session, item->frame->window_update.stream_id);
+    if(r != 0) {
+      return r;
     }
     framebuflen = spdylay_frame_pack_window_update(&session->aob.framebuf,
                                                    &session->aob.framebufmax,
@@ -668,7 +794,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
          exchange GOAWAY. This implementation allows receiver of first
          GOAWAY can sent its own GOAWAY to tell the remote peer that
          last-good-stream-id. */
-      return SPDYLAY_ERR_INVALID_FRAME;
+      return SPDYLAY_ERR_GOAWAY_ALREADY_SENT;
     }
     framebuflen = spdylay_frame_pack_goaway(&session->aob.framebuf,
                                             &session->aob.framebufmax,
@@ -680,8 +806,11 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
   case SPDYLAY_DATA: {
     size_t next_readmax;
     spdylay_stream *stream;
-    if(!spdylay_session_is_data_allowed(session, item->frame->data.stream_id)) {
-      return SPDYLAY_ERR_INVALID_FRAME;
+    int r;
+    r = spdylay_session_predicate_data_send(session,
+                                            item->frame->data.stream_id);
+    if(r != 0) {
+      return r;
     }
     stream = spdylay_session_get_stream(session, item->frame->data.stream_id);
     /* Assuming stream is not NULL */
@@ -935,7 +1064,8 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     /* If session is closed or RST_STREAM was queued, we won't send
        further data. */
     if(frame->data.eof ||
-       !spdylay_session_is_data_allowed(session, frame->data.stream_id)) {
+       spdylay_session_predicate_data_send(session,
+                                           frame->data.stream_id) != 0) {
       spdylay_active_outbound_item_reset(&session->aob);
     } else {
       spdylay_outbound_item* item = spdylay_session_get_next_ob_item(session);
@@ -1012,7 +1142,18 @@ int spdylay_session_send(spdylay_session *session)
       if(framebuflen == SPDYLAY_ERR_DEFERRED) {
         continue;
       } else if(framebuflen < 0) {
-        /* TODO Call error callback? */
+        /* The library is responsible for the transmission of
+           WINDOW_UPDATE frame, so we don't call error callback for
+           it. */
+        if(session->callbacks.on_ctrl_not_send_callback &&
+           spdylay_is_non_fatal(framebuflen) &&
+           item->frame_type != SPDYLAY_WINDOW_UPDATE) {
+          session->callbacks.on_ctrl_not_send_callback(session,
+                                                       item->frame_type,
+                                                       item->frame,
+                                                       framebuflen,
+                                                       session->user_data);
+        }
         spdylay_outbound_item_free(item);
         free(item);
         if(framebuflen < SPDYLAY_ERR_FATAL) {
@@ -1508,14 +1649,6 @@ static int spdylay_session_fail_session(spdylay_session *session,
 {
   session->goaway_flags |= SPDYLAY_GOAWAY_FAIL_ON_SEND;
   return spdylay_submit_goaway(session, status_code);
-}
-
-/*
- * Returns non-zero if |error| is non-fatal error.
- */
-static int spdylay_is_non_fatal(int error)
-{
-  return error < 0 && error > SPDYLAY_ERR_FATAL;
 }
 
 /* For errors, this function only returns FATAL error. */

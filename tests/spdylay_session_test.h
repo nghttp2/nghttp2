@@ -60,5 +60,6 @@ void test_spdylay_session_stream_close_on_syn_stream();
 void test_spdylay_session_recv_invalid_frame();
 void test_spdylay_session_defer_data();
 void test_spdylay_session_flow_control();
+void test_spdylay_session_on_ctrl_not_send();
 
 #endif // SPDYLAY_SESSION_TEST_H
