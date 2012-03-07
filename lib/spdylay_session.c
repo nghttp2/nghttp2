@@ -51,6 +51,14 @@ static int spdylay_is_non_fatal(int error)
   return error < 0 && error > SPDYLAY_ERR_FATAL;
 }
 
+/*
+ * Returns non-zero if |error| is fatal error.
+ */
+static int spdylay_is_fatal(int error)
+{
+  return error < SPDYLAY_ERR_FATAL;
+}
+
 int spdylay_session_is_my_stream_id(spdylay_session *session,
                                     int32_t stream_id)
 {
@@ -1156,7 +1164,7 @@ int spdylay_session_send(spdylay_session *session)
         }
         spdylay_outbound_item_free(item);
         free(item);
-        if(framebuflen < SPDYLAY_ERR_FATAL) {
+        if(spdylay_is_fatal(framebuflen)) {
           return framebuflen;
         } else {
           continue;
@@ -1794,7 +1802,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     }
     break;
   }
-  if(r < SPDYLAY_ERR_FATAL) {
+  if(spdylay_is_fatal(r)) {
     return r;
   } else {
     return 0;
@@ -1866,7 +1874,7 @@ static int spdylay_session_process_data_frame(spdylay_session *session)
   length = spdylay_get_uint32(&session->iframe.headbuf[4]) &
     SPDYLAY_LENGTH_MASK;
   r = spdylay_session_on_data_received(session, flags, length, stream_id);
-  if(r < SPDYLAY_ERR_FATAL) {
+  if(spdylay_is_fatal(r)) {
     return r;
   } else {
     return 0;
