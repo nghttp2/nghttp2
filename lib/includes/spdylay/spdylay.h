@@ -52,14 +52,28 @@ typedef enum {
   SPDYLAY_ERR_INVALID_FRAME = -506,
   SPDYLAY_ERR_EOF = -507,
   SPDYLAY_ERR_DEFERRED = -508,
+  /* Stream ID has reached maximum value. Therefore no stream ID is
+     available. */
   SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE = -509,
-  SPDYLAY_ERR_STREAM_ALREADY_CLOSED = -510,
+  /* The stream is already closed or it does not exist. */
+  SPDYLAY_ERR_STREAM_CLOSED = -510,
+  /* RST_STREAM has been queued in outbound queue. The stream is in
+     closing state. */
   SPDYLAY_ERR_STREAM_CLOSING = -511,
+  /* The transmission is not allowed for this stream (e.g., a frame
+     with FIN flag set has already sent) */
   SPDYLAY_ERR_STREAM_SHUT_WR = -512,
+  /* The stream ID is invalid. */
   SPDYLAY_ERR_INVALID_STREAM_ID = -513,
+  /* The state of the stream is not valid (e.g., SYN_REPLY cannot be
+     sent to the stream where SYN_REPLY has been already sent). */
   SPDYLAY_ERR_INVALID_STREAM_STATE = -514,
+  /* Another DATA frame has already been deferred. */
   SPDYLAY_ERR_DEFERRED_DATA_EXIST = -515,
+  /* SYN_STREAM is not allowed. (e.g., GOAWAY has been sent and/or
+     received. */
   SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED = -516,
+  /* GOAWAY has been already sent. */
   SPDYLAY_ERR_GOAWAY_ALREADY_SENT = -517,
   /* The errors < SPDYLAY_ERR_FATAL mean that the library is under
      unexpected condition that it cannot process any further data

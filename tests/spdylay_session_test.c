@@ -1747,7 +1747,7 @@ void test_spdylay_session_on_ctrl_not_send()
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
   CU_ASSERT(SPDYLAY_SYN_REPLY == user_data.not_sent_frame_type);
-  CU_ASSERT(SPDYLAY_ERR_STREAM_ALREADY_CLOSED == user_data.not_sent_error);
+  CU_ASSERT(SPDYLAY_ERR_STREAM_CLOSED == user_data.not_sent_error);
 
   user_data.ctrl_not_send_cb_called = 0;
   /* Shutdown transmission */

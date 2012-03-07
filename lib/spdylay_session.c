@@ -449,7 +449,7 @@ void spdylay_session_close_pushed_streams(spdylay_session *session,
 static int spdylay_predicate_stream_for_send(spdylay_stream *stream)
 {
   if(stream == NULL) {
-    return SPDYLAY_ERR_STREAM_ALREADY_CLOSED;
+    return SPDYLAY_ERR_STREAM_CLOSED;
   } else if(stream->shut_flags & SPDYLAY_SHUT_WR) {
     return SPDYLAY_ERR_STREAM_SHUT_WR;
   } else {
@@ -464,7 +464,7 @@ static int spdylay_predicate_stream_for_send(spdylay_stream *stream)
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ * SPDYLAY_ERR_STREAM_CLOSED
  *     The stream is already closed or does not exist.
  * SPDYLAY_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
@@ -506,7 +506,7 @@ static int spdylay_session_predicate_syn_reply_send(spdylay_session *session,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ * SPDYLAY_ERR_STREAM_CLOSED
  *     The stream is already closed or does not exist.
  * SPDYLAY_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
@@ -551,7 +551,7 @@ static int spdylay_session_predicate_headers_send(spdylay_session *session,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ * SPDYLAY_ERR_STREAM_CLOSED
  *     The stream is already closed or does not exist.
  * SPDYLAY_ERR_STREAM_CLOSING
  *     RST_STREAM was queued for this stream.
@@ -562,7 +562,7 @@ static int spdylay_session_predicate_window_update_send
 {
   spdylay_stream *stream = spdylay_session_get_stream(session, stream_id);
   if(stream == NULL) {
-    return SPDYLAY_ERR_STREAM_ALREADY_CLOSED;
+    return SPDYLAY_ERR_STREAM_CLOSED;
   }
   if(stream->state != SPDYLAY_STREAM_CLOSING) {
     return 0;
@@ -596,7 +596,7 @@ static size_t spdylay_session_next_data_read(spdylay_session *session,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * SPDYLAY_ERR_STREAM_ALREADY_CLOSED
+ * SPDYLAY_ERR_STREAM_CLOSED
  *     The stream is already closed or does not exist.
  * SPDYLAY_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
