@@ -624,6 +624,8 @@ void test_spdylay_submit_response_with_null_data_read_callback()
                                                 acc.length-SPDYLAY_HEAD_LEN,
                                                 &session->hd_inflater));
   CU_ASSERT(0 == strcmp("version", frame.syn_reply.nv[0]));
+  spdylay_frame_syn_reply_free(&frame.syn_reply);
+
   spdylay_session_del(session);
 }
 
@@ -686,6 +688,7 @@ void test_spdylay_submit_request_with_null_data_read_callback()
                                                  acc.length-SPDYLAY_HEAD_LEN,
                                                  &session->hd_inflater));
   CU_ASSERT(0 == strcmp("version", frame.syn_stream.nv[0]));
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
 
   spdylay_session_del(session);
 }
@@ -810,6 +813,7 @@ void test_spdylay_submit_headers()
                                               acc.length-SPDYLAY_HEAD_LEN,
                                               &session->hd_inflater));
   CU_ASSERT(0 == strcmp("version", frame.headers.nv[0]));
+  spdylay_frame_headers_free(&frame.headers);
 
   spdylay_session_del(session);
 }
