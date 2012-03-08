@@ -481,13 +481,16 @@ void spdylay_session_del(spdylay_session *session);
  *
  * 1. Get the next frame to send from outbound queue.
  * 2. Prepare transmission of the frame.
- * 3. If the frame is SYN_STREAM, the stream is opened here.
- * 4. before_ctrl_send_callback is invoked.
- * 5. send_callback is invoked one or more times (while the frame is
+ * 3. If the control frame cannot be sent because some preconditions
+ *    are not met (e.g., SYN_STREAM cannot be sent after GOAWAY),
+ *    on_ctrl_not_send_callback is invoked. Skip following steps.
+ * 4. If the frame is SYN_STREAM, the stream is opened here.
+ * 5. before_ctrl_send_callback is invoked.
+ * 6. send_callback is invoked one or more times (while the frame is
  *    completely sent).
- * 6. If the frame is a control frame, on_ctrl_send_callback is invoked.
- * 7. If the frame is a DATA frame, on_data_send_callback is invoked.
- * 8. If the transmission of the frame triggers closure of the stream,
+ * 7. If the frame is a control frame, on_ctrl_send_callback is invoked.
+ * 8. If the frame is a DATA frame, on_data_send_callback is invoked.
+ * 9. If the transmission of the frame triggers closure of the stream,
  *    the stream is closed and on_stream_close_callback is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following
