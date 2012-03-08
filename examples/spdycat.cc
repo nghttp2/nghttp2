@@ -180,7 +180,9 @@ int communicate(const std::string& host, uint16_t port,
   if(reqvec[0].us.ipv6LiteralAddress) {
     ss << "]";
   }
-  ss << ":" << port;
+  if(port != 443) {
+    ss << ":" << port;
+  }
   std::string hostport = ss.str();
 
   for(int i = 0, n = reqvec.size(); i < n; ++i) {

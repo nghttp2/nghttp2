@@ -116,7 +116,8 @@ int Spdylay::submit_request(const std::string& hostport,
     ":version", "HTTP/1.1",
     ":scheme", "https",
     ":host", hostport.c_str(),
-    "user-agent", "spdylay/0.0.0",
+    "accept", "*/*",
+    "user-agent", "spdylay/"SPDYLAY_VERSION,
     NULL
   };
   return spdylay_submit_request(session_, pri, nv, NULL, stream_user_data);
