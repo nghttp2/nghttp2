@@ -44,13 +44,25 @@ typedef struct spdylay_session spdylay_session;
 #define SPDYLAY_PROTO_SPDY3 3
 
 typedef enum {
+  /* Invalid argument passed. */
   SPDYLAY_ERR_INVALID_ARGUMENT = -501,
+  /* Zlib error. */
   SPDYLAY_ERR_ZLIB = -502,
+  /* The specified protocol version is not supported. */
   SPDYLAY_ERR_UNSUPPORTED_VERSION = -503,
+  /* Used as a return value from spdylay_send_callback and
+     spdylay_recv_callback to indicate that the operation would
+     block. */
   SPDYLAY_ERR_WOULDBLOCK = -504,
+  /* General protocol error */
   SPDYLAY_ERR_PROTO = -505,
+  /* The frame is invalid. */
   SPDYLAY_ERR_INVALID_FRAME = -506,
+  /* The peer performed a shutdown on the connection. */
   SPDYLAY_ERR_EOF = -507,
+  /* Used as a return value from spdylay_data_source_read_callback to
+     indicate that data transfer is postponed. See
+     spdylay_data_source_read_callback for details. */
   SPDYLAY_ERR_DEFERRED = -508,
   /* Stream ID has reached maximum value. Therefore no stream ID is
      available. */
@@ -79,7 +91,9 @@ typedef enum {
      unexpected condition that it cannot process any further data
      reliably (e.g., out of memory). */
   SPDYLAY_ERR_FATAL = -900,
+  /* Out of memory. */
   SPDYLAY_ERR_NOMEM = -901,
+  /* The user callback function failed. */
   SPDYLAY_ERR_CALLBACK_FAILURE = -902,
 } spdylay_error;
 
