@@ -901,6 +901,10 @@ ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
 {
   ssize_t framelen = SPDYLAY_FRAME_HEAD_LENGTH+frame->hd.length;
   int i, r;
+  if(frame->hd.version != SPDYLAY_PROTO_SPDY2 &&
+     frame->hd.version != SPDYLAY_PROTO_SPDY3) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
   r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
   if(r != 0) {
     return r;
@@ -908,20 +912,29 @@ ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
   memset(*buf_ptr, 0, framelen);
   spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
   spdylay_put_uint32be(&(*buf_ptr)[8], frame->niv);
-  for(i = 0; i < frame->niv; ++i) {
-    int off = i*8;
-    /* spdy/2 spec says ID is network byte order, but publicly
-       deployed server sends little endian host byte order. */
-    char *id_ptr = (char*)(&frame->iv[i].settings_id);
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY2) {
+    for(i = 0; i < frame->niv; ++i) {
+      int off = i*8;
+      /* spdy/2 spec says ID is network byte order, but publicly
+         deployed server sends little endian host byte order. */
+      char *id_ptr = (char*)(&frame->iv[i].settings_id);
 #ifdef WORDS_BIGENDIAN
-    (*buf_ptr)[12+off] = id_ptr[3];
-    (*buf_ptr)[12+off+1] = id_ptr[2];
-    (*buf_ptr)[12+off+2] = id_ptr[1];
+      (*buf_ptr)[12+off] = id_ptr[3];
+      (*buf_ptr)[12+off+1] = id_ptr[2];
+      (*buf_ptr)[12+off+2] = id_ptr[1];
 #else /* !WORDS_BIGENDIAN */
-    memcpy(&(*buf_ptr)[12+off], id_ptr, 3);
+      memcpy(&(*buf_ptr)[12+off], id_ptr, 3);
 #endif /* !WORDS_BIGENDIAN */
-    (*buf_ptr)[15+off] = frame->iv[i].flags;
-    spdylay_put_uint32be(&(*buf_ptr)[16+off], frame->iv[i].value);
+      (*buf_ptr)[15+off] = frame->iv[i].flags;
+      spdylay_put_uint32be(&(*buf_ptr)[16+off], frame->iv[i].value);
+    }
+  } else {
+    for(i = 0; i < frame->niv; ++i) {
+      int off = i*8;
+      spdylay_put_uint32be(&(*buf_ptr)[12+off], frame->iv[i].settings_id);
+      (*buf_ptr)[12+off] = frame->iv[i].flags;
+      spdylay_put_uint32be(&(*buf_ptr)[16+off], frame->iv[i].value);
+    }
   }
   return framelen;
 }
@@ -935,6 +948,10 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  if(frame->hd.version != SPDYLAY_PROTO_SPDY2 &&
+     frame->hd.version != SPDYLAY_PROTO_SPDY3) {
+    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
   frame->niv = spdylay_get_uint32(payload);
   if(payloadlen != 4+frame->niv*8) {
     return SPDYLAY_ERR_INVALID_FRAME;
@@ -943,20 +960,30 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
   if(frame->iv == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
-  for(i = 0; i < frame->niv; ++i) {
-    int off = i*8;
-    /* ID is little endian. See comments in
-       spdylay_frame_pack_settings(). */
-    frame->iv[i].settings_id = 0;
+  if(frame->hd.version == SPDYLAY_PROTO_SPDY2) {
+    for(i = 0; i < frame->niv; ++i) {
+      int off = i*8;
+      /* ID is little endian. See comments in
+         spdylay_frame_pack_settings(). */
+      frame->iv[i].settings_id = 0;
 #ifdef WORDS_BIGENDIAN
-    *(char*)(&frame->iv[i].settings_id[1]) = &payload[4+off+2];
-    *(char*)(&frame->iv[i].settings_id[2]) = &payload[4+off+1];
-    *(char*)(&frame->iv[i].settings_id[3]) = &payload[4+off+0];
+      *(char*)(&frame->iv[i].settings_id[1]) = &payload[4+off+2];
+      *(char*)(&frame->iv[i].settings_id[2]) = &payload[4+off+1];
+      *(char*)(&frame->iv[i].settings_id[3]) = &payload[4+off+0];
 #else /* !WORDS_BIGENDIAN */
-    memcpy(&frame->iv[i].settings_id, &payload[4+off], 3);
+      memcpy(&frame->iv[i].settings_id, &payload[4+off], 3);
 #endif /* !WORDS_BIGENDIAN */
-    frame->iv[i].flags = payload[7+off];
-    frame->iv[i].value = spdylay_get_uint32(&payload[8+off]);
+      frame->iv[i].flags = payload[7+off];
+      frame->iv[i].value = spdylay_get_uint32(&payload[8+off]);
+    }
+  } else {
+    for(i = 0; i < frame->niv; ++i) {
+      int off = i*8;
+      frame->iv[i].settings_id = spdylay_get_uint32(&payload[4+off]) &
+        SPDYLAY_SETTINGS_ID_MASK;
+      frame->iv[i].flags = payload[4+off];
+      frame->iv[i].value = spdylay_get_uint32(&payload[8+off]);
+    }
   }
   return 0;
 }

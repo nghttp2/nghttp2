@@ -442,7 +442,7 @@ void test_spdylay_frame_pack_window_update()
 }
 
 
-void test_spdylay_frame_pack_settings()
+void test_spdylay_frame_pack_settings_version(uint16_t version)
 {
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL;
@@ -461,7 +461,7 @@ void test_spdylay_frame_pack_settings()
   iv[2].value = 65536;
 
   spdylay_frame_settings_init
-    (&frame.settings, SPDYLAY_PROTO_SPDY2,
+    (&frame.settings, version,
      SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS,
      spdylay_frame_iv_copy(iv, 3), 3);
   framelen = spdylay_frame_pack_settings(&buf, &buflen, &frame.settings);
@@ -473,7 +473,7 @@ void test_spdylay_frame_pack_settings()
              &buf[SPDYLAY_FRAME_HEAD_LENGTH],
              framelen-SPDYLAY_FRAME_HEAD_LENGTH));
 
-  CU_ASSERT(SPDYLAY_PROTO_SPDY2 == oframe.settings.hd.version);
+  CU_ASSERT(version == oframe.settings.hd.version);
   CU_ASSERT(SPDYLAY_SETTINGS == oframe.settings.hd.type);
   CU_ASSERT(SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS ==
             oframe.settings.hd.flags);
@@ -489,6 +489,16 @@ void test_spdylay_frame_pack_settings()
   free(buf);
   spdylay_frame_settings_free(&frame.settings);
   spdylay_frame_settings_free(&oframe.settings);
+}
+
+void test_spdylay_frame_pack_settings_spdy2()
+{
+  test_spdylay_frame_pack_settings_version(SPDYLAY_PROTO_SPDY2);
+}
+
+void test_spdylay_frame_pack_settings_spdy3()
+{
+  test_spdylay_frame_pack_settings_version(SPDYLAY_PROTO_SPDY3);
 }
 
 void test_spdylay_frame_nv_sort()

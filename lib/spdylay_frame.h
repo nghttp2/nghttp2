@@ -37,6 +37,7 @@
 #define SPDYLAY_LENGTH_MASK 0xffffff
 #define SPDYLAY_VERSION_MASK 0x7fff
 #define SPDYLAY_DELTA_WINDOW_SIZE_MASK 0x7fffffff
+#define SPDYLAY_SETTINGS_ID_MASK 0xffffff
 
 /* The length of DATA frame payload. */
 #define SPDYLAY_DATA_PAYLOAD_LENGTH 4096
@@ -353,6 +354,8 @@ int spdylay_frame_unpack_window_update(spdylay_window_update *frame,
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
  */
@@ -365,6 +368,8 @@ ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_UNSUPPORTED_VERSION
+ *     The version is not supported.
  * SPDYLAY_ERR_INVALID_FRAME
  *     The input data are invalid.
  * SPDYLAY_ERR_NOMEM
