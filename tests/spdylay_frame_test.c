@@ -461,8 +461,7 @@ void test_spdylay_frame_pack_settings_version(uint16_t version)
   iv[2].value = 65536;
 
   spdylay_frame_settings_init
-    (&frame.settings, version,
-     SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS,
+    (&frame.settings, version, SPDYLAY_FLAG_SETTINGS_CLEAR_SETTINGS,
      spdylay_frame_iv_copy(iv, 3), 3);
   framelen = spdylay_frame_pack_settings(&buf, &buflen, &frame.settings);
   CU_ASSERT(8+4+3*8 == framelen);
@@ -475,8 +474,7 @@ void test_spdylay_frame_pack_settings_version(uint16_t version)
 
   CU_ASSERT(version == oframe.settings.hd.version);
   CU_ASSERT(SPDYLAY_SETTINGS == oframe.settings.hd.type);
-  CU_ASSERT(SPDYLAY_FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS ==
-            oframe.settings.hd.flags);
+  CU_ASSERT(SPDYLAY_FLAG_SETTINGS_CLEAR_SETTINGS == oframe.settings.hd.flags);
   CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.settings.hd.length);
 
   CU_ASSERT(3 == oframe.settings.niv);
