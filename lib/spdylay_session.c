@@ -39,7 +39,11 @@
 static int spdylay_session_get_max_concurrent_streams_reached
 (spdylay_session *session)
 {
-  return session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+  uint32_t local_max, remote_max;
+  local_max = session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS];
+  remote_max =
+    session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS];
+  return spdylay_min(local_max, remote_max)
     <= spdylay_map_size(&session->streams);
 }
 
@@ -157,11 +161,18 @@ static int spdylay_session_new(spdylay_session **session_ptr,
 
   spdylay_buffer_init(&(*session_ptr)->inflatebuf, 4096);
 
-  memset((*session_ptr)->settings, 0, sizeof((*session_ptr)->settings));
-  (*session_ptr)->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
+  memset((*session_ptr)->remote_settings, 0,
+         sizeof((*session_ptr)->remote_settings));
+  (*session_ptr)->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
     SPDYLAY_CONCURRENT_STREAMS_MAX;
+  (*session_ptr)->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] =
+    SPDYLAY_INITIAL_WINDOW_SIZE;
 
-  (*session_ptr)->settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] =
+  memset((*session_ptr)->local_settings, 0,
+         sizeof((*session_ptr)->local_settings));
+  (*session_ptr)->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
+    SPDYLAY_CONCURRENT_STREAMS_MAX;
+  (*session_ptr)->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] =
     SPDYLAY_INITIAL_WINDOW_SIZE;
 
   (*session_ptr)->callbacks = *callbacks;
@@ -232,7 +243,7 @@ int spdylay_session_server_new(spdylay_session **session_ptr,
   return r;
 }
 
-static void spdylay_free_streams(key_type key, void *val)
+static void spdylay_free_streams(key_type key, void *val, void *ptr)
 {
   spdylay_stream_free((spdylay_stream*)val);
   free(val);
@@ -263,7 +274,7 @@ void spdylay_session_del(spdylay_session *session)
   if(session == NULL) {
     return;
   }
-  spdylay_map_each(&session->streams, spdylay_free_streams);
+  spdylay_map_each(&session->streams, spdylay_free_streams, NULL);
   spdylay_map_free(&session->streams);
   spdylay_session_ob_pq_free(&session->ob_pq);
   spdylay_session_ob_pq_free(&session->ob_ss_pq);
@@ -398,7 +409,8 @@ spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
     return NULL;
   }
   spdylay_stream_init(stream, stream_id, flags, pri, initial_state,
-                      session->settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE],
+                      session->remote_settings
+                      [SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE],
                       stream_user_data);
   r = spdylay_map_insert(&session->streams, stream_id, stream);
   if(r != 0) {
@@ -1390,7 +1402,6 @@ static int spdylay_session_handle_invalid_stream
 int spdylay_session_on_syn_stream_received(spdylay_session *session,
                                            spdylay_frame *frame)
 {
-  /* TODO Check SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS */
   int r = 0;
   int status_code;
   if(session->goaway_flags) {
@@ -1507,13 +1518,58 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
   return 0;
 }
 
+static void spdylay_update_initial_window_size_func(key_type key, void *value,
+                                                    void *ptr)
+{
+  int32_t *vals;
+  vals = (int32_t*)ptr;
+  spdylay_stream_update_initial_window_size((spdylay_stream*)value,
+                                            vals[0], vals[1]);
+}
+
+/*
+ * Updates the initial window size of all active streams.
+ */
+static void spdylay_session_update_initial_window_size
+(spdylay_session *session,
+ int32_t new_initial_window_size)
+{
+  int32_t vals[2];
+  vals[0] = new_initial_window_size;
+  vals[1] = session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE];
+  spdylay_map_each(&session->streams,
+                   spdylay_update_initial_window_size_func,
+                   vals);
+}
+
 int spdylay_session_on_settings_received(spdylay_session *session,
                                          spdylay_frame *frame)
 {
+  int i, check[SPDYLAY_SETTINGS_MAX+1];
   if(!spdylay_session_check_version(session, frame->settings.hd.version)) {
     return 0;
   }
-  /* TODO Check ID/value pairs and persist them if necessary. */
+  /* Check ID/value pairs and persist them if necessary. */
+  memset(check, 0, sizeof(check));
+  for(i = 0; i < frame->settings.niv; ++i) {
+    const spdylay_settings_entry *entry = &frame->settings.iv[i];
+    /* SPDY/3 spec says if the multiple values for the same ID were
+       found, use the first one and ignore the rest. */
+    if(entry->settings_id > SPDYLAY_SETTINGS_MAX || entry->settings_id == 0 ||
+       check[entry->settings_id] == 1) {
+      continue;
+    }
+    check[entry->settings_id] = 1;
+    if(entry->settings_id == SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE &&
+       session->flow_control) {
+      /* Update the initial window size of the all active streams */
+      /* Check that initial_window_size < (1u << 31) */
+      if(entry->value < (1u << 31)) {
+        spdylay_session_update_initial_window_size(session, entry->value);
+      }
+    }
+    session->remote_settings[entry->settings_id] = entry->value;
+  }
   spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SETTINGS, frame);
   return 0;
 }
@@ -1901,7 +1957,7 @@ static int spdylay_session_update_recv_window_size(spdylay_session *session,
     stream->recv_window_size += delta_size;
     /* This is just a heuristics. */
     if(stream->recv_window_size*2 >=
-       session->settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]) {
+       session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]) {
       int r;
       r = spdylay_session_add_window_update(session, stream_id,
                                             stream->recv_window_size);

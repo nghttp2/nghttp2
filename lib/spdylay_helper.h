@@ -31,6 +31,9 @@
 
 #include <spdylay/spdylay.h>
 
+#define spdylay_min(A, B) ((A) < (B) ? (A) : (B))
+#define spdylay_max(A, B) ((A) > (B) ? (A) : (B))
+
 /*
  * Copies 2 byte unsigned integer |n| in host byte order to |buf| in
  * network byte order.

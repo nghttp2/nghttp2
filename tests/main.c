@@ -138,6 +138,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_flow_control) ||
       !CU_add_test(pSuite, "session_on_ctrl_not_send",
                    test_spdylay_session_on_ctrl_not_send) ||
+      !CU_add_test(pSuite, "session_on_settings_received",
+                   test_spdylay_session_on_settings_received) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy2",
                    test_spdylay_frame_unpack_nv_spdy2) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy3",

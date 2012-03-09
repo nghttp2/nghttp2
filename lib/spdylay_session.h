@@ -156,9 +156,11 @@ struct spdylay_session {
      control. Nonzero for flow control enabled. */
   uint8_t flow_control;
 
-  /* Settings value store. We just use ID as index. The index = 0 is
-     unused. */
-  uint32_t settings[SPDYLAY_SETTINGS_MAX+1];
+  /* Settings value received from the remote endpoint. We just use ID
+     as index. The index = 0 is unused. */
+  uint32_t remote_settings[SPDYLAY_SETTINGS_MAX+1];
+  /* Settings value of the local endpoint. */
+  uint32_t local_settings[SPDYLAY_SETTINGS_MAX+1];
 
   spdylay_session_callbacks callbacks;
   void *user_data;

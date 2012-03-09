@@ -43,7 +43,7 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
   stream->stream_user_data = stream_user_data;
   stream->deferred_data = NULL;
   stream->deferred_flags = SPDYLAY_DEFERRED_NONE;
-  stream->initial_window_size = stream->window_size = initial_window_size;
+  stream->window_size = initial_window_size;
   stream->recv_window_size = 0;
 }
 
@@ -89,4 +89,12 @@ void spdylay_stream_detach_deferred_data(spdylay_stream *stream)
 {
   stream->deferred_data = NULL;
   stream->deferred_flags = SPDYLAY_DEFERRED_NONE;
+}
+
+void spdylay_stream_update_initial_window_size(spdylay_stream *stream,
+                                               int32_t new_initial_window_size,
+                                               int32_t old_initial_window_size)
+{
+  stream->window_size =
+    new_initial_window_size-(old_initial_window_size-stream->window_size);
 }

@@ -99,9 +99,12 @@ void spdylay_map_erase(spdylay_map *map, key_type key);
 size_t spdylay_map_size(spdylay_map *map);
 
 /*
- * Applies the function |func| to each key/item pair in the map |map|.
- * This function is useful to free item in the map.
+ * Applies the function |func| to each key/item pair in the map |map|
+ * with the optional user supplied pointer |ptr|.  This function is
+ * useful to free item in the map.
  */
-void spdylay_map_each(spdylay_map *map, void (*func)(key_type key, void *val));
+void spdylay_map_each(spdylay_map *map,
+                      void (*func)(key_type key, void *val, void *ptr),
+                      void *ptr);
 
 #endif /* SPDYLAY_MAP_H */

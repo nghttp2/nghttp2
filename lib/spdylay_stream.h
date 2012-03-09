@@ -99,14 +99,8 @@ typedef struct {
   /* The flags for defered DATA. Bitwise OR of zero or more
      spdylay_deferred_flag values */
   uint8_t deferred_flags;
-  /* Initial window size where window_size is compuated
-     against. Initially, window_size = initial_window_size. When N
-     bytes are sent, window_size -= N. After that, when the initial
-     window size is changed, say, new_initial_window_size, then
-     window_size becomes
-     new_initial_window_size-(initial_window_size-window_size) */
-  int32_t initial_window_size;
-  /* Current sender window size */
+  /* Current sender window size. This value is computed against the
+     current initial window size of remote endpoint. */
   int32_t window_size;
   /* Keep track of the number of bytes received without
      WINDOW_UPDATE. */
@@ -154,5 +148,14 @@ void spdylay_stream_defer_data(spdylay_stream *stream,
  * free deferred data.
  */
 void spdylay_stream_detach_deferred_data(spdylay_stream *stream);
+
+/*
+ * Updates the initial window size with the new value
+ * |new_initial_window_size|. The |old_initial_window_size| is used to
+ * calculate the current window size.
+ */
+void spdylay_stream_update_initial_window_size(spdylay_stream *stream,
+                                               int32_t new_initial_window_size,
+                                               int32_t old_initial_window_size);
 
 #endif /* SPDYLAY_STREAM */

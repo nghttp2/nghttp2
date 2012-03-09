@@ -194,6 +194,12 @@ static char** dup_nv(const char **src)
   return spdylay_frame_nv_copy(src);
 }
 
+static spdylay_settings_entry* dup_iv(const spdylay_settings_entry *iv,
+                                      size_t niv)
+{
+  return spdylay_frame_iv_copy(iv, niv);
+}
+
 void test_spdylay_session_recv()
 {
   spdylay_session *session;
@@ -1171,7 +1177,7 @@ void test_spdylay_session_get_next_ob_item()
   callbacks.send_callback = null_send_callback;
 
   spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY2, &callbacks, NULL);
-  session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
+  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
 
   CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
   spdylay_submit_ping(session);
@@ -1195,7 +1201,7 @@ void test_spdylay_session_get_next_ob_item()
   CU_ASSERT(SPDYLAY_SYN_REPLY ==
             spdylay_session_get_next_ob_item(session)->frame_type);
 
-  session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 3;
+  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 3;
 
   CU_ASSERT(SPDYLAY_SYN_STREAM ==
             spdylay_session_get_next_ob_item(session)->frame_type);
@@ -1213,7 +1219,7 @@ void test_spdylay_session_pop_next_ob_item()
   callbacks.send_callback = null_send_callback;
 
   spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY2, &callbacks, NULL);
-  session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
 
   CU_ASSERT(NULL == spdylay_session_pop_next_ob_item(session));
   spdylay_submit_ping(session);
@@ -1245,7 +1251,7 @@ void test_spdylay_session_pop_next_ob_item()
   CU_ASSERT(NULL == spdylay_session_pop_next_ob_item(session));
 
   spdylay_submit_response(session, 1, nv, NULL);
-  session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
+  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
 
   item = spdylay_session_pop_next_ob_item(session);
   CU_ASSERT(SPDYLAY_SYN_STREAM == item->frame_type);
@@ -1360,7 +1366,7 @@ void test_spdylay_session_max_concurrent_streams()
                               SPDYLAY_STREAM_OPENED, NULL);
   spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY2,
                                 SPDYLAY_CTRL_FLAG_NONE, 3, 0, 3, dup_nv(nv));
-  session->settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
 
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
 
@@ -1678,7 +1684,8 @@ void test_spdylay_session_flow_control()
      negative. */
   new_initial_window_size = 16*1024;
   stream->window_size = new_initial_window_size-
-    (stream->initial_window_size-stream->window_size);
+    (session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]
+     -stream->window_size);
   CU_ASSERT(-48*1024 == stream->window_size);
 
   /* Back 48KiB */
@@ -1820,6 +1827,74 @@ void test_spdylay_session_on_ctrl_not_send()
   CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
   CU_ASSERT(SPDYLAY_SYN_STREAM == user_data.not_sent_frame_type);
   CU_ASSERT(SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED == user_data.not_sent_error);
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_on_settings_received()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  my_user_data user_data;
+  spdylay_stream *stream1, *stream2;
+  spdylay_frame frame;
+  const size_t niv = 5;
+  spdylay_settings_entry iv[niv];
+
+  iv[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 1000000009;
+  iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  iv[1].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[1].value = 50;
+  iv[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  iv[2].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[2].value = 64*1024;
+  iv[2].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  iv[3].settings_id = SPDYLAY_SETTINGS_CURRENT_CWND;
+  iv[3].value = 512;
+  iv[3].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  iv[4].settings_id = 999;
+  iv[4].value = 0;
+  iv[4].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks,
+                             &user_data);
+  session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] = 16*1024;
+
+  stream1 = spdylay_session_open_stream(session, 1, SPDYLAY_CTRL_FLAG_NONE,
+                                        3, SPDYLAY_STREAM_OPENING, NULL);
+  stream2 = spdylay_session_open_stream(session, 2, SPDYLAY_CTRL_FLAG_NONE,
+                                        3, SPDYLAY_STREAM_OPENING, NULL);
+  stream1->window_size = 16*1024;
+  stream2->window_size = -48*1024;
+
+  spdylay_frame_settings_init(&frame.settings, SPDYLAY_PROTO_SPDY3,
+                              SPDYLAY_FLAG_SETTINGS_NONE, dup_iv(iv, niv), niv);
+
+  CU_ASSERT(0 == spdylay_session_on_settings_received(session, &frame));
+
+  CU_ASSERT(1000000009 ==
+            session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(64*1024 ==
+            session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]);
+  CU_ASSERT(512 ==
+            session->remote_settings[SPDYLAY_SETTINGS_CURRENT_CWND]);
+  CU_ASSERT(64*1024 == stream1->window_size);
+  CU_ASSERT(0 == stream2->window_size);
+
+  frame.settings.iv[2].value = 16*1024;
+
+  CU_ASSERT(0 == spdylay_session_on_settings_received(session, &frame));
+
+  CU_ASSERT(16*1024 == stream1->window_size);
+  CU_ASSERT(-48*1024 == stream2->window_size);
+
+  spdylay_frame_settings_free(&frame.settings);
 
   spdylay_session_del(session);
 }
