@@ -4,6 +4,14 @@ Spdylay - SPDY C Library
 This is an experimental implementation of Google's SPDY protocol
 version 2 and 3 in C.
 
+This library provides SPDY framing layer implementation.  It does not
+perform any I/O operations.  When the library needs them, it calls the
+callback functions provided by the application. It also does not
+include any event polling mechanism, so the application can freely
+choose the way of handling events. This library code does not depend
+on any particular SSL library (except for example programs which
+depend on OpenSSL 1.0.1 or later).
+
 The current status of development is in a beta stage now. As described
 below, we can create SPDY client and server with the current Spdylay
 API.
@@ -19,6 +27,12 @@ used.::
     $ autoconf
     $ ./configure
     $ make
+
+API
+---
+
+All public APIs are in *spdylay/spdylay.h*. All public API functions
+as well as the callback function typedefs are documented.
 
 Examples
 --------
