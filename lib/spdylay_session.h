@@ -483,4 +483,14 @@ spdylay_outbound_item* spdylay_session_get_next_ob_item
  */
 uint8_t spdylay_session_get_pri_lowest(spdylay_session *session);
 
+/*
+ * Updates local settings with the |iv|. The number of elements in the
+ * array pointed by the |iv| is given by the |niv|.  This function
+ * assumes that the all settings_id member in |iv| are in range 1 to
+ * SPDYLAY_SETTINGS_MAX, inclusive.
+ */
+void spdylay_session_update_local_settings(spdylay_session *session,
+                                           spdylay_settings_entry *iv,
+                                           size_t niv);
+
 #endif /* SPDYLAY_SESSION_H */

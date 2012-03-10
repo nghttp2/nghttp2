@@ -328,6 +328,7 @@ int spdylay_session_add_frame(spdylay_session *session,
   }
   case SPDYLAY_SETTINGS:
     /* Should SPDYLAY_SETTINGS have higher priority? */
+    item->pri = -1;
     break;
   case SPDYLAY_NOOP:
     /* We don't have any public API to add NOOP, so here is
@@ -1540,6 +1541,17 @@ static void spdylay_session_update_initial_window_size
   spdylay_map_each(&session->streams,
                    spdylay_update_initial_window_size_func,
                    vals);
+}
+
+void spdylay_session_update_local_settings(spdylay_session *session,
+                                           spdylay_settings_entry *iv,
+                                           size_t niv)
+{
+  int i;
+  for(i = 0; i < niv; ++i) {
+    assert(iv[i].settings_id > 0 && iv[i].settings_id <= SPDYLAY_SETTINGS_MAX);
+    session->local_settings[iv[i].settings_id] = iv[i].value;
+  }
 }
 
 int spdylay_session_on_settings_received(spdylay_session *session,

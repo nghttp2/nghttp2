@@ -618,4 +618,11 @@ void spdylay_frame_nv_2to3(char **nv);
 spdylay_settings_entry* spdylay_frame_iv_copy(const spdylay_settings_entry *iv,
                                               size_t niv);
 
+/*
+ * Sorts the |iv| with the ascending order of the settings_id member.
+ * The number of the element in the array pointed by the |iv| is given
+ * by the |niv|.
+ */
+void spdylay_frame_iv_sort(spdylay_settings_entry *iv, size_t niv);
+
 #endif /* SPDYLAY_FRAME_H */

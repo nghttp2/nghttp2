@@ -1898,3 +1898,77 @@ void test_spdylay_session_on_settings_received()
 
   spdylay_session_del(session);
 }
+
+void test_spdylay_submit_settings()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  my_user_data ud;
+  spdylay_outbound_item *item;
+  spdylay_frame *frame;
+  spdylay_settings_entry iv[3];
+
+  iv[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 50;
+  iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  iv[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 16*1024;
+  iv[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  /* This is duplicate entry */
+  iv[2].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[2].value = 150;
+  iv[2].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
+  spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks, &ud);
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_settings(session, SPDYLAY_FLAG_SETTINGS_NONE,
+                                    iv, 3));
+
+  /* Make sure that local settings are not changed */
+  CU_ASSERT(SPDYLAY_CONCURRENT_STREAMS_MAX ==
+            session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(SPDYLAY_INITIAL_WINDOW_SIZE ==
+            session->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]);
+
+  CU_ASSERT(0 == spdylay_submit_settings(session,
+                                         SPDYLAY_FLAG_SETTINGS_CLEAR_SETTINGS,
+                                         iv, 2));
+
+  /* Make sure that local settings are changed */
+  CU_ASSERT(50 ==
+            session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(16*1024 ==
+            session->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]);
+
+  item = spdylay_session_get_next_ob_item(session);
+
+  CU_ASSERT(SPDYLAY_SETTINGS == item->frame_type);
+
+  frame = item->frame;
+  CU_ASSERT(2 == frame->settings.niv);
+  CU_ASSERT(SPDYLAY_FLAG_SETTINGS_CLEAR_SETTINGS == frame->settings.hd.flags);
+
+  CU_ASSERT(50 == frame->settings.iv[0].value);
+  CU_ASSERT(SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS ==
+            frame->settings.iv[0].settings_id);
+  CU_ASSERT(SPDYLAY_FLAG_SETTINGS_NONE ==
+            frame->settings.iv[0].flags);
+
+  CU_ASSERT(16*1024 == frame->settings.iv[1].value);
+  CU_ASSERT(SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE ==
+            frame->settings.iv[1].settings_id);
+  CU_ASSERT(SPDYLAY_FLAG_SETTINGS_NONE ==
+            frame->settings.iv[1].flags);
+
+  ud.ctrl_send_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == ud.ctrl_send_cb_called);
+
+  spdylay_session_del(session);
+}

@@ -662,7 +662,7 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * SPDYLAY_ERR_INVALID_FRAME
+ * SPDYLAY_ERR_INVALID_ARGUMENT
  *     |pri| is invalid.
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
@@ -728,7 +728,7 @@ int spdylay_submit_response(spdylay_session *session,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * SPDYLAY_ERR_INVALID_FRAME
+ * SPDYLAY_ERR_INVALID_ARGUMENT
  *     |pri| is invalid.
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
@@ -829,6 +829,23 @@ int spdylay_submit_ping(spdylay_session *session);
  *     Out of memory.
  */
 int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code);
+
+/*
+ * Stores local settings and submits SETTINGS frame. The |iv| is the
+ * pointer to the array of spdylay_settings_entry. The |niv| indicates
+ * the number of spdylay_settings_entry. The |flags| is bitwise-OR of
+ * one or more values from spdylay_settings_flag.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_ARGUMENT
+ *     The |iv| contains duplicate settings ID or invalid value.
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
+                            const spdylay_settings_entry *iv, size_t niv);
 
 /*
  * A helper function for dealing with NPN in client side.

@@ -1000,3 +1000,14 @@ spdylay_settings_entry* spdylay_frame_iv_copy(const spdylay_settings_entry *iv,
   memcpy(iv_copy, iv, len);
   return iv_copy;
 }
+
+static int spdylay_settings_entry_compar(const void *lhs, const void *rhs)
+{
+  return ((spdylay_settings_entry *)lhs)->settings_id
+    -((spdylay_settings_entry *)rhs)->settings_id;
+}
+
+void spdylay_frame_iv_sort(spdylay_settings_entry *iv, size_t niv)
+{
+  qsort(iv, niv, sizeof(spdylay_settings_entry), spdylay_settings_entry_compar);
+}

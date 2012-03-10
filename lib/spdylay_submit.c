@@ -24,6 +24,8 @@
  */
 #include "spdylay_submit.h"
 
+#include <string.h>
+
 #include "spdylay_session.h"
 #include "spdylay_frame.h"
 
@@ -181,6 +183,44 @@ int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code)
 {
   return spdylay_session_add_goaway(session, session->last_recv_stream_id,
                                     status_code);
+}
+
+int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
+                            const spdylay_settings_entry *iv, size_t niv)
+{
+  spdylay_frame *frame;
+  spdylay_settings_entry *iv_copy;
+  int check[SPDYLAY_SETTINGS_MAX+1];
+  int i, r;
+  memset(check, 0, sizeof(check));
+  for(i = 0; i < niv; ++i) {
+    if(iv[i].settings_id > SPDYLAY_SETTINGS_MAX || iv[i].settings_id == 0 ||
+       check[iv[i].settings_id] == 1) {
+      return SPDYLAY_ERR_INVALID_ARGUMENT;
+    } else {
+      check[iv[i].settings_id] = 1;
+    }
+  }
+  frame = malloc(sizeof(spdylay_frame));
+  if(frame == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  iv_copy = spdylay_frame_iv_copy(iv, niv);
+  if(iv_copy == NULL) {
+    free(frame);
+    return SPDYLAY_ERR_NOMEM;
+  }
+  spdylay_frame_iv_sort(iv_copy, niv);
+  spdylay_frame_settings_init(&frame->settings, session->version,
+                              flags, iv_copy, niv);
+  r = spdylay_session_add_frame(session, SPDYLAY_SETTINGS, frame, NULL);
+  if(r == 0) {
+    spdylay_session_update_local_settings(session, iv_copy, niv);
+  } else {
+    spdylay_frame_settings_free(&frame->settings);
+    free(frame);
+  }
+  return r;
 }
 
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,

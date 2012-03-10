@@ -62,5 +62,6 @@ void test_spdylay_session_defer_data();
 void test_spdylay_session_flow_control();
 void test_spdylay_session_on_ctrl_not_send();
 void test_spdylay_session_on_settings_received();
+void test_spdylay_submit_settings();
 
 #endif // SPDYLAY_SESSION_TEST_H
