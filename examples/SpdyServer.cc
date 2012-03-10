@@ -180,6 +180,13 @@ SpdyEventHandler::SpdyEventHandler(const Config* config,
   int r;
   r = spdylay_session_server_new(&session_, version, callbacks, this);
   assert(r == 0);
+  spdylay_settings_entry entry;
+  entry.settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
+  entry.value = SPDYLAY_CONCURRENT_STREAMS_MAX;
+  entry.flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  r = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE,
+                              &entry, 1);
+  assert(r == 0);
 }
     
 SpdyEventHandler::~SpdyEventHandler()
