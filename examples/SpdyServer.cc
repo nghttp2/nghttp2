@@ -182,7 +182,7 @@ SpdyEventHandler::SpdyEventHandler(const Config* config,
   assert(r == 0);
   spdylay_settings_entry entry;
   entry.settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry.value = SPDYLAY_CONCURRENT_STREAMS_MAX;
+  entry.value = SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
   entry.flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
   r = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE,
                               &entry, 1);

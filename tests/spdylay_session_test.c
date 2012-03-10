@@ -1931,7 +1931,7 @@ void test_spdylay_submit_settings()
                                     iv, 3));
 
   /* Make sure that local settings are not changed */
-  CU_ASSERT(SPDYLAY_CONCURRENT_STREAMS_MAX ==
+  CU_ASSERT(SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS ==
             session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]);
   CU_ASSERT(SPDYLAY_INITIAL_WINDOW_SIZE ==
             session->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]);

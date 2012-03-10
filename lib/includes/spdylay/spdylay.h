@@ -153,7 +153,7 @@ typedef enum {
 #define SPDYLAY_SETTINGS_MAX 8
 
 /* Default maximum concurrent streams */
-#define SPDYLAY_CONCURRENT_STREAMS_MAX 100
+#define SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS 100
 
 /* Status code for RST_STREAM */
 typedef enum {

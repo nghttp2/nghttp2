@@ -164,14 +164,14 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   memset((*session_ptr)->remote_settings, 0,
          sizeof((*session_ptr)->remote_settings));
   (*session_ptr)->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
-    SPDYLAY_CONCURRENT_STREAMS_MAX;
+    SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
   (*session_ptr)->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] =
     SPDYLAY_INITIAL_WINDOW_SIZE;
 
   memset((*session_ptr)->local_settings, 0,
          sizeof((*session_ptr)->local_settings));
   (*session_ptr)->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
-    SPDYLAY_CONCURRENT_STREAMS_MAX;
+    SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
   (*session_ptr)->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] =
     SPDYLAY_INITIAL_WINDOW_SIZE;
 
