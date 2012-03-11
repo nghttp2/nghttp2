@@ -47,8 +47,12 @@ static int spdylay_submit_syn_stream_shared
   if(pri > spdylay_session_get_pri_lowest(session)) {
     return SPDYLAY_ERR_INVALID_ARGUMENT;
   }
-  if(session->server == 0) {
-    assoc_stream_id = 0;
+  if(assoc_stream_id != 0) {
+    if(session->server == 0) {
+      assoc_stream_id = 0;
+    } else if(spdylay_session_is_my_stream_id(session, assoc_stream_id)) {
+      return SPDYLAY_ERR_INVALID_ARGUMENT;
+    }
   }
   if(data_prd != NULL && data_prd->read_callback != NULL) {
     data_prd_copy = malloc(sizeof(spdylay_data_provider));

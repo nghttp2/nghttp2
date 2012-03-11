@@ -730,6 +730,11 @@ void test_spdylay_submit_syn_stream()
   CU_ASSERT(1 == item->frame->syn_stream.assoc_stream_id);
   CU_ASSERT(3 == item->frame->syn_stream.pri);
 
+  /* Invalid assoc-stream-ID */
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 2, 3,
+                                      nv, NULL));
+
   spdylay_session_del(session);
 }
 
@@ -1738,9 +1743,21 @@ void test_spdylay_session_on_ctrl_not_send()
   stream = spdylay_session_open_stream(session, 1,
                                        SPDYLAY_CTRL_FLAG_NONE,
                                        3, SPDYLAY_STREAM_OPENED, &user_data);
+  /* Check SYN_STREAM */
+  CU_ASSERT(0 == spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 3, 3,
+                                           nv, NULL));
+
+  user_data.ctrl_not_send_cb_called = 0;
+  /* Associated stream closed */
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_STREAM == user_data.not_sent_frame_type);
+  CU_ASSERT(SPDYLAY_ERR_STREAM_CLOSED == user_data.not_sent_error);
+
   /* Check SYN_REPLY */
   CU_ASSERT(0 ==
             spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_FIN, 1, nv));
+  user_data.ctrl_not_send_cb_called = 0;
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(1 == user_data.ctrl_not_send_cb_called);
   CU_ASSERT(SPDYLAY_SYN_REPLY == user_data.not_sent_frame_type);

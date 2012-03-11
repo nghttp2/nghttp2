@@ -663,7 +663,8 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * negative error codes:
  *
  * SPDYLAY_ERR_INVALID_ARGUMENT
- *     |pri| is invalid.
+ *     The |pri| is invalid; or the Associated-To-Stream-ID is
+ *     invalid.
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
  */
@@ -722,14 +723,15 @@ int spdylay_submit_response(spdylay_session *session,
  * data which is associated to the stream this frame will open.
  *
  * This function is low-level in a sense that the application code can
- * specify flags and assoc-stream-ID directly. For usual HTTP request,
- * spdylay_submit_request() is useful.
+ * specify flags and the Associated-To-Stream-ID directly. For usual
+ * HTTP request, spdylay_submit_request() is useful.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * SPDYLAY_ERR_INVALID_ARGUMENT
- *     |pri| is invalid.
+ *     The |pri| is invalid; or the Associated-To-Stream-ID is
+ *     invalid.
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
  */

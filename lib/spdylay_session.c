@@ -479,6 +479,45 @@ static int spdylay_predicate_stream_for_send(spdylay_stream *stream)
 }
 
 /*
+ * This function checks SYN_STREAM frame |frame| can be sent at this
+ * time.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_STREAM_CLOSED
+ *     The Associated-To-Stream is already closed or does not exist.
+ * SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE
+ *     Stream ID has reached maximum value. Therefore no stream ID is
+ *    available.
+ */
+static int spdylay_session_predicate_syn_stream_send
+(spdylay_session *session,
+ spdylay_syn_stream *frame)
+{
+  if(session->goaway_flags) {
+    /* When GOAWAY is sent or received, peer must not send new
+       SYN_STREAM. */
+    return SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED;
+  }
+  /* All 32bit signed stream IDs are spent. */
+  if(session->next_stream_id > INT32_MAX) {
+    return SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE;
+  }
+  if(frame->assoc_stream_id != 0) {
+    /* Check associated stream is active. */
+    /* We assume here that if frame->assoc_stream_id != 0,
+       session->server is always 1 and frame->assoc_stream_id is
+       odd. */
+    if(spdylay_session_get_stream(session, frame->assoc_stream_id) ==
+       NULL) {
+      return SPDYLAY_ERR_STREAM_CLOSED;
+    }
+  }
+  return 0;
+}
+
+/*
  * This function checks SYN_REPLY with the stream ID |stream_id| can
  * be sent at this time.
  *
@@ -673,21 +712,16 @@ static int spdylay_session_predicate_data_send(spdylay_session *session,
 static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                           spdylay_outbound_item *item)
 {
-  /* TODO Get or validate stream ID here */
-  /* TODO Validate assoc_stream_id here */
   ssize_t framebuflen;
   switch(item->frame_type) {
   case SPDYLAY_SYN_STREAM: {
     int32_t stream_id;
     spdylay_syn_stream_aux_data *aux_data;
-    if(session->goaway_flags) {
-      /* When GOAWAY is sent or received, peer must not send new
-         SYN_STREAM. */
-      return SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED;
-    }
-    /* All 32bit signed stream IDs are spent. */
-    if(session->next_stream_id > INT32_MAX) {
-      return SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE;
+    int r;
+    r = spdylay_session_predicate_syn_stream_send(session,
+                                                  &item->frame->syn_stream);
+    if(r != 0) {
+      return r;
     }
     stream_id = session->next_stream_id;
 
