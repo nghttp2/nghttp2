@@ -63,6 +63,18 @@ static int spdylay_is_fatal(int error)
   return error < SPDYLAY_ERR_FATAL;
 }
 
+/*
+ * This function should be called when the session wants to drop
+ * connection after sending GOAWAY. These cases are called as the
+ * session error.  For example, when it receives bad zlib data.
+ */
+static int spdylay_session_fail_session(spdylay_session *session,
+                                        uint32_t status_code)
+{
+  session->goaway_flags |= SPDYLAY_GOAWAY_FAIL_ON_SEND;
+  return spdylay_submit_goaway(session, status_code);
+}
+
 int spdylay_session_is_my_stream_id(spdylay_session *session,
                                     int32_t stream_id)
 {
@@ -1376,9 +1388,6 @@ static int spdylay_session_check_nv(char **nv)
 static int spdylay_session_validate_syn_stream(spdylay_session *session,
                                                spdylay_syn_stream *frame)
 {
-  if(!spdylay_session_is_new_peer_stream_id(session, frame->stream_id)) {
-    return SPDYLAY_PROTOCOL_ERROR;
-  }
   if(!spdylay_session_check_version(session, frame->hd.version)) {
     return SPDYLAY_UNSUPPORTED_VERSION;
   }
@@ -1443,8 +1452,29 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
     /* We don't accept SYN_STREAM after GOAWAY is sent or received. */
     return 0;
   }
-  status_code = spdylay_session_validate_syn_stream(session,
-                                                    &frame->syn_stream);
+  if(session->last_recv_stream_id == frame->syn_stream.stream_id) {
+    /* SPDY/3 spec says if an endpoint receives same stream ID twice,
+       it MUST issue a stream error with status code
+       PROTOCOL_ERROR. */
+    status_code = SPDYLAY_PROTOCOL_ERROR;
+  } else if(!spdylay_session_is_new_peer_stream_id
+            (session, frame->syn_stream.stream_id)) {
+    /* SPDY/3 spec says if an endpoint receives a SYN_STREAM with a
+       stream ID which is less than any previously received
+       SYN_STREAM, it MUST issue a session error with status
+       PROTOCOL_ERROR */
+    if(session->callbacks.on_invalid_ctrl_recv_callback) {
+      session->callbacks.on_invalid_ctrl_recv_callback(session,
+                                                       SPDYLAY_SYN_STREAM,
+                                                       frame,
+                                                       session->user_data);
+    }
+    return spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
+  } else {
+    session->last_recv_stream_id = frame->syn_stream.stream_id;
+    status_code = spdylay_session_validate_syn_stream(session,
+                                                      &frame->syn_stream);
+  }
   if(status_code == 0) {
     uint8_t flags = frame->syn_stream.hd.flags;
     if((flags & SPDYLAY_CTRL_FLAG_FIN) &&
@@ -1471,7 +1501,6 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
            SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL is not set here. */
       }
     }
-    session->last_recv_stream_id = frame->syn_stream.stream_id;
     spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_SYN_STREAM,
                                                 frame);
     if(flags & SPDYLAY_CTRL_FLAG_FIN) {
@@ -1747,18 +1776,6 @@ int spdylay_session_on_headers_received(spdylay_session *session,
        SPDYLAY_PROTOCOL_ERROR);
   }
   return r;
-}
-
-/*
- * This function should be called when the session wants to drop
- * connection after sending GOAWAY. These cases are called as the
- * session error.  For example, when it receives bad zlib data.
- */
-static int spdylay_session_fail_session(spdylay_session *session,
-                                        uint32_t status_code)
-{
-  session->goaway_flags |= SPDYLAY_GOAWAY_FAIL_ON_SEND;
-  return spdylay_submit_goaway(session, status_code);
 }
 
 /* For errors, this function only returns FATAL error. */

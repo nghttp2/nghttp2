@@ -377,25 +377,40 @@ void test_spdylay_session_on_syn_stream_received()
   CU_ASSERT(SPDYLAY_STREAM_OPENING == stream->state);
   CU_ASSERT(pri == stream->pri);
 
-  /* Same stream ID twice leads stream closing */
+  /* Same stream ID twice leads stream error */
+  user_data.invalid_ctrl_recv_cb_called = 0;
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_ctrl_recv_cb_called);
-  CU_ASSERT(SPDYLAY_STREAM_CLOSING ==
-            spdylay_session_get_stream(session, stream_id)->state);
+  CU_ASSERT(SPDYLAY_STREAM_CLOSING == stream->state);
 
   /* assoc_stream_id != 0 from client is invalid. */
+  frame.syn_stream.stream_id = 3;
   frame.syn_stream.assoc_stream_id = 1;
+  user_data.invalid_ctrl_recv_cb_called = 0;
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
-  CU_ASSERT(2 == user_data.invalid_ctrl_recv_cb_called);
+  CU_ASSERT(1 == user_data.invalid_ctrl_recv_cb_called);
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
 
   /* Upper cased name/value pairs */
   spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY2,
                                 SPDYLAY_CTRL_FLAG_NONE,
-                                3, 0, 3, dup_nv(upcase_nv));
+                                5, 0, 3, dup_nv(upcase_nv));
+  user_data.invalid_ctrl_recv_cb_called = 0;
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
-  CU_ASSERT(3 == user_data.invalid_ctrl_recv_cb_called);
+  CU_ASSERT(1 == user_data.invalid_ctrl_recv_cb_called);
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  /* Stream ID less than previouly received SYN_STREAM leads session
+     error */
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY2,
+                                SPDYLAY_CTRL_FLAG_NONE,
+                                3, 0, 3, dup_nv(nv));
+  user_data.invalid_ctrl_recv_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(1 == user_data.invalid_ctrl_recv_cb_called);
+  CU_ASSERT(session->goaway_flags & SPDYLAY_GOAWAY_FAIL_ON_SEND);
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_session_del(session);
