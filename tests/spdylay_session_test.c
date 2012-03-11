@@ -473,20 +473,19 @@ void test_spdylay_session_on_syn_stream_received_with_push()
 void test_spdylay_session_on_syn_reply_received()
 {
   spdylay_session *session;
-  spdylay_session_callbacks callbacks = {
-    NULL,
-    NULL,
-    on_ctrl_recv_callback,
-    on_invalid_ctrl_recv_callback
-  };
+  spdylay_session_callbacks callbacks;
   my_user_data user_data;
   const char *nv[] = { NULL };
   const char *upcase_nv[] = { "version", "http/1.1", "methoD", "get", NULL };
   spdylay_frame frame;
   spdylay_stream *stream;
+  spdylay_outbound_item *item;
   user_data.ctrl_recv_cb_called = 0;
   user_data.invalid_ctrl_recv_cb_called = 0;
 
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
+  callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
   spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY2, &callbacks,
                              &user_data);
   spdylay_session_open_stream(session, 1, SPDYLAY_CTRL_FLAG_NONE, 0,
@@ -523,6 +522,25 @@ void test_spdylay_session_on_syn_reply_received()
                                SPDYLAY_CTRL_FLAG_NONE, 5, dup_nv(upcase_nv));
   CU_ASSERT(0 == spdylay_session_on_syn_reply_received(session, &frame));
   CU_ASSERT(3 == user_data.invalid_ctrl_recv_cb_called);
+
+  spdylay_frame_syn_reply_free(&frame.syn_reply);
+
+  spdylay_session_del(session);
+
+  spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks,
+                             &user_data);
+
+  /* Multiple SYN_REPLY frames for the same active stream ID */
+  spdylay_session_open_stream(session, 1, SPDYLAY_CTRL_FLAG_NONE, 0,
+                              SPDYLAY_STREAM_OPENED, NULL);
+  spdylay_frame_syn_reply_init(&frame.syn_reply, SPDYLAY_PROTO_SPDY3,
+                               SPDYLAY_CTRL_FLAG_NONE, 1, dup_nv(nv));
+  user_data.invalid_ctrl_recv_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_on_syn_reply_received(session, &frame));
+  CU_ASSERT(1 == user_data.invalid_ctrl_recv_cb_called);
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_RST_STREAM == item->frame_type);
+  CU_ASSERT(SPDYLAY_STREAM_IN_USE == item->frame->rst_stream.status_code);
 
   spdylay_frame_syn_reply_free(&frame.syn_reply);
 

@@ -1529,6 +1529,7 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
 {
   int r = 0;
   int valid = 0;
+  int status_code = SPDYLAY_PROTOCOL_ERROR;
   spdylay_stream *stream;
   if(!spdylay_session_check_version(session, frame->syn_reply.hd.version)) {
     return 0;
@@ -1554,13 +1555,21 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
            that we queued RST_STREAM but it has not been sent. It will
            eventually sent, so we just ignore this frame. */
         valid = 1;
+      } else {
+        if(session->version == SPDYLAY_PROTO_SPDY3) {
+          /* SPDY/3 spec says if multiple SYN_REPLY frames for the
+             same active stream ID are received, the receiver must
+             issue a stream error with the status code
+             STREAM_IN_USE. */
+          status_code = SPDYLAY_STREAM_IN_USE;
+        }
       }
     }
   }
   if(!valid) {
     r = spdylay_session_handle_invalid_stream
       (session, frame->syn_reply.stream_id, SPDYLAY_SYN_REPLY, frame,
-       SPDYLAY_PROTOCOL_ERROR);
+       status_code);
   }
   return r;
 }
