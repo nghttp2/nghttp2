@@ -984,6 +984,11 @@ typedef struct {
  * |callbacks|. |user_data| is an arbitrary user supplied data, which
  * will be passed to the callback functions.
  *
+ * Some of the members of |callbacks| can be ``NULL``, but
+ * :member:`spdylay_session_callbacks.send_callback` and
+ * :member:`spdylay_session_callbacks.recv_callback` are must be
+ * specified.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -1007,6 +1012,11 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
  * |*session_ptr|. Therefore |*session_ptr| does not store
  * |callbacks|. |user_data| is an arbitrary user supplied data, which
  * will be passed to the callback functions.
+ *
+ * Some of the members of |callbacks| can be ``NULL``, but
+ * :member:`spdylay_session_callbacks.send_callback` and
+ * :member:`spdylay_session_callbacks.recv_callback` are must be
+ * specified.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
