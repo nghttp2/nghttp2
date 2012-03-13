@@ -31,8 +31,10 @@ used.::
 API
 ---
 
-All public APIs are in *spdylay/spdylay.h*. All public API functions
-as well as the callback function typedefs are documented.
+The public API reference is available on online. Visit
+http://spdylay.sourceforge.net/.  All public APIs are in
+*spdylay/spdylay.h*. All public API functions as well as the callback
+function typedefs are documented.
 
 Examples
 --------
