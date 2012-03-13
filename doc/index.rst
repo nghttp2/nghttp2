@@ -17,6 +17,10 @@ choose the way of handling events. This library code does not depend
 on any particular SSL library (except for example programs which
 depend on OpenSSL 1.0.1 or later).
 
+The project is hosted at https://sourceforge.net/projects/spdylay/.
+
+The source code is hosted at https://github.com/tatsuhiro-t/spdylay.
+
 Contents:
 
 .. toctree::
