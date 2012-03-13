@@ -131,6 +131,8 @@ AC_CONFIG_FILES([
   lib/includes/spdylay/spdylayver.h
   tests/Makefile
   examples/Makefile
+  doc/Makefile
+  doc/conf.py
 ])
 AC_OUTPUT
 

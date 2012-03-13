@@ -25,7 +25,10 @@
 #ifndef SPDYLAYVER_H
 #define SPDYLAYVER_H
 
-/* Version number of spdylay release */
+/**
+ * @macro
+ * Version number of spdylay release
+ */
 #define SPDYLAY_VERSION "@PACKAGE_VERSION@"
 
 #endif /* SPDYLAYVER_H */
