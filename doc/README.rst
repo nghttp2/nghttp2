@@ -154,7 +154,7 @@ Some examples follow::
     typedef struct spdylay_session spdylay_session;
 
 @union
-======
+######
 
 ``@union`` is used to refer to the union. Currently, ``@union`` is an
 alias of ``@struct``.
