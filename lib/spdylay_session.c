@@ -741,6 +741,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     session->next_stream_id += 2;
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_3to2(item->frame->syn_stream.nv);
+      spdylay_frame_nv_sort(item->frame->syn_stream.nv);
     }
     framebuflen = spdylay_frame_pack_syn_stream(&session->aob.framebuf,
                                                 &session->aob.framebufmax,
@@ -750,6 +751,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                                 &session->hd_deflater);
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_2to3(item->frame->syn_stream.nv);
+      spdylay_frame_nv_sort(item->frame->syn_stream.nv);
     }
     if(framebuflen < 0) {
       return framebuflen;
@@ -773,6 +775,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_3to2(item->frame->syn_reply.nv);
+      spdylay_frame_nv_sort(item->frame->syn_reply.nv);
     }
     framebuflen = spdylay_frame_pack_syn_reply(&session->aob.framebuf,
                                                &session->aob.framebufmax,
@@ -782,6 +785,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                                &session->hd_deflater);
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_2to3(item->frame->syn_reply.nv);
+      spdylay_frame_nv_sort(item->frame->syn_reply.nv);
     }
     if(framebuflen < 0) {
       return framebuflen;
@@ -825,6 +829,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     }
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_3to2(item->frame->headers.nv);
+      spdylay_frame_nv_sort(item->frame->headers.nv);
     }
     framebuflen = spdylay_frame_pack_headers(&session->aob.framebuf,
                                              &session->aob.framebufmax,
@@ -834,6 +839,7 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                              &session->hd_deflater);
     if(session->version == SPDYLAY_PROTO_SPDY2) {
       spdylay_frame_nv_2to3(item->frame->headers.nv);
+      spdylay_frame_nv_sort(item->frame->headers.nv);
     }
     if(framebuflen < 0) {
       return framebuflen;
