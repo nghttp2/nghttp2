@@ -500,8 +500,8 @@ static int spdylay_predicate_stream_for_send(spdylay_stream *stream)
  * SPDYLAY_ERR_STREAM_CLOSED
  *     The Associated-To-Stream is already closed or does not exist.
  * SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE
- *     Stream ID has reached maximum value. Therefore no stream ID is
- *    available.
+ *     Stream ID has reached the maximum value. Therefore no stream ID
+ *     is available.
  */
 static int spdylay_session_predicate_syn_stream_send
 (spdylay_session *session,

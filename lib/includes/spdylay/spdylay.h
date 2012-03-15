@@ -40,8 +40,8 @@ struct spdylay_session;
  * @struct
  *
  * The primary structure to hold the resources needed for a SPDY
- * session. The details of this structure is hidden from the public
- * API.
+ * session. The details of this structure are intentionally hidden
+ * from the public API.
  */
 typedef struct spdylay_session spdylay_session;
 
@@ -103,8 +103,8 @@ typedef enum {
    */
   SPDYLAY_ERR_DEFERRED = -508,
   /**
-   * Stream ID has reached maximum value. Therefore no stream ID is
-   * available.
+   * Stream ID has reached the maximum value. Therefore no stream ID
+   * is available.
    */
   SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE = -509,
   /**
@@ -112,13 +112,13 @@ typedef enum {
    */
   SPDYLAY_ERR_STREAM_CLOSED = -510,
   /**
-   * RST_STREAM has been queued in outbound queue. The stream is in
+   * RST_STREAM has been added to the outbound queue. The stream is in
    * closing state.
    */
   SPDYLAY_ERR_STREAM_CLOSING = -511,
   /**
    * The transmission is not allowed for this stream (e.g., a frame
-   * with FIN flag set has already sent).
+   * with FLAG_FIN flag set has already sent).
    */
   SPDYLAY_ERR_STREAM_SHUT_WR = -512,
   /**
@@ -127,7 +127,7 @@ typedef enum {
   SPDYLAY_ERR_INVALID_STREAM_ID = -513,
   /**
    * The state of the stream is not valid (e.g., SYN_REPLY cannot be
-   * sent to the stream where SYN_REPLY has been already sent).
+   * sent to the stream if SYN_REPLY has already been sent).
    */
   SPDYLAY_ERR_INVALID_STREAM_STATE = -514,
   /**
@@ -140,13 +140,13 @@ typedef enum {
    */
   SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED = -516,
   /**
-   * GOAWAY has been already sent.
+   * GOAWAY has already been sent.
    */
   SPDYLAY_ERR_GOAWAY_ALREADY_SENT = -517,
   /**
    * The errors < :enum:`SPDYLAY_ERR_FATAL` mean that the library is
-   * under unexpected condition that it cannot process any further
-   * data reliably (e.g., out of memory).
+   * under unexpected condition and cannot process any further data
+   * reliably (e.g., out of memory).
    */
   SPDYLAY_ERR_FATAL = -900,
   /**
@@ -185,7 +185,7 @@ typedef enum {
    */
   SPDYLAY_SETTINGS = 4,
   /**
-   * The NOOP control frame. This is deprecated in SPDY/3.
+   * The NOOP control frame. This was deprecated in SPDY/3.
    */
   SPDYLAY_NOOP = 5,
   /**
@@ -201,8 +201,7 @@ typedef enum {
    */
   SPDYLAY_HEADERS = 8,
   /**
-   * The WINDOW_UPDATE control frame. This was first appeard in
-   * SPDY/3.
+   * The WINDOW_UPDATE control frame. This first appeared in SPDY/3.
    */
   SPDYLAY_WINDOW_UPDATE = 9,
   /**
@@ -314,8 +313,8 @@ typedef enum {
    */
   SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE = 7,
   /**
-   * SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE. This was first appeared
-   * in SPDY/3.
+   * SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE. This first appeared in
+   * SPDY/3.
    */
   SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE = 8
 } spdylay_settings_id;
@@ -334,7 +333,7 @@ typedef enum {
 
 /**
  * @enum
- * The status codes for RST_STREAM control frame.
+ * The status codes for the RST_STREAM control frame.
  */
 typedef enum {
   /**
@@ -391,7 +390,7 @@ typedef enum {
 
 /**
  * @enum
- * The status codes for GOAWAY, introduced in SPDY/3
+ * The status codes for GOAWAY, introduced in SPDY/3.
  */
 typedef enum {
   /**
@@ -410,12 +409,12 @@ typedef enum {
 
 /**
  * @macro
- * Lowest priority value in SPDY/2.
+ * Lowest priority value in SPDY/2, which is 3.
  */
 #define SPDYLAY_SPDY2_PRI_LOWEST 3
 /**
  * @macro
- * Lowest priority value in SPDY/3.
+ * Lowest priority value in SPDY/3, which is 7.
  */
 #define SPDYLAY_SPDY3_PRI_LOWEST 7
 
@@ -614,7 +613,7 @@ typedef struct {
    */
   int32_t last_good_stream_id;
   /**
-   * The status code. It was introduced in SPDY/3. See
+   * The status code. This first appeared in SPDY/3. See
    * :type:`spdylay_goaway_status_code`.
    */
   uint32_t status_code;
@@ -623,7 +622,7 @@ typedef struct {
 /**
  * @struct
  *
- * The WINDOW_UPDATE control frame. It was introduced in SPDY/3.  It
+ * The WINDOW_UPDATE control frame. This first appeared in SPDY/3.  It
  * has the following members:
  */
 typedef struct {
@@ -662,7 +661,7 @@ typedef union {
  * @functypedef
  *
  * Callback function invoked when the library wants to read data from
- * |source|. The read data is sent in the stream |stream_id|. The
+ * the |source|. The read data is sent in the stream |stream_id|. The
  * implementation of this function must read at most |length| bytes of
  * data from |source| (or possibly other places) and store them in
  * |buf| and return number of data stored in |buf|. If EOF is reached,
@@ -692,7 +691,7 @@ typedef struct {
    */
   spdylay_data_source source;
   /**
-   * The callback function to read a chunk of data from |source|.
+   * The callback function to read a chunk of data from the |source|.
    */
   spdylay_data_source_read_callback read_callback;
 } spdylay_data_provider;
@@ -801,7 +800,7 @@ typedef ssize_t (*spdylay_recv_callback)
  * @functypedef
  *
  * Callback function invoked by `spdylay_session_recv()` when a
- * control frame is arrived.
+ * control frame is received.
  */
 typedef void (*spdylay_on_ctrl_recv_callback)
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
@@ -811,7 +810,7 @@ typedef void (*spdylay_on_ctrl_recv_callback)
  * @functypedef
  *
  * Callback function invoked by `spdylay_session_recv()` when an
- * invalid control frame is arrived. When this callback function is
+ * invalid control frame is received. When this callback function is
  * invoked, either RST_STREAM or GOAWAY will be sent.
  */
 typedef void (*spdylay_on_invalid_ctrl_recv_callback)
@@ -822,10 +821,10 @@ typedef void (*spdylay_on_invalid_ctrl_recv_callback)
  * @functypedef
  *
  * Callback function invoked when a chunk of data in DATA frame is
- * received. The |stream_id| is the stream ID of this DATA frame
- * belongs to. The |flags| is the flags of DATA frame which this data
- * chunk is contained. ``(flags & SPDYLAY_DATA_FLAG_FIN) != 0`` does
- * not necessarily mean this chunk of data is the last one in the
+ * received. The |stream_id| is the stream ID this DATA frame belongs
+ * to. The |flags| is the flags of DATA frame which this data chunk is
+ * contained. ``(flags & SPDYLAY_DATA_FLAG_FIN) != 0`` does not
+ * necessarily mean this chunk of data is the last one in the
  * stream. You should use :type:`spdylay_on_data_recv_callback` to
  * know all data frames are received.
  */
@@ -904,7 +903,7 @@ typedef void (*spdylay_on_stream_close_callback)
 /**
  * @functypedef
  *
- * Callback function invoked when request from the remote peer is
+ * Callback function invoked when the request from the remote peer is
  * received.  In other words, the frame with FIN flag set is received.
  * In HTTP, this means HTTP request, including request body, is fully
  * received.
@@ -919,23 +918,23 @@ typedef void (*spdylay_on_request_recv_callback)
  */
 typedef struct {
   /**
-   * Callback function invoked when |session| wants to send data to
-   * the remote peer.
+   * Callback function invoked when the |session| wants to send data
+   * to the remote peer.
    */
   spdylay_send_callback send_callback;
   /**
-   * Callback function invoked when |session| wants to receive data
-   * from the remote peer.
+   * Callback function invoked when the |session| wants to receive
+   * data from the remote peer.
    */
   spdylay_recv_callback recv_callback;
   /**
    * Callback function invoked by `spdylay_session_recv()` when a
-   * control frame is arrived.
+   * control frame is received.
    */
   spdylay_on_ctrl_recv_callback on_ctrl_recv_callback;
   /**
    * Callback function invoked by `spdylay_session_recv()` when an
-   * invalid control frame is arrived.
+   * invalid control frame is received.
    */
   spdylay_on_invalid_ctrl_recv_callback on_invalid_ctrl_recv_callback;
   /**
@@ -986,7 +985,7 @@ typedef struct {
  *
  * Some of the members of |callbacks| can be ``NULL``, but
  * :member:`spdylay_session_callbacks.send_callback` and
- * :member:`spdylay_session_callbacks.recv_callback` are must be
+ * :member:`spdylay_session_callbacks.recv_callback` must be
  * specified.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -1015,7 +1014,7 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
  *
  * Some of the members of |callbacks| can be ``NULL``, but
  * :member:`spdylay_session_callbacks.send_callback` and
- * :member:`spdylay_session_callbacks.recv_callback` are must be
+ * :member:`spdylay_session_callbacks.recv_callback` must be
  * specified.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -1060,12 +1059,12 @@ void spdylay_session_del(spdylay_session *session);
  * 3. If the control frame cannot be sent because some preconditions
  *    are not met (e.g., SYN_STREAM cannot be sent after GOAWAY),
  *    :member:`spdylay_session_callbacks.on_ctrl_not_send_callback` is
- *    invoked. Skip following steps.
+ *    invoked. Abort the following steps.
  * 4. If the frame is SYN_STREAM, the stream is opened here.
  * 5. :member:`spdylay_session_callbacks.before_ctrl_send_callback` is
  *    invoked.
  * 6. :member:`spdylay_session_callbacks.send_callback` is invoked one
- *    or more times (while the frame is completely sent).
+ *    or more times to send the frame.
  * 7. If the frame is a control frame,
  *    :member:`spdylay_session_callbacks.on_ctrl_send_callback` is
  *    invoked.
@@ -1206,11 +1205,12 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * Submits SYN_STREAM frame and optionally one or more DATA
  * frames.
  *
- * The |pri| is priority of this request. 0 is the highest priority.
- * If the |session| is initialized with the version
- * :macro:`SPDYLAY_PROTO_SPDY2`, the lowest priority is 3.  If the
- * |session| is initialized with the version
- * :macro:`SPDYLAY_PROTO_SPDY3`, the lowest priority is 7.
+ * The |pri| is priority of this request. 0 is the highest priority
+ * value.  If the |session| is initialized with the version
+ * :macro:`SPDYLAY_PROTO_SPDY2`, the lowest priority value is
+ * :macro:`SPDYLAY_SPDY2_PRI_LOWEST`.  If the |session| is initialized
+ * with the version :macro:`SPDYLAY_PROTO_SPDY3`, the lowest priority
+ * value is :macro:`SPDYLAY_SPDY3_PRI_LOWEST`.
  *
  * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
@@ -1246,9 +1246,9 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
  * request message bodies
  * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must
  * be specified with "method" key in |nv| (e.g. POST). If |data_prd|
- * is ``NULL``, SYN_STREAM have FLAG_FIN. The |stream_user_data| is
- * data associated to the stream opened by this request and can be an
- * arbitrary pointer, which can be retrieved later by
+ * is ``NULL``, SYN_STREAM have FLAG_FIN set. The |stream_user_data|
+ * is data associated to the stream opened by this request and can be
+ * an arbitrary pointer, which can be retrieved later by
  * `spdylay_session_get_stream_user_data()`.
  *
  * Since the library reorders the frames and tries to send the highest
@@ -1305,7 +1305,7 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  *
  * If |data_prd| is not ``NULL``, it provides data which will be sent
  * in subsequent DATA frames. If |data_prd| is ``NULL``, SYN_REPLY
- * will have FLAG_FIN.
+ * will have FLAG_FIN set.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1327,20 +1327,26 @@ int spdylay_submit_response(spdylay_session *session,
  * * :enum:`SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL`
  *
  * If |flags| includes :enum:`SPDYLAY_CTRL_FLAG_FIN`, this frame has
- * FIN flag set.
+ * FLAG_FIN flag set.
  *
  * The |assoc_stream_id| is used for server-push. If |session| is
- * initialized for client use, |assoc_stream_id| is ignored. The |pri|
- * is the priority of this frame and it must be between 0 and 3,
- * inclusive. 0 is the highest. The |nv| is the name/value pairs in
- * this frame. The |stream_user_data| is a pointer to an arbitrary
- * data which is associated to the stream this frame will open.
+ * initialized for client use, |assoc_stream_id| is ignored.
+
+ * The |pri| is priority of this request. 0 is the highest priority
+ * value.  If the |session| is initialized with the version
+ * :macro:`SPDYLAY_PROTO_SPDY2`, the lowest priority value is
+ * :macro:`SPDYLAY_SPDY2_PRI_LOWEST`.  If the |session| is initialized
+ * with the version :macro:`SPDYLAY_PROTO_SPDY3`, the lowest priority
+ * value is :macro:`SPDYLAY_SPDY3_PRI_LOWEST`.
  *
  * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
  * pointer to the value string. The one beyond last value must be
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
  * ``nv[2*N]`` must be ``NULL``.
+ *
+ * The |stream_user_data| is a pointer to an arbitrary
+ * data which is associated to the stream this frame will open.
  *
  * This function is low-level in a sense that the application code can
  * specify flags and the Associated-To-Stream-ID directly. For usual
@@ -1368,7 +1374,7 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
  * * :enum:`SPDYLAY_CTRL_FLAG_FIN`
  *
  * If |flags| includes :enum:`SPDYLAY_CTRL_FLAG_FIN`, this frame has
- * FIN flag set.
+ * FLAG_FIN flag set.
  *
  * The stream which this frame belongs to is given in the
  * |stream_id|. The |nv| is the name/value pairs in this frame.
@@ -1397,10 +1403,16 @@ int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
  * * :enum:`SPDYLAY_CTRL_FLAG_FIN`
  *
  * If |flags| includes :enum:`SPDYLAY_CTRL_FLAG_FIN`, this frame has
- * FIN flag set.
+ * FLAG_FIN flag set.
  *
  * The stream which this frame belongs to is given in the
  * |stream_id|. The |nv| is the name/value pairs in this frame.
+ *
+ * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
+ * contains a pointer to the name string and ``nv[2*i+1]`` contains a
+ * pointer to the value string. The one beyond last value must be
+ * ``NULL``. That is, if the |nv| contains N name/value pairs,
+ * ``nv[2*N]`` must be ``NULL``.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1555,7 +1567,7 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
 /**
  * @function
  *
- * Returns spdy version which spdylay library supports from given
+ * Returns spdy version which spdylay library supports from the given
  * protocol name. The |proto| is the pointer to the protocol name and
  * |protolen| is its length. Currently, "spdy/2" and "spdy/3" are
  * supported.
