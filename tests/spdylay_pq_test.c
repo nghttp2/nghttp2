@@ -37,21 +37,29 @@ void test_spdylay_pq()
 {
   spdylay_pq pq;
   spdylay_pq_init(&pq, pq_compar);
+  CU_ASSERT(spdylay_pq_empty(&pq));
+  CU_ASSERT(0 == spdylay_pq_size(&pq));
   CU_ASSERT(0 == spdylay_pq_push(&pq, "foo"));
+  CU_ASSERT(0 == spdylay_pq_empty(&pq));
+  CU_ASSERT(1 == spdylay_pq_size(&pq));
   CU_ASSERT(strcmp("foo", spdylay_pq_top(&pq)) == 0);
   CU_ASSERT(0 == spdylay_pq_push(&pq, "bar"));
   CU_ASSERT(strcmp("bar", spdylay_pq_top(&pq)) == 0);
   CU_ASSERT(0 == spdylay_pq_push(&pq, "baz"));
   CU_ASSERT(strcmp("bar", spdylay_pq_top(&pq)) == 0);
   CU_ASSERT(0 == spdylay_pq_push(&pq, "C"));
+  CU_ASSERT(4 == spdylay_pq_size(&pq));
   CU_ASSERT(strcmp("C", spdylay_pq_top(&pq)) == 0);  
   spdylay_pq_pop(&pq);
+  CU_ASSERT(3 == spdylay_pq_size(&pq));
   CU_ASSERT(strcmp("bar", spdylay_pq_top(&pq)) == 0);
   spdylay_pq_pop(&pq);
   CU_ASSERT(strcmp("baz", spdylay_pq_top(&pq)) == 0);
   spdylay_pq_pop(&pq);
   CU_ASSERT(strcmp("foo", spdylay_pq_top(&pq)) == 0);
   spdylay_pq_pop(&pq);
+  CU_ASSERT(spdylay_pq_empty(&pq));
+  CU_ASSERT(0 == spdylay_pq_size(&pq));
   CU_ASSERT(0 == spdylay_pq_top(&pq));
   spdylay_pq_free(&pq);
 }

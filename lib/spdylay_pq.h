@@ -91,4 +91,9 @@ void spdylay_pq_pop(spdylay_pq *pq);
  */
 int spdylay_pq_empty(spdylay_pq *pq);
 
+/*
+ * Returns the number of items in the queue |pq|.
+ */
+size_t spdylay_pq_size(spdylay_pq *pq);
+
 #endif /* SPDYLAY_PQ_H */

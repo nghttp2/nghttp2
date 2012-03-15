@@ -120,3 +120,8 @@ int spdylay_pq_empty(spdylay_pq *pq)
 {
   return pq->length == 0;
 }
+
+size_t spdylay_pq_size(spdylay_pq *pq)
+{
+  return pq->length;
+}

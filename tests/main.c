@@ -142,6 +142,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_on_settings_received) ||
       !CU_add_test(pSuite, "session_submit_settings",
                    test_spdylay_submit_settings) ||
+      !CU_add_test(pSuite, "session_get_outbound_queue_size",
+                   test_spdylay_session_get_outbound_queue_size) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy2",
                    test_spdylay_frame_unpack_nv_spdy2) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy3",

@@ -63,5 +63,6 @@ void test_spdylay_session_flow_control();
 void test_spdylay_session_on_ctrl_not_send();
 void test_spdylay_session_on_settings_received();
 void test_spdylay_submit_settings();
+void test_spdylay_session_get_outbound_queue_size();
 
 #endif // SPDYLAY_SESSION_TEST_H

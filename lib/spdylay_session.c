@@ -2346,3 +2346,8 @@ uint8_t spdylay_session_get_pri_lowest(spdylay_session *session)
     return 0;
   }
 }
+
+size_t spdylay_session_get_outbound_queue_size(spdylay_session *session)
+{
+  return spdylay_pq_size(&session->ob_pq)+spdylay_pq_size(&session->ob_ss_pq);
+}

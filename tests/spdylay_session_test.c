@@ -2022,3 +2022,22 @@ void test_spdylay_submit_settings()
 
   spdylay_session_del(session);
 }
+
+void test_spdylay_session_get_outbound_queue_size()
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { "version", "HTTP/1.1", NULL };
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  CU_ASSERT(0 == spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3,
+                                            &callbacks, NULL));
+  CU_ASSERT(0 == spdylay_session_get_outbound_queue_size(session));
+
+  CU_ASSERT(0 == spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 1, 7,
+                                           nv, NULL));
+  CU_ASSERT(1 == spdylay_session_get_outbound_queue_size(session));
+
+  CU_ASSERT(0 == spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK));
+  CU_ASSERT(2 == spdylay_session_get_outbound_queue_size(session));
+}

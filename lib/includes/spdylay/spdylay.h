@@ -1202,6 +1202,14 @@ void* spdylay_session_get_stream_user_data(spdylay_session *session,
 /**
  * @function
  *
+ * Returns the number of frames in the outbound queue. This does not
+ * include the deferred DATA frames.
+ */
+size_t spdylay_session_get_outbound_queue_size(spdylay_session *session);
+
+/**
+ * @function
+ *
  * Submits SYN_STREAM frame and optionally one or more DATA
  * frames.
  *
