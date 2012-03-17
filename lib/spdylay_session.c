@@ -104,6 +104,13 @@ static int spdylay_outbound_item_compar(const void *lhsx, const void *rhsx)
   }
 }
 
+static void spdylay_inbound_frame_reset(spdylay_inbound_frame *iframe)
+{
+  iframe->state = SPDYLAY_RECV_HEAD;
+  iframe->len = iframe->off = 0;
+  iframe->headbufoff = 0;
+}
+
 static int spdylay_session_new(spdylay_session **session_ptr,
                                uint16_t version,
                                const spdylay_session_callbacks *callbacks,
@@ -190,16 +197,13 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->callbacks = *callbacks;
   (*session_ptr)->user_data = user_data;
 
-  (*session_ptr)->ibuf.mark = (*session_ptr)->ibuf.buf;
-  (*session_ptr)->ibuf.limit = (*session_ptr)->ibuf.buf;
-  
-  (*session_ptr)->iframe.state = SPDYLAY_RECV_HEAD;
   (*session_ptr)->iframe.buf = malloc(SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH);
   if((*session_ptr)->iframe.buf == NULL) {
     r = SPDYLAY_ERR_NOMEM;
     goto fail_iframe_buf;
   }
   (*session_ptr)->iframe.bufmax = SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH;
+  spdylay_inbound_frame_reset(&(*session_ptr)->iframe);
 
   return 0;
 
@@ -1280,29 +1284,14 @@ int spdylay_session_send(spdylay_session *session)
   return 0;
 }
 
-static void spdylay_inbound_buffer_shift(spdylay_inbound_buffer *ibuf)
-{
-  ptrdiff_t len = ibuf->limit-ibuf->mark;
-  memmove(ibuf->buf, ibuf->mark, len);
-  ibuf->limit = ibuf->buf+len;
-  ibuf->mark = ibuf->buf;
-}
-
-static ssize_t spdylay_recv(spdylay_session *session)
+static ssize_t spdylay_recv(spdylay_session *session, uint8_t *buf, size_t len)
 {
   ssize_t r;
-  size_t recv_max;
-  if(session->ibuf.mark != session->ibuf.buf) {
-    spdylay_inbound_buffer_shift(&session->ibuf);
-  }
-  recv_max = session->ibuf.buf+sizeof(session->ibuf.buf)-session->ibuf.limit;
   r = session->callbacks.recv_callback
-    (session, session->ibuf.limit, recv_max, 0, session->user_data);
+    (session, buf, len, 0, session->user_data);
   if(r > 0) {
-    if(r > recv_max) {
+    if(r > len) {
       return SPDYLAY_ERR_CALLBACK_FAILURE;
-    } else {
-      session->ibuf.limit += r;
     }
   } else if(r < 0) {
     if(r != SPDYLAY_ERR_WOULDBLOCK) {
@@ -1310,18 +1299,6 @@ static ssize_t spdylay_recv(spdylay_session *session)
     }
   }
   return r;
-}
-
-static size_t spdylay_inbound_buffer_avail(spdylay_inbound_buffer *ibuf)
-{
-  return ibuf->limit-ibuf->mark;
-}
-
-static void spdylay_inbound_frame_reset(spdylay_inbound_frame *iframe)
-{
-  iframe->state = SPDYLAY_RECV_HEAD;
-  iframe->len = iframe->off = 0;
-  iframe->ign = 0;
 }
 
 static void spdylay_session_call_on_request_recv
@@ -2049,49 +2026,50 @@ static int spdylay_session_update_recv_window_size(spdylay_session *session,
   return 0;
 }
 
-int spdylay_session_recv(spdylay_session *session)
+ssize_t spdylay_session_mem_recv(spdylay_session *session,
+                                 const uint8_t *in, size_t inlen)
 {
+  const uint8_t *inmark, *inlimit;
+  inmark = in;
+  inlimit = in+inlen;
   while(1) {
     ssize_t r;
     if(session->iframe.state == SPDYLAY_RECV_HEAD) {
       uint32_t payloadlen;
-      if(spdylay_inbound_buffer_avail(&session->ibuf) < SPDYLAY_HEAD_LEN) {
-        r = spdylay_recv(session);
-        /* If EOF is reached, r == SPDYLAY_ERR_EOF */
-        if(r < 0) {
-          if(r == SPDYLAY_ERR_WOULDBLOCK) {
-            return 0;
-          } else if(r == SPDYLAY_ERR_EOF) {
-            return r;
-          } else {
-            return SPDYLAY_ERR_CALLBACK_FAILURE;
-          }
-        }
-        if(spdylay_inbound_buffer_avail(&session->ibuf) < SPDYLAY_HEAD_LEN) {
-          return 0;
-        }
+      size_t remheadbytes;
+      size_t readlen;
+      size_t bufavail = inlimit-inmark;
+      if(bufavail == 0) {
+        break;
       }
-      session->iframe.state = SPDYLAY_RECV_PAYLOAD;
-      payloadlen = spdylay_get_uint32(&session->ibuf.mark[4]) &
-        SPDYLAY_LENGTH_MASK;
-      memcpy(session->iframe.headbuf, session->ibuf.mark, SPDYLAY_HEAD_LEN);
-      session->ibuf.mark += SPDYLAY_HEAD_LEN;
-      if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
-        /* control frame */
-        session->iframe.len = payloadlen;
-        r = spdylay_reserve_buffer(&session->iframe.buf,
-                                   &session->iframe.bufmax,
-                                   session->iframe.len);
-        if(r != 0) {
-          /* FATAL */
-          assert(r < SPDYLAY_ERR_FATAL);
-          return r;
+      remheadbytes = SPDYLAY_HEAD_LEN-session->iframe.headbufoff;
+      readlen = spdylay_min(remheadbytes, bufavail);
+      memcpy(session->iframe.headbuf+session->iframe.headbufoff,
+             inmark, readlen);
+      inmark += readlen;
+      session->iframe.headbufoff += readlen;
+      if(session->iframe.headbufoff == SPDYLAY_HEAD_LEN) {
+        session->iframe.state = SPDYLAY_RECV_PAYLOAD;
+        payloadlen = spdylay_get_uint32(&session->iframe.headbuf[4]) &
+          SPDYLAY_LENGTH_MASK;
+        if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
+          /* control frame */
+          session->iframe.len = payloadlen;
+          r = spdylay_reserve_buffer(&session->iframe.buf,
+                                     &session->iframe.bufmax,
+                                     session->iframe.len);
+          if(r != 0) {
+            /* FATAL */
+            assert(r < SPDYLAY_ERR_FATAL);
+            return r;
+          }
+          session->iframe.off = 0;
+        } else {
+          session->iframe.len = payloadlen;
+          session->iframe.off = 0;
         }
-        session->iframe.off = 0;
       } else {
-        /* TODO validate stream id here */
-        session->iframe.len = payloadlen;
-        session->iframe.off = 0;
+        break;
       }
     }
     if(session->iframe.state == SPDYLAY_RECV_PAYLOAD) {
@@ -2099,22 +2077,13 @@ int spdylay_session_recv(spdylay_session *session)
       size_t bufavail, readlen;
       int32_t data_stream_id = 0;
       uint8_t data_flags = SPDYLAY_DATA_FLAG_NONE;
-      if(spdylay_inbound_buffer_avail(&session->ibuf) == 0 &&
-         rempayloadlen > 0) {
-        r = spdylay_recv(session);
-        if(r == 0 || r == SPDYLAY_ERR_WOULDBLOCK) {
-          return 0;
-        } else if(r == SPDYLAY_ERR_EOF) {
-          return r;
-        } else if(r < 0) {
-          return SPDYLAY_ERR_CALLBACK_FAILURE;
-        }
+      bufavail = inlimit-inmark;
+      if(rempayloadlen > 0 && bufavail == 0) {
+        break;
       }
-      bufavail = spdylay_inbound_buffer_avail(&session->ibuf);
-      readlen =  bufavail < rempayloadlen ? bufavail : rempayloadlen;
+      readlen =  spdylay_min(bufavail, rempayloadlen);
       if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
-        memcpy(session->iframe.buf+session->iframe.off,
-               session->ibuf.mark, readlen);
+        memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
       } else {
         /* For data frame, We don't buffer data. Instead, just pass
            received data to callback function. */
@@ -2125,13 +2094,13 @@ int spdylay_session_recv(spdylay_session *session)
           session->callbacks.on_data_chunk_recv_callback(session,
                                                          data_flags,
                                                          data_stream_id,
-                                                         session->ibuf.mark,
+                                                         inmark,
                                                          readlen,
                                                          session->user_data);
         }
       }
       session->iframe.off += readlen;
-      session->ibuf.mark += readlen;
+      inmark += readlen;
 
       if(session->flow_control &&
          !spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
@@ -2163,7 +2132,29 @@ int spdylay_session_recv(spdylay_session *session)
       }
     }
   }
-  return 0;
+  return inmark-in;
+}
+
+int spdylay_session_recv(spdylay_session *session)
+{
+  uint8_t buf[SPDYLAY_INBOUND_BUFFER_LENGTH];
+  while(1) {
+    ssize_t readlen;
+    readlen = spdylay_recv(session, buf, sizeof(buf));
+    if(readlen > 0) {
+      ssize_t proclen = spdylay_session_mem_recv(session, buf, readlen);
+      if(proclen < 0) {
+        return proclen;
+      }
+      assert(proclen == readlen);
+    } else if(readlen == 0 || readlen == SPDYLAY_ERR_WOULDBLOCK) {
+      return 0;
+    } else if(readlen == SPDYLAY_ERR_EOF) {
+      return readlen;
+    } else if(readlen < 0) {
+      return SPDYLAY_ERR_CALLBACK_FAILURE;
+    }
+  }
 }
 
 int spdylay_session_want_read(spdylay_session *session)

@@ -53,8 +53,7 @@ typedef struct {
   size_t framebufoff;
 } spdylay_active_outbound_item;
 
-/* Buffer length for inbound SPDY frames. Same value for the size of
-   message block of SSLv3/TLSv1 */
+/* Buffer length for inbound raw byte stream. */
 #define SPDYLAY_INBOUND_BUFFER_LENGTH 16384
 
 #define SPDYLAY_INITIAL_OUTBOUND_FRAMEBUF_LENGTH (SPDYLAY_DATA_PAYLOAD_LENGTH+8)
@@ -63,12 +62,6 @@ typedef struct {
 #define SPDYLAY_INITIAL_NV_BUFFER_LENGTH 4096
 
 #define SPDYLAY_INITIAL_WINDOW_SIZE 65536
-
-typedef struct {
-  uint8_t buf[SPDYLAY_INBOUND_BUFFER_LENGTH];
-  uint8_t *mark;
-  uint8_t *limit;
-} spdylay_inbound_buffer;
 
 typedef enum {
   SPDYLAY_RECV_HEAD,
@@ -84,14 +77,16 @@ typedef enum {
 typedef struct {
   spdylay_inbound_state state;
   uint8_t headbuf[SPDYLAY_HEAD_LEN];
+  /* How many bytes are filled in headbuf */
+  size_t headbufoff;
   /* Payload for control frames. It is not used for DATA frames */
   uint8_t *buf;
   /* Capacity of buf */
   size_t bufmax;
   /* length in Length field */
   size_t len;
+  /* How many bytes are filled in buf */
   size_t off;
-  uint8_t ign;
 } spdylay_inbound_frame;
 
 typedef enum {
@@ -128,7 +123,6 @@ struct spdylay_session {
 
   spdylay_active_outbound_item aob;
 
-  spdylay_inbound_buffer ibuf;
   spdylay_inbound_frame iframe;
 
   /* Buffer used to store inflated name/value pairs in wire format

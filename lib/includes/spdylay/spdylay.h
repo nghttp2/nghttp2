@@ -1145,6 +1145,29 @@ int spdylay_session_send(spdylay_session *session);
 int spdylay_session_recv(spdylay_session *session);
 
 /**
+ * Processes data |in| as an input from the remote endpoint. The
+ * |inlen| indicates the number of bytes in the |in|.
+ *
+ * This function behaves like `spdylay_session_recv()` except that it
+ * does not use :member:`spdylay_session_callbacks.recv_callback` to
+ * receive data; the |in| is the only data for the invocation of this
+ * function. If all bytes are processed, this function returns. The
+ * other callbacks are called in the same way as they are in
+ * `spdylay_session_recv()`.
+ *
+ * In the current implementation, this function always tries to
+ * processes all input data unless an error occurs.
+ *
+ * This function returns the number of processed bytes, or one of the
+ * following negative error codes:
+ *
+ * :enum:`SPDYLAY_ERR_NOMEM`
+ *     Out of memory.
+ */
+ssize_t spdylay_session_mem_recv(spdylay_session *session,
+                                 const uint8_t *in, size_t inlen);
+
+/**
  * @function
  *
  * Puts back previously deferred DATA frame in the stream |stream_id|
