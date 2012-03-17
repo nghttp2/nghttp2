@@ -2040,4 +2040,6 @@ void test_spdylay_session_get_outbound_queue_size()
 
   CU_ASSERT(0 == spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK));
   CU_ASSERT(2 == spdylay_session_get_outbound_queue_size(session));
+
+  spdylay_session_del(session);
 }
