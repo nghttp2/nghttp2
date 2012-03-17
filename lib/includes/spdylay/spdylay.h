@@ -1145,6 +1145,8 @@ int spdylay_session_send(spdylay_session *session);
 int spdylay_session_recv(spdylay_session *session);
 
 /**
+ * @function
+ *
  * Processes data |in| as an input from the remote endpoint. The
  * |inlen| indicates the number of bytes in the |in|.
  *
