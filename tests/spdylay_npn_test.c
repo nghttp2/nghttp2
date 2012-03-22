@@ -22,12 +22,13 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include "spdylay_npn_test.h"
 
 #include <CUnit/CUnit.h>
 #include <spdylay/spdylay.h>
 #include <string.h>
 
-static void spdy2()
+static void spdy2(void)
 {
   const unsigned char spdy[] = {
     8, 'h', 't', 't', 'p', '/', '1', '.', '1',
@@ -42,7 +43,7 @@ static void spdy2()
   CU_ASSERT(memcmp("spdy/2", out, outlen) == 0);
 }
 
-static void http11()
+static void http11(void)
 {
   const unsigned char spdy[] = {
     6, 's', 'p', 'd', 'y', '/', '4',
@@ -57,7 +58,7 @@ static void http11()
   CU_ASSERT(memcmp("http/1.1", out, outlen) == 0);
 }
 
-static void no_overlap()
+static void no_overlap(void)
 {
   const unsigned char spdy[] = {
     6, 's', 'p', 'd', 'y', '/', '4',
@@ -72,7 +73,7 @@ static void no_overlap()
   CU_ASSERT(NULL == out);
 }
 
-void test_spdylay_npn()
+void test_spdylay_npn(void)
 {
   spdy2();
   http11();

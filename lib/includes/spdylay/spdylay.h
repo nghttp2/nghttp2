@@ -156,7 +156,7 @@ typedef enum {
   /**
    * The user callback function failed. This is a fatal error.
    */
-  SPDYLAY_ERR_CALLBACK_FAILURE = -902,
+  SPDYLAY_ERR_CALLBACK_FAILURE = -902
 } spdylay_error;
 
 typedef enum {
@@ -207,7 +207,7 @@ typedef enum {
   /**
    * The DATA frame.
    */
-  SPDYLAY_DATA = 100,
+  SPDYLAY_DATA = 100
 } spdylay_frame_type;
 
 /**

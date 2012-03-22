@@ -30,7 +30,7 @@
 
 #include "spdylay_buffer.h"
 
-void test_spdylay_buffer()
+void test_spdylay_buffer(void)
 {
   spdylay_buffer buffer;
   uint8_t out[1024];

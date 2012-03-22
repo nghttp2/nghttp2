@@ -25,6 +25,6 @@
 #ifndef SPDYLAY_BUFFER_TEST_H
 #define SPDYLAY_BUFFER_TEST_H
 
-void test_spdylay_buffer();
+void test_spdylay_buffer(void);
 
-#endif // SPDYLAY_BUFFER_TEST_H
+#endif /* SPDYLAY_BUFFER_TEST_H */

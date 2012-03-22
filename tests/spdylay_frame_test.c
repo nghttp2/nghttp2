@@ -39,7 +39,7 @@ static const char *headers[] = {
   NULL
 };
 
-void test_spdylay_frame_unpack_nv_with(size_t len_size)
+static void test_spdylay_frame_unpack_nv_with(size_t len_size)
 {
   uint8_t out[1024];
   char **nv;
@@ -60,17 +60,17 @@ void test_spdylay_frame_unpack_nv_with(size_t len_size)
   spdylay_frame_nv_del(nv);
 }
 
-void test_spdylay_frame_unpack_nv_spdy2()
+void test_spdylay_frame_unpack_nv_spdy2(void)
 {
   test_spdylay_frame_unpack_nv_with(2);
 }
 
-void test_spdylay_frame_unpack_nv_spdy3()
+void test_spdylay_frame_unpack_nv_spdy3(void)
 {
   test_spdylay_frame_unpack_nv_with(4);
 }
 
-void test_spdylay_frame_pack_nv_duplicate_keys()
+void test_spdylay_frame_pack_nv_duplicate_keys(void)
 {
   uint8_t out[1024];
   size_t len_size = 2;
@@ -84,13 +84,16 @@ void test_spdylay_frame_pack_nv_duplicate_keys()
     NULL
   };
   char **nv = spdylay_frame_nv_norm_copy(nv_src);
+  const uint8_t *outptr;
+  int pairs, len;
   /* size_t inlen = */ spdylay_frame_pack_nv(out, nv, len_size);
-  const uint8_t *outptr = out;
-  int pairs = spdylay_get_uint16(outptr);
+  outptr = out;
+
+  pairs = spdylay_get_uint16(outptr);
   CU_ASSERT(pairs == 5);
   outptr += 2;
 
-  int len = spdylay_get_uint16(outptr);
+  len = spdylay_get_uint16(outptr);
   outptr += 2;
   CU_ASSERT(len == 6);
   CU_ASSERT(memcmp(outptr, "method", len) == 0);
@@ -154,7 +157,7 @@ void test_spdylay_frame_pack_nv_duplicate_keys()
   spdylay_frame_nv_del(nv);
 }
 
-void test_spdylay_frame_count_nv_space()
+void test_spdylay_frame_count_nv_space(void)
 {
   size_t len_size = 2;
   CU_ASSERT(74 == spdylay_frame_count_nv_space((char**)headers, len_size));
@@ -162,7 +165,7 @@ void test_spdylay_frame_count_nv_space()
   CU_ASSERT(96 == spdylay_frame_count_nv_space((char**)headers, len_size));
 }
 
-void test_spdylay_frame_count_unpack_nv_space()
+void test_spdylay_frame_count_unpack_nv_space(void)
 {
   size_t nvlen, buflen;
   uint8_t out[1024];
@@ -199,7 +202,7 @@ void test_spdylay_frame_count_unpack_nv_space()
                                                 len_size));
 }
 
-void test_spdylay_frame_pack_ping()
+void test_spdylay_frame_pack_ping(void)
 {
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL;
@@ -218,7 +221,7 @@ void test_spdylay_frame_pack_ping()
   spdylay_frame_ping_free(&frame.ping);
 }
 
-void test_spdylay_frame_pack_goaway_version(uint16_t version)
+static void test_spdylay_frame_pack_goaway_version(uint16_t version)
 {
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL;
@@ -248,17 +251,17 @@ void test_spdylay_frame_pack_goaway_version(uint16_t version)
   spdylay_frame_goaway_free(&frame.goaway);
 }
 
-void test_spdylay_frame_pack_goaway_spdy2()
+void test_spdylay_frame_pack_goaway_spdy2(void)
 {
   test_spdylay_frame_pack_goaway_version(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_frame_pack_goaway_spdy3()
+void test_spdylay_frame_pack_goaway_spdy3(void)
 {
   test_spdylay_frame_pack_goaway_version(SPDYLAY_PROTO_SPDY3);
 }
 
-void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
+static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   spdylay_frame frame, oframe;
@@ -301,17 +304,17 @@ void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   spdylay_buffer_free(&inflatebuf);
 }
 
-void test_spdylay_frame_pack_syn_stream_spdy2()
+void test_spdylay_frame_pack_syn_stream_spdy2(void)
 {
   test_spdylay_frame_pack_syn_stream_version(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_frame_pack_syn_stream_spdy3()
+void test_spdylay_frame_pack_syn_stream_spdy3(void)
 {
   test_spdylay_frame_pack_syn_stream_version(SPDYLAY_PROTO_SPDY3);
 }
 
-void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
+static void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   spdylay_frame frame, oframe;
@@ -353,17 +356,17 @@ void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
   spdylay_buffer_free(&inflatebuf);
 }
 
-void test_spdylay_frame_pack_syn_reply_spdy2()
+void test_spdylay_frame_pack_syn_reply_spdy2(void)
 {
   test_spdylay_frame_pack_syn_reply_version(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_frame_pack_syn_reply_spdy3()
+void test_spdylay_frame_pack_syn_reply_spdy3(void)
 {
   test_spdylay_frame_pack_syn_reply_version(SPDYLAY_PROTO_SPDY3);
 }
 
-void test_spdylay_frame_pack_headers_version(uint16_t version)
+static void test_spdylay_frame_pack_headers_version(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   spdylay_frame frame, oframe;
@@ -405,17 +408,17 @@ void test_spdylay_frame_pack_headers_version(uint16_t version)
   spdylay_buffer_free(&inflatebuf);
 }
 
-void test_spdylay_frame_pack_headers_spdy2()
+void test_spdylay_frame_pack_headers_spdy2(void)
 {
   test_spdylay_frame_pack_headers_version(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_frame_pack_headers_spdy3()
+void test_spdylay_frame_pack_headers_spdy3(void)
 {
   test_spdylay_frame_pack_headers_version(SPDYLAY_PROTO_SPDY3);
 }
 
-void test_spdylay_frame_pack_window_update()
+void test_spdylay_frame_pack_window_update(void)
 {
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL;
@@ -442,7 +445,7 @@ void test_spdylay_frame_pack_window_update()
 }
 
 
-void test_spdylay_frame_pack_settings_version(uint16_t version)
+static void test_spdylay_frame_pack_settings_version(uint16_t version)
 {
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL;
@@ -489,17 +492,17 @@ void test_spdylay_frame_pack_settings_version(uint16_t version)
   spdylay_frame_settings_free(&oframe.settings);
 }
 
-void test_spdylay_frame_pack_settings_spdy2()
+void test_spdylay_frame_pack_settings_spdy2(void)
 {
   test_spdylay_frame_pack_settings_version(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_frame_pack_settings_spdy3()
+void test_spdylay_frame_pack_settings_spdy3(void)
 {
   test_spdylay_frame_pack_settings_version(SPDYLAY_PROTO_SPDY3);
 }
 
-void test_spdylay_frame_nv_sort()
+void test_spdylay_frame_nv_sort(void)
 {
   char *nv[7];
   nv[0] = (char*)"version";
@@ -518,7 +521,7 @@ void test_spdylay_frame_nv_sort()
   CU_ASSERT(strcmp("HTTP/1.1", nv[5]) == 0);
 }
 
-void test_spdylay_frame_nv_downcase()
+void test_spdylay_frame_nv_downcase(void)
 {
   const char *nv_src[] = {
     "VERSION", "HTTP/1.1",
@@ -535,7 +538,7 @@ void test_spdylay_frame_nv_downcase()
   spdylay_frame_nv_del(nv);
 }
 
-void test_spdylay_frame_nv_2to3()
+void test_spdylay_frame_nv_2to3(void)
 {
   const char *nv_src[] = {
     "host", "localhost",
@@ -560,7 +563,7 @@ void test_spdylay_frame_nv_2to3()
   spdylay_frame_nv_del(nv);
 }
 
-void test_spdylay_frame_nv_3to2()
+void test_spdylay_frame_nv_3to2(void)
 {
   const char *nv_src[] = {
     ":host", "localhost",

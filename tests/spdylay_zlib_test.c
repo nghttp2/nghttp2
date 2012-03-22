@@ -30,7 +30,7 @@
 
 #include "spdylay_zlib.h"
 
-void test_spdylay_zlib_with(uint16_t version)
+static void test_spdylay_zlib_with(uint16_t version)
 {
   spdylay_zlib deflater, inflater;
   const char msg[] =
@@ -70,12 +70,12 @@ void test_spdylay_zlib_with(uint16_t version)
   spdylay_buffer_free(&buf);
 }
 
-void test_spdylay_zlib_spdy2()
+void test_spdylay_zlib_spdy2(void)
 {
   test_spdylay_zlib_with(SPDYLAY_PROTO_SPDY2);
 }
 
-void test_spdylay_zlib_spdy3()
+void test_spdylay_zlib_spdy3(void)
 {
   test_spdylay_zlib_with(SPDYLAY_PROTO_SPDY3);
 }

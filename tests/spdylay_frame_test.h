@@ -25,26 +25,26 @@
 #ifndef SPDYLAY_FRAME_TEST_H
 #define SPDYLAY_FRAME_TEST_H
 
-void test_spdylay_frame_unpack_nv_spdy2();
-void test_spdylay_frame_unpack_nv_spdy3();
-void test_spdylay_frame_pack_nv_duplicate_keys();
-void test_spdylay_frame_count_nv_space();
-void test_spdylay_frame_count_unpack_nv_space();
-void test_spdylay_frame_pack_ping();
-void test_spdylay_frame_pack_goaway_spdy2();
-void test_spdylay_frame_pack_goaway_spdy3();
-void test_spdylay_frame_pack_syn_stream_spdy2();
-void test_spdylay_frame_pack_syn_stream_spdy3();
-void test_spdylay_frame_pack_syn_reply_spdy2();
-void test_spdylay_frame_pack_syn_reply_spdy3();
-void test_spdylay_frame_pack_headers_spdy2();
-void test_spdylay_frame_pack_headers_spdy3();
-void test_spdylay_frame_pack_window_update();
-void test_spdylay_frame_pack_settings_spdy2();
-void test_spdylay_frame_pack_settings_spdy3();
-void test_spdylay_frame_nv_sort();
-void test_spdylay_frame_nv_downcase();
-void test_spdylay_frame_nv_2to3();
-void test_spdylay_frame_nv_3to2();
+void test_spdylay_frame_unpack_nv_spdy2(void);
+void test_spdylay_frame_unpack_nv_spdy3(void);
+void test_spdylay_frame_pack_nv_duplicate_keys(void);
+void test_spdylay_frame_count_nv_space(void);
+void test_spdylay_frame_count_unpack_nv_space(void);
+void test_spdylay_frame_pack_ping(void);
+void test_spdylay_frame_pack_goaway_spdy2(void);
+void test_spdylay_frame_pack_goaway_spdy3(void);
+void test_spdylay_frame_pack_syn_stream_spdy2(void);
+void test_spdylay_frame_pack_syn_stream_spdy3(void);
+void test_spdylay_frame_pack_syn_reply_spdy2(void);
+void test_spdylay_frame_pack_syn_reply_spdy3(void);
+void test_spdylay_frame_pack_headers_spdy2(void);
+void test_spdylay_frame_pack_headers_spdy3(void);
+void test_spdylay_frame_pack_window_update(void);
+void test_spdylay_frame_pack_settings_spdy2(void);
+void test_spdylay_frame_pack_settings_spdy3(void);
+void test_spdylay_frame_nv_sort(void);
+void test_spdylay_frame_nv_downcase(void);
+void test_spdylay_frame_nv_2to3(void);
+void test_spdylay_frame_nv_3to2(void);
 
 #endif /* SPDYLAY_FRAME_TEST_H */

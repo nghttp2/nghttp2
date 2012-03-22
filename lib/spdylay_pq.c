@@ -91,7 +91,7 @@ static void bubble_down(spdylay_pq *pq, size_t index)
 {
   size_t lchild = index*2+1;
   size_t minindex = index;
-  int i, j;
+  size_t i, j;
   for(i = 0; i < 2; ++i) {
     j = lchild+i;
     if(j >= pq->length) {

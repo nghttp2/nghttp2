@@ -28,7 +28,7 @@
 
 #include "spdylay_stream.h"
 
-void test_spdylay_stream_add_pushed_stream()
+void test_spdylay_stream_add_pushed_stream(void)
 {
   spdylay_stream stream;
   int i, n;
@@ -37,7 +37,7 @@ void test_spdylay_stream_add_pushed_stream()
   n = 26;
   for(i = 2; i < n; i += 2) {
     CU_ASSERT(0 == spdylay_stream_add_pushed_stream(&stream, i));
-    CU_ASSERT(i/2 == stream.pushed_streams_length);
+    CU_ASSERT((size_t)i/2 == stream.pushed_streams_length);
   }
   for(i = 2; i < n; i += 2) {
     CU_ASSERT(i == stream.pushed_streams[i/2-1]);

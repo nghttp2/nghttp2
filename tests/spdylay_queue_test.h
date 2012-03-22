@@ -25,6 +25,6 @@
 #ifndef SPDYLAY_QUEUE_TEST_H
 #define SPDYLAY_QUEUE_TEST_H
 
-void test_spdylay_queue();
+void test_spdylay_queue(void);
 
-#endif // SPDYLAY_QUEUE_TEST_H
+#endif /* SPDYLAY_QUEUE_TEST_H */

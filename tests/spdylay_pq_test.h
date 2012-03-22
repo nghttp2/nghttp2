@@ -25,6 +25,6 @@
 #ifndef SPDYLAY_PQ_TEST_H
 #define SPDYLAY_PQ_TEST_H
 
-void test_spdylay_pq();
+void test_spdylay_pq(void);
 
 #endif /* SPDYLAY_PQ_TEST_H */

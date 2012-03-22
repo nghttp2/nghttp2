@@ -36,12 +36,12 @@
 #include "spdylay_stream_test.h"
 #include "spdylay_npn_test.h"
 
-int init_suite1(void)
+static int init_suite1(void)
 {
   return 0;
 }
 
-int clean_suite1(void)
+static int clean_suite1(void)
 {
   return 0;
 }

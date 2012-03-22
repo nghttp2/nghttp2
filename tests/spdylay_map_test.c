@@ -28,7 +28,7 @@
 
 #include "spdylay_map.h"
 
-void test_spdylay_map()
+void test_spdylay_map(void)
 {
   spdylay_map map;
   spdylay_map_init(&map);

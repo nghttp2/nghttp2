@@ -25,6 +25,6 @@
 #ifndef SPDYLAY_STREAM_TEST_H
 #define SPDYLAY_STREAM_TEST_H
 
-void test_spdylay_stream_add_pushed_stream();
+void test_spdylay_stream_add_pushed_stream(void);
 
 #endif /* SPDYLAY_STREAM_TEST_H */

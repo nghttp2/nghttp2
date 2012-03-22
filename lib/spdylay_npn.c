@@ -42,7 +42,7 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
     { (const unsigned char*)"spdy/3", 6, SPDYLAY_PROTO_SPDY3 }
   };
   for(; i < inlen; i += in[i]+1) {
-    int j;
+    unsigned int j;
     for(j = 0; j < sizeof(proto_list)/sizeof(spdylay_npn_proto); ++j) {
       if(in[i] == proto_list[j].len &&
          memcmp(&in[i+1], proto_list[j].proto, in[i]) == 0) {

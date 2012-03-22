@@ -475,7 +475,7 @@ void spdylay_session_close_pushed_streams(spdylay_session *session,
   spdylay_stream *stream;
   stream = spdylay_session_get_stream(session, stream_id);
   if(stream) {
-    int i;
+    size_t i;
     for(i = 0; i < stream->pushed_streams_length; ++i) {
       spdylay_session_close_stream(session, stream->pushed_streams[i],
                                    status_code);
@@ -1290,7 +1290,7 @@ static ssize_t spdylay_recv(spdylay_session *session, uint8_t *buf, size_t len)
   r = session->callbacks.recv_callback
     (session, buf, len, 0, session->user_data);
   if(r > 0) {
-    if(r > len) {
+    if((size_t)r > len) {
       return SPDYLAY_ERR_CALLBACK_FAILURE;
     }
   } else if(r < 0) {
@@ -1602,7 +1602,7 @@ void spdylay_session_update_local_settings(spdylay_session *session,
                                            spdylay_settings_entry *iv,
                                            size_t niv)
 {
-  int i;
+  size_t i;
   for(i = 0; i < niv; ++i) {
     assert(iv[i].settings_id > 0 && iv[i].settings_id <= SPDYLAY_SETTINGS_MAX);
     session->local_settings[iv[i].settings_id] = iv[i].value;
@@ -1612,7 +1612,8 @@ void spdylay_session_update_local_settings(spdylay_session *session,
 int spdylay_session_on_settings_received(spdylay_session *session,
                                          spdylay_frame *frame)
 {
-  int i, check[SPDYLAY_SETTINGS_MAX+1];
+  size_t i;
+  int check[SPDYLAY_SETTINGS_MAX+1];
   if(!spdylay_session_check_version(session, frame->settings.hd.version)) {
     return 0;
   }
@@ -2011,7 +2012,7 @@ static int spdylay_session_update_recv_window_size(spdylay_session *session,
   if(stream) {
     stream->recv_window_size += delta_size;
     /* This is just a heuristics. */
-    if(stream->recv_window_size*2 >=
+    if((size_t)stream->recv_window_size*2 >=
        session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]) {
       int r;
       r = spdylay_session_add_window_update(session, stream_id,
@@ -2267,7 +2268,7 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
      &eof, &frame->data_prd.source, session->user_data);
   if(r < 0) {
     return r;
-  } else if(datamax < r) {
+  } else if(datamax < (size_t)r) {
     return SPDYLAY_ERR_CALLBACK_FAILURE;
   }
   memset(*buf_ptr, 0, SPDYLAY_HEAD_LEN);

@@ -25,6 +25,6 @@
 #ifndef SPDYLAY_NPN_TEST_H
 #define SPDYLAY_NPN_TEST_H
 
-void test_spdylay_npn();
+void test_spdylay_npn(void);
 
-#endif // SPDYLAY_NPN_TEST_H
+#endif /* SPDYLAY_NPN_TEST_H */

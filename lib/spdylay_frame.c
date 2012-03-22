@@ -127,7 +127,7 @@ int spdylay_frame_count_unpack_nv_space
   size_t buflen = 0;
   size_t nvlen = 0;
   size_t off = 0;
-  int i;
+  size_t i;
   if(inlen < len_size) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
@@ -136,7 +136,7 @@ int spdylay_frame_count_unpack_nv_space
   off += len_size;
   for(i = 0; i < n; ++i) {
     uint32_t len;
-    int j;
+    size_t j;
     for(j = 0; j < 2; ++j) {
       if(inlen-off < len_size) {
         return SPDYLAY_ERR_INVALID_FRAME;
@@ -169,7 +169,8 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
                             size_t len_size)
 {
   size_t nvlen, buflen;
-  int r, i;
+  int r;
+  size_t i;
   char *buf, **index, *data;
   uint32_t n;
   r = spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, in, inlen, len_size);
@@ -217,7 +218,7 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
     *index++ = val;
   }
   *index = NULL;
-  assert((char*)index-buf == (nvlen*2)*sizeof(char*));
+  assert((size_t)((char*)index - buf) == (nvlen*2)*sizeof(char*));
   *nv_ptr = (char**)buf;
   return 0;
 }
@@ -900,7 +901,8 @@ ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
                                     spdylay_settings *frame)
 {
   ssize_t framelen = SPDYLAY_FRAME_HEAD_LENGTH+frame->hd.length;
-  int i, r;
+  size_t i;
+  int r;
   if(frame->hd.version != SPDYLAY_PROTO_SPDY2 &&
      frame->hd.version != SPDYLAY_PROTO_SPDY3) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
@@ -943,7 +945,7 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
                                   const uint8_t *head, size_t headlen,
                                   const uint8_t *payload, size_t payloadlen)
 {
-  int i;
+  size_t i;
   if(payloadlen < 4) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
@@ -962,7 +964,7 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
   }
   if(frame->hd.version == SPDYLAY_PROTO_SPDY2) {
     for(i = 0; i < frame->niv; ++i) {
-      int off = i*8;
+      size_t off = i*8;
       /* ID is little endian. See comments in
          spdylay_frame_pack_settings(). */
       frame->iv[i].settings_id = 0;
@@ -978,7 +980,7 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
     }
   } else {
     for(i = 0; i < frame->niv; ++i) {
-      int off = i*8;
+      size_t off = i*8;
       frame->iv[i].settings_id = spdylay_get_uint32(&payload[4+off]) &
         SPDYLAY_SETTINGS_ID_MASK;
       frame->iv[i].flags = payload[4+off];

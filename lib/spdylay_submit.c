@@ -195,7 +195,8 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
   spdylay_frame *frame;
   spdylay_settings_entry *iv_copy;
   int check[SPDYLAY_SETTINGS_MAX+1];
-  int i, r;
+  size_t i;
+  int r;
   memset(check, 0, sizeof(check));
   for(i = 0; i < niv; ++i) {
     if(iv[i].settings_id > SPDYLAY_SETTINGS_MAX || iv[i].settings_id == 0 ||

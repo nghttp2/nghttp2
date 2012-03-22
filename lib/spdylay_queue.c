@@ -36,12 +36,13 @@ void spdylay_queue_free(spdylay_queue *queue)
 {
   if(!queue) {
     return;
-  }
-  spdylay_queue_cell *p = queue->front;
-  while(p) {
-    spdylay_queue_cell *next = p->next;
-    free(p);
-    p = next;
+  } else {
+    spdylay_queue_cell *p = queue->front;
+    while(p) {
+      spdylay_queue_cell *next = p->next;
+      free(p);
+      p = next;
+    }
   }
 }
 

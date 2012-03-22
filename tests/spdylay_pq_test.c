@@ -33,7 +33,7 @@ static int pq_compar(const void *lhs, const void *rhs)
   return strcmp(lhs, rhs);
 }
 
-void test_spdylay_pq()
+void test_spdylay_pq(void)
 {
   spdylay_pq pq;
   spdylay_pq_init(&pq, pq_compar);
