@@ -24,12 +24,12 @@
  */
 #include "spdylay_frame.h"
 
-#include <arpa/inet.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
 
 #include "spdylay_helper.h"
+#include "spdylay_net.h"
 
 #define spdylay_frame_get_nv_len(IN, LEN_SIZE)                          \
   (LEN_SIZE == 2 ? spdylay_get_uint16(IN) : spdylay_get_uint32(IN))

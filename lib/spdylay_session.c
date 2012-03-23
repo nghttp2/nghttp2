@@ -28,9 +28,9 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <assert.h>
-#include <arpa/inet.h>
 
 #include "spdylay_helper.h"
+#include "spdylay_net.h"
 
 /*
  * Returns non-zero if the number of opened streams is larger than or
