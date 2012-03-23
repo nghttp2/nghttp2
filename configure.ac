@@ -30,6 +30,10 @@ AC_SUBST(LT_CURRENT, 0)
 AC_SUBST(LT_REVISION, 0)
 AC_SUBST(LT_AGE, 0)
 
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE()
@@ -89,6 +93,7 @@ PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])
 # Checks for header files.
 AC_CHECK_HEADERS([ \
   arpa/inet.h \
+  netinet/in.h \
   stddef.h \
   stdint.h \
   stdlib.h \
@@ -108,7 +113,9 @@ AC_CHECK_TYPES([ptrdiff_t])
 AC_C_BIGENDIAN
 
 # Checks for library functions.
-AC_FUNC_MALLOC
+if test "x$cross_compiling" != "xyes"; then
+  AC_FUNC_MALLOC
+fi
 AC_CHECK_FUNCS([ \
   memmove \
   memset \
