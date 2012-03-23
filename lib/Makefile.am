@@ -23,7 +23,7 @@
 SUBDIRS = includes
 
 AM_CFLAGS = -Wall
-AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes
+AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes @DEFS@
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libspdylay.pc
