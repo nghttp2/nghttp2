@@ -2322,9 +2322,9 @@ int spdylay_session_resume_data(spdylay_session *session, int32_t stream_id)
 uint8_t spdylay_session_get_pri_lowest(spdylay_session *session)
 {
   if(session->version == SPDYLAY_PROTO_SPDY2) {
-    return SPDYLAY_SPDY2_PRI_LOWEST;
+    return SPDYLAY_PRI_LOWEST_SPDY2;
   } else if(session->version == SPDYLAY_PROTO_SPDY3) {
-    return SPDYLAY_SPDY3_PRI_LOWEST;
+    return SPDYLAY_PRI_LOWEST_SPDY3;
   } else {
     return 0;
   }

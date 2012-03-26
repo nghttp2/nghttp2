@@ -416,17 +416,6 @@ typedef enum {
 } spdylay_goaway_status_code;
 
 /**
- * @macro
- * Lowest priority value in SPDY/2, which is 3.
- */
-#define SPDYLAY_SPDY2_PRI_LOWEST 3
-/**
- * @macro
- * Lowest priority value in SPDY/3, which is 7.
- */
-#define SPDYLAY_SPDY3_PRI_LOWEST 7
-
-/**
  * @struct
  * The control frame header.
  */
@@ -468,10 +457,9 @@ typedef struct {
    */
   int32_t assoc_stream_id;
   /**
-   * The priority of this frame. 0 (Highest) to
-   * :macro:`SPDYLAY_SPDY2_PRI_LOWEST` or
-   * :macro:`SPDYLAY_SPDY3_PRI_LOWEST` (lowest), depending on the
-   * protocol version.
+   * The priority of this frame. 0 is the highest priority value. Use
+   * `spdylay_session_get_pri_lowest()` to know the lowest priority
+   * value.
    */
   uint8_t pri;
   /**
@@ -1243,15 +1231,19 @@ size_t spdylay_session_get_outbound_queue_size(spdylay_session *session);
 /**
  * @function
  *
+ * Returns lowest priority value for the |session|.
+ */
+uint8_t spdylay_session_get_pri_lowest(spdylay_session *session);
+
+/**
+ * @function
+ *
  * Submits SYN_STREAM frame and optionally one or more DATA
  * frames.
  *
  * The |pri| is priority of this request. 0 is the highest priority
- * value.  If the |session| is initialized with the version
- * :macro:`SPDYLAY_PROTO_SPDY2`, the lowest priority value is
- * :macro:`SPDYLAY_SPDY2_PRI_LOWEST`.  If the |session| is initialized
- * with the version :macro:`SPDYLAY_PROTO_SPDY3`, the lowest priority
- * value is :macro:`SPDYLAY_SPDY3_PRI_LOWEST`.
+ * value. Use `spdylay_session_get_pri_lowest()` to know the lowest
+ * priority value for this |session|.
  *
  * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
@@ -1372,13 +1364,10 @@ int spdylay_submit_response(spdylay_session *session,
  *
  * The |assoc_stream_id| is used for server-push. If |session| is
  * initialized for client use, |assoc_stream_id| is ignored.
-
+ *
  * The |pri| is priority of this request. 0 is the highest priority
- * value.  If the |session| is initialized with the version
- * :macro:`SPDYLAY_PROTO_SPDY2`, the lowest priority value is
- * :macro:`SPDYLAY_SPDY2_PRI_LOWEST`.  If the |session| is initialized
- * with the version :macro:`SPDYLAY_PROTO_SPDY3`, the lowest priority
- * value is :macro:`SPDYLAY_SPDY3_PRI_LOWEST`.
+ * value. Use `spdylay_session_get_pri_lowest()` to know the lowest
+ * priority value for this |session|.
  *
  * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a

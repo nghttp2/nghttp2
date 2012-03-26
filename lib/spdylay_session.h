@@ -38,6 +38,17 @@
 #include "spdylay_buffer.h"
 #include "spdylay_outbound_item.h"
 
+/**
+ * @macro
+ * Lowest priority value in SPDY/2, which is 3.
+ */
+#define SPDYLAY_PRI_LOWEST_SPDY2 3
+/**
+ * @macro
+ * Lowest priority value in SPDY/3, which is 7.
+ */
+#define SPDYLAY_PRI_LOWEST_SPDY3 7
+
 typedef struct {
   spdylay_outbound_item *item;
   /* Buffer for outbound frames. Used to pack one frame. The memory
@@ -471,11 +482,6 @@ spdylay_outbound_item* spdylay_session_pop_next_ob_item
  */
 spdylay_outbound_item* spdylay_session_get_next_ob_item
 (spdylay_session *session);
-
-/*
- * Returns lowest priority value.
- */
-uint8_t spdylay_session_get_pri_lowest(spdylay_session *session);
 
 /*
  * Updates local settings with the |iv|. The number of elements in the
