@@ -1346,25 +1346,6 @@ static int spdylay_session_check_version(spdylay_session *session,
 }
 
 /*
- * Returns non-zero iff name/value pairs |nv| are good shape.
- * Currently, we only checks whether names are lower cased. The spdy/2
- * spec requires that names must be lower cased.
- */
-static int spdylay_session_check_nv(char **nv)
-{
-  int i;
-  for(i = 0; nv[i]; i += 2) {
-    int j;
-    for(j = 0; nv[i][j] != '\0'; ++j) {
-      if('A' <= nv[i][j] && nv[i][j] <= 'Z') {
-        return 0;
-      }
-    }
-  }
-  return 1;
-}
-
-/*
  * Validates SYN_STREAM frame |frame|.  This function returns 0 if it
  * succeeds, or non-zero spdylay_status_code.
  */
@@ -1399,9 +1380,6 @@ static int spdylay_session_validate_syn_stream(spdylay_session *session,
        SPDYLAY_REFUSED_STREAM and we think it is reasonable. So we
        follow it. */
     return SPDYLAY_REFUSED_STREAM;
-  }
-  if(!spdylay_session_check_nv(frame->nv)) {
-    return SPDYLAY_PROTOCOL_ERROR;
   }
   return 0;
 }
@@ -1519,8 +1497,7 @@ int spdylay_session_on_syn_reply_received(spdylay_session *session,
   }
   if((stream = spdylay_session_get_stream(session,
                                           frame->syn_reply.stream_id)) &&
-     (stream->shut_flags & SPDYLAY_SHUT_RD) == 0 &&
-     spdylay_session_check_nv(frame->syn_reply.nv)) {
+     (stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
     if(spdylay_session_is_my_stream_id(session, frame->syn_reply.stream_id)) {
       if(stream->state == SPDYLAY_STREAM_OPENING) {
         valid = 1;
@@ -1728,8 +1705,7 @@ int spdylay_session_on_headers_received(spdylay_session *session,
   }
   if((stream = spdylay_session_get_stream(session,
                                           frame->headers.stream_id)) &&
-     (stream->shut_flags & SPDYLAY_SHUT_RD) == 0 &&
-     spdylay_session_check_nv(frame->headers.nv)) {
+     (stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
     if(spdylay_session_is_my_stream_id(session, frame->headers.stream_id)) {
       if(stream->state == SPDYLAY_STREAM_OPENED) {
         valid = 1;
@@ -1800,6 +1776,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       /* TODO if r indicates mulformed NV pairs (multiple nulls) or
          invalid frame, send RST_STREAM with PROTOCOL_ERROR. Same for
          other control frames. */
+    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK) {
+      r = spdylay_session_handle_invalid_stream
+        (session, frame.syn_stream.stream_id, SPDYLAY_SYN_STREAM, &frame,
+         SPDYLAY_PROTOCOL_ERROR);
+      spdylay_frame_syn_stream_free(&frame.syn_stream);
     } else if(spdylay_is_non_fatal(r)) {
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
@@ -1820,6 +1801,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
         spdylay_frame_nv_2to3(frame.syn_reply.nv);
       }
       r = spdylay_session_on_syn_reply_received(session, &frame);
+      spdylay_frame_syn_reply_free(&frame.syn_reply);
+    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK) {
+      r = spdylay_session_handle_invalid_stream
+        (session, frame.syn_reply.stream_id, SPDYLAY_SYN_REPLY, &frame,
+         SPDYLAY_PROTOCOL_ERROR);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
     } else if(spdylay_is_non_fatal(r)) {
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
@@ -1895,6 +1881,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
         spdylay_frame_nv_2to3(frame.headers.nv);
       }
       r = spdylay_session_on_headers_received(session, &frame);
+      spdylay_frame_headers_free(&frame.headers);
+    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK) {
+      r = spdylay_session_handle_invalid_stream
+        (session, frame.headers.stream_id, SPDYLAY_HEADERS, &frame,
+         SPDYLAY_PROTOCOL_ERROR);
       spdylay_frame_headers_free(&frame.headers);
     } else if(spdylay_is_non_fatal(r)) {
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);

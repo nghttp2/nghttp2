@@ -46,5 +46,7 @@ void test_spdylay_frame_nv_sort(void);
 void test_spdylay_frame_nv_downcase(void);
 void test_spdylay_frame_nv_2to3(void);
 void test_spdylay_frame_nv_3to2(void);
+void test_spdylay_frame_unpack_nv_check_name_spdy2(void);
+void test_spdylay_frame_unpack_nv_check_name_spdy3(void);
 
 #endif /* SPDYLAY_FRAME_TEST_H */

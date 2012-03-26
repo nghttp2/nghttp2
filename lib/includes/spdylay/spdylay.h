@@ -144,6 +144,14 @@ typedef enum {
    */
   SPDYLAY_ERR_GOAWAY_ALREADY_SENT = -517,
   /**
+   * The received frame contains the invalid header block. (e.g.,
+   * There are duplicate header names; or the header names are not
+   * encoded in US-ASCII character set and not lower cased; or the
+   * header name is zero-length string; or the header value contains
+   * multiple in-sequence NUL bytes).
+   */
+  SPDYLAY_ERR_INVALID_HEADER_BLOCK = -518,
+  /**
    * The errors < :enum:`SPDYLAY_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).

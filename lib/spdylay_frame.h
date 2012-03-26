@@ -45,6 +45,20 @@
 /* The number of bytes of frame header. */
 #define SPDYLAY_FRAME_HEAD_LENGTH 8
 
+#define spdylay_frame_get_nv_len(IN, LEN_SIZE)                          \
+  (LEN_SIZE == 2 ? spdylay_get_uint16(IN) : spdylay_get_uint32(IN))
+
+#define spdylay_frame_put_nv_len(OUT, VAL, LEN_SIZE)                    \
+  (LEN_SIZE == 2 ?                                                      \
+   spdylay_put_uint16be(OUT, VAL) : spdylay_put_uint32be(OUT, VAL))
+
+/*
+ * Returns the number of bytes in length of name/value pair for the
+ * given protocol version |version|. If |version| is not supported,
+ * returns 0.
+ */
+size_t spdylay_frame_get_len_size(uint16_t version);
+
 /*
  * Packs SYN_STREAM frame |frame| in wire format and store it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
@@ -87,9 +101,15 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
  * inflated name/value pairs. This function expands |*nvbuf_ptr| as
  * necessary and updates these variables.
  *
+ * This function also validates the name/value pairs. If unpacking
+ * succeeds but validation fails, it is indicated by returning
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK.
+ *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK
+ *     Unpacking succeeds but the header block is invalid.
  * SPDYLAY_ERR_INVALID_FRAME
  *     The input data are invalid.
  * SPDYLAY_ERR_UNSUPPORTED_VERSION
@@ -147,9 +167,15 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
  * inflated name/value pairs. This function expands |*nvbuf_ptr| as
  * necessary and updates these variables.
  *
+ * This function also validates the name/value pairs. If unpacking
+ * succeeds but validation fails, it is indicated by returning
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK.
+ *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK
+ *     Unpacking succeeds but the header block is invalid.
  * SPDYLAY_ERR_UNSUPPORTED_VERSION
  *     The version is not supported.
  * SPDYLAY_ERR_INVALID_FRAME
@@ -265,9 +291,15 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
  * inflated name/value pairs. This function expands |*nvbuf_ptr| as
  * necessary and updates these variables.
  *
+ * This function also validates the name/value pairs. If unpacking
+ * succeeds but validation fails, it is indicated by returning
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK.
+ *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK
+ *     Unpacking succeeds but the header block is invalid.
  * SPDYLAY_ERR_UNSUPPORTED_VERSION
  *     The version is not supported.
  * SPDYLAY_ERR_INVALID_FRAME
@@ -454,14 +486,45 @@ int spdylay_frame_count_unpack_nv_space
  size_t len_size);
 
 /*
+ * Validates name of Name/Value header Block. The |buf| is the
+ * allocated buffer with the length at least |buflen| bytes. The
+ * |buflen| must be at least the number of Name/Value pairs in the
+ * packed name/value header block |in|. The length of |in| is given in
+ * |inlen|.  The |buf| is used as a work memory to validate header
+ * names and the caller must not use its content on return.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK
+ *     There are duplicate header names; or the header names are not
+ *     encoded in US-ASCII character set and not lower cased; or the
+ *     header name is zero-length string.
+ */
+int spdylay_frame_unpack_nv_check_name(uint8_t *buf, size_t buflen,
+                                       const uint8_t *in, size_t inlen,
+                                       size_t len_size);
+
+/*
  * Unpacks name/value pairs in wire format |in| with length |inlen|
  * and stores them in |*nv_ptr|.  Thif function allocates enough
  * memory to store name/value pairs in |*nv_ptr|.  |len_size| is the
  * number of bytes in length of name/value pair and it must be 2 or 4.
  *
+ * This function also validates the name/value pairs. If unpacking
+ * succeeds but validation fails, it is indicated by returning
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK.
+ *
+ * If error other than SPDYLAY_ERR_INVALID_HEADER_BLOCK is returned,
+ * the |nv_ptr| is not assigned. In other words,
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK means unpacking succeeded, but
+ * header block validation failed.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK
+ *     Unpacking succeeds but the header block is invalid.
  * SPDYLAY_ERR_NOMEM
  *     Out of memory.
  */
@@ -477,9 +540,20 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
  * |len_size| is the number of bytes used in name/value length. It
  * must be either 2 or 4.
  *
+ * This function also validates the name/value pairs. If unpacking
+ * succeeds but validation fails, it is indicated by returning
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK.
+ *
+ * If error other than SPDYLAY_ERR_INVALID_HEADER_BLOCK is returned,
+ * the |nv_ptr| is not assigned. In other words,
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK means unpacking succeeded, but
+ * header block validation failed.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
+ * SPDYLAY_ERR_INVALID_HEADER_BLOCK
+ *     Unpacking succeeds but the header block is invalid.
  * SPDYLAY_ERR_ZLIB
  *     The inflate operation failed.
  * SPDYLAY_ERR_NOMEM
