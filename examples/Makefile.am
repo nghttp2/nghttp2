@@ -56,7 +56,7 @@ spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	spdyd.cc
 
 if HAVE_STDCXX_11
-bin_PROGRAMS += spdynative
+noinst_PROGRAMS = spdynative
 spdynative_CXXFLAGS = -std=c++0x
 spdynative_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	${EVENT_OBJECTS} ${EVENT_HFILES} \
