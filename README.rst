@@ -12,9 +12,21 @@ choose the way of handling events. This library code does not depend
 on any particular SSL library (except for example programs which
 depend on OpenSSL 1.0.1 or later).
 
-The current status of development is in a beta stage now. As described
-below, we can create SPDY client and server with the current Spdylay
-API.
+STATUS
+------
+
+SPDY/2
+    Most of the SPDY/2 functionality has been implemented.
+
+SPDY/3
+    CREDENTIALS frame has not been implemented yet.
+
+In both versions, the direct support of server-push has not been
+available yet.  The application can achieve server-push using
+primitive APIs though.
+
+As described below, we can create SPDY client and server with the
+current Spdylay API.
 
 Build from git
 --------------
