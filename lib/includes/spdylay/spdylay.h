@@ -46,17 +46,20 @@ struct spdylay_session;
 typedef struct spdylay_session spdylay_session;
 
 /**
- * @macro
+ * @enum
  *
- * SPDY protocol version 2
+ * The SPDY protocol version.
  */
-#define SPDYLAY_PROTO_SPDY2 2
-/**
- * @macro
- *
- * SPDY protocol version 3
- */
-#define SPDYLAY_PROTO_SPDY3 3
+typedef enum {
+  /**
+   * SPDY protocol version 2
+   */
+  SPDYLAY_PROTO_SPDY2 = 2,
+  /**
+   * SPDY protocol version 3
+   */
+  SPDYLAY_PROTO_SPDY3 = 3
+} spdylay_proto_version;
 
 /**
  * @enum
