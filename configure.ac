@@ -88,7 +88,16 @@ fi
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
 # openssl (for examples)
-PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])
+PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1],
+                  [have_openssl=yes], [have_openssl=no])
+if test "x${have_openssl}" = "xno"; then
+  AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
+  AC_MSG_NOTICE([The example programs will not be built.])
+fi
+
+# The example programs depend on OpenSSL
+enable_examples=$have_openssl
+AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
 # Checks for header files.
 AC_CHECK_HEADERS([ \
@@ -152,4 +161,6 @@ AC_MSG_NOTICE([summary of build options:
     CFlags:         ${CFLAGS}
     Library types:  Shared=${enable_shared}, Static=${enable_static}
     CUnit:          ${have_cunit}
+    OpenSSL:        ${have_openssl}
+    Examples:       ${enable_examples}
 ])

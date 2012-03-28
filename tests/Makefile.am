@@ -40,6 +40,12 @@ main_LDFLAGS = -static @CUNIT_LIBS@
 AM_CFLAGS = -Wall -g -O2 -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_builddir}/lib/includes \
 	@CUNIT_CFLAGS@ @DEFS@
 
-TESTS = main end_to_end.py
+TESTS = main
+
+if ENABLE_EXAMPLES
+
+TESTS += end_to_end.py
+
+endif # ENABLE_EXAMPLES
 
 endif # HAVE_CUNIT
