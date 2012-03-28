@@ -31,6 +31,15 @@ current Spdylay API.
 Build from git
 --------------
 
+The following packages are needed to build the library:
+
+* pkg-config >= 0.20
+
+To build and run the example programs, the following packages are
+needed:
+
+* OpenSSL >= 1.0.1
+
 Building from git is easy, but please be sure that at least autoconf 2.68 is
 used.::
 
