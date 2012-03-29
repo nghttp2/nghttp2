@@ -53,7 +53,7 @@ void spdylay_outbound_item_free(spdylay_outbound_item *item)
     case SPDYLAY_NOOP:
       /* We don't have any public API to add NOOP, so here is
          unreachable. */
-      abort();
+      assert(0);
     case SPDYLAY_PING:
       spdylay_frame_ping_free(&frame->ping);
       break;
