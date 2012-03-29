@@ -323,7 +323,7 @@ int spdylay_session_add_frame(spdylay_session *session,
   item->pri = spdylay_session_get_pri_lowest(session);
   if(frame_cat == SPDYLAY_CTRL) {
     spdylay_frame *frame = (spdylay_frame*)abs_frame;
-    spdylay_frame_type frame_type = frame->common.hd.type;
+    spdylay_frame_type frame_type = frame->ctrl.hd.type;
     switch(frame_type) {
     case SPDYLAY_SYN_STREAM:
       item->pri = frame->syn_stream.pri;

@@ -56,7 +56,7 @@ void spdylay_outbound_item_free(spdylay_outbound_item *item);
 /* Macros to cast spdylay_outbound_item.frame to the proper type. */
 #define spdylay_outbound_item_get_ctrl_frame(ITEM) ((spdylay_frame*)ITEM->frame)
 #define spdylay_outbound_item_get_ctrl_frame_type(ITEM) \
-  (((spdylay_frame*)ITEM->frame)->common.hd.type)
+  (((spdylay_frame*)ITEM->frame)->ctrl.hd.type)
 #define spdylay_outbound_item_get_data_frame(ITEM) ((spdylay_data*)ITEM->frame)
 
 #endif /* SPDYLAY_OUTBOUND_ITEM_H */

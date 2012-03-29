@@ -714,7 +714,7 @@ typedef union {
   /**
    * Convenient structure to inspect control frame header.
    */
-  spdylay_ctrl_frame common;
+  spdylay_ctrl_frame ctrl;
   /**
    * The SYN_STREAM control frame.
    */
