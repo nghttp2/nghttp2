@@ -1033,8 +1033,7 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     spdylay_frame_type type;
     frame = spdylay_outbound_item_get_ctrl_frame(session->aob.item);
     type = spdylay_outbound_item_get_ctrl_frame_type(session->aob.item);
-    if(session->callbacks.on_ctrl_send_callback &&
-       type != SPDYLAY_WINDOW_UPDATE) {
+    if(session->callbacks.on_ctrl_send_callback) {
       session->callbacks.on_ctrl_send_callback
         (session, type, frame, session->user_data);
     }
@@ -1269,15 +1268,11 @@ int spdylay_session_send(spdylay_session *session)
       /* Call before_send callback */
       if(item->frame_cat == SPDYLAY_CTRL &&
          session->callbacks.before_ctrl_send_callback) {
-        spdylay_frame_type frame_type;
-        frame_type = spdylay_outbound_item_get_ctrl_frame_type(item);
-        if(frame_type != SPDYLAY_WINDOW_UPDATE) {
-          session->callbacks.before_ctrl_send_callback
-            (session,
-             frame_type,
-             spdylay_outbound_item_get_ctrl_frame(item),
-             session->user_data);
-        }
+        session->callbacks.before_ctrl_send_callback
+          (session,
+           spdylay_outbound_item_get_ctrl_frame_type(item),
+           spdylay_outbound_item_get_ctrl_frame(item),
+           session->user_data);
       }
     }
     data = session->aob.framebuf + session->aob.framebufoff;
