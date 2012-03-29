@@ -28,8 +28,8 @@ primitive APIs though.
 As described below, we can create SPDY client and server with the
 current Spdylay API.
 
-Build from git
---------------
+Requirements
+------------
 
 The following packages are needed to build the library:
 
@@ -39,6 +39,9 @@ To build and run the example programs, the following packages are
 needed:
 
 * OpenSSL >= 1.0.1
+
+Build from git
+--------------
 
 Building from git is easy, but please be sure that at least autoconf 2.68 is
 used.::
