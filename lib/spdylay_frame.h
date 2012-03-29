@@ -52,6 +52,38 @@
   (LEN_SIZE == 2 ?                                                      \
    spdylay_put_uint16be(OUT, VAL) : spdylay_put_uint32be(OUT, VAL))
 
+/* Category of SPDY frames. */
+typedef enum {
+  /* Control frame */
+  SPDYLAY_CTRL,
+  /* DATA frame */
+  SPDYLAY_DATA
+} spdylay_frame_category;
+
+/**
+ * @struct
+ * The DATA frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The stream ID.
+   */
+  int32_t stream_id;
+  /**
+   * The DATA frame flags. See :type:`spdylay_data_flag`.
+   */
+  uint8_t flags;
+  /**
+   * The flag to indicate whether EOF was reached or not. Initially
+   * |eof| is 0. It becomes 1 after all data were read.
+   */
+  uint8_t eof;
+  /**
+   * The data to be sent for this DATA frame.
+   */
+  spdylay_data_provider data_prd;
+} spdylay_data;
+
 /*
  * Returns the number of bytes in length of name/value pair for the
  * given protocol version |version|. If |version| is not supported,

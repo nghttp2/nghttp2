@@ -176,7 +176,7 @@ typedef enum {
 
 /**
  * @enum
- * The frame types in SPDY protocol.
+ * The control frame types in SPDY protocol.
  */
 typedef enum {
   /**
@@ -214,11 +214,7 @@ typedef enum {
   /**
    * The WINDOW_UPDATE control frame. This first appeared in SPDY/3.
    */
-  SPDYLAY_WINDOW_UPDATE = 9,
-  /**
-   * The DATA frame.
-   */
-  SPDYLAY_DATA = 100
+  SPDYLAY_WINDOW_UPDATE = 9
 } spdylay_frame_type;
 
 /**
@@ -640,6 +636,19 @@ typedef struct {
 } spdylay_window_update;
 
 /**
+ * @struct
+ *
+ * Convenient structure to inspect control frame header.  It is useful
+ * to get the frame type.
+ */
+typedef struct {
+  /**
+   * The control frame header.
+   */
+  spdylay_ctrl_hd hd;
+} spdylay_ctrl_frame;
+
+/**
  * @union
  *
  * This union represents the some kind of data source passed to
@@ -696,36 +705,16 @@ typedef struct {
 } spdylay_data_provider;
 
 /**
- * @struct
- * The DATA frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The stream ID.
-   */
-  int32_t stream_id;
-  /**
-   * The DATA frame flags. See :type:`spdylay_data_flag`.
-   */
-  uint8_t flags;
-  /**
-   * The flag to indicate whether EOF was reached or not. Initially
-   * |eof| is 0. It becomes 1 after all data were read.
-   */
-  uint8_t eof;
-  /**
-   * The data to be sent for this DATA frame.
-   */
-  spdylay_data_provider data_prd;
-} spdylay_data;
-
-/**
  * @union
  *
- * This union includes all control frames and DATA frame to pass them
+ * This union includes all control frames to pass them
  * to various function calls as spdylay_frame type.
  */
 typedef union {
+  /**
+   * Convenient structure to inspect control frame header.
+   */
+  spdylay_ctrl_frame common;
   /**
    * The SYN_STREAM control frame.
    */
@@ -758,10 +747,6 @@ typedef union {
    * The WINDOW_UPDATE control frame.
    */
   spdylay_window_update window_update;
-  /**
-   * The DATA frame.
-   */
-  spdylay_data data;
 } spdylay_frame;
 
 /**

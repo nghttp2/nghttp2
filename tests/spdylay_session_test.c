@@ -33,6 +33,10 @@
 #include "spdylay_session.h"
 #include "spdylay_stream.h"
 
+#define OB_CTRL(ITEM) spdylay_outbound_item_get_ctrl_frame(ITEM)
+#define OB_CTRL_TYPE(ITEM) spdylay_outbound_item_get_ctrl_frame_type(ITEM)
+#define OB_DATA(ITEM) spdylay_outbound_item_get_data_frame(ITEM)
+
 typedef struct {
   uint8_t buf[4096];
   size_t length;
@@ -260,8 +264,8 @@ void test_spdylay_session_recv(void)
   CU_ASSERT(0 == spdylay_session_recv(session));
   CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_RST_STREAM == item->frame_type);
-  CU_ASSERT(SPDYLAY_PROTOCOL_ERROR == item->frame->rst_stream.status_code);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_PROTOCOL_ERROR == OB_CTRL(item)->rst_stream.status_code);
 
   spdylay_session_del(session);
 
@@ -282,8 +286,8 @@ void test_spdylay_session_recv(void)
   CU_ASSERT(0 == spdylay_session_recv(session));
   CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_RST_STREAM == item->frame_type);
-  CU_ASSERT(SPDYLAY_PROTOCOL_ERROR == item->frame->rst_stream.status_code);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_PROTOCOL_ERROR == OB_CTRL(item)->rst_stream.status_code);
 
   CU_ASSERT(0 == spdylay_session_send(session));
 
@@ -302,8 +306,8 @@ void test_spdylay_session_recv(void)
   CU_ASSERT(0 == spdylay_session_recv(session));
   CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_RST_STREAM == item->frame_type);
-  CU_ASSERT(SPDYLAY_PROTOCOL_ERROR == item->frame->rst_stream.status_code);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_PROTOCOL_ERROR == OB_CTRL(item)->rst_stream.status_code);
 
   free(framedata);
   free(nvbuf);
@@ -342,7 +346,7 @@ void test_spdylay_session_add_frame(void)
   spdylay_frame_syn_stream_init(&frame->syn_stream, SPDYLAY_PROTO_SPDY2,
                                 SPDYLAY_CTRL_FLAG_NONE, 0, 0, 3, dup_nv(nv));
 
-  CU_ASSERT(0 == spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame,
+  CU_ASSERT(0 == spdylay_session_add_frame(session, SPDYLAY_CTRL, frame,
                                            aux_data));
   CU_ASSERT(0 == spdylay_pq_empty(&session->ob_ss_pq));
   CU_ASSERT(0 == spdylay_session_send(session));
@@ -579,8 +583,8 @@ void test_spdylay_session_on_syn_reply_received(void)
   CU_ASSERT(0 == spdylay_session_on_syn_reply_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_ctrl_recv_cb_called);
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_RST_STREAM == item->frame_type);
-  CU_ASSERT(SPDYLAY_STREAM_IN_USE == item->frame->rst_stream.status_code);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_STREAM_IN_USE == OB_CTRL(item)->rst_stream.status_code);
 
   spdylay_frame_syn_reply_free(&frame.syn_reply);
 
@@ -603,7 +607,7 @@ void test_spdylay_session_send_syn_stream(void)
   spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY2, &callbacks, NULL);
   spdylay_frame_syn_stream_init(&frame->syn_stream, SPDYLAY_PROTO_SPDY2,
                                 SPDYLAY_CTRL_FLAG_NONE, 0, 0, 3, dup_nv(nv));
-  spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame, aux_data);
+  spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, aux_data);
   CU_ASSERT(0 == spdylay_session_send(session));
   stream = spdylay_session_get_stream(session, 1);
   CU_ASSERT(SPDYLAY_STREAM_OPENING == stream->state);
@@ -628,7 +632,7 @@ void test_spdylay_session_send_syn_reply(void)
                               SPDYLAY_STREAM_OPENING, NULL);
   spdylay_frame_syn_reply_init(&frame->syn_reply, SPDYLAY_PROTO_SPDY2,
                                SPDYLAY_CTRL_FLAG_NONE, 2, dup_nv(nv));
-  spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame, NULL);
+  spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, NULL);
   CU_ASSERT(0 == spdylay_session_send(session));
   stream = spdylay_session_get_stream(session, 2);
   CU_ASSERT(SPDYLAY_STREAM_OPENED == stream->state);
@@ -657,7 +661,7 @@ void test_spdylay_submit_response(void)
                               SPDYLAY_STREAM_OPENING, NULL);
   CU_ASSERT(0 == spdylay_submit_response(session, stream_id, nv, &data_prd));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("content-length", item->frame->syn_reply.nv[0]));
+  CU_ASSERT(0 == strcmp("content-length", OB_CTRL(item)->syn_reply.nv[0]));
   CU_ASSERT(0 == spdylay_session_send(session));
   spdylay_session_del(session);
 }
@@ -683,8 +687,8 @@ void test_spdylay_submit_response_with_null_data_read_callback(void)
                               SPDYLAY_STREAM_OPENING, NULL);
   CU_ASSERT(0 == spdylay_submit_response(session, 1, nv, &data_prd));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp(":version", item->frame->syn_reply.nv[0]));
-  CU_ASSERT(item->frame->syn_reply.hd.flags & SPDYLAY_CTRL_FLAG_FIN);
+  CU_ASSERT(0 == strcmp(":version", OB_CTRL(item)->syn_reply.nv[0]));
+  CU_ASSERT(OB_CTRL(item)->syn_reply.hd.flags & SPDYLAY_CTRL_FLAG_FIN);
 
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(0 == spdylay_frame_unpack_syn_reply(&frame.syn_reply,
@@ -719,7 +723,7 @@ void test_spdylay_submit_request_with_data(void)
                                             &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd, NULL));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("version", item->frame->syn_stream.nv[0]));
+  CU_ASSERT(0 == strcmp("version", OB_CTRL(item)->syn_stream.nv[0]));
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(0 == ud.data_source_length);
 
@@ -745,8 +749,8 @@ void test_spdylay_submit_request_with_null_data_read_callback(void)
                                             &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_request(session, 3, nv, &data_prd, NULL));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp(":version", item->frame->syn_stream.nv[0]));
-  CU_ASSERT(item->frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN);
+  CU_ASSERT(0 == strcmp(":version", OB_CTRL(item)->syn_stream.nv[0]));
+  CU_ASSERT(OB_CTRL(item)->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN);
 
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(0 == spdylay_frame_unpack_syn_stream(&frame.syn_stream,
@@ -776,11 +780,11 @@ void test_spdylay_submit_syn_stream(void)
   CU_ASSERT(0 == spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 1, 3,
                                            nv, NULL));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("version", item->frame->syn_stream.nv[0]));
-  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == item->frame->syn_stream.hd.flags);
+  CU_ASSERT(0 == strcmp("version", OB_CTRL(item)->syn_stream.nv[0]));
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == OB_CTRL(item)->syn_stream.hd.flags);
   /* See assoc-stream-ID is ignored */
-  CU_ASSERT(0 == item->frame->syn_stream.assoc_stream_id);
-  CU_ASSERT(3 == item->frame->syn_stream.pri);
+  CU_ASSERT(0 == OB_CTRL(item)->syn_stream.assoc_stream_id);
+  CU_ASSERT(3 == OB_CTRL(item)->syn_stream.pri);
 
   spdylay_session_del(session);
 
@@ -789,10 +793,10 @@ void test_spdylay_submit_syn_stream(void)
   CU_ASSERT(0 == spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 1, 3,
                                            nv, NULL));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("version", item->frame->syn_stream.nv[0]));
-  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == item->frame->syn_stream.hd.flags);
-  CU_ASSERT(1 == item->frame->syn_stream.assoc_stream_id);
-  CU_ASSERT(3 == item->frame->syn_stream.pri);
+  CU_ASSERT(0 == strcmp("version", OB_CTRL(item)->syn_stream.nv[0]));
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == OB_CTRL(item)->syn_stream.hd.flags);
+  CU_ASSERT(1 == OB_CTRL(item)->syn_stream.assoc_stream_id);
+  CU_ASSERT(3 == OB_CTRL(item)->syn_stream.pri);
 
   /* Invalid assoc-stream-ID */
   CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
@@ -820,8 +824,8 @@ void test_spdylay_submit_syn_reply(void)
   CU_ASSERT(0 == spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_FIN, 1,
                                           nv));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp("version", item->frame->syn_reply.nv[0]));
-  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == item->frame->syn_reply.hd.flags);
+  CU_ASSERT(0 == strcmp("version", OB_CTRL(item)->syn_reply.nv[0]));
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == OB_CTRL(item)->syn_reply.hd.flags);
 
   ud.ctrl_send_cb_called = 0;
   ud.sent_frame_type = 0;
@@ -862,8 +866,8 @@ void test_spdylay_submit_headers(void)
                                             &callbacks, &ud));
   CU_ASSERT(0 == spdylay_submit_headers(session, SPDYLAY_CTRL_FLAG_FIN, 1, nv));
   item = spdylay_session_get_next_ob_item(session);
-  CU_ASSERT(0 == strcmp(":version", item->frame->headers.nv[0]));
-  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == item->frame->headers.hd.flags);
+  CU_ASSERT(0 == strcmp(":version", OB_CTRL(item)->headers.nv[0]));
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == OB_CTRL(item)->headers.hd.flags);
 
   ud.ctrl_send_cb_called = 0;
   ud.sent_frame_type = 0;
@@ -1009,6 +1013,7 @@ void test_spdylay_session_on_window_update_received(void)
 
   data_item = malloc(sizeof(spdylay_outbound_item));
   memset(data_item, 0, sizeof(spdylay_outbound_item));
+  data_item->frame_cat = SPDYLAY_DATA;
   spdylay_stream_defer_data(stream, data_item, SPDYLAY_DEFERRED_FLOW_CONTROL);
 
   CU_ASSERT(0 == spdylay_session_on_window_update_received(session, &frame));
@@ -1043,8 +1048,8 @@ void test_spdylay_session_on_ping_received(void)
   CU_ASSERT(0 == spdylay_session_on_ping_received(session, &frame));
   CU_ASSERT(1 == user_data.ctrl_recv_cb_called);
   top = spdylay_session_get_ob_pq_top(session);
-  CU_ASSERT(SPDYLAY_PING == top->frame_type);
-  CU_ASSERT(unique_id == top->frame->ping.unique_id);
+  CU_ASSERT(SPDYLAY_PING == OB_CTRL_TYPE(top));
+  CU_ASSERT(unique_id == OB_CTRL(top)->ping.unique_id);
 
   session->last_ping_unique_id = 1;
   frame.ping.unique_id = 1;
@@ -1127,8 +1132,8 @@ void test_spdylay_session_on_data_received(void)
                                                   SPDYLAY_DATA_FLAG_NONE,
                                                   4096, stream_id));
   top = spdylay_session_get_ob_pq_top(session);
-  CU_ASSERT(SPDYLAY_RST_STREAM == top->frame_type);
-  CU_ASSERT(SPDYLAY_INVALID_STREAM == top->frame->rst_stream.status_code);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(top));
+  CU_ASSERT(SPDYLAY_INVALID_STREAM == OB_CTRL(top)->rst_stream.status_code);
 
   spdylay_session_del(session);
 }
@@ -1212,7 +1217,7 @@ void test_spdylay_session_send_rst_stream(void)
   frame = malloc(sizeof(spdylay_frame));
   spdylay_frame_rst_stream_init(&frame->rst_stream, SPDYLAY_PROTO_SPDY2, 1,
                                 SPDYLAY_CANCEL);
-  spdylay_session_add_frame(session, SPDYLAY_RST_STREAM, frame, NULL);
+  spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, NULL);
   CU_ASSERT(0 == spdylay_session_send(session));
 
   CU_ASSERT(NULL == spdylay_session_get_stream(session, 1));
@@ -1236,11 +1241,11 @@ void test_spdylay_session_get_next_ob_item(void)
   CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
   spdylay_submit_ping(session);
   CU_ASSERT(SPDYLAY_PING ==
-            spdylay_session_get_next_ob_item(session)->frame_type);
+            OB_CTRL_TYPE(spdylay_session_get_next_ob_item(session)));
 
   spdylay_submit_request(session, 0, nv, NULL, NULL);
   CU_ASSERT(SPDYLAY_PING ==
-            spdylay_session_get_next_ob_item(session)->frame_type);
+            OB_CTRL_TYPE(spdylay_session_get_next_ob_item(session)));
 
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
@@ -1253,12 +1258,12 @@ void test_spdylay_session_get_next_ob_item(void)
 
   spdylay_submit_response(session, 1, nv, NULL);
   CU_ASSERT(SPDYLAY_SYN_REPLY ==
-            spdylay_session_get_next_ob_item(session)->frame_type);
+            OB_CTRL_TYPE(spdylay_session_get_next_ob_item(session)));
 
   session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 3;
 
   CU_ASSERT(SPDYLAY_SYN_STREAM ==
-            spdylay_session_get_next_ob_item(session)->frame_type);
+            OB_CTRL_TYPE(spdylay_session_get_next_ob_item(session)));
 
   spdylay_session_del(session);
 }
@@ -1280,12 +1285,12 @@ void test_spdylay_session_pop_next_ob_item(void)
   spdylay_submit_request(session, 0, nv, NULL, NULL);
 
   item = spdylay_session_pop_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_PING == item->frame_type);
+  CU_ASSERT(SPDYLAY_PING == OB_CTRL_TYPE(item));
   spdylay_outbound_item_free(item);
   free(item);
 
   item = spdylay_session_pop_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_SYN_STREAM == item->frame_type);
+  CU_ASSERT(SPDYLAY_SYN_STREAM == OB_CTRL_TYPE(item));
   spdylay_outbound_item_free(item);
   free(item);
 
@@ -1298,7 +1303,7 @@ void test_spdylay_session_pop_next_ob_item(void)
   spdylay_submit_response(session, 1, nv, NULL);
 
   item = spdylay_session_pop_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_SYN_REPLY == item->frame_type);
+  CU_ASSERT(SPDYLAY_SYN_REPLY == OB_CTRL_TYPE(item));
   spdylay_outbound_item_free(item);
   free(item);
 
@@ -1308,7 +1313,7 @@ void test_spdylay_session_pop_next_ob_item(void)
   session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
 
   item = spdylay_session_pop_next_ob_item(session);
-  CU_ASSERT(SPDYLAY_SYN_STREAM == item->frame_type);
+  CU_ASSERT(SPDYLAY_SYN_STREAM == OB_CTRL_TYPE(item));
   spdylay_outbound_item_free(item);
   free(item);
 
@@ -1425,8 +1430,8 @@ void test_spdylay_session_max_concurrent_streams(void)
   CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
 
   item = spdylay_session_get_ob_pq_top(session);
-  CU_ASSERT(SPDYLAY_RST_STREAM == item->frame_type);
-  CU_ASSERT(SPDYLAY_REFUSED_STREAM == item->frame->rst_stream.status_code)
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_REFUSED_STREAM == OB_CTRL(item)->rst_stream.status_code)
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
 
@@ -1668,7 +1673,7 @@ void test_spdylay_session_defer_data(void)
   /* Resume deferred DATA */
   CU_ASSERT(0 == spdylay_session_resume_data(session, 1));
   item = spdylay_session_get_ob_pq_top(session);
-  item->frame->data.data_prd.read_callback =
+  OB_DATA(item)->data_prd.read_callback =
     fixed_length_data_source_read_callback;
   ud.block_count = 1;
   /* Reads 2 4KiB blocks */
@@ -1676,7 +1681,7 @@ void test_spdylay_session_defer_data(void)
   CU_ASSERT(ud.data_source_length == 8*1024);
 
   /* Deferred again */
-  item->frame->data.data_prd.read_callback = defer_data_source_read_callback;
+  OB_DATA(item)->data_prd.read_callback = defer_data_source_read_callback;
   /* This is needed since 4KiB block is already read and waiting to be
      sent. No read_callback invocation. */
   ud.block_count = 1;
@@ -1687,7 +1692,7 @@ void test_spdylay_session_defer_data(void)
 
   CU_ASSERT(0 == spdylay_session_resume_data(session, 1));
   item = spdylay_session_get_ob_pq_top(session);
-  item->frame->data.data_prd.read_callback =
+  OB_DATA(item)->data_prd.read_callback =
     fixed_length_data_source_read_callback;
   ud.block_count = 1;
   /* Reads 2 4KiB blocks */
@@ -2014,7 +2019,7 @@ void test_spdylay_submit_settings(void)
 
   item = spdylay_session_get_next_ob_item(session);
 
-  CU_ASSERT(SPDYLAY_SETTINGS == item->frame_type);
+  CU_ASSERT(SPDYLAY_SETTINGS == OB_CTRL_TYPE(item));
 
   frame = item->frame;
   CU_ASSERT(2 == frame->settings.niv);

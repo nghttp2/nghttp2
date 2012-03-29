@@ -181,11 +181,14 @@ int spdylay_session_is_my_stream_id(spdylay_session *session,
                                     int32_t stream_id);
 
 /*
- * Adds frame |frame| of type |frame_type| to the outbound queue in
- * |session|.  |aux_data| is a pointer to the arbitrary data. Its
- * interpretation is defined per |frame_type|. When this function
- * succeeds, it takes ownership of |frame| and |aux_data|, so caller
- * must not free them on success.
+ * Adds frame |frame| to the outbound queue in |session|. The
+ * |frame_cat| must be either SPDYLAY_CTRL or SPDYLAY_DATA. If the
+ * |frame_cat| is SPDYLAY_CTRL, the |frame| must be a pointer to
+ * spdylay_frame. If the |frame_cat| is SPDYLAY_DATA, it must be a
+ * pointer to spdylay_data. |aux_data| is a pointer to the arbitrary
+ * data. Its interpretation is defined per the type of the frame. When
+ * this function succeeds, it takes ownership of |frame| and
+ * |aux_data|, so caller must not free them on success.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -194,9 +197,8 @@ int spdylay_session_is_my_stream_id(spdylay_session *session,
  *     Out of memory.
  */
 int spdylay_session_add_frame(spdylay_session *session,
-                              spdylay_frame_type frame_type,
-                              spdylay_frame *frame,
-                              void *aux_data);
+                              spdylay_frame_category frame_cat,
+                              void *abs_frame, void *aux_data);
 
 /*
  * Adds RST_STREAM frame for the stream |stream_id| with status code

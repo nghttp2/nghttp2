@@ -38,8 +38,10 @@ typedef struct {
 } spdylay_syn_stream_aux_data;
 
 typedef struct {
-  spdylay_frame_type frame_type;
-  spdylay_frame *frame;
+  /* Type of |frame|. SPDYLAY_CTRL: spdylay_frame*, SPDYLAY_DATA:
+     spdylay_data* */
+  spdylay_frame_category frame_cat;
+  void *frame;
   void *aux_data;
   int pri;
   int64_t seq;
@@ -50,5 +52,11 @@ typedef struct {
  * does nothing.
  */
 void spdylay_outbound_item_free(spdylay_outbound_item *item);
+
+/* Macros to cast spdylay_outbound_item.frame to the proper type. */
+#define spdylay_outbound_item_get_ctrl_frame(ITEM) ((spdylay_frame*)ITEM->frame)
+#define spdylay_outbound_item_get_ctrl_frame_type(ITEM) \
+  (((spdylay_frame*)ITEM->frame)->common.hd.type)
+#define spdylay_outbound_item_get_data_frame(ITEM) ((spdylay_data*)ITEM->frame)
 
 #endif /* SPDYLAY_OUTBOUND_ITEM_H */

@@ -92,7 +92,7 @@ static int spdylay_submit_syn_stream_shared
   spdylay_frame_syn_stream_init(&frame->syn_stream,
                                 session->version, flags_copy,
                                 0, assoc_stream_id, pri, nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_STREAM, frame,
+  r = spdylay_session_add_frame(session, SPDYLAY_CTRL, frame,
                                 aux_data);
   if(r != 0) {
     spdylay_frame_syn_stream_free(&frame->syn_stream);
@@ -133,7 +133,7 @@ int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
   }
   spdylay_frame_syn_reply_init(&frame->syn_reply, session->version, flags_copy,
                                stream_id, nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame, NULL);
+  r = spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, NULL);
   if(r != 0) {
     spdylay_frame_syn_reply_free(&frame->syn_reply);
     free(frame);
@@ -163,7 +163,7 @@ int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
   }
   spdylay_frame_headers_init(&frame->headers, session->version, flags_copy,
                              stream_id, nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_HEADERS, frame, NULL);
+  r = spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, NULL);
   if(r != 0) {
     spdylay_frame_headers_free(&frame->headers);
     free(frame);
@@ -218,7 +218,7 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
   spdylay_frame_iv_sort(iv_copy, niv);
   spdylay_frame_settings_init(&frame->settings, session->version,
                               flags, iv_copy, niv);
-  r = spdylay_session_add_frame(session, SPDYLAY_SETTINGS, frame, NULL);
+  r = spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, NULL);
   if(r == 0) {
     spdylay_session_update_local_settings(session, iv_copy, niv);
   } else {
@@ -274,7 +274,7 @@ int spdylay_submit_response(spdylay_session *session,
   }
   spdylay_frame_syn_reply_init(&frame->syn_reply, session->version, flags,
                                stream_id, nv_copy);
-  r = spdylay_session_add_frame(session, SPDYLAY_SYN_REPLY, frame,
+  r = spdylay_session_add_frame(session, SPDYLAY_CTRL, frame,
                                 data_prd_copy);
   if(r != 0) {
     spdylay_frame_syn_reply_free(&frame->syn_reply);
@@ -289,20 +289,20 @@ int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
                         const spdylay_data_provider *data_prd)
 {
   int r;
-  spdylay_frame *frame;
+  spdylay_data *data_frame;
   uint8_t nflags = 0;
-  frame = malloc(sizeof(spdylay_frame));
-  if(frame == NULL) {
+  data_frame = malloc(sizeof(spdylay_frame));
+  if(data_frame == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
   if(flags & SPDYLAY_DATA_FLAG_FIN) {
     nflags |= SPDYLAY_DATA_FLAG_FIN;
   }
-  spdylay_frame_data_init(&frame->data, stream_id, nflags, data_prd);
-  r = spdylay_session_add_frame(session, SPDYLAY_DATA, frame, NULL);
+  spdylay_frame_data_init(data_frame, stream_id, nflags, data_prd);
+  r = spdylay_session_add_frame(session, SPDYLAY_DATA, data_frame, NULL);
   if(r != 0) {
-    spdylay_frame_data_free(&frame->data);
-    free(frame);
+    spdylay_frame_data_free(data_frame);
+    free(data_frame);
   }
   return r;
 }
