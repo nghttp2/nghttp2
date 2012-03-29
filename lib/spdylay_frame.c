@@ -218,16 +218,21 @@ int spdylay_frame_unpack_nv_check_name(uint8_t *buf, size_t buflen,
     len = spdylay_frame_get_nv_len(in, len_size);
     in += len_size+len;
   }
-  qsort(buf, n, sizeof(uint8_t*),
-        len_size == 2 ?
-        spdylay_length_prefix_str_compar2 : spdylay_length_prefix_str_compar4);
-  index = (const uint8_t**)buf;
-  for(i = 1; i < n; ++i) {
-    uint32_t len1 = spdylay_frame_get_nv_len(*(index+i-1), len_size);
-    uint32_t len2 = spdylay_frame_get_nv_len(*(index+i), len_size);
-    if(len1 == len2 && memcmp(*(index+i-1)+len_size, *(index+i)+len_size,
-                              len_size) == 0) {
-      return SPDYLAY_ERR_INVALID_HEADER_BLOCK;
+  if(n > 0) {
+    uint32_t len1, len2;
+    qsort(buf, n, sizeof(uint8_t*),
+          len_size == 2 ?
+          spdylay_length_prefix_str_compar2 :
+          spdylay_length_prefix_str_compar4);
+    index = (const uint8_t**)buf;
+    len1 = spdylay_frame_get_nv_len(*index, len_size);
+    for(i = 1; i < n; ++i) {
+      len2 = spdylay_frame_get_nv_len(*(index+i), len_size);
+      if(len1 == len2 && memcmp(*(index+i-1)+len_size, *(index+i)+len_size,
+                                len1) == 0) {
+        return SPDYLAY_ERR_INVALID_HEADER_BLOCK;
+      }
+      len1 = len2;
     }
   }
   return 0;
