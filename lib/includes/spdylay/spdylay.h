@@ -896,6 +896,55 @@ typedef void (*spdylay_on_request_recv_callback)
 (spdylay_session *session, int32_t stream_id, void *user_data);
 
 /**
+ * @functypedef
+ *
+ * Callback function invoked when the library wants to know whether
+ * the client certificate is required for the given |origin| and if so
+ * requests the cryptographic proof for the certificate.  The |origin|
+ * is the hostname and port number joined with ':' (e.g.,
+ * example.org:8443).  The implementation of this function must assign
+ * the pointer to the buffer where proof is stored to the |*proof_ptr|
+ * and its length to the |*prooflen_ptr|. Return 0 if the function
+ * succeeds. If no client certificate is required for the |origin|,
+ * the function must return SPDYLAY_ERR_CLIENT_CERT_NOT_NEEDED.
+ * (TODO: add error code)
+ *
+ * The data stored in |*proof_ptr| will be copied just after the
+ * function call. This copy lives until the CREDENTIAL frame is
+ * sent. Because the client certificate vector has limited number of
+ * slots, the application code may be required to pass the same proof
+ * more than once.
+ */
+typedef int (*spdylay_get_credential_proof)
+(spdylay_session *session, const char *origin,
+ uint8_t **proof_ptr, size_t *prooflen_ptr, void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when the library needs the client
+ * certificate for the given |origin|. The |origin| is the hostname
+ * and port number joined with ':' (e.g., example.org:8443). The
+ * implementation of this function must assign the pointer to the
+ * buffer where certificate is stored to the |*cert_ptr| and its
+ * length to the |*certlen_ptr|. Because the library requires the
+ * certificate chain, this callback function will be called repeatedly
+ * to get certificate chain starting with the leaf certificate.
+ * Assign 0 to |*certlen_ptr| if there is no more
+ * certificate. Currently, the library does not expect for this
+ * function to fail. Therefore the function must return 0.
+ *
+ * The data stored in |*cert_ptr| will be copied just after the
+ * function call. This copy lives until the CREDENTIAL frame is
+ * sent. Because the client certificate vector has limited number of
+ * slots, the application code may be required to pass the same
+ * certificate more than once.
+ */
+typedef int (*spdylay_get_credential_cert)
+(spdylay_session *session, const char* origin,
+ uint8_t **cert_ptr, size_t *certlen_ptr, void *user_data);
+
+/**
  * @struct
  *
  * Callback functions.
