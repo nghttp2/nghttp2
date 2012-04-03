@@ -68,6 +68,7 @@ static void test_spdylay_frame_unpack_nv_with(size_t len_size)
          "\0\0", 2);
   CU_ASSERT(SPDYLAY_ERR_INVALID_HEADER_BLOCK ==
             spdylay_frame_unpack_nv(&nv, out, inlen, len_size));
+  spdylay_frame_nv_del(nv);
 }
 
 void test_spdylay_frame_unpack_nv_spdy2(void)
