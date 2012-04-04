@@ -460,6 +460,9 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
     const std::string &field = req->headers[i].first;
     const std::string &value = req->headers[i].second;
     if(!url_found && field == ":path") {
+      // Do not response to this request to allow clients to test timeouts.
+      if (value.find("?spdyd_do_not_respond_to_req=yes") != std::string::npos)
+        return;
       url_found = true;
       url = value;
     } else if(field == ":method") {
