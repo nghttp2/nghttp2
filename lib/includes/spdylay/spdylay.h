@@ -1430,6 +1430,25 @@ size_t spdylay_session_get_outbound_queue_size(spdylay_session *session);
  */
 uint8_t spdylay_session_get_pri_lowest(spdylay_session *session);
 
+/*
+ * @function
+ *
+ * Submits GOAWAY frame.  The status code |status_code| is ignored if
+ * the protocol version is :macro:`SPDYLAY_PROTO_SPDY2`.
+ *
+ * This function should be called when the connection should be
+ * terminated after sending GOAWAY. If the remaining streams should be
+ * processed after GOAWAY, use `spdylay_submit_goaway()` instead.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`SPDYLAY_ERR_NOMEM`
+ *     Out of memory.
+ */
+int spdylay_session_fail_session(spdylay_session *session,
+                                 uint32_t status_code);
+
 /**
  * @function
  *

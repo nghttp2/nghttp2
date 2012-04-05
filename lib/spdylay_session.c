@@ -63,13 +63,8 @@ static int spdylay_is_fatal(int error)
   return error < SPDYLAY_ERR_FATAL;
 }
 
-/*
- * This function should be called when the session wants to drop
- * connection after sending GOAWAY. These cases are called as the
- * session error.  For example, when it receives bad zlib data.
- */
-static int spdylay_session_fail_session(spdylay_session *session,
-                                        uint32_t status_code)
+int spdylay_session_fail_session(spdylay_session *session,
+                                 uint32_t status_code)
 {
   session->goaway_flags |= SPDYLAY_GOAWAY_FAIL_ON_SEND;
   return spdylay_submit_goaway(session, status_code);
