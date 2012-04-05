@@ -62,8 +62,9 @@ struct Config {
   bool remote_name;
   bool verbose;
   bool spdy3_only;
+  int timeout;
   Config():null_out(false), remote_name(false), verbose(false),
-           spdy3_only(false) {}
+           spdy3_only(false), timeout(-1) {}
 };
 
 struct Request {
@@ -193,18 +194,20 @@ int communicate(const std::string& host, uint16_t port,
   }
   pollfds[0].fd = fd;
   ctl_poll(pollfds, &sc);
+  int end_time = time(NULL) + config.timeout;
+  int timeout = config.timeout;
 
   bool ok = true;
   while(sc.want_read() || sc.want_write()) {
-    int nfds = poll(pollfds, npollfds, -1);
+    int nfds = poll(pollfds, npollfds, timeout);
     if(nfds == -1) {
       perror("poll");
       return -1;
     }
     if(pollfds[0].revents & (POLLIN | POLLOUT)) {
       if(sc.recv() != 0 || sc.send() != 0) {
-        ok = false;
         std::cout << "Fatal" << std::endl;
+        ok = false;
         break;
       }
     }
@@ -213,9 +216,13 @@ int communicate(const std::string& host, uint16_t port,
       ok = false;
       break;
     }
-    if(!ok) {
+    timeout = timeout == -1 ? timeout : end_time - time(NULL);
+    if (config.timeout != -1 && timeout <= 0) {
+      std::cout << "Requests to " << hostport << "timed out.";
+      ok = false;
       break;
     }
+    assert(ok);
     ctl_poll(pollfds, &sc);
   }
 
@@ -275,7 +282,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Onv] [URI...]" << std::endl;
+  out << "Usage: spdycat [-Onv3] [--timeout=seconds] [URI...]" << std::endl;
 }
 
 void print_help(std::ostream& out)
@@ -291,6 +298,7 @@ void print_help(std::ostream& out)
       << "                       ends with '/', 'index.html' is used as a\n"
       << "                       filename. Not implemented yet.\n"
       << "    -3, --spdy3        Only use SPDY/3.\n"
+      << "    -t, --timeout=N    Timeout each request after N seconds.\n"
       << "\n"
       << std::endl;
 }
@@ -303,11 +311,12 @@ int main(int argc, char **argv)
       {"null-out", no_argument, 0, 'n' },
       {"remote-name", no_argument, 0, 'O' },
       {"spdy3", no_argument, 0, '3' },
+      {"timeout", required_argument, 0, 't' },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Onhv3", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Onhv3t", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -326,6 +335,9 @@ int main(int argc, char **argv)
       break;
     case '3':
       config.spdy3_only = true;
+      break;
+    case 't':
+      config.timeout = atoi(optarg);
       break;
     case '?':
       exit(EXIT_FAILURE);
