@@ -257,10 +257,10 @@ static void test_spdylay_frame_pack_goaway_version(uint16_t version)
   } else if(version == SPDYLAY_PROTO_SPDY3) {
     CU_ASSERT(SPDYLAY_GOAWAY_PROTOCOL_ERROR == oframe.goaway.status_code);
   }
-  CU_ASSERT(version == oframe.headers.hd.version);
-  CU_ASSERT(SPDYLAY_GOAWAY == oframe.headers.hd.type);
-  CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.headers.hd.flags);
-  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  CU_ASSERT(version == oframe.goaway.hd.version);
+  CU_ASSERT(SPDYLAY_GOAWAY == oframe.goaway.hd.type);
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.goaway.hd.flags);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.goaway.hd.length);
   free(buf);
   spdylay_frame_goaway_free(&oframe.goaway);
   spdylay_frame_goaway_free(&frame.goaway);
@@ -306,7 +306,7 @@ static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   CU_ASSERT(version == oframe.syn_stream.hd.version);
   CU_ASSERT(SPDYLAY_SYN_STREAM == oframe.syn_stream.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.syn_stream.hd.flags);
-  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.syn_stream.hd.length);
   CU_ASSERT(strcmp("method", oframe.syn_stream.nv[0]) == 0);
   CU_ASSERT(strcmp("GET", oframe.syn_stream.nv[1]) == 0);
   CU_ASSERT(NULL == oframe.syn_stream.nv[14]);
@@ -358,7 +358,7 @@ static void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
   CU_ASSERT(version == oframe.syn_reply.hd.version);
   CU_ASSERT(SPDYLAY_SYN_REPLY == oframe.syn_reply.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.syn_reply.hd.flags);
-  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.syn_reply.hd.length);
   CU_ASSERT(strcmp("method", oframe.syn_reply.nv[0]) == 0);
   CU_ASSERT(strcmp("GET", oframe.syn_reply.nv[1]) == 0);
   CU_ASSERT(NULL == oframe.syn_reply.nv[14]);
@@ -410,7 +410,7 @@ static void test_spdylay_frame_pack_headers_version(uint16_t version)
   CU_ASSERT(version == oframe.headers.hd.version);
   CU_ASSERT(SPDYLAY_HEADERS == oframe.headers.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.headers.hd.flags);
-  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.headers.hd.length);
   CU_ASSERT(strcmp("method", oframe.headers.nv[0]) == 0);
   CU_ASSERT(strcmp("GET", oframe.headers.nv[1]) == 0);
   CU_ASSERT(NULL == oframe.headers.nv[14]);
@@ -450,10 +450,11 @@ void test_spdylay_frame_pack_window_update(void)
              framelen-SPDYLAY_FRAME_HEAD_LENGTH));
   CU_ASSERT(1000000007 == oframe.window_update.stream_id);
   CU_ASSERT(4096 == oframe.window_update.delta_window_size);
-  CU_ASSERT(SPDYLAY_PROTO_SPDY3 == oframe.headers.hd.version);
-  CU_ASSERT(SPDYLAY_WINDOW_UPDATE == oframe.headers.hd.type);
-  CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.headers.hd.flags);
-  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.ping.hd.length);
+  CU_ASSERT(SPDYLAY_PROTO_SPDY3 == oframe.window_update.hd.version);
+  CU_ASSERT(SPDYLAY_WINDOW_UPDATE == oframe.window_update.hd.type);
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.window_update.hd.flags);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH ==
+            oframe.window_update.hd.length);
   free(buf);
   spdylay_frame_window_update_free(&oframe.window_update);
   spdylay_frame_window_update_free(&frame.window_update);
