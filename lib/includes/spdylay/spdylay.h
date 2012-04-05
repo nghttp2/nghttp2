@@ -1183,7 +1183,7 @@ void spdylay_session_del(spdylay_session *session);
 /**
  * @function
  *
- * Sets the origin tuple (|scheme|, |host| and |port) that the
+ * Sets the origin tuple (|scheme|, |host| and |port|) that the
  * connection is made to and the client certificate is sent in the
  * first TLS handshake. This function must be called before any call
  * of `spdylay_session_send()` and `spdylay_session_recv()` and be
