@@ -64,8 +64,8 @@ typedef enum {
 /**
  * @enum
  *
- * Error codes used in the Spdylay library. The following values are
- * defined:
+ * Error codes used in the Spdylay library. The code range is [-999,
+ * -500], inclusive. The following values are defined:
  */
 typedef enum {
   /**
