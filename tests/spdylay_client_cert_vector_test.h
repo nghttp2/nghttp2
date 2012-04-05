@@ -22,23 +22,11 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_INT_H
-#define SPDYLAY_INT_H
+#ifndef SPDYLAY_CLIENT_CERT_VECTOR_TEST_H
+#define SPDYLAY_CLIENT_CERT_VECTOR_TEST_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+void test_spdylay_client_cert_vector_find(void);
+void test_spdylay_client_cert_vector_resize(void);
+void test_spdylay_client_cert_vector_get_origin(void);
 
-#include <stdint.h>
-
-/* Macros, types and constants for internal use */
-
-typedef int (*spdylay_compar)(const void *lhs, const void *rhs);
-
-/* Internal error code. They must be in the range [-499, -100],
-   inclusive. */
-typedef enum {
-  SPDYLAY_ERR_CREDENTIAL_PENDING = -100
-} spdylay_internal_error;
-
-#endif /* SPDYLAY_INT_H */
+#endif /* SPDYLAY_CLIENT_CERT_VECTOR_TEST_H */

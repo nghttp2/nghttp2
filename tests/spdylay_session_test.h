@@ -64,5 +64,8 @@ void test_spdylay_session_on_ctrl_not_send(void);
 void test_spdylay_session_on_settings_received(void);
 void test_spdylay_submit_settings(void);
 void test_spdylay_session_get_outbound_queue_size(void);
+void test_spdylay_session_prep_credential(void);
+void test_spdylay_submit_syn_stream_with_credential(void);
+void test_spdylay_session_set_initial_client_cert_origin(void);
 
 #endif /* SPDYLAY_SESSION_TEST_H */

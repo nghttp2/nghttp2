@@ -155,6 +155,11 @@ typedef enum {
    */
   SPDYLAY_ERR_INVALID_HEADER_BLOCK = -518,
   /**
+   * Indicates that the context is not suitable to perform the
+   * requested operation.
+   */
+  SPDYLAY_ERR_INVALID_STATE = -519,
+  /**
    * The errors < :enum:`SPDYLAY_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -214,7 +219,11 @@ typedef enum {
   /**
    * The WINDOW_UPDATE control frame. This first appeared in SPDY/3.
    */
-  SPDYLAY_WINDOW_UPDATE = 9
+  SPDYLAY_WINDOW_UPDATE = 9,
+  /**
+   * The CREDENTIAL control frame. This first appeared in SPDY/3.
+   */
+  SPDYLAY_CREDENTIAL = 10
 } spdylay_frame_type;
 
 /**
@@ -638,6 +647,52 @@ typedef struct {
 /**
  * @struct
  *
+ * The structure to hold chunk of memory.
+ */
+typedef struct {
+  /**
+   * The pointer to the data.
+   */
+  uint8_t *data;
+  /**
+   * The length of the data.
+   */
+  size_t length;
+} spdylay_mem_chunk;
+
+/**
+ * @struct
+ *
+ * The CREDENTIAL control frame. This first appeared in SPDY/3. It has
+ * the following members:
+ */
+typedef struct {
+  /**
+   * The control frame header.
+   */
+  spdylay_ctrl_hd hd;
+  /**
+   * The index in the client certificate vector.
+   */
+  uint16_t slot;
+  /**
+   * Cryptographic proof that the client has possession of the private
+   * key associated with the certificate.
+   */
+  spdylay_mem_chunk proof;
+  /**
+   * The certificate chain. The certs[0] is the leaf certificate.
+   */
+  spdylay_mem_chunk *certs;
+  /**
+   * The number of certificates in |certs|.
+   */
+  size_t ncerts;
+} spdylay_credential;
+
+/**
+ * @struct
+ *
  * Convenient structure to inspect control frame header.  It is useful
  * to get the frame type.
  */
@@ -747,6 +802,10 @@ typedef union {
    * The WINDOW_UPDATE control frame.
    */
   spdylay_window_update window_update;
+  /**
+   * The CREDENTIAL control frame.
+   */
+  spdylay_credential credential;
 } spdylay_frame;
 
 /**
@@ -895,54 +954,88 @@ typedef void (*spdylay_on_stream_close_callback)
 typedef void (*spdylay_on_request_recv_callback)
 (spdylay_session *session, int32_t stream_id, void *user_data);
 
+#define SPDYLAY_MAX_SCHEME 255
+#define SPDYLAY_MAX_HOSTNAME 255
+
+struct spdylay_origin;
+
+/**
+ * @struct
+ *
+ * The Web origin structure. The origin is the tuple (scheme, host,
+ * port). The details of this structure is intentionally hidden. To
+ * access these members, use accessor functions below.
+ */
+typedef struct spdylay_origin spdylay_origin;
+
+/**
+ * @function
+ *
+ * Returns the scheme member of the |origin|.
+ */
+const char* spdylay_origin_get_scheme(const spdylay_origin *origin);
+
+/**
+ * @function
+ *
+ * Returns the host member of the |origin|.
+ */
+const char* spdylay_origin_get_host(const spdylay_origin *origin);
+
+/**
+ * @function
+ *
+ * Returns the port member of the |origin|.
+ */
+uint16_t spdylay_origin_get_port(const spdylay_origin *origin);
+
 /**
  * @functypedef
  *
- * Callback function invoked when the library wants to know whether
- * the client certificate is required for the given |origin| and if so
- * requests the cryptographic proof for the certificate.  The |origin|
- * is the hostname and port number joined with ':' (e.g.,
- * example.org:8443).  The implementation of this function must assign
- * the pointer to the buffer where proof is stored to the |*proof_ptr|
- * and its length to the |*prooflen_ptr|. Return 0 if the function
- * succeeds. If no client certificate is required for the |origin|,
- * the function must return SPDYLAY_ERR_CLIENT_CERT_NOT_NEEDED.
- * (TODO: add error code)
+ * Callback function invoked when the library needs the cryptographic
+ * proof that the client has possession of the private key associated
+ * with the certificate for the given |origin|.  If called with
+ * |prooflen| == 0, the implementation of this function must return
+ * the length of the proof in bytes. If called with |prooflen| > 0,
+ * write proof into |proof| exactly |prooflen| bytes and return 0.
  *
- * The data stored in |*proof_ptr| will be copied just after the
- * function call. This copy lives until the CREDENTIAL frame is
- * sent. Because the client certificate vector has limited number of
- * slots, the application code may be required to pass the same proof
- * more than once.
+ * Because the client certificate vector has limited number of slots,
+ * the application code may be required to pass the same proof more
+ * than once.
  */
-typedef int (*spdylay_get_credential_proof)
-(spdylay_session *session, const char *origin,
- uint8_t **proof_ptr, size_t *prooflen_ptr, void *user_data);
+typedef ssize_t (*spdylay_get_credential_proof)
+(spdylay_session *session, const spdylay_origin *origin,
+ uint8_t *proof, size_t prooflen, void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when the library needs the length of the
+ * client certificate chain for the given |origin|.  The
+ * implementation of this function must return the length of the
+ * client certificate chain.  If no client certificate is required for
+ * the given |origin|, return 0.  If positive integer is returned,
+ * :type:`spdylay_get_credential_proof` and
+ * :type:`spdylay_get_credential_cert` callback functions will be used
+ * to get the cryptographic proof and certificate respectively.
+ */
+typedef ssize_t (*spdylay_get_credential_ncerts)
+(spdylay_session *session, const spdylay_origin *origin, void *user_data);
 
 /**
  * @functypedef
  *
  * Callback function invoked when the library needs the client
- * certificate for the given |origin|. The |origin| is the hostname
- * and port number joined with ':' (e.g., example.org:8443). The
- * implementation of this function must assign the pointer to the
- * buffer where certificate is stored to the |*cert_ptr| and its
- * length to the |*certlen_ptr|. Because the library requires the
- * certificate chain, this callback function will be called repeatedly
- * to get certificate chain starting with the leaf certificate.
- * Assign 0 to |*certlen_ptr| if there is no more
- * certificate. Currently, the library does not expect for this
- * function to fail. Therefore the function must return 0.
- *
- * The data stored in |*cert_ptr| will be copied just after the
- * function call. This copy lives until the CREDENTIAL frame is
- * sent. Because the client certificate vector has limited number of
- * slots, the application code may be required to pass the same
- * certificate more than once.
+ * certificate for the given |origin|. The |index| is the index of the
+ * certificate chain and 0 means the leaf certificate of the chain.
+ * If called with |certlen| == 0, the implementation of this function
+ * must return the length of the certificate in bytes. If called with
+ * |certlen| > 0, write certificate into |cert| exactly |certlen|
+ * bytes and return 0.
  */
-typedef int (*spdylay_get_credential_cert)
-(spdylay_session *session, const char* origin,
- uint8_t **cert_ptr, size_t *certlen_ptr, void *user_data);
+typedef ssize_t (*spdylay_get_credential_cert)
+(spdylay_session *session, const spdylay_origin *origin, size_t index,
+ uint8_t *cert, size_t certlen, void *user_data);
 
 /**
  * @struct
@@ -1005,6 +1098,22 @@ typedef struct {
    * received.
    */
   spdylay_on_request_recv_callback on_request_recv_callback;
+  /**
+   * Callback function invoked when the library needs the
+   * cryptographic proof that the client has possession of the private
+   * key associated with the certificate.
+   */
+  spdylay_get_credential_proof get_credential_proof;
+  /**
+   * Callback function invoked when the library needs the length of the
+   * client certificate chain.
+   */
+  spdylay_get_credential_ncerts get_credential_ncerts;
+  /**
+   * Callback function invoked when the library needs the client
+   * certificate.
+   */
+  spdylay_get_credential_cert get_credential_cert;
 } spdylay_session_callbacks;
 
 /**
@@ -1076,6 +1185,49 @@ void spdylay_session_del(spdylay_session *session);
 /**
  * @function
  *
+ * Sets the origin tuple (|scheme|, |host| and |port) that the
+ * connection is made to and the client certificate is sent in the
+ * first TLS handshake. This function must be called before any call
+ * of `spdylay_session_send()` and `spdylay_session_recv()` and be
+ * called only once per session. This function must not be called if
+ * the |session| is initialized for server use. If the client did not
+ * provide the client certificate in the first TLS handshake, this
+ * function must not be called.
+ *
+ * This function stores the given origin at the slot 1 in the client
+ * certificate vector.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory
+ * SPDYLAY_ERR_INVALID_STATE
+ *     The |session| is initialized for server use; or the client
+ *     certificate vector size is 0.
+ */
+int spdylay_session_set_initial_client_cert_origin(spdylay_session *session,
+                                                   const char *scheme,
+                                                   const char *host,
+                                                   uint16_t port);
+
+/**
+ * @function
+ *
+ * Returns the origin at the index |slot| in the client certificate
+ * vector. If there is no origin at the given |slot|, this function
+ * returns ``NULL``.
+ *
+ * This function must not be called if the |session| is initialized
+ * for server use.
+ */
+const spdylay_origin* spdylay_session_get_client_cert_origin
+(spdylay_session *session,
+ size_t slot);
+
+/**
+ * @function
+ *
  * Sends pending frames to the remote peer.
  *
  * This function retrieves the highest prioritized frame from the
@@ -1094,6 +1246,14 @@ void spdylay_session_del(spdylay_session *session);
  *    :member:`spdylay_session_callbacks.on_ctrl_not_send_callback` is
  *    invoked. Abort the following steps.
  * 4. If the frame is SYN_STREAM, the stream is opened here.
+ *    If the |session| is initialized for client use and the protocol
+ *    version is :macro:`SPDYLAY_PROTO_SPDY3` and the library needs
+ *    the client certificate for the origin,
+ *    :member:`spdylay_session_callbacks.get_credential_ncerts` is
+ *    invoked. If the result is more than zero,
+ *    :member:`spdylay_session_callbacks.get_credential_proof` and
+ *    :member:`spdylay_session_callbacks.get_credential_cert` are also
+ *    invoked.
  * 5. :member:`spdylay_session_callbacks.before_ctrl_send_callback` is
  *    invoked.
  * 6. :member:`spdylay_session_callbacks.send_callback` is invoked one

@@ -37,6 +37,7 @@
 #include "spdylay_stream.h"
 #include "spdylay_buffer.h"
 #include "spdylay_outbound_item.h"
+#include "spdylay_client_cert_vector.h"
 
 /**
  * @macro
@@ -73,6 +74,11 @@ typedef struct {
 #define SPDYLAY_INITIAL_NV_BUFFER_LENGTH 4096
 
 #define SPDYLAY_INITIAL_WINDOW_SIZE 65536
+
+/* Initial size of client certificate vector */
+#define SPDYLAY_INITIAL_CLIENT_CERT_VECTOR_LENGTH 8
+/* Maxmum size of client certificate vector */
+#define SPDYLAY_MAX_CLIENT_CERT_VECTOR_LENGTH 255
 
 typedef enum {
   SPDYLAY_RECV_HEAD,
@@ -166,6 +172,9 @@ struct spdylay_session {
   uint32_t remote_settings[SPDYLAY_SETTINGS_MAX+1];
   /* Settings value of the local endpoint. */
   uint32_t local_settings[SPDYLAY_SETTINGS_MAX+1];
+
+  /* Client certificate vector */
+  spdylay_client_cert_vector cli_certvec;
 
   spdylay_session_callbacks callbacks;
   void *user_data;
@@ -412,6 +421,15 @@ int spdylay_session_on_window_update_received(spdylay_session *session,
                                               spdylay_frame *frame);
 
 /*
+ * Called when CREDENTIAL is received, assuming |frame.credential| is
+ * properly initialized.
+ *
+ * Currently, this function always succeeds and returns 0.
+ */
+int spdylay_session_on_credential_received(spdylay_session *session,
+                                           spdylay_frame *frame);
+
+/*
  * Called when DATA is received.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -494,5 +512,22 @@ spdylay_outbound_item* spdylay_session_get_next_ob_item
 void spdylay_session_update_local_settings(spdylay_session *session,
                                            spdylay_settings_entry *iv,
                                            size_t niv);
+
+/*
+ * Returns the index in the client certificate vector for the
+ * |syn_stream|. The origin is computed from |syn_stream->nv|.  If no
+ * client certificate is required, return 0. If CREDENTIAL frame needs
+ * to be sent before the |syn_stream|, this function returns
+ * :macro:`SPDYLAY_ERR_CREDENTIAL_PENDING`. In this case, CREDENTIAL
+ * frame has been already queued. This function returns one of the
+ * following negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ * SPDYLAY_ERR_CREDENTIAL_PENDING
+ *     The CREDENTIAL frame must be sent before the |syn_stream|.
+ */
+int spdylay_session_prep_credential(spdylay_session *session,
+                                    spdylay_syn_stream *syn_stream);
 
 #endif /* SPDYLAY_SESSION_H */

@@ -35,6 +35,7 @@
 #include "spdylay_frame_test.h"
 #include "spdylay_stream_test.h"
 #include "spdylay_npn_test.h"
+#include "spdylay_client_cert_vector_test.h"
 
 static int init_suite1(void)
 {
@@ -144,6 +145,12 @@ int main(int argc, char* argv[])
                    test_spdylay_submit_settings) ||
       !CU_add_test(pSuite, "session_get_outbound_queue_size",
                    test_spdylay_session_get_outbound_queue_size) ||
+      !CU_add_test(pSuite, "session_prep_credential",
+                   test_spdylay_session_prep_credential) ||
+      !CU_add_test(pSuite, "session_submit_syn_stream_with_credential",
+                   test_spdylay_submit_syn_stream_with_credential) ||
+      !CU_add_test(pSuite, "session_set_initial_client_cert_origin",
+                   test_spdylay_session_set_initial_client_cert_origin) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy2",
                    test_spdylay_frame_unpack_nv_spdy2) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy3",
@@ -175,6 +182,8 @@ int main(int argc, char* argv[])
                    test_spdylay_frame_pack_settings_spdy2) ||
       !CU_add_test(pSuite, "frame_pack_settings_spdy3",
                    test_spdylay_frame_pack_settings_spdy3) ||
+      !CU_add_test(pSuite, "frame_pack_credential",
+                   test_spdylay_frame_pack_credential) ||
       !CU_add_test(pSuite, "frame_nv_sort", test_spdylay_frame_nv_sort) ||
       !CU_add_test(pSuite, "frame_nv_downcase",
                    test_spdylay_frame_nv_downcase) ||
@@ -186,8 +195,16 @@ int main(int argc, char* argv[])
                    test_spdylay_frame_unpack_nv_check_name_spdy2) ||
       !CU_add_test(pSuite, "frame_unpack_nv_check_name_spdy3",
                    test_spdylay_frame_unpack_nv_check_name_spdy3) ||
+      !CU_add_test(pSuite, "frame_nv_set_origin",
+                   test_spdylay_frame_nv_set_origin) ||
       !CU_add_test(pSuite, "stream_add_pushed_stream",
-                   test_spdylay_stream_add_pushed_stream)) {
+                   test_spdylay_stream_add_pushed_stream) ||
+      !CU_add_test(pSuite, "client_cert_vector_find",
+                   test_spdylay_client_cert_vector_find) ||
+      !CU_add_test(pSuite, "client_cert_vector_resize",
+                   test_spdylay_client_cert_vector_resize) ||
+      !CU_add_test(pSuite, "client_cert_vector_get_origin",
+                   test_spdylay_client_cert_vector_get_origin)) {
      CU_cleanup_registry();
      return CU_get_error();
    }

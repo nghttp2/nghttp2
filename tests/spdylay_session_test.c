@@ -1924,7 +1924,7 @@ void test_spdylay_session_on_settings_received(void)
   iv[2].value = 64*1024;
   iv[2].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
-  iv[3].settings_id = SPDYLAY_SETTINGS_CURRENT_CWND;
+  iv[3].settings_id = SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE;
   iv[3].value = 512;
   iv[3].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
@@ -1933,7 +1933,7 @@ void test_spdylay_session_on_settings_received(void)
   iv[4].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
   memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
-  spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks,
+  spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks,
                              &user_data);
   session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] = 16*1024;
 
@@ -1953,8 +1953,11 @@ void test_spdylay_session_on_settings_received(void)
             session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]);
   CU_ASSERT(64*1024 ==
             session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]);
-  CU_ASSERT(512 ==
-            session->remote_settings[SPDYLAY_SETTINGS_CURRENT_CWND]);
+  /* We limit certificate vector in reasonable size. */
+  CU_ASSERT(SPDYLAY_MAX_CLIENT_CERT_VECTOR_LENGTH ==
+            session->remote_settings
+            [SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE]);
+  CU_ASSERT(SPDYLAY_MAX_CLIENT_CERT_VECTOR_LENGTH == session->cli_certvec.size);
   CU_ASSERT(64*1024 == stream1->window_size);
   CU_ASSERT(0 == stream2->window_size);
 
@@ -2061,6 +2064,160 @@ void test_spdylay_session_get_outbound_queue_size(void)
 
   CU_ASSERT(0 == spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK));
   CU_ASSERT(2 == spdylay_session_get_outbound_queue_size(session));
+
+  spdylay_session_del(session);
+}
+
+static ssize_t get_credential_ncerts(spdylay_session *session,
+                                     const spdylay_origin *origin,
+                                     void *user_data)
+{
+  if(strcmp("example.org", origin->host) == 0 &&
+     strcmp("https", origin->scheme) == 0 &&
+     443 == origin->port) {
+    return 2;
+  } else {
+    return 0;
+  }
+}
+
+static ssize_t get_credential_cert(spdylay_session *session,
+                                   const spdylay_origin *origin,
+                                   size_t index,
+                                   uint8_t *cert, size_t certlen,
+                                   void *user_data)
+{
+  size_t len = strlen(origin->host);
+  if(certlen == 0) {
+    return len;
+  } else {
+    assert(certlen == len);
+    memcpy(cert, origin->host, len);
+    return 0;
+  }
+}
+
+static ssize_t get_credential_proof(spdylay_session *session,
+                                    const spdylay_origin *origin,
+                                    uint8_t *proof, size_t prooflen,
+                                    void *uer_data)
+{
+  size_t len = strlen(origin->scheme);
+  if(prooflen == 0) {
+    return len;
+  } else {
+    assert(prooflen == len);
+    memcpy(proof, origin->scheme, len);
+    return 0;
+  }
+}
+
+void test_spdylay_session_prep_credential(void)
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { ":host", "example.org",
+                       ":scheme", "https",
+                       NULL };
+  const char *nv_nocert[] = { ":host", "nocert",
+                              ":scheme", "https",
+                              NULL };
+  spdylay_frame frame, *cred_frame;
+  spdylay_outbound_item *item;
+  size_t i;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.get_credential_ncerts = get_credential_ncerts;
+  callbacks.get_credential_cert = get_credential_cert;
+  callbacks.get_credential_proof = get_credential_proof;
+  CU_ASSERT(0 == spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3,
+                                            &callbacks, NULL));
+  spdylay_frame_syn_stream_init(&frame.syn_stream, session->version,
+                                SPDYLAY_CTRL_FLAG_NONE, 1, 0, 0,
+                                dup_nv(nv));
+  CU_ASSERT(SPDYLAY_ERR_CREDENTIAL_PENDING ==
+            spdylay_session_prep_credential(session, &frame.syn_stream));
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_CREDENTIAL == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_OB_PRI_CREDENTIAL == item->pri);
+  cred_frame = OB_CTRL(item);
+  CU_ASSERT(strlen("https") == cred_frame->credential.proof.length);
+  CU_ASSERT(memcmp("https", cred_frame->credential.proof.data,
+                   cred_frame->credential.proof.length) == 0);
+  CU_ASSERT(2 == cred_frame->credential.ncerts);
+  for(i = 0; i < cred_frame->credential.ncerts; ++i) {
+    CU_ASSERT(strlen("example.org") == cred_frame->credential.certs[i].length);
+    CU_ASSERT(memcmp("example.org", cred_frame->credential.certs[i].data,
+                     cred_frame->credential.certs[i].length) == 0);
+  }
+  /* Next spdylay_session_get_next_ob_item() call returns slot index */
+  CU_ASSERT(1 ==  spdylay_session_prep_credential(session, &frame.syn_stream));
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  spdylay_frame_syn_stream_init(&frame.syn_stream, session->version,
+                                SPDYLAY_CTRL_FLAG_NONE, 1, 0, 0,
+                                dup_nv(nv_nocert));
+  CU_ASSERT(0 == spdylay_session_prep_credential(session, &frame.syn_stream));
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_submit_syn_stream_with_credential(void)
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const char *nv[] = { ":host", "example.org",
+                       ":scheme", "https",
+                       NULL };
+  my_user_data ud;
+  accumulator acc;
+
+  ud.acc = &acc;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = block_count_send_callback;
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback;
+  callbacks.get_credential_ncerts = get_credential_ncerts;
+  callbacks.get_credential_cert = get_credential_cert;
+  callbacks.get_credential_proof = get_credential_proof;
+
+  CU_ASSERT(0 == spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3,
+                                            &callbacks, &ud));
+
+  CU_ASSERT(0 == spdylay_submit_request(session, 0, nv, NULL, NULL));
+
+  ud.block_count = 1;
+  ud.ctrl_send_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  CU_ASSERT(1 == ud.ctrl_send_cb_called);
+  CU_ASSERT(SPDYLAY_CREDENTIAL == ud.sent_frame_type);
+
+  session->callbacks.send_callback = accumulator_send_callback;
+  acc.length = 0;
+  ud.ctrl_send_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(1 == ud.ctrl_send_cb_called);
+  CU_ASSERT(SPDYLAY_SYN_STREAM == ud.sent_frame_type);
+  /* Check slot */
+  CU_ASSERT(1 == acc.buf[17]);
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_set_initial_client_cert_origin(void)
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  const spdylay_origin *origin;
+  spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks, NULL);
+  CU_ASSERT(0 == spdylay_session_set_initial_client_cert_origin
+            (session, "https", "example.org", 443));
+  origin = spdylay_session_get_client_cert_origin(session, 1);
+  CU_ASSERT(NULL != origin);
+  CU_ASSERT(strcmp("https", spdylay_origin_get_scheme(origin)) == 0);
+  CU_ASSERT(strcmp("example.org", spdylay_origin_get_host(origin)) == 0);
+  CU_ASSERT(443 == spdylay_origin_get_port(origin));
 
   spdylay_session_del(session);
 }

@@ -517,6 +517,66 @@ void test_spdylay_frame_pack_settings_spdy3(void)
   test_spdylay_frame_pack_settings_version(SPDYLAY_PROTO_SPDY3);
 }
 
+static char* strcopy(const char* s)
+{
+  size_t len = strlen(s);
+  char *dest = malloc(len+1);
+  memcpy(dest, s, len);
+  dest[len] = '\0';
+  return dest;
+}
+
+void test_spdylay_frame_pack_credential(void)
+{
+  spdylay_frame frame, oframe;
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  ssize_t framelen;
+  spdylay_mem_chunk proof;
+  spdylay_mem_chunk *certs;
+  size_t ncerts;
+  proof.data = (uint8_t*)strcopy("PROOF");
+  proof.length = strlen("PROOF");
+  ncerts = 2;
+  certs = malloc(sizeof(spdylay_mem_chunk)*ncerts);
+  certs[0].data = (uint8_t*)strcopy("CERT0");
+  certs[0].length = strlen("CERT0");
+  certs[1].data = (uint8_t*)strcopy("CERT1");
+  certs[1].length = strlen("CERT1");
+  spdylay_frame_credential_init(&frame.credential, SPDYLAY_PROTO_SPDY3,
+                                1, &proof, certs, ncerts);
+  framelen = spdylay_frame_pack_credential(&buf, &buflen, &frame.credential);
+  CU_ASSERT(0 == spdylay_frame_unpack_credential
+            (&oframe.credential,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             framelen-SPDYLAY_FRAME_HEAD_LENGTH));
+  CU_ASSERT(1 == oframe.credential.slot);
+  CU_ASSERT(5 == oframe.credential.proof.length);
+  CU_ASSERT(memcmp("PROOF", oframe.credential.proof.data, 5) == 0);
+  CU_ASSERT(2 == oframe.credential.ncerts);
+  CU_ASSERT(5 == oframe.credential.certs[0].length);
+  CU_ASSERT(memcmp("CERT0", oframe.credential.certs[0].data, 5) == 0);
+  CU_ASSERT(5 == oframe.credential.certs[1].length);
+  CU_ASSERT(memcmp("CERT1", oframe.credential.certs[1].data, 5) == 0);
+  CU_ASSERT(SPDYLAY_PROTO_SPDY3 == oframe.credential.hd.version);
+  CU_ASSERT(SPDYLAY_CREDENTIAL == oframe.credential.hd.type);
+  CU_ASSERT(SPDYLAY_CTRL_FLAG_NONE == oframe.credential.hd.flags);
+  CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.credential.hd.length);
+  spdylay_frame_credential_free(&oframe.credential);
+
+  /* Put large certificate length */
+  spdylay_put_uint32be(&buf[8+2+4+5], INT32_MAX);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME == spdylay_frame_unpack_credential
+            (&oframe.credential,
+             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
+             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
+             framelen-SPDYLAY_FRAME_HEAD_LENGTH));
+
+  free(buf);
+  spdylay_frame_credential_free(&frame.credential);
+}
+
 void test_spdylay_frame_nv_sort(void)
 {
   char *nv[7];
@@ -669,4 +729,50 @@ void test_spdylay_frame_unpack_nv_check_name_spdy3(void)
 {
   test_spdylay_frame_unpack_nv_check_name_with
     (spdylay_frame_get_len_size(SPDYLAY_PROTO_SPDY3));
+}
+
+void test_spdylay_frame_nv_set_origin(void)
+{
+  spdylay_origin origin;
+  const char *nv1[] = {
+    ":host", "example.org",
+    ":scheme", "https",
+    NULL
+  };
+  const char *nv2[] = {
+    ":host", "example.org:8443",
+    ":scheme", "https",
+    NULL
+  };
+  const char *nv3[] = {
+    ":host", "example.org:0",
+    ":scheme", "https",
+    NULL
+  };
+  const char *nv4[] = {
+    ":host", "example.org",
+    NULL
+  };
+  const char *nv5[] = {
+    ":scheme", "https",
+    NULL
+  };
+  CU_ASSERT(0 == spdylay_frame_nv_set_origin((char**)nv1, &origin));
+  CU_ASSERT(strcmp("https", origin.scheme) == 0);
+  CU_ASSERT(strcmp("example.org", origin.host) == 0);
+  CU_ASSERT(443 == origin.port);
+
+  CU_ASSERT(0 == spdylay_frame_nv_set_origin((char**)nv2, &origin));
+  CU_ASSERT(strcmp("https", origin.scheme) == 0);
+  CU_ASSERT(strcmp("example.org", origin.host) == 0);
+  CU_ASSERT(8443 == origin.port);
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_frame_nv_set_origin((char**)nv3, &origin));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_frame_nv_set_origin((char**)nv4, &origin));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_frame_nv_set_origin((char**)nv5, &origin));
 }

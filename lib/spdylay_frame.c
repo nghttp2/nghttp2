@@ -27,6 +27,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "spdylay_helper.h"
 #include "spdylay_net.h"
@@ -500,6 +501,52 @@ void spdylay_frame_nv_2to3(char **nv)
   }
 }
 
+#define SPDYLAY_HTTPS_PORT 443
+
+int spdylay_frame_nv_set_origin(char **nv, spdylay_origin *origin)
+{
+  int scheme_found, host_found;
+  int i;
+  scheme_found = host_found = 0;
+  for(i = 0; nv[i]; i += 2) {
+    if(scheme_found == 0 && strcmp(":scheme", nv[i]) == 0) {
+      size_t len = strlen(nv[i+1]);
+      if(len <= SPDYLAY_MAX_SCHEME) {
+        strcpy(origin->scheme, nv[i+1]);
+        scheme_found = 1;
+      }
+    } else if(host_found == 0 && strcmp(":host", nv[i]) == 0) {
+      size_t len = strlen(nv[i+1]);
+      char *sep = memchr(nv[i+1], ':', len);
+      size_t hostlen;
+      if(sep == NULL) {
+        origin->port = SPDYLAY_HTTPS_PORT;
+        sep = nv[i+1]+len;
+      } else {
+        unsigned long int port;
+        errno = 0;
+        port = strtoul(sep+1, NULL, 10);
+        if(errno != 0 || port == 0 || port > UINT16_MAX) {
+          continue;
+        }
+        origin->port = port;
+      }
+      hostlen = sep-nv[i+1];
+      if(hostlen > SPDYLAY_MAX_HOSTNAME) {
+        continue;
+      }
+      memcpy(origin->host, nv[i+1], hostlen);
+      origin->host[hostlen] = '\0';
+      host_found = 1;
+    }
+  }
+  if(scheme_found && host_found) {
+    return 0;
+  } else {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
+}
+
 void spdylay_frame_syn_stream_init(spdylay_syn_stream *frame,
                                    uint16_t version, uint8_t flags,
                                    int32_t stream_id, int32_t assoc_stream_id,
@@ -638,6 +685,36 @@ void spdylay_frame_settings_init(spdylay_settings *frame,
 void spdylay_frame_settings_free(spdylay_settings *frame)
 {
   free(frame->iv);
+}
+
+void spdylay_frame_credential_init(spdylay_credential *frame,
+                                   uint16_t version, uint16_t slot,
+                                   spdylay_mem_chunk *proof,
+                                   spdylay_mem_chunk *certs,
+                                   size_t ncerts)
+{
+  size_t i;
+  memset(frame, 0, sizeof(spdylay_credential));
+  frame->hd.version = version;
+  frame->hd.type = SPDYLAY_CREDENTIAL;
+  frame->slot = slot;
+  frame->proof = *proof;
+  frame->certs = certs;
+  frame->ncerts = ncerts;
+  frame->hd.length = 2+4+frame->proof.length;
+  for(i = 0; i < ncerts; ++i) {
+    frame->hd.length += 4+frame->certs[i].length;
+  }
+}
+
+void spdylay_frame_credential_free(spdylay_credential *frame)
+{
+  size_t i;
+  free(frame->proof.data);
+  for(i = 0; i < frame->ncerts; ++i) {
+    free(frame->certs[i].data);
+  }
+  free(frame->certs);
 }
 
 void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
@@ -1074,6 +1151,158 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
     }
   }
   return 0;
+}
+
+ssize_t spdylay_frame_pack_credential(uint8_t **buf_ptr, size_t *buflen_ptr,
+                                      spdylay_credential *frame)
+{
+  ssize_t framelen;
+  int r;
+  size_t i, offset;
+  framelen = SPDYLAY_FRAME_HEAD_LENGTH+2+4+frame->proof.length;
+  for(i = 0; i < frame->ncerts; ++i) {
+    framelen += 4+frame->certs[i].length;
+  }
+  r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(r != 0) {
+    return r;
+  }
+  memset(*buf_ptr, 0, framelen);
+  spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
+  offset = SPDYLAY_FRAME_HEAD_LENGTH;
+  spdylay_put_uint16be(&(*buf_ptr)[offset], frame->slot);
+  offset += 2;
+  spdylay_put_uint32be(&(*buf_ptr)[offset], frame->proof.length);
+  offset += 4;
+  memcpy(&(*buf_ptr)[offset], frame->proof.data, frame->proof.length);
+  offset += frame->proof.length;
+  for(i = 0; i < frame->ncerts; ++i) {
+    spdylay_put_uint32be(&(*buf_ptr)[offset], frame->certs[i].length);
+    offset += 4;
+    memcpy(&(*buf_ptr)[offset], frame->certs[i].data, frame->certs[i].length);
+    offset += frame->certs[i].length;
+  }
+  return framelen;
+}
+
+/*
+ * Counts number of client certificate in CREDENTIAL frame payload
+ * |payload| with length |payloadlen|. The |payload| points to the
+ * length of the first certificate. This function also checks the
+ * frame payload is properly composed.
+ *
+ * This function returns the number of certificates in |payload| if it
+ * succeeds, or one of the following negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The frame payload is invalid.
+ */
+static int spdylay_frame_count_unpack_cert(const uint8_t *payload,
+                                           size_t payloadlen)
+{
+  size_t n, offset = 0;
+  for(n = 1; 1; ++n) {
+    size_t len;
+    if(offset+4 > payloadlen) {
+      return SPDYLAY_ERR_INVALID_FRAME;
+    }
+    len = spdylay_get_uint32(&payload[offset]);
+    offset += 4;
+    if(len > payloadlen || offset+len > payloadlen) {
+      return SPDYLAY_ERR_INVALID_FRAME;
+    } else {
+      offset += len;
+      if(offset == payloadlen) {
+        break;
+      }
+    }
+  }
+  return n;
+}
+
+/*
+ * Unpacks client certificates in the |payload| with length
+ * |payloadlen|.  First allocates memory to store the |ncerts|
+ * certificates.  Stores certificates in the allocated space and set
+ * its pointer to |*certs_ptr|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory
+ */
+static int spdylay_frame_unpack_cert(spdylay_mem_chunk **certs_ptr,
+                                     size_t ncerts,
+                                     const uint8_t *payload, size_t payloadlen)
+{
+  size_t offset, i, j;
+  spdylay_mem_chunk *certs;
+  certs = malloc(sizeof(spdylay_mem_chunk)*ncerts);
+  if(certs == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  offset = 0;
+  for(i = 0; i < ncerts; ++i) {
+    certs[i].length = spdylay_get_uint32(&payload[offset]);
+    offset += 4;
+    certs[i].data = malloc(certs[i].length);
+    if(certs[i].data == NULL) {
+      goto fail;
+    }
+    memcpy(certs[i].data, &payload[offset], certs[i].length);
+    offset += certs[i].length;
+  }
+  *certs_ptr = certs;
+  return 0;
+ fail:
+  for(j = 0; j < i; ++j) {
+    free(certs[j].data);
+  }
+  free(certs);
+  return SPDYLAY_ERR_NOMEM;
+}
+
+int spdylay_frame_unpack_credential(spdylay_credential *frame,
+                                    const uint8_t *head, size_t headlen,
+                                    const uint8_t *payload,
+                                    size_t payloadlen)
+{
+  size_t offset;
+  int rv;
+  if(payloadlen < 10) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
+  spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  offset = 0;
+  frame->slot = spdylay_get_uint16(&payload[offset]);
+  offset += 2;
+  frame->proof.length = spdylay_get_uint32(&payload[offset]);
+  offset += 4;
+  if(frame->proof.length > payloadlen ||
+     offset+frame->proof.length > payloadlen) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
+  frame->proof.data = malloc(frame->proof.length);
+  if(frame->proof.data == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  memcpy(frame->proof.data, &payload[offset], frame->proof.length);
+  offset += frame->proof.length;
+  rv = spdylay_frame_count_unpack_cert(payload+offset, payloadlen-offset);
+  if(rv < 0) {
+    goto fail;
+  }
+  frame->ncerts = rv;
+  rv = spdylay_frame_unpack_cert(&frame->certs, frame->ncerts,
+                                 payload+offset, payloadlen-offset);
+  if(rv != 0) {
+    goto fail;
+  }
+  return 0;
+ fail:
+  free(frame->proof.data);
+  return rv;
 }
 
 spdylay_settings_entry* spdylay_frame_iv_copy(const spdylay_settings_entry *iv,

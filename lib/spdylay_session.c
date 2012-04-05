@@ -114,7 +114,8 @@ static void spdylay_inbound_frame_reset(spdylay_inbound_frame *iframe)
 static int spdylay_session_new(spdylay_session **session_ptr,
                                uint16_t version,
                                const spdylay_session_callbacks *callbacks,
-                               void *user_data)
+                               void *user_data,
+                               size_t cli_certvec_length)
 {
   int r;
   if(version != SPDYLAY_PROTO_SPDY2 && version != SPDYLAY_PROTO_SPDY3) {
@@ -205,8 +206,16 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->iframe.bufmax = SPDYLAY_INITIAL_INBOUND_FRAMEBUF_LENGTH;
   spdylay_inbound_frame_reset(&(*session_ptr)->iframe);
 
+  r = spdylay_client_cert_vector_init(&(*session_ptr)->cli_certvec,
+                                      cli_certvec_length);
+  if(r != 0) {
+    goto fail_client_cert_vector;
+  }
+
   return 0;
 
+ fail_client_cert_vector:
+  free((*session_ptr)->iframe.buf);
  fail_iframe_buf:
   free((*session_ptr)->nvbuf);
  fail_nvbuf:
@@ -232,7 +241,8 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
                                void *user_data)
 {
   int r;
-  r = spdylay_session_new(session_ptr, version, callbacks, user_data);
+  r = spdylay_session_new(session_ptr, version, callbacks, user_data,
+                          SPDYLAY_INITIAL_CLIENT_CERT_VECTOR_LENGTH);
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 1;
@@ -248,7 +258,8 @@ int spdylay_session_server_new(spdylay_session **session_ptr,
                                void *user_data)
 {
   int r;
-  r = spdylay_session_new(session_ptr, version, callbacks, user_data);
+  r = spdylay_session_new(session_ptr, version, callbacks, user_data,
+                          0);
   if(r == 0) {
     (*session_ptr)->server = 1;
     /* IDs for use in client */
@@ -301,6 +312,7 @@ void spdylay_session_del(spdylay_session *session)
   free(session->nvbuf);
   spdylay_buffer_free(&session->inflatebuf);
   free(session->iframe.buf);
+  spdylay_client_cert_vector_free(&session->cli_certvec);
   free(session);
 }
 
@@ -354,8 +366,8 @@ int spdylay_session_add_frame(spdylay_session *session,
          unreachable. */
       assert(0);
     case SPDYLAY_PING:
-      /* Ping has "height" priority. Give it -1. */
-      item->pri = -1;
+      /* Ping has highest priority. */
+      item->pri = SPDYLAY_OB_PRI_PING;
       break;
     case SPDYLAY_GOAWAY:
       /* Should GOAWAY have higher priority? */
@@ -376,6 +388,9 @@ int spdylay_session_add_frame(spdylay_session *session,
       }
       break;
     }
+    case SPDYLAY_CREDENTIAL:
+      item->pri = SPDYLAY_OB_PRI_CREDENTIAL;
+      break;
     }
     if(frame_type == SPDYLAY_SYN_STREAM) {
       r = spdylay_pq_push(&session->ob_ss_pq, item);
@@ -732,6 +747,146 @@ static int spdylay_session_predicate_data_send(spdylay_session *session,
   }
 }
 
+/*
+ * Retrieves cryptographic proof for the given |origin| using callback
+ * function and store it in |proof|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+static int spdylay_session_get_credential_proof(spdylay_session *session,
+                                                const spdylay_origin *origin,
+                                                spdylay_mem_chunk *proof)
+{
+  proof->length = session->callbacks.get_credential_proof(session,
+                                                          origin,
+                                                          NULL, 0,
+                                                          session->user_data);
+  proof->data = malloc(proof->length);
+  if(proof->data == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  session->callbacks.get_credential_proof(session, origin,
+                                          proof->data, proof->length,
+                                          session->user_data);
+  return 0;
+}
+
+/*
+ * Retrieves client certificate chain for the given |origin| using
+ * callback functions and store the pointer to the allocated buffer
+ * containing certificate chain to |*certs_ptr|. The length of
+ * certificate chain is exactly |ncerts|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+static int spdylay_session_get_credential_cert(spdylay_session *session,
+                                               const spdylay_origin *origin,
+                                               spdylay_mem_chunk **certs_ptr,
+                                               size_t ncerts)
+{
+  spdylay_mem_chunk *certs;
+  size_t i, j;
+  certs = malloc(sizeof(spdylay_mem_chunk)*ncerts);
+  if(certs == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  for(i = 0; i < ncerts; ++i) {
+    certs[i].length = session->callbacks.get_credential_cert
+      (session,
+       origin,
+       i, NULL, 0,
+       session->user_data);
+    certs[i].data = malloc(certs[i].length);
+    if(certs[i].data == NULL) {
+      goto fail;
+    }
+    session->callbacks.get_credential_cert(session, origin, i,
+                                           certs[i].data, certs[i].length,
+                                           session->user_data);
+  }
+  *certs_ptr = certs;
+  return 0;
+ fail:
+  for(j = 0; j < i; ++j) {
+    free(certs[i].data);
+  }
+  free(certs);
+  return SPDYLAY_ERR_NOMEM;
+}
+
+int spdylay_session_prep_credential(spdylay_session *session,
+                                    spdylay_syn_stream *syn_stream)
+{
+  int rv;
+  spdylay_origin origin;
+  spdylay_frame *frame;
+  spdylay_mem_chunk proof;
+  if(session->cli_certvec.size == 0) {
+    return 0;
+  }
+  rv = spdylay_frame_nv_set_origin(syn_stream->nv, &origin);
+  if(rv == 0) {
+    size_t slot;
+    slot = spdylay_client_cert_vector_find(&session->cli_certvec, &origin);
+    if(slot == 0) {
+      ssize_t ncerts;
+      ncerts = session->callbacks.get_credential_ncerts(session, &origin,
+                                                        session->user_data);
+      if(ncerts > 0) {
+        spdylay_mem_chunk *certs;
+        spdylay_origin *origin_copy;
+        frame = malloc(sizeof(spdylay_frame));
+        if(frame == NULL) {
+          return SPDYLAY_ERR_NOMEM;
+        }
+        origin_copy = malloc(sizeof(spdylay_origin));
+        if(origin_copy == NULL) {
+          goto fail_after_frame;
+        }
+        *origin_copy = origin;
+        slot = spdylay_client_cert_vector_put(&session->cli_certvec,
+                                              origin_copy);
+
+        rv = spdylay_session_get_credential_proof(session, &origin, &proof);
+        if(rv != 0) {
+          goto fail_after_frame;
+        }
+        rv = spdylay_session_get_credential_cert(session, &origin,
+                                                 &certs, ncerts);
+        if(rv != 0) {
+          goto fail_after_proof;
+        }
+        spdylay_frame_credential_init(&frame->credential,
+                                      session->version,
+                                      slot, &proof, certs, ncerts);
+        rv = spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, NULL);
+        if(rv != 0) {
+          spdylay_frame_credential_free(&frame->credential);
+          return rv;
+        }
+        return SPDYLAY_ERR_CREDENTIAL_PENDING;
+      }
+    } else {
+      return slot;
+    }
+  }
+  return 0;
+ fail_after_proof:
+  free(proof.data);
+ fail_after_frame:
+  free(frame);
+  return rv;
+
+}
+
 static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                           spdylay_outbound_item *item)
 {
@@ -751,8 +906,30 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
       if(r != 0) {
         return r;
       }
+      if(session->version == SPDYLAY_PROTO_SPDY3 &&
+         session->callbacks.get_credential_proof &&
+         session->callbacks.get_credential_cert &&
+         !session->server) {
+        int slot_index;
+        slot_index = spdylay_session_prep_credential(session,
+                                                     &frame->syn_stream);
+        if(slot_index == SPDYLAY_ERR_CREDENTIAL_PENDING) {
+          /* CREDENTIAL frame has been queued. SYN_STREAM has to be
+             sent after that. Change the priority of this item to
+             achieve this. */
+          item->pri = SPDYLAY_OB_PRI_AFTER_CREDENTIAL;
+          r = spdylay_pq_push(&session->ob_ss_pq, item);
+          if(r == 0) {
+            return SPDYLAY_ERR_CREDENTIAL_PENDING;
+          } else {
+            return r;
+          }
+        } else if(r < 0) {
+          return r;
+        }
+        frame->syn_stream.slot = slot_index;
+      }
       stream_id = session->next_stream_id;
-
       frame->syn_stream.stream_id = stream_id;
       session->next_stream_id += 2;
       if(session->version == SPDYLAY_PROTO_SPDY2) {
@@ -892,6 +1069,15 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
         return framebuflen;
       }
       break;
+    case SPDYLAY_CREDENTIAL: {
+      framebuflen = spdylay_frame_pack_credential(&session->aob.framebuf,
+                                                  &session->aob.framebufmax,
+                                                  &frame->credential);
+      if(framebuflen < 0) {
+        return framebuflen;
+      }
+      break;
+    }
     default:
       framebuflen = SPDYLAY_ERR_INVALID_ARGUMENT;
     }
@@ -1134,6 +1320,8 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
     }
     case SPDYLAY_WINDOW_UPDATE:
       break;
+    case SPDYLAY_CREDENTIAL:
+      break;
     }
     spdylay_active_outbound_item_reset(&session->aob);
   } else if(item->frame_cat == SPDYLAY_DATA) {
@@ -1235,7 +1423,8 @@ int spdylay_session_send(spdylay_session *session)
         break;
       }
       framebuflen = spdylay_session_prep_frame(session, item);
-      if(framebuflen == SPDYLAY_ERR_DEFERRED) {
+      if(framebuflen == SPDYLAY_ERR_DEFERRED ||
+         framebuflen == SPDYLAY_ERR_CREDENTIAL_PENDING) {
         continue;
       } else if(framebuflen < 0) {
         if(item->frame_cat == SPDYLAY_CTRL &&
@@ -1624,7 +1813,7 @@ int spdylay_session_on_settings_received(spdylay_session *session,
   /* Check ID/value pairs and persist them if necessary. */
   memset(check, 0, sizeof(check));
   for(i = 0; i < frame->settings.niv; ++i) {
-    const spdylay_settings_entry *entry = &frame->settings.iv[i];
+    spdylay_settings_entry *entry = &frame->settings.iv[i];
     /* SPDY/3 spec says if the multiple values for the same ID were
        found, use the first one and ignore the rest. */
     if(entry->settings_id > SPDYLAY_SETTINGS_MAX || entry->settings_id == 0 ||
@@ -1638,6 +1827,19 @@ int spdylay_session_on_settings_received(spdylay_session *session,
       /* Check that initial_window_size < (1u << 31) */
       if(entry->value < (1u << 31)) {
         spdylay_session_update_initial_window_size(session, entry->value);
+      }
+    } else if(entry->settings_id ==
+              SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE) {
+      if(!session->server) {
+        int rv;
+        /* Limit certificate vector length in the reasonable size. */
+        entry->value = spdylay_min(entry->value,
+                                   SPDYLAY_MAX_CLIENT_CERT_VECTOR_LENGTH);
+        rv = spdylay_client_cert_vector_resize(&session->cli_certvec,
+                                               entry->value);
+        if(rv != 0) {
+          return rv;
+        }
       }
     }
     session->remote_settings[entry->settings_id] = entry->value;
@@ -1718,6 +1920,19 @@ int spdylay_session_on_window_update_received(spdylay_session *session,
                                                   SPDYLAY_WINDOW_UPDATE, frame);
     }
   }
+  return 0;
+}
+
+int spdylay_session_on_credential_received(spdylay_session *session,
+                                           spdylay_frame *frame)
+{
+  if(!spdylay_session_check_version(session, frame->credential.hd.version)) {
+    return 0;
+  }
+  /* We don't care about the body of the CREDENTIAL frame. It is left
+     to the application code to decide it is invalid or not. */
+  spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_CREDENTIAL,
+                                              frame);
   return 0;
 }
 
@@ -1926,6 +2141,19 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
     if(r == 0) {
       r = spdylay_session_on_window_update_received(session, &frame);
       spdylay_frame_window_update_free(&frame.window_update);
+    } else if(spdylay_is_non_fatal(r)) {
+      r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
+    }
+    break;
+  case SPDYLAY_CREDENTIAL:
+    r = spdylay_frame_unpack_credential(&frame.credential,
+                                        session->iframe.headbuf,
+                                        sizeof(session->iframe.headbuf),
+                                        session->iframe.buf,
+                                        session->iframe.len);
+    if(r == 0) {
+      r = spdylay_session_on_credential_received(session, &frame);
+      spdylay_frame_credential_free(&frame.credential);
     } else if(spdylay_is_non_fatal(r)) {
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
@@ -2359,4 +2587,39 @@ uint8_t spdylay_session_get_pri_lowest(spdylay_session *session)
 size_t spdylay_session_get_outbound_queue_size(spdylay_session *session)
 {
   return spdylay_pq_size(&session->ob_pq)+spdylay_pq_size(&session->ob_ss_pq);
+}
+
+int spdylay_session_set_initial_client_cert_origin(spdylay_session *session,
+                                                   const char *scheme,
+                                                   const char *host,
+                                                   uint16_t port)
+{
+  spdylay_origin *origin;
+  size_t slot;
+  if(strlen(scheme) > SPDYLAY_MAX_SCHEME ||
+     strlen(host) > SPDYLAY_MAX_HOSTNAME) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
+  if(session->server ||
+     (session->cli_certvec.size == 0 ||
+      session->cli_certvec.last_slot != 0)) {
+    return SPDYLAY_ERR_INVALID_STATE;
+  }
+  origin = malloc(sizeof(spdylay_origin));
+  if(origin == NULL) {
+    return SPDYLAY_ERR_NOMEM;
+  }
+  strcpy(origin->scheme, scheme);
+  strcpy(origin->host, host);
+  origin->port = port;
+  slot = spdylay_client_cert_vector_put(&session->cli_certvec, origin);
+  assert(slot == 1);
+  return 0;
+}
+
+const spdylay_origin* spdylay_session_get_client_cert_origin
+(spdylay_session *session,
+ size_t slot)
+{
+  return spdylay_client_cert_vector_get_origin(&session->cli_certvec, slot);
 }

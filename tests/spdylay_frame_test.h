@@ -42,11 +42,13 @@ void test_spdylay_frame_pack_headers_spdy3(void);
 void test_spdylay_frame_pack_window_update(void);
 void test_spdylay_frame_pack_settings_spdy2(void);
 void test_spdylay_frame_pack_settings_spdy3(void);
+void test_spdylay_frame_pack_credential(void);
 void test_spdylay_frame_nv_sort(void);
 void test_spdylay_frame_nv_downcase(void);
 void test_spdylay_frame_nv_2to3(void);
 void test_spdylay_frame_nv_3to2(void);
 void test_spdylay_frame_unpack_nv_check_name_spdy2(void);
 void test_spdylay_frame_unpack_nv_check_name_spdy3(void);
+void test_spdylay_frame_nv_set_origin(void);
 
 #endif /* SPDYLAY_FRAME_TEST_H */
