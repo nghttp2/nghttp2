@@ -1082,14 +1082,9 @@ ssize_t spdylay_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
       int off = i*8;
       /* spdy/2 spec says ID is network byte order, but publicly
          deployed server sends little endian host byte order. */
-      char *id_ptr = (char*)(&frame->iv[i].settings_id);
-#ifdef WORDS_BIGENDIAN
-      (*buf_ptr)[12+off] = id_ptr[3];
-      (*buf_ptr)[12+off+1] = id_ptr[2];
-      (*buf_ptr)[12+off+2] = id_ptr[1];
-#else /* !WORDS_BIGENDIAN */
-      memcpy(&(*buf_ptr)[12+off], id_ptr, 3);
-#endif /* !WORDS_BIGENDIAN */
+      (*buf_ptr)[12+off+0] = (frame->iv[i].settings_id) & 0xff;
+      (*buf_ptr)[12+off+1] = (frame->iv[i].settings_id >> 8) & 0xff;
+      (*buf_ptr)[12+off+2] = (frame->iv[i].settings_id >>16) & 0xff;
       (*buf_ptr)[15+off] = frame->iv[i].flags;
       spdylay_put_uint32be(&(*buf_ptr)[16+off], frame->iv[i].value);
     }
@@ -1130,14 +1125,8 @@ int spdylay_frame_unpack_settings(spdylay_settings *frame,
       size_t off = i*8;
       /* ID is little endian. See comments in
          spdylay_frame_pack_settings(). */
-      frame->iv[i].settings_id = 0;
-#ifdef WORDS_BIGENDIAN
-      *(char*)(&frame->iv[i].settings_id[1]) = &payload[4+off+2];
-      *(char*)(&frame->iv[i].settings_id[2]) = &payload[4+off+1];
-      *(char*)(&frame->iv[i].settings_id[3]) = &payload[4+off+0];
-#else /* !WORDS_BIGENDIAN */
-      memcpy(&frame->iv[i].settings_id, &payload[4+off], 3);
-#endif /* !WORDS_BIGENDIAN */
+      frame->iv[i].settings_id = payload[4+off] + (payload[4+off+1] << 8)
+        +(payload[4+off+2] << 16);
       frame->iv[i].flags = payload[7+off];
       frame->iv[i].value = spdylay_get_uint32(&payload[8+off]);
     }
