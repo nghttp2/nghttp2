@@ -332,14 +332,12 @@ typedef enum {
    * SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE. This first appeared in
    * SPDY/3.
    */
-  SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE = 8
+  SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE = 8,
+  /**
+   * Maximum ID of :type:`spdylay_settings_id`.
+   */
+  SPDYLAY_SETTINGS_MAX = 8
 } spdylay_settings_id;
-
-/**
- * @macro
- * Maximum ID of :type:`spdylay_settings_id`.
- */
-#define SPDYLAY_SETTINGS_MAX 8
 
 /**
  * @macro
