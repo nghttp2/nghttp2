@@ -38,7 +38,7 @@ typedef int (*spdylay_compar)(const void *lhs, const void *rhs);
 /* Internal error code. They must be in the range [-499, -100],
    inclusive. */
 typedef enum {
-  SPDYLAY_ERR_CREDENTIAL_PENDING = -100
+  SPDYLAY_ERR_CREDENTIAL_PENDING = -101
 } spdylay_internal_error;
 
 #endif /* SPDYLAY_INT_H */
