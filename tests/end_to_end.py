@@ -83,6 +83,10 @@ class EndToEndSpdy2Tests(EndToEndSpdyTests):
   def testOneFailedRequest(self):
     self.assertEquals(1, subprocess.call([self.client, 'http://localhost:2/']))
 
+  def testOneTimedOutRequest(self):
+    self.assertEquals(1, self.call('/?spdyd_do_not_respond_to_req=yes',
+                                   ['--timeout=2']))
+
 
 class EndToEndSpdy3Tests(EndToEndSpdyTests):
   @classmethod
