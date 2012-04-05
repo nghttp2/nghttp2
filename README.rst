@@ -15,13 +15,8 @@ depend on OpenSSL 1.0.1 or later).
 STATUS
 ------
 
-SPDY/2
-    Most of the SPDY/2 functionality has been implemented.
-
-SPDY/3
-    CREDENTIALS frame has not been implemented yet.
-
-In both versions, the direct support of server-push has not been
+Most of the SPDY/2 and SPDY/3 functionality has been implemented.  In
+both versions, the direct support of server-push has not been
 available yet.  The application can achieve server-push using
 primitive APIs though.
 
