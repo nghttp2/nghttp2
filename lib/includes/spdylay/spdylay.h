@@ -1126,7 +1126,13 @@ typedef struct {
  * The :member:`spdylay_session_callbacks.send_callback` must be
  * specified.  If the application code uses `spdylay_session_recv()`,
  * the :member:`spdylay_session_callbacks.recv_callback` must be
- * specified. The other members of |callbacks| can be ``NULL``.
+ * specified. The other members of |callbacks| can be ``NULL``.  To
+ * use CREDENTIAL frame, specify :macro:`SPDYLAY_PROTO_SPDY3` in
+ * |version| and specify
+ * :member:`spdylay_session_callbacks.get_credential_ncerts`,
+ * :member:`spdylay_session_callbacks.get_credential_cert` and
+ * :member:`spdylay_session_callbacks.get_credential_proof`.  See also
+ * `spdylay_session_set_initial_client_cert_origin()`.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
