@@ -811,7 +811,7 @@ static int spdylay_session_get_credential_cert(spdylay_session *session,
   return 0;
  fail:
   for(j = 0; j < i; ++j) {
-    free(certs[i].data);
+    free(certs[j].data);
   }
   free(certs);
   return SPDYLAY_ERR_NOMEM;
@@ -865,6 +865,7 @@ int spdylay_session_prep_credential(spdylay_session *session,
         rv = spdylay_session_add_frame(session, SPDYLAY_CTRL, frame, NULL);
         if(rv != 0) {
           spdylay_frame_credential_free(&frame->credential);
+          free(frame);
           return rv;
         }
         return SPDYLAY_ERR_CREDENTIAL_PENDING;
