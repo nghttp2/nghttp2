@@ -105,6 +105,7 @@ static spdylay_map_entry* insert_recur(spdylay_map_entry *entry,
     entry = spdylay_map_entry_new(key, val);
     if(entry == NULL) {
       *error = SPDYLAY_ERR_NOMEM;
+      return NULL;
     }
   } else if(key == entry->key) {
     *error = SPDYLAY_ERR_INVALID_ARGUMENT;
