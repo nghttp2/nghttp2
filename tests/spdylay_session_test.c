@@ -28,10 +28,10 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <arpa/inet.h>
 
 #include "spdylay_session.h"
 #include "spdylay_stream.h"
+#include "spdylay_net.h"
 
 #define OB_CTRL(ITEM) spdylay_outbound_item_get_ctrl_frame(ITEM)
 #define OB_CTRL_TYPE(ITEM) spdylay_outbound_item_get_ctrl_frame_type(ITEM)
