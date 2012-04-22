@@ -57,7 +57,7 @@ const std::string SPDYD_SERVER = "spdyd spdylay/"SPDYLAY_VERSION;
 } // namespace
 
 Config::Config(): verbose(false), daemon(false), port(0), data_ptr(0),
-                  spdy3_only(false)
+                  spdy3_only(false), verify_client(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -874,6 +874,15 @@ int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
 }
 } // namespace
 
+namespace {
+int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
+{
+  // We don't verify the client certificate. Just request it for the
+  // testing purpose.
+  return 1;
+}
+} // namespace
+
 int SpdyServer::run()
 {
   SSL_CTX *ssl_ctx;
@@ -900,7 +909,12 @@ int SpdyServer::run()
     std::cerr << "SSL_CTX_check_private_key failed." << std::endl;
     return -1;
   }
-
+  if(config_->verify_client) {
+    SSL_CTX_set_verify(ssl_ctx,
+                       SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
+                       SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                       verify_callback);
+  }
   // We speaks "spdy/2" and "spdy/3".
   std::pair<unsigned char*, size_t> next_proto;
   unsigned char proto_list[14];

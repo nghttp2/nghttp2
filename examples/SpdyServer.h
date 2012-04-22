@@ -51,6 +51,7 @@ struct Config {
   spdylay_on_request_recv_callback on_request_recv_callback;
   void *data_ptr;
   bool spdy3_only;
+  bool verify_client;
   Config();
 };
 

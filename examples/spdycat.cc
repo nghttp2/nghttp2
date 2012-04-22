@@ -63,6 +63,8 @@ struct Config {
   bool verbose;
   bool spdy3_only;
   int timeout;
+  std::string certfile;
+  std::string keyfile;
   Config():null_out(false), remote_name(false), verbose(false),
            spdy3_only(false), timeout(-1) {}
 };
@@ -152,6 +154,20 @@ int communicate(const std::string& host, uint16_t port,
     next_proto = "spdy/3";
   }
   setup_ssl_ctx(ssl_ctx, &next_proto);
+  if(!config.keyfile.empty()) {
+    if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
+                                   SSL_FILETYPE_PEM) != 1) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      return -1;
+    }
+  }
+  if(!config.certfile.empty()) {
+    if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
+                                          config.certfile.c_str()) != 1) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      return -1;
+    }
+  }
   SSL *ssl = SSL_new(ssl_ctx);
   if(!ssl) {
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
@@ -282,7 +298,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Onv3] [--timeout=seconds] [URI...]" << std::endl;
+  out << "Usage: spdycat [-Onv3] [-t=seconds] [--cert=CERT] [--key=KEY] [URI...]" << std::endl;
 }
 
 void print_help(std::ostream& out)
@@ -299,19 +315,25 @@ void print_help(std::ostream& out)
       << "                       filename. Not implemented yet.\n"
       << "    -3, --spdy3        Only use SPDY/3.\n"
       << "    -t, --timeout=N    Timeout each request after N seconds.\n"
-      << "\n"
+      << "    --cert=CERT        Use the specified client certificate file.\n"
+      << "                       The file must be in PEM format.\n"
+      << "    --key=KEY          Use the client private key file. The file\n"
+      << "                       must be in PEM format.\n"
       << std::endl;
 }
 
 int main(int argc, char **argv)
 {
   while(1) {
+    int flag;
     static option long_options[] = {
       {"verbose", no_argument, 0, 'v' },
       {"null-out", no_argument, 0, 'n' },
       {"remote-name", no_argument, 0, 'O' },
       {"spdy3", no_argument, 0, '3' },
       {"timeout", required_argument, 0, 't' },
+      {"cert", required_argument, &flag, 1 },
+      {"key", required_argument, &flag, 2 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -341,6 +363,18 @@ int main(int argc, char **argv)
       break;
     case '?':
       exit(EXIT_FAILURE);
+    case 0:
+      switch(flag) {
+      case 1:
+        // cert option
+        config.certfile = optarg;
+        break;
+      case 2:
+        // key option
+        config.keyfile = optarg;
+        break;
+      }
+      break;
     default:
       break;
     }

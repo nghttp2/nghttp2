@@ -61,6 +61,12 @@ void print_help(std::ostream& out)
       << "                       current working directory is changed to '/'.\n"
       << "                       Therefore if this option is used, -d option\n"
       << "                       must be specified.\n"
+      << "    -V, --verify-client\n"
+      << "                       The server sends a client certificate\n"
+      << "                       request. If the client did not return a\n"
+      << "                       certificate, the handshake is terminated.\n"
+      << "                       Currently, this option just requests a\n"
+      << "                       client certificate and does not verify it.\n"
       << "\n"
       << "    -d, --htdocs=PATH  Specify document root. If this option is not\n"
       << "                       specified, the document root is the current\n"
@@ -86,16 +92,20 @@ int main(int argc, char **argv)
       {"help", no_argument, 0, 'h' },
       {"verbose", no_argument, 0, 'v' },
       {"spdy3", no_argument, 0, '3' },
+      {"verify-client", no_argument, 0, 'V' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Dd:hv3", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVd:hv3", long_options, &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
     case 'D':
       config.daemon = true;
+      break;
+    case 'V':
+      config.verify_client = true;
       break;
     case 'd':
       config.htdocs = optarg;
