@@ -51,6 +51,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <spdylay/spdylay.h>
+#include <zlib.h>
 
 #include "spdylay_ssl.h"
 #include "uri.h"
@@ -71,7 +72,61 @@ struct Config {
 
 struct Request {
   uri::UriStruct us;
-  Request(const uri::UriStruct& us):us(us) {}
+  z_stream *inflater;
+  Request(const uri::UriStruct& us):us(us), inflater(0) {}
+  ~Request()
+  {
+    if(inflater) {
+      inflateEnd(inflater);
+      delete inflater;
+    }
+  }
+
+  void init_inflater()
+  {
+    inflater = new z_stream();
+    inflater->next_in = Z_NULL;
+    inflater->zalloc = Z_NULL;
+    inflater->zfree = Z_NULL;
+    inflater->opaque = Z_NULL;
+    int rv = inflateInit2(inflater, 47);
+    assert(rv == Z_OK);
+  }
+
+  // Inflates data in |in| with the length |*inlen_ptr| and stores the
+  // inflated data to |out| which has allocated size at least
+  // |*outlen_ptr|. On return, |*outlen_ptr| is updated to represent
+  // the number of data written in |out|.  Similarly, |*inlen_ptr| is
+  // updated to represent the number of input bytes processed.
+  //
+  // This function returns 0 if it succeeds, or -1.
+  int inflate_data(uint8_t *out, size_t *outlen_ptr,
+                   const uint8_t *in, size_t *inlen_ptr)
+  {
+    assert(inflater);
+    inflater->avail_in = *inlen_ptr;
+    inflater->next_in = const_cast<unsigned char*>(in);
+    inflater->avail_out = *outlen_ptr;
+    inflater->next_out = out;
+
+    int rv = inflate(inflater, Z_NO_FLUSH);
+
+    *inlen_ptr -= inflater->avail_in;
+    *outlen_ptr -= inflater->avail_out;
+    switch(rv) {
+    case Z_OK:
+    case Z_STREAM_END:
+    case Z_BUF_ERROR:
+      return 0;
+    case Z_DATA_ERROR:
+    case Z_STREAM_ERROR:
+    case Z_NEED_DICT:
+    case Z_MEM_ERROR:
+      return -1;
+    default:
+      assert(0);
+    }
+  }
 };
 
 std::map<int32_t, Request*> stream2req;
@@ -86,7 +141,25 @@ void on_data_chunk_recv_callback
 {
   std::map<int32_t, Request*>::iterator itr = stream2req.find(stream_id);
   if(itr != stream2req.end()) {
-    std::cout.write(reinterpret_cast<const char*>(data), len);
+    Request *req = (*itr).second;
+    if(req->inflater) {
+      while(len > 0) {
+        const size_t MAX_OUTLEN = 4096;
+        uint8_t out[MAX_OUTLEN];
+        size_t outlen = MAX_OUTLEN;
+        size_t tlen = len;
+        int rv = req->inflate_data(out, &outlen, data, &tlen);
+        if(rv == -1) {
+          spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
+          break;
+        }
+        std::cout.write(reinterpret_cast<const char*>(out), outlen);
+        data += tlen;
+        len -= tlen;
+      }
+    } else {
+      std::cout.write(reinterpret_cast<const char*>(data), len);
+    }
   }
 }
 
@@ -118,6 +191,54 @@ void on_ctrl_send_callback3
   on_ctrl_send_callback(session, type, frame, user_data);
 }
 
+void check_gzip
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data)
+{
+  char **nv;
+  int32_t stream_id;
+  if(type == SPDYLAY_SYN_REPLY) {
+    nv = frame->syn_reply.nv;
+    stream_id = frame->syn_reply.stream_id;
+  } else if(type == SPDYLAY_HEADERS) {
+    nv = frame->headers.nv;
+    stream_id = frame->headers.stream_id;
+  } else {
+    return;
+  }
+  bool gzip = false;
+  for(size_t i = 0; nv[i]; i += 2) {
+    if(strcmp("content-encoding", nv[i]) == 0) {
+      gzip = strcmp("gzip", nv[i+1]) == 0;
+      break;
+    }
+  }
+  if(gzip) {
+    Request *req = (Request*)spdylay_session_get_stream_user_data(session,
+                                                                  stream_id);
+    assert(req);
+    if(req->inflater) {
+      return;
+    }
+    req->init_inflater();
+  }
+}
+
+void on_ctrl_recv_callback2
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data)
+{
+  check_gzip(session, type, frame, user_data);
+}
+
+void on_ctrl_recv_callback3
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ void *user_data)
+{
+  check_gzip(session, type, frame, user_data);
+  on_ctrl_recv_callback(session, type, frame, user_data);
+}
+
 void on_stream_close_callback
 (spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
  void *user_data)
@@ -128,6 +249,7 @@ void on_stream_close_callback
     if(complete == numreq) {
       spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
     }
+    stream2req.erase(itr);
   }
 }
 
@@ -258,10 +380,11 @@ int run(char **uris, int n)
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   if(config.verbose) {
-    callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
+    callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback3;
     callbacks.on_data_recv_callback = on_data_recv_callback;
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback3;
   } else {
+    callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback2;
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback2;
   }
   if(!config.null_out) {
