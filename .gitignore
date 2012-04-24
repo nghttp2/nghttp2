@@ -27,3 +27,4 @@ stamp-h1
 INSTALL
 .DS_STORE
 tests/main
+tests/failmalloc

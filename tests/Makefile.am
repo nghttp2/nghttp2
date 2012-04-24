@@ -23,7 +23,7 @@
 
 if HAVE_CUNIT
 
-check_PROGRAMS = main
+check_PROGRAMS = main failmalloc
 
 OBJECTS = main.c spdylay_pq_test.c spdylay_map_test.c spdylay_queue_test.c \
 	spdylay_buffer_test.c spdylay_zlib_test.c spdylay_session_test.c \
@@ -39,10 +39,16 @@ main_SOURCES = $(HFILES) $(OBJECTS)
 
 main_LDADD = ${top_builddir}/lib/libspdylay.la
 main_LDFLAGS = -static @CUNIT_LIBS@
+
+failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
+	malloc_wrapper.c malloc_wrapper.h
+failmalloc_LDADD = $(main_LDADD) -ldl
+failmalloc_LDFLAGS = $(main_LDFLAGS)
+
 AM_CFLAGS = -Wall -g -O2 -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_builddir}/lib/includes \
 	@CUNIT_CFLAGS@ @DEFS@
 
-TESTS = main
+TESTS = main failmalloc
 
 if ENABLE_EXAMPLES
 
