@@ -29,6 +29,12 @@ Requirements
 The following packages are needed to build the library:
 
 * pkg-config >= 0.20
+* zlib >= 1.2.3
+
+To build and run the unit test programs, the following packages are
+needed:
+
+* cunit >= 2.1
 
 To build and run the example programs, the following packages are
 needed:
