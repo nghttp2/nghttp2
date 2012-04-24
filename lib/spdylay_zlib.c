@@ -279,7 +279,6 @@ int spdylay_zlib_inflate_hd_init(spdylay_zlib *inflater, uint16_t version)
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
   }
   if(Z_OK != inflateInit(&inflater->zst)) {
-    spdylay_zlib_inflate_free(inflater);
     return SPDYLAY_ERR_ZLIB;
   }
   return 0;
