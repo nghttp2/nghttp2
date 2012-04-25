@@ -1,19 +1,18 @@
 Spdylay - SPDY C Library
 ========================
 
-This is an experimental implementation of Google's SPDY protocol
-version 2 and 3 in C.
+This is an experimental implementation of Google's SPDY protocol in C.
 
-This library provides SPDY framing layer implementation.  It does not
-perform any I/O operations.  When the library needs them, it calls the
-callback functions provided by the application. It also does not
-include any event polling mechanism, so the application can freely
-choose the way of handling events. This library code does not depend
-on any particular SSL library (except for example programs which
-depend on OpenSSL 1.0.1 or later).
+This library provides SPDY version 2 and 3 framing layer
+implementation.  It does not perform any I/O operations.  When the
+library needs them, it calls the callback functions provided by the
+application. It also does not include any event polling mechanism, so
+the application can freely choose the way of handling events. This
+library code does not depend on any particular SSL library (except for
+example programs which depend on OpenSSL 1.0.1 or later).
 
-STATUS
-------
+Development Status
+------------------
 
 Most of the SPDY/2 and SPDY/3 functionality has been implemented.  In
 both versions, the direct support of server-push has not been
