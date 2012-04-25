@@ -1473,23 +1473,24 @@ int spdylay_session_fail_session(spdylay_session *session,
  *
  * The |nv| must include following name/value pairs:
  *
- * ":method"
- *     HTTP method (e.g., "GET", "POST", "HEAD", etc)
- * ":scheme"
- *     URI scheme (e.g., "https")
- * ":path"
- *     Absolute path and parameters of this request (e.g., "/foo",
- *     "/foo;bar;haz?h=j&y=123")
- * ":version"
- *     HTTP version (e.g., "HTTP/1.1")
- * ":host"
+ * ``:method``
+ *     HTTP method (e.g., ``GET``, ``POST``, ``HEAD``, etc)
+ * ``:scheme``
+ *     URI scheme (e.g., ``https``)
+ * ``:path``
+ *     Absolute path and parameters of this request (e.g., ``/foo``,
+ *     ``/foo;bar;haz?h=j&y=123``)
+ * ``:version``
+ *     HTTP version (e.g., ``HTTP/1.1``)
+ * ``:host``
  *     The hostport portion of the URI for this request (e.g.,
- *     "example.org:443"). This is the same as the HTTP "Host" header
+ *     ``example.org:443``). This is the same as the HTTP "Host" header
  *     field.
  *
  * If the |session| is initialized with the version
  * :macro:`SPDYLAY_PROTO_SPDY2`, the above names are translated to
- * "method", "scheme", "url", "version" and "host" respectively.
+ * ``method``, ``scheme``, ``url``, ``version`` and ``host``
+ * respectively.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
@@ -1498,11 +1499,11 @@ int spdylay_session_fail_session(spdylay_session *session,
  * in subsequent DATA frames. In this case, a method that allows
  * request message bodies
  * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must
- * be specified with "method" key in |nv| (e.g. POST). If |data_prd|
- * is ``NULL``, SYN_STREAM have FLAG_FIN set. The |stream_user_data|
- * is data associated to the stream opened by this request and can be
- * an arbitrary pointer, which can be retrieved later by
- * `spdylay_session_get_stream_user_data()`.
+ * be specified with ``:method`` key in |nv| (e.g. ``POST``). If
+ * |data_prd| is ``NULL``, SYN_STREAM have FLAG_FIN set. The
+ * |stream_user_data| is data associated to the stream opened by this
+ * request and can be an arbitrary pointer, which can be retrieved
+ * later by `spdylay_session_get_stream_user_data()`.
  *
  * Since the library reorders the frames and tries to send the highest
  * prioritized one first and the SPDY specification requires the
@@ -1544,14 +1545,14 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  *
  * The |nv| must include following name/value pairs:
  *
- * ":status"
- *     HTTP status code (e.g., "200" or "200 OK")
- * ":version"
- *     HTTP response version (e.g., "HTTP/1.1")
+ * ``:status``
+ *     HTTP status code (e.g., ``200`` or ``200 OK``)
+ * ``:version``
+ *     HTTP response version (e.g., ``HTTP/1.1``)
  *
  * If the |session| is initialized with the version
  * :macro:`SPDYLAY_PROTO_SPDY2`, the above names are translated to
- * "status" and "version" respectively.
+ * ``status`` and ``version`` respectively.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
@@ -1757,8 +1758,8 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
  *
  * A helper function for dealing with NPN in client side.  The |in|
  * contains server's protocol in preferable order.  The format of |in|
- * is length-prefixed and not null-terminated.  For example, "spdy/2"
- * are "http/1.1" stored in |in| like this::
+ * is length-prefixed and not null-terminated.  For example,
+ * ``spdy/2`` and ``http/1.1`` stored in |in| like this::
  *
  *     in[0] = 6
  *     in[1..6] = "spdy/2"
@@ -1775,8 +1776,8 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
  *    `spdylay_session_server_new()` . The following steps are not
  *    taken.
  *
- * 2. If server's list contains "http/1.1", this function selects
- *    "http/1.1" and returns 0. The following step is not taken.
+ * 2. If server's list contains ``http/1.1``, this function selects
+ *    ``http/1.1`` and returns 0. The following step is not taken.
  *
  * 3. This function selects nothing and returns -1. (So called
  *    non-overlap case). In this case, |out| and |outlen| are left
@@ -1786,8 +1787,8 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
  * function may select updated protocol and application code which
  * relies on spdylay for SPDY stuff needs not be modified.
  *
- * Selecting "spdy/2" means that "spdy/2" is written into |*out| and
- * length of "spdy/2" (which is 6) is assigned to |*outlen|.
+ * Selecting ``spdy/2`` means that ``spdy/2`` is written into |*out|
+ * and length of ``spdy/2`` (which is 6) is assigned to |*outlen|.
  *
  * See http://technotes.googlecode.com/git/nextprotoneg.html for more
  * details about NPN.
@@ -1819,7 +1820,7 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
  *
  * Returns spdy version which spdylay library supports from the given
  * protocol name. The |proto| is the pointer to the protocol name and
- * |protolen| is its length. Currently, "spdy/2" and "spdy/3" are
+ * |protolen| is its length. Currently, ``spdy/2`` and ``spdy/3`` are
  * supported.
  *
  * This function returns nonzero spdy version if it succeeds, or 0.
