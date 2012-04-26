@@ -26,8 +26,9 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: Spdylay
-Description: SPDY library
+Description: SPDY C library
 URL: http://spdylay.sourceforge.net/
 Version: @VERSION@
 Libs: -L${libdir} -lspdylay
+Requires.private: zlib
 Cflags: -I${includedir}
