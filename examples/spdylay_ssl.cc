@@ -101,6 +101,12 @@ bool Spdylay::want_write()
   return spdylay_session_want_write(session_) || want_write_;
 }
 
+bool Spdylay::finish()
+{
+  return !spdylay_session_want_read(session_) &&
+    !spdylay_session_want_write(session_);
+}
+
 int Spdylay::fd() const
 {
   return fd_;

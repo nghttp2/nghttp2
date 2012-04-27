@@ -236,7 +236,8 @@ int SpdyEventHandler::fd() const
 
 bool SpdyEventHandler::finish()
 {
-  return !want_read() && !want_write();
+  return !spdylay_session_want_read(session_) &&
+    !spdylay_session_want_write(session_);
 }
 
 ssize_t SpdyEventHandler::send_data(const uint8_t *data, size_t len, int flags)

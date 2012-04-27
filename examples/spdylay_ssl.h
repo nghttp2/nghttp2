@@ -49,6 +49,7 @@ public:
   ssize_t recv_data(uint8_t *data, size_t len, int flags);
   bool want_read();
   bool want_write();
+  bool finish();
   int fd() const;
   int submit_request(const std::string& hostport, const std::string& path,
                      uint8_t pri, void *stream_user_data);

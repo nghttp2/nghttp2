@@ -336,7 +336,7 @@ int communicate(const std::string& host, uint16_t port,
   int timeout = config.timeout;
 
   bool ok = true;
-  while(sc.want_read() || sc.want_write()) {
+  while(!sc.finish()) {
     int nfds = poll(pollfds, npollfds, timeout);
     if(nfds == -1) {
       perror("poll");
