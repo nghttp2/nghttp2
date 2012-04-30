@@ -32,6 +32,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <zlib.h>
 
 #include <spdylay/spdylayver.h>
 
@@ -1826,6 +1827,51 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
  * This function returns nonzero spdy version if it succeeds, or 0.
  */
 uint16_t spdylay_npn_get_version(const unsigned char *proto, size_t protolen);
+
+/**
+ * @function
+ *
+ * A helper function to set up a per request zlib stream to inflate data.
+ */
+z_stream *spdylay_new_inflate_stream();
+
+/**
+ * @function
+ * Inflates data from in to out.  Returns 0 on success and -1 on error.
+ * E.g
+ * void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
+ *                                 int32_t stream_id,
+ *                                 const uint8_t *data, size_t len,
+ *                                 void *user_data)
+ *  req = spdylay_session_get_stream_user_data(session, stream_id);
+ *  z_stream *inflater = req->inflater;
+ *  while(len > 0) {
+ *    uint8_t out[MAX_OUTLEN];
+ *    size_t outlen = MAX_OUTLEN;
+ *    size_t tlen = len;
+ *    int rv;
+ *    rv = spdylay_inflate_data(inflater, out, &outlen, data, &tlen);
+ *    if(rv == -1) {
+ *      spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
+ *      break;
+ *    }
+ *    ... Do stuff ...
+ *    data += tlen;
+ *    len -= tlen;
+ *  }
+ *  ....
+ * }
+ */
+int spdylay_inflate_data
+(z_stream *stream, uint8_t *out, size_t *outlen_ptr,
+ const uint8_t *in, size_t *inlen_ptr);
+
+/**
+ * @function
+ * Frees the inflate stream.  inflater may be null.
+ */
+void spdylay_free_inflate_stream(z_stream* inflater);
+
 
 #ifdef __cplusplus
 }

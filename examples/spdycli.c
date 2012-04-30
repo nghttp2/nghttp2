@@ -132,20 +132,6 @@ static void diec(const char *func, int error_code)
   exit(EXIT_FAILURE);
 }
 
-static void request_inflater_init(struct Request *req)
-{
-  int rv;
-  req->inflater = malloc(sizeof(z_stream));
-  req->inflater->next_in = Z_NULL;
-  req->inflater->zalloc = Z_NULL;
-  req->inflater->zfree = Z_NULL;
-  req->inflater->opaque = Z_NULL;
-  rv = inflateInit2(req->inflater, 47);
-  if(rv != Z_OK) {
-    diec("inflateInit2", rv);
-  }
-}
-
 /*
  * Check response is content-encoding: gzip. We need this because SPDY
  * client is required to support gzip.
@@ -164,7 +150,10 @@ static void check_gzip(struct Request *req, char **nv)
     if(req->inflater) {
       return;
     }
-    request_inflater_init(req);
+    req->inflater = spdylay_new_inflate_stream();
+    if (req->inflater == NULL) {
+      die("Can't allocate inflate stream.");
+    }
   }
 }
 
@@ -329,36 +318,6 @@ static void on_stream_close_callback(spdylay_session *session,
   }
 }
 
-static int request_inflate_data(struct Request *req,
-                                uint8_t *out, size_t *outlen_ptr,
-                                const uint8_t *in, size_t *inlen_ptr)
-{
-  int rv;
-  assert(req->inflater);
-  req->inflater->avail_in = *inlen_ptr;
-  req->inflater->next_in = (unsigned char*)in;
-  req->inflater->avail_out = *outlen_ptr;
-  req->inflater->next_out = out;
-
-  rv = inflate(req->inflater, Z_NO_FLUSH);
-
-  *inlen_ptr -= req->inflater->avail_in;
-  *outlen_ptr -= req->inflater->avail_out;
-  switch(rv) {
-  case Z_OK:
-  case Z_STREAM_END:
-  case Z_BUF_ERROR:
-    return 0;
-  case Z_DATA_ERROR:
-  case Z_STREAM_ERROR:
-  case Z_NEED_DICT:
-  case Z_MEM_ERROR:
-    return -1;
-  default:
-    assert(0);
-  }
-}
-
 #define MAX_OUTLEN 4096
 
 /*
@@ -381,7 +340,7 @@ static void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
         size_t outlen = MAX_OUTLEN;
         size_t tlen = len;
         int rv;
-        rv = request_inflate_data(req, out, &outlen, data, &tlen);
+        rv = spdylay_inflate_data(req->inflater, out, &outlen, data, &tlen);
         if(rv == -1) {
           spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
           break;
@@ -602,10 +561,7 @@ static void request_free(struct Request *req)
   free(req->host);
   free(req->path);
   free(req->hostport);
-  if(req->inflater) {
-    inflateEnd(req->inflater);
-    free(req->inflater);
-  }
+  spdylay_free_inflate_stream(req->inflater);
 }
 
 /*
