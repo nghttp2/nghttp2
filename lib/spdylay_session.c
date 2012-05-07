@@ -2253,8 +2253,10 @@ static int spdylay_session_update_recv_window_size(spdylay_session *session,
   if(stream) {
     stream->recv_window_size += delta_size;
     /* This is just a heuristics. */
+    /* We have to use local_settings here because it is the constraint
+       the remote endpoint should honor. */
     if((size_t)stream->recv_window_size*2 >=
-       session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]) {
+       session->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]) {
       int r;
       r = spdylay_session_add_window_update(session, stream_id,
                                             stream->recv_window_size);
