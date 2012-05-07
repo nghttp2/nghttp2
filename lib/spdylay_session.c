@@ -33,18 +33,27 @@
 #include "spdylay_net.h"
 
 /*
- * Returns non-zero if the number of opened streams is larger than or
- * equal to SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS value.
+ * Returns non-zero if the number of outgoing opened streams is larger
+ * than or equal to
+ * remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS].
  */
-static int spdylay_session_get_max_concurrent_streams_reached
+static int spdylay_session_is_outgoing_concurrent_streams_max
 (spdylay_session *session)
 {
-  uint32_t local_max, remote_max;
-  local_max = session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS];
-  remote_max =
-    session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS];
-  return spdylay_min(local_max, remote_max)
-    <= spdylay_map_size(&session->streams);
+  return session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+    <= session->num_outgoing_streams;
+}
+
+/*
+ * Returns non-zero if the number of incoming opened streams is larger
+ * than or equal to
+ * local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS].
+ */
+static int spdylay_session_is_incoming_concurrent_streams_max
+(spdylay_session *session)
+{
+  return session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]
+    <= session->num_incoming_streams;
 }
 
 /*
@@ -451,6 +460,11 @@ spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
     free(stream);
     stream = NULL;
   }
+  if(spdylay_session_is_my_stream_id(session, stream_id)) {
+    ++session->num_outgoing_streams;
+  } else {
+    ++session->num_incoming_streams;
+  }
   return stream;
 }
 
@@ -464,6 +478,11 @@ int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id,
       session->callbacks.on_stream_close_callback(session, stream_id,
                                                   status_code,
                                                   session->user_data);
+    }
+    if(spdylay_session_is_my_stream_id(session, stream_id)) {
+      --session->num_outgoing_streams;
+    } else {
+      --session->num_incoming_streams;
     }
     spdylay_map_erase(&session->streams, stream_id);
     spdylay_stream_free(stream);
@@ -1128,7 +1147,7 @@ spdylay_outbound_item* spdylay_session_get_next_ob_item
     } else {
       /* Return item only when concurrent connection limit is not
          reached */
-      if(spdylay_session_get_max_concurrent_streams_reached(session)) {
+      if(spdylay_session_is_outgoing_concurrent_streams_max(session)) {
         return NULL;
       } else {
         return spdylay_pq_top(&session->ob_ss_pq);
@@ -1141,7 +1160,7 @@ spdylay_outbound_item* spdylay_session_get_next_ob_item
       spdylay_outbound_item *item, *syn_stream_item;
       item = spdylay_pq_top(&session->ob_pq);
       syn_stream_item = spdylay_pq_top(&session->ob_ss_pq);
-      if(spdylay_session_get_max_concurrent_streams_reached(session) ||
+      if(spdylay_session_is_outgoing_concurrent_streams_max(session) ||
          item->pri < syn_stream_item->pri ||
          (item->pri == syn_stream_item->pri &&
           item->seq < syn_stream_item->seq)) {
@@ -1162,7 +1181,7 @@ spdylay_outbound_item* spdylay_session_pop_next_ob_item
     } else {
       /* Pop item only when concurrent connection limit is not
          reached */
-      if(spdylay_session_get_max_concurrent_streams_reached(session)) {
+      if(spdylay_session_is_outgoing_concurrent_streams_max(session)) {
         return NULL;
       } else {
         spdylay_outbound_item *item;
@@ -1181,7 +1200,7 @@ spdylay_outbound_item* spdylay_session_pop_next_ob_item
       spdylay_outbound_item *item, *syn_stream_item;
       item = spdylay_pq_top(&session->ob_pq);
       syn_stream_item = spdylay_pq_top(&session->ob_ss_pq);
-      if(spdylay_session_get_max_concurrent_streams_reached(session) ||
+      if(spdylay_session_is_outgoing_concurrent_streams_max(session) ||
          item->pri < syn_stream_item->pri ||
          (item->pri == syn_stream_item->pri &&
           item->seq < syn_stream_item->seq)) {
@@ -1558,8 +1577,8 @@ static int spdylay_session_check_version(spdylay_session *session,
 }
 
 /*
- * Validates SYN_STREAM frame |frame|.  This function returns 0 if it
- * succeeds, or non-zero spdylay_status_code.
+ * Validates received SYN_STREAM frame |frame|.  This function returns
+ * 0 if it succeeds, or non-zero spdylay_status_code.
  */
 static int spdylay_session_validate_syn_stream(spdylay_session *session,
                                                spdylay_syn_stream *frame)
@@ -1586,7 +1605,7 @@ static int spdylay_session_validate_syn_stream(spdylay_session *session,
       return SPDYLAY_PROTOCOL_ERROR;
     }
   }
-  if(spdylay_session_get_max_concurrent_streams_reached(session)) {
+  if(spdylay_session_is_incoming_concurrent_streams_max(session)) {
     /* spdy/2 spec does not clearly say what to do when max concurrent
        streams number is reached. The mod_spdy sends
        SPDYLAY_REFUSED_STREAM and we think it is reasonable. So we
@@ -2432,7 +2451,7 @@ int spdylay_session_want_write(spdylay_session *session)
    */
   return (session->aob.item != NULL || !spdylay_pq_empty(&session->ob_pq) ||
           (!spdylay_pq_empty(&session->ob_ss_pq) &&
-           !spdylay_session_get_max_concurrent_streams_reached(session))) &&
+           !spdylay_session_is_outgoing_concurrent_streams_max(session))) &&
     (!session->goaway_flags || spdylay_map_size(&session->streams) > 0);
 }
 

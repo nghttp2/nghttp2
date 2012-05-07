@@ -457,6 +457,20 @@ void test_spdylay_session_on_syn_stream_received(void)
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
 
+
+  /* More than max concurrent streams leads REFUSED_STREAM */
+  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY2,
+                                SPDYLAY_CTRL_FLAG_NONE,
+                                5, 0, 3, dup_nv(nv));
+  user_data.invalid_ctrl_recv_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(1 == user_data.invalid_ctrl_recv_cb_called);
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] =
+    SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
+
   /* Stream ID less than previouly received SYN_STREAM leads session
      error */
   spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY2,
@@ -468,6 +482,7 @@ void test_spdylay_session_on_syn_stream_received(void)
   CU_ASSERT(session->goaway_flags & SPDYLAY_GOAWAY_FAIL_ON_SEND);
 
   spdylay_frame_syn_stream_free(&frame.syn_stream);
+
   spdylay_session_del(session);
 }
 
@@ -1236,7 +1251,7 @@ void test_spdylay_session_get_next_ob_item(void)
   callbacks.send_callback = null_send_callback;
 
   spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY2, &callbacks, NULL);
-  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
+  session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
 
   CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
   spdylay_submit_ping(session);
@@ -1250,17 +1265,20 @@ void test_spdylay_session_get_next_ob_item(void)
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
 
+  /* Incoming stream does not affect the number of outgoing max
+     concurrent streams. */
   spdylay_session_open_stream(session, 1, SPDYLAY_CTRL_FLAG_NONE,
                               3, SPDYLAY_STREAM_OPENING, NULL);
 
   spdylay_submit_request(session, 0, nv, NULL, NULL);
+  CU_ASSERT(SPDYLAY_SYN_STREAM ==
+            OB_CTRL_TYPE(spdylay_session_get_next_ob_item(session)));
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  spdylay_submit_request(session, 0, nv, NULL, NULL);
   CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
 
-  spdylay_submit_response(session, 1, nv, NULL);
-  CU_ASSERT(SPDYLAY_SYN_REPLY ==
-            OB_CTRL_TYPE(spdylay_session_get_next_ob_item(session)));
-
-  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 3;
+  session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 3;
 
   CU_ASSERT(SPDYLAY_SYN_STREAM ==
             OB_CTRL_TYPE(spdylay_session_get_next_ob_item(session)));
@@ -1278,11 +1296,11 @@ void test_spdylay_session_pop_next_ob_item(void)
   callbacks.send_callback = null_send_callback;
 
   spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY2, &callbacks, NULL);
-  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
 
   CU_ASSERT(NULL == spdylay_session_pop_next_ob_item(session));
   spdylay_submit_ping(session);
-  spdylay_submit_request(session, 0, nv, NULL, NULL);
+  spdylay_submit_request(session, 1, nv, NULL, NULL);
 
   item = spdylay_session_pop_next_ob_item(session);
   CU_ASSERT(SPDYLAY_PING == OB_CTRL_TYPE(item));
@@ -1296,7 +1314,13 @@ void test_spdylay_session_pop_next_ob_item(void)
 
   CU_ASSERT(NULL == spdylay_session_pop_next_ob_item(session));
 
+  /* Incoming stream does not affect the number of outgoing max
+     concurrent streams. */
   spdylay_session_open_stream(session, 1, SPDYLAY_CTRL_FLAG_NONE,
+                              3, SPDYLAY_STREAM_OPENING, NULL);
+
+  /* In-flight outgoing stream */
+  spdylay_session_open_stream(session, 4, SPDYLAY_CTRL_FLAG_NONE,
                               3, SPDYLAY_STREAM_OPENING, NULL);
 
   spdylay_submit_request(session, 0, nv, NULL, NULL);
@@ -1309,8 +1333,7 @@ void test_spdylay_session_pop_next_ob_item(void)
 
   CU_ASSERT(NULL == spdylay_session_pop_next_ob_item(session));
 
-  spdylay_submit_response(session, 1, nv, NULL);
-  session->local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
+  session->remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
 
   item = spdylay_session_pop_next_ob_item(session);
   CU_ASSERT(SPDYLAY_SYN_STREAM == OB_CTRL_TYPE(item));

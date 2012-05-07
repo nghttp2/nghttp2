@@ -133,6 +133,13 @@ struct spdylay_session {
   int64_t next_seq;
 
   spdylay_map /* <spdylay_stream*> */ streams;
+  /* The number of outgoing streams. This will be capped by
+     remote_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]. */
+  size_t num_outgoing_streams;
+  /* The number of incoming streams. This will be capped by
+     local_settings[SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS]. */
+  size_t num_incoming_streams;
+
   /* Queue for outbound frames other than SYN_STREAM */
   spdylay_pq /* <spdylay_outbound_item*> */ ob_pq;
   /* Queue for outbound SYN_STREAM frame */
