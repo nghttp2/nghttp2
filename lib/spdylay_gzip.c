@@ -22,47 +22,52 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
-#include <assert.h>
-#include <stdlib.h>
-#include <zlib.h>
 #include "spdylay_gzip.h"
 
-z_stream *spdylay_new_inflate_stream()
+#include <assert.h>
+
+int spdylay_gzip_inflate_new(spdylay_gzip **inflater_ptr)
 {
   int rv;
-  z_stream *inflater = malloc(sizeof(z_stream));
-  if (inflater == NULL) {
-    return NULL;
+  *inflater_ptr = malloc(sizeof(spdylay_gzip));
+  if(*inflater_ptr == NULL) {
+    return SPDYLAY_ERR_NOMEM;
   }
-
-  inflater->next_in = Z_NULL;
-  inflater->zalloc = Z_NULL;
-  inflater->zfree = Z_NULL;
-  inflater->opaque = Z_NULL;
-  rv = inflateInit2(inflater, 47);
+  (*inflater_ptr)->zst.next_in = Z_NULL;
+  (*inflater_ptr)->zst.avail_in = 0;
+  (*inflater_ptr)->zst.zalloc = Z_NULL;
+  (*inflater_ptr)->zst.zfree = Z_NULL;
+  (*inflater_ptr)->zst.opaque = Z_NULL;
+  rv = inflateInit2(&(*inflater_ptr)->zst, 47);
   if(rv != Z_OK) {
-    free(inflater);
-    return NULL;
+    free(*inflater_ptr);
+    return SPDYLAY_ERR_GZIP;
   }
-  return inflater;
+  return 0;
 }
 
+void spdylay_gzip_inflate_del(spdylay_gzip *inflater)
+{
+  if(inflater != NULL) {
+    inflateEnd(&inflater->zst);
+    free(inflater);
+  }
+}
 
-int spdylay_inflate_data
-(z_stream *inflater, uint8_t *out, size_t *outlen_ptr,
- const uint8_t *in, size_t *inlen_ptr) {
+int spdylay_gzip_inflate(spdylay_gzip *inflater,
+                         uint8_t *out, size_t *outlen_ptr,
+                         const uint8_t *in, size_t *inlen_ptr)
+{
   int rv;
-  assert(inflater);
-  inflater->avail_in = *inlen_ptr;
-  inflater->next_in = (unsigned char*)in;
-  inflater->avail_out = *outlen_ptr;
-  inflater->next_out = out;
+  inflater->zst.avail_in = *inlen_ptr;
+  inflater->zst.next_in = (unsigned char*)in;
+  inflater->zst.avail_out = *outlen_ptr;
+  inflater->zst.next_out = out;
 
-  rv = inflate(inflater, Z_NO_FLUSH);
+  rv = inflate(&inflater->zst, Z_NO_FLUSH);
 
-  *inlen_ptr -= inflater->avail_in;
-  *outlen_ptr -= inflater->avail_out;
+  *inlen_ptr -= inflater->zst.avail_in;
+  *outlen_ptr -= inflater->zst.avail_out;
   switch(rv) {
   case Z_OK:
   case Z_STREAM_END:
@@ -72,16 +77,8 @@ int spdylay_inflate_data
   case Z_STREAM_ERROR:
   case Z_NEED_DICT:
   case Z_MEM_ERROR:
-    return -1;
+    return SPDYLAY_ERR_GZIP;
   default:
-    abort();
-  }
-}
-
-void spdylay_free_inflate_stream(z_stream* stream)
-{
-  if (stream != NULL) {
-    inflateEnd(stream);
-    free(stream);
+    assert(0);
   }
 }

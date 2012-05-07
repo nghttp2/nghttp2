@@ -45,8 +45,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include <zlib.h>
-
 enum {
   IO_NONE,
   WANT_READ,
@@ -75,8 +73,8 @@ struct Request {
   char *hostport;
   /* Stream ID for this request. */
   int32_t stream_id;
-  /* zlib context for gzip response */
-  z_stream *inflater;
+  /* The gzip stream inflater for the compressed response. */
+  spdylay_gzip *inflater;
 };
 
 struct URI {
@@ -147,11 +145,12 @@ static void check_gzip(struct Request *req, char **nv)
     }
   }
   if(gzip) {
+    int rv;
     if(req->inflater) {
       return;
     }
-    req->inflater = spdylay_new_inflate_stream();
-    if (req->inflater == NULL) {
+    rv = spdylay_gzip_inflate_new(&req->inflater);
+    if(rv != 0) {
       die("Can't allocate inflate stream.");
     }
   }
@@ -340,7 +339,7 @@ static void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
         size_t outlen = MAX_OUTLEN;
         size_t tlen = len;
         int rv;
-        rv = spdylay_inflate_data(req->inflater, out, &outlen, data, &tlen);
+        rv = spdylay_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
         if(rv == -1) {
           spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
           break;
@@ -561,7 +560,7 @@ static void request_free(struct Request *req)
   free(req->host);
   free(req->path);
   free(req->hostport);
-  spdylay_free_inflate_stream(req->inflater);
+  spdylay_gzip_inflate_del(req->inflater);
 }
 
 /*

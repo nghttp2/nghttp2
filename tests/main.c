@@ -36,6 +36,7 @@
 #include "spdylay_stream_test.h"
 #include "spdylay_npn_test.h"
 #include "spdylay_client_cert_vector_test.h"
+#include "spdylay_gzip_test.h"
 
 static int init_suite1(void)
 {
@@ -204,7 +205,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "client_cert_vector_resize",
                    test_spdylay_client_cert_vector_resize) ||
       !CU_add_test(pSuite, "client_cert_vector_get_origin",
-                   test_spdylay_client_cert_vector_get_origin)) {
+                   test_spdylay_client_cert_vector_get_origin) ||
+      !CU_add_test(pSuite, "gzip_inflate", test_spdylay_gzip_inflate)) {
      CU_cleanup_registry();
      return CU_get_error();
    }

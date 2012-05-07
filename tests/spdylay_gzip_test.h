@@ -22,17 +22,9 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_GZIP_H
+#ifndef SPDYLAY_GZIP_TEST_H
+#define SPDYLAY_GZIP_TEST_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <zlib.h>
+void test_spdylay_gzip_inflate(void);
 
-#include <spdylay/spdylay.h>
-
-struct spdylay_gzip {
-  z_stream zst;
-};
-
-#endif /* SPDYLAY_GZIP_H */
+#endif /* SPDYLAY_GZIP_TEST_H */

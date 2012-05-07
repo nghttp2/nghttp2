@@ -161,6 +161,10 @@ typedef enum {
    */
   SPDYLAY_ERR_INVALID_STATE = -519,
   /**
+   * The gzip error.
+   */
+  SPDYLAY_ERR_GZIP = -520,
+  /**
    * The errors < :enum:`SPDYLAY_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -1828,50 +1832,85 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
  */
 uint16_t spdylay_npn_get_version(const unsigned char *proto, size_t protolen);
 
+struct spdylay_gzip;
+
+/**
+ * @struct
+ *
+ * The gzip stream to inflate data. The details of this structure are
+ * intentionally hidden from the public API.
+ */
+typedef struct spdylay_gzip spdylay_gzip;
+
 /**
  * @function
  *
- * A helper function to set up a per request zlib stream to inflate data.
+ * A helper function to set up a per request gzip stream to inflate data.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`SPDYLAY_ERR_GZIP`
+ *     The initialization of gzip stream failed.
+ * :enum:`SPDYLAY_ERR_NOMEM`
+ *     Out of memory.
  */
-z_stream *spdylay_new_inflate_stream();
+int spdylay_gzip_inflate_new(spdylay_gzip **inflater_ptr);
 
 /**
  * @function
- * Inflates data from in to out.  Returns 0 on success and -1 on error.
- * E.g
- * void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
- *                                 int32_t stream_id,
- *                                 const uint8_t *data, size_t len,
- *                                 void *user_data)
- *  req = spdylay_session_get_stream_user_data(session, stream_id);
- *  z_stream *inflater = req->inflater;
- *  while(len > 0) {
- *    uint8_t out[MAX_OUTLEN];
- *    size_t outlen = MAX_OUTLEN;
- *    size_t tlen = len;
- *    int rv;
- *    rv = spdylay_inflate_data(inflater, out, &outlen, data, &tlen);
- *    if(rv == -1) {
- *      spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
- *      break;
- *    }
- *    ... Do stuff ...
- *    data += tlen;
- *    len -= tlen;
- *  }
- *  ....
- * }
+ *
+ * Frees the inflate stream.  The |inflater| may be ``NULL``.
  */
-int spdylay_inflate_data
-(z_stream *stream, uint8_t *out, size_t *outlen_ptr,
- const uint8_t *in, size_t *inlen_ptr);
+void spdylay_gzip_inflate_del(spdylay_gzip *inflater);
 
 /**
  * @function
- * Frees the inflate stream.  inflater may be null.
+ *
+ * Inflates data in |in| with the length |*inlen_ptr| and stores the
+ * inflated data to |out| which has allocated size at least
+ * |*outlen_ptr|. On return, |*outlen_ptr| is updated to represent
+ * the number of data written in |out|.  Similarly, |*inlen_ptr| is
+ * updated to represent the number of input bytes processed.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`SPDYLAY_ERR_GZIP`
+ *     The inflation of gzip stream failed.
+ *
+ * The example follows::
+ *
+ *     void on_data_chunk_recv_callback(spdylay_session *session,
+ *                                      uint8_t flags,
+ *                                      int32_t stream_id,
+ *                                      const uint8_t *data, size_t len,
+ *                                      void *user_data)
+ *     {
+ *         ...
+ *         req = spdylay_session_get_stream_user_data(session, stream_id);
+ *         spdylay_gzip *inflater = req->inflater;
+ *         while(len > 0) {
+ *             uint8_t out[MAX_OUTLEN];
+ *             size_t outlen = MAX_OUTLEN;
+ *             size_t tlen = len;
+ *             int rv;
+ *             rv = spdylay_gzip_inflate(inflater, out, &outlen, data, &tlen);
+ *             if(rv != 0) {
+ *                 spdylay_submit_rst_stream(session, stream_id,
+ *                                           SPDYLAY_INTERNAL_ERROR);
+ *                 break;
+ *             }
+ *             ... Do stuff ...
+ *             data += tlen;
+ *             len -= tlen;
+ *         }
+ *         ....
+ *     }
  */
-void spdylay_free_inflate_stream(z_stream* inflater);
-
+int spdylay_gzip_inflate(spdylay_gzip *inflater,
+                         uint8_t *out, size_t *outlen_ptr,
+                         const uint8_t *in, size_t *inlen_ptr);
 
 #ifdef __cplusplus
 }

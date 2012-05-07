@@ -51,7 +51,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <spdylay/spdylay.h>
-#include <zlib.h>
 
 #include "spdylay_ssl.h"
 #include "uri.h"
@@ -72,17 +71,18 @@ struct Config {
 
 struct Request {
   uri::UriStruct us;
-  z_stream *inflater;
+  spdylay_gzip *inflater;
   Request(const uri::UriStruct& us):us(us), inflater(0) {}
   ~Request()
   {
-    spdylay_free_inflate_stream(inflater);
+    spdylay_gzip_inflate_del(inflater);
   }
 
   void init_inflater()
   {
-    inflater = spdylay_new_inflate_stream();
-    assert(inflater != NULL);
+    int rv;
+    rv = spdylay_gzip_inflate_new(&inflater);
+    assert(rv == 0);
   }
 };
 
@@ -105,7 +105,7 @@ void on_data_chunk_recv_callback
         uint8_t out[MAX_OUTLEN];
         size_t outlen = MAX_OUTLEN;
         size_t tlen = len;
-        int rv = spdylay_inflate_data(req->inflater, out, &outlen, data, &tlen);
+        int rv = spdylay_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
         if(rv == -1) {
           spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
           break;
