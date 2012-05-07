@@ -74,6 +74,7 @@ int Spdylay::send()
 ssize_t Spdylay::send_data(const uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
+  ERR_clear_error();
   r = SSL_write(ssl_, data, len);
   return r;
 }
@@ -82,6 +83,7 @@ ssize_t Spdylay::recv_data(uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
   want_write_ = false;
+  ERR_clear_error();
   r = SSL_read(ssl_, data, len);
   if(r < 0) {
     if(SSL_get_error(ssl_, r) == SSL_ERROR_WANT_WRITE) {
@@ -502,6 +504,7 @@ int ssl_handshake(SSL *ssl, int fd)
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
   }
+  ERR_clear_error();
   int r = SSL_connect(ssl);
   if(r <= 0) {
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;

@@ -170,6 +170,7 @@ static ssize_t send_callback(spdylay_session *session,
   ssize_t rv;
   connection = (struct Connection*)user_data;
   connection->want_io = IO_NONE;
+  ERR_clear_error();
   rv = SSL_write(connection->ssl, data, length);
   if(rv < 0) {
     int err = SSL_get_error(connection->ssl, rv);
@@ -198,6 +199,7 @@ static ssize_t recv_callback(spdylay_session *session,
   ssize_t rv;
   connection = (struct Connection*)user_data;
   connection->want_io = IO_NONE;
+  ERR_clear_error();
   rv = SSL_read(connection->ssl, buf, length);
   if(rv < 0) {
     int err = SSL_get_error(connection->ssl, rv);
@@ -418,6 +420,7 @@ static void ssl_handshake(SSL *ssl, int fd)
   if(SSL_set_fd(ssl, fd) == 0) {
     dief("SSL_set_fd", ERR_error_string(ERR_get_error(), NULL));
   }
+  ERR_clear_error();
   rv = SSL_connect(ssl);
   if(rv <= 0) {
     dief("SSL_connect", ERR_error_string(ERR_get_error(), NULL));

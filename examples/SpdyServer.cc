@@ -243,6 +243,7 @@ bool SpdyEventHandler::finish()
 ssize_t SpdyEventHandler::send_data(const uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
+  ERR_clear_error();
   r = SSL_write(ssl_, data, len);
   return r;
 }
@@ -251,6 +252,7 @@ ssize_t SpdyEventHandler::recv_data(uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
   want_write_ = false;
+  ERR_clear_error();
   r = SSL_read(ssl_, data, len);
   if(r < 0) {
     if(SSL_get_error(ssl_, r) == SSL_ERROR_WANT_WRITE) {
@@ -663,6 +665,7 @@ public:
   virtual int execute(Sessions *sessions)
   {
     want_read_ = want_write_ = false;
+    ERR_clear_error();
     int r = SSL_accept(ssl_);
     if(r == 1) {
       finish_ = true;
