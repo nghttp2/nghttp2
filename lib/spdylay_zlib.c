@@ -273,6 +273,7 @@ int spdylay_zlib_inflate_hd_init(spdylay_zlib *inflater, uint16_t version)
   inflater->zst.avail_in = 0;
   inflater->zst.zalloc = Z_NULL;
   inflater->zst.zfree = Z_NULL;
+  inflater->zst.opaque = Z_NULL;
   inflater->version = version;
   hd_dict = spdylay_select_hd_dict(&hd_dict_length, version);
   if(hd_dict == NULL) {
