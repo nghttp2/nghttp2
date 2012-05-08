@@ -154,6 +154,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_set_initial_client_cert_origin) ||
       !CU_add_test(pSuite, "session_set_option",
                    test_spdylay_session_set_option) ||
+      !CU_add_test(pSuite, "submit_window_update",
+                   test_spdylay_submit_window_update) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy2",
                    test_spdylay_frame_unpack_nv_spdy2) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy3",

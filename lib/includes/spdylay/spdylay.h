@@ -1803,6 +1803,26 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
 /**
  * @function
  *
+ * Submits WINDOW_UPDATE frame. The library keeps track of the
+ * received bytes from the remote endpoint. If the |delta_window_size|
+ * is larger than the received bytes, then it is reduced to the
+ * received bytes. If the received bytes is 0, the library will not
+ * send this frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`SPDYLAY_ERR_STREAM_CLOSED`
+ *     The stream is already closed or does not exist.
+ * :enum:`SPDYLAY_ERR_NOMEM`
+ *     Out of memory.
+ */
+int spdylay_submit_window_update(spdylay_session *session, int32_t stream_id,
+                                 int32_t delta_window_size);
+
+/**
+ * @function
+ *
  * A helper function for dealing with NPN in client side.  The |in|
  * contains server's protocol in preferable order.  The format of |in|
  * is length-prefixed and not null-terminated.  For example,

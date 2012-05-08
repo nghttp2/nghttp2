@@ -28,6 +28,7 @@
 
 #include "spdylay_session.h"
 #include "spdylay_frame.h"
+#include "spdylay_helper.h"
 
 static int spdylay_submit_syn_stream_shared
 (spdylay_session *session,
@@ -226,6 +227,25 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
     free(frame);
   }
   return r;
+}
+
+int spdylay_submit_window_update(spdylay_session *session, int32_t stream_id,
+                                 int32_t delta_window_size)
+{
+  spdylay_stream *stream;
+  stream = spdylay_session_get_stream(session, stream_id);
+  if(stream) {
+    delta_window_size = spdylay_min(delta_window_size,
+                                    stream->recv_window_size);
+    if(delta_window_size > 0) {
+      stream->recv_window_size -= delta_window_size;
+      return spdylay_session_add_window_update(session, stream_id,
+                                               delta_window_size);
+    }
+    return 0;
+  } else {
+    return SPDYLAY_ERR_STREAM_CLOSED;
+  }
 }
 
 int spdylay_submit_request(spdylay_session *session, uint8_t pri,

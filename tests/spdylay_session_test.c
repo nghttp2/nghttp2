@@ -2280,3 +2280,40 @@ void test_spdylay_session_set_option(void)
 
   spdylay_session_del(session);
 }
+
+void test_spdylay_submit_window_update(void)
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  int32_t stream_id = 2;
+  my_user_data ud;
+  spdylay_outbound_item *item;
+  spdylay_stream *stream;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3,
+                             &callbacks, &ud);
+  stream = spdylay_session_open_stream(session, stream_id,
+                                       SPDYLAY_CTRL_FLAG_NONE, 3,
+                                       SPDYLAY_STREAM_OPENED, NULL);
+  stream->recv_window_size = 4096;
+
+  CU_ASSERT(0 == spdylay_submit_window_update(session, stream_id, 1024));
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_WINDOW_UPDATE == OB_CTRL_TYPE(item));
+  CU_ASSERT(1024 == OB_CTRL(item)->window_update.delta_window_size);
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  CU_ASSERT(0 == spdylay_submit_window_update(session, stream_id, 4096));
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_WINDOW_UPDATE == OB_CTRL_TYPE(item));
+  CU_ASSERT(3072 == OB_CTRL(item)->window_update.delta_window_size);
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  CU_ASSERT(0 == spdylay_submit_window_update(session, stream_id, 4096));
+  CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
+
+  spdylay_session_del(session);
+}
