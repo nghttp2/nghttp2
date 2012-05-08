@@ -1192,6 +1192,48 @@ int spdylay_session_server_new(spdylay_session **session_ptr,
 void spdylay_session_del(spdylay_session *session);
 
 /**
+ * @enum
+ *
+ * Configuration options for :type:`spdylay_session`.
+ */
+typedef enum {
+  /**
+   * This option prevents the library from sending WINDOW_UPDATE
+   * automatically. If this option is set, the application is
+   * responsible for sending WINDOW_UPDATE using
+   * `spdylay_submit_window_update`.
+   */
+  SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE = 1
+} spdylay_opt;
+
+/**
+ * @function
+ *
+ * Sets the configuration option for the |session|.  The |optname| is
+ * one of :type:`spdylay_opt`. The |optval| is the pointer to the
+ * option value and the |optlen| is the size of |*optval|. The
+ * required type of |optval| varies depending on the |optname|. See
+ * below.
+ *
+ * The following |optname| are supported:
+ *
+ * :enum:`SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE`
+ *     The |optval| must be ``int``. If |optval| is nonzero, the
+ *     library will not send WINDOW_UPDATE automatically.  Therefore,
+ *     the application is responsible for sending WINDOW_UPDATE using
+ *     `spdylay_submit_window_update`. This option defaults to 0.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
+ *     The |optname| is not supported; or the |optval| and/or the
+ *     |optlen| are invalid.
+ */
+int spdylay_session_set_option(spdylay_session *session,
+                               int optname, void *optval, size_t optlen);
+
+/**
  * @function
  *
  * Sets the origin tuple (|scheme|, |host| and |port|) that the

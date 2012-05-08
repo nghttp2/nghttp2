@@ -2640,3 +2640,26 @@ const spdylay_origin* spdylay_session_get_client_cert_origin
 {
   return spdylay_client_cert_vector_get_origin(&session->cli_certvec, slot);
 }
+
+
+int spdylay_session_set_option(spdylay_session *session,
+                               int optname, void *optval, size_t optlen)
+{
+  switch(optname) {
+  case SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE:
+    if(optlen == sizeof(int)) {
+      int intval = *(int*)optval;
+      if(intval) {
+        session->opt_flags |= SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE;
+      } else {
+        session->opt_flags &= ~SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE;
+      }
+    } else {
+      return SPDYLAY_ERR_INVALID_ARGUMENT;
+    }
+    break;
+  default:
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
+  return 0;
+}

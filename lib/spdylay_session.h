@@ -50,6 +50,13 @@
  */
 #define SPDYLAY_PRI_LOWEST_SPDY3 7
 
+/*
+ * Option flags.
+ */
+typedef enum {
+  SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0
+} spdylay_optmask;
+
 typedef struct {
   spdylay_outbound_item *item;
   /* Buffer for outbound frames. Used to pack one frame. The memory
@@ -179,6 +186,9 @@ struct spdylay_session {
   uint32_t remote_settings[SPDYLAY_SETTINGS_MAX+1];
   /* Settings value of the local endpoint. */
   uint32_t local_settings[SPDYLAY_SETTINGS_MAX+1];
+
+  /* Option flags. This is bitwise-OR of 0 or more of spdylay_optmask. */
+  uint32_t opt_flags;
 
   /* Client certificate vector */
   spdylay_client_cert_vector cli_certvec;

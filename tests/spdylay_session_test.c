@@ -2244,3 +2244,39 @@ void test_spdylay_session_set_initial_client_cert_origin(void)
 
   spdylay_session_del(session);
 }
+
+void test_spdylay_session_set_option(void)
+{
+  spdylay_session* session;
+  spdylay_session_callbacks callbacks;
+  int intval;
+  char charval;
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks, NULL);
+
+  intval = 1;
+  CU_ASSERT(0 ==
+            spdylay_session_set_option(session,
+                                       SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE,
+                                       &intval, sizeof(intval)));
+  CU_ASSERT(session->opt_flags & SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE);
+
+  intval = 0;
+  CU_ASSERT(0 ==
+            spdylay_session_set_option(session,
+                                       SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE,
+                                       &intval, sizeof(intval)));
+  CU_ASSERT((session->opt_flags & SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE) == 0);
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_session_set_option(session, 0, /* 0 is invalid optname */
+                                       &intval, sizeof(intval)));
+
+  charval = 1;
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_session_set_option(session,
+                                       SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE,
+                                       &charval, sizeof(charval)));
+
+  spdylay_session_del(session);
+}
