@@ -1251,9 +1251,9 @@ int spdylay_session_set_option(spdylay_session *session,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * SPDYLAY_ERR_NOMEM
+ * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory
- * SPDYLAY_ERR_INVALID_STATE
+ * :enum:`SPDYLAY_ERR_INVALID_STATE`
  *     The |session| is initialized for server use; or the client
  *     certificate vector size is 0.
  */
