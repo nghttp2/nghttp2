@@ -2255,7 +2255,8 @@ static int spdylay_session_process_data_frame(spdylay_session *session)
 
 /*
  * Accumulates received bytes |delta_size| and decides whether to send
- * WINDOW_UPDATE.
+ * WINDOW_UPDATE. If SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE is set,
+ * WINDOW_UPDATE will not be sent.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -2270,19 +2271,25 @@ static int spdylay_session_update_recv_window_size(spdylay_session *session,
   spdylay_stream *stream;
   stream = spdylay_session_get_stream(session, stream_id);
   if(stream) {
+    /* TODO If SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE is set and the
+       application does not send WINDOW_UPDATE and the remote endpoint
+       keeps sending data, stream->recv_window_size will eventually
+       overflow. */
     stream->recv_window_size += delta_size;
-    /* This is just a heuristics. */
-    /* We have to use local_settings here because it is the constraint
-       the remote endpoint should honor. */
-    if((size_t)stream->recv_window_size*2 >=
-       session->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]) {
-      int r;
-      r = spdylay_session_add_window_update(session, stream_id,
-                                            stream->recv_window_size);
-      if(r == 0) {
-        stream->recv_window_size = 0;
-      } else {
-        return r;
+    if(!(session->opt_flags & SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+      /* This is just a heuristics. */
+      /* We have to use local_settings here because it is the constraint
+         the remote endpoint should honor. */
+      if((size_t)stream->recv_window_size*2 >=
+         session->local_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]) {
+        int r;
+        r = spdylay_session_add_window_update(session, stream_id,
+                                              stream->recv_window_size);
+        if(r == 0) {
+          stream->recv_window_size = 0;
+        } else {
+          return r;
+        }
       }
     }
   }
