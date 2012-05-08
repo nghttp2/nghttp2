@@ -65,8 +65,9 @@ struct Config {
   int timeout;
   std::string certfile;
   std::string keyfile;
+  int window_bits;
   Config():null_out(false), remote_name(false), verbose(false),
-           spdy3_only(false), timeout(-1) {}
+           spdy3_only(false), timeout(-1), window_bits(-1) {}
 };
 
 struct Request {
@@ -280,7 +281,14 @@ int communicate(const std::string& host, uint16_t port,
     ss << ":" << port;
   }
   std::string hostport = ss.str();
-
+  if(spdy_version >= SPDYLAY_PROTO_SPDY3 && config.window_bits != -1) {
+    spdylay_settings_entry iv[1];
+    iv[0].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+    iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+    iv[0].value = 1 << config.window_bits;
+    int rv = sc.submit_settings(SPDYLAY_FLAG_SETTINGS_NONE, iv, 1);
+    assert(rv == 0);
+  }
   for(int i = 0, n = reqvec.size(); i < n; ++i) {
     uri::UriStruct& us = reqvec[i].us;
     std::string path = us.dir+us.file+us.query;
@@ -378,7 +386,9 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Onv3] [-t=seconds] [--cert=CERT] [--key=KEY] [URI...]" << std::endl;
+  out << "Usage: spdycat [-Onv3] [-t=seconds] [-w=window_bits] [--cert=CERT]\n"
+      << "               [--key=KEY] URI..."
+      << std::endl;
 }
 
 void print_help(std::ostream& out)
@@ -395,6 +405,7 @@ void print_help(std::ostream& out)
       << "                       filename. Not implemented yet.\n"
       << "    -3, --spdy3        Only use SPDY/3.\n"
       << "    -t, --timeout=N    Timeout each request after N seconds.\n"
+      << "    -w, --window-bits=N  Sets the initial window size to 2**N.\n"
       << "    --cert=CERT        Use the specified client certificate file.\n"
       << "                       The file must be in PEM format.\n"
       << "    --key=KEY          Use the client private key file. The file\n"
@@ -412,13 +423,14 @@ int main(int argc, char **argv)
       {"remote-name", no_argument, 0, 'O' },
       {"spdy3", no_argument, 0, '3' },
       {"timeout", required_argument, 0, 't' },
+      {"window-bits", required_argument, 0, 'w' },
       {"cert", required_argument, &flag, 1 },
       {"key", required_argument, &flag, 2 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Onhv3t", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Onhv3t:w:", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -441,6 +453,18 @@ int main(int argc, char **argv)
     case 't':
       config.timeout = atoi(optarg);
       break;
+    case 'w': {
+      errno = 0;
+      unsigned long int n = strtoul(optarg, 0, 10);
+      if(errno == 0 && n < 31) {
+        config.window_bits = n;
+      } else {
+        std::cerr << "-w: specify the integer in the range [0, 30], inclusive"
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      break;
+    }
     case '?':
       exit(EXIT_FAILURE);
     case 0:

@@ -131,6 +131,11 @@ int Spdylay::submit_request(const std::string& hostport,
   return spdylay_submit_request(session_, pri, nv, NULL, stream_user_data);
 }
 
+int Spdylay::submit_settings(int flags, spdylay_settings_entry *iv, size_t niv)
+{
+  return spdylay_submit_settings(session_, flags, iv, niv);
+}
+
 bool Spdylay::would_block(int r)
 {
   int e = SSL_get_error(ssl_, r);

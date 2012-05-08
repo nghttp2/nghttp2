@@ -53,6 +53,7 @@ public:
   int fd() const;
   int submit_request(const std::string& hostport, const std::string& path,
                      uint8_t pri, void *stream_user_data);
+  int submit_settings(int flags, spdylay_settings_entry *iv, size_t niv);
   bool would_block(int r);
 private:
   int fd_;
