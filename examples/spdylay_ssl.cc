@@ -407,6 +407,34 @@ void on_ctrl_recv_callback
   fflush(stdout);
 }
 
+namespace {
+const char* spdylay_strerror(int error_code)
+{
+  return "UNKNOWN";
+};
+} // namespace
+
+void on_ctrl_recv_parse_error_callback(spdylay_session *session,
+                                       spdylay_frame_type type,
+                                       const uint8_t *head,
+                                       size_t headlen,
+                                       const uint8_t *payload,
+                                       size_t payloadlen,
+                                       int error_code, void *user_data)
+{
+  size_t i;
+  print_timer();
+  printf(" recv %s frame: Parse error [%s]\n", ctrl_names[type-1],
+         spdylay_strerror(error_code));
+  print_frame_attr_indent();
+  printf("Header dump: ");
+  for(i = 0; i < headlen; ++i) {
+    printf("%02X ", head[i]);
+  }
+  printf("\n");
+  fflush(stdout);
+}
+
 void on_ctrl_send_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)

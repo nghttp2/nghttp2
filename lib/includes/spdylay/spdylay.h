@@ -957,6 +957,27 @@ typedef void (*spdylay_on_stream_close_callback)
 typedef void (*spdylay_on_request_recv_callback)
 (spdylay_session *session, int32_t stream_id, void *user_data);
 
+/**
+ * @functypedef
+ *
+ * Callback function invoked when the received control frame octets
+ * could not be parsed correctly. The |type| indicates the type of
+ * received control frame. The |head| is the pointer to the header of
+ * the received frame. The |headlen| is the length of the
+ * |head|. According to the SPDY spec, the |headlen| is always 8. In
+ * other words, the |head| is the first 8 bytes of the received frame.
+ * The |payload| is the pointer to the data portion of the received
+ * frame.  The |payloadlen| is the length of the |payload|. This is
+ * the data after the length field. The |error_code| is one of the
+ * error code defined in :enum:`spdylay_error` and indicates the
+ * error.
+ */
+typedef void (*spdylay_on_ctrl_recv_parse_error_callback)
+(spdylay_session *session, spdylay_frame_type type,
+ const uint8_t *head, size_t headlen,
+ const uint8_t *payload, size_t payloadlen,
+ int error_code, void *user_data);
+
 #define SPDYLAY_MAX_SCHEME 255
 #define SPDYLAY_MAX_HOSTNAME 255
 
@@ -1117,6 +1138,11 @@ typedef struct {
    * certificate.
    */
   spdylay_get_credential_cert get_credential_cert;
+  /**
+   * Callback function invoked when the received control frame octets
+   * could not be parsed correctly.
+   */
+  spdylay_on_ctrl_recv_parse_error_callback on_ctrl_recv_parse_error_callback;
 } spdylay_session_callbacks;
 
 /**
@@ -1374,6 +1400,9 @@ int spdylay_session_send(spdylay_session *session);
  *   3.3. If the received frame is unpacked but is interpreted as
  *        invalid,
  *        :member:`spdylay_session_callbacks.on_invalid_ctrl_recv_callback`
+ *        is invoked.
+ *   3.4. If the received frame could not be unpacked correctly,
+ *        :member:`spdylay_session_callbacks.on_ctrl_recv_parse_error_callback`
  *        is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following

@@ -2004,6 +2004,23 @@ int spdylay_session_on_headers_received(spdylay_session *session,
   return r;
 }
 
+static void spdylay_session_handle_parse_error(spdylay_session *session,
+                                               spdylay_frame_type type,
+                                               int error_code)
+{
+  if(session->callbacks.on_ctrl_recv_parse_error_callback) {
+    session->callbacks.on_ctrl_recv_parse_error_callback
+      (session,
+       type,
+       session->iframe.headbuf,
+       sizeof(session->iframe.headbuf),
+       session->iframe.buf,
+       session->iframe.len,
+       error_code,
+       session->user_data);
+  }
+}
+
 /* For errors, this function only returns FATAL error. */
 static int spdylay_session_process_ctrl_frame(spdylay_session *session)
 {
@@ -2038,6 +2055,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
          SPDYLAY_PROTOCOL_ERROR);
       spdylay_frame_syn_stream_free(&frame.syn_stream);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2064,6 +2082,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
          SPDYLAY_PROTOCOL_ERROR);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2077,6 +2096,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_rst_stream_received(session, &frame);
       spdylay_frame_rst_stream_free(&frame.rst_stream);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2090,6 +2110,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_settings_received(session, &frame);
       spdylay_frame_settings_free(&frame.settings);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2105,6 +2126,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_ping_received(session, &frame);
       spdylay_frame_ping_free(&frame.ping);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2118,6 +2140,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_goaway_received(session, &frame);
       spdylay_frame_goaway_free(&frame.goaway);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2144,6 +2167,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
          SPDYLAY_PROTOCOL_ERROR);
       spdylay_frame_headers_free(&frame.headers);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2157,6 +2181,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_window_update_received(session, &frame);
       spdylay_frame_window_update_free(&frame.window_update);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
@@ -2170,6 +2195,7 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_on_credential_received(session, &frame);
       spdylay_frame_credential_free(&frame.credential);
     } else if(spdylay_is_non_fatal(r)) {
+      spdylay_session_handle_parse_error(session, type, r);
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
