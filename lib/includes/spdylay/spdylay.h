@@ -1538,7 +1538,7 @@ size_t spdylay_session_get_outbound_queue_size(spdylay_session *session);
  */
 uint8_t spdylay_session_get_pri_lowest(spdylay_session *session);
 
-/*
+/**
  * @function
  *
  * Submits GOAWAY frame.  The status code |status_code| is ignored if
