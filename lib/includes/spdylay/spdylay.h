@@ -1560,6 +1560,14 @@ int spdylay_session_fail_session(spdylay_session *session,
 /**
  * @function
  *
+ * Returns string describing the |error_code|. The |error_code| must
+ * be one of the :enum:`spdylay_error`.
+ */
+const char* spdylay_strerror(int error_code);
+
+/**
+ * @function
+ *
  * Submits SYN_STREAM frame and optionally one or more DATA
  * frames.
  *

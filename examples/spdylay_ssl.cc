@@ -408,13 +408,6 @@ void on_ctrl_recv_callback
 }
 
 namespace {
-const char* spdylay_strerror(int error_code)
-{
-  return "UNKNOWN";
-};
-} // namespace
-
-namespace {
 void dump_header(const uint8_t *head, size_t headlen)
 {
   size_t i;
@@ -436,8 +429,9 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        int error_code, void *user_data)
 {
   print_timer();
-  printf(" recv %s frame: Parse error [%s]\n", ctrl_names[type-1],
-         spdylay_strerror(error_code));
+  printf(" recv %s frame: Parse error\n", ctrl_names[type-1]);
+  print_frame_attr_indent();
+  printf("Error: %s\n", spdylay_strerror(error_code));
   dump_header(head, headlen);
   fflush(stdout);
 }

@@ -71,3 +71,55 @@ int spdylay_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
   }
   return 0;
 }
+
+const char* spdylay_strerror(int error_code)
+{
+  switch(error_code) {
+  case SPDYLAY_ERR_INVALID_ARGUMENT:
+    return "Invalid argument";
+  case SPDYLAY_ERR_ZLIB:
+    return "Zlib error";
+  case SPDYLAY_ERR_UNSUPPORTED_VERSION:
+    return "Unsupported SPDY version";
+  case SPDYLAY_ERR_WOULDBLOCK:
+    return "Operation would block";
+  case SPDYLAY_ERR_PROTO:
+    return "Protocol error";
+  case SPDYLAY_ERR_INVALID_FRAME:
+    return "Invalid frame octets";
+  case SPDYLAY_ERR_EOF:
+    return "EOF";
+  case SPDYLAY_ERR_DEFERRED:
+    return "Data transfer deferred";
+  case SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE:
+    return "No more Stream ID available";
+  case SPDYLAY_ERR_STREAM_CLOSED:
+    return "Stream was already closed or invalid";
+  case SPDYLAY_ERR_STREAM_CLOSING:
+    return "Stream is closing";
+  case SPDYLAY_ERR_STREAM_SHUT_WR:
+    return "The transmission is not allowed for this stream";
+  case SPDYLAY_ERR_INVALID_STREAM_ID:
+    return "Stream ID is invalid";
+  case SPDYLAY_ERR_INVALID_STREAM_STATE:
+    return "Invalid stream state";
+  case SPDYLAY_ERR_DEFERRED_DATA_EXIST:
+    return "Another DATA frame has already been deferred";
+  case SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED:
+    return "SYN_STREAM is not allowed";
+  case SPDYLAY_ERR_GOAWAY_ALREADY_SENT:
+    return "GOAWAY has already been sent";
+  case SPDYLAY_ERR_INVALID_HEADER_BLOCK:
+    return "Invalid header block";
+  case SPDYLAY_ERR_INVALID_STATE:
+    return "Invalid state";
+  case SPDYLAY_ERR_GZIP:
+    return "Gzip error";
+  case SPDYLAY_ERR_NOMEM:
+    return "Out of memory";
+  case SPDYLAY_ERR_CALLBACK_FAILURE:
+    return "The user callback function failed";
+  default:
+    return "Unknown error code";
+  }
+}
