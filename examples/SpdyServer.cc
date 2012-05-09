@@ -736,6 +736,12 @@ private:
     callbacks.on_ctrl_send_callback = hd_on_ctrl_send_callback;
     callbacks.on_data_recv_callback = hd_on_data_recv_callback;
     callbacks.on_data_send_callback = hd_on_data_send_callback;
+    if(config()->verbose) {
+      callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
+      callbacks.on_ctrl_recv_parse_error_callback =
+        on_ctrl_recv_parse_error_callback;
+      callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
+    }
     callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
     callbacks.on_request_recv_callback = config()->on_request_recv_callback;
     SpdyEventHandler *hd = new SpdyEventHandler(config(),
