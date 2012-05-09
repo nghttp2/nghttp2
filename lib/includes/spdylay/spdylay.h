@@ -404,7 +404,7 @@ typedef enum {
   /**
    * FRAME_TOO_LARGE
    */
-  FRAME_TOO_LARGE = 11
+  SPDYLAY_FRAME_TOO_LARGE = 11
 } spdylay_status_code;
 
 /**

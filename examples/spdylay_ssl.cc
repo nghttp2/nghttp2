@@ -433,7 +433,7 @@ const char* strstatus(uint32_t status_code)
     return "STREAM_ALREADY_CLOSED";
   case SPDYLAY_INVALID_CREDENTIALS:
     return "INVALID_CREDENTIALS";
-  case FRAME_TOO_LARGE:
+  case SPDYLAY_FRAME_TOO_LARGE:
     return "FRAME_TOO_LARGE";
   default:
     return "Unknown status code";
