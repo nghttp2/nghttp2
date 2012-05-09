@@ -856,12 +856,14 @@ typedef void (*spdylay_on_ctrl_recv_callback)
  * @functypedef
  *
  * Callback function invoked by `spdylay_session_recv()` when an
- * invalid control frame is received. When this callback function is
- * invoked, either RST_STREAM or GOAWAY will be sent.
+ * invalid control frame is received. The |status_code| is one of the
+ * :enum:`spdylay_status_code` and indicates the error. When this
+ * callback function is invoked, either RST_STREAM or GOAWAY will be
+ * sent.
  */
 typedef void (*spdylay_on_invalid_ctrl_recv_callback)
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
- void *user_data);
+ uint32_t status_code, void *user_data);
 
 /**
  * @functypedef

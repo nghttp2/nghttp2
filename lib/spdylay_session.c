@@ -1630,7 +1630,7 @@ static int spdylay_session_handle_invalid_stream
   }
   if(session->callbacks.on_invalid_ctrl_recv_callback) {
     session->callbacks.on_invalid_ctrl_recv_callback
-      (session, type, frame, session->user_data);
+      (session, type, frame, status_code, session->user_data);
   }
   return 0;
 }
@@ -1659,6 +1659,7 @@ int spdylay_session_on_syn_stream_received(spdylay_session *session,
       session->callbacks.on_invalid_ctrl_recv_callback(session,
                                                        SPDYLAY_SYN_STREAM,
                                                        frame,
+                                                       SPDYLAY_PROTOCOL_ERROR,
                                                        session->user_data);
     }
     return spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);

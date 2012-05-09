@@ -128,6 +128,7 @@ static void on_ctrl_recv_callback(spdylay_session *session,
 static void on_invalid_ctrl_recv_callback(spdylay_session *session,
                                           spdylay_frame_type type,
                                           spdylay_frame *frame,
+                                          uint32_t status_code,
                                           void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
