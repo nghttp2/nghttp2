@@ -348,6 +348,7 @@ int run(char **uris, int n)
     callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback3;
     callbacks.on_data_recv_callback = on_data_recv_callback;
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback3;
+    callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
     callbacks.on_ctrl_recv_parse_error_callback =
       on_ctrl_recv_parse_error_callback;
     callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;

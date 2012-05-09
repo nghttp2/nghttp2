@@ -85,6 +85,10 @@ void on_ctrl_recv_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data);
 
+void on_invalid_ctrl_recv_callback
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ uint32_t status_code, void *user_data);
+
 void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        spdylay_frame_type type,
                                        const uint8_t *head,

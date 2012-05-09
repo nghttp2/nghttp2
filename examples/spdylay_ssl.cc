@@ -408,6 +408,50 @@ void on_ctrl_recv_callback
 }
 
 namespace {
+const char* strstatus(uint32_t status_code)
+{
+  switch(status_code) {
+  case SPDYLAY_OK:
+    return "OK";
+  case SPDYLAY_PROTOCOL_ERROR:
+    return "PROTOCOL_ERROR";
+  case SPDYLAY_INVALID_STREAM:
+    return "INVALID_STREAM";
+  case SPDYLAY_REFUSED_STREAM:
+    return "REFUSED_STREAM";
+  case SPDYLAY_UNSUPPORTED_VERSION:
+    return "UNSUPPORTED_VERSION";
+  case SPDYLAY_CANCEL:
+    return "CANCEL";
+  case SPDYLAY_INTERNAL_ERROR:
+    return "INTERNAL_ERROR";
+  case SPDYLAY_FLOW_CONTROL_ERROR:
+    return "FLOW_CONTROL_ERROR";
+  case SPDYLAY_STREAM_IN_USE:
+    return "STREAM_IN_USE";
+  case SPDYLAY_STREAM_ALREADY_CLOSED:
+    return "STREAM_ALREADY_CLOSED";
+  case SPDYLAY_INVALID_CREDENTIALS:
+    return "INVALID_CREDENTIALS";
+  case FRAME_TOO_LARGE:
+    return "FRAME_TOO_LARGE";
+  default:
+    return "Unknown status code";
+  }
+}
+} // namespace
+
+void on_invalid_ctrl_recv_callback
+(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+ uint32_t status_code, void *user_data)
+{
+  print_timer();
+  printf(" [INVALID; status=%s] recv ", strstatus(status_code));
+  print_frame(type, frame);
+  fflush(stdout);
+}
+
+namespace {
 void dump_header(const uint8_t *head, size_t headlen)
 {
   size_t i;
@@ -429,7 +473,7 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        int error_code, void *user_data)
 {
   print_timer();
-  printf(" recv %s frame: Parse error\n", ctrl_names[type-1]);
+  printf(" [PARSE_ERROR] recv %s frame\n", ctrl_names[type-1]);
   print_frame_attr_indent();
   printf("Error: %s\n", spdylay_strerror(error_code));
   dump_header(head, headlen);
