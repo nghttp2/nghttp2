@@ -69,7 +69,7 @@ API is acutally usable for real implementation and also for debugging
 purposes. Please note that OpenSSL with `NPN
 <http://technotes.googlecode.com/git/nextprotoneg.html>`_ support is
 required in order to build and run these programs.  At the time of
-this writing, the Beta 2 of OpenSSL 1.0.1 supports NPN.
+this writing, the OpenSSL 1.0.1 supports NPN.
 
 SPDY client is called ``spdycat``. It is a dead simple downloader like
 wget/curl. It connects to SPDY server and gets resources given in the
