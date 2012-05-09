@@ -2199,6 +2199,17 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       r = spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     }
     break;
+  default:
+    /* Unknown frame */
+    if(session->callbacks.on_unknown_ctrl_recv_callback) {
+      session->callbacks.on_unknown_ctrl_recv_callback
+        (session,
+         session->iframe.headbuf,
+         sizeof(session->iframe.headbuf),
+         session->iframe.buf,
+         session->iframe.len,
+         session->user_data);
+    }
   }
   if(spdylay_is_fatal(r)) {
     return r;

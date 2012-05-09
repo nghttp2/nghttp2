@@ -978,6 +978,24 @@ typedef void (*spdylay_on_ctrl_recv_parse_error_callback)
  const uint8_t *payload, size_t payloadlen,
  int error_code, void *user_data);
 
+/**
+ * @functypedef
+ *
+ * Callback function invoked when the received control frame type is
+ * unknown. The |head| is the pointer to the header of the received
+ * frame. The |headlen| is the length of the |head|. According to the
+ * SPDY spec, the |headlen| is always 8. In other words, the |head| is
+ * the first 8 bytes of the received frame.  The |payload| is the
+ * pointer to the data portion of the received frame.  The
+ * |payloadlen| is the length of the |payload|. This is the data after
+ * the length field.
+ */
+typedef void (*spdylay_on_unknown_ctrl_recv_callback)
+(spdylay_session *session,
+ const uint8_t *head, size_t headlen,
+ const uint8_t *payload, size_t payloadlen,
+ void *user_data);
+
 #define SPDYLAY_MAX_SCHEME 255
 #define SPDYLAY_MAX_HOSTNAME 255
 
@@ -1143,6 +1161,11 @@ typedef struct {
    * could not be parsed correctly.
    */
   spdylay_on_ctrl_recv_parse_error_callback on_ctrl_recv_parse_error_callback;
+  /**
+   * Callback function invoked when the received control frame type is
+   * unknown.
+   */
+  spdylay_on_unknown_ctrl_recv_callback on_unknown_ctrl_recv_callback;
 } spdylay_session_callbacks;
 
 /**
@@ -1403,6 +1426,9 @@ int spdylay_session_send(spdylay_session *session);
  *        is invoked.
  *   3.4. If the received frame could not be unpacked correctly,
  *        :member:`spdylay_session_callbacks.on_ctrl_recv_parse_error_callback`
+ *        is invoked.
+ *   3.5. If the received frame type is unknown,
+ *        :member:`spdylay_session_callbacks.on_unknown_ctrl_recv_callback`
  *        is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following

@@ -350,6 +350,7 @@ int run(char **uris, int n)
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback3;
     callbacks.on_ctrl_recv_parse_error_callback =
       on_ctrl_recv_parse_error_callback;
+    callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
   } else {
     callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback2;
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback2;

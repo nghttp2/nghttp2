@@ -414,6 +414,19 @@ const char* spdylay_strerror(int error_code)
 };
 } // namespace
 
+namespace {
+void dump_header(const uint8_t *head, size_t headlen)
+{
+  size_t i;
+  print_frame_attr_indent();
+  printf("Header dump: ");
+  for(i = 0; i < headlen; ++i) {
+    printf("%02X ", head[i]);
+  }
+  printf("\n");
+}
+} // namespace
+
 void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        spdylay_frame_type type,
                                        const uint8_t *head,
@@ -422,16 +435,23 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        size_t payloadlen,
                                        int error_code, void *user_data)
 {
-  size_t i;
   print_timer();
   printf(" recv %s frame: Parse error [%s]\n", ctrl_names[type-1],
          spdylay_strerror(error_code));
-  print_frame_attr_indent();
-  printf("Header dump: ");
-  for(i = 0; i < headlen; ++i) {
-    printf("%02X ", head[i]);
-  }
-  printf("\n");
+  dump_header(head, headlen);
+  fflush(stdout);
+}
+
+void on_unknown_ctrl_recv_callback(spdylay_session *session,
+                                   const uint8_t *head,
+                                   size_t headlen,
+                                   const uint8_t *payload,
+                                   size_t payloadlen,
+                                   void *user_data)
+{
+  print_timer();
+  printf(" recv unknown frame\n");
+  dump_header(head, headlen);
   fflush(stdout);
 }
 
