@@ -1525,7 +1525,7 @@ static ssize_t spdylay_recv(spdylay_session *session, uint8_t *buf, size_t len)
       return SPDYLAY_ERR_CALLBACK_FAILURE;
     }
   } else if(r < 0) {
-    if(r != SPDYLAY_ERR_WOULDBLOCK) {
+    if(r != SPDYLAY_ERR_WOULDBLOCK && r != SPDYLAY_ERR_EOF) {
       r = SPDYLAY_ERR_CALLBACK_FAILURE;
     }
   }
