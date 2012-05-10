@@ -308,8 +308,11 @@ int communicate(const std::string& host, uint16_t port,
       return -1;
     }
     if(pollfds[0].revents & (POLLIN | POLLOUT)) {
-      if(sc.recv() != 0 || sc.send() != 0) {
-        std::cout << "Fatal" << std::endl;
+      int rv;
+      if((rv = sc.recv()) != 0 || (rv = sc.send()) != 0) {
+        if(rv != SPDYLAY_ERR_EOF || complete != numreq) {
+          std::cout << "Fatal: " << spdylay_strerror(rv) << std::endl;
+        }
         ok = false;
         break;
       }
