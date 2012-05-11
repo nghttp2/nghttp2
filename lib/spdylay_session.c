@@ -1952,7 +1952,8 @@ int spdylay_session_on_window_update_received(spdylay_session *session,
       return r;
     } else {
       stream->window_size += frame->window_update.delta_window_size;
-      if(stream->deferred_data != NULL &&
+      if(stream->window_size > 0 &&
+         stream->deferred_data != NULL &&
          (stream->deferred_flags & SPDYLAY_DEFERRED_FLOW_CONTROL)) {
         int r;
         r = spdylay_pq_push(&session->ob_pq, stream->deferred_data);
