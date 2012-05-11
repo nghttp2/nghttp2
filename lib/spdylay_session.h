@@ -197,6 +197,13 @@ struct spdylay_session {
   void *user_data;
 };
 
+/* Struct used when updating initial window size of each active
+   stream. */
+typedef struct {
+  spdylay_session *session;
+  int32_t new_window_size, old_window_size;
+} spdylay_update_window_size_arg;
+
 /* TODO stream timeout etc */
 
 /*

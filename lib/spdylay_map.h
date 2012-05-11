@@ -102,9 +102,16 @@ size_t spdylay_map_size(spdylay_map *map);
  * Applies the function |func| to each key/item pair in the map |map|
  * with the optional user supplied pointer |ptr|.  This function is
  * useful to free item in the map.
+ *
+ * If the |func| returns 0, this function calls the |func| with the
+ * next key and value pair. If the |func| returns nonzero, it will not
+ * call the |func| for further key and value pair and return the
+ * return value of the |func| immediately.  Thus, this function
+ * returns 0 if all the invocations of the |func| return 0, or nonzero
+ * value which the last invocation of |func| returns.
  */
-void spdylay_map_each(spdylay_map *map,
-                      void (*func)(key_type key, void *val, void *ptr),
-                      void *ptr);
+int spdylay_map_each(spdylay_map *map,
+                     int (*func)(key_type key, void *val, void *ptr),
+                     void *ptr);
 
 #endif /* SPDYLAY_MAP_H */

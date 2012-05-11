@@ -274,10 +274,11 @@ int spdylay_session_server_new(spdylay_session **session_ptr,
   return r;
 }
 
-static void spdylay_free_streams(key_type key, void *val, void *ptr)
+static int spdylay_free_streams(key_type key, void *val, void *ptr)
 {
   spdylay_stream_free((spdylay_stream*)val);
   free(val);
+  return 0;
 }
 
 static void spdylay_session_ob_pq_free(spdylay_pq *pq)
@@ -1783,28 +1784,56 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
   return 0;
 }
 
-static void spdylay_update_initial_window_size_func(key_type key, void *value,
-                                                    void *ptr)
+static int spdylay_update_initial_window_size_func(key_type key, void *value,
+                                                   void *ptr)
 {
-  int32_t *vals;
-  vals = (int32_t*)ptr;
-  spdylay_stream_update_initial_window_size((spdylay_stream*)value,
-                                            vals[0], vals[1]);
+  spdylay_update_window_size_arg *arg;
+  spdylay_stream *stream;
+  arg = (spdylay_update_window_size_arg*)ptr;
+  stream = (spdylay_stream*)value;
+  spdylay_stream_update_initial_window_size(stream,
+                                            arg->new_window_size,
+                                            arg->old_window_size);
+  /* If window size gets positive, push deferred DATA frame to
+     outbound queue. */
+  if(stream->window_size > 0 &&
+     stream->deferred_data &&
+     (stream->deferred_flags & SPDYLAY_DEFERRED_FLOW_CONTROL)) {
+    int rv;
+    rv = spdylay_pq_push(&arg->session->ob_pq, stream->deferred_data);
+    if(rv == 0) {
+      spdylay_stream_detach_deferred_data(stream);
+    } else {
+      /* FATAL */
+      assert(rv < SPDYLAY_ERR_FATAL);
+      return rv;
+    }
+  }
+  return 0;
 }
 
 /*
  * Updates the initial window size of all active streams.
+ * If error occurs, all streams may not be updated.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  */
-static void spdylay_session_update_initial_window_size
+static int spdylay_session_update_initial_window_size
 (spdylay_session *session,
  int32_t new_initial_window_size)
 {
-  int32_t vals[2];
-  vals[0] = new_initial_window_size;
-  vals[1] = session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE];
-  spdylay_map_each(&session->streams,
-                   spdylay_update_initial_window_size_func,
-                   vals);
+  spdylay_update_window_size_arg arg;
+  arg.session = session;
+  arg.new_window_size = new_initial_window_size;
+  arg.old_window_size =
+    session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE];
+  return spdylay_map_each(&session->streams,
+                          spdylay_update_initial_window_size_func,
+                          &arg);
 }
 
 void spdylay_session_update_local_settings(spdylay_session *session,
@@ -1821,6 +1850,7 @@ void spdylay_session_update_local_settings(spdylay_session *session,
 int spdylay_session_on_settings_received(spdylay_session *session,
                                          spdylay_frame *frame)
 {
+  int rv;
   size_t i;
   int check[SPDYLAY_SETTINGS_MAX+1];
   if(!spdylay_session_check_version(session, frame->settings.hd.version)) {
@@ -1842,12 +1872,14 @@ int spdylay_session_on_settings_received(spdylay_session *session,
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
       if(entry->value < (1u << 31)) {
-        spdylay_session_update_initial_window_size(session, entry->value);
+        rv = spdylay_session_update_initial_window_size(session, entry->value);
+        if(rv != 0) {
+          return rv;
+        }
       }
     } else if(entry->settings_id ==
               SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE) {
       if(!session->server) {
-        int rv;
         /* Limit certificate vector length in the reasonable size. */
         entry->value = spdylay_min(entry->value,
                                    SPDYLAY_MAX_CLIENT_CERT_VECTOR_LENGTH);

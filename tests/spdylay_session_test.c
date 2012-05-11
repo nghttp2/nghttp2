@@ -1736,6 +1736,8 @@ void test_spdylay_session_flow_control(void)
   spdylay_frame frame;
   spdylay_stream *stream;
   int32_t new_initial_window_size;
+  spdylay_settings_entry iv[1];
+  spdylay_frame settings_frame;
 
   memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -1769,6 +1771,8 @@ void test_spdylay_session_flow_control(void)
   stream->window_size = new_initial_window_size-
     (session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE]
      -stream->window_size);
+  session->remote_settings[SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE] =
+    new_initial_window_size;
   CU_ASSERT(-48*1024 == stream->window_size);
 
   /* Back 48KiB */
@@ -1787,9 +1791,15 @@ void test_spdylay_session_flow_control(void)
   CU_ASSERT(0 == spdylay_session_send(session));
   CU_ASSERT(16*1024 == ud.data_source_length);
 
-  /* Back 16KiB */
-  frame.window_update.delta_window_size = 16*1024;
-  spdylay_session_on_window_update_received(session, &frame);
+  /* Increase initial window size to 32KiB */
+  iv[0].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  iv[0].value = 32*1024;
+
+  spdylay_frame_settings_init(&settings_frame.settings, SPDYLAY_PROTO_SPDY3,
+                              SPDYLAY_FLAG_SETTINGS_NONE, dup_iv(iv, 1), 1);
+  spdylay_session_on_settings_received(session, &settings_frame);
+  spdylay_frame_settings_free(&settings_frame.settings);
 
   /* Sends another 16KiB data */
   CU_ASSERT(0 == spdylay_session_send(session));

@@ -197,20 +197,24 @@ size_t spdylay_map_size(spdylay_map *map)
   return map->size;
 }
 
-static void for_each(spdylay_map_entry *entry,
-                     void (*func)(key_type key, void *val, void *ptr),
-                     void *ptr)
+static int for_each(spdylay_map_entry *entry,
+                    int (*func)(key_type key, void *val, void *ptr),
+                    void *ptr)
 {
-  if(entry != NULL) {
-    for_each(entry->left, func, ptr);
-    func(entry->key, entry->val, ptr);
-    for_each(entry->right, func, ptr);
+  if(entry) {
+    int rv;
+    if((rv = for_each(entry->left, func, ptr)) != 0 ||
+       (rv = func(entry->key, entry->val, ptr)) != 0 ||
+       (rv = for_each(entry->right, func, ptr)) != 0) {
+      return rv;
+    }
   }
+  return 0;
 }
 
-void spdylay_map_each(spdylay_map *map,
-                      void (*func)(key_type key, void *val, void *ptr),
-                      void *ptr)
+int spdylay_map_each(spdylay_map *map,
+                     int (*func)(key_type key, void *val, void *ptr),
+                     void *ptr)
 {
-  for_each(map->root, func, ptr);
+  return for_each(map->root, func, ptr);
 }

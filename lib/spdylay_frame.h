@@ -683,7 +683,8 @@ void spdylay_frame_window_update_free(spdylay_window_update *frame);
 
 /*
  * Initializes SETTINGS frame |frame| with given values. |frame| takes
- * ownership of |iv|, so caller must not free it.
+ * ownership of |iv|, so caller must not free it. The |flags| are
+ * bitwise-OR of one or more of spdylay_settings_flag.
  */
 void spdylay_frame_settings_init(spdylay_settings *frame,
                                  uint16_t version, uint8_t flags,
