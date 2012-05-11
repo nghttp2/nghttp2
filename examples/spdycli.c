@@ -126,7 +126,8 @@ static void dief(const char *func, const char *msg)
  */
 static void diec(const char *func, int error_code)
 {
-  fprintf(stderr, "FATAL: %s: error_code=%d\n", func, error_code);
+  fprintf(stderr, "FATAL: %s: error_code=%d, msg=%s\n", func, error_code,
+          spdylay_strerror(error_code));
   exit(EXIT_FAILURE);
 }
 
