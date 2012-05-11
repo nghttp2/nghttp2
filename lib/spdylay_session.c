@@ -1396,10 +1396,10 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
           session->aob.item = NULL;
           spdylay_active_outbound_item_reset(&session->aob);
         } else if(r < 0) {
-          /* We don't return other error code other than
-             SPDYLAY_ERR_CALLBACK_FAILURE here. */
+          /* In this context, r is either SPDYLAY_ERR_NOMEM or
+             SPDYLAY_ERR_CALLBACK_FAILURE */
           spdylay_active_outbound_item_reset(&session->aob);
-          return SPDYLAY_ERR_CALLBACK_FAILURE;
+          return r;
         } else {
           session->aob.framebuflen = r;
           session->aob.framebufoff = 0;
@@ -2606,9 +2606,10 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
   r = frame->data_prd.read_callback
     (session, frame->stream_id, (*buf_ptr)+8, datamax,
      &eof, &frame->data_prd.source, session->user_data);
-  if(r < 0) {
+  if(r == SPDYLAY_ERR_DEFERRED) {
     return r;
-  } else if(datamax < (size_t)r) {
+  } else if(r < 0 || datamax < (size_t)r) {
+    /* This is the error code when callback is failed. */
     return SPDYLAY_ERR_CALLBACK_FAILURE;
   }
   memset(*buf_ptr, 0, SPDYLAY_HEAD_LEN);
