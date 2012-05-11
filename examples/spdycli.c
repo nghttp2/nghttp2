@@ -210,6 +210,8 @@ static ssize_t recv_callback(spdylay_session *session,
     } else {
       rv = SPDYLAY_ERR_CALLBACK_FAILURE;
     }
+  } else if(rv == 0) {
+    rv = SPDYLAY_ERR_EOF;
   }
   return rv;
 }

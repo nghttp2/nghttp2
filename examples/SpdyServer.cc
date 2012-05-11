@@ -387,7 +387,7 @@ ssize_t hd_recv_callback(spdylay_session *session,
       r = SPDYLAY_ERR_CALLBACK_FAILURE;
     }
   } else if(r == 0) {
-    r = SPDYLAY_ERR_CALLBACK_FAILURE;
+    r = SPDYLAY_ERR_EOF;
   }
   return r;
 }
