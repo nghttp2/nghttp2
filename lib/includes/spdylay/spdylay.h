@@ -919,12 +919,12 @@ typedef void (*spdylay_on_ctrl_send_callback)
  *
  * Callback function invoked after the control frame |frame| of type
  * |type| is not sent because of the error. The error is indicated by
- * the |error|, which is one of the values defined in
+ * the |error_code|, which is one of the values defined in
  * :type:`spdylay_error`.
  */
 typedef void (*spdylay_on_ctrl_not_send_callback)
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
- int error, void *user_data);
+ int error_code, void *user_data);
 
 /**
  * @functypedef
