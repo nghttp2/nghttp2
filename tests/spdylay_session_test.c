@@ -105,6 +105,13 @@ static ssize_t scripted_recv_callback(spdylay_session *session,
   return wlen;
 }
 
+static ssize_t eof_recv_callback(spdylay_session *session,
+                                      uint8_t* data, size_t len, int flags,
+                                      void *user_data)
+{
+  return SPDYLAY_ERR_EOF;
+}
+
 static ssize_t accumulator_send_callback(spdylay_session *session,
                                          const uint8_t *buf, size_t len,
                                          int flags, void* user_data)
@@ -2396,6 +2403,23 @@ void test_spdylay_session_data_read_temporal_failure(void)
   spdylay_submit_request(session, 3, nv, &data_prd, NULL);
   /* Sending data will fail */
   CU_ASSERT(SPDYLAY_ERR_CALLBACK_FAILURE == spdylay_session_send(session));
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_recv_eof(void)
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.recv_callback = eof_recv_callback;
+
+  spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3,
+                             &callbacks, NULL);
+
+  CU_ASSERT(SPDYLAY_ERR_EOF == spdylay_session_recv(session));
 
   spdylay_session_del(session);
 }

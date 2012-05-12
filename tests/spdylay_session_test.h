@@ -70,5 +70,6 @@ void test_spdylay_session_set_initial_client_cert_origin(void);
 void test_spdylay_session_set_option(void);
 void test_spdylay_submit_window_update(void);
 void test_spdylay_session_data_read_temporal_failure(void);
+void test_spdylay_session_recv_eof(void);
 
 #endif /* SPDYLAY_SESSION_TEST_H */
