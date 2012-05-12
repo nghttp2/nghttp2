@@ -38,8 +38,8 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
   int http_selected = 0;
   unsigned int i = 0;
   static const spdylay_npn_proto proto_list[] = {
-    { (const unsigned char*)"spdy/2", 6, SPDYLAY_PROTO_SPDY2 },
-    { (const unsigned char*)"spdy/3", 6, SPDYLAY_PROTO_SPDY3 }
+    { (const unsigned char*)"spdy/3", 6, SPDYLAY_PROTO_SPDY3 },
+    { (const unsigned char*)"spdy/2", 6, SPDYLAY_PROTO_SPDY2 }
   };
   for(; i < inlen; i += in[i]+1) {
     unsigned int j;
@@ -55,7 +55,7 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
       http_selected = 1;
       *out = (unsigned char*)&in[i+1];
       *outlen = in[i];
-      /* Go through to the next iteration, because "spdy/2" may be
+      /* Go through to the next iteration, because "spdy/X" may be
          there */
     }
   }
