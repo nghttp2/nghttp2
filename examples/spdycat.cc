@@ -61,13 +61,13 @@ struct Config {
   bool null_out;
   bool remote_name;
   bool verbose;
-  bool spdy3_only;
+  int spdy_version;
   int timeout;
   std::string certfile;
   std::string keyfile;
   int window_bits;
   Config():null_out(false), remote_name(false), verbose(false),
-           spdy3_only(false), timeout(-1), window_bits(-1) {}
+           spdy_version(-1), timeout(-1), window_bits(-1) {}
 };
 
 struct Request {
@@ -230,8 +230,13 @@ int communicate(const std::string& host, uint16_t port,
     return -1;
   }
   std::string next_proto;
-  if(config.spdy3_only) {
+  switch(config.spdy_version) {
+  case SPDYLAY_PROTO_SPDY2:
+    next_proto = "spdy/2";
+    break;
+  case SPDYLAY_PROTO_SPDY3:
     next_proto = "spdy/3";
+    break;
   }
   setup_ssl_ctx(ssl_ctx, &next_proto);
   if(!config.keyfile.empty()) {
@@ -393,7 +398,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Onv3] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: spdycat [-Onv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "               [--key=<KEY>] <URI>..."
       << std::endl;
 }
@@ -410,6 +415,7 @@ void print_help(std::ostream& out)
       << "                       The filename is dereived from URI. If URI\n"
       << "                       ends with '/', 'index.html' is used as a\n"
       << "                       filename. Not implemented yet.\n"
+      << "    -2, --spdy2        Only use SPDY/2.\n"
       << "    -3, --spdy3        Only use SPDY/3.\n"
       << "    -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
       << "    -w, --window-bits=<N>\n"
@@ -429,6 +435,7 @@ int main(int argc, char **argv)
       {"verbose", no_argument, 0, 'v' },
       {"null-out", no_argument, 0, 'n' },
       {"remote-name", no_argument, 0, 'O' },
+      {"spdy2", no_argument, 0, '2' },
       {"spdy3", no_argument, 0, '3' },
       {"timeout", required_argument, 0, 't' },
       {"window-bits", required_argument, 0, 'w' },
@@ -438,7 +445,7 @@ int main(int argc, char **argv)
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Onhv3t:w:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Onhv23t:w:", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -455,8 +462,11 @@ int main(int argc, char **argv)
     case 'v':
       config.verbose = true;
       break;
+    case '2':
+      config.spdy_version = SPDYLAY_PROTO_SPDY2;
+      break;
     case '3':
-      config.spdy3_only = true;
+      config.spdy_version = SPDYLAY_PROTO_SPDY3;
       break;
     case 't':
       config.timeout = atoi(optarg);
