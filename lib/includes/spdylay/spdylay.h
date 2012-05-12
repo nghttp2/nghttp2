@@ -165,6 +165,10 @@ typedef enum {
    */
   SPDYLAY_ERR_GZIP = -520,
   /**
+   * The user callback function failed due to the temporal error.
+   */
+  SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE = -521,
+  /**
    * The errors < :enum:`SPDYLAY_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -737,8 +741,11 @@ typedef union {
  * reading any data in this invocation.  The library removes DATA
  * frame from the outgoing queue temporarily.  To move back deferred
  * DATA frame to outgoing queue, call `spdylay_session_resume_data()`.
- * In case of error, return :enum:`SPDYLAY_ERR_CALLBACK_FAILURE`,
- * which leads to session failure.
+ * In case of error, there are 2 choices. Returning
+ * :enum:`SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE` will close the stream
+ * by issuing RST_STREAM with :enum:`SPDYLAY_INTERNAL_ERROR`.
+ * Returning :enum:`SPDYLAY_ERR_CALLBACK_FAILURE` will signal the
+ * entire session failure.
  */
 typedef ssize_t (*spdylay_data_source_read_callback)
 (spdylay_session *session, int32_t stream_id,

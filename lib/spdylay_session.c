@@ -1123,6 +1123,14 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
     if(framebuflen == SPDYLAY_ERR_DEFERRED) {
       spdylay_stream_defer_data(stream, item, SPDYLAY_DEFERRED_NONE);
       return SPDYLAY_ERR_DEFERRED;
+    } else if(framebuflen == SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE) {
+      r = spdylay_session_add_rst_stream(session, data_frame->stream_id,
+                                         SPDYLAY_INTERNAL_ERROR);
+      if(r == 0) {
+        return framebuflen;
+      } else {
+        return r;
+      }
     } else if(framebuflen < 0) {
       return framebuflen;
     }
@@ -1395,6 +1403,16 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
                                     SPDYLAY_DEFERRED_NONE);
           session->aob.item = NULL;
           spdylay_active_outbound_item_reset(&session->aob);
+        } else if(r == SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE) {
+          /* Stop DATA frame chain and issue RST_STREAM to close the
+             stream.  We don't return
+             SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE intentionally. */
+          r = spdylay_session_add_rst_stream(session, data_frame->stream_id,
+                                             SPDYLAY_INTERNAL_ERROR);
+          spdylay_active_outbound_item_reset(&session->aob);
+          if(r != 0) {
+            return r;
+          }
         } else if(r < 0) {
           /* In this context, r is either SPDYLAY_ERR_NOMEM or
              SPDYLAY_ERR_CALLBACK_FAILURE */
@@ -2606,7 +2624,7 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
   r = frame->data_prd.read_callback
     (session, frame->stream_id, (*buf_ptr)+8, datamax,
      &eof, &frame->data_prd.source, session->user_data);
-  if(r == SPDYLAY_ERR_DEFERRED) {
+  if(r == SPDYLAY_ERR_DEFERRED || r == SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE) {
     return r;
   } else if(r < 0 || datamax < (size_t)r) {
     /* This is the error code when callback is failed. */

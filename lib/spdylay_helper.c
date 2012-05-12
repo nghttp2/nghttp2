@@ -115,6 +115,8 @@ const char* spdylay_strerror(int error_code)
     return "Invalid state";
   case SPDYLAY_ERR_GZIP:
     return "Gzip error";
+  case SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE:
+    return "The user callback function failed due to the temporal error";
   case SPDYLAY_ERR_NOMEM:
     return "Out of memory";
   case SPDYLAY_ERR_CALLBACK_FAILURE:

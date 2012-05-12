@@ -484,12 +484,14 @@ spdylay_stream* spdylay_session_get_stream(spdylay_session *session,
  * This function returns the size of packed frame if it succeeds, or
  * one of the following negative error codes:
  *
- * SPDYLAY_ERR_NOMEM
- *     Out of memory.
  * SPDYLAY_ERR_DEFERRED
  *     The DATA frame is postponed.
+ * SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE
+ *     The read_callback failed (stream error).
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
  * SPDYLAY_ERR_CALLBACK_FAILURE
- *     The read_callback failed.
+ *     The read_callback failed (session error).
  */
 ssize_t spdylay_session_pack_data(spdylay_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,

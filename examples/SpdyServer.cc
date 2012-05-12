@@ -402,7 +402,7 @@ ssize_t file_read_callback
   ssize_t r;
   while((r = read(fd, buf, length)) == -1 && errno == EINTR);
   if(r == -1) {
-    return SPDYLAY_ERR_CALLBACK_FAILURE;
+    return SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE;
   } else {
     if(r == 0) {
       *eof = 1;
