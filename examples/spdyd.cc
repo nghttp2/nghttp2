@@ -47,7 +47,8 @@ extern bool ssl_debug;
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdyd [-Ddhv] PORT PRIVATE_KEY CERT" << std::endl;
+  out << "Usage: spdyd [-3DVhv] [-d <PATH>] <PORT> <PRIVATE_KEY> <CERT>"
+      << std::endl;
 }
 } // namespace
 
@@ -67,16 +68,13 @@ void print_help(std::ostream& out)
       << "                       certificate, the handshake is terminated.\n"
       << "                       Currently, this option just requests a\n"
       << "                       client certificate and does not verify it.\n"
-      << "\n"
-      << "    -d, --htdocs=PATH  Specify document root. If this option is not\n"
-      << "                       specified, the document root is the current\n"
-      << "                       working directory.\n"
-      << "\n"
+      << "    -d, --htdocs=<PATH>\n"
+      << "                       Specify document root. If this option is\n"
+      << "                       not specified, the document root is the\n"
+      << "                       current working directory.\n"
       << "    -v, --verbose      Print debug information such as reception/\n"
       << "                       transmission of frames and name/value pairs.\n"
-      << "\n"
       << "    -3, --spdy3        Only use SPDY/3.\n"
-      << "\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }

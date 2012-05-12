@@ -394,7 +394,7 @@ int run(char **uris, int n)
 void print_usage(std::ostream& out)
 {
   out << "Usage: spdycat [-Onv3] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "               [--key=<KEY>] URI..."
+      << "               [--key=<KEY>] <URI>..."
       << std::endl;
 }
 
@@ -412,7 +412,8 @@ void print_help(std::ostream& out)
       << "                       filename. Not implemented yet.\n"
       << "    -3, --spdy3        Only use SPDY/3.\n"
       << "    -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
-      << "    -w, --window-bits=<N>  Sets the initial window size to 2**<N>.\n"
+      << "    -w, --window-bits=<N>\n"
+      << "                       Sets the initial window size to 2**<N>.\n"
       << "    --cert=<CERT>      Use the specified client certificate file.\n"
       << "                       The file must be in PEM format.\n"
       << "    --key=<KEY>        Use the client private key file. The file\n"
