@@ -936,9 +936,9 @@ int SpdyServer::run()
     next_proto.second = 7;
   } else {
     proto_list[0] = 6;
-    memcpy(&proto_list[1], "spdy/2", 6);
+    memcpy(&proto_list[1], "spdy/3", 6);
     proto_list[7] = 6;
-    memcpy(&proto_list[8], "spdy/3", 6);
+    memcpy(&proto_list[8], "spdy/2", 6);
     next_proto.first = proto_list;
     next_proto.second = sizeof(proto_list);
   }
