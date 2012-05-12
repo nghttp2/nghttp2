@@ -26,7 +26,7 @@ LT_PREREQ([2.2.6])
 LT_INIT()
 dnl See versioning rule:
 dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST(LT_CURRENT, 0)
+AC_SUBST(LT_CURRENT, 1)
 AC_SUBST(LT_REVISION, 0)
 AC_SUBST(LT_AGE, 0)
 
