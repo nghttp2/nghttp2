@@ -1077,7 +1077,7 @@ typedef ssize_t (*spdylay_get_credential_ncerts)
  * @functypedef
  *
  * Callback function invoked when the library needs the client
- * certificate for the given |origin|. The |index| is the index of the
+ * certificate for the given |origin|. The |idx| is the index of the
  * certificate chain and 0 means the leaf certificate of the chain.
  * If called with |certlen| == 0, the implementation of this function
  * must return the length of the certificate in bytes. If called with
@@ -1085,7 +1085,7 @@ typedef ssize_t (*spdylay_get_credential_ncerts)
  * bytes and return 0.
  */
 typedef ssize_t (*spdylay_get_credential_cert)
-(spdylay_session *session, const spdylay_origin *origin, size_t index,
+(spdylay_session *session, const spdylay_origin *origin, size_t idx,
  uint8_t *cert, size_t certlen, void *user_data);
 
 /**
