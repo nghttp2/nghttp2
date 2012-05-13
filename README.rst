@@ -52,6 +52,17 @@ used.::
     $ ./configure
     $ make
 
+Building documentation
+----------------------
+
+To build documentation, run::
+
+    $ make html
+
+The documents will be generated under ``doc/manual/html/``.
+
+The generated documents will not be installed with ``make install``.
+
 API
 ---
 
