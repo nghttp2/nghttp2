@@ -82,103 +82,100 @@ purposes. Please note that OpenSSL with `NPN
 required in order to build and run these programs.  At the time of
 this writing, the OpenSSL 1.0.1 supports NPN.
 
-SPDY client is called ``spdycat``. It is a dead simple downloader like
-wget/curl. It connects to SPDY server and gets resources given in the
-command-line::
+The SPDY client is called ``spdycat``. It is a dead simple downloader
+like wget/curl. It connects to SPDY server and gets resources given in
+the command-line::
 
-    $ ./spdycat -vn https://www.google.com/
-    [  0.029] NPN select next protocol: the remote server offers:
+    $ examples/spdycat -h
+    Usage: spdycat [-Onv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
+                   [--key=<KEY>] <URI>...
+
+    OPTIONS:
+        -v, --verbose      Print debug information such as reception/
+                           transmission of frames and name/value pairs.
+        -n, --null-out     Discard downloaded data.
+        -O, --remote-name  Save download data in the current directory.
+                           The filename is dereived from URI. If URI
+                           ends with '/', 'index.html' is used as a
+                           filename. Not implemented yet.
+        -2, --spdy2        Only use SPDY/2.
+        -3, --spdy3        Only use SPDY/3.
+        -t, --timeout=<N>  Timeout each request after <N> seconds.
+        -w, --window-bits=<N>
+                           Sets the initial window size to 2**<N>.
+        --cert=<CERT>      Use the specified client certificate file.
+                           The file must be in PEM format.
+        --key=<KEY>        Use the client private key file. The file
+                           must be in PEM format.
+    $ examples/spdycat -nv https://www.google.com/
+    [  0.025] NPN select next protocol: the remote server offers:
+              * spdy/3
               * spdy/2
               * http/1.1
-    [  0.040] recv SETTINGS frame <version=2, flags=0, length=12>
-              (niv=1)
-              [4(1):100]
-    [  0.040] send SYN_STREAM frame <version=2, flags=1, length=107>
-              (stream_id=1, assoc_stream_id=0, pri=3)
-              host: www.google.com:443
-              method: GET
-              scheme: https
-              url: /
-              user-agent: spdylay/0.0.0
-              version: HTTP/1.1
-    [  0.087] recv SYN_REPLY frame <version=2, flags=0, length=580>
-              (stream_id=1)
-              cache-control: private, max-age=0
-              content-type: text/html; charset=ISO-8859-1
-              date: Wed, 01 Feb 2012 15:43:00 GMT
-              expires: -1
-              server: gws
-              status: 200 OK
-              version: HTTP/1.1
-              x-frame-options: SAMEORIGIN
-              x-xss-protection: 1; mode=block
-    [  0.087] recv DATA frame (stream_id=1, flags=0, length=4096)
-    [  0.088] recv DATA frame (stream_id=1, flags=0, length=2617)
-    [  0.094] recv DATA frame (stream_id=1, flags=0, length=4096)
-    [  0.094] recv DATA frame (stream_id=1, flags=1, length=828)
-    [  0.094] send GOAWAY frame <version=2, flags=0, length=4>
-              (last_good_stream_id=0)
-
-``spdycat`` can speak SPDY/3. Note that SPDY/3 is still moving target
-and thus considered highly experimental. ``-3`` option forces ``spdycat``
-to use SPDY/3 only::
-
-    $ ./spdycat -nv3 https://localhost:3000/
-    [  0.000] NPN select next protocol: the remote server offers:
-              * spdy/2
-              * spdy/3
               NPN selected the protocol: spdy/3
-    [  0.002] send SYN_STREAM frame <version=3, flags=1, length=95>
+    [  0.035] recv SETTINGS frame <version=3, flags=0, length=20>
+              (niv=2)
+              [4(1):100]
+              [7(0):12288]
+    [  0.035] send SYN_STREAM frame <version=3, flags=1, length=106>
               (stream_id=1, assoc_stream_id=0, pri=3)
-              :host: localhost:3000
+              :host: www.google.com
               :method: GET
               :path: /
               :scheme: https
               :version: HTTP/1.1
-              user-agent: spdylay/0.0.0
-    [  0.003] recv SYN_REPLY frame <version=3, flags=0, length=95>
+              accept: */*
+              user-agent: spdylay/0.2.0
+    [  0.077] recv SYN_REPLY frame <version=3, flags=0, length=558>
               (stream_id=1)
-              :status: 404 Not Found
+              :status: 302 Found
               :version: HTTP/1.1
-              cache-control: max-age=3600
-              content-length: 144
-              date: Sun, 26 Feb 2012 09:16:51 GMT
-              server: spdyd spdylay/0.1.0
-    [  0.003] recv DATA frame (stream_id=1, flags=0, length=144)
-    [  0.003] recv DATA frame (stream_id=1, flags=1, length=0)
-    [  0.003] send GOAWAY frame <version=3, flags=0, length=8>
+              cache-control: private
+              content-length: 222
+              content-type: text/html; charset=UTF-8
+              date: Sun, 13 May 2012 08:02:54 GMT
+              location: https://www.google.co.jp/
+              server: gws
+              x-frame-options: SAMEORIGIN
+              x-xss-protection: 1; mode=block
+    [  0.077] recv DATA frame (stream_id=1, flags=1, length=222)
+    [  0.077] send GOAWAY frame <version=3, flags=0, length=8>
               (last_good_stream_id=0)
 
 SPDY server is called ``spdyd``. It is a non-blocking server and only
 serves static contents. It can speak SPDY/2 and SPDY/3::
 
-    $ ./spdyd --htdocs=/your/htdocs/ -v 3000 server.key server.crt
-    The negotiated next protocol: spdy/2
-    [id=1] [  1.633] recv SYN_STREAM frame <version=2, flags=1, length=99>
+    $ examples/spdyd --htdocs=/your/htdocs/ -v 3000 server.key server.crt
+    IPv4: listen on port 3000
+    IPv6: listen on port 3000
+    The negotiated next protocol: spdy/3
+    [id=1] [ 17.456] send SETTINGS frame <version=3, flags=0, length=12>
+              (niv=1)
+              [4(0):100]
+    [id=1] [ 17.457] recv SYN_STREAM frame <version=3, flags=1, length=108>
               (stream_id=1, assoc_stream_id=0, pri=3)
-              host: localhost:3000
-              method: GET
-              scheme: https
-              url: /
-              user-agent: spdylay/0.0.0
-              version: HTTP/1.1
-    [id=1] [  1.633] send SYN_REPLY frame <version=2, flags=0, length=126>
+              :host: localhost:3000
+              :method: GET
+              :path: /README
+              :scheme: https
+              :version: HTTP/1.1
+              accept: */*
+              user-agent: spdylay/0.2.0
+    [id=1] [ 17.457] send SYN_REPLY frame <version=3, flags=0, length=113>
               (stream_id=1)
+              :status: 200 OK
+              :version: HTTP/1.1
               cache-control: max-age=3600
-              content-length: 8472
-              date: Mon, 16 Jan 2012 12:46:27 GMT
-              last-modified: Mon, 16 Jan 2012 12:46:27 GMT
-              server: spdyd spdylay/0.1.0
-              status: 200 OK
-              version: HTTP/1.1
-    [id=1] [  1.633] send DATA frame (stream_id=1, flags=0, length=4104)
-    [id=1] [  1.633] send DATA frame (stream_id=1, flags=0, length=4104)
-    [id=1] [  1.633] send DATA frame (stream_id=1, flags=0, length=288)
-    [id=1] [  1.633] send DATA frame (stream_id=1, flags=1, length=8)
-    [id=1] [  1.633] stream_id=1 closed
-    [id=1] [  1.634] recv GOAWAY frame <version=2, flags=0, length=4>
+              content-length: 15
+              date: Sun, 13 May 2012 08:06:12 GMT
+              last-modified: Tue, 17 Jan 2012 15:39:01 GMT
+              server: spdyd spdylay/0.2.0
+    [id=1] [ 17.467] send DATA frame (stream_id=1, flags=0, length=15)
+    [id=1] [ 17.467] send DATA frame (stream_id=1, flags=1, length=0)
+    [id=1] [ 17.468] stream_id=1 closed
+    [id=1] [ 17.468] recv GOAWAY frame <version=3, flags=0, length=8>
               (last_good_stream_id=0)
-    [id=1] [  1.634] closed
+    [id=1] [ 17.468] closed
 
 Currently, ``spdyd`` needs ``epoll`` or ``kqueue``.
 
@@ -207,3 +204,6 @@ server::
 
 Don't expect much from ``spdynative``. It is just an example and does
 not support asynchronous I/O at all.
+
+If you are looking for the example program written in C, see
+``spdycli`` which is the simple SPDY client.
