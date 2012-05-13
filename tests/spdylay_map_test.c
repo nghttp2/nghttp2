@@ -32,17 +32,18 @@ void test_spdylay_map(void)
 {
   spdylay_map map;
   spdylay_map_init(&map);
-  CU_ASSERT(0 == spdylay_map_insert(&map, 1, "foo"));
+  CU_ASSERT(0 == spdylay_map_insert(&map, 1, (void*)"foo"));
   CU_ASSERT(strcmp("foo", spdylay_map_find(&map, 1)) == 0);
   CU_ASSERT(1 == spdylay_map_size(&map));
-  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT == spdylay_map_insert(&map, 1, "FOO"));
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT == spdylay_map_insert(&map, 1,
+                                                               (void*)"FOO"));
   CU_ASSERT(1 == spdylay_map_size(&map));
   CU_ASSERT(strcmp("foo", spdylay_map_find(&map, 1)) == 0);
-  CU_ASSERT(0 == spdylay_map_insert(&map, 2, "bar"));
+  CU_ASSERT(0 == spdylay_map_insert(&map, 2, (void*)"bar"));
   CU_ASSERT(2 == spdylay_map_size(&map));
-  CU_ASSERT(0 == spdylay_map_insert(&map, 3, "baz"));
+  CU_ASSERT(0 == spdylay_map_insert(&map, 3, (void*)"baz"));
   CU_ASSERT(3 == spdylay_map_size(&map));
-  CU_ASSERT(0 == spdylay_map_insert(&map, 4, "shrubbery"));
+  CU_ASSERT(0 == spdylay_map_insert(&map, 4, (void*)"shrubbery"));
   CU_ASSERT(4 == spdylay_map_size(&map));
   CU_ASSERT(strcmp("baz", spdylay_map_find(&map, 3)) == 0);
 

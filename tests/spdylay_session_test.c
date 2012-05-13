@@ -2140,7 +2140,7 @@ static ssize_t get_credential_ncerts(spdylay_session *session,
 
 static ssize_t get_credential_cert(spdylay_session *session,
                                    const spdylay_origin *origin,
-                                   size_t index,
+                                   size_t idx,
                                    uint8_t *cert, size_t certlen,
                                    void *user_data)
 {

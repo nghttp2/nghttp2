@@ -664,7 +664,7 @@ void test_spdylay_frame_nv_3to2(void)
   spdylay_frame_nv_del(nv);
 }
 
-static size_t spdylay_pack_nv(uint8_t *buf, size_t len, const char **nv,
+static size_t spdylay_pack_nv(uint8_t *buf, size_t buflen, const char **nv,
                               size_t len_size)
 {
   size_t i, n;
