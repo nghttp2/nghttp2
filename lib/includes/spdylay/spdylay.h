@@ -1618,11 +1618,13 @@ const char* spdylay_strerror(int error_code);
  * in subsequent DATA frames. In this case, a method that allows
  * request message bodies
  * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must
- * be specified with ``:method`` key in |nv| (e.g. ``POST``). If
- * |data_prd| is ``NULL``, SYN_STREAM have FLAG_FIN set. The
- * |stream_user_data| is data associated to the stream opened by this
- * request and can be an arbitrary pointer, which can be retrieved
- * later by `spdylay_session_get_stream_user_data()`.
+ * be specified with ``:method`` key in |nv| (e.g. ``POST``). This
+ * function does not take ownership of the |data_prd|. The function
+ * copies the members of the |data_prd|. If |data_prd| is ``NULL``,
+ * SYN_STREAM have FLAG_FIN set. The |stream_user_data| is data
+ * associated to the stream opened by this request and can be an
+ * arbitrary pointer, which can be retrieved later by
+ * `spdylay_session_get_stream_user_data()`.
  *
  * Since the library reorders the frames and tries to send the highest
  * prioritized one first and the SPDY specification requires the
@@ -1677,8 +1679,10 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  * also lower-cases all names in |nv|.
  *
  * If |data_prd| is not ``NULL``, it provides data which will be sent
- * in subsequent DATA frames. If |data_prd| is ``NULL``, SYN_REPLY
- * will have FLAG_FIN set.
+ * in subsequent DATA frames.  This function does not take ownership
+ * of the |data_prd|. The function copies the members of the
+ * |data_prd|.  If |data_prd| is ``NULL``, SYN_REPLY will have
+ * FLAG_FIN set.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1714,6 +1718,9 @@ int spdylay_submit_response(spdylay_session *session,
  * pointer to the value string. The one beyond last value must be
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
  * ``nv[2*N]`` must be ``NULL``.
+ *
+ * This function creates copies of all name/value pairs in |nv|.  It
+ * also lower-cases all names in |nv|.
  *
  * The |stream_user_data| is a pointer to an arbitrary
  * data which is associated to the stream this frame will open.
@@ -1755,6 +1762,9 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
  * ``nv[2*N]`` must be ``NULL``.
  *
+ * This function creates copies of all name/value pairs in |nv|.  It
+ * also lower-cases all names in |nv|.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -1784,6 +1794,9 @@ int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
  * ``nv[2*N]`` must be ``NULL``.
  *
+ * This function creates copies of all name/value pairs in |nv|.  It
+ * also lower-cases all names in |nv|.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -1800,6 +1813,9 @@ int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
  * data to be sent are provided by |data_prd|. If |flags| contains
  * :enum:`SPDYLAY_DATA_FLAG_FIN`, the last DATA frame has FLAG_FIN
  * set.
+ *
+ * This function does not take ownership of the |data_prd|. The
+ * function copies the members of the |data_prd|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1860,6 +1876,9 @@ int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code);
  * indicates the number of :type:`spdylay_settings_entry`. The |flags|
  * is bitwise-OR of one or more values from
  * :type:`spdylay_settings_flag`.
+ *
+ * This function does not take ownership of the |iv|. This function
+ * copies all the elements in the |iv|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
