@@ -159,10 +159,12 @@ static spdylay_map_entry* erase_rotate_recur(spdylay_map_entry *entry)
     return left;
   } else if(entry->left->priority < entry->right->priority) {
     entry = rotate_right(entry);
-    return erase_rotate_recur(entry->right);
+    entry->right = erase_rotate_recur(entry->right);
+    return entry;
   } else {
     entry = rotate_left(entry);
-    return erase_rotate_recur(entry->left);
+    entry->left = erase_rotate_recur(entry->left);
+    return entry;
   }
 }
 
