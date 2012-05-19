@@ -66,15 +66,37 @@ struct Config {
   bool remote_name;
   bool verbose;
   bool get_assets;
+  bool stat;
   int spdy_version;
   int timeout;
   std::string certfile;
   std::string keyfile;
   int window_bits;
   Config():null_out(false), remote_name(false), verbose(false),
-           get_assets(false), spdy_version(-1), timeout(-1), window_bits(-1)
+           get_assets(false), stat(false),
+           spdy_version(-1), timeout(-1), window_bits(-1)
   {}
 };
+
+struct RequestStat {
+  timeval on_syn_stream_time;
+  timeval on_syn_reply_time;
+  timeval on_complete_time;
+  RequestStat()
+  {
+    on_syn_stream_time.tv_sec = -1;
+    on_syn_stream_time.tv_usec = -1;
+    on_syn_reply_time.tv_sec = -1;
+    on_syn_reply_time.tv_usec = -1;
+    on_complete_time.tv_sec = -1;
+    on_complete_time.tv_usec = -1;
+  }
+};
+
+void record_time(timeval *tv)
+{
+  gettimeofday(tv, 0);
+}
 
 struct Request {
   uri::UriStruct us;
@@ -82,6 +104,8 @@ struct Request {
   HtmlParser *html_parser;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
+  RequestStat stat;
+  std::string status;
   Request(const uri::UriStruct& us, int level = 0)
     : us(us), inflater(0), html_parser(0), level(level)
   {}
@@ -114,6 +138,30 @@ struct Request {
                                   fin);
     return rv;
   }
+
+  void record_syn_stream_time()
+  {
+    record_time(&stat.on_syn_stream_time);
+  }
+
+  void record_syn_reply_time()
+  {
+    record_time(&stat.on_syn_reply_time);
+  }
+
+  void record_complete_time()
+  {
+    record_time(&stat.on_complete_time);
+  }
+};
+
+struct SessionStat {
+  timeval on_handshake_time;
+  SessionStat()
+  {
+    on_handshake_time.tv_sec = -1;
+    on_handshake_time.tv_usec = -1;
+  }
 };
 
 struct SpdySession {
@@ -127,6 +175,7 @@ struct SpdySession {
   size_t complete;
   std::string hostport;
   Spdylay *sc;
+  SessionStat stat;
   SpdySession():complete(0) {}
   ~SpdySession()
   {
@@ -164,6 +213,10 @@ struct SpdySession {
       reqvec.push_back(new Request(us, level));
       return true;
     }
+  }
+  void record_handshake_time()
+  {
+    record_time(&stat.on_handshake_time);
   }
 };
 
@@ -251,6 +304,7 @@ void check_stream_id(spdylay_session *session,
   Request *req = (Request*)spdylay_session_get_stream_user_data(session,
                                                                 stream_id);
   spdySession->streams[stream_id] = req;
+  req->record_syn_stream_time();
 }
 
 void on_ctrl_send_callback2
@@ -260,16 +314,9 @@ void on_ctrl_send_callback2
   if(type == SPDYLAY_SYN_STREAM) {
     check_stream_id(session, type, frame, user_data);
   }
-}
-
-void on_ctrl_send_callback3
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
- void *user_data)
-{
-  if(type == SPDYLAY_SYN_STREAM) {
-    check_stream_id(session, type, frame, user_data);
+  if(config.verbose) {
+    on_ctrl_send_callback(session, type, frame, user_data);
   }
-  on_ctrl_send_callback(session, type, frame, user_data);
 }
 
 void check_response_header
@@ -294,6 +341,8 @@ void check_response_header
   for(size_t i = 0; nv[i]; i += 2) {
     if(strcmp("content-encoding", nv[i]) == 0) {
       gzip = util::strieq("gzip", nv[i+1]) || util::strieq("deflate", nv[i+1]);
+    } else if(strcmp(":status", nv[i]) == 0) {
+      req->status = nv[i+1];
     }
   }
   if(gzip) {
@@ -312,15 +361,16 @@ void on_ctrl_recv_callback2
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
+  if(type == SPDYLAY_SYN_REPLY) {
+    Request *req = (Request*)spdylay_session_get_stream_user_data
+      (session, frame->syn_reply.stream_id);
+    assert(req);
+    req->record_syn_reply_time();
+  }
   check_response_header(session, type, frame, user_data);
-}
-
-void on_ctrl_recv_callback3
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
- void *user_data)
-{
-  check_response_header(session, type, frame, user_data);
-  on_ctrl_recv_callback(session, type, frame, user_data);
+  if(config.verbose) {
+    on_ctrl_recv_callback(session, type, frame, user_data);
+  }
 }
 
 void on_stream_close_callback
@@ -332,10 +382,57 @@ void on_stream_close_callback
     spdySession->streams.find(stream_id);
   if(itr != spdySession->streams.end()) {
     update_html_parser(spdySession, (*itr).second, 0, 0, 1);
+    (*itr).second->record_complete_time();
     ++spdySession->complete;
     if(spdySession->all_requests_processed()) {
       spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
     }
+  }
+}
+
+int64_t time_delta(const timeval& a, const timeval& b)
+{
+  int64_t res;
+  res = a.tv_usec - b.tv_usec;
+  int off = 0;
+  if(res < 0) {
+    res += 1000000;
+    off = -1;
+  }
+  res += (a.tv_sec + off - b.tv_sec)*1000000;
+  return res/1000;
+}
+
+void print_stats(const SpdySession& spdySession)
+{
+  std::cout << "***** Statistics *****" << std::endl;
+  for(size_t i = 0; i < spdySession.reqvec.size(); ++i) {
+    const Request *req = spdySession.reqvec[i];
+    std::cout << "#" << i+1 << ": " << uri::construct(req->us) << std::endl;
+    std::cout << "    Status: " << req->status << std::endl;
+    std::cout << "    Delta (ms) from SSL/TLS handshake(SYN_STREAM):"
+              << std::endl;
+    if(req->stat.on_syn_reply_time.tv_sec >= 0) {
+      std::cout << "        SYN_REPLY: "
+                << time_delta(req->stat.on_syn_reply_time,
+                              spdySession.stat.on_handshake_time)
+                << "("
+                << time_delta(req->stat.on_syn_reply_time,
+                              req->stat.on_syn_stream_time)
+                << ")"
+                << std::endl;
+    }
+    if(req->stat.on_complete_time.tv_sec >= 0) {
+      std::cout << "        Completed: "
+                << time_delta(req->stat.on_complete_time,
+                              spdySession.stat.on_handshake_time)
+                << "("
+                << time_delta(req->stat.on_complete_time,
+                              req->stat.on_syn_stream_time)
+                << ")"
+                << std::endl;
+    }
+    std::cout << std::endl;
   }
 }
 
@@ -386,6 +483,7 @@ int communicate(const std::string& host, uint16_t port,
   if(ssl_handshake(ssl, fd) == -1) {
     return -1;
   }
+  spdySession.record_handshake_time();
   make_non_block(fd);
   set_tcp_nodelay(fd);
   int spdy_version = spdylay_npn_get_version(
@@ -459,6 +557,9 @@ int communicate(const std::string& host, uint16_t port,
   SSL_CTX_free(ssl_ctx);
   shutdown(fd, SHUT_WR);
   close(fd);
+  if(config.stat) {
+    print_stats(spdySession);
+  }
   return ok ? 0 : -1;
 }
 
@@ -469,17 +570,14 @@ int run(char **uris, int n)
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
+  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback2;
+  callbacks.on_ctrl_send_callback = on_ctrl_send_callback2;
   if(config.verbose) {
-    callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback3;
     callbacks.on_data_recv_callback = on_data_recv_callback;
-    callbacks.on_ctrl_send_callback = on_ctrl_send_callback3;
     callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
     callbacks.on_ctrl_recv_parse_error_callback =
       on_ctrl_recv_parse_error_callback;
     callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
-  } else {
-    callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback2;
-    callbacks.on_ctrl_send_callback = on_ctrl_send_callback2;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   ssl_debug = config.verbose;
@@ -515,7 +613,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Oanv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "               [--key=<KEY>] <URI>..."
       << std::endl;
 }
@@ -542,6 +640,7 @@ void print_help(std::ostream& out)
       << "                       resource. Only links whose origins are the\n"
       << "                       same with the linking resource will be\n"
       << "                       downloaded.\n"
+      << "    -s, --stat         Print statistics.\n"
       << "    --cert=<CERT>      Use the specified client certificate file.\n"
       << "                       The file must be in PEM format.\n"
       << "    --key=<KEY>        Use the client private key file. The file\n"
@@ -562,13 +661,15 @@ int main(int argc, char **argv)
       {"timeout", required_argument, 0, 't' },
       {"window-bits", required_argument, 0, 'w' },
       {"get-assets", no_argument, 0, 'a' },
+      {"stat", no_argument, 0, 's' },
       {"cert", required_argument, &flag, 1 },
       {"key", required_argument, &flag, 2 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Oanhv23t:w:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Oanhv23st:w:", long_options,
+                        &option_index);
     if(c == -1) {
       break;
     }
@@ -614,6 +715,9 @@ int main(int argc, char **argv)
                 << "the binary was not compiled with libxml2."
                 << std::endl;
 #endif // !HAVE_LIBXML2
+      break;
+    case 's':
+      config.stat = true;
       break;
     case '?':
       exit(EXIT_FAILURE);
