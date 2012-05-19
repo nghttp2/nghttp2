@@ -93,7 +93,7 @@ like wget/curl. It connects to SPDY server and gets resources given in
 the command-line::
 
     $ examples/spdycat -h
-    Usage: spdycat [-Onv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
+    Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
                    [--key=<KEY>] <URI>...
 
     OPTIONS:
@@ -109,6 +109,12 @@ the command-line::
         -t, --timeout=<N>  Timeout each request after <N> seconds.
         -w, --window-bits=<N>
                            Sets the initial window size to 2**<N>.
+        -a, --get-assets   Download assets such as stylesheets, images
+                           and script files linked from the downloaded
+                           resource. Only links whose origins are the
+                           same with the linking resource will be
+                           downloaded.
+        -s, --stat         Print statistics.
         --cert=<CERT>      Use the specified client certificate file.
                            The file must be in PEM format.
         --key=<KEY>        Use the client private key file. The file
