@@ -95,6 +95,13 @@ if test "x${have_openssl}" = "xno"; then
   AC_MSG_NOTICE([The example programs will not be built.])
 fi
 
+# libxml2 (for examples/spdycat)
+AM_PATH_XML2(2.7.7, [have_libxml2=yes])
+if test "x${have_libxml2}" = "xyes"; then
+  AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
+fi
+AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
+
 # The example programs depend on OpenSSL
 enable_examples=$have_openssl
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])

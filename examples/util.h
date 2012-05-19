@@ -175,6 +175,50 @@ std::string to_str(T value)
 }
 
 template<typename InputIterator1, typename InputIterator2>
+bool startsWith
+(InputIterator1 first1,
+ InputIterator1 last1,
+ InputIterator2 first2,
+ InputIterator2 last2)
+{
+  if(last1-first1 < last2-first2) {
+    return false;
+  }
+  return std::equal(first2, last2, first1);
+}
+
+bool startsWith(const std::string& a, const std::string& b);
+
+struct CaseCmp {
+  bool operator()(char lhs, char rhs) const
+  {
+    if('A' <= lhs && lhs <= 'Z') {
+      lhs += 'a'-'A';
+    }
+    if('A' <= rhs && rhs <= 'Z') {
+      rhs += 'a'-'A';
+    }
+    return lhs == rhs;
+  }
+};
+
+template<typename InputIterator1, typename InputIterator2>
+bool istartsWith
+(InputIterator1 first1,
+ InputIterator1 last1,
+ InputIterator2 first2,
+ InputIterator2 last2)
+{
+  if(last1-first1 < last2-first2) {
+    return false;
+  }
+  return std::equal(first2, last2, first1, CaseCmp());
+}
+
+bool istartsWith(const std::string& a, const std::string& b);
+bool istartsWith(const char *a, const char* b);
+
+template<typename InputIterator1, typename InputIterator2>
 bool endsWith
 (InputIterator1 first1,
  InputIterator1 last1,
@@ -188,6 +232,8 @@ bool endsWith
 }
 
 bool endsWith(const std::string& a, const std::string& b);
+
+bool strieq(const char *a, const char *b);
 
 } // namespace util
 

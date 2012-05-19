@@ -22,6 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include <config.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -54,6 +56,8 @@
 
 #include "spdylay_ssl.h"
 #include "uri.h"
+#include "HtmlParser.h"
+#include "util.h"
 
 namespace spdylay {
 
@@ -61,22 +65,31 @@ struct Config {
   bool null_out;
   bool remote_name;
   bool verbose;
+  bool get_assets;
   int spdy_version;
   int timeout;
   std::string certfile;
   std::string keyfile;
   int window_bits;
   Config():null_out(false), remote_name(false), verbose(false),
-           spdy_version(-1), timeout(-1), window_bits(-1) {}
+           get_assets(false), spdy_version(-1), timeout(-1), window_bits(-1)
+  {}
 };
 
 struct Request {
   uri::UriStruct us;
   spdylay_gzip *inflater;
-  Request(const uri::UriStruct& us):us(us), inflater(0) {}
+  HtmlParser *html_parser;
+  // Recursion level: 0: first entity, 1: entity linked from first entity
+  int level;
+  Request(const uri::UriStruct& us, int level = 0)
+    : us(us), inflater(0), html_parser(0), level(level)
+  {}
+
   ~Request()
   {
     spdylay_gzip_inflate_del(inflater);
+    delete html_parser;
   }
 
   void init_inflater()
@@ -85,20 +98,122 @@ struct Request {
     rv = spdylay_gzip_inflate_new(&inflater);
     assert(rv == 0);
   }
+
+  void init_html_parser()
+  {
+    html_parser = new HtmlParser(uri::construct(us));
+  }
+
+  int update_html_parser(const uint8_t *data, size_t len, int fin)
+  {
+    if(!html_parser) {
+      return 0;
+    }
+    int rv;
+    rv = html_parser->parse_chunk(reinterpret_cast<const char*>(data), len,
+                                  fin);
+    return rv;
+  }
 };
 
-std::map<int32_t, Request*> stream2req;
-size_t numreq, complete;
+struct SpdySession {
+  std::vector<Request*> reqvec;
+  // Map from stream ID to Request object.
+  std::map<int32_t, Request*> streams;
+  // Insert path already added in reqvec to prevent multiple request
+  // for 1 resource.
+  std::set<std::string> path_cache;
+  // The number of completed requests, including failed ones.
+  size_t complete;
+  std::string hostport;
+  Spdylay *sc;
+  SpdySession():complete(0) {}
+  ~SpdySession()
+  {
+    for(size_t i = 0; i < reqvec.size(); ++i) {
+      delete reqvec[i];
+    }
+  }
+  bool all_requests_processed() const
+  {
+    return complete == reqvec.size();
+  }
+  void update_hostport()
+  {
+    if(reqvec.empty()) {
+      return;
+    }
+    std::stringstream ss;
+    if(reqvec[0]->us.ipv6LiteralAddress) {
+      ss << "[" << reqvec[0]->us.host << "]";
+    } else {
+      ss << reqvec[0]->us.host;
+    }
+    if(reqvec[0]->us.port != 443) {
+      ss << ":" << reqvec[0]->us.port;
+    }
+    hostport = ss.str();
+  }
+  bool add_request(const uri::UriStruct& us, int level = 0)
+  {
+    std::string key = us.dir+us.file+us.query;
+    if(path_cache.count(key)) {
+      return false;
+    } else {
+      path_cache.insert(key);
+      reqvec.push_back(new Request(us, level));
+      return true;
+    }
+  }
+};
 
 Config config;
 extern bool ssl_debug;
+
+void submit_request(Spdylay& sc, const std::string& hostport, Request* req)
+{
+  uri::UriStruct& us = req->us;
+  std::string path = us.dir+us.file+us.query;
+  int r = sc.submit_request(hostport, path, 3, req);
+  assert(r == 0);
+}
+
+void update_html_parser(SpdySession *spdySession, Request *req,
+                        const uint8_t *data, size_t len, int fin)
+{
+  if(!req->html_parser) {
+    return;
+  }
+  req->update_html_parser(data, len, fin);
+
+  for(size_t i = 0; i < req->html_parser->get_links().size(); ++i) {
+    const std::string& uri = req->html_parser->get_links()[i];
+    uri::UriStruct us;
+    if(uri::parse(us, uri) &&
+       req->us.protocol == us.protocol && req->us.host == us.host &&
+       req->us.port == us.port) {
+      spdySession->add_request(us, req->level+1);
+      submit_request(*spdySession->sc, spdySession->hostport,
+                     spdySession->reqvec.back());
+    }
+  }
+  req->html_parser->clear_links();
+}
+
+SpdySession* get_session(void *user_data)
+{
+  return reinterpret_cast<SpdySession*>
+    (reinterpret_cast<Spdylay*>(user_data)->user_data());
+}
 
 void on_data_chunk_recv_callback
 (spdylay_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
-  std::map<int32_t, Request*>::iterator itr = stream2req.find(stream_id);
-  if(itr != stream2req.end()) {
+  SpdySession *spdySession = get_session(user_data);
+  std::map<int32_t, Request*>::iterator itr =
+    spdySession->streams.find(stream_id);
+  if(itr != spdySession->streams.end()) {
     Request *req = (*itr).second;
     if(req->inflater) {
       while(len > 0) {
@@ -111,23 +226,31 @@ void on_data_chunk_recv_callback
           spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
           break;
         }
-        std::cout.write(reinterpret_cast<const char*>(out), outlen);
+        if(!config.null_out) {
+          std::cout.write(reinterpret_cast<const char*>(out), outlen);
+        }
+        update_html_parser(spdySession, req, out, outlen, 0);
         data += tlen;
         len -= tlen;
       }
     } else {
-      std::cout.write(reinterpret_cast<const char*>(data), len);
+      if(!config.null_out) {
+        std::cout.write(reinterpret_cast<const char*>(data), len);
+      }
+      update_html_parser(spdySession, req, data, len, 0);
     }
   }
 }
 
 void check_stream_id(spdylay_session *session,
-                     spdylay_frame_type type, spdylay_frame *frame)
+                     spdylay_frame_type type, spdylay_frame *frame,
+                     void *user_data)
 {
+  SpdySession *spdySession = get_session(user_data);
   int32_t stream_id = frame->syn_stream.stream_id;
   Request *req = (Request*)spdylay_session_get_stream_user_data(session,
                                                                 stream_id);
-  stream2req[stream_id] = req;
+  spdySession->streams[stream_id] = req;
 }
 
 void on_ctrl_send_callback2
@@ -135,7 +258,7 @@ void on_ctrl_send_callback2
  void *user_data)
 {
   if(type == SPDYLAY_SYN_STREAM) {
-    check_stream_id(session, type, frame);
+    check_stream_id(session, type, frame, user_data);
   }
 }
 
@@ -144,12 +267,12 @@ void on_ctrl_send_callback3
  void *user_data)
 {
   if(type == SPDYLAY_SYN_STREAM) {
-    check_stream_id(session, type, frame);
+    check_stream_id(session, type, frame, user_data);
   }
   on_ctrl_send_callback(session, type, frame, user_data);
 }
 
-void check_gzip
+void check_response_header
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
@@ -164,21 +287,24 @@ void check_gzip
   } else {
     return;
   }
+  Request *req = (Request*)spdylay_session_get_stream_user_data(session,
+                                                                stream_id);
+  assert(req);
   bool gzip = false;
   for(size_t i = 0; nv[i]; i += 2) {
     if(strcmp("content-encoding", nv[i]) == 0) {
-      gzip = strcmp("gzip", nv[i+1]) == 0;
-      break;
+      gzip = util::strieq("gzip", nv[i+1]) || util::strieq("deflate", nv[i+1]);
     }
   }
   if(gzip) {
-    Request *req = (Request*)spdylay_session_get_stream_user_data(session,
-                                                                  stream_id);
-    assert(req);
-    if(req->inflater) {
-      return;
+    if(!req->inflater) {
+      req->init_inflater();
     }
-    req->init_inflater();
+  }
+  if(config.get_assets && req->level == 0) {
+    if(!req->html_parser) {
+      req->init_html_parser();
+    }
   }
 }
 
@@ -186,14 +312,14 @@ void on_ctrl_recv_callback2
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
-  check_gzip(session, type, frame, user_data);
+  check_response_header(session, type, frame, user_data);
 }
 
 void on_ctrl_recv_callback3
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
-  check_gzip(session, type, frame, user_data);
+  check_response_header(session, type, frame, user_data);
   on_ctrl_recv_callback(session, type, frame, user_data);
 }
 
@@ -201,23 +327,22 @@ void on_stream_close_callback
 (spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
  void *user_data)
 {
-  std::map<int32_t, Request*>::iterator itr = stream2req.find(stream_id);
-  if(itr != stream2req.end()) {
-    ++complete;
-    if(complete == numreq) {
+  SpdySession *spdySession = get_session(user_data);
+  std::map<int32_t, Request*>::iterator itr =
+    spdySession->streams.find(stream_id);
+  if(itr != spdySession->streams.end()) {
+    update_html_parser(spdySession, (*itr).second, 0, 0, 1);
+    ++spdySession->complete;
+    if(spdySession->all_requests_processed()) {
       spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
     }
-    stream2req.erase(itr);
   }
 }
 
 int communicate(const std::string& host, uint16_t port,
-                std::vector<Request>& reqvec,
+                SpdySession& spdySession,
                 const spdylay_session_callbacks *callbacks)
 {
-  numreq = reqvec.size();
-  complete = 0;
-  stream2req.clear();
   int fd = connect_to(host, port);
   if(fd == -1) {
     std::cerr << "Could not connect to the host" << std::endl;
@@ -269,23 +394,12 @@ int communicate(const std::string& host, uint16_t port,
   if (spdy_version <= 0) {
     return -1;
   }
-  Spdylay sc(fd, ssl, spdy_version, callbacks);
+  Spdylay sc(fd, ssl, spdy_version, callbacks, &spdySession);
+  spdySession.sc = &sc;
 
   nfds_t npollfds = 1;
   pollfd pollfds[1];
 
-  std::stringstream ss;
-  if(reqvec[0].us.ipv6LiteralAddress) {
-    ss << "[";
-  }
-  ss << host;
-  if(reqvec[0].us.ipv6LiteralAddress) {
-    ss << "]";
-  }
-  if(port != 443) {
-    ss << ":" << port;
-  }
-  std::string hostport = ss.str();
   if(spdy_version >= SPDYLAY_PROTO_SPDY3 && config.window_bits != -1) {
     spdylay_settings_entry iv[1];
     iv[0].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
@@ -294,11 +408,8 @@ int communicate(const std::string& host, uint16_t port,
     int rv = sc.submit_settings(SPDYLAY_FLAG_SETTINGS_NONE, iv, 1);
     assert(rv == 0);
   }
-  for(int i = 0, n = reqvec.size(); i < n; ++i) {
-    uri::UriStruct& us = reqvec[i].us;
-    std::string path = us.dir+us.file+us.query;
-    int r = sc.submit_request(hostport, path, 3, &reqvec[i]);
-    assert(r == 0);
+  for(int i = 0, n = spdySession.reqvec.size(); i < n; ++i) {
+    submit_request(sc, spdySession.hostport, spdySession.reqvec[i]);
   }
   pollfds[0].fd = fd;
   ctl_poll(pollfds, &sc);
@@ -315,8 +426,10 @@ int communicate(const std::string& host, uint16_t port,
     if(pollfds[0].revents & (POLLIN | POLLOUT)) {
       int rv;
       if((rv = sc.recv()) != 0 || (rv = sc.send()) != 0) {
-        if(rv != SPDYLAY_ERR_EOF || complete != numreq) {
+        if(rv != SPDYLAY_ERR_EOF || !spdySession.all_requests_processed()) {
           std::cout << "Fatal: " << spdylay_strerror(rv) << std::endl;
+          std::cout << "reqnum=" << spdySession.reqvec.size()
+                    << ", completed=" << spdySession.complete << std::endl;
         }
         ok = false;
         break;
@@ -329,14 +442,18 @@ int communicate(const std::string& host, uint16_t port,
     }
     timeout = timeout == -1 ? timeout : end_time - time(NULL);
     if (config.timeout != -1 && timeout <= 0) {
-      std::cout << "Requests to " << hostport << "timed out.";
+      std::cout << "Requests to " << spdySession.hostport << "timed out.";
       ok = false;
       break;
     }
     assert(ok);
     ctl_poll(pollfds, &sc);
   }
-
+  if(!spdySession.all_requests_processed()) {
+    std::cout << "Some requests were not processed. total="
+              << spdySession.reqvec.size()
+              << ", processed=" << spdySession.complete << std::endl;
+  }
   SSL_shutdown(ssl);
   SSL_free(ssl);
   SSL_CTX_free(ssl_ctx);
@@ -364,32 +481,32 @@ int run(char **uris, int n)
     callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback2;
     callbacks.on_ctrl_send_callback = on_ctrl_send_callback2;
   }
-  if(!config.null_out) {
-    callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  }
+  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   ssl_debug = config.verbose;
-  std::vector<Request> reqvec;
   std::string prev_host;
   uint16_t prev_port = 0;
   int failures = 0;
+  SpdySession spdySession;
   for(int i = 0; i < n; ++i) {
     uri::UriStruct us;
     if(uri::parse(us, uris[i])) {
       if(prev_host != us.host || prev_port != us.port) {
-        if(!reqvec.empty()) {
-          if (communicate(prev_host, prev_port, reqvec, &callbacks) != 0) {
+        if(!spdySession.reqvec.empty()) {
+          spdySession.update_hostport();
+          if (communicate(prev_host, prev_port, spdySession, &callbacks) != 0) {
             ++failures;
           }
-          reqvec.clear();
+          spdySession = SpdySession();
         }
         prev_host = us.host;
         prev_port = us.port;
       }
-      reqvec.push_back(Request(us));
+      spdySession.add_request(us);
     }
   }
-  if(!reqvec.empty()) {
-    if (communicate(prev_host, prev_port, reqvec, &callbacks) != 0) {
+  if(!spdySession.reqvec.empty()) {
+    spdySession.update_hostport();
+    if (communicate(prev_host, prev_port, spdySession, &callbacks) != 0) {
       ++failures;
     }
   }
@@ -398,7 +515,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Onv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: spdycat [-Oanv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "               [--key=<KEY>] <URI>..."
       << std::endl;
 }
@@ -420,6 +537,11 @@ void print_help(std::ostream& out)
       << "    -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
       << "    -w, --window-bits=<N>\n"
       << "                       Sets the initial window size to 2**<N>.\n"
+      << "    -a, --get-assets   Download assets such as stylesheets, images\n"
+      << "                       and script files linked from the downloaded\n"
+      << "                       resource. Only links whose origins are the\n"
+      << "                       same with the linking resource will be\n"
+      << "                       downloaded.\n"
       << "    --cert=<CERT>      Use the specified client certificate file.\n"
       << "                       The file must be in PEM format.\n"
       << "    --key=<KEY>        Use the client private key file. The file\n"
@@ -439,13 +561,14 @@ int main(int argc, char **argv)
       {"spdy3", no_argument, 0, '3' },
       {"timeout", required_argument, 0, 't' },
       {"window-bits", required_argument, 0, 'w' },
+      {"get-assets", no_argument, 0, 'a' },
       {"cert", required_argument, &flag, 1 },
       {"key", required_argument, &flag, 2 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Onhv23t:w:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "Oanhv23t:w:", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -483,6 +606,15 @@ int main(int argc, char **argv)
       }
       break;
     }
+    case 'a':
+#ifdef HAVE_LIBXML2
+      config.get_assets = true;
+#else // !HAVE_LIBXML2
+      std::cerr << "Warning: -a, --get-assets option cannot be used because\n"
+                << "the binary was not compiled with libxml2."
+                << std::endl;
+#endif // !HAVE_LIBXML2
+      break;
     case '?':
       exit(EXIT_FAILURE);
     case 0:

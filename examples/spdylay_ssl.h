@@ -41,7 +41,8 @@ extern bool ssl_debug;
 class Spdylay {
 public:
   Spdylay(int fd, SSL *ssl, uint16_t version,
-          const spdylay_session_callbacks *callbacks);
+          const spdylay_session_callbacks *callbacks,
+          void *user_data);
   ~Spdylay();
   int recv();
   int send();
@@ -55,11 +56,13 @@ public:
                      uint8_t pri, void *stream_user_data);
   int submit_settings(int flags, spdylay_settings_entry *iv, size_t niv);
   bool would_block(int r);
+  void* user_data();
 private:
   int fd_;
   SSL *ssl_;
   uint16_t version_;
   spdylay_session *session_;
+  void *user_data_;
   bool want_write_;
   bool debug_;
 };

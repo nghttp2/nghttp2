@@ -25,8 +25,8 @@ if ENABLE_EXAMPLES
 
 AM_CFLAGS = -Wall
 AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
-	@OPENSSL_CFLAGS@ @DEFS@
-AM_LDFLAGS = @OPENSSL_LIBS@
+	@OPENSSL_CFLAGS@ @XML_CPPFLAGS@ @DEFS@
+AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@
 LDADD = $(top_builddir)/lib/libspdylay.la
 
 bin_PROGRAMS = spdycat spdyd
@@ -47,10 +47,18 @@ EVENT_OBJECTS += EventPoll_kqueue.cc
 EVENT_HFILES += EventPoll_kqueue.h
 endif # HAVE_KQUEUE
 
+HTML_PARSER_OBJECTS =
+HTML_PARSER_HFILES = HtmlParser.h
+
+if HAVE_LIBXML2
+HTML_PARSER_OBJECTS += HtmlParser.cc
+endif # HAVE_LIBXML2
+
 SPDY_SERVER_OBJECTS = SpdyServer.cc
 SPDY_SERVER_HFILES = SpdyServer.h
 
-spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc
+spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc \
+	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES}
 
 spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	${EVENT_OBJECTS} ${EVENT_HFILES} \

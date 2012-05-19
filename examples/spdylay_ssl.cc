@@ -49,8 +49,10 @@ namespace spdylay {
 bool ssl_debug = false;
 
 Spdylay::Spdylay(int fd, SSL *ssl, uint16_t version,
-                 const spdylay_session_callbacks *callbacks)
-  : fd_(fd), ssl_(ssl), version_(version), want_write_(false)
+                 const spdylay_session_callbacks *callbacks,
+                 void *user_data)
+  : fd_(fd), ssl_(ssl), version_(version), user_data_(user_data),
+    want_write_(false)
 {
   int r = spdylay_session_client_new(&session_, version_, callbacks, this);
   assert(r == 0);
@@ -112,6 +114,11 @@ bool Spdylay::finish()
 int Spdylay::fd() const
 {
   return fd_;
+}
+
+void* Spdylay::user_data()
+{
+  return user_data_;
 }
 
 int Spdylay::submit_request(const std::string& hostport,

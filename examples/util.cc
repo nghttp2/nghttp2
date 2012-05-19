@@ -119,9 +119,54 @@ time_t parse_http_date(const std::string& s)
   return timegm(&tm);
 }
 
+namespace {
+char lowcase(char c)
+{
+  if('A' <= c && c <= 'Z') {
+    return c+('a'-'A');
+  } else {
+    return c;
+  }
+}
+} // namespace
+
+bool startsWith(const std::string& a, const std::string& b)
+{
+  return startsWith(a.begin(), a.end(), b.begin(), b.end());
+}
+
+bool istartsWith(const std::string& a, const std::string& b)
+{
+  return istartsWith(a.begin(), a.end(), b.begin(), b.end());
+}
+
+namespace {
+void streq_advance(const char **ap, const char **bp)
+{
+  for(; **ap && **bp && lowcase(**ap) == lowcase(**bp); ++*ap, ++*bp);
+}
+} // namespace
+
+bool istartsWith(const char *a, const char* b)
+{
+  if(!a || !b) {
+    return false;
+  }
+  streq_advance(&a, &b);
+  return !*b;
+}
+
 bool endsWith(const std::string& a, const std::string& b)
 {
   return endsWith(a.begin(), a.end(), b.begin(), b.end());
+}
+bool strieq(const char *a, const char *b)
+{
+  if(!a || !b) {
+    return false;
+  }
+  for(; *a && *b && lowcase(*a) == lowcase(*b); ++a, ++b);
+  return !*a && !*b;
 }
 
 } // namespace util
