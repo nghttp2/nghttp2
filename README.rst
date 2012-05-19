@@ -40,11 +40,17 @@ needed:
 
 * OpenSSL >= 1.0.1
 
+To enable ``-a`` option (getting linked assets from the downloaded
+resouce) in spdycat (one of the example program), the following
+packages are needed:
+
+* libxml2 >= 2.7.7
+
 Build from git
 --------------
 
 Building from git is easy, but please be sure that at least autoconf 2.68 is
-used.::
+used::
 
     $ autoreconf -i
     $ automake
