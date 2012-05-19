@@ -450,6 +450,8 @@ void prepare_status_response(Request *req, SpdyEventHandler *hd,
     data_prd.read_callback = file_read_callback;
     std::vector<std::pair<std::string, std::string> > headers;
     headers.push_back(std::make_pair("content-encoding", "gzip"));
+    headers.push_back(std::make_pair("content-type",
+                                     "text/html; charset=UTF-8"));
     hd->submit_response(status, req->stream_id, headers, &data_prd);
   }
 }
