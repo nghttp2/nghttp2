@@ -25,7 +25,9 @@
 #ifndef HTML_PARSER_H
 #define HTML_PARSER_H
 
-#include <config.h>
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif // HAVE_CONFIG_H
 
 #include <vector>
 #include <string>
