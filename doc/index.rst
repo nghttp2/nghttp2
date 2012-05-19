@@ -28,6 +28,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   package_README
    apiref
 
 Resources
