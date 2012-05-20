@@ -1375,11 +1375,12 @@ static int spdylay_session_after_frame_sent(spdylay_session *session)
                                            data_frame->stream_id) != 0) {
       spdylay_active_outbound_item_reset(&session->aob);
     } else {
-      spdylay_outbound_item* item = spdylay_session_get_next_ob_item(session);
+      spdylay_outbound_item* next_item;
+      next_item = spdylay_session_get_next_ob_item(session);
       /* If priority of this stream is higher or equal to other stream
          waiting at the top of the queue, we continue to send this
          data. */
-      if(item == NULL || session->aob.item->pri <= item->pri) {
+      if(next_item == NULL || session->aob.item->pri <= next_item->pri) {
         size_t next_readmax;
         spdylay_stream *stream;
         stream = spdylay_session_get_stream(session, data_frame->stream_id);

@@ -68,12 +68,12 @@ int spdylay_client_cert_vector_init(spdylay_client_cert_vector *certvec,
   certvec->size = certvec->capacity = size;
   certvec->last_slot = 0;
   if(certvec->capacity) {
-    size_t size = sizeof(spdylay_origin*)*certvec->capacity;
-    certvec->vector = malloc(size);
+    size_t vec_size = sizeof(spdylay_origin*)*certvec->capacity;
+    certvec->vector = malloc(vec_size);
     if(certvec->vector == NULL) {
       return SPDYLAY_ERR_NOMEM;
     }
-    memset(certvec->vector, 0, size);
+    memset(certvec->vector, 0, vec_size);
   } else {
     certvec->vector = NULL;
   }

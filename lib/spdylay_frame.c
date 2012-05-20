@@ -195,11 +195,11 @@ int spdylay_frame_unpack_nv_check_name(uint8_t *buf, size_t buflen,
 {
   uint32_t n;
   size_t i;
-  const uint8_t **index;
+  const uint8_t **idx;
   n = spdylay_frame_get_nv_len(in, len_size);
   assert(n*sizeof(char*) <= buflen);
   in += len_size;
-  index = (const uint8_t**)buf;
+  idx = (const uint8_t**)buf;
   for(i = 0; i < n; ++i) {
     uint32_t len;
     size_t j;
@@ -207,7 +207,7 @@ int spdylay_frame_unpack_nv_check_name(uint8_t *buf, size_t buflen,
     if(len == 0) {
       return SPDYLAY_ERR_INVALID_HEADER_BLOCK;
     }
-    *index++ = in;
+    *idx++ = in;
     in += len_size;
     for(j = 0; j < len; ++j) {
       unsigned char c = in[j];
@@ -225,11 +225,11 @@ int spdylay_frame_unpack_nv_check_name(uint8_t *buf, size_t buflen,
           len_size == 2 ?
           spdylay_length_prefix_str_compar2 :
           spdylay_length_prefix_str_compar4);
-    index = (const uint8_t**)buf;
-    len1 = spdylay_frame_get_nv_len(*index, len_size);
+    idx = (const uint8_t**)buf;
+    len1 = spdylay_frame_get_nv_len(*idx, len_size);
     for(i = 1; i < n; ++i) {
-      len2 = spdylay_frame_get_nv_len(*(index+i), len_size);
-      if(len1 == len2 && memcmp(*(index+i-1)+len_size, *(index+i)+len_size,
+      len2 = spdylay_frame_get_nv_len(*(idx+i), len_size);
+      if(len1 == len2 && memcmp(*(idx+i-1)+len_size, *(idx+i)+len_size,
                                 len1) == 0) {
         return SPDYLAY_ERR_INVALID_HEADER_BLOCK;
       }
@@ -245,7 +245,7 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
   size_t nvlen, buflen;
   int r;
   size_t i;
-  char *buf, **index, *data;
+  char *buf, **idx, *data;
   uint32_t n;
   int invalid_header_block = 0;
   r = spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, in, inlen, len_size);
@@ -265,7 +265,7 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
     free(buf);
     return r;
   }
-  index = (char**)buf;
+  idx = (char**)buf;
   data = buf+(nvlen*2+1)*sizeof(char*);
   n = spdylay_frame_get_nv_len(in, len_size);
   in += len_size;
@@ -289,8 +289,8 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
 
     for(stop = data+len; data != stop; ++data) {
       if(*data == '\0') {
-        *index++ = name;
-        *index++ = val;
+        *idx++ = name;
+        *idx++ = val;
         if(val == data) {
           invalid_header_block = 1;
         }
@@ -301,11 +301,11 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
     ++data;
     in += len;
 
-    *index++ = name;
-    *index++ = val;
+    *idx++ = name;
+    *idx++ = val;
   }
-  *index = NULL;
-  assert((size_t)((char*)index - buf) == (nvlen*2)*sizeof(char*));
+  *idx = NULL;
+  assert((size_t)((char*)idx - buf) == (nvlen*2)*sizeof(char*));
   *nv_ptr = (char**)buf;
   return invalid_header_block ? SPDYLAY_ERR_INVALID_HEADER_BLOCK : 0;
 }
@@ -406,7 +406,7 @@ char** spdylay_frame_nv_copy(const char **nv)
 {
   int i;
   char *buf;
-  char **index, *data;
+  char **idx, *data;
   size_t buflen = 0;
   for(i = 0; nv[i]; ++i) {
     buflen += strlen(nv[i])+1;
@@ -416,16 +416,16 @@ char** spdylay_frame_nv_copy(const char **nv)
   if(buf == NULL) {
     return NULL;
   }
-  index = (char**)buf;
+  idx = (char**)buf;
   data = buf+(i+1)*sizeof(char*);
 
   for(i = 0; nv[i]; ++i) {
     size_t len = strlen(nv[i])+1;
     memcpy(data, nv[i], len);
-    *index++ = data;
+    *idx++ = data;
     data += len;
   }
-  *index = NULL;
+  *idx = NULL;
   return (char**)buf;
 }
 
@@ -465,7 +465,7 @@ char** spdylay_frame_nv_norm_copy(const char **nv)
 }
 
 /* Table to translate SPDY/3 header names to SPDY/2. */
-static char *spdylay_nv_3to2[] = {
+static const char *spdylay_nv_3to2[] = {
   ":host", "host",
   ":method", "method",
   ":path", "url",
@@ -481,7 +481,7 @@ void spdylay_frame_nv_3to2(char **nv)
   for(i = 0; nv[i]; i += 2) {
     for(j = 0; spdylay_nv_3to2[j]; j += 2) {
       if(strcmp(nv[i], spdylay_nv_3to2[j]) == 0) {
-        nv[i] = spdylay_nv_3to2[j+1];
+        nv[i] = (char*)spdylay_nv_3to2[j+1];
         break;
       }
     }
@@ -494,7 +494,7 @@ void spdylay_frame_nv_2to3(char **nv)
   for(i = 0; nv[i]; i += 2) {
     for(j = 0; spdylay_nv_3to2[j]; j += 2) {
       if(strcmp(nv[i], spdylay_nv_3to2[j+1]) == 0) {
-        nv[i] = spdylay_nv_3to2[j];
+        nv[i] = (char*)spdylay_nv_3to2[j];
         break;
       }
     }
