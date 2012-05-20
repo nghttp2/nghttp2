@@ -2360,11 +2360,15 @@ static int spdylay_session_update_recv_window_size(spdylay_session *session,
   spdylay_stream *stream;
   stream = spdylay_session_get_stream(session, stream_id);
   if(stream) {
-    /* TODO If SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE is set and the
-       application does not send WINDOW_UPDATE and the remote endpoint
-       keeps sending data, stream->recv_window_size will eventually
+    /* If SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE is set and the application
+       does not send WINDOW_UPDATE and the remote endpoint keeps
+       sending data, stream->recv_window_size will eventually
        overflow. */
-    stream->recv_window_size += delta_size;
+    if(stream->recv_window_size > INT32_MAX - delta_size) {
+      stream->recv_window_size = INT32_MAX;
+    } else {
+      stream->recv_window_size += delta_size;
+    }
     if(!(session->opt_flags & SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
       /* This is just a heuristics. */
       /* We have to use local_settings here because it is the constraint
