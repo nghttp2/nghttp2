@@ -1,106 +1,51 @@
-spdylay 0.2.0
+spdylay 0.2.1
 =============
 
 Release Note
 ------------
 
-This release adds several new APIs. The spdylay_gzip API is suitable
-for inflating compressed entity body from the remote endpoint.  The
-spdylay_submit_window_update() is added to send WINDOW_UPDATE frame by
-the application.  The spdylay_session_set_option() is a new function
-to set options to the library. Currently,
-SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE option is available. If it is set,
-the library does not send WINDOW_UPDATE automatically. The application
-should send WINDOW_UPDATE using spdylay_submit_window_update().  The
-spdylay_strerror() is added and it returns string describing the given
-error code.  The following new callback functions are added:
-spdylay_on_unknown_ctrl_recv_callback and
-spdylay_on_ctrl_recv_parse_error_callbacks. They are useful for
-debugging and logging errors.
+This release fixes the bug that closing a stream causes memory leak
+and it also makes some other streams disappear.
 
-Some changes are made to exsiting interfaces.  The status_code
-argument was added to spdylay_on_invalid_ctrl_recv_callback.
-FRAME_TOO_LARGE was renamed as SPDYLAY_FRAME_TOO_LARGE.
+The delta_window_size given in spdylay_submit_window_update() is now
+not bounded by internal received data size.  The application is now
+responsible to keep the resulting window size under the maximum value
+described in the SPDY/3 specification.
 
-spdylay_data_source_read_callback can now return
-SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE to signal stream error.
-Previously, this function can only return SPDYLAY_ERR_CALLBACK_FAILURE
-on error, which signals session error.
-
-Since SPDY/3 is now becoming mainline protocol,
-spdylay_select_next_protocol() now prefers spdy/3 to spdy/2.
-
-Some bug fixes are made in flow control and handling max concurrent
-streams.
-
-For example programs, the usage output was cleaned up.  The -w option
-is added to spdycat. This option sets the initial window size bits.
-spdycat and spdyd prefer spdy/3 to spdy/2 from this release.
-
-The pkg-config file now includes zlib in Requires.private.
+The SPDY client spdycat gets new option -a and -s.  The -a option
+makes spdycat download assets such as CSS and images linked from the
+downloaded resource. The -s option shows statistics such as elapsed
+time from the handshake.
 
 Changes
 -------
 
-* Renamed index in spdylay_get_credential_cert prototype to idx This
-  is because compiler may warn that name `index` shadows global
-  declaration if the application code uses the prototype argument
-  names as is.
+* Made spdylay_submit_window_update() not be bounded by
+  recv_window_size.  Current SPDY/3 spec does not clearly prohibit to
+  send delta_window_size which makes resulting window size more than
+  initial window size. For this reason, spdylay_submit_window_update()
+  can send delta_window_size in [1, (1 << 31)-1], inclusive, without
+  bounded by stream's recv_window_size. Of course, the application is
+  now responsible to keep the resulting window size <= (1 << 31)-1.
 
-* Bumped up the library version to 1.0.0 because of the API changes.
+  spdylay_submit_window_update() now returns
+  SPDYLAY_ERR_INVALID_ARGUMENT if delta_window_size is 0 or negative.
 
-* Prefer spdy/3 to spdy/2 in spdyd
+* Included README.rst in the manual.
 
-* Prefer spdy/3 to spdy/2 in spdylay_select_next_protocol()
+* Added -s, --stat option to print statistics.  Print, for each
+  stream, time delta from SSL/TLS handshake and each SYN_STREAM. The
+  time deltas are measured after SYN_REPLY received and all data
+  received.  For example, the following output:
 
-* spdylay_data_source_read_callback can now return
-  SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE to signal stream error.  The
-  existing SPDYLAY_ERR_CALLBACK_FAILURE signals session error.
+      SYN_REPLY: X(Y)
 
-* Renamed error as error_code in spdylay_on_ctrl_not_send_callback
-  prototype
+  means SYN_REPLY was received X ms after SSL/TLS handshake and Y ms
+  after the corresponding SYN_STREAM was sent.
 
-* Bring back deferred DATA to the outbound queue when SETTINGS with
-  INITIAL_WINDOW_SIZE is received and the window size becomes
-  positive.
+* Added -a, --get-asserts option to spdycat. If this option is used,
+  spdycat also downloads assets such as stylesheets, images and script
+  files linked from the downloaded resource. They are queued in the
+  same SPDY session.
 
-* Fixed the bug that spdylay_recv does not return SPDYLAY_ERR_EOF.
-
-* Renamed FRAME_TOO_LARGE as SPDYLAY_FRAME_TOO_LARGE
-
-* Added status_code argument to spdylay_on_invalid_ctrl_recv_callback
-
-* Added spdylay_strerror() public API. It returns string describing
-  the given error code.
-
-* Added spdylay_on_unknown_ctrl_recv_callback.  This callback function
-  is invoked when the unknown frame type is received.  Added debug
-  output using this callback to spdycat.
-
-* Added spdylay_on_ctrl_recv_parse_error_callback.  This callback
-  function is invoked when the received frame data could not be parsed
-  correctly.  Added debug output using this callback to spdycat.
-
-* Added spdylay_submit_window_update() public API.
-
-* Added spdylay_session_set_option() public API. Currently,
-  SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE option is available. If it is set,
-  the library does not send WINDOW_UPDATE automatically. The
-  application should send WINDOW_UPDATE using
-  spdylay_submit_window_update().
-
-* Added -w, --window-bits option to spdycat.  This option sets the
-  initial window size bits.
-
-* Having the number of server and client streams be limited separately
-  using SETTINGS_MAX_CONCURRENT_STREAMS
-
-* Use local_settings' INITIAL_WINDOW_SIZE when deciding to send
-  WINDOW_UPDATE.
-
-* Added spdylay_gzip API. They are suitable for inflating compressed
-  entity body from the remote endpoint.
-
-* Added SPDY client example written in C.
-
-* Added zlib to Requires.private and updated Description
+* Fixed the bug that erase_rotate_recur() erases parent node.
