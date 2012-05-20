@@ -2339,15 +2339,27 @@ void test_spdylay_submit_window_update(void)
   CU_ASSERT(SPDYLAY_WINDOW_UPDATE == OB_CTRL_TYPE(item));
   CU_ASSERT(1024 == OB_CTRL(item)->window_update.delta_window_size);
   CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(3072 == stream->recv_window_size);
 
   CU_ASSERT(0 == spdylay_submit_window_update(session, stream_id, 4096));
   item = spdylay_session_get_next_ob_item(session);
   CU_ASSERT(SPDYLAY_WINDOW_UPDATE == OB_CTRL_TYPE(item));
-  CU_ASSERT(3072 == OB_CTRL(item)->window_update.delta_window_size);
+  CU_ASSERT(4096 == OB_CTRL(item)->window_update.delta_window_size);
   CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(0 == stream->recv_window_size);
 
   CU_ASSERT(0 == spdylay_submit_window_update(session, stream_id, 4096));
-  CU_ASSERT(NULL == spdylay_session_get_next_ob_item(session));
+  CU_ASSERT(SPDYLAY_WINDOW_UPDATE == OB_CTRL_TYPE(item));
+  CU_ASSERT(4096 == OB_CTRL(item)->window_update.delta_window_size);
+  CU_ASSERT(0 == spdylay_session_send(session));
+  CU_ASSERT(0 == stream->recv_window_size);
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_window_update(session, stream_id, 0));
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_window_update(session, stream_id, -1));
+  CU_ASSERT(SPDYLAY_ERR_STREAM_CLOSED ==
+            spdylay_submit_window_update(session, 4, 4096));
 
   spdylay_session_del(session);
 }

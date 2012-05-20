@@ -1894,15 +1894,16 @@ int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
 /**
  * @function
  *
- * Submits WINDOW_UPDATE frame. The library keeps track of the
- * received bytes from the remote endpoint. If the |delta_window_size|
- * is larger than the received bytes, then it is reduced to the
- * received bytes. If the received bytes is 0, the library will not
- * send this frame.
+ * Submits WINDOW_UPDATE frame. The effective range of the
+ * |delta_window_size| is [1, (1 << 31)-1], inclusive. But the
+ * application must be responsible to keep the resulting window size
+ * <= (1 << 31)-1.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
+ * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
+ *     The |delta_window_size| is 0 or negative.
  * :enum:`SPDYLAY_ERR_STREAM_CLOSED`
  *     The stream is already closed or does not exist.
  * :enum:`SPDYLAY_ERR_NOMEM`
