@@ -27,7 +27,7 @@
 int spdylay_pq_init(spdylay_pq *pq, spdylay_compar compar)
 {
   pq->capacity = 4096;
-  pq->q = malloc(pq->capacity);
+  pq->q = malloc(pq->capacity * sizeof(void*));
   if(pq->q == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
@@ -65,7 +65,8 @@ static void bubble_up(spdylay_pq *pq, size_t index)
 int spdylay_pq_push(spdylay_pq *pq, void *item)
 {
   if(pq->capacity <= pq->length) {
-    void *nq = realloc(pq->q, pq->capacity*2);
+    void *nq;
+    nq = realloc(pq->q, (pq->capacity*2) * sizeof(void*));
     if(nq == NULL) {
       return SPDYLAY_ERR_NOMEM;
     }
