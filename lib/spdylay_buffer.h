@@ -66,6 +66,23 @@ size_t spdylay_buffer_avail(spdylay_buffer *buffer);
 /* Advances buffer pointer by amount. This reduces available buffer
    length. */
 void spdylay_buffer_advance(spdylay_buffer *buffer, size_t amount);
+
+/*
+ * Writes the |data| with the |len| bytes starting at the current
+ * position of the |buffer|. The new chunk buffer will be allocated on
+ * the course of the write and the current position is updated.  If
+ * this function succeeds, the total length of the |buffer| will be
+ * increased by |len|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_NOMEM
+ *     Out of memory.
+ */
+int spdylay_buffer_write(spdylay_buffer *buffer, const uint8_t *data,
+                         size_t len);
+
 /*
  * Allocate new chunk buffer. This will increase total length of
  * buffer (returned by spdylay_buffer_length) by capacity-last_offset.
@@ -93,5 +110,54 @@ void spdylay_buffer_serialize(spdylay_buffer *buffer, uint8_t *buf);
    Next spdylay_buffer_avail() returns 0. This function does not free
    allocated memory space; they are reused. */
 void spdylay_buffer_reset(spdylay_buffer *buffer);
+
+/*
+ * Reader interface to read data from spdylay_buffer sequentially.
+ */
+typedef struct {
+  /* The buffer to read */
+  spdylay_buffer *buffer;
+  /* Pointer to the current chunk to read. */
+  spdylay_buffer_chunk *current;
+  /* Offset to the current chunk data to read. */
+  size_t offset;
+} spdylay_buffer_reader;
+
+/*
+ * Initializes the |reader| with the |buffer|.
+ */
+void spdylay_buffer_reader_init(spdylay_buffer_reader *reader,
+                                spdylay_buffer *buffer);
+
+/*
+ * Reads 1 byte and return it. This function will advance the current
+ * position by 1.
+ */
+uint8_t spdylay_buffer_reader_uint8(spdylay_buffer_reader *reader);
+
+/*
+ * Reads 2 bytes integer in network byte order and returns it in host
+ * byte order. This function will advance the current position by 2.
+ */
+uint16_t spdylay_buffer_reader_uint16(spdylay_buffer_reader *reader);
+
+/*
+ * Reads 4 bytes integer in network byte order and returns it in host
+ * byte order. This function will advance the current position by 4.
+ */
+uint32_t spdylay_buffer_reader_uint32(spdylay_buffer_reader *reader);
+
+/*
+ * Reads |len| bytes and store them in the |out|. This function will
+ * advance the current position by |len|.
+ */
+void spdylay_buffer_reader_data(spdylay_buffer_reader *reader,
+                                uint8_t *out, size_t len);
+
+/*
+ * Advances the current position by |amount|.
+ */
+void spdylay_buffer_reader_advance(spdylay_buffer_reader *reader,
+                                   size_t amount);
 
 #endif /* SPDYLAY_BUFFER_H */

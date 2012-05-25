@@ -29,6 +29,7 @@
 #include <stdio.h>
 
 #include "spdylay_buffer.h"
+#include "spdylay_net.h"
 
 void test_spdylay_buffer(void)
 {
@@ -76,6 +77,48 @@ void test_spdylay_buffer(void)
 
   spdylay_buffer_serialize(&buffer, out);
   CU_ASSERT(0 == memcmp("Hello", out, 5));
+
+  spdylay_buffer_free(&buffer);
+}
+
+void test_spdylay_buffer_reader(void)
+{
+  spdylay_buffer buffer;
+  spdylay_buffer_reader reader;
+  uint16_t val16;
+  uint32_t val32;
+  uint8_t temp[256];
+
+  spdylay_buffer_init(&buffer, 3);
+  spdylay_buffer_write(&buffer, (const uint8_t*)"hello", 5);
+  val16 = htons(678);
+  spdylay_buffer_write(&buffer, (const uint8_t*)&val16, sizeof(uint16_t));
+  val32 = htonl(1000000007);
+  spdylay_buffer_write(&buffer, (const uint8_t*)&val32, sizeof(uint32_t));
+  spdylay_buffer_write(&buffer, (const uint8_t*)"world", 5);
+
+  CU_ASSERT(5+2+4+5 == spdylay_buffer_length(&buffer));
+
+  spdylay_buffer_reader_init(&reader, &buffer);
+
+  spdylay_buffer_reader_data(&reader, temp, 5);
+  CU_ASSERT(memcmp(temp, "hello", 5) == 0);
+  CU_ASSERT(678 == spdylay_buffer_reader_uint16(&reader));
+  CU_ASSERT(1000000007 == spdylay_buffer_reader_uint32(&reader));
+  CU_ASSERT('w' == spdylay_buffer_reader_uint8(&reader));
+  CU_ASSERT('o' == spdylay_buffer_reader_uint8(&reader));
+  CU_ASSERT('r' == spdylay_buffer_reader_uint8(&reader));
+  CU_ASSERT('l' == spdylay_buffer_reader_uint8(&reader));
+  CU_ASSERT('d' == spdylay_buffer_reader_uint8(&reader));
+
+  spdylay_buffer_reader_init(&reader, &buffer);
+  spdylay_buffer_reader_advance(&reader, 5);
+  CU_ASSERT(678 == spdylay_buffer_reader_uint16(&reader));
+  spdylay_buffer_reader_advance(&reader, 1);
+  spdylay_buffer_reader_advance(&reader, 1);
+  spdylay_buffer_reader_advance(&reader, 1);
+  spdylay_buffer_reader_advance(&reader, 1);
+  CU_ASSERT('w' == spdylay_buffer_reader_uint8(&reader));
 
   spdylay_buffer_free(&buffer);
 }

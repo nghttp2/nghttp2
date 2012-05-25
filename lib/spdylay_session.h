@@ -87,9 +87,18 @@ typedef struct {
 /* Maxmum size of client certificate vector */
 #define SPDYLAY_MAX_CLIENT_CERT_VECTOR_LENGTH 255
 
+/* Internal state when receiving incoming frame */
 typedef enum {
+  /* Receiving frame header */
   SPDYLAY_RECV_HEAD,
-  SPDYLAY_RECV_PAYLOAD
+  /* Receiving frame payload (comes after length field) */
+  SPDYLAY_RECV_PAYLOAD,
+  /* Receiving frame payload that comes before name/value header
+     block. Applied only for SYN_STREAM, SYN_REPLY and HEADERS. */
+  SPDYLAY_RECV_PAYLOAD_PRE_NV,
+  /* Receiving name/value header block in frame payload. Applied only
+     for SYN_STREAM, SYN_REPLY and HEADERS. */
+  SPDYLAY_RECV_PAYLOAD_NV
 } spdylay_inbound_state;
 
 #define SPDYLAY_HEAD_LEN 8
@@ -107,10 +116,22 @@ typedef struct {
   uint8_t *buf;
   /* Capacity of buf */
   size_t bufmax;
+  /* For frames without name/value header block, this is how many
+     bytes are going to filled in buf. For frames with the block, buf
+     only contains bytes that come before ther block, but this value
+     includes the length of the block. buflen <= bufmax must be
+     fulfilled. */
+  size_t buflen;
   /* length in Length field */
-  size_t len;
-  /* How many bytes are filled in buf */
+  size_t payloadlen;
+  /* How many bytes are received for this frame. off <= payloadlen
+     must be fulfilled. */
   size_t off;
+  /* Buffer used to store name/value pairs while inflating them using
+     zlib on unpack */
+  spdylay_buffer inflatebuf;
+  /* Error code */
+  int error_code;
 } spdylay_inbound_frame;
 
 typedef enum {
@@ -161,9 +182,6 @@ struct spdylay_session {
   uint8_t *nvbuf;
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
-  /* Buffer used to store name/value pairs while inflating them using
-     zlib on unpack */
-  spdylay_buffer inflatebuf;
 
   spdylay_zlib hd_deflater;
   spdylay_zlib hd_inflater;

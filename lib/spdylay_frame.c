@@ -110,20 +110,23 @@ ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
   return framelen;
 }
 
-int spdylay_frame_count_unpack_nv_space
-(size_t *nvlen_ptr, size_t *buflen_ptr, const uint8_t *in, size_t inlen,
- size_t len_size)
+int spdylay_frame_count_unpack_nv_space(size_t *nvlen_ptr, size_t *buflen_ptr,
+                                        spdylay_buffer *in, size_t len_size)
 {
   uint32_t n;
   size_t buflen = 0;
   size_t nvlen = 0;
   size_t off = 0;
+  size_t inlen = spdylay_buffer_length(in);
   size_t i;
+  spdylay_buffer_reader reader;
   if(inlen < len_size) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
+  spdylay_buffer_reader_init(&reader, in);
+
   /* TODO limit n in a reasonable number */
-  n = spdylay_frame_get_nv_len(in, len_size);
+  n = spdylay_frame_get_nv_len(&reader, len_size);
   off += len_size;
   for(i = 0; i < n; ++i) {
     uint32_t len;
@@ -132,16 +135,20 @@ int spdylay_frame_count_unpack_nv_space
       if(inlen-off < len_size) {
         return SPDYLAY_ERR_INVALID_FRAME;
       }
-      len = spdylay_frame_get_nv_len(in+off, len_size);
+      len = spdylay_frame_get_nv_len(&reader, len_size);
       off += len_size;
       if(inlen-off < len) {
         return SPDYLAY_ERR_INVALID_FRAME;
       }
       buflen += len+1;
       off += len;
+      if(j == 0) {
+        spdylay_buffer_reader_advance(&reader, len);
+      }
     }
     for(j = off, off -= len; off != j; ++off) {
-      if(in[off] == '\0') {
+      uint8_t b = spdylay_buffer_reader_uint8(&reader);
+      if(b == '\0') {
         ++nvlen;
       }
     }
@@ -149,7 +156,6 @@ int spdylay_frame_count_unpack_nv_space
   }
   if(inlen == off) {
     *nvlen_ptr = nvlen;
-
     *buflen_ptr = buflen+(nvlen*2+1)*sizeof(char*);
     return 0;
   } else {
@@ -157,89 +163,7 @@ int spdylay_frame_count_unpack_nv_space
   }
 }
 
-static int spdylay_length_prefix_str_compar2(const void *lhs, const void *rhs)
-{
-  ssize_t lhslen, rhslen, complen;
-  int r;
-  lhslen = spdylay_get_uint16(*(uint8_t**)lhs);
-  rhslen = spdylay_get_uint16(*(uint8_t**)rhs);
-  complen = spdylay_min(lhslen, rhslen);
-  r = memcmp(*(uint8_t**)lhs+2, *(uint8_t**)rhs+2, complen);
-  if(r == 0) {
-    return lhslen-rhslen;
-  } else {
-    return r;
-  }
-}
-
-static int spdylay_length_prefix_str_compar4(const void *lhs, const void *rhs)
-{
-  ssize_t lhslen, rhslen, complen;
-  int r;
-  /* Assuming the returned value does not exceed the maximum value of
-     ssize_t */
-  lhslen = spdylay_get_uint32(*(uint8_t**)lhs);
-  rhslen = spdylay_get_uint32(*(uint8_t**)rhs);
-  complen = spdylay_min(lhslen, rhslen);
-  r = memcmp(*(uint8_t**)lhs+4, *(uint8_t**)rhs+4, complen);
-  if(r == 0) {
-    return lhslen-rhslen;
-  } else {
-    return r;
-  }
-}
-
-int spdylay_frame_unpack_nv_check_name(uint8_t *buf, size_t buflen,
-                                       const uint8_t *in, size_t inlen,
-                                       size_t len_size)
-{
-  uint32_t n;
-  size_t i;
-  const uint8_t **idx;
-  n = spdylay_frame_get_nv_len(in, len_size);
-  assert(n*sizeof(char*) <= buflen);
-  in += len_size;
-  idx = (const uint8_t**)buf;
-  for(i = 0; i < n; ++i) {
-    uint32_t len;
-    size_t j;
-    len = spdylay_frame_get_nv_len(in, len_size);
-    if(len == 0) {
-      return SPDYLAY_ERR_INVALID_HEADER_BLOCK;
-    }
-    *idx++ = in;
-    in += len_size;
-    for(j = 0; j < len; ++j) {
-      unsigned char c = in[j];
-      if(c < 0x20 || c > 0x7e || ('A' <= c && c <= 'Z')) {
-        return SPDYLAY_ERR_INVALID_HEADER_BLOCK;
-      }
-    }
-    in += len;
-    len = spdylay_frame_get_nv_len(in, len_size);
-    in += len_size+len;
-  }
-  if(n > 0) {
-    uint32_t len1, len2;
-    qsort(buf, n, sizeof(uint8_t*),
-          len_size == 2 ?
-          spdylay_length_prefix_str_compar2 :
-          spdylay_length_prefix_str_compar4);
-    idx = (const uint8_t**)buf;
-    len1 = spdylay_frame_get_nv_len(*idx, len_size);
-    for(i = 1; i < n; ++i) {
-      len2 = spdylay_frame_get_nv_len(*(idx+i), len_size);
-      if(len1 == len2 && memcmp(*(idx+i-1)+len_size, *(idx+i)+len_size,
-                                len1) == 0) {
-        return SPDYLAY_ERR_INVALID_HEADER_BLOCK;
-      }
-      len1 = len2;
-    }
-  }
-  return 0;
-}
-
-int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
+int spdylay_frame_unpack_nv(char ***nv_ptr, spdylay_buffer *in,
                             size_t len_size)
 {
   size_t nvlen, buflen;
@@ -248,44 +172,42 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
   char *buf, **idx, *data;
   uint32_t n;
   int invalid_header_block = 0;
-  r = spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, in, inlen, len_size);
+  spdylay_buffer_reader reader;
+  r = spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, in, len_size);
   if(r != 0) {
     return r;
   }
+
   buf = malloc(buflen);
   if(buf == NULL) {
     return SPDYLAY_ERR_NOMEM;
   }
-  r = spdylay_frame_unpack_nv_check_name((uint8_t*)buf, buflen, in, inlen,
-                                         len_size);
-  if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK) {
-    invalid_header_block = 1;
-    r = 0;
-  } else if(r != 0) {
-    free(buf);
-    return r;
-  }
+  spdylay_buffer_reader_init(&reader, in);
   idx = (char**)buf;
   data = buf+(nvlen*2+1)*sizeof(char*);
-  n = spdylay_frame_get_nv_len(in, len_size);
-  in += len_size;
+  n = spdylay_frame_get_nv_len(&reader, len_size);
   for(i = 0; i < n; ++i) {
     uint32_t len;
     char *name, *val;
     char *stop;
-    len = spdylay_frame_get_nv_len(in, len_size);
-    in += len_size;
+    len = spdylay_frame_get_nv_len(&reader, len_size);
+    if(len == 0) {
+      invalid_header_block = 1;
+    }
     name = data;
-    memcpy(data, in, len);
-    data += len;
+    spdylay_buffer_reader_data(&reader, (uint8_t*)data, len);
+    for(stop = data+len; data != stop; ++data) {
+      unsigned char c = *data;
+      if(c < 0x20 || c > 0x7e || ('A' <= c && c <= 'Z')) {
+        invalid_header_block = 1;
+      }
+    }
     *data = '\0';
     ++data;
-    in += len;
 
-    len = spdylay_frame_get_nv_len(in, len_size);
-    in += len_size;
+    len = spdylay_frame_get_nv_len(&reader, len_size);
     val = data;
-    memcpy(data, in, len);
+    spdylay_buffer_reader_data(&reader, (uint8_t*)data, len);
 
     for(stop = data+len; data != stop; ++data) {
       if(*data == '\0') {
@@ -299,7 +221,6 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
     }
     *data = '\0';
     ++data;
-    in += len;
 
     *idx++ = name;
     *idx++ = val;
@@ -307,31 +228,17 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, const uint8_t *in, size_t inlen,
   *idx = NULL;
   assert((size_t)((char*)idx - buf) == (nvlen*2)*sizeof(char*));
   *nv_ptr = (char**)buf;
-  return invalid_header_block ? SPDYLAY_ERR_INVALID_HEADER_BLOCK : 0;
-}
-
-int spdylay_frame_alloc_unpack_nv(char ***nv_ptr,
-                                  spdylay_buffer *inflatebuf,
-                                  uint8_t **nvbuf_ptr,
-                                  size_t *nvbuflen_ptr,
-                                  const uint8_t *in, size_t inlen,
-                                  size_t len_size,
-                                  spdylay_zlib *inflater)
-{
-  ssize_t nvspace;
-  int r;
-  nvspace = spdylay_zlib_inflate_hd(inflater, inflatebuf, in, inlen);
-  if(nvspace < 0) {
-    return nvspace;
-  } else {
-    r = spdylay_reserve_buffer(nvbuf_ptr, nvbuflen_ptr, nvspace);
-    if(r != 0) {
-      return SPDYLAY_ERR_NOMEM;
+  if(!invalid_header_block) {
+    spdylay_frame_nv_sort(*nv_ptr);
+    for(i = 2; i < nvlen*2; i += 2) {
+      if(strcmp((*nv_ptr)[i-2], (*nv_ptr)[i]) == 0 &&
+         (*nv_ptr)[i-2] != (*nv_ptr)[i]) {
+        invalid_header_block = 1;
+        break;
+      }
     }
-    spdylay_buffer_serialize(inflatebuf, *nvbuf_ptr);
-    r = spdylay_frame_unpack_nv(nv_ptr, *nvbuf_ptr, nvspace, len_size);
-    return r;
   }
+  return invalid_header_block ? SPDYLAY_ERR_INVALID_HEADER_BLOCK : 0;
 }
 
 size_t spdylay_frame_count_nv_space(char **nv, size_t len_size)
@@ -730,8 +637,6 @@ void spdylay_frame_data_init(spdylay_data *frame, int32_t stream_id,
 void spdylay_frame_data_free(spdylay_data *frame)
 {}
 
-#define SPDYLAY_SYN_STREAM_NV_OFFSET 18
-
 ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
                                       size_t *buflen_ptr,
                                       uint8_t **nvbuf_ptr,
@@ -767,16 +672,13 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
 }
 
 int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
-                                    spdylay_buffer *inflatebuf,
-                                    uint8_t **nvbuf_ptr,
-                                    size_t *nvbuflen_ptr,
                                     const uint8_t *head, size_t headlen,
                                     const uint8_t *payload, size_t payloadlen,
-                                    spdylay_zlib *inflater)
+                                    spdylay_buffer *inflatebuf)
 {
   int r;
   size_t len_size;
-  if(payloadlen < 12) {
+  if(headlen + payloadlen != SPDYLAY_SYN_STREAM_NV_OFFSET) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
@@ -793,16 +695,9 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
   } else {
     frame->slot = 0;
   }
-  r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
-                                    nvbuf_ptr, nvbuflen_ptr,
-                                    payload+10, payloadlen-10,
-                                    len_size,
-                                    inflater);
+  r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
   return r;
 }
-
-#define SPDYLAY_SPDY2_SYN_REPLY_NV_OFFSET 14
-#define SPDYLAY_SPDY3_SYN_REPLY_NV_OFFSET 12
 
 ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
                                      size_t *buflen_ptr,
@@ -813,14 +708,13 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
 {
   ssize_t framelen;
   size_t len_size;
-  size_t nv_offset;
+  ssize_t nv_offset;
   len_size = spdylay_frame_get_len_size(frame->hd.version);
   if(len_size == 0) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
   }
-  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ?
-    SPDYLAY_SPDY2_SYN_REPLY_NV_OFFSET : SPDYLAY_SPDY3_SYN_REPLY_NV_OFFSET;
-
+  nv_offset = spdylay_frame_nv_offset(SPDYLAY_SYN_REPLY, frame->hd.version);
+  assert(nv_offset > 0);
   framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
                                          frame->nv, nv_offset,
@@ -836,30 +730,25 @@ ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
 }
 
 int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
-                                   spdylay_buffer *inflatebuf,
-                                   uint8_t **nvbuf_ptr,
-                                   size_t *nvbuflen_ptr,
                                    const uint8_t *head, size_t headlen,
                                    const uint8_t *payload, size_t payloadlen,
-                                   spdylay_zlib *inflater)
+                                   spdylay_buffer *inflatebuf)
 {
   int r;
   size_t len_size;
-  size_t nv_offset;
-  if(payloadlen < 8) {
-    return SPDYLAY_ERR_INVALID_FRAME;
-  }
+  ssize_t nv_offset;
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
   len_size = spdylay_frame_get_len_size(frame->hd.version);
   if(len_size == 0) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
   }
-  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ? 6 : 4;
+  nv_offset = spdylay_frame_nv_offset(SPDYLAY_SYN_REPLY, frame->hd.version);
+  assert(nv_offset > 0);
+  if((ssize_t)(headlen + payloadlen) != nv_offset) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
-  r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
-                                    nvbuf_ptr, nvbuflen_ptr,
-                                    payload+nv_offset, payloadlen-nv_offset,
-                                    len_size, inflater);
+  r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
   return r;
 }
 
@@ -941,9 +830,6 @@ int spdylay_frame_unpack_goaway(spdylay_goaway *frame,
   return 0;
 }
 
-#define SPDYLAY_SPDY2_HEADERS_NV_OFFSET 14
-#define SPDYLAY_SPDY3_HEADERS_NV_OFFSET 12
-
 ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
                                    uint8_t **nvbuf_ptr, size_t *nvbuflen_ptr,
                                    spdylay_headers *frame,
@@ -956,8 +842,8 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
   if(len_size == 0) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
   }
-  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ?
-    SPDYLAY_SPDY2_HEADERS_NV_OFFSET : SPDYLAY_SPDY3_HEADERS_NV_OFFSET;
+  nv_offset = spdylay_frame_nv_offset(SPDYLAY_HEADERS, frame->hd.version);
+  assert(nv_offset > 0);
   framelen = spdylay_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
                                          nvbuf_ptr, nvbuflen_ptr,
                                          frame->nv, nv_offset,
@@ -973,30 +859,25 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
 }
 
 int spdylay_frame_unpack_headers(spdylay_headers *frame,
-                                 spdylay_buffer *inflatebuf,
-                                 uint8_t **nvbuf_ptr,
-                                 size_t *nvbuflen_ptr,
                                  const uint8_t *head, size_t headlen,
                                  const uint8_t *payload, size_t payloadlen,
-                                 spdylay_zlib *inflater)
+                                 spdylay_buffer *inflatebuf)
 {
   int r;
   size_t len_size;
-  size_t nv_offset;
-  if(payloadlen < 8) {
-    return SPDYLAY_ERR_INVALID_FRAME;
-  }
+  ssize_t nv_offset;
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
   len_size = spdylay_frame_get_len_size(frame->hd.version);
   if(len_size == 0) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
   }
-  nv_offset = frame->hd.version == SPDYLAY_PROTO_SPDY2 ? 6 : 4;
+  nv_offset = spdylay_frame_nv_offset(SPDYLAY_HEADERS, frame->hd.version);
+  assert(nv_offset > 0);
+  if((ssize_t)(headlen + payloadlen) != nv_offset) {
+    return SPDYLAY_ERR_INVALID_FRAME;
+  }
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
-  r = spdylay_frame_alloc_unpack_nv(&frame->nv, inflatebuf,
-                                    nvbuf_ptr, nvbuflen_ptr,
-                                    payload+nv_offset, payloadlen-nv_offset,
-                                    len_size, inflater);
+  r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
   return r;
 }
 
@@ -1316,4 +1197,31 @@ static int spdylay_settings_entry_compar(const void *lhs, const void *rhs)
 void spdylay_frame_iv_sort(spdylay_settings_entry *iv, size_t niv)
 {
   qsort(iv, niv, sizeof(spdylay_settings_entry), spdylay_settings_entry_compar);
+}
+
+ssize_t spdylay_frame_nv_offset(spdylay_frame_type type, uint16_t version)
+{
+  switch(type) {
+  case SPDYLAY_SYN_STREAM:
+    return SPDYLAY_SYN_STREAM_NV_OFFSET;
+  case SPDYLAY_SYN_REPLY: {
+    if(version == SPDYLAY_PROTO_SPDY2) {
+      return SPDYLAY_SPDY2_SYN_REPLY_NV_OFFSET;
+    } else if(version == SPDYLAY_PROTO_SPDY3) {
+      return SPDYLAY_SPDY3_SYN_REPLY_NV_OFFSET;
+    }
+    break;
+    }
+  case SPDYLAY_HEADERS: {
+    if(version == SPDYLAY_PROTO_SPDY2) {
+      return SPDYLAY_SPDY2_HEADERS_NV_OFFSET;
+    } else if(version == SPDYLAY_PROTO_SPDY3) {
+      return SPDYLAY_SPDY3_HEADERS_NV_OFFSET;
+    }
+    break;
+  }
+  default:
+    break;
+  }
+  return -1;
 }

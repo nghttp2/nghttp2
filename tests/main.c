@@ -69,6 +69,7 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "map", test_spdylay_map) ||
       !CU_add_test(pSuite, "queue", test_spdylay_queue) ||
       !CU_add_test(pSuite, "buffer", test_spdylay_buffer) ||
+      !CU_add_test(pSuite, "buffer_reader", test_spdylay_buffer_reader) ||
       !CU_add_test(pSuite, "zlib_spdy2", test_spdylay_zlib_spdy2) ||
       !CU_add_test(pSuite, "zlib_spdy3", test_spdylay_zlib_spdy3) ||
       !CU_add_test(pSuite, "npn", test_spdylay_npn) ||

@@ -29,12 +29,14 @@ check_PROGRAMS = main failmalloc
 OBJECTS = main.c spdylay_pq_test.c spdylay_map_test.c spdylay_queue_test.c \
 	spdylay_buffer_test.c spdylay_zlib_test.c spdylay_session_test.c \
 	spdylay_frame_test.c spdylay_stream_test.c spdylay_npn_test.c \
-	spdylay_client_cert_vector_test.c spdylay_gzip_test.c
+	spdylay_client_cert_vector_test.c spdylay_gzip_test.c \
+	spdylay_test_helper.c
 
 HFILES = spdylay_pq_test.h spdylay_map_test.h spdylay_queue_test.h \
 	spdylay_buffer_test.h spdylay_zlib_test.h spdylay_session_test.h \
 	spdylay_frame_test.h spdylay_stream_test.h spdylay_npn_test.h \
-	spdylay_client_cert_vector_test.h spdylay_gzip_test.h
+	spdylay_client_cert_vector_test.h spdylay_gzip_test.h \
+	spdylay_test_helper.h
 
 main_SOURCES = $(HFILES) $(OBJECTS)
 
@@ -42,7 +44,8 @@ main_LDADD = ${top_builddir}/lib/libspdylay.la
 main_LDFLAGS = -static @CUNIT_LIBS@
 
 failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
-	malloc_wrapper.c malloc_wrapper.h
+	malloc_wrapper.c malloc_wrapper.h \
+	spdylay_test_helper.c spdylay_test_helper.h
 failmalloc_LDADD = $(main_LDADD) -ldl
 failmalloc_LDFLAGS = $(main_LDFLAGS)
 

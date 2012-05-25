@@ -34,6 +34,7 @@
 #include "spdylay_frame.h"
 #include "spdylay_helper.h"
 #include "malloc_wrapper.h"
+#include "spdylay_test_helper.h"
 
 static char* strcopy(const char* s)
 {
@@ -431,13 +432,8 @@ static void run_spdylay_frame_pack_syn_stream(void)
   if(framelen < 0) {
     goto fail;
   }
-  rv = spdylay_frame_unpack_syn_stream(&oframe.syn_stream,
-                                       &inflatebuf,
-                                       &nvbuf, &nvbuflen,
-                                       &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
-                                       &buf[SPDYLAY_FRAME_HEAD_LENGTH],
-                                       framelen-SPDYLAY_FRAME_HEAD_LENGTH,
-                                       &inflater);
+  rv = unpack_frame_with_nv_block(SPDYLAY_SYN_STREAM, SPDYLAY_PROTO_SPDY3,
+                                  &oframe, &inflater, buf, framelen);
   if(rv != 0) {
     goto fail;
   }

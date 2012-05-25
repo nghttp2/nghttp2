@@ -28,6 +28,7 @@
 
 #include "spdylay_frame.h"
 #include "spdylay_helper.h"
+#include "spdylay_test_helper.h"
 
 static const char *headers[] = {
   "method", "GET",
@@ -36,7 +37,7 @@ static const char *headers[] = {
   "x-head", "foo",
   "x-head", "bar",
   "version", "HTTP/1.1",
-  "empty", "",
+  "x-empty", "",
   NULL
 };
 
@@ -45,30 +46,40 @@ static void test_spdylay_frame_unpack_nv_with(size_t len_size)
   uint8_t out[1024];
   char **nv;
   size_t inlen = spdylay_frame_pack_nv(out, (char**)headers, len_size);
-  CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, out, inlen, len_size));
+  spdylay_buffer buffer;
+
+  spdylay_buffer_init(&buffer, 4096);
+  spdylay_buffer_write(&buffer, out, inlen);
+
+  CU_ASSERT(0 == spdylay_frame_unpack_nv(&nv, &buffer, len_size));
   CU_ASSERT(strcmp("method", nv[0]) == 0);
   CU_ASSERT(strcmp("GET", nv[1]) == 0);
   CU_ASSERT(strcmp("scheme", nv[2]) == 0);
   CU_ASSERT(strcmp("https", nv[3]) == 0);
   CU_ASSERT(strcmp("url", nv[4]) == 0);
   CU_ASSERT(strcmp("/", nv[5]) == 0);
-  CU_ASSERT(strcmp("x-head", nv[6]) == 0);
-  CU_ASSERT(strcmp("foo", nv[7]) == 0);
-  CU_ASSERT(strcmp("x-head", nv[8]) == 0);
-  CU_ASSERT(strcmp("bar", nv[9]) == 0);
-  CU_ASSERT(strcmp("version", nv[10]) == 0);
-  CU_ASSERT(strcmp("HTTP/1.1", nv[11]) == 0);
-  CU_ASSERT(strcmp("empty", nv[12]) == 0);
-  CU_ASSERT(strcmp("", nv[13]) == 0);
+  CU_ASSERT(strcmp("version", nv[6]) == 0);
+  CU_ASSERT(strcmp("HTTP/1.1", nv[7]) == 0);
+  CU_ASSERT(strcmp("x-empty", nv[8]) == 0);
+  CU_ASSERT(strcmp("", nv[9]) == 0);
+  CU_ASSERT(strcmp("x-head", nv[10]) == 0);
+  CU_ASSERT(strcmp("foo", nv[11]) == 0);
+  CU_ASSERT(strcmp("x-head", nv[12]) == 0);
+  CU_ASSERT(strcmp("bar", nv[13]) == 0);
   spdylay_frame_nv_del(nv);
 
   /* Create in-sequence NUL bytes */
-  memcpy(&out[len_size+len_size+strlen(headers[0])+len_size+
-              strlen(headers[1])-2],
+  /* Assuming first chunk has enough space to store 1st name/value
+     pair. */
+  memcpy(&buffer.root.next->data[len_size +
+                                 len_size + strlen(headers[0]) +
+                                 len_size + strlen(headers[1])-2],
          "\0\0", 2);
   CU_ASSERT(SPDYLAY_ERR_INVALID_HEADER_BLOCK ==
-            spdylay_frame_unpack_nv(&nv, out, inlen, len_size));
+            spdylay_frame_unpack_nv(&nv, &buffer, len_size));
+
   spdylay_frame_nv_del(nv);
+  spdylay_buffer_free(&buffer);
 }
 
 void test_spdylay_frame_unpack_nv_spdy2(void)
@@ -173,9 +184,9 @@ void test_spdylay_frame_pack_nv_duplicate_keys(void)
 void test_spdylay_frame_count_nv_space(void)
 {
   size_t len_size = 2;
-  CU_ASSERT(83 == spdylay_frame_count_nv_space((char**)headers, len_size));
+  CU_ASSERT(85 == spdylay_frame_count_nv_space((char**)headers, len_size));
   len_size = 4;
-  CU_ASSERT(109 == spdylay_frame_count_nv_space((char**)headers, len_size));
+  CU_ASSERT(111 == spdylay_frame_count_nv_space((char**)headers, len_size));
 }
 
 void test_spdylay_frame_count_unpack_nv_space(void)
@@ -186,35 +197,45 @@ void test_spdylay_frame_count_unpack_nv_space(void)
   size_t inlen = spdylay_frame_pack_nv(out, (char**)headers, len_size);
   uint16_t temp;
   size_t expected_buflen;
+  spdylay_buffer buffer;
+  uint8_t *chunk;
+
+  spdylay_buffer_init(&buffer, 4096);
+  spdylay_buffer_write(&buffer, out, inlen);
+
   CU_ASSERT(0 == spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
-                                                     out, inlen, len_size));
+                                                     &buffer, len_size));
   CU_ASSERT(7 == nvlen);
-  expected_buflen = 69+(nvlen*2+1)*sizeof(char*);
+  expected_buflen = 71+(nvlen*2+1)*sizeof(char*);
   CU_ASSERT(expected_buflen == buflen);
 
-  /* Trailing garbage */
-  CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
-            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
-                                                out, inlen+2, len_size));
-
+  chunk = buffer.root.next->data;
   /* Change number of nv pair to a bogus value */
-  temp = spdylay_get_uint16(out);
-  spdylay_put_uint16be(out, temp+1);
+  temp = spdylay_get_uint16(chunk);
+  spdylay_put_uint16be(chunk, temp+1);
   CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
-            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen,
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, &buffer,
                                                 len_size));
-  spdylay_put_uint16be(out, temp);
+  spdylay_put_uint16be(chunk, temp);
 
   /* Change the length of name to a bogus value */
-  temp = spdylay_get_uint16(out+2);
-  spdylay_put_uint16be(out+2, temp+1);
+  temp = spdylay_get_uint16(chunk+2);
+  spdylay_put_uint16be(chunk+2, temp+1);
   CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
-            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen,
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, &buffer,
                                                 len_size));
-  spdylay_put_uint16be(out+2, 65535);
+  spdylay_put_uint16be(chunk+2, 65535);
   CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
-            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, out, inlen,
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen, &buffer,
                                                 len_size));
+
+  /* Trailing garbage */
+  spdylay_buffer_advance(&buffer, 2);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_FRAME ==
+            spdylay_frame_count_unpack_nv_space(&nvlen, &buflen,
+                                                &buffer, len_size));
+  /* We advanced buffer 2 bytes, so it is not valid any more. */
+  spdylay_buffer_free(&buffer);
 }
 
 void test_spdylay_frame_pack_ping(void)
@@ -282,9 +303,8 @@ static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL, *nvbuf = NULL;
   size_t buflen = 0, nvbuflen = 0;
-  spdylay_buffer inflatebuf;
   ssize_t framelen;
-  spdylay_buffer_init(&inflatebuf, 4096);
+
   spdylay_zlib_deflate_hd_init(&deflater, version);
   spdylay_zlib_inflate_hd_init(&inflater, version);
   spdylay_frame_syn_stream_init(&frame.syn_stream, version,
@@ -293,14 +313,12 @@ static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   framelen = spdylay_frame_pack_syn_stream(&buf, &buflen,
                                            &nvbuf, &nvbuflen,
                                            &frame.syn_stream, &deflater);
-  CU_ASSERT(0 == spdylay_frame_unpack_syn_stream
-            (&oframe.syn_stream,
-             &inflatebuf,
-             &nvbuf, &nvbuflen,
-             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
-             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
-             framelen-SPDYLAY_FRAME_HEAD_LENGTH,
-             &inflater));
+
+  CU_ASSERT(0 == unpack_frame_with_nv_block(SPDYLAY_SYN_STREAM,
+                                            version,
+                                            &oframe,
+                                            &inflater,
+                                            buf, framelen));
   CU_ASSERT(65536 == oframe.syn_stream.stream_id);
   CU_ASSERT(1000000007 == oframe.syn_stream.assoc_stream_id);
   CU_ASSERT(version == oframe.syn_stream.hd.version);
@@ -316,7 +334,6 @@ static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   spdylay_frame_syn_stream_free(&frame.syn_stream);
   spdylay_zlib_inflate_free(&inflater);
   spdylay_zlib_deflate_free(&deflater);
-  spdylay_buffer_free(&inflatebuf);
 }
 
 void test_spdylay_frame_pack_syn_stream_spdy2(void)
@@ -335,9 +352,7 @@ static void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
   spdylay_frame frame, oframe;
   uint8_t *buf = NULL, *nvbuf = NULL;
   size_t buflen = 0, nvbuflen = 0;
-  spdylay_buffer inflatebuf;
   ssize_t framelen;
-  spdylay_buffer_init(&inflatebuf, 4096);
   spdylay_zlib_deflate_hd_init(&deflater, version);
   spdylay_zlib_inflate_hd_init(&inflater, version);
   spdylay_frame_syn_reply_init(&frame.syn_reply, version,
@@ -346,14 +361,11 @@ static void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
   framelen = spdylay_frame_pack_syn_reply(&buf, &buflen,
                                           &nvbuf, &nvbuflen,
                                           &frame.syn_reply, &deflater);
-  CU_ASSERT(0 == spdylay_frame_unpack_syn_reply
-            (&oframe.syn_reply,
-             &inflatebuf,
-             &nvbuf, &nvbuflen,
-             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
-             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
-             framelen-SPDYLAY_FRAME_HEAD_LENGTH,
-             &inflater));
+  CU_ASSERT(0 == unpack_frame_with_nv_block(SPDYLAY_SYN_REPLY,
+                                            version,
+                                            &oframe,
+                                            &inflater,
+                                            buf, framelen));
   CU_ASSERT(3 == oframe.syn_reply.stream_id);
   CU_ASSERT(version == oframe.syn_reply.hd.version);
   CU_ASSERT(SPDYLAY_SYN_REPLY == oframe.syn_reply.hd.type);
@@ -368,7 +380,6 @@ static void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
   spdylay_frame_syn_reply_free(&frame.syn_reply);
   spdylay_zlib_inflate_free(&inflater);
   spdylay_zlib_deflate_free(&deflater);
-  spdylay_buffer_free(&inflatebuf);
 }
 
 void test_spdylay_frame_pack_syn_reply_spdy2(void)
@@ -398,14 +409,11 @@ static void test_spdylay_frame_pack_headers_version(uint16_t version)
   framelen = spdylay_frame_pack_headers(&buf, &buflen,
                                         &nvbuf, &nvbuflen,
                                         &frame.headers, &deflater);
-  CU_ASSERT(0 == spdylay_frame_unpack_headers
-            (&oframe.headers,
-             &inflatebuf,
-             &nvbuf, &nvbuflen,
-             &buf[0], SPDYLAY_FRAME_HEAD_LENGTH,
-             &buf[SPDYLAY_FRAME_HEAD_LENGTH],
-             framelen-SPDYLAY_FRAME_HEAD_LENGTH,
-             &inflater));
+  CU_ASSERT(0 == unpack_frame_with_nv_block(SPDYLAY_HEADERS,
+                                            version,
+                                            &oframe,
+                                            &inflater,
+                                            buf, framelen));
   CU_ASSERT(3 == oframe.headers.stream_id);
   CU_ASSERT(version == oframe.headers.hd.version);
   CU_ASSERT(SPDYLAY_HEADERS == oframe.headers.hd.type);
@@ -699,25 +707,40 @@ static const char *non_ascii_headers[] = {
 
 static void test_spdylay_frame_unpack_nv_check_name_with(size_t len_size)
 {
-  uint8_t nvbuf[1024], buf[1024];
+  uint8_t nvbuf[1024];
   size_t nvbuflen;
+  spdylay_buffer buffer;
+  char **nv;
+
+  spdylay_buffer_init(&buffer, 32);
 
   nvbuflen = spdylay_pack_nv(nvbuf, sizeof(nvbuf), headers, len_size);
+  spdylay_buffer_write(&buffer, nvbuf, nvbuflen);
+
   CU_ASSERT(SPDYLAY_ERR_INVALID_HEADER_BLOCK ==
-            spdylay_frame_unpack_nv_check_name(buf, sizeof(buf),
-                                               nvbuf, nvbuflen, len_size));
+            spdylay_frame_unpack_nv(&nv, &buffer, len_size));
+
+  spdylay_frame_nv_del(nv);
+  spdylay_buffer_reset(&buffer);
 
   nvbuflen = spdylay_pack_nv(nvbuf, sizeof(nvbuf), empty_name_headers,
                              len_size);
+  spdylay_buffer_write(&buffer, nvbuf, nvbuflen);
+
   CU_ASSERT(SPDYLAY_ERR_INVALID_HEADER_BLOCK ==
-            spdylay_frame_unpack_nv_check_name(buf, sizeof(buf),
-                                               nvbuf, nvbuflen, len_size));
+            spdylay_frame_unpack_nv(&nv, &buffer, len_size));
+
+  spdylay_frame_nv_del(nv);
+  spdylay_buffer_reset(&buffer);
 
   nvbuflen = spdylay_pack_nv(nvbuf, sizeof(nvbuf), non_ascii_headers,
                              len_size);
+  spdylay_buffer_write(&buffer, nvbuf, nvbuflen);
   CU_ASSERT(SPDYLAY_ERR_INVALID_HEADER_BLOCK ==
-            spdylay_frame_unpack_nv_check_name(buf, sizeof(buf),
-                                               nvbuf, nvbuflen, len_size));
+            spdylay_frame_unpack_nv(&nv, &buffer, len_size));
+
+  spdylay_frame_nv_del(nv);
+  spdylay_buffer_free(&buffer);
 }
 
 void test_spdylay_frame_unpack_nv_check_name_spdy2(void)

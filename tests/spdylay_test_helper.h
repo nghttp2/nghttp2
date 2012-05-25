@@ -22,10 +22,20 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPDYLAY_BUFFER_TEST_H
-#define SPDYLAY_BUFFER_TEST_H
+#ifndef SPDYLAY_TEST_HELPER_H
+#define SPDYLAY_TEST_HELPER_H
 
-void test_spdylay_buffer(void);
-void test_spdylay_buffer_reader(void);
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
 
-#endif /* SPDYLAY_BUFFER_TEST_H */
+#include "spdylay_frame.h"
+#include "spdylay_zlib.h"
+
+ssize_t unpack_frame_with_nv_block(spdylay_frame_type type,
+                                   uint16_t version,
+                                   spdylay_frame *frame,
+                                   spdylay_zlib *inflater,
+                                   const uint8_t *in, size_t len);
+
+#endif /* SPDYLAY_TEST_HELPER_H */

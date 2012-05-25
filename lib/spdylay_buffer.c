@@ -27,6 +27,9 @@
 #include <assert.h>
 #include <string.h>
 
+#include "spdylay_net.h"
+#include "spdylay_helper.h"
+
 void spdylay_buffer_init(spdylay_buffer *buffer, size_t chunk_capacity)
 {
   buffer->root.data = NULL;
@@ -99,6 +102,27 @@ void spdylay_buffer_advance(spdylay_buffer *buffer, size_t amount)
   assert(buffer->last_offset <= buffer->capacity);
 }
 
+int spdylay_buffer_write(spdylay_buffer *buffer, const uint8_t *data,
+                          size_t len)
+{
+  int rv;
+  size_t i;
+  while(len) {
+    size_t writelen;
+    if(spdylay_buffer_avail(buffer) == 0) {
+      if((rv = spdylay_buffer_alloc(buffer)) != 0) {
+        return rv;
+      }
+    }
+    writelen = spdylay_min(spdylay_buffer_avail(buffer), len);
+    memcpy(spdylay_buffer_get(buffer), data, writelen);
+    data += writelen;
+    len -= writelen;
+    spdylay_buffer_advance(buffer, writelen);
+  }
+  return 0;
+}
+
 size_t spdylay_buffer_length(spdylay_buffer *buffer)
 {
   return buffer->len;
@@ -129,4 +153,67 @@ void spdylay_buffer_reset(spdylay_buffer *buffer)
   buffer->current = &buffer->root;
   buffer->len = 0;
   buffer->last_offset = buffer->capacity;
+}
+
+void spdylay_buffer_reader_init(spdylay_buffer_reader *reader,
+                                spdylay_buffer *buffer)
+{
+  reader->buffer = buffer;
+  reader->current = buffer->root.next;
+  reader->offset = 0;
+}
+
+uint8_t spdylay_buffer_reader_uint8(spdylay_buffer_reader *reader)
+{
+  uint8_t out;
+  spdylay_buffer_reader_data(reader, &out, sizeof(uint8_t));
+  return out;
+}
+
+uint16_t spdylay_buffer_reader_uint16(spdylay_buffer_reader *reader)
+{
+  uint16_t out;
+  spdylay_buffer_reader_data(reader, (uint8_t*)&out, sizeof(uint16_t));
+  return ntohs(out);
+}
+
+uint32_t spdylay_buffer_reader_uint32(spdylay_buffer_reader *reader)
+{
+  uint32_t out;
+  spdylay_buffer_reader_data(reader, (uint8_t*)&out, sizeof(uint32_t));
+  return ntohl(out);
+}
+
+void spdylay_buffer_reader_data(spdylay_buffer_reader *reader,
+                                uint8_t *out, size_t len)
+{
+  while(len) {
+    size_t remlen, readlen;
+    remlen = reader->buffer->capacity - reader->offset;
+    readlen = spdylay_min(remlen, len);
+    memcpy(out, reader->current->data + reader->offset, readlen);
+    out += readlen;
+    len -= readlen;
+    reader->offset += readlen;
+    if(reader->buffer->capacity == reader->offset) {
+      reader->current = reader->current->next;
+      reader->offset = 0;
+    }
+  }
+}
+
+void spdylay_buffer_reader_advance(spdylay_buffer_reader *reader,
+                                   size_t amount)
+{
+  while(amount) {
+    size_t remlen, skiplen;
+    remlen = reader->buffer->capacity - reader->offset;
+    skiplen = spdylay_min(remlen, amount);
+    amount -= skiplen;
+    reader->offset += skiplen;
+    if(reader->buffer->capacity == reader->offset) {
+      reader->current = reader->current->next;
+      reader->offset = 0;
+    }
+  }
 }
