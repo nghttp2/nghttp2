@@ -242,6 +242,16 @@ void test_spdylay_session_recv(void)
   const char *upcase_nv[] = {
     "URL", "/", NULL
   };
+  const char *mid_nv[] = {
+    "method", "GET",
+    "scheme", "https",
+    "url", "/",
+    "x-head", "foo",
+    "x-head", "bar",
+    "version", "HTTP/1.1",
+    "x-empty", "",
+    NULL
+  };
   uint8_t *framedata = NULL, *nvbuf = NULL;
   size_t framedatalen = 0, nvbuflen = 0;
   ssize_t framelen;
@@ -312,6 +322,93 @@ void test_spdylay_session_recv(void)
   CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
   item = spdylay_session_get_next_ob_item(session);
   CU_ASSERT(SPDYLAY_GOAWAY == OB_CTRL_TYPE(item));
+
+  spdylay_session_del(session);
+
+  /* Some tests for frame too large */
+  spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks,
+                             &user_data);
+  /* made max buffer small to cause error intentionally */
+  /* Inflated wire format of mid_nv will be 111 in SPDY/3. So payload
+     length will be 121. Setting max buffer size to 110 will cause
+     error while inflating name/value header block. */
+  session->max_recv_ctrl_frame_buf = 110;
+
+  /* Receive SYN_STREAM with too large payload */
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY3,
+                                SPDYLAY_CTRL_FLAG_NONE,
+                                1, 0, 3, dup_nv(mid_nv));
+  framelen = spdylay_frame_pack_syn_stream(&framedata, &framedatalen,
+                                           &nvbuf, &nvbuflen,
+                                           &frame.syn_stream,
+                                           &session->hd_deflater);
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+  scripted_data_feed_init(&df, framedata, framelen);
+  user_data.ctrl_recv_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_FRAME_TOO_LARGE == OB_CTRL(item)->rst_stream.status_code);
+  CU_ASSERT(1 == OB_CTRL(item)->rst_stream.stream_id);
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  /* For SYN_REPLY and SYN_HEADERS, make max buffer even smaller */
+  session->max_recv_ctrl_frame_buf = 8;
+
+  /* Receive SYN_REPLY with too large payload */
+  spdylay_frame_syn_reply_init(&frame.syn_reply, SPDYLAY_PROTO_SPDY3,
+                               SPDYLAY_CTRL_FLAG_NONE,
+                               1, dup_nv(mid_nv));
+  framelen = spdylay_frame_pack_syn_reply(&framedata, &framedatalen,
+                                          &nvbuf, &nvbuflen,
+                                          &frame.syn_reply,
+                                          &session->hd_deflater);
+  spdylay_frame_syn_reply_free(&frame.syn_reply);
+  scripted_data_feed_init(&df, framedata, framelen);
+  user_data.ctrl_recv_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_FRAME_TOO_LARGE == OB_CTRL(item)->rst_stream.status_code);
+  CU_ASSERT(1 == OB_CTRL(item)->rst_stream.stream_id);
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  /* Receive HEADERS with too large payload */
+  spdylay_frame_headers_init(&frame.headers, SPDYLAY_PROTO_SPDY3,
+                             SPDYLAY_CTRL_FLAG_NONE,
+                             1, dup_nv(mid_nv));
+  framelen = spdylay_frame_pack_headers(&framedata, &framedatalen,
+                                        &nvbuf, &nvbuflen,
+                                        &frame.headers,
+                                        &session->hd_deflater);
+  spdylay_frame_headers_free(&frame.headers);
+  scripted_data_feed_init(&df, framedata, framelen);
+  user_data.ctrl_recv_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_FRAME_TOO_LARGE == OB_CTRL(item)->rst_stream.status_code);
+  CU_ASSERT(1 == OB_CTRL(item)->rst_stream.stream_id);
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  /* Receive PING with too large payload */
+  spdylay_frame_ping_init(&frame.ping, SPDYLAY_PROTO_SPDY3, 1);
+  spdylay_reserve_buffer(&framedata, &framedatalen, 77);
+  framelen = spdylay_frame_pack_ping(&framedata, &framedatalen, &frame.ping);
+  spdylay_frame_ping_free(&frame.ping);
+  spdylay_put_uint32be(&framedata[4], framedatalen - SPDYLAY_HEAD_LEN);
+  scripted_data_feed_init(&df, framedata, framedatalen);
+  user_data.ctrl_recv_cb_called = 0;
+  CU_ASSERT(0 == spdylay_session_recv(session));
+  CU_ASSERT(0 == user_data.ctrl_recv_cb_called);
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_GOAWAY == OB_CTRL_TYPE(item));
+  CU_ASSERT(SPDYLAY_GOAWAY_PROTOCOL_ERROR ==
+            OB_CTRL(item)->rst_stream.status_code);
+  CU_ASSERT(0 == spdylay_session_send(session));
 
   spdylay_session_del(session);
 

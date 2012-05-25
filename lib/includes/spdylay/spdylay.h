@@ -487,7 +487,7 @@ typedef struct {
    * to the name string and ``nv[2*i+1]`` contains a pointer to the
    * value string. The one beyond last value must be ``NULL``. That
    * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
-   * ``NULL``.
+   * ``NULL``. This member may be ``NULL``.
    */
   char **nv;
 } spdylay_syn_stream;
@@ -510,7 +510,7 @@ typedef struct {
    * to the name string and ``nv[2*i+1]`` contains a pointer to the
    * value string. The one beyond last value must be ``NULL``. That
    * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
-   * ``NULL``.
+   * ``NULL``. This member may be ``NULL``.
    */
   char **nv;
 } spdylay_syn_reply;
@@ -533,7 +533,7 @@ typedef struct {
    * to the name string and ``nv[2*i+1]`` contains a pointer to the
    * value string. The one beyond last value must be ``NULL``. That
    * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
-   * ``NULL``.
+   * ``NULL``. This member may be ``NULL``.
    */
   char **nv;
 } spdylay_headers;
@@ -1261,7 +1261,12 @@ typedef enum {
    * responsible for sending WINDOW_UPDATE using
    * `spdylay_submit_window_update`.
    */
-  SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE = 1
+  SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE = 1,
+  /**
+   * This option sets maximum receive buffer size for incoming control
+   * frame.
+   */
+  SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER = 2
 } spdylay_opt;
 
 /**
@@ -1276,10 +1281,16 @@ typedef enum {
  * The following |optname| are supported:
  *
  * :enum:`SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE`
- *     The |optval| must be ``int``. If |optval| is nonzero, the
- *     library will not send WINDOW_UPDATE automatically.  Therefore,
- *     the application is responsible for sending WINDOW_UPDATE using
- *     `spdylay_submit_window_update`. This option defaults to 0.
+ *     The |optval| must be a pointer to ``int``. If the |*optval| is
+ *     nonzero, the library will not send WINDOW_UPDATE automatically.
+ *     Therefore, the application is responsible for sending
+ *     WINDOW_UPDATE using `spdylay_submit_window_update`. This option
+ *     defaults to 0.
+ *
+ * :enum:`SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER`
+ *     The |optval| must be a pointer to ``uint32_t``. The |*optval|
+ *     must be in the range [(1 << 13), (1 << 24)-1], inclusive. This
+ *     option defaults to (1 << 24)-1.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:

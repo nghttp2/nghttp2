@@ -165,6 +165,22 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
                                     spdylay_buffer *inflatebuf);
 
 /*
+ * Unpacks SYN_STREAM frame byte sequence into |frame|. This function
+ * only unapcks bytes that come before name/value header block.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ */
+int spdylay_frame_unpack_syn_stream_without_nv(spdylay_syn_stream *frame,
+                                               const uint8_t *head,
+                                               size_t headlen,
+                                               const uint8_t *payload,
+                                               size_t payloadlen);
+
+/*
  * Packs SYN_REPLY frame |frame| in wire frame format and store it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
  * The |*nvbuf_ptr| is used to store inflated name/value pairs in wire
@@ -221,6 +237,22 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    const uint8_t *head, size_t headlen,
                                    const uint8_t *payload, size_t payloadlen,
                                    spdylay_buffer *inflatebuf);
+
+/*
+ * Unpacks SYN_REPLY frame byte sequence into |frame|. This function
+ * only unapcks bytes that come before name/value header block.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ */
+int spdylay_frame_unpack_syn_reply_without_nv(spdylay_syn_reply *frame,
+                                              const uint8_t *head,
+                                              size_t headlen,
+                                              const uint8_t *payload,
+                                              size_t payloadlen);
 
 /*
  * Packs PING frame |frame| in wire format and store it in
@@ -337,6 +369,22 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
                                  const uint8_t *head, size_t headlen,
                                  const uint8_t *payload, size_t payloadlen,
                                  spdylay_buffer *inflatebuf);
+
+/*
+ * Unpacks HEADERS frame byte sequence into |frame|. This function
+ * only unapcks bytes that come before name/value header block.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * SPDYLAY_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ */
+int spdylay_frame_unpack_headers_without_nv(spdylay_headers *frame,
+                                            const uint8_t *head,
+                                            size_t headlen,
+                                            const uint8_t *payload,
+                                            size_t payloadlen);
 
 /*
  * Packs RST_STREAM frame |frame| in wire frame format and store it in

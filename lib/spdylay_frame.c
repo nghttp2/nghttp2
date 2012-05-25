@@ -678,13 +678,28 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
 {
   int r;
   size_t len_size;
-  if(headlen + payloadlen != SPDYLAY_SYN_STREAM_NV_OFFSET) {
-    return SPDYLAY_ERR_INVALID_FRAME;
-  }
-  spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  r = spdylay_frame_unpack_syn_stream_without_nv(frame, head, headlen,
+                                                 payload, payloadlen);
   len_size = spdylay_frame_get_len_size(frame->hd.version);
   if(len_size == 0) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+  }
+  if(r == 0) {
+    r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
+  }
+  return r;
+}
+
+int spdylay_frame_unpack_syn_stream_without_nv(spdylay_syn_stream *frame,
+                                               const uint8_t *head,
+                                               size_t headlen,
+                                               const uint8_t *payload,
+                                               size_t payloadlen)
+{
+  int r;
+  spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
+  if(headlen + payloadlen != SPDYLAY_SYN_STREAM_NV_OFFSET) {
+    return SPDYLAY_ERR_INVALID_FRAME;
   }
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   frame->assoc_stream_id =
@@ -695,8 +710,8 @@ int spdylay_frame_unpack_syn_stream(spdylay_syn_stream *frame,
   } else {
     frame->slot = 0;
   }
-  r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
-  return r;
+  frame->nv = NULL;
+  return 0;
 }
 
 ssize_t spdylay_frame_pack_syn_reply(uint8_t **buf_ptr,
@@ -735,21 +750,35 @@ int spdylay_frame_unpack_syn_reply(spdylay_syn_reply *frame,
                                    spdylay_buffer *inflatebuf)
 {
   int r;
-  size_t len_size;
+  r = spdylay_frame_unpack_syn_reply_without_nv(frame, head, headlen,
+                                                payload, payloadlen);
+  if(r == 0) {
+    size_t len_size;
+    len_size = spdylay_frame_get_len_size(frame->hd.version);
+    if(len_size == 0) {
+      return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+    }
+    r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
+  }
+  return r;
+}
+
+int spdylay_frame_unpack_syn_reply_without_nv(spdylay_syn_reply *frame,
+                                              const uint8_t *head,
+                                              size_t headlen,
+                                              const uint8_t *payload,
+                                              size_t payloadlen)
+{
   ssize_t nv_offset;
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
-  len_size = spdylay_frame_get_len_size(frame->hd.version);
-  if(len_size == 0) {
-    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
-  }
   nv_offset = spdylay_frame_nv_offset(SPDYLAY_SYN_REPLY, frame->hd.version);
   assert(nv_offset > 0);
   if((ssize_t)(headlen + payloadlen) != nv_offset) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
-  r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
-  return r;
+  frame->nv = NULL;
+  return 0;
 }
 
 ssize_t spdylay_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
@@ -864,21 +893,35 @@ int spdylay_frame_unpack_headers(spdylay_headers *frame,
                                  spdylay_buffer *inflatebuf)
 {
   int r;
-  size_t len_size;
+  r = spdylay_frame_unpack_headers_without_nv(frame, head, headlen,
+                                              payload, payloadlen);
+  if(r == 0) {
+    size_t len_size;
+    len_size = spdylay_frame_get_len_size(frame->hd.version);
+    if(len_size == 0) {
+      return SPDYLAY_ERR_UNSUPPORTED_VERSION;
+    }
+    r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
+  }
+  return r;
+}
+
+int spdylay_frame_unpack_headers_without_nv(spdylay_headers *frame,
+                                            const uint8_t *head,
+                                            size_t headlen,
+                                            const uint8_t *payload,
+                                            size_t payloadlen)
+{
   ssize_t nv_offset;
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
-  len_size = spdylay_frame_get_len_size(frame->hd.version);
-  if(len_size == 0) {
-    return SPDYLAY_ERR_UNSUPPORTED_VERSION;
-  }
   nv_offset = spdylay_frame_nv_offset(SPDYLAY_HEADERS, frame->hd.version);
   assert(nv_offset > 0);
   if((ssize_t)(headlen + payloadlen) != nv_offset) {
     return SPDYLAY_ERR_INVALID_FRAME;
   }
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
-  r = spdylay_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
-  return r;
+  frame->nv = NULL;
+  return 0;
 }
 
 ssize_t spdylay_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,

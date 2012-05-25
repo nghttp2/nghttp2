@@ -93,6 +93,8 @@ typedef enum {
   SPDYLAY_RECV_HEAD,
   /* Receiving frame payload (comes after length field) */
   SPDYLAY_RECV_PAYLOAD,
+  /* Receiving frame payload, but the received bytes are discarded. */
+  SPDYLAY_RECV_PAYLOAD_IGN,
   /* Receiving frame payload that comes before name/value header
      block. Applied only for SYN_STREAM, SYN_REPLY and HEADERS. */
   SPDYLAY_RECV_PAYLOAD_PRE_NV,
@@ -207,6 +209,8 @@ struct spdylay_session {
 
   /* Option flags. This is bitwise-OR of 0 or more of spdylay_optmask. */
   uint32_t opt_flags;
+  /* Maxmum size of buffer to use when receving control frame. */
+  uint32_t max_recv_ctrl_frame_buf;
 
   /* Client certificate vector */
   spdylay_client_cert_vector cli_certvec;

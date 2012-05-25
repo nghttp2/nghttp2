@@ -169,6 +169,8 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->goaway_flags = SPDYLAY_GOAWAY_NONE;
   (*session_ptr)->last_good_stream_id = 0;
 
+  (*session_ptr)->max_recv_ctrl_frame_buf = (1 << 24)-1;
+
   r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater,
                                    (*session_ptr)->version);
   if(r != 0) {
@@ -2095,6 +2097,16 @@ static void spdylay_session_handle_parse_error(spdylay_session *session,
   }
 }
 
+static int spdylay_get_status_code_from_error_code(int error_code)
+{
+  switch(error_code) {
+  case(SPDYLAY_ERR_FRAME_TOO_LARGE):
+    return SPDYLAY_FRAME_TOO_LARGE;
+  default:
+    return SPDYLAY_PROTOCOL_ERROR;
+  }
+}
+
 /* For errors, this function only returns FATAL error. */
 static int spdylay_session_process_ctrl_frame(spdylay_session *session)
 {
@@ -2111,6 +2123,14 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
                                           session->iframe.buf,
                                           session->iframe.buflen,
                                           &session->iframe.inflatebuf);
+    } else if(session->iframe.error_code == SPDYLAY_ERR_FRAME_TOO_LARGE) {
+      r = spdylay_frame_unpack_syn_stream_without_nv
+        (&frame.syn_stream,
+         session->iframe.headbuf, sizeof(session->iframe.headbuf),
+         session->iframe.buf, session->iframe.buflen);
+      if(r == 0) {
+        r = session->iframe.error_code;
+      }
     } else {
       r = session->iframe.error_code;
     }
@@ -2120,13 +2140,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       }
       r = spdylay_session_on_syn_stream_received(session, &frame);
       spdylay_frame_syn_stream_free(&frame.syn_stream);
-      /* TODO if r indicates mulformed NV pairs (multiple nulls) or
-         invalid frame, send RST_STREAM with PROTOCOL_ERROR. Same for
-         other control frames. */
-    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK) {
+    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK ||
+              r == SPDYLAY_ERR_FRAME_TOO_LARGE) {
       r = spdylay_session_handle_invalid_stream
         (session, frame.syn_stream.stream_id, SPDYLAY_SYN_STREAM, &frame,
-         SPDYLAY_PROTOCOL_ERROR);
+         spdylay_get_status_code_from_error_code(r));
       spdylay_frame_syn_stream_free(&frame.syn_stream);
     } else if(spdylay_is_non_fatal(r)) {
       spdylay_session_handle_parse_error(session, type, r);
@@ -2141,6 +2159,14 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
                                          session->iframe.buf,
                                          session->iframe.buflen,
                                          &session->iframe.inflatebuf);
+    } else if(session->iframe.error_code == SPDYLAY_ERR_FRAME_TOO_LARGE) {
+      r = spdylay_frame_unpack_syn_reply_without_nv
+        (&frame.syn_reply,
+         session->iframe.headbuf, sizeof(session->iframe.headbuf),
+         session->iframe.buf, session->iframe.buflen);
+      if(r == 0) {
+        r = session->iframe.error_code;
+      }
     } else {
       r = session->iframe.error_code;
     }
@@ -2150,10 +2176,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       }
       r = spdylay_session_on_syn_reply_received(session, &frame);
       spdylay_frame_syn_reply_free(&frame.syn_reply);
-    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK) {
+    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK ||
+              r == SPDYLAY_ERR_FRAME_TOO_LARGE) {
       r = spdylay_session_handle_invalid_stream
         (session, frame.syn_reply.stream_id, SPDYLAY_SYN_REPLY, &frame,
-         SPDYLAY_PROTOCOL_ERROR);
+         spdylay_get_status_code_from_error_code(r));
       spdylay_frame_syn_reply_free(&frame.syn_reply);
     } else if(spdylay_is_non_fatal(r)) {
       spdylay_session_handle_parse_error(session, type, r);
@@ -2226,6 +2253,14 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
                                        session->iframe.buf,
                                        session->iframe.buflen,
                                        &session->iframe.inflatebuf);
+    } else if(session->iframe.error_code == SPDYLAY_ERR_FRAME_TOO_LARGE) {
+      r = spdylay_frame_unpack_headers_without_nv
+        (&frame.headers,
+         session->iframe.headbuf, sizeof(session->iframe.headbuf),
+         session->iframe.buf, session->iframe.buflen);
+      if(r == 0) {
+        r = session->iframe.error_code;
+      }
     } else {
       r = session->iframe.error_code;
     }
@@ -2235,10 +2270,11 @@ static int spdylay_session_process_ctrl_frame(spdylay_session *session)
       }
       r = spdylay_session_on_headers_received(session, &frame);
       spdylay_frame_headers_free(&frame.headers);
-    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK) {
+    } else if(r == SPDYLAY_ERR_INVALID_HEADER_BLOCK ||
+              r == SPDYLAY_ERR_FRAME_TOO_LARGE) {
       r = spdylay_session_handle_invalid_stream
         (session, frame.headers.stream_id, SPDYLAY_HEADERS, &frame,
-         SPDYLAY_PROTOCOL_ERROR);
+         spdylay_get_status_code_from_error_code(r));
       spdylay_frame_headers_free(&frame.headers);
     } else if(spdylay_is_non_fatal(r)) {
       spdylay_session_handle_parse_error(session, type, r);
@@ -2443,18 +2479,28 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
           ssize_t buflen;
           buflen = spdylay_inbound_frame_payload_nv_offset(&session->iframe);
           if(buflen == -1) {
-            /* TODO Check if payloadlen is small enough for buffering */
-            buflen = session->iframe.payloadlen;
+            /* Check if payloadlen is small enough for buffering */
+            if(session->iframe.payloadlen > session->max_recv_ctrl_frame_buf) {
+              session->iframe.error_code = SPDYLAY_ERR_FRAME_TOO_LARGE;
+              session->iframe.state = SPDYLAY_RECV_PAYLOAD_IGN;
+              buflen = 0;
+            } else {
+              buflen = session->iframe.payloadlen;
+            }
           } else if(buflen < (ssize_t)session->iframe.payloadlen) {
+            if(session->iframe.payloadlen > session->max_recv_ctrl_frame_buf) {
+              session->iframe.error_code = SPDYLAY_ERR_FRAME_TOO_LARGE;
+            }
+            /* We are going to receive payload even if the receiving
+               frame is too large to synchronize zlib context. For
+               name/value header block, we will just burn zlib cycle
+               and discard outputs. */
             session->iframe.state = SPDYLAY_RECV_PAYLOAD_PRE_NV;
           }
           /* buflen >= session->iframe.payloadlen means frame is
              malformed. In this case, we just buffer these bytes and
              handle error later. */
           session->iframe.buflen = buflen;
-
-          /* TODO On error case, go into SPDYLAY_RECV_PAYLOAD_IGN state and
-             discard any input bytes. */
           r = spdylay_reserve_buffer(&session->iframe.buf,
                                      &session->iframe.bufmax,
                                      buflen);
@@ -2470,7 +2516,8 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
     }
     if(session->iframe.state == SPDYLAY_RECV_PAYLOAD ||
        session->iframe.state == SPDYLAY_RECV_PAYLOAD_PRE_NV ||
-       session->iframe.state == SPDYLAY_RECV_PAYLOAD_NV) {
+       session->iframe.state == SPDYLAY_RECV_PAYLOAD_NV ||
+       session->iframe.state == SPDYLAY_RECV_PAYLOAD_IGN) {
       size_t rempayloadlen;
       size_t bufavail, readlen;
       int32_t data_stream_id = 0;
@@ -2501,20 +2548,33 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
         /* For frame with name/value header block, the compressed
            portion of the block is incrementally decompressed. The
            result is stored in inflatebuf. */
-        if(session->iframe.error_code == 0) {
+        if(session->iframe.error_code == 0 ||
+           session->iframe.error_code == SPDYLAY_ERR_FRAME_TOO_LARGE) {
           ssize_t decomplen;
+          if(session->iframe.error_code == SPDYLAY_ERR_FRAME_TOO_LARGE) {
+            spdylay_buffer_reset(&session->iframe.inflatebuf);
+          }
           decomplen = spdylay_zlib_inflate_hd(&session->hd_inflater,
                                               &session->iframe.inflatebuf,
                                               inmark, readlen);
-          /* TODO If total length in inflatebuf exceeds certain limit,
-             set TOO_LARGE_FRAME to error_code and issue RST_STREAM
-             later. */
           if(decomplen < 0) {
+            /* We are going to overwrite error_code here if it is
+               already set. But it is fine because the only possible
+               nonzero error code here is SPDYLAY_ERR_FRAME_TOO_LARGE
+               and zlib/fatal error can override it. */
             session->iframe.error_code = decomplen;
+          } else if(spdylay_buffer_length(&session->iframe.inflatebuf)
+                    > session->max_recv_ctrl_frame_buf) {
+            /* If total length in inflatebuf exceeds certain limit,
+               set TOO_LARGE_FRAME to error_code and issue RST_STREAM
+               later. */
+            session->iframe.error_code = SPDYLAY_ERR_FRAME_TOO_LARGE;
           }
         }
       } else if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
-        memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
+        if(session->iframe.state != SPDYLAY_RECV_PAYLOAD_IGN) {
+          memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
+        }
       } else {
         /* For data frame, We don't buffer data. Instead, just pass
            received data to callback function. */
@@ -2822,6 +2882,18 @@ int spdylay_session_set_option(spdylay_session *session,
         session->opt_flags |= SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE;
       } else {
         session->opt_flags &= ~SPDYLAY_OPTMASK_NO_AUTO_WINDOW_UPDATE;
+      }
+    } else {
+      return SPDYLAY_ERR_INVALID_ARGUMENT;
+    }
+    break;
+  case SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER:
+    if(optlen == sizeof(uint32_t)) {
+      uint32_t intval = *(uint32_t*)optval;
+      if((1 << 13) <= intval && intval < (1 << 24)) {
+        session->max_recv_ctrl_frame_buf = intval;
+      } else {
+        return SPDYLAY_ERR_INVALID_ARGUMENT;
       }
     } else {
       return SPDYLAY_ERR_INVALID_ARGUMENT;
