@@ -106,7 +106,6 @@ int spdylay_buffer_write(spdylay_buffer *buffer, const uint8_t *data,
                           size_t len)
 {
   int rv;
-  size_t i;
   while(len) {
     size_t writelen;
     if(spdylay_buffer_avail(buffer) == 0) {

@@ -696,7 +696,6 @@ int spdylay_frame_unpack_syn_stream_without_nv(spdylay_syn_stream *frame,
                                                const uint8_t *payload,
                                                size_t payloadlen)
 {
-  int r;
   spdylay_frame_unpack_ctrl_hd(&frame->hd, head);
   if(headlen + payloadlen != SPDYLAY_SYN_STREAM_NV_OFFSET) {
     return SPDYLAY_ERR_INVALID_FRAME;

@@ -2456,7 +2456,6 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
   while(1) {
     ssize_t r;
     if(session->iframe.state == SPDYLAY_RECV_HEAD) {
-      uint32_t payloadlen;
       size_t remheadbytes;
       size_t readlen;
       size_t bufavail = inlimit-inmark;
