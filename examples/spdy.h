@@ -26,6 +26,7 @@
 
 #include <vector>
 #include <string>
+#include <functional>
 
 #include "spdylay_ssl.h"
 #include "uri.h"
