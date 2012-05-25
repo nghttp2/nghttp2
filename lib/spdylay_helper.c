@@ -75,6 +75,8 @@ int spdylay_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
 const char* spdylay_strerror(int error_code)
 {
   switch(error_code) {
+  case 0:
+    return "Success";
   case SPDYLAY_ERR_INVALID_ARGUMENT:
     return "Invalid argument";
   case SPDYLAY_ERR_ZLIB:
