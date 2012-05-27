@@ -162,7 +162,7 @@ AC_OUTPUT
 
 AC_MSG_NOTICE([summary of build options:
 
-    version:        ${VERSION} shared $LT_CURRENT:$LT_REVISION:$LT_AGE
+    Version:        ${VERSION} shared $LT_CURRENT:$LT_REVISION:$LT_AGE
     Host type:      ${host}
     Install prefix: ${prefix}
     C compiler:     ${CC}
