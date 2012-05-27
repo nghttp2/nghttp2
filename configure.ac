@@ -96,7 +96,7 @@ if test "x${have_openssl}" = "xno"; then
 fi
 
 # libxml2 (for examples/spdycat)
-AM_PATH_XML2(2.7.7, [have_libxml2=yes])
+AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
 if test "x${have_libxml2}" = "xyes"; then
   AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
 fi
@@ -166,9 +166,17 @@ AC_MSG_NOTICE([summary of build options:
     Host type:      ${host}
     Install prefix: ${prefix}
     C compiler:     ${CC}
-    CFlags:         ${CFLAGS}
+    CFLAGS:         ${CFLAGS}
+    LDFLAGS:        ${LDFLAGS}
+    LIBS:           ${LIBS}
+    CPPFLAGS:       ${CPPFLAGS}
+    C preprocessor: ${CPP}
+    C++ compiler:   ${CXX}
+    CXXFLAGS:       ${CXXFLAGS}
+    CXXCPP:         ${CXXCPP}
     Library types:  Shared=${enable_shared}, Static=${enable_static}
     CUnit:          ${have_cunit}
     OpenSSL:        ${have_openssl}
+    Libxml2:        ${have_libxml2}
     Examples:       ${enable_examples}
 ])
