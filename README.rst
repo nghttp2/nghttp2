@@ -154,8 +154,10 @@ the command-line::
     [  0.077] send GOAWAY frame <version=3, flags=0, length=8>
               (last_good_stream_id=0)
 
-SPDY server is called ``spdyd``. It is a non-blocking server and only
-serves static contents. It can speak SPDY/2 and SPDY/3::
+SPDY server is called ``spdyd`` and serves static files. It is single
+threaded and multiplexes connections using non-blocking socket. The
+static files are read using blocking I/O system call, read(2). It
+speaks SPDY/2 and SPDY/3::
 
     $ examples/spdyd --htdocs=/your/htdocs/ -v 3000 server.key server.crt
     IPv4: listen on port 3000
