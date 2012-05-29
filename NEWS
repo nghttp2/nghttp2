@@ -1,51 +1,32 @@
-spdylay 0.2.1
+spdylay 0.3.0
 =============
 
 Release Note
 ------------
 
-This release fixes the bug that closing a stream causes memory leak
-and it also makes some other streams disappear.
-
-The delta_window_size given in spdylay_submit_window_update() is now
-not bounded by internal received data size.  The application is now
-responsible to keep the resulting window size under the maximum value
-described in the SPDY/3 specification.
-
-The SPDY client spdycat gets new option -a and -s.  The -a option
-makes spdycat download assets such as CSS and images linked from the
-downloaded resource. The -s option shows statistics such as elapsed
-time from the handshake.
+This release fixes buffer overrun when a lot of streams are created.
+SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER option was added to control the
+maximum payload size of the incoming control frames.
 
 Changes
 -------
 
-* Made spdylay_submit_window_update() not be bounded by
-  recv_window_size.  Current SPDY/3 spec does not clearly prohibit to
-  send delta_window_size which makes resulting window size more than
-  initial window size. For this reason, spdylay_submit_window_update()
-  can send delta_window_size in [1, (1 << 31)-1], inclusive, without
-  bounded by stream's recv_window_size. Of course, the application is
-  now responsible to keep the resulting window size <= (1 << 31)-1.
+* Bump up LT version to 2.0.1.
 
-  spdylay_submit_window_update() now returns
-  SPDYLAY_ERR_INVALID_ARGUMENT if delta_window_size is 0 or negative.
+* Included <functional> from spdy.h
 
-* Included README.rst in the manual.
+* Made spdylay_strerror(0) return "Success"
 
-* Added -s, --stat option to print statistics.  Print, for each
-  stream, time delta from SSL/TLS handshake and each SYN_STREAM. The
-  time deltas are measured after SYN_REPLY received and all data
-  received.  For example, the following output:
+* Added SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER option.  This option
+  sets maximum receive buffer size for incoming control frame.
+  Basically the library checks the length field of the incoming
+  control frame. For frames with name/value header block, the library
+  also checks the length of inflated block is also under the
+  limit. This is done while incrementally inflating block. If the
+  length of frames with name/value header block exceeds the limit, the
+  library will issue RST_STREAM with FRAME_TOO_LARGE. For other
+  frames, it will issue GOAWAY.
 
-      SYN_REPLY: X(Y)
+* Incremental name/value block decompression
 
-  means SYN_REPLY was received X ms after SSL/TLS handshake and Y ms
-  after the corresponding SYN_STREAM was sent.
-
-* Added -a, --get-asserts option to spdycat. If this option is used,
-  spdycat also downloads assets such as stylesheets, images and script
-  files linked from the downloaded resource. They are queued in the
-  same SPDY session.
-
-* Fixed the bug that erase_rotate_recur() erases parent node.
+* Fixed buffer overrun in spdylay_pq_push
