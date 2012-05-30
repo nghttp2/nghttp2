@@ -483,7 +483,7 @@ typedef struct {
    */
   uint8_t slot;
   /**
-   * The name/value pairs. For i > 0, ``nv[2*i]`` contains a pointer
+   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
    * to the name string and ``nv[2*i+1]`` contains a pointer to the
    * value string. The one beyond last value must be ``NULL``. That
    * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
@@ -506,7 +506,7 @@ typedef struct {
    */
   int32_t stream_id;
   /**
-   * The name/value pairs. For i > 0, ``nv[2*i]`` contains a pointer
+   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
    * to the name string and ``nv[2*i+1]`` contains a pointer to the
    * value string. The one beyond last value must be ``NULL``. That
    * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
@@ -529,7 +529,7 @@ typedef struct {
    */
   int32_t stream_id;
   /**
-   * The name/value pairs. For i > 0, ``nv[2*i]`` contains a pointer
+   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
    * to the name string and ``nv[2*i+1]`` contains a pointer to the
    * value string. The one beyond last value must be ``NULL``. That
    * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
@@ -1595,7 +1595,7 @@ const char* spdylay_strerror(int error_code);
  * value. Use `spdylay_session_get_pri_lowest()` to know the lowest
  * priority value for this |session|.
  *
- * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
+ * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
  * pointer to the value string. The one beyond last value must be
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
@@ -1669,7 +1669,7 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  * Submits SYN_REPLY frame and optionally one or more DATA frames
  * against the stream |stream_id|.
  *
- * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
+ * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
  * pointer to the value string. The one beyond last value must be
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
@@ -1724,7 +1724,7 @@ int spdylay_submit_response(spdylay_session *session,
  * value. Use `spdylay_session_get_pri_lowest()` to know the lowest
  * priority value for this |session|.
  *
- * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
+ * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
  * pointer to the value string. The one beyond last value must be
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
@@ -1767,7 +1767,7 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
  * The stream which this frame belongs to is given in the
  * |stream_id|. The |nv| is the name/value pairs in this frame.
  *
- * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
+ * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
  * pointer to the value string. The one beyond last value must be
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
@@ -1799,7 +1799,7 @@ int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
  * The stream which this frame belongs to is given in the
  * |stream_id|. The |nv| is the name/value pairs in this frame.
  *
- * The |nv| contains the name/value pairs. For i > 0, ``nv[2*i]``
+ * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
  * pointer to the value string. The one beyond last value must be
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
