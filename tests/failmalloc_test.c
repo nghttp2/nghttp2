@@ -151,6 +151,7 @@ static ssize_t get_credential_proof(spdylay_session *session,
 #define TEST_FAILMALLOC_RUN(FUN)                        \
   size_t nmalloc, i;                                    \
                                                         \
+  spdylay_failmalloc = 0;                               \
   spdylay_nmalloc = 0;                                  \
   FUN();                                                \
   nmalloc = spdylay_nmalloc;                            \
@@ -162,7 +163,8 @@ static ssize_t get_credential_proof(spdylay_session *session,
     /* printf("i=%zu\n", i); */                         \
     FUN();                                              \
     /* printf("nmalloc=%d\n", spdylay_nmalloc); */      \
-  }
+  }                                                     \
+  spdylay_failmalloc = 0;
 
 static void run_spdylay_session_send(void)
 {
