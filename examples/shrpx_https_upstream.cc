@@ -38,9 +38,14 @@ using namespace spdylay;
 
 namespace shrpx {
 
+namespace {
+const size_t SHRPX_HTTPS_UPSTREAM_OUTPUT_UPPER_THRES = 512*1024;
+} // namespace
+
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
   : handler_(handler),
-    htp_(htparser_new())
+    htp_(htparser_new()),
+    ioctrl_(handler->get_bev())
 {
   if(ENABLE_LOG) {
     LOG(INFO) << "HttpsUpstream ctor";
@@ -221,7 +226,7 @@ int HttpsUpstream::on_read()
   evbuffer_drain(input, nread);
   htpparse_error htperr = htparser_get_error(htp_);
   if(htperr == htparse_error_user) {
-    bufferevent_disable(bev, EV_READ);
+    pause_read(SHRPX_MSG_BLOCK);
     if(ENABLE_LOG) {
       LOG(INFO) << "<upstream> remaining bytes " << evbuffer_get_length(input);
     }
@@ -231,6 +236,15 @@ int HttpsUpstream::on_read()
                 << htparser_get_strerror(htp_);
     }
     return SHRPX_ERR_HTTP_PARSE;
+  }
+  return 0;
+}
+
+int HttpsUpstream::on_write()
+{
+  Downstream *downstream = get_top_downstream();
+  if(downstream) {
+    downstream->resume_read(SHRPX_NO_BUFFER);
   }
   return 0;
 }
@@ -245,11 +259,18 @@ ClientHandler* HttpsUpstream::get_client_handler() const
   return handler_;
 }
 
-void HttpsUpstream::resume_read()
+void HttpsUpstream::pause_read(IOCtrlReason reason)
 {
-  bufferevent_enable(handler_->get_bev(), EV_READ);
-  // Process remaining data in input buffer here.
-  on_read();
+  ioctrl_.pause_read(reason);
+}
+
+void HttpsUpstream::resume_read(IOCtrlReason reason)
+{
+  if(ioctrl_.resume_read(reason)) {
+    // Process remaining data in input buffer here because these bytes
+    // are not notified by readcb until new data arrive.
+    on_read();
+  }
 }
 
 namespace {
@@ -264,7 +285,14 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
       assert(downstream == upstream->get_top_downstream());
       upstream->pop_downstream();
       delete downstream;
-      upstream->resume_read();
+      upstream->resume_read(SHRPX_MSG_BLOCK);
+    } else {
+      ClientHandler *handler = upstream->get_client_handler();
+      bufferevent *bev = handler->get_bev();
+      size_t outputlen = evbuffer_get_length(bufferevent_get_output(bev));
+      if(outputlen > SHRPX_HTTPS_UPSTREAM_OUTPUT_UPPER_THRES) {
+        downstream->pause_read(SHRPX_NO_BUFFER);
+      }
     }
   } else {
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
@@ -274,7 +302,7 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
       assert(downstream == upstream->get_top_downstream());
       upstream->pop_downstream();
       delete downstream;
-      upstream->resume_read();
+      upstream->resume_read(SHRPX_MSG_BLOCK);
     }
   }
 }
@@ -320,7 +348,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     upstream->pop_downstream();
     delete downstream;
-    upstream->resume_read();
+    upstream->resume_read(SHRPX_MSG_BLOCK);
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(ENABLE_LOG) {
       LOG(INFO) << "<downstream> error/timeout. " << downstream;
@@ -336,7 +364,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     upstream->pop_downstream();
     delete downstream;
-    upstream->resume_read();
+    upstream->resume_read(SHRPX_MSG_BLOCK);
   }
 }
 } // namespace
@@ -384,12 +412,20 @@ void HttpsUpstream::pop_downstream()
 
 Downstream* HttpsUpstream::get_top_downstream()
 {
-  return downstream_queue_.front();
+  if(downstream_queue_.empty()) {
+    return 0;
+  } else {
+    return downstream_queue_.front();
+  }
 }
 
 Downstream* HttpsUpstream::get_last_downstream()
 {
-  return downstream_queue_.back();
+  if(downstream_queue_.empty()) {
+    return 0;
+  } else {
+    return downstream_queue_.back();
+  }
 }
 
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)

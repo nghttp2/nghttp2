@@ -285,7 +285,7 @@ int main(int argc, char **argv)
 
   mod_config()->upstream_read_timeout.tv_sec = 30;
   mod_config()->upstream_read_timeout.tv_usec = 0;
-  mod_config()->upstream_write_timeout.tv_sec = 30;
+  mod_config()->upstream_write_timeout.tv_sec = 60;
   mod_config()->upstream_write_timeout.tv_usec = 0;
 
   mod_config()->spdy_upstream_read_timeout.tv_sec = 600;

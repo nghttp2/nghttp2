@@ -22,19 +22,40 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_ERROR_H
-#define SHRPX_ERROR_H
+#include "shrpx_io_control.h"
 
-#include "shrpx.h"
+#include <algorithm>
 
 namespace shrpx {
 
-enum ErrorCode {
-  SHRPX_ERR_SUCCESS = 0,
-  SHRPX_ERR_UNKNOWN = -1,
-  SHRPX_ERR_HTTP_PARSE = -2
-};
+IOControl::IOControl(bufferevent *bev)
+  : bev_(bev),
+    ctrlv_(SHRPX_REASON_MAX)
+{}
+
+IOControl::~IOControl()
+{}
+
+void IOControl::set_bev(bufferevent *bev)
+{
+  bev_ = bev;
+}
+
+void IOControl::pause_read(IOCtrlReason reason)
+{
+  ctrlv_[reason] = 1;
+  bufferevent_disable(bev_, EV_READ);
+}
+
+bool IOControl::resume_read(IOCtrlReason reason)
+{
+  ctrlv_[reason] = 0;
+  if(std::find(ctrlv_.begin(), ctrlv_.end(), 1) == ctrlv_.end()) {
+    bufferevent_enable(bev_, EV_READ);
+    return true;
+  } else {
+    return false;
+  }
+}
 
 } // namespace shrpx
-
-#endif // SHRPX_ERROR_H

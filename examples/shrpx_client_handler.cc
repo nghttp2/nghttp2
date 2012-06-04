@@ -48,12 +48,12 @@ void upstream_readcb(bufferevent *bev, void *arg)
 namespace {
 void upstream_writecb(bufferevent *bev, void *arg)
 {
-  if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream> upstream_writecb";
-  }
   ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
   if(handler->get_should_close_after_write()) {
     delete handler;
+  } else {
+    Upstream *upstream = handler->get_upstream();
+    upstream->on_write();
   }
 }
 } // namespace

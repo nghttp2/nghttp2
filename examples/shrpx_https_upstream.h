@@ -36,6 +36,7 @@ extern "C" {
 }
 
 #include "shrpx_upstream.h"
+#include "shrpx_io_control.h"
 
 namespace shrpx {
 
@@ -46,6 +47,7 @@ public:
   HttpsUpstream(ClientHandler *handler);
   virtual ~HttpsUpstream();
   virtual int on_read();
+  virtual int on_write();
   virtual int on_event();
   //int send();
   virtual ClientHandler* get_client_handler() const;
@@ -58,7 +60,8 @@ public:
   Downstream* get_last_downstream();
   void error_reply(Downstream *downstream, int status_code);
 
-  void resume_read();
+  void pause_read(IOCtrlReason reason);
+  void resume_read(IOCtrlReason reason);
 
   virtual int on_downstream_header_complete(Downstream *downstream);
   virtual int on_downstream_body(Downstream *downstream,
@@ -69,6 +72,7 @@ private:
   ClientHandler *handler_;
   htparser *htp_;
   std::deque<Downstream*> downstream_queue_;
+  IOControl ioctrl_;
 };
 
 } // namespace shrpx

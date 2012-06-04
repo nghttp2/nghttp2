@@ -39,6 +39,8 @@ extern "C" {
 #include "htparse/htparse.h"
 }
 
+#include "shrpx_io_control.h"
+
 namespace shrpx {
 
 class Upstream;
@@ -52,6 +54,8 @@ public:
   int start_connection();
   Upstream* get_upstream() const;
   int32_t get_stream_id() const;
+  void pause_read(IOCtrlReason reason);
+  bool resume_read(IOCtrlReason reason);
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
@@ -89,7 +93,7 @@ private:
   bufferevent *bev_;
   int32_t stream_id_;
   int priority_;
-
+  IOControl ioctrl_;
   int request_state_;
   std::string request_method_;
   std::string request_path_;

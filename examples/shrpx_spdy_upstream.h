@@ -41,6 +41,7 @@ public:
   SpdyUpstream(uint16_t version, ClientHandler *handler);
   virtual ~SpdyUpstream();
   virtual int on_read();
+  virtual int on_write();
   virtual int on_event();
   int send();
   virtual ClientHandler* get_client_handler() const;

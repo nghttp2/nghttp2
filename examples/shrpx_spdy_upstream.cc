@@ -38,6 +38,10 @@ using namespace spdylay;
 namespace shrpx {
 
 namespace {
+const size_t SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES = 512*1024;
+} // namespace
+
+namespace {
 ssize_t send_callback(spdylay_session *session,
                       const uint8_t *data, size_t len, int flags,
                       void *user_data)
@@ -47,6 +51,11 @@ ssize_t send_callback(spdylay_session *session,
   ClientHandler *handler = upstream->get_client_handler();
   bufferevent *bev = handler->get_bev();
   evbuffer *output = bufferevent_get_output(bev);
+  // Check buffer length and return WOULDBLOCK if it is large enough.
+  if(evbuffer_get_length(output) > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+    return SPDYLAY_ERR_WOULDBLOCK;
+  }
+
   rv = evbuffer_add(output, data, len);
   if(rv == -1) {
     return SPDYLAY_ERR_CALLBACK_FAILURE;
@@ -228,6 +237,12 @@ int SpdyUpstream::on_read()
   return 0;
 }
 
+int SpdyUpstream::on_write()
+{
+  send();
+  return 0;
+}
+
 int SpdyUpstream::send()
 {
   int rv;
@@ -306,47 +321,51 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       LOG(INFO) << "<downstream> EOF stream_id="
                 << downstream->get_stream_id();
     }
-    if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-      // Server may indicate the end of the request by EOF
-      if(ENABLE_LOG) {
-        LOG(INFO) << "<downstream> Assuming content-length is 0 byte";
-      }
-      upstream->on_downstream_body_complete(downstream);
-      downstream->set_response_state(Downstream::MSG_COMPLETE);
-      // downstream wil be deleted in on_stream_close_callback.
-    } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      // nothing todo
-    } else {
-      // error
-      if(ENABLE_LOG) {
-        LOG(INFO) << "<downstream> Treated as error";
-      }
-      upstream->error_reply(downstream, 502);
-      upstream->send();
+    if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
+      //If stream was closed already, we don't need to send reply at
+      // the first place. We can delete downstream.
       upstream->remove_downstream(downstream);
       delete downstream;
+    } else {
+      // downstream wil be deleted in on_stream_close_callback.
+      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+        // Server may indicate the end of the request by EOF
+        if(ENABLE_LOG) {
+          LOG(INFO) << "<downstream> Assuming content-length is 0 byte";
+        }
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
+        upstream->on_downstream_body_complete(downstream);
+      } else if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+        // If stream was not closed, then we set MSG_COMPLETE and let
+        // on_stream_close_callback delete downstream.
+        upstream->error_reply(downstream, 502);
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
+        upstream->send();
+      }
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(ENABLE_LOG) {
       LOG(INFO) << "<downstream> error/timeout. Downstream " << downstream;
     }
-    // For Downstream::MSG_COMPLETE case, downstream will be deleted
-    // in on_stream_close_callback.
-    if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-      } else {
-        int status;
-        if(events & BEV_EVENT_TIMEOUT) {
-          status = 504;
-        } else {
-          status = 502;
-        }
-        upstream->error_reply(downstream, status);
-      }
-      upstream->send();
+    if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
       upstream->remove_downstream(downstream);
       delete downstream;
+    } else {
+      if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+        if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+          upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+        } else {
+          int status;
+          if(events & BEV_EVENT_TIMEOUT) {
+            status = 504;
+          } else {
+            status = 502;
+          }
+          upstream->error_reply(downstream, status);
+        }
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
+        upstream->send();
+      }
     }
   }
 }
@@ -511,6 +530,12 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
   evbuffer_add(body, data, len);
   spdylay_session_resume_data(session_, downstream->get_stream_id());
   //send();
+
+  size_t bodylen = evbuffer_get_length(body);
+  if(bodylen > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+    downstream->pause_read(SHRPX_NO_BUFFER);
+  }
+
   return 0;
 }
 

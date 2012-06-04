@@ -41,6 +41,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     bev_(0),
     stream_id_(stream_id),
     priority_(priority),
+    ioctrl_(0),
     request_state_(INITIAL),
     chunked_request_(false),
     request_connection_close_(false),
@@ -56,6 +57,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
   bev_ = bufferevent_socket_new
     (evbase, -1,
      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+  ioctrl_.set_bev(bev_);
 }
 
 Downstream::~Downstream()
@@ -73,6 +75,16 @@ Downstream::~Downstream()
   if(ENABLE_LOG) {
     LOG(INFO) << "Deleted";
   }
+}
+
+void Downstream::pause_read(IOCtrlReason reason)
+{
+  ioctrl_.pause_read(reason);
+}
+
+bool Downstream::resume_read(IOCtrlReason reason)
+{
+  return ioctrl_.resume_read(reason);
 }
 
 namespace {
@@ -394,6 +406,16 @@ int Downstream::get_response_state() const
   return response_state_;
 }
 
+namespace {
+void body_buf_cb(evbuffer *body, size_t oldlen, size_t newlen, void *arg)
+{
+  Downstream *downstream = reinterpret_cast<Downstream*>(arg);
+  if(newlen == 0) {
+    downstream->resume_read(SHRPX_NO_BUFFER);
+  }
+}
+} // namespace
+
 int Downstream::init_response_body_buf()
 {
   assert(response_body_buf_ == 0);
@@ -401,6 +423,7 @@ int Downstream::init_response_body_buf()
   if(response_body_buf_ == 0) {
     DIE();
   }
+  evbuffer_setcb(response_body_buf_, body_buf_cb, this);
   return 0;
 }
 

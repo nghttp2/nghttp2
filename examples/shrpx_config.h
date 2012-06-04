@@ -25,6 +25,8 @@
 #ifndef SHRPX_CONFIG_H
 #define SHRPX_CONFIG_H
 
+#include "shrpx.h"
+
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>

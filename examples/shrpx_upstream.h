@@ -38,6 +38,7 @@ class Upstream {
 public:
   virtual ~Upstream() {}
   virtual int on_read() = 0;
+  virtual int on_write() = 0;
   virtual int on_event() = 0;
   virtual bufferevent_data_cb get_downstream_readcb() = 0;
   virtual bufferevent_data_cb get_downstream_writecb() = 0;
