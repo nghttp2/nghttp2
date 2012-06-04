@@ -169,6 +169,21 @@ bool strieq(const char *a, const char *b)
   return !*a && !*b;
 }
 
+bool strifind(const char *a, const char *b)
+{
+  if(!a || !b) {
+    return false;
+  }
+  for(size_t i = 0; a[i]; ++i) {
+    const char *ap = &a[i], *bp = b;
+    for(; *ap && *bp && lowcase(*ap) == lowcase(*bp); ++ap, ++bp);
+    if(!*bp) {
+      return true;
+    }
+  }
+  return false;
+}
+
 } // namespace util
 
 } // namespace spdylay

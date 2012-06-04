@@ -25,11 +25,11 @@ if ENABLE_EXAMPLES
 
 AM_CFLAGS = -Wall
 AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
-	@OPENSSL_CFLAGS@ @XML_CPPFLAGS@ @DEFS@
-AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@
+	@OPENSSL_CFLAGS@ @XML_CPPFLAGS@ @LIBEVENT_OPENSSL_CFLAGS@ @DEFS@
+AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@ @LIBEVENT_OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libspdylay.la
 
-bin_PROGRAMS = spdycat spdyd
+bin_PROGRAMS = spdycat spdyd shrpx
 
 HELPER_OBJECTS = uri.cc util.cc spdylay_ssl.cc
 HELPER_HFILES = uri.h util.h spdylay_ssl.h
@@ -64,6 +64,20 @@ spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	${EVENT_OBJECTS} ${EVENT_HFILES} \
 	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES} \
 	spdyd.cc
+
+shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
+	shrpx_config.cc shrpx_config.h \
+	shrpx.cc \
+	shrpx_listen_handler.cc shrpx_listen_handler.h \
+	shrpx_client_handler.cc shrpx_client_handler.h \
+	shrpx_upstream.h \
+	shrpx_spdy_upstream.cc shrpx_spdy_upstream.h \
+	shrpx_https_upstream.cc shrpx_https_upstream.h \
+	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
+	shrpx_downstream.cc shrpx_downstream.h \
+	shrpx_log.cc shrpx_log.h \
+	shrpx_http.cc shrpx_http.h \
+	htparse/htparse.c htparse/htparse.h
 
 noinst_PROGRAMS = spdycli
 spdycli_SOURCES = spdycli.c
