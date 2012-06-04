@@ -592,6 +592,7 @@ void setup_ssl_ctx(SSL_CTX *ssl_ctx, void *next_proto_select_cb_arg)
   SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb,
                                    next_proto_select_cb_arg);
 }
