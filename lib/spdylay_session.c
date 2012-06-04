@@ -1815,6 +1815,8 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
   if(!spdylay_session_check_version(session, frame->rst_stream.hd.version)) {
     return 0;
   }
+  spdylay_session_call_on_ctrl_frame_received(session, SPDYLAY_RST_STREAM,
+                                              frame);
   if(session->server &&
      !spdylay_session_is_my_stream_id(session, frame->rst_stream.stream_id) &&
      frame->rst_stream.status_code == SPDYLAY_CANCEL) {
