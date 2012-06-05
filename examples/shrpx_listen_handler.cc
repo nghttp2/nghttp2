@@ -95,6 +95,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     size_t idx = worker_round_robin_cnt_ % num_worker_;
     ++worker_round_robin_cnt_;
     WorkerEvent wev;
+    memset(&wev, 0, sizeof(wev));
     wev.client_fd = fd;
     memcpy(&wev.client_addr, addr, addrlen);
     wev.client_addrlen = addrlen;
