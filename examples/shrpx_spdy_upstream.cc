@@ -272,18 +272,17 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
   Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  // If upstream SPDY stream was closed, we just close downstream,
+  // because there is no consumer now.
+  if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
+    upstream->remove_downstream(downstream);
+    delete downstream;
+    return;
+  }
   int rv = downstream->parse_http_response();
-  if(rv == 0) {
-    if(downstream->get_request_state() == Downstream::STREAM_CLOSED &&
-       downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      upstream->get_downstream_queue()->remove(downstream);
-      delete downstream;
-    } else {
-      upstream->send();
-    }
-  } else {
+  if(rv != 0) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> http parser failure";
+      LOG(INFO) << "Downstream HTTP parser failure";
     }
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -291,10 +290,8 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
       upstream->error_reply(downstream, 502);
     }
     downstream->set_response_state(Downstream::MSG_COMPLETE);
-    upstream->send();
-    // upstream->remove_downstream(downstream);
-    // delete downstream;
   }
+  upstream->send();
 }
 } // namespace
 
