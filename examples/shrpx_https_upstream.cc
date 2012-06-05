@@ -71,7 +71,7 @@ namespace {
 int htp_msg_begin(htparser *htp)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream>::<https> request start";
+    LOG(INFO) << "Upstream https request start";
   }
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
@@ -108,7 +108,7 @@ namespace {
 int htp_hdrs_begincb(htparser *htp)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream>::<https> request headers start";
+    LOG(INFO) << "Upstream https request headers start";
   }
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
@@ -148,7 +148,7 @@ namespace {
 int htp_hdrs_completecb(htparser *htp)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream>::<https> request headers complete";
+    LOG(INFO) << "Upstream https request headers complete";
   }
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
@@ -178,7 +178,7 @@ namespace {
 int htp_msg_completecb(htparser *htp)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream>::<https> request complete";
+    LOG(INFO) << "Upstream https request complete";
   }
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
@@ -237,7 +237,7 @@ int HttpsUpstream::on_read()
     }
   } else if(htperr != htparse_error_none) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<upstream> http parse failure: "
+      LOG(INFO) << "Upstream http parse failure: "
                 << htparser_get_strerror(htp_);
     }
     get_client_handler()->set_should_close_after_write(true);
@@ -328,18 +328,19 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> Connection established. " << downstream;
+      LOG(INFO) << "Downstream connection established. downstream "
+                << downstream;
     }
   }
   if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> EOF stream_id="
+      LOG(INFO) << "Downstream EOF. stream_id="
                 << downstream->get_stream_id();
     }
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
       // Server may indicate the end of the request by EOF
       if(ENABLE_LOG) {
-        LOG(INFO) << "<downstream> Assuming content-length is 0 byte";
+        LOG(INFO) << "Assuming downstream content-length is 0 byte";
       }
       upstream->on_downstream_body_complete(downstream);
       //downstream->set_response_state(Downstream::MSG_COMPLETE);
@@ -348,7 +349,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     } else {
       // error
       if(ENABLE_LOG) {
-        LOG(INFO) << "<downstream> Treated as error";
+        LOG(INFO) << "Treated as downstream error";
       }
       upstream->error_reply(502);
     }
@@ -357,7 +358,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     upstream->resume_read(SHRPX_MSG_BLOCK);
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> error/timeout. " << downstream;
+      LOG(INFO) << "Downstream error/timeout. " << downstream;
     }
     if(downstream->get_response_state() == Downstream::INITIAL) {
       int status;
@@ -439,7 +440,7 @@ Downstream* HttpsUpstream::get_last_downstream()
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<downstream> on_downstream_header_complete";
+    LOG(INFO) << "Downstream on_downstream_header_complete";
   }
   std::string hdrs = "HTTP/1.1 ";
   hdrs += http::get_status_string(downstream->get_response_http_status());
@@ -467,7 +468,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   }
   hdrs += "\r\n";
   if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream>::<https> Response headers\n" << hdrs;
+    LOG(INFO) << "Upstream https response headers\n" << hdrs;
   }
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
   evbuffer_add(output, hdrs.c_str(), hdrs.size());
@@ -496,7 +497,7 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream)
     evbuffer_add(output, "0\r\n\r\n", 5);
   }
   if(ENABLE_LOG) {
-    LOG(INFO) << "<downstream> on_downstream_body_complete";
+    LOG(INFO) << "Downstream on_downstream_body_complete";
   }
   if(downstream->get_request_connection_close()) {
     ClientHandler *handler = downstream->get_upstream()->get_client_handler();

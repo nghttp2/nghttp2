@@ -22,43 +22,34 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef SHRPX_THREAD_EVENT_RECEIVER_H
+#define SHRPX_THREAD_EVENT_RECEIVER_H
+
+#include "shrpx.h"
+
+#include <openssl/ssl.h>
+
+#include <event2/bufferevent.h>
+
 #include "shrpx_config.h"
 
 namespace shrpx {
 
-Config::Config()
-  : verbose(false),
-    daemon(false),
-    host(0),
-    port(0),
-    private_key_file(0),
-    cert_file(0),
-    verify_client(false),
-    server_name(0),
-    downstream_host(0),
-    downstream_port(0),
-    downstream_hostport(0),
-    downstream_addrlen(0),
-    num_worker(0)
-{}
-
-namespace {
-Config *config = 0;
-} // namespace
-
-const Config* get_config()
-{
-  return config;
-}
-
-Config* mod_config()
-{
-  return config;
-}
-
-void create_config()
-{
-  config = new Config();
-}
+struct WorkerEvent {
+  evutil_socket_t client_fd;
+  sockaddr_union client_addr;
+  size_t client_addrlen;
+};
+  
+class ThreadEventReceiver {
+public:
+  ThreadEventReceiver(SSL_CTX *ssl_ctx);
+  ~ThreadEventReceiver();
+  void on_read(bufferevent *bev);
+private:
+  SSL_CTX *ssl_ctx_;
+};
 
 } // namespace shrpx
+
+#endif // SHRPX_THREAD_EVENT_RECEIVER_H

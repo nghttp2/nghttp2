@@ -24,19 +24,63 @@
  */
 #include "shrpx_listen_handler.h"
 
+#include <pthread.h>
+
+#include <cerrno>
+
 #include <event2/bufferevent_ssl.h>
 
 #include "shrpx_client_handler.h"
+#include "shrpx_thread_event_receiver.h"
+#include "shrpx_ssl.h"
+#include "shrpx_worker.h"
 
 namespace shrpx {
 
-ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *ssl_ctx)
+ListenHandler::ListenHandler(event_base *evbase)
   : evbase_(evbase),
-    ssl_ctx_(ssl_ctx)
+    ssl_ctx_(ssl::create_ssl_context()),
+    worker_round_robin_cnt_(0),
+    workers_(0),
+    num_worker_(0)
 {}
 
 ListenHandler::~ListenHandler()
 {}
+
+void ListenHandler::create_worker_thread(size_t num)
+{
+  workers_ = new WorkerInfo[num];
+  num_worker_ = 0;
+  for(size_t i = 0; i < num; ++i) {
+    int rv;
+    pthread_t thread;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    WorkerInfo *info = &workers_[num_worker_];
+    rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
+    if(rv == -1) {
+      LOG(ERROR) << "socketpair() failed: " << strerror(errno);
+      continue;
+    }
+    rv = pthread_create(&thread, &attr, start_threaded_worker, &info->sv[1]);
+    if(rv != 0) {
+      LOG(ERROR) << "pthread_create() failed: " << strerror(rv);
+      for(size_t j = 0; j < 2; ++j) {
+        close(info->sv[j]);
+      }
+      continue;
+    }
+    bufferevent *bev = bufferevent_socket_new(evbase_, info->sv[0],
+                                              BEV_OPT_DEFER_CALLBACKS);
+    info->bev = bev;
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Created thread#" << num_worker_;
+    }
+    ++num_worker_;
+  }
+}
 
 int ListenHandler::accept_connection(evutil_socket_t fd,
                                      sockaddr *addr, int addrlen)
@@ -44,28 +88,18 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
   if(ENABLE_LOG) {
     LOG(INFO) << "<listener> Accepted connection. fd=" << fd;
   }
-  char host[NI_MAXHOST];
-  int rv;
-  rv = getnameinfo(addr, addrlen, host, sizeof(host), 0, 0, NI_NUMERICHOST);
-  if(rv == 0) {
-    SSL *ssl = SSL_new(ssl_ctx_);
-    bufferevent *bev = bufferevent_openssl_socket_new
-      (evbase_, fd, ssl,
-       BUFFEREVENT_SSL_ACCEPTING,
-       BEV_OPT_DEFER_CALLBACKS);
-    if(bev == NULL) {
-      if(ENABLE_LOG) {
-        LOG(ERROR) << "<listener> bufferevent_openssl_socket_new failed";
-      }
-      close(fd);
-    } else {
-      /*ClientHandler *client_handler =*/ new ClientHandler(bev, ssl, host);
-    }
+  if(num_worker_ == 0) {
+    /*ClientHandler* client = */
+    ssl::accept_ssl_connection(evbase_, ssl_ctx_, fd, addr, addrlen);
   } else {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "<listener> getnameinfo failed";
-    }
-    close(fd);
+    size_t idx = worker_round_robin_cnt_ % num_worker_;
+    ++worker_round_robin_cnt_;
+    WorkerEvent wev;
+    wev.client_fd = fd;
+    memcpy(&wev.client_addr, addr, addrlen);
+    wev.client_addrlen = addrlen;
+    evbuffer *output = bufferevent_get_output(workers_[idx].bev);
+    evbuffer_add(output, &wev, sizeof(wev));
   }
   return 0;
 }

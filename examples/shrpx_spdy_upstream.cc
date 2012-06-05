@@ -90,8 +90,7 @@ void on_stream_close_callback
  void *user_data)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream>::<spdy> Stream " << stream_id
-              << " is being closed";
+    LOG(INFO) << "Upstream spdy Stream " << stream_id << " is being closed";
   }
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   Downstream *downstream = upstream->get_downstream_queue()->find(stream_id);
@@ -114,7 +113,7 @@ void on_ctrl_recv_callback
   switch(type) {
   case SPDYLAY_SYN_STREAM: {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<upstream>::<spdy> Received upstream SYN_STREAM stream_id="
+      LOG(INFO) << "Upstream spdy received upstream SYN_STREAM stream_id="
                 << frame->syn_stream.stream_id;
     }
     Downstream *downstream = new Downstream(upstream,
@@ -139,14 +138,14 @@ void on_ctrl_recv_callback
       for(size_t i = 0; nv[i]; i += 2) {
         ss << nv[i] << ": " << nv[i+1] << "\n";
       }
-      LOG(INFO) << "<upstream>::<spdy> Request headers:\n" << ss.str();
+      LOG(INFO) << "Upstream spdy request headers:\n" << ss.str();
     }
 
     downstream->push_request_headers();
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
       if(ENABLE_LOG) {
-        LOG(INFO) << "<upstream>::<spdy> "
+        LOG(INFO) << "Upstream spdy "
                   << "Setting Downstream::MSG_COMPLETE for Downstream "
                   << downstream;
       }
@@ -169,7 +168,7 @@ void on_data_chunk_recv_callback(spdylay_session *session,
                                  void *user_data)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<upstream>::<spdy> Received upstream DATA data stream_id="
+    LOG(INFO) << "Upstream spdy received upstream DATA data stream_id="
               << stream_id;
   }
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
@@ -178,8 +177,8 @@ void on_data_chunk_recv_callback(spdylay_session *session,
     downstream->push_upload_data_chunk(data, len);
     if(flags & SPDYLAY_DATA_FLAG_FIN) {
       if(ENABLE_LOG) {
-        LOG(INFO) << "<upstream>::<spdy> "
-                  << "Setting Downstream::MSG_COMPLETE for Downstream "
+        LOG(INFO) << "Upstream spdy "
+                  << "setting Downstream::MSG_COMPLETE for Downstream "
                   << downstream;
       }
       downstream->set_request_state(Downstream::MSG_COMPLETE);
@@ -309,13 +308,13 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> Connection established. Downstream "
+      LOG(INFO) << "Downstream connection established. Downstream "
                 << downstream;
     }
   }
   if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> EOF stream_id="
+      LOG(INFO) << "Downstream EOF stream_id="
                 << downstream->get_stream_id();
     }
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
@@ -328,7 +327,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         // Server may indicate the end of the request by EOF
         if(ENABLE_LOG) {
-          LOG(INFO) << "<downstream> Assuming content-length is 0 byte";
+          LOG(INFO) << "Assuming downstream content-length is 0 byte";
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
         upstream->on_downstream_body_complete(downstream);
@@ -342,7 +341,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> error/timeout. Downstream " << downstream;
+      LOG(INFO) << "Downstream error/timeout. Downstream " << downstream;
     }
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
       upstream->remove_downstream(downstream);
@@ -474,7 +473,7 @@ spdylay_session* SpdyUpstream::get_spdy_session()
 int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<downstream> on_downstream_header_complete";
+    LOG(INFO) << "Downstream on_downstream_header_complete";
   }
   size_t nheader = downstream->get_response_headers().size();
   const char **nv = new const char*[nheader * 2 + 4 + 1];
@@ -504,7 +503,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     for(size_t i = 0; nv[i]; i += 2) {
       ss << nv[i] << ": " << nv[i+1] << "\n";
     }
-    LOG(INFO) << "<upstream>::<spdy> Response headers\n" << ss.str();
+    LOG(INFO) << "Upstream spdy response headers\n" << ss.str();
   }
   spdylay_data_provider data_prd;
   data_prd.source.ptr = downstream;
@@ -520,7 +519,7 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<downstream> on_downstream_body";
+    LOG(INFO) << "Downstream on_downstream_body";
   }
   evbuffer *body = downstream->get_response_body_buf();
   evbuffer_add(body, data, len);
@@ -537,7 +536,7 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
 int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<downstream> on_downstream_body_complete";
+    LOG(INFO) << "Downstream on_downstream_body_complete";
   }
   spdylay_session_resume_data(session_, downstream->get_stream_id());
   return 0;

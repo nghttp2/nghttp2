@@ -22,43 +22,29 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_config.h"
+#ifndef SHRPX_WORKER_H
+#define SHRPX_WORKER_H
+
+#include "shrpx.h"
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 namespace shrpx {
 
-Config::Config()
-  : verbose(false),
-    daemon(false),
-    host(0),
-    port(0),
-    private_key_file(0),
-    cert_file(0),
-    verify_client(false),
-    server_name(0),
-    downstream_host(0),
-    downstream_port(0),
-    downstream_hostport(0),
-    downstream_addrlen(0),
-    num_worker(0)
-{}
+class Worker {
+public:
+  Worker(int fd);
+  ~Worker();
+  void run();
+private:
+  // Channel to the main thread
+  int fd_;
+  SSL_CTX *ssl_ctx_;
+};
 
-namespace {
-Config *config = 0;
-} // namespace
-
-const Config* get_config()
-{
-  return config;
-}
-
-Config* mod_config()
-{
-  return config;
-}
-
-void create_config()
-{
-  config = new Config();
-}
+void* start_threaded_worker(void *arg);
 
 } // namespace shrpx
+
+#endif // SHRPX_WORKER_H

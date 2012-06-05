@@ -78,6 +78,9 @@ shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	shrpx_log.cc shrpx_log.h \
 	shrpx_http.cc shrpx_http.h \
 	shrpx_io_control.cc shrpx_io_control.h \
+	shrpx_ssl.cc shrpx_ssl.h \
+	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
+	shrpx_worker.cc shrpx_worker.h \
 	htparse/htparse.c htparse/htparse.h
 
 noinst_PROGRAMS = spdycli

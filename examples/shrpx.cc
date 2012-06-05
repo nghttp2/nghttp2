@@ -30,9 +30,7 @@
 #include <netdb.h>
 #include <signal.h>
 
-
 #include <cstdlib>
-#include <iostream>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -45,82 +43,6 @@
 #include "shrpx_listen_handler.h"
 
 namespace shrpx {
-
-namespace {
-std::pair<unsigned char*, size_t> next_proto;
-unsigned char proto_list[23];
-} // namespace
-
-namespace {
-int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
-                  void *arg)
-{
-  std::pair<unsigned char*, size_t> *next_proto =
-    reinterpret_cast<std::pair<unsigned char*, size_t>* >(arg);
-  *data = next_proto->first;
-  *len = next_proto->second;
-  return SSL_TLSEXT_ERR_OK;
-}
-} // namespace
-
-namespace {
-int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
-{
-  // We don't verify the client certificate. Just request it for the
-  // testing purpose.
-  return 1;
-}
-} // namespace
-
-namespace {
-SSL_CTX* create_ssl_ctx()
-{
-  // TODO lock function
-  SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
-  if(!ssl_ctx) {
-    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-    return NULL;
-  }
-  SSL_CTX_set_options(ssl_ctx,
-                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION);
-  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
-  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
-  if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
-                                 get_config()->private_key_file,
-                                 SSL_FILETYPE_PEM) != 1) {
-    std::cerr << "SSL_CTX_use_PrivateKey_file failed." << std::endl;
-    return NULL;
-  }
-  if(SSL_CTX_use_certificate_file(ssl_ctx, get_config()->cert_file,
-                                  SSL_FILETYPE_PEM) != 1) {
-    std::cerr << "SSL_CTX_use_certificate_file failed." << std::endl;
-    return NULL;
-  }
-  if(SSL_CTX_check_private_key(ssl_ctx) != 1) {
-    std::cerr << "SSL_CTX_check_private_key failed." << std::endl;
-    return NULL;
-  }
-  if(get_config()->verify_client) {
-    SSL_CTX_set_verify(ssl_ctx,
-                       SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
-                       SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-                       verify_callback);
-  }
-  // We speaks "http/1.1", "spdy/2" and "spdy/3".
-  proto_list[0] = 6;
-  memcpy(&proto_list[1], "spdy/3", 6);
-  proto_list[7] = 6;
-  memcpy(&proto_list[8], "spdy/2", 6);
-  proto_list[14] = 8;
-  memcpy(&proto_list[15], "http/1.1", 8);
-
-  next_proto.first = proto_list;
-  next_proto.second = sizeof(proto_list);
-  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
-  return ssl_ctx;
-}
-} // namespace
 
 namespace {
 void ssl_acceptcb(evconnlistener *listener, int fd,
@@ -144,45 +66,20 @@ int cache_downstream_host_address()
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
-  addrinfo *res, *rp;
+  addrinfo *res;
   rv = getaddrinfo(get_config()->downstream_host, service, &hints, &res);
   if(rv != 0) {
-    LOG(ERROR) << "getaddrinfo: " << gai_strerror(rv);
-    return -1;
+    LOG(FATAL) << "Unable to get downstream address: " << gai_strerror(rv);
+    DIE();
   }
-  for(rp = res; rp; rp = rp->ai_next) {
-    int fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    if(fd == -1) {
-      continue;
-    }
-    rv = connect(fd, rp->ai_addr, rp->ai_addrlen);
-    close(fd);
-    if(rv == -1) {
-      continue;
-    }
-    break;
-  }
-  if(rp == 0 && res) {
-    LOG(INFO) << "Using first returned address for downstream "
-               << get_config()->downstream_host
-               << ", port "
-               << get_config()->downstream_port;
-    rp = res;
-  }
-  if(rp != 0) {
-    memcpy(&mod_config()->downstream_addr, rp->ai_addr, rp->ai_addrlen);
-    mod_config()->downstream_addrlen = rp->ai_addrlen;
-  }
+  LOG(INFO) << "Using first returned address for downstream "
+            << get_config()->downstream_host
+            << ", port "
+            << get_config()->downstream_port;
+  memcpy(&mod_config()->downstream_addr, res->ai_addr, res->ai_addrlen);
+  mod_config()->downstream_addrlen = res->ai_addrlen;
   freeaddrinfo(res);
-  if(rp == 0) {
-    LOG(ERROR) << "No usable address found for downstream "
-               << get_config()->downstream_host
-               << ", port "
-               << get_config()->downstream_port;
-    return -1;
-  } else {
-    return 0;
-  }
+  return 0;
 }
 } // namespace
 
@@ -245,12 +142,11 @@ evconnlistener* create_evlistener(ListenHandler *handler)
 namespace {
 int event_loop()
 {
-  SSL_CTX *ssl_ctx = create_ssl_ctx();
-  if(ssl_ctx == NULL) {
-    return -1;
-  }
   event_base *evbase = event_base_new();
-  ListenHandler *listener_handler = new ListenHandler(evbase, ssl_ctx);
+  ListenHandler *listener_handler = new ListenHandler(evbase);
+  if(get_config()->num_worker > 1) {
+    listener_handler->create_worker_thread(get_config()->num_worker);
+  }
   evconnlistener *evlistener = create_evlistener(listener_handler);
   if(evlistener == NULL) {
     return -1;
@@ -261,7 +157,6 @@ int event_loop()
   event_base_loop(evbase, 0);
 
   evconnlistener_free(evlistener);
-  SSL_CTX_free(ssl_ctx);
   return 0;
 }
 } // namespace
@@ -311,6 +206,9 @@ int main(int argc, char **argv)
   if(cache_downstream_host_address() == -1) {
     exit(EXIT_FAILURE);
   }
+
+  mod_config()->num_worker = 4;
+
   event_loop();
   return 0;
 }

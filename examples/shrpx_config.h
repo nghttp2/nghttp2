@@ -64,6 +64,7 @@ struct Config {
   timeval spdy_upstream_write_timeout;
   timeval downstream_read_timeout;
   timeval downstream_write_timeout;
+  size_t num_worker;
   Config();
 };
 

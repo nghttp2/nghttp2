@@ -31,19 +31,29 @@
 #include <sys/socket.h>
 
 #include <openssl/ssl.h>
+
 #include <event.h>
 
 namespace shrpx {
 
+struct WorkerInfo {
+  int sv[2];
+  bufferevent *bev;
+};
+
 class ListenHandler {
 public:
-  ListenHandler(event_base *evbase, SSL_CTX *ssl_ctx);
+  ListenHandler(event_base *evbase);
   ~ListenHandler();
   int accept_connection(evutil_socket_t fd, sockaddr *addr, int addrlen);
+  void create_worker_thread(size_t num);
   event_base* get_evbase() const;
 private:
   event_base *evbase_;
-  SSL_CTX *ssl_ctx_;  
+  SSL_CTX *ssl_ctx_;
+  unsigned int worker_round_robin_cnt_;
+  WorkerInfo *workers_;
+  size_t num_worker_;
 };
 
 } // namespace shrpx

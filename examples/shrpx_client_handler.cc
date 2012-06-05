@@ -49,6 +49,7 @@ namespace {
 void upstream_writecb(bufferevent *bev, void *arg)
 {
   ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
+  // We actually depend on write low-warter mark == 0.
   if(handler->get_should_close_after_write()) {
     delete handler;
   } else {
@@ -65,19 +66,19 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
   bool finish = false;
   if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<upstream> SSL/TLS handshake EOF";
+      LOG(INFO) << "Upstream handshake EOF";
     }
     finish = true;
   }
   if(events & BEV_EVENT_ERROR) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<upstream> SSL/TLS network error";
+      LOG(INFO) << "Upstream network error";
     }
     finish = true;
   }
   if(events & BEV_EVENT_TIMEOUT) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "SPDY upstream SSL/TLS time out";
+      LOG(INFO) << "Upstream time out";
     }
     finish = true;
   }
@@ -86,8 +87,7 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
   } else {
     if(events & BEV_EVENT_CONNECTED) {
       if(ENABLE_LOG) {
-        LOG(INFO) << "Connected Handler "
-                  << handler;
+        LOG(INFO) << "Upstream connected. handler " << handler;
       }
       handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
       handler->validate_next_proto();
@@ -167,7 +167,7 @@ int ClientHandler::validate_next_proto()
   if(next_proto) {
     std::string proto(next_proto, next_proto+next_proto_len);
     if(ENABLE_LOG) {
-      LOG(INFO) << "<upstream> The negotiated next protocol: " << proto;
+      LOG(INFO) << "Upstream negotiated next protocol: " << proto;
     }
     uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
     if(version) {
@@ -177,8 +177,11 @@ int ClientHandler::validate_next_proto()
     }
   } else {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<upstream> No proto negotiated";
+      LOG(INFO) << "No proto negotiated.";
     }
+  }
+  if(ENABLE_LOG) {
+    LOG(INFO) << "Use HTTP/1.1";
   }
   HttpsUpstream *https_upstream = new HttpsUpstream(this);
   upstream_ = https_upstream;

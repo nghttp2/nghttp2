@@ -22,43 +22,30 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_config.h"
+#ifndef SHRPX_SSL_H
+#define SHRPX_SSL_H
+
+#include "shrpx.h"
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+#include <event.h>
 
 namespace shrpx {
 
-Config::Config()
-  : verbose(false),
-    daemon(false),
-    host(0),
-    port(0),
-    private_key_file(0),
-    cert_file(0),
-    verify_client(false),
-    server_name(0),
-    downstream_host(0),
-    downstream_port(0),
-    downstream_hostport(0),
-    downstream_addrlen(0),
-    num_worker(0)
-{}
+class ClientHandler;
 
-namespace {
-Config *config = 0;
-} // namespace
+namespace ssl {
 
-const Config* get_config()
-{
-  return config;
-}
+SSL_CTX* create_ssl_context();
 
-Config* mod_config()
-{
-  return config;
-}
+ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
+                                     evutil_socket_t fd,
+                                     sockaddr *addr, int addrlen);
 
-void create_config()
-{
-  config = new Config();
-}
+} // namespace ssl
 
 } // namespace shrpx
+
+#endif // SHRPX_SSL_H
