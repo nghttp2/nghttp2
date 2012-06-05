@@ -63,7 +63,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
 Downstream::~Downstream()
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Deleting downstream" << this;
+    LOG(INFO) << "Deleting downstream " << this;
   }
   if(response_body_buf_) {
     // Passing NULL to evbuffer_free() causes segmentation fault.
@@ -230,7 +230,7 @@ int Downstream::push_request_headers()
 
   hdrs += "\r\n";
   if(ENABLE_LOG) {
-    LOG(INFO) << "<downstream> request headers\n" << hdrs;
+    LOG(INFO) << "Downstream request headers\n" << hdrs;
   }
   evbuffer *output = bufferevent_get_output(bev_);
   evbuffer_add(output, hdrs.c_str(), hdrs.size());
@@ -389,7 +389,7 @@ int Downstream::parse_http_response()
     return 0;
   } else {
     if(ENABLE_LOG) {
-      LOG(INFO) << "<downstream> http parser failure: "
+      LOG(INFO) << "Downstream HTTP parser failure: "
                 << htparser_get_strerror(response_htp_);
     }
     return SHRPX_ERR_HTTP_PARSE;

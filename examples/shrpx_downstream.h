@@ -106,7 +106,8 @@ private:
   bool chunked_response_;
   Headers response_headers_;
   htparser *response_htp_;
-
+  // This buffer is used to temporarily store downstream response
+  // body. Spdylay reads data from this in the callback.
   evbuffer *response_body_buf_;
 };
 
