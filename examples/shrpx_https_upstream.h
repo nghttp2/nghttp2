@@ -58,7 +58,7 @@ public:
   void pop_downstream();
   Downstream* get_top_downstream();
   Downstream* get_last_downstream();
-  void error_reply(Downstream *downstream, int status_code);
+  void error_reply(int status_code);
 
   void pause_read(IOCtrlReason reason);
   void resume_read(IOCtrlReason reason);
@@ -68,9 +68,11 @@ public:
                                  const uint8_t *data, size_t len);
   virtual int on_downstream_body_complete(Downstream *downstream);
 
+  void reset_current_header_length();
 private:
   ClientHandler *handler_;
   htparser *htp_;
+  size_t current_header_length_;
   std::deque<Downstream*> downstream_queue_;
   IOControl ioctrl_;
 };

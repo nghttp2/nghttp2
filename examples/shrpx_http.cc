@@ -89,7 +89,7 @@ std::string create_error_html(int status_code)
      << "<address>" << get_config()->server_name << " at port "
      << get_config()->port
      << "</address>"
-     << "</body></html>";
+     << "</body></html>\n";
   return ss.str();
 }
 
