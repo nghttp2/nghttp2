@@ -84,6 +84,13 @@ int cache_downstream_host_address()
 } // namespace
 
 namespace {
+void evlistener_errorcb(evconnlistener *listener, void *ptr)
+{
+  sleep(1);
+}
+} // namespace
+
+namespace {
 evconnlistener* create_evlistener(ListenHandler *handler)
 {
   // TODO Listen both IPv4 and IPv6
@@ -133,8 +140,9 @@ evconnlistener* create_evlistener(ListenHandler *handler)
      ssl_acceptcb,
      handler,
      LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
-     256,
+     1024,
      fd);
+  evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
   return evlistener;
 }
 } // namespace
@@ -171,6 +179,8 @@ int main(int argc, char **argv)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+
+  Log::set_severity_level(WARNING);
 
   create_config();
   mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;

@@ -155,12 +155,16 @@ int Downstream::start_connection()
   bufferevent_set_timeouts(bev_,
                            &get_config()->downstream_read_timeout,
                            &get_config()->downstream_write_timeout);
-  bufferevent_socket_connect
+  int rv = bufferevent_socket_connect
     (bev_,
      // TODO maybe not thread-safe?
      const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
      get_config()->downstream_addrlen);
-  return 0;
+  if(rv == 0) {
+    return 0;
+  } else {
+    return SHRPX_ERR_NETWORK;
+  }
 }
 
 void Downstream::set_request_state(int state)

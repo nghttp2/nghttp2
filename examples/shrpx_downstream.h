@@ -72,7 +72,8 @@ public:
     INITIAL,
     HEADER_COMPLETE,
     MSG_COMPLETE,
-    STREAM_CLOSED
+    STREAM_CLOSED,
+    CONNECT_FAIL
   };
   void set_request_state(int state);
   int get_request_state() const;

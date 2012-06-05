@@ -95,10 +95,15 @@ void on_stream_close_callback
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   Downstream *downstream = upstream->get_downstream_queue()->find(stream_id);
   if(downstream) {
-    downstream->set_request_state(Downstream::STREAM_CLOSED);
-    if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       upstream->get_downstream_queue()->remove(downstream);
       delete downstream;
+    } else {
+      downstream->set_request_state(Downstream::STREAM_CLOSED);
+      if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+        upstream->get_downstream_queue()->remove(downstream);
+        delete downstream;
+      }
     }
   }
 }
@@ -152,7 +157,11 @@ void on_ctrl_recv_callback
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
     upstream->add_downstream(downstream);
-    upstream->start_downstream(downstream);
+    if(upstream->start_downstream(downstream) != 0) {
+      // If downstream connection fails, issue RST_STREAM.
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      downstream->set_request_state(Downstream::CONNECT_FAIL);
+    }
     break;
   }
   default:
@@ -455,9 +464,9 @@ void SpdyUpstream::add_downstream(Downstream *downstream)
   downstream_queue_.add(downstream);
 }
 
-void SpdyUpstream::start_downstream(Downstream *downstream)
+int SpdyUpstream::start_downstream(Downstream *downstream)
 {
-  downstream_queue_.start(downstream);
+  return downstream_queue_.start(downstream);
 }
 
 void SpdyUpstream::remove_downstream(Downstream *downstream)

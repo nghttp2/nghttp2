@@ -157,7 +157,12 @@ int htp_hdrs_completecb(htparser *htp)
   downstream->push_request_headers();
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
-  downstream->start_connection();
+  int rv = downstream->start_connection();
+  if(rv != 0) {
+    LOG(ERROR) << "Upstream connection failed";
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    return 1;
+  }
   return 0;
 }
 } // namespace
@@ -227,7 +232,12 @@ int HttpsUpstream::on_read()
   current_header_length_ += nread;
   htpparse_error htperr = htparser_get_error(htp_);
   if(htperr == htparse_error_user) {
-    if(current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
+    Downstream *downstream = get_top_downstream();
+    if(downstream &&
+       downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+      get_client_handler()->set_should_close_after_write(true);
+      error_reply(503);
+    } else if(current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
       LOG(WARNING) << "Request Header too long:" << current_header_length_
                    << " bytes";
       get_client_handler()->set_should_close_after_write(true);

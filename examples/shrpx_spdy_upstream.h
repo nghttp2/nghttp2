@@ -50,7 +50,7 @@ public:
   virtual bufferevent_event_cb get_downstream_eventcb();
   void add_downstream(Downstream *downstream);
   void remove_downstream(Downstream *downstream);
-  void start_downstream(Downstream *downstream);
+  int start_downstream(Downstream *downstream);
   spdylay_session* get_spdy_session();
   DownstreamQueue* get_downstream_queue();
 

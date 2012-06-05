@@ -32,7 +32,8 @@ namespace shrpx {
 enum ErrorCode {
   SHRPX_ERR_SUCCESS = 0,
   SHRPX_ERR_UNKNOWN = -1,
-  SHRPX_ERR_HTTP_PARSE = -2
+  SHRPX_ERR_HTTP_PARSE = -2,
+  SHRPX_ERR_NETWORK = -3
 };
 
 } // namespace shrpx

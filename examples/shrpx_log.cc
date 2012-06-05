@@ -32,6 +32,13 @@ const char *SEVERITY_STR[] = {
   "INFO", "WARN", "ERROR", "FATAL"
 };
 
+int Log::severity_thres_ = WARNING;
+
+void Log::set_severity_level(int severity)
+{
+  severity_thres_ = severity;
+}
+
 Log::Log(int severity, const char *filename, int linenum)
   : severity_(severity),
     filename_(filename),
@@ -40,10 +47,12 @@ Log::Log(int severity, const char *filename, int linenum)
 
 Log::~Log()
 {
-  fprintf(stderr, "[%s] %s\n       (%s, line %d)\n",
-          SEVERITY_STR[severity_], stream_.str().c_str(),
-          filename_, linenum_);
-  fflush(stderr);
+  if(severity_ >= severity_thres_) {
+    fprintf(stderr, "[%s] %s\n       (%s, line %d)\n",
+            SEVERITY_STR[severity_], stream_.str().c_str(),
+            filename_, linenum_);
+    fflush(stderr);
+  }
 }
 
 } // namespace shrpx

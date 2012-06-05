@@ -44,9 +44,9 @@ void DownstreamQueue::add(Downstream *downstream)
   downstreams_[downstream->get_stream_id()] = downstream;
 }
 
-void DownstreamQueue::start(Downstream *downstream)
+int DownstreamQueue::start(Downstream *downstream)
 {
-  downstream->start_connection();
+  return downstream->start_connection();
 }
 
 void DownstreamQueue::remove(Downstream *downstream)

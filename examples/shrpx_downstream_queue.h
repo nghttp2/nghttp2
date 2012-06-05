@@ -40,7 +40,7 @@ public:
   DownstreamQueue();
   ~DownstreamQueue();
   void add(Downstream *downstream);
-  void start(Downstream *downstream);
+  int start(Downstream *downstream);
   void remove(Downstream *downstream);
   Downstream* find(int32_t stream_id);
 private:

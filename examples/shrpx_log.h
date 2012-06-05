@@ -41,18 +41,20 @@ enum SeverityLevel {
 
 class Log {
 public:
-  Log(int severiy, const char *filename, int linenum);
+  Log(int severity, const char *filename, int linenum);
   ~Log();
   template<typename Type> Log& operator<<(Type s)
   {
     stream_ << s;
     return *this;
   }
+  static void set_severity_level(int severity);
 private:
   int severity_;
   const char *filename_;
   int linenum_;
   std::stringstream stream_;
+  static int severity_thres_;
 };
 
 } // namespace shrpx
