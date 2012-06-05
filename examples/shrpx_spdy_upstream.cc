@@ -516,7 +516,6 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   spdylay_submit_response(session_, downstream->get_stream_id(), nv,
                           &data_prd);
   delete [] nv;
-  //send();
   return 0;
 }
 
@@ -529,7 +528,6 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
   evbuffer *body = downstream->get_response_body_buf();
   evbuffer_add(body, data, len);
   spdylay_session_resume_data(session_, downstream->get_stream_id());
-  //send();
 
   size_t bodylen = evbuffer_get_length(body);
   if(bodylen > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
@@ -545,7 +543,6 @@ int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
     LOG(INFO) << "<downstream> on_downstream_body_complete";
   }
   spdylay_session_resume_data(session_, downstream->get_stream_id());
-  //send();
   return 0;
 }
 
