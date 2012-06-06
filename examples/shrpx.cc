@@ -29,6 +29,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <signal.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <cstdlib>
 
@@ -72,10 +74,19 @@ int cache_downstream_host_address()
     LOG(FATAL) << "Unable to get downstream address: " << gai_strerror(rv);
     DIE();
   }
-  LOG(INFO) << "Using first returned address for downstream "
-            << get_config()->downstream_host
-            << ", port "
-            << get_config()->downstream_port;
+
+  char host[NI_MAXHOST];
+  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host),
+                  0, 0, NI_NUMERICHOST);
+  if(rv == 0) {
+    LOG(INFO) << "Using first returned address for downstream "
+              << host
+              << ", port "
+              << get_config()->downstream_port;
+  } else {
+    LOG(FATAL) << gai_strerror(rv);
+    DIE();
+  }
   memcpy(&mod_config()->downstream_addr, res->ai_addr, res->ai_addrlen);
   mod_config()->downstream_addrlen = res->ai_addrlen;
   freeaddrinfo(res);
@@ -91,7 +102,7 @@ void evlistener_errorcb(evconnlistener *listener, void *ptr)
 } // namespace
 
 namespace {
-evconnlistener* create_evlistener(ListenHandler *handler)
+evconnlistener* create_evlistener(ListenHandler *handler, int family)
 {
   // TODO Listen both IPv4 and IPv6
   addrinfo hints;
@@ -100,12 +111,13 @@ evconnlistener* create_evlistener(ListenHandler *handler)
   char service[10];
   snprintf(service, sizeof(service), "%u", get_config()->port);
   memset(&hints, 0, sizeof(addrinfo));
-  hints.ai_family = AF_UNSPEC;
+  hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
+
   addrinfo *res, *rp;
   r = getaddrinfo(get_config()->host, service, &hints, &res);
   if(r != 0) {
@@ -124,23 +136,46 @@ evconnlistener* create_evlistener(ListenHandler *handler)
       continue;
     }
     evutil_make_socket_nonblocking(fd);
+#ifdef IPV6_V6ONLY
+    if(family == AF_INET6) {
+      if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
+                    static_cast<socklen_t>(sizeof(val))) == -1) {
+        close(fd);
+        continue;
+      }
+    }
+#endif // IPV6_V6ONLY
     if(bind(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
       break;
     }
     close(fd);
   }
+  if(rp) {
+    char host[NI_MAXHOST];
+    r = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host),
+                        0, 0, NI_NUMERICHOST);
+    if(r == 0) {
+      LOG(INFO) << "Listening on " << host << ", port " << get_config()->port;
+    } else {
+      LOG(FATAL) << gai_strerror(r);
+      DIE();
+    }
+  }
   freeaddrinfo(res);
   if(rp == 0) {
-    LOG(ERROR) << "No valid address returned for host " << get_config()->host
-               << ", port " << get_config()->port;
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
+                << " socket failed";
+    }
     return 0;
   }
+
   evconnlistener *evlistener = evconnlistener_new
     (handler->get_evbase(),
      ssl_acceptcb,
      handler,
      LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
-     1024,
+     512,
      fd);
   evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
   return evlistener;
@@ -151,20 +186,32 @@ namespace {
 int event_loop()
 {
   event_base *evbase = event_base_new();
+
   ListenHandler *listener_handler = new ListenHandler(evbase);
+
+  evconnlistener *evlistener6, *evlistener4;
+  evlistener6 = create_evlistener(listener_handler, AF_INET6);
+  evlistener4 = create_evlistener(listener_handler, AF_INET);
+  if(!evlistener6 && !evlistener4) {
+    LOG(FATAL) << "Failed to listen on address "
+               << get_config()->host << ", port " << get_config()->port;
+    DIE();
+  }
+
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
   }
-  evconnlistener *evlistener = create_evlistener(listener_handler);
-  if(evlistener == NULL) {
-    return -1;
-  }
+
   if(ENABLE_LOG) {
     LOG(INFO) << "Entering event loop";
   }
   event_base_loop(evbase, 0);
-
-  evconnlistener_free(evlistener);
+  if(evlistener4) {
+    evconnlistener_free(evlistener4);
+  }
+  if(evlistener6) {
+    evconnlistener_free(evlistener6);
+  }
   return 0;
 }
 } // namespace
@@ -180,7 +227,7 @@ int main(int argc, char **argv)
   SSL_load_error_strings();
   SSL_library_init();
 
-  Log::set_severity_level(WARNING);
+  Log::set_severity_level(INFO);
 
   create_config();
   mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;
