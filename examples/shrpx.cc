@@ -86,7 +86,7 @@ int cache_downstream_host_address()
 namespace {
 void evlistener_errorcb(evconnlistener *listener, void *ptr)
 {
-  sleep(1);
+  LOG(ERROR) << "Accepting incoming connection failed";
 }
 } // namespace
 
