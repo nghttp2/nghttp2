@@ -41,10 +41,15 @@ needed:
 * OpenSSL >= 1.0.1
 
 To enable ``-a`` option (getting linked assets from the downloaded
-resouce) in spdycat (one of the example program), the following
+resouce) in ``spdycat`` (one of the example program), the following
 packages are needed:
 
 * libxml2 >= 2.7.7
+
+To build SPDY/HTTPS to HTTP reverse proxy ``shrpx`` (one of the
+example program), the following packages are needed:
+
+* libevent-openssl >= 2.0.8
 
 Build from git
 --------------
@@ -87,6 +92,9 @@ purposes. Please note that OpenSSL with `NPN
 <http://technotes.googlecode.com/git/nextprotoneg.html>`_ support is
 required in order to build and run these programs.  At the time of
 this writing, the OpenSSL 1.0.1 supports NPN.
+
+Spdycat - SPDY client
++++++++++++++++++++++
 
 The SPDY client is called ``spdycat``. It is a dead simple downloader
 like wget/curl. It connects to SPDY server and gets resources given in
@@ -154,6 +162,9 @@ the command-line::
     [  0.077] send GOAWAY frame <version=3, flags=0, length=8>
               (last_good_stream_id=0)
 
+Spdyd - SPDY server
++++++++++++++++++++
+
 SPDY server is called ``spdyd`` and serves static files. It is single
 threaded and multiplexes connections using non-blocking socket. The
 static files are read using blocking I/O system call, read(2). It
@@ -192,6 +203,45 @@ speaks SPDY/2 and SPDY/3::
     [id=1] [ 17.468] closed
 
 Currently, ``spdyd`` needs ``epoll`` or ``kqueue``.
+
+Shrpx - A reverse proxy for SPDY/HTTPS
+++++++++++++++++++++++++++++++++++++++
+
+The ``shrpx`` is a multi-threaded reverse proxy for SPDY/HTTPS.  It
+converts SPDY/HTTPS traffic to plain HTTP.
+
+Here is the command-line options::
+
+    Usage: shrpx [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]
+                 [-c <NUM>] [-L <LEVEL>] <PRIVATE_KEY> <CERT>
+
+    A reverse proxy for SPDY/HTTPS.
+
+
+    OPTIONS:
+        -b, --backend=<HOST,PORT>
+                           Set backend host and port.
+                           Default: 'localhost,80'
+        -f, --frontend=<HOST,PORT>
+                           Set frontend host and port.
+                           Default: 'localhost,3000'
+        -n, --workers=<CORES>
+                           Set the number of worker threads.
+        -c, --spdy-max-concurrent-streams=<NUM>
+                           Set the maximum number of the concurrent
+                           streams in one SPDY session.
+        -L, --log-level=<LEVEL>
+                           Set the severity level of log output.
+                           INFO, WARNING, ERROR and FATAL
+        -D, --daemon       Run in a background. If -D is used, the
+                           current working directory is changed to '/'.
+        -h, --help         Print this help.
+
+For those of you who are curious, ``shrpx`` is an abbreviation of
+"Spdy/https to Http Reverse ProXy".
+
+Other examples
+++++++++++++++
 
 There is another SPDY server called ``spdynative``, which is
 `node.native <https://github.com/d5/node.native>`_ style simple SPDY
