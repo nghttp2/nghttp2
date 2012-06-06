@@ -490,8 +490,14 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     LOG(INFO) << "Downstream on_downstream_header_complete";
   }
   size_t nheader = downstream->get_response_headers().size();
-  const char **nv = new const char*[nheader * 2 + 4 + 1];
+  // 6 means :status, :version and possible via header field.
+  const char **nv = new const char*[nheader * 2 + 6 + 1];
   size_t hdidx = 0;
+  std::string via_value;
+  nv[hdidx++] = ":status";
+  nv[hdidx++] = http::get_status_string(downstream->get_response_http_status());
+  nv[hdidx++] = ":version";
+  nv[hdidx++] = "HTTP/1.1";
   for(Headers::const_iterator i = downstream->get_response_headers().begin();
       i != downstream->get_response_headers().end(); ++i) {
     if(util::strieq((*i).first.c_str(), "transfer-encoding") ||
@@ -499,15 +505,20 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
        util::strieq((*i).first.c_str(), "connection") ||
        util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
+    } else if(util::strieq((*i).first.c_str(), "via")) {
+      via_value = (*i).second;
     } else {
       nv[hdidx++] = (*i).first.c_str();
       nv[hdidx++] = (*i).second.c_str();
     }
   }
-  nv[hdidx++] = ":status";
-  nv[hdidx++] = http::get_status_string(downstream->get_response_http_status());
-  nv[hdidx++] = ":version";
-  nv[hdidx++] = "HTTP/1.1";
+  if(!via_value.empty()) {
+    via_value += ", ";
+  }
+  via_value += http::create_via_header_value(downstream->get_response_major(),
+                                             downstream->get_response_minor());
+  nv[hdidx++] = "via";
+  nv[hdidx++] = via_value.c_str();
   nv[hdidx++] = 0;
   if(ENABLE_LOG) {
     std::stringstream ss;
