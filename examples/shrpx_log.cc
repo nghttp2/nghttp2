@@ -1,0 +1,70 @@
+/*
+ * Spdylay - SPDY Library
+ *
+ * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#include "shrpx_log.h"
+
+#include <cstdio>
+#include <cstring>
+
+namespace shrpx {
+
+const char *SEVERITY_STR[] = {
+  "INFO", "WARN", "ERROR", "FATAL"
+};
+
+int Log::severity_thres_ = WARNING;
+
+void Log::set_severity_level(int severity)
+{
+  severity_thres_ = severity;
+}
+
+int Log::set_severity_level_by_name(const char *name)
+{
+  for(size_t i = 0, max = sizeof(SEVERITY_STR)/sizeof(char*); i < max;  ++i) {
+    if(strcmp(SEVERITY_STR[i], name) == 0) {
+      severity_thres_ = i;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+Log::Log(int severity, const char *filename, int linenum)
+  : severity_(severity),
+    filename_(filename),
+    linenum_(linenum)
+{}
+
+Log::~Log()
+{
+  if(severity_ >= severity_thres_) {
+    fprintf(stderr, "[%s] %s\n       (%s, line %d)\n",
+            SEVERITY_STR[severity_], stream_.str().c_str(),
+            filename_, linenum_);
+    fflush(stderr);
+  }
+}
+
+} // namespace shrpx

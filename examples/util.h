@@ -235,6 +235,8 @@ bool endsWith(const std::string& a, const std::string& b);
 
 bool strieq(const char *a, const char *b);
 
+bool strifind(const char *a, const char *b);
+
 } // namespace util
 
 } // namespace spdylay

@@ -95,6 +95,17 @@ if test "x${have_openssl}" = "xno"; then
   AC_MSG_NOTICE([The example programs will not be built.])
 fi
 
+# libevent_openssl
+# 2.0.8 is required because we use evconnlistener_set_error_cb()
+PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
+                  [have_libevent_openssl=yes], [have_libevent_openssl=no])
+if test "x${have_libevent_openssl}" = "xno"; then
+  AC_MSG_NOTICE($LIBEVENT_OPENSSL_PKG_ERRORS)
+  AC_MSG_NOTICE([Shrpx example program will not be built.])
+fi
+AM_CONDITIONAL([HAVE_LIBEVENT_OPENSSL],
+               [ test "x${have_libevent_openssl}" = "xyes" ])
+
 # libxml2 (for examples/spdycat)
 AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
 if test "x${have_libxml2}" = "xyes"; then
@@ -178,5 +189,6 @@ AC_MSG_NOTICE([summary of build options:
     CUnit:          ${have_cunit}
     OpenSSL:        ${have_openssl}
     Libxml2:        ${have_libxml2}
+    Libevent(SSL):  ${have_libevent_openssl}
     Examples:       ${enable_examples}
 ])
