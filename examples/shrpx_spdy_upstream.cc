@@ -223,7 +223,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   // TODO Maybe call from outside?
   spdylay_settings_entry entry;
   entry.settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry.value = SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
+  entry.value = get_config()->spdy_max_concurrent_streams;
   entry.flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
   rv = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE,
                                &entry, 1);

@@ -253,7 +253,7 @@ void fill_default_config()
   mod_config()->downstream_host = "localhost";
   mod_config()->downstream_port = 80;
 
-  mod_config()->num_worker = 4;
+  mod_config()->num_worker = 1;
 
   mod_config()->spdy_max_concurrent_streams =
     SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
@@ -319,12 +319,17 @@ void print_help(std::ostream& out)
       << get_config()->host << "," << get_config()->port << "'\n"
       << "    -n, --workers=<CORES>\n"
       << "                       Set the number of worker threads.\n"
+      << "                       Default: "
+      << get_config()->num_worker << "\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
       << "                       Set the maximum number of the concurrent\n"
       << "                       streams in one SPDY session.\n"
+      << "                       Default: "
+      << get_config()->spdy_max_concurrent_streams << "\n"
       << "    -L, --log-level=<LEVEL>\n"
       << "                       Set the severity level of log output.\n"
-      << "                       INFO, WARNING, ERROR and FATAL\n"
+      << "                       INFO, WARNING, ERROR and FATAL.\n"
+      << "                       Default: WARNING\n"
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
       << "    -h, --help         Print this help.\n"
