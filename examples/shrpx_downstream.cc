@@ -203,24 +203,18 @@ int Downstream::push_request_headers()
   hdrs += "Host: ";
   hdrs += get_config()->downstream_hostport;
   hdrs += "\r\n";
-  // TODO Rewrite user-agent?
   for(Headers::const_iterator i = request_headers_.begin();
       i != request_headers_.end(); ++i) {
     if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto")) {
       continue;
     }
-    if(util::strieq((*i).first.c_str(), "user-agent")) {
-      hdrs += "User-Agent: ";
-      hdrs += get_config()->server_name;
-    } else {
-      hdrs += (*i).first;
-      hdrs += ": ";
-      hdrs += (*i).second;
-      if(!xff_found && util::strieq((*i).first.c_str(), "X-Forwarded-For")) {
-        xff_found = true;
-        hdrs += ", ";
-        hdrs += upstream_->get_client_handler()->get_ipaddr();
-      }
+    hdrs += (*i).first;
+    hdrs += ": ";
+    hdrs += (*i).second;
+    if(!xff_found && util::strieq((*i).first.c_str(), "X-Forwarded-For")) {
+      xff_found = true;
+      hdrs += ", ";
+      hdrs += upstream_->get_client_handler()->get_ipaddr();
     }
     hdrs += "\r\n";
   }
