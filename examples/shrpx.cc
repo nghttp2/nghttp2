@@ -31,8 +31,12 @@
 #include <signal.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <getopt.h>
 
+#include <limits>
 #include <cstdlib>
+#include <iostream>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -61,14 +65,17 @@ int cache_downstream_host_address()
   addrinfo hints;
   int rv;
   char service[10];
+
   snprintf(service, sizeof(service), "%u", get_config()->downstream_port);
   memset(&hints, 0, sizeof(addrinfo));
+
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
   addrinfo *res;
+
   rv = getaddrinfo(get_config()->downstream_host, service, &hints, &res);
   if(rv != 0) {
     LOG(FATAL) << "Unable to get downstream address: " << gai_strerror(rv);
@@ -121,7 +128,8 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   addrinfo *res, *rp;
   r = getaddrinfo(get_config()->host, service, &hints, &res);
   if(r != 0) {
-    LOG(ERROR) << "getaddrinfo: " << gai_strerror(r);
+    LOG(ERROR) << "Unable to get address for " << get_config()->host << ": "
+               << gai_strerror(r);
     return NULL;
   }
   for(rp = res; rp; rp = rp->ai_next) {
@@ -195,7 +203,7 @@ int event_loop()
   if(!evlistener6 && !evlistener4) {
     LOG(FATAL) << "Failed to listen on address "
                << get_config()->host << ", port " << get_config()->port;
-    DIE();
+    exit(EXIT_FAILURE);
   }
 
   if(get_config()->num_worker > 1) {
@@ -216,21 +224,11 @@ int event_loop()
 }
 } // namespace
 
-int main(int argc, char **argv)
+namespace {
+void fill_default_config()
 {
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
-  act.sa_handler = SIG_IGN;
-  sigaction(SIGPIPE, &act, 0);
-
-  OpenSSL_add_all_algorithms();
-  SSL_load_error_strings();
-  SSL_library_init();
-
-  Log::set_severity_level(INFO);
-
-  create_config();
   mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;
+  mod_config()->host = "localhost";
   mod_config()->port = 3000;
   mod_config()->private_key_file = "server.key";
   mod_config()->cert_file = "server.crt";
@@ -252,7 +250,159 @@ int main(int argc, char **argv)
 
   mod_config()->downstream_host = "localhost";
   mod_config()->downstream_port = 80;
-  char hostport[256];
+
+  mod_config()->num_worker = 4;
+
+  mod_config()->spdy_max_concurrent_streams =
+    SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
+}
+} // namespace
+
+namespace {
+int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
+                    const char *hostport)
+{
+  // host and port in |hostport| is separated by single ','.
+  const char *p = strchr(hostport, ',');
+  if(!p) {
+    std::cerr << "Invalid host, port: " << hostport << std::endl;
+    return -1;
+  }
+  size_t len = p-hostport;
+  if(hostlen < len+1) {
+    std::cerr << "Hostname too long: " << hostport << std::endl;
+    return -1;
+  }
+  memcpy(host, hostport, len);
+  host[len] = '\0';
+
+  errno = 0;
+  unsigned long d = strtoul(p+1, 0, 10);
+  if(errno == 0 && 1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
+    *port_ptr = d;
+    return 0;
+  } else {
+    std::cerr << "Port is invalid: " << p+1 << std::endl;
+    return -1;
+  }
+}
+} // namespace
+
+namespace {
+void print_usage(std::ostream& out)
+{
+  out << "Usage: shrpx [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]\n"
+      << "             [-c <NUM>] [-L <LEVEL>] <PRIVATE_KEY> <CERT>\n"
+      << "\n"
+      << "A reverse proxy for SPDY/HTTPS.\n"
+      << std::endl;
+}
+} // namespace
+
+namespace {
+void print_help(std::ostream& out)
+{
+  fill_default_config();
+  print_usage(out);
+  out << "\n"
+      << "OPTIONS:\n"
+      << "    -b, --backend=<HOST,PORT>\n"
+      << "                       Set backend host and port.\n"
+      << "                       Default: '"
+      << get_config()->downstream_host << ","
+      << get_config()->downstream_port << "'\n"
+      << "    -f, --frontend=<HOST,PORT>\n"
+      << "                       Set frontend host and port.\n"
+      << "                       Default: '"
+      << get_config()->host << "," << get_config()->port << "'\n"
+      << "    -n, --workers=<CORES>\n"
+      << "                       Set the number of worker threads.\n"
+      << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
+      << "                       Set the maximum number of the concurrent\n"
+      << "                       streams in one SPDY session.\n"
+      << "    -L, --log-level=<LEVEL>\n"
+      << "                       Set the severity level of log output.\n"
+      << "                       INFO, WARNING, ERROR and FATAL\n"
+      << "    -D, --daemon       Run in a background. If -D is used, the\n"
+      << "                       current working directory is changed to '/'.\n"
+      << "    -h, --help         Print this help.\n"
+      << std::endl;
+}
+} // namespace
+
+int main(int argc, char **argv)
+{
+  Log::set_severity_level(WARNING);
+  create_config();
+  fill_default_config();
+
+  char frontend_host[NI_MAXHOST];
+  uint16_t frontend_port;
+  char backend_host[NI_MAXHOST];
+  uint16_t backend_port;
+
+  while(1) {
+    static option long_options[] = {
+      {"backend", required_argument, 0, 'b' },
+      {"frontend", required_argument, 0, 'f' },
+      {"workers", required_argument, 0, 'n' },
+      {"spdy-max-concurrent-streams", required_argument, 0, 'c' },
+      {"log-level", required_argument, 0, 'L' },
+      {"daemon", no_argument, 0, 'D' },
+      {"help", no_argument, 0, 'h' },
+      {0, 0, 0, 0 }
+    };
+    int option_index = 0;
+    int c = getopt_long(argc, argv, "DL:b:c:f:n:h", long_options,
+                        &option_index);
+    if(c == -1) {
+      break;
+    }
+    switch(c) {
+    case 'D':
+      mod_config()->daemon = true;
+      break;
+    case 'h':
+      print_help(std::cout);
+      exit(EXIT_SUCCESS);
+    case 'L':
+      if(Log::set_severity_level_by_name(optarg) == -1) {
+        std::cerr << "Invalid severity level: " << optarg << std::endl;
+        exit(EXIT_SUCCESS);
+      }
+      break;
+    case 'b':
+      if(split_host_port(backend_host, sizeof(backend_host),
+                         &backend_port, optarg) == -1) {
+        exit(EXIT_FAILURE);
+      } else {
+        mod_config()->downstream_host = backend_host;
+        mod_config()->downstream_port = backend_port;
+      }
+      break;
+    case 'f':
+      if(split_host_port(frontend_host, sizeof(frontend_host),
+                         &frontend_port, optarg) == -1) {
+        exit(EXIT_FAILURE);
+      } else {
+        mod_config()->host = frontend_host;
+        mod_config()->port = frontend_port;
+      }
+      break;
+    case 'n':
+      mod_config()->num_worker = strtol(optarg, 0, 10);
+      break;
+    case 'c':
+      mod_config()->spdy_max_concurrent_streams = strtol(optarg, 0, 10);
+      break;
+    case '?':
+      exit(EXIT_FAILURE);
+    default:
+      break;
+    }
+  }
+
+  char hostport[NI_MAXHOST];
   if(get_config()->downstream_port == 80) {
     mod_config()->downstream_hostport = get_config()->downstream_host;
   } else {
@@ -260,11 +410,19 @@ int main(int argc, char **argv)
              get_config()->downstream_host, get_config()->downstream_port);
     mod_config()->downstream_hostport = hostport;
   }
+
   if(cache_downstream_host_address() == -1) {
     exit(EXIT_FAILURE);
   }
 
-  mod_config()->num_worker = 4;
+  struct sigaction act;
+  memset(&act, 0, sizeof(struct sigaction));
+  act.sa_handler = SIG_IGN;
+  sigaction(SIGPIPE, &act, 0);
+
+  OpenSSL_add_all_algorithms();
+  SSL_load_error_strings();
+  SSL_library_init();
 
   event_loop();
   return 0;

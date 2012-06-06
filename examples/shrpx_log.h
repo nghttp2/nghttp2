@@ -49,6 +49,7 @@ public:
     return *this;
   }
   static void set_severity_level(int severity);
+  static int set_severity_level_by_name(const char *name);
 private:
   int severity_;
   const char *filename_;

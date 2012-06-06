@@ -65,6 +65,7 @@ struct Config {
   timeval downstream_read_timeout;
   timeval downstream_write_timeout;
   size_t num_worker;
+  size_t spdy_max_concurrent_streams;
   Config();
 };
 

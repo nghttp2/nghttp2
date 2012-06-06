@@ -25,6 +25,7 @@
 #include "shrpx_log.h"
 
 #include <cstdio>
+#include <cstring>
 
 namespace shrpx {
 
@@ -37,6 +38,17 @@ int Log::severity_thres_ = WARNING;
 void Log::set_severity_level(int severity)
 {
   severity_thres_ = severity;
+}
+
+int Log::set_severity_level_by_name(const char *name)
+{
+  for(size_t i = 0, max = sizeof(SEVERITY_STR)/sizeof(char*); i < max;  ++i) {
+    if(strcmp(SEVERITY_STR[i], name) == 0) {
+      severity_thres_ = i;
+      return 0;
+    }
+  }
+  return -1;
 }
 
 Log::Log(int severity, const char *filename, int linenum)
