@@ -212,6 +212,7 @@ converts SPDY/HTTPS traffic to plain HTTP.
 
 Here is the command-line options::
 
+    $ examples/shrpx -h
     Usage: shrpx [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]
                  [-c <NUM>] [-L <LEVEL>] <PRIVATE_KEY> <CERT>
 
