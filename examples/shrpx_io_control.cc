@@ -58,4 +58,10 @@ bool IOControl::resume_read(IOCtrlReason reason)
   }
 }
 
+void IOControl::force_resume_read()
+{
+  std::fill(ctrlv_.begin(), ctrlv_.end(), 0);
+  bufferevent_enable(bev_, EV_READ);
+}
+
 } // namespace shrpx

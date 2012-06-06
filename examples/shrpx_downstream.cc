@@ -87,6 +87,11 @@ bool Downstream::resume_read(IOCtrlReason reason)
   return ioctrl_.resume_read(reason);
 }
 
+void Downstream::force_resume_read()
+{
+  ioctrl_.force_resume_read();
+}
+
 namespace {
 void check_transfer_encoding_chunked(bool *chunked,
                                      const Headers::value_type &item)
@@ -416,12 +421,13 @@ void body_buf_cb(evbuffer *body, size_t oldlen, size_t newlen, void *arg)
 
 int Downstream::init_response_body_buf()
 {
-  assert(response_body_buf_ == 0);
-  response_body_buf_ = evbuffer_new();
-  if(response_body_buf_ == 0) {
-    DIE();
+  if(!response_body_buf_) {
+    response_body_buf_ = evbuffer_new();
+    if(response_body_buf_ == 0) {
+      DIE();
+    }
+    evbuffer_setcb(response_body_buf_, body_buf_cb, this);
   }
-  evbuffer_setcb(response_body_buf_, body_buf_cb, this);
   return 0;
 }
 

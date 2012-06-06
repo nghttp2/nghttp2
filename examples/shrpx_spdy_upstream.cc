@@ -103,6 +103,11 @@ void on_stream_close_callback
       if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
         upstream->get_downstream_queue()->remove(downstream);
         delete downstream;
+      } else {
+        // At this point, downstream read may be paused. To reclaim
+        // file descriptor, enable read here and catch read
+        // notification. And delete downstream there.
+        downstream->force_resume_read();
       }
     }
   }

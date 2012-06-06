@@ -48,6 +48,8 @@ public:
   void pause_read(IOCtrlReason reason);
   // Returns true if read operation is enabled after this call
   bool resume_read(IOCtrlReason reason);
+  // Clear all pause flags and enable read
+  void force_resume_read();
 private:
   bufferevent *bev_;
   std::vector<int> ctrlv_;

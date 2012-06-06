@@ -56,6 +56,7 @@ public:
   int32_t get_stream_id() const;
   void pause_read(IOCtrlReason reason);
   bool resume_read(IOCtrlReason reason);
+  void force_resume_read();
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
