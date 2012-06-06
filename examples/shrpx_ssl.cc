@@ -74,6 +74,7 @@ SSL_CTX* create_ssl_context()
   }
   SSL_CTX_set_options(ssl_ctx,
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION);
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
   if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
