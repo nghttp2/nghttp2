@@ -227,11 +227,13 @@ int event_loop()
 namespace {
 void fill_default_config()
 {
+  mod_config()->daemon = false;
+
   mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;
   mod_config()->host = "localhost";
   mod_config()->port = 3000;
-  mod_config()->private_key_file = "server.key";
-  mod_config()->cert_file = "server.crt";
+  mod_config()->private_key_file = 0;
+  mod_config()->cert_file = 0;
 
   mod_config()->upstream_read_timeout.tv_sec = 30;
   mod_config()->upstream_read_timeout.tv_usec = 0;
@@ -402,6 +404,15 @@ int main(int argc, char **argv)
     }
   }
 
+  if(argc-optind < 2) {
+    print_usage(std::cerr);
+    std::cerr << "Too few arguments" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  mod_config()->private_key_file = argv[optind++];
+  mod_config()->cert_file = argv[optind++];
+
   char hostport[NI_MAXHOST];
   if(get_config()->downstream_port == 80) {
     mod_config()->downstream_hostport = get_config()->downstream_host;
@@ -413,6 +424,13 @@ int main(int argc, char **argv)
 
   if(cache_downstream_host_address() == -1) {
     exit(EXIT_FAILURE);
+  }
+
+  if(get_config()->daemon) {
+    if(daemon(0, 0) == -1) {
+      perror("daemon");
+      exit(EXIT_FAILURE);
+    }
   }
 
   struct sigaction act;
