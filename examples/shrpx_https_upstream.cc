@@ -154,6 +154,9 @@ int htp_hdrs_completecb(htparser *htp)
   upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
   Downstream *downstream = upstream->get_last_downstream();
 
+  downstream->set_request_major(htparser_get_major(htp));
+  downstream->set_request_minor(htparser_get_minor(htp));
+
   downstream->push_request_headers();
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
@@ -452,6 +455,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   if(ENABLE_LOG) {
     LOG(INFO) << "Downstream on_downstream_header_complete";
   }
+  std::string via_value;
   std::string hdrs = "HTTP/1.1 ";
   hdrs += http::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
@@ -461,21 +465,26 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
        util::strieq((*i).first.c_str(), "connection") ||
        util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
+    } else if(util::strieq((*i).first.c_str(), "via")) {
+      via_value = (*i).second;
     } else {
-      if(util::strieq((*i).first.c_str(), "server")) {
-        hdrs += "Server: ";
-        hdrs += get_config()->server_name;
-      } else {
-        hdrs += (*i).first;
-        hdrs += ": ";
-        hdrs += (*i).second;
-      }
+      hdrs += (*i).first;
+      hdrs += ": ";
+      hdrs += (*i).second;
       hdrs += "\r\n";
     }
   }
   if(get_client_handler()->get_should_close_after_write()) {
     hdrs += "Connection: close\r\n";
   }
+  hdrs += "Via: ";
+  hdrs += via_value;
+  if(!via_value.empty()) {
+    hdrs += ", ";
+  }
+  hdrs += http::create_via_header_value
+    (downstream->get_response_major(), downstream->get_response_minor());
+  hdrs += "\r\n";
   hdrs += "\r\n";
   if(ENABLE_LOG) {
     LOG(INFO) << "Upstream https response headers\n" << hdrs;

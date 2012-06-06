@@ -499,9 +499,6 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
        util::strieq((*i).first.c_str(), "connection") ||
        util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
-    } else if(util::strieq((*i).first.c_str(), "server")) {
-      nv[hdidx++] = "server";
-      nv[hdidx++] = get_config()->server_name;
     } else {
       nv[hdidx++] = (*i).first.c_str();
       nv[hdidx++] = (*i).second.c_str();

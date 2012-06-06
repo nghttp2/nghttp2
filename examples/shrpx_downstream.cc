@@ -30,6 +30,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
+#include "shrpx_http.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -43,10 +44,14 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     priority_(priority),
     ioctrl_(0),
     request_state_(INITIAL),
+    request_major_(1),
+    request_minor_(1),
     chunked_request_(false),
     request_connection_close_(false),
     response_state_(INITIAL),
     response_http_status_(0),
+    response_major_(1),
+    response_minor_(1),
     chunked_response_(false),
     response_htp_(htparser_new()),
     response_body_buf_(0)
@@ -140,6 +145,16 @@ void Downstream::set_request_path(const std::string& path)
   request_path_ = path;
 }
 
+void Downstream::set_request_major(int major)
+{
+  request_major_ = major;
+}
+
+void Downstream::set_request_minor(int minor)
+{
+  request_minor_ = minor;
+}
+
 Upstream* Downstream::get_upstream() const
 {
   return upstream_;
@@ -208,9 +223,14 @@ int Downstream::push_request_headers()
   hdrs += "Host: ";
   hdrs += get_config()->downstream_hostport;
   hdrs += "\r\n";
+  std::string via_value;
   for(Headers::const_iterator i = request_headers_.begin();
       i != request_headers_.end(); ++i) {
     if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto")) {
+      continue;
+    }
+    if(util::strieq((*i).first.c_str(), "via")) {
+      via_value = (*i).second;
       continue;
     }
     hdrs += (*i).first;
@@ -230,6 +250,14 @@ int Downstream::push_request_headers()
     hdrs += "\r\n";
   }
   hdrs += "X-Forwarded-Proto: https\r\n";
+
+  hdrs += "Via: ";
+  hdrs += via_value;
+  if(!via_value.empty()) {
+    hdrs += ", ";
+  }
+  hdrs += http::create_via_header_value(request_major_, request_minor_);
+  hdrs += "\r\n";
 
   hdrs += "\r\n";
   if(ENABLE_LOG) {
@@ -299,6 +327,26 @@ void Downstream::set_response_http_status(unsigned int status)
   response_http_status_ = status;
 }
 
+void Downstream::set_response_major(int major)
+{
+  response_major_ = major;
+}
+
+void Downstream::set_response_minor(int minor)
+{
+  response_minor_ = minor;
+}
+
+int Downstream::get_response_major() const
+{
+  return response_major_;
+}
+
+int Downstream::get_response_minor() const
+{
+  return response_minor_;
+}
+
 bool Downstream::get_chunked_response() const
 {
   return chunked_response_;
@@ -310,6 +358,8 @@ int htp_hdrs_completecb(htparser *htp)
   Downstream *downstream;
   downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
   downstream->set_response_http_status(htparser_get_status(htp));
+  downstream->set_response_major(htparser_get_major(htp));
+  downstream->set_response_minor(htparser_get_minor(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->get_upstream()->on_downstream_header_complete(downstream);
   return 0;

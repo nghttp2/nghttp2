@@ -93,6 +93,16 @@ std::string create_error_html(int status_code)
   return ss.str();
 }
 
+std::string create_via_header_value(int major, int minor)
+{
+  std::string hdrs;
+  hdrs += static_cast<char>(major+'0');
+  hdrs += ".";
+  hdrs += static_cast<char>(minor+'0');
+  hdrs += " shrpx";
+  return hdrs;
+}
+
 } // namespace http
 
 } // namespace shrpx

@@ -63,6 +63,8 @@ public:
   void set_last_request_header_value(const std::string& value);
   void set_request_method(const std::string& method);
   void set_request_path(const std::string& path);
+  void set_request_major(int major);
+  void set_request_minor(int minor);
   int push_request_headers();
   bool get_chunked_request() const;
   bool get_request_connection_close() const;
@@ -84,6 +86,10 @@ public:
   void set_last_response_header_value(const std::string& value);
   unsigned int get_response_http_status() const;
   void set_response_http_status(unsigned int status);
+  void set_response_major(int major);
+  void set_response_minor(int minor);
+  int get_response_major() const;
+  int get_response_minor() const;
   bool get_chunked_response() const;
   int parse_http_response();
   void set_response_state(int state);
@@ -99,12 +105,16 @@ private:
   int request_state_;
   std::string request_method_;
   std::string request_path_;
+  int request_major_;
+  int request_minor_;
   bool chunked_request_;
   bool request_connection_close_;
   Headers request_headers_;
 
   int response_state_;
   unsigned int response_http_status_;
+  int response_major_;
+  int response_minor_;
   bool chunked_response_;
   Headers response_headers_;
   htparser *response_htp_;
