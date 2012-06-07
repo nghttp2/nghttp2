@@ -93,16 +93,15 @@ void on_stream_close_callback
     LOG(INFO) << "Upstream spdy Stream " << stream_id << " is being closed";
   }
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  Downstream *downstream = upstream->get_downstream_queue()->find(stream_id);
+  Downstream *downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      upstream->get_downstream_queue()->remove(downstream);
+      upstream->remove_downstream(downstream);
       delete downstream;
     } else {
       downstream->set_request_state(Downstream::STREAM_CLOSED);
       if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-        upstream->get_downstream_queue()->remove(downstream);
-        delete downstream;
+        upstream->remove_or_idle_downstream(downstream);
       } else {
         // At this point, downstream read may be paused. To reclaim
         // file descriptor, enable read here and catch read
@@ -126,9 +125,23 @@ void on_ctrl_recv_callback
       LOG(INFO) << "Upstream spdy received upstream SYN_STREAM stream_id="
                 << frame->syn_stream.stream_id;
     }
-    Downstream *downstream = new Downstream(upstream,
-                                            frame->syn_stream.stream_id,
-                                            frame->syn_stream.pri);
+    Downstream *downstream;
+    downstream = upstream->reuse_downstream(frame->syn_stream.stream_id);
+    if(downstream) {
+      if(ENABLE_LOG) {
+        LOG(INFO) << "Reusing downstream for stream_id="
+                  << frame->syn_stream.stream_id;
+      }
+      downstream->set_priority(frame->syn_stream.pri);
+    } else {
+      if(ENABLE_LOG) {
+        LOG(INFO) << "Creating new downstream for stream_id="
+                  << frame->syn_stream.stream_id;
+      }
+      downstream = new Downstream(upstream,
+                                  frame->syn_stream.stream_id,
+                                  frame->syn_stream.pri);
+    }
     downstream->init_response_body_buf();
 
     char **nv = frame->syn_stream.nv;
@@ -161,11 +174,13 @@ void on_ctrl_recv_callback
       }
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
-    upstream->add_downstream(downstream);
-    if(upstream->start_downstream(downstream) != 0) {
-      // If downstream connection fails, issue RST_STREAM.
-      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-      downstream->set_request_state(Downstream::CONNECT_FAIL);
+    if(downstream->get_counter() == 1) {
+      upstream->add_downstream(downstream);
+      if(upstream->start_downstream(downstream) != 0) {
+        // If downstream connection fails, issue RST_STREAM.
+        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+        downstream->set_request_state(Downstream::CONNECT_FAIL);
+      }
     }
     break;
   }
@@ -186,7 +201,7 @@ void on_data_chunk_recv_callback(spdylay_session *session,
               << stream_id;
   }
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  Downstream *downstream = upstream->get_downstream_queue()->find(stream_id);
+  Downstream *downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     downstream->push_upload_data_chunk(data, len);
     if(flags & SPDYLAY_DATA_FLAG_FIN) {
@@ -285,6 +300,11 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
   Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  if(downstream->get_request_state() == Downstream::IDLE) {
+    upstream->remove_downstream(downstream);
+    delete downstream;
+    return;
+  }
   // If upstream SPDY stream was closed, we just close downstream,
   // because there is no consumer now.
   if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
@@ -320,13 +340,20 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
   Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  if(downstream->get_request_state() == Downstream::IDLE) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Delete idle downstream in spdy_downstream_eventcb";
+    }
+    upstream->remove_downstream(downstream);
+    delete downstream;
+    return;
+  }
   if(events & BEV_EVENT_CONNECTED) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream connection established. Downstream "
                 << downstream;
     }
-  }
-  if(events & BEV_EVENT_EOF) {
+  } else if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream EOF stream_id="
                 << downstream->get_stream_id();
@@ -479,6 +506,26 @@ void SpdyUpstream::remove_downstream(Downstream *downstream)
   downstream_queue_.remove(downstream);
 }
 
+Downstream* SpdyUpstream::find_downstream(int32_t stream_id)
+{
+  return downstream_queue_.find(stream_id);
+}
+
+Downstream* SpdyUpstream::reuse_downstream(int32_t stream_id)
+{
+  return downstream_queue_.reuse(stream_id);
+}
+
+void SpdyUpstream::remove_or_idle_downstream(Downstream *downstream)
+{
+  if(downstream->get_response_connection_close()) {
+    downstream_queue_.remove(downstream);
+    delete downstream;
+  } else {
+    downstream_queue_.idle(downstream);
+  }
+}
+
 spdylay_session* SpdyUpstream::get_spdy_session()
 {
   return session_;
@@ -562,11 +609,6 @@ int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
   }
   spdylay_session_resume_data(session_, downstream->get_stream_id());
   return 0;
-}
-
-DownstreamQueue* SpdyUpstream::get_downstream_queue()
-{
-  return &downstream_queue_;
 }
 
 } // namespace shrpx

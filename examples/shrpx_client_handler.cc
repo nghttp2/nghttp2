@@ -66,7 +66,7 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
   bool finish = false;
   if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Upstream handshake EOF";
+      LOG(INFO) << "Upstream EOF";
     }
     finish = true;
   }

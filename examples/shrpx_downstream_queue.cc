@@ -24,6 +24,8 @@
  */
 #include "shrpx_downstream_queue.h"
 
+#include <cassert>
+
 #include "shrpx_downstream.h"
 
 namespace shrpx {
@@ -36,6 +38,10 @@ DownstreamQueue::~DownstreamQueue()
   for(std::map<int32_t, Downstream*>::iterator i = downstreams_.begin();
       i != downstreams_.end(); ++i) {
     delete (*i).second;
+  }
+  for(std::set<Downstream*>::iterator i = idle_downstreams_.begin();
+      i != idle_downstreams_.end(); ++i) {
+    delete *i;
   }
 }
 
@@ -51,7 +57,11 @@ int DownstreamQueue::start(Downstream *downstream)
 
 void DownstreamQueue::remove(Downstream *downstream)
 {
-  downstreams_.erase(downstream->get_stream_id());
+  if(downstream->get_request_state() == Downstream::IDLE) {
+    idle_downstreams_.erase(downstream);
+  } else {
+    downstreams_.erase(downstream->get_stream_id());
+  }
 }
 
 Downstream* DownstreamQueue::find(int32_t stream_id)
@@ -62,6 +72,26 @@ Downstream* DownstreamQueue::find(int32_t stream_id)
   } else {
     return (*i).second;
   }
+}
+
+Downstream* DownstreamQueue::reuse(int32_t stream_id)
+{
+  if(idle_downstreams_.empty()) {
+    return 0;
+  }
+  Downstream* downstream = *idle_downstreams_.begin();
+  idle_downstreams_.erase(downstream);
+  downstream->reuse(stream_id);
+  add(downstream);
+  return downstream;
+}
+
+void DownstreamQueue::idle(Downstream *downstream)
+{
+  assert(downstream->get_request_state() != Downstream::IDLE);
+  remove(downstream);
+  downstream->idle();
+  idle_downstreams_.insert(downstream);
 }
 
 } // namespace shrpx

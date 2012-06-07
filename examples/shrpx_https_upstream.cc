@@ -79,8 +79,14 @@ int htp_msg_begin(htparser *htp)
   Downstream *downstream = upstream->get_top_downstream();
   if(downstream) {
     // Keep-Alived connection
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Reusing downstream";
+    }
     downstream->reuse(0);
   } else {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Creating new downstream";
+    }
     downstream = new Downstream(upstream, 0, 0);
     upstream->add_downstream(downstream);
   }

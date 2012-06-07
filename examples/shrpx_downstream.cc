@@ -117,6 +117,10 @@ void Downstream::idle()
   chunked_response_ = false;
   response_connection_close_ = false;
   response_headers_.clear();
+  if(response_body_buf_) {
+    size_t len = evbuffer_get_length(response_body_buf_);
+    evbuffer_drain(response_body_buf_, len);
+  }
 }
 
 void Downstream::pause_read(IOCtrlReason reason)
@@ -541,6 +545,11 @@ int Downstream::init_response_body_buf()
 evbuffer* Downstream::get_response_body_buf()
 {
   return response_body_buf_;
+}
+
+void Downstream::set_priority(int pri)
+{
+  priority_ = pri;
 }
 
 } // namespace shrpx

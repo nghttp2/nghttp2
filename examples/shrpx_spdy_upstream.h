@@ -51,8 +51,11 @@ public:
   void add_downstream(Downstream *downstream);
   void remove_downstream(Downstream *downstream);
   int start_downstream(Downstream *downstream);
+  Downstream* find_downstream(int32_t stream_id);
+  Downstream* reuse_downstream(int32_t stream_id);
+  void remove_or_idle_downstream(Downstream *downstream);
+
   spdylay_session* get_spdy_session();
-  DownstreamQueue* get_downstream_queue();
 
   int rst_stream(Downstream *downstream, int status_code);
   int error_reply(Downstream *downstream, int status_code);

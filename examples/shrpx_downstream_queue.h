@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <set>
 
 namespace shrpx {
 
@@ -43,8 +44,11 @@ public:
   int start(Downstream *downstream);
   void remove(Downstream *downstream);
   Downstream* find(int32_t stream_id);
+  Downstream* reuse(int32_t stream_id);
+  void idle(Downstream *downstream);
 private:
   std::map<int32_t, Downstream*> downstreams_;
+  std::set<Downstream*> idle_downstreams_;
 };
 
 } // namespace shrpx

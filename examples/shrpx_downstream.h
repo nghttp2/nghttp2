@@ -54,6 +54,7 @@ public:
   int start_connection();
   Upstream* get_upstream() const;
   int32_t get_stream_id() const;
+  void set_priority(int pri);
   void pause_read(IOCtrlReason reason);
   bool resume_read(IOCtrlReason reason);
   void force_resume_read();
