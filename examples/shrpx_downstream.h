@@ -57,6 +57,9 @@ public:
   void pause_read(IOCtrlReason reason);
   bool resume_read(IOCtrlReason reason);
   void force_resume_read();
+  void idle();
+  void reuse(int stream_id);
+  int get_counter() const;
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
@@ -78,7 +81,8 @@ public:
     HEADER_COMPLETE,
     MSG_COMPLETE,
     STREAM_CLOSED,
-    CONNECT_FAIL
+    CONNECT_FAIL,
+    IDLE
   };
   void set_request_state(int state);
   int get_request_state() const;
@@ -93,6 +97,7 @@ public:
   int get_response_major() const;
   int get_response_minor() const;
   bool get_chunked_response() const;
+  bool get_response_connection_close() const;
   int parse_http_response();
   void set_response_state(int state);
   int get_response_state() const;
@@ -103,6 +108,7 @@ private:
   bufferevent *bev_;
   int32_t stream_id_;
   int priority_;
+  int counter_;
   IOControl ioctrl_;
   int request_state_;
   std::string request_method_;
@@ -118,6 +124,7 @@ private:
   int response_major_;
   int response_minor_;
   bool chunked_response_;
+  bool response_connection_close_;
   Headers response_headers_;
   htparser *response_htp_;
   // This buffer is used to temporarily store downstream response

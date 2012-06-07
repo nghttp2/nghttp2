@@ -76,8 +76,14 @@ int htp_msg_begin(htparser *htp)
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
   upstream->reset_current_header_length();
-  Downstream *downstream = new Downstream(upstream, 0, 0);
-  upstream->add_downstream(downstream);
+  Downstream *downstream = upstream->get_top_downstream();
+  if(downstream) {
+    // Keep-Alived connection
+    downstream->reuse(0);
+  } else {
+    downstream = new Downstream(upstream, 0, 0);
+    upstream->add_downstream(downstream);
+  }
   return 0;
 }
 } // namespace
@@ -160,11 +166,13 @@ int htp_hdrs_completecb(htparser *htp)
   downstream->push_request_headers();
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
-  int rv = downstream->start_connection();
-  if(rv != 0) {
-    LOG(ERROR) << "Upstream connection failed";
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
-    return 1;
+  if(downstream->get_counter() == 1) {
+    int rv = downstream->start_connection();
+    if(rv != 0) {
+      LOG(ERROR) << "Upstream connection failed";
+      downstream->set_request_state(Downstream::CONNECT_FAIL);
+      return 1;
+    }
   }
   return 0;
 }
@@ -298,12 +306,21 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
   Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
+  if(downstream->get_request_state() == Downstream::IDLE) {
+    upstream->pop_downstream();
+    delete downstream;
+    return;
+  }
   int rv = downstream->parse_http_response();
   if(rv == 0) {
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       assert(downstream == upstream->get_top_downstream());
-      upstream->pop_downstream();
-      delete downstream;
+      if(downstream->get_response_connection_close()) {
+        upstream->pop_downstream();
+        delete downstream;
+      } else {
+        downstream->idle();
+      }
       upstream->resume_read(SHRPX_MSG_BLOCK);
     } else {
       ClientHandler *handler = upstream->get_client_handler();
@@ -344,27 +361,28 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       LOG(INFO) << "Downstream connection established. downstream "
                 << downstream;
     }
-  }
-  if(events & BEV_EVENT_EOF) {
+  } else if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream EOF. stream_id="
                 << downstream->get_stream_id();
     }
-    if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-      // Server may indicate the end of the request by EOF
-      if(ENABLE_LOG) {
-        LOG(INFO) << "Assuming downstream content-length is 0 byte";
+    if(downstream->get_request_state() != Downstream::IDLE) {
+      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+        // Server may indicate the end of the request by EOF
+        if(ENABLE_LOG) {
+          LOG(INFO) << "Assuming downstream content-length is 0 byte";
+        }
+        upstream->on_downstream_body_complete(downstream);
+        //downstream->set_response_state(Downstream::MSG_COMPLETE);
+      } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+        // Nothing to do
+      } else {
+        // error
+        if(ENABLE_LOG) {
+          LOG(INFO) << "Treated as downstream error";
+        }
+        upstream->error_reply(502);
       }
-      upstream->on_downstream_body_complete(downstream);
-      //downstream->set_response_state(Downstream::MSG_COMPLETE);
-    } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      // Nothing to do
-    } else {
-      // error
-      if(ENABLE_LOG) {
-        LOG(INFO) << "Treated as downstream error";
-      }
-      upstream->error_reply(502);
     }
     upstream->pop_downstream();
     delete downstream;

@@ -42,6 +42,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     bev_(0),
     stream_id_(stream_id),
     priority_(priority),
+    counter_(1),
     ioctrl_(0),
     request_state_(INITIAL),
     request_major_(1),
@@ -53,6 +54,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     response_major_(1),
     response_minor_(1),
     chunked_response_(false),
+    response_connection_close_(false),
     response_htp_(htparser_new()),
     response_body_buf_(0)
 {
@@ -80,6 +82,41 @@ Downstream::~Downstream()
   if(ENABLE_LOG) {
     LOG(INFO) << "Deleted";
   }
+}
+
+int Downstream::get_counter() const
+{
+  return counter_;
+}
+
+void Downstream::reuse(int stream_id)
+{
+  stream_id_ = stream_id;
+  ++counter_;
+  request_state_ = INITIAL;
+}
+
+void Downstream::idle()
+{
+  stream_id_ = -1;
+  priority_ = 0;
+  ioctrl_.force_resume_read();
+  request_state_ = IDLE;
+  request_method_.clear();
+  request_path_.clear();
+  request_major_ = 1;
+  request_minor_ = 1;
+  chunked_request_ = false;
+  request_connection_close_ = false;
+  request_headers_.clear();
+
+  response_state_ = INITIAL;
+  response_http_status_ = 0;
+  response_major_ = 1;
+  response_minor_ = 1;
+  chunked_response_ = false;
+  response_connection_close_ = false;
+  response_headers_.clear();
 }
 
 void Downstream::pause_read(IOCtrlReason reason)
@@ -110,8 +147,8 @@ void check_transfer_encoding_chunked(bool *chunked,
 } // namespace
 
 namespace {
-void check_request_connection(bool *connection_close,
-                              const Headers::value_type &item)
+void check_connection_close(bool *connection_close,
+                            const Headers::value_type &item)
 {
   if(util::strieq(item.first.c_str(), "connection")) {
     if(util::strifind(item.second.c_str(), "close")) {
@@ -134,7 +171,7 @@ void Downstream::set_last_request_header_value(const std::string& value)
   Headers::value_type &item = request_headers_.back();
   item.second = value;
   check_transfer_encoding_chunked(&chunked_request_, item);
-  check_request_connection(&request_connection_close_, item);
+  check_connection_close(&request_connection_close_, item);
 }
 
 void Downstream::set_request_method(const std::string& method)
@@ -255,7 +292,9 @@ int Downstream::push_request_headers()
     }
     hdrs += "\r\n";
   }
-  hdrs += "Connection: close\r\n";
+  if(request_connection_close_) {
+    hdrs += "Connection: close\r\n";
+  }
   if(!xff_found) {
     hdrs += "X-Forwarded-For: ";
     hdrs += upstream_->get_client_handler()->get_ipaddr();
@@ -327,6 +366,7 @@ void Downstream::set_last_response_header_value(const std::string& value)
   Headers::value_type &item = response_headers_.back();
   item.second = value;
   check_transfer_encoding_chunked(&chunked_response_, item);
+  check_connection_close(&response_connection_close_, item);
 }
 
 unsigned int Downstream::get_response_http_status() const
@@ -362,6 +402,11 @@ int Downstream::get_response_minor() const
 bool Downstream::get_chunked_response() const
 {
   return chunked_response_;
+}
+
+bool Downstream::get_response_connection_close() const
+{
+  return response_connection_close_;
 }
 
 namespace {

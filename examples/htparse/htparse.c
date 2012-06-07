@@ -1118,6 +1118,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         if (p->type == htp_type_request) {
                             p->state = s_spaces_after_digit;
                         } else if (p->type == htp_type_response) {
+                            p->status = 0;
                             p->state = s_status;
                         }
 
