@@ -185,12 +185,7 @@ static const char * method_strmap[] = {
 };
 
 static inline uint32_t to_uint32(char *m) {
-    union {
-        uint32_t i;
-        char data[4];
-    } u;
-    memcpy(u.data, m, 4);
-    return u.i;
+    return (m[3] << 24) | (m[2] << 16) | (m[1] << 8) | m[0];
 }
 
 #define _MIN_READ(a, b) ((a) < (b) ? (a) : (b))
