@@ -26,6 +26,7 @@
 
 #include <sys/socket.h>
 #include <netdb.h>
+#include <netinet/tcp.h>
 
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_ssl.h>
@@ -73,7 +74,9 @@ SSL_CTX* create_ssl_context()
     DIE();
   }
   SSL_CTX_set_options(ssl_ctx,
-                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION);
+                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
@@ -124,6 +127,12 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
     if(!ssl) {
       LOG(ERROR) << "SSL_new() failed";
       return 0;
+    }
+    int val = 1;
+    rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+                    reinterpret_cast<char *>(&val), sizeof(val));
+    if(rv == -1) {
+      LOG(WARNING) << "Setting option TCP_NODELAY failed";
     }
     bufferevent *bev = bufferevent_openssl_socket_new
       (evbase, fd, ssl,
