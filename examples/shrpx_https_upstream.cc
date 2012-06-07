@@ -313,6 +313,9 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   if(downstream->get_request_state() == Downstream::IDLE) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Delete idle downstream in https_downstream_readcb";
+    }
     upstream->pop_downstream();
     delete downstream;
     return;
@@ -362,6 +365,15 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
   Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
+  if(downstream->get_request_state() == Downstream::IDLE) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Delete idle downstream in https_downstream_eventcb";
+    }
+    upstream->pop_downstream();
+    delete downstream;
+    upstream->resume_read(SHRPX_MSG_BLOCK);
+    return;
+  }
   if(events & BEV_EVENT_CONNECTED) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream connection established. downstream "
@@ -372,23 +384,21 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       LOG(INFO) << "Downstream EOF. stream_id="
                 << downstream->get_stream_id();
     }
-    if(downstream->get_request_state() != Downstream::IDLE) {
-      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-        // Server may indicate the end of the request by EOF
-        if(ENABLE_LOG) {
-          LOG(INFO) << "Assuming downstream content-length is 0 byte";
-        }
-        upstream->on_downstream_body_complete(downstream);
-        //downstream->set_response_state(Downstream::MSG_COMPLETE);
-      } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-        // Nothing to do
-      } else {
-        // error
-        if(ENABLE_LOG) {
-          LOG(INFO) << "Treated as downstream error";
-        }
-        upstream->error_reply(502);
+    if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+      // Server may indicate the end of the request by EOF
+      if(ENABLE_LOG) {
+        LOG(INFO) << "Assuming downstream content-length is 0 byte";
       }
+      upstream->on_downstream_body_complete(downstream);
+      //downstream->set_response_state(Downstream::MSG_COMPLETE);
+    } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      // Nothing to do
+    } else {
+      // error
+      if(ENABLE_LOG) {
+        LOG(INFO) << "Treated as downstream error";
+      }
+      upstream->error_reply(502);
     }
     upstream->pop_downstream();
     delete downstream;

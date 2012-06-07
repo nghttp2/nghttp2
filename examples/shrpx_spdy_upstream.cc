@@ -301,6 +301,9 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
   if(downstream->get_request_state() == Downstream::IDLE) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Delete idle downstream in spdy_downstream_readcb";
+    }
     upstream->remove_downstream(downstream);
     delete downstream;
     return;
