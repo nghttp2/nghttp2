@@ -116,6 +116,8 @@ void check_request_connection(bool *connection_close,
   if(util::strieq(item.first.c_str(), "connection")) {
     if(util::strifind(item.second.c_str(), "close")) {
       *connection_close = true;
+    } else if(util::strifind(item.second.c_str(), "keep-alive")) {
+      *connection_close = false;
     }
   }
 }
@@ -153,6 +155,16 @@ void Downstream::set_request_major(int major)
 void Downstream::set_request_minor(int minor)
 {
   request_minor_ = minor;
+}
+
+int Downstream::get_request_major() const
+{
+  return request_major_;
+}
+
+int Downstream::get_request_minor() const
+{
+  return request_minor_;
 }
 
 Upstream* Downstream::get_upstream() const

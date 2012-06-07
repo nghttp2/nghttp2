@@ -476,6 +476,9 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   }
   if(get_client_handler()->get_should_close_after_write()) {
     hdrs += "Connection: close\r\n";
+  } else if(downstream->get_request_major() == 1 &&
+            downstream->get_request_minor() == 0) {
+    hdrs += "Connection: Keep-Alive\r\n";
   }
   hdrs += "Via: ";
   hdrs += via_value;

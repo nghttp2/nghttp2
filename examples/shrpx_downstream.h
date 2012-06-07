@@ -65,6 +65,8 @@ public:
   void set_request_path(const std::string& path);
   void set_request_major(int major);
   void set_request_minor(int minor);
+  int get_request_major() const;
+  int get_request_minor() const;
   int push_request_headers();
   bool get_chunked_request() const;
   bool get_request_connection_close() const;
