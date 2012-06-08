@@ -2523,6 +2523,7 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
       size_t bufavail, readlen;
       int32_t data_stream_id = 0;
       uint8_t data_flags = SPDYLAY_DATA_FLAG_NONE;
+      spdylay_stream *data_stream = NULL;
 
       rempayloadlen = session->iframe.payloadlen - session->iframe.off;
       bufavail = inlimit - inmark;
@@ -2582,19 +2583,23 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
         data_stream_id = spdylay_get_uint32(session->iframe.headbuf) &
           SPDYLAY_STREAM_ID_MASK;
         data_flags = session->iframe.headbuf[4];
-        if(session->callbacks.on_data_chunk_recv_callback) {
-          session->callbacks.on_data_chunk_recv_callback(session,
-                                                         data_flags,
-                                                         data_stream_id,
-                                                         inmark,
-                                                         readlen,
-                                                         session->user_data);
+        data_stream = spdylay_session_get_stream(session, data_stream_id);
+        if(data_stream && data_stream->state != SPDYLAY_STREAM_CLOSING) {
+          if(session->callbacks.on_data_chunk_recv_callback) {
+            session->callbacks.on_data_chunk_recv_callback(session,
+                                                           data_flags,
+                                                           data_stream_id,
+                                                           inmark,
+                                                           readlen,
+                                                           session->user_data);
+          }
         }
       }
       session->iframe.off += readlen;
       inmark += readlen;
 
       if(session->flow_control &&
+         data_stream && data_stream->state != SPDYLAY_STREAM_CLOSING &&
          !spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
         if(readlen > 0 &&
            (session->iframe.payloadlen != session->iframe.off ||
@@ -2613,7 +2618,11 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
         if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
           r = spdylay_session_process_ctrl_frame(session);
         } else {
-          r = spdylay_session_process_data_frame(session);
+          if(data_stream && data_stream->state != SPDYLAY_STREAM_CLOSING) {
+            r = spdylay_session_process_data_frame(session);
+          } else {
+            r = 0;
+          }
         }
         if(r < 0) {
           /* FATAL */
