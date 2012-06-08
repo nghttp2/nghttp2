@@ -24,6 +24,8 @@
  */
 #include "shrpx_thread_event_receiver.h"
 
+#include <unistd.h>
+
 #include "shrpx_ssl.h"
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"

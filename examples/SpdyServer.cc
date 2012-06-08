@@ -53,7 +53,7 @@ const std::string STATUS_304 = "304 Not Modified";
 const std::string STATUS_400 = "400 Bad Request";
 const std::string STATUS_404 = "404 Not Found";
 const std::string DEFAULT_HTML = "index.html";
-const std::string SPDYD_SERVER = "spdyd spdylay/"SPDYLAY_VERSION;
+const std::string SPDYD_SERVER = "spdyd spdylay/" SPDYLAY_VERSION;
 } // namespace
 
 Config::Config(): verbose(false), daemon(false), port(0), data_ptr(0),

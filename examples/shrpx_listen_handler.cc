@@ -24,6 +24,7 @@
  */
 #include "shrpx_listen_handler.h"
 
+#include <unistd.h>
 #include <pthread.h>
 
 #include <cerrno>
