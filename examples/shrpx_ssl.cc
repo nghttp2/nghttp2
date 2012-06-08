@@ -27,6 +27,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
+#include <pthread.h>
+
+#include <openssl/crypto.h>
 
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_ssl.h>
@@ -144,6 +147,43 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
     return 0;
   }
+}
+
+namespace {
+pthread_mutex_t *ssl_locks;
+} // namespace
+
+namespace {
+void ssl_locking_cb(int mode, int type, const char *file, int line)
+{
+  if(mode & CRYPTO_LOCK) {
+    pthread_mutex_lock(&(ssl_locks[type]));
+  } else {
+    pthread_mutex_unlock(&(ssl_locks[type]));
+  }
+}
+} // namespace
+
+void setup_ssl_lock()
+{
+  ssl_locks = new pthread_mutex_t[CRYPTO_num_locks()];
+  for(int i = 0; i < CRYPTO_num_locks(); ++i) {
+    // Always returns 0
+    pthread_mutex_init(&(ssl_locks[i]), 0);
+  }
+  //CRYPTO_set_id_callback(ssl_thread_id); OpenSSL manual says that if
+  // threadid_func is not specified using
+  // CRYPTO_THREADID_set_callback(), then default implementation is
+  // used. We use this default one.
+  CRYPTO_set_locking_callback(ssl_locking_cb);
+}
+
+void teardown_ssl_lock()
+{
+  for(int i = 0; i < CRYPTO_num_locks(); ++i) {
+    pthread_mutex_destroy(&(ssl_locks[i]));
+  }
+  delete [] ssl_locks;
 }
 
 } // namespace ssl

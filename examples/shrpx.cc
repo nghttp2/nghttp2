@@ -47,6 +47,7 @@
 
 #include "shrpx_config.h"
 #include "shrpx_listen_handler.h"
+#include "shrpx_ssl.h"
 
 namespace shrpx {
 
@@ -446,8 +447,12 @@ int main(int argc, char **argv)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+  ssl::setup_ssl_lock();
 
   event_loop();
+
+  ssl::teardown_ssl_lock();
+
   return 0;
 }
 
