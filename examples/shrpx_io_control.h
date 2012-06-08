@@ -35,9 +35,8 @@
 namespace shrpx {
 
 enum IOCtrlReason {
-  SHRPX_NO_BUFFER = 0,
-  SHRPX_MSG_BLOCK,
-  SHRPX_REASON_MAX 
+  SHRPX_NO_BUFFER = 1 << 0,
+  SHRPX_MSG_BLOCK = 1 << 1
 };
 
 class IOControl {
@@ -52,7 +51,7 @@ public:
   void force_resume_read();
 private:
   bufferevent *bev_;
-  std::vector<int> ctrlv_;
+  uint32_t rdbits_;
 };
 
 } // namespace shrpx

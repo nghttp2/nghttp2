@@ -30,7 +30,7 @@ namespace shrpx {
 
 IOControl::IOControl(bufferevent *bev)
   : bev_(bev),
-    ctrlv_(SHRPX_REASON_MAX)
+    rdbits_(0)
 {}
 
 IOControl::~IOControl()
@@ -43,14 +43,14 @@ void IOControl::set_bev(bufferevent *bev)
 
 void IOControl::pause_read(IOCtrlReason reason)
 {
-  ctrlv_[reason] = 1;
+  rdbits_ |= reason;
   bufferevent_disable(bev_, EV_READ);
 }
 
 bool IOControl::resume_read(IOCtrlReason reason)
 {
-  ctrlv_[reason] = 0;
-  if(std::find(ctrlv_.begin(), ctrlv_.end(), 1) == ctrlv_.end()) {
+  rdbits_ &= ~reason;
+  if(rdbits_ == 0) {
     bufferevent_enable(bev_, EV_READ);
     return true;
   } else {
@@ -60,7 +60,7 @@ bool IOControl::resume_read(IOCtrlReason reason)
 
 void IOControl::force_resume_read()
 {
-  std::fill(ctrlv_.begin(), ctrlv_.end(), 0);
+  rdbits_ = 0;
   bufferevent_enable(bev_, EV_READ);
 }
 
