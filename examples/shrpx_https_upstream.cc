@@ -239,8 +239,8 @@ int HttpsUpstream::on_read()
   // Well, actually header length + some body bytes
   current_header_length_ += nread;
   htpparse_error htperr = htparser_get_error(htp_);
+  Downstream *downstream = get_top_downstream();
   if(htperr == htparse_error_user) {
-    Downstream *downstream = get_top_downstream();
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       get_client_handler()->set_should_close_after_write(true);
       error_reply(503);
@@ -257,7 +257,9 @@ int HttpsUpstream::on_read()
       }
     }
   } else if(htperr == htparse_error_none) {
-    if(current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
+    // downstream can be NULL here.
+    if(downstream && downstream->get_request_state() == Downstream::INITIAL &&
+       current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
       LOG(WARNING) << "Request Header too long:" << current_header_length_
                    << " bytes";
       get_client_handler()->set_should_close_after_write(true);
