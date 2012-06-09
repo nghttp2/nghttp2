@@ -180,6 +180,7 @@ void on_ctrl_recv_callback
                   << downstream;
       }
       downstream->set_request_state(Downstream::MSG_COMPLETE);
+      downstream->force_resume_read();
     }
     break;
   }
@@ -220,6 +221,7 @@ void on_data_chunk_recv_callback(spdylay_session *session,
                   << downstream;
       }
       downstream->set_request_state(Downstream::MSG_COMPLETE);
+      downstream->force_resume_read();
     }
   }
 }

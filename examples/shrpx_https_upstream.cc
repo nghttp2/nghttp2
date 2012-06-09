@@ -254,6 +254,7 @@ int HttpsUpstream::on_read()
         delete downstream;
       } else {
         pause_read(SHRPX_MSG_BLOCK);
+        downstream->force_resume_read();
       }
     }
   } else if(htperr == htparse_error_none) {
