@@ -575,6 +575,9 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
     evbuffer_add(output, chunk_size_hex, rv);
   }
   evbuffer_add(output, data, len);
+  if(downstream->get_chunked_response()) {
+    evbuffer_add(output, "\r\n", 2);
+  }
   return 0;
 }
 

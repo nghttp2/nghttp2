@@ -347,6 +347,13 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
     return -1;
   }
   res += rv;
+  if(chunked_request_) {
+    rv = evbuffer_add(output, "\r\n", 2);
+    if(rv == -1) {
+      return -1;
+    }
+    res += 2;
+  }
   return res;
 }
 
