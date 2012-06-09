@@ -60,6 +60,9 @@ public:
   void force_resume_read();
   void set_downstream_connection(DownstreamConnection *dconn);
   DownstreamConnection* get_downstream_connection();
+  // Returns true if output buffer is full. If underlying dconn_ is
+  // NULL, this function always returns false.
+  bool get_output_buffer_full();
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);

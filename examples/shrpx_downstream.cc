@@ -215,6 +215,21 @@ void Downstream::set_request_connection_close(bool f)
   request_connection_close_ = f;
 }
 
+namespace {
+const size_t DOWNSTREAM_OUTPUT_UPPER_THRES = 64*1024;
+} // namespace
+
+bool Downstream::get_output_buffer_full()
+{
+  if(dconn_) {
+    bufferevent *bev = dconn_->get_bev();
+    evbuffer *output = bufferevent_get_output(bev);
+    return evbuffer_get_length(output) >= DOWNSTREAM_OUTPUT_UPPER_THRES;
+  } else {
+    return false;
+  }
+}
+
 int Downstream::push_request_headers()
 {
   bool xff_found = false;
@@ -281,6 +296,10 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
 {
   // Assumes that request headers have already been pushed to output
   // buffer using push_request_headers().
+  if(!dconn_) {
+    LOG(WARNING) << "dconn_ is NULL";
+    return 0;
+  }
   ssize_t res = 0;
   int rv;
   bufferevent *bev = dconn_->get_bev();

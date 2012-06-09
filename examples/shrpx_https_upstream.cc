@@ -258,12 +258,19 @@ int HttpsUpstream::on_read()
     }
   } else if(htperr == htparse_error_none) {
     // downstream can be NULL here.
-    if(downstream && downstream->get_request_state() == Downstream::INITIAL &&
-       current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
-      LOG(WARNING) << "Request Header too long:" << current_header_length_
-                   << " bytes";
-      get_client_handler()->set_should_close_after_write(true);
-      error_reply(400);
+    if(downstream) {
+      if(downstream->get_request_state() == Downstream::INITIAL &&
+         current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
+        LOG(WARNING) << "Request Header too long:" << current_header_length_
+                     << " bytes";
+        get_client_handler()->set_should_close_after_write(true);
+        error_reply(400);
+      } else if(downstream->get_output_buffer_full()) {
+        if(ENABLE_LOG) {
+          LOG(INFO) << "Downstream output buffer is full";
+        }
+        pause_read(SHRPX_NO_BUFFER);
+      }
     }
   } else {
     if(ENABLE_LOG) {
@@ -369,6 +376,11 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
 namespace {
 void https_downstream_writecb(bufferevent *bev, void *ptr)
 {
+  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  Downstream *downstream = dconn->get_downstream();
+  HttpsUpstream *upstream;
+  upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
+  upstream->resume_read(SHRPX_NO_BUFFER);
 }
 } // namespace
 
