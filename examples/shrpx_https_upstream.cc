@@ -161,6 +161,12 @@ int htp_hdrs_completecb(htparser *htp)
   DownstreamConnection *dconn;
   dconn = upstream->get_client_handler()->get_downstream_connection();
 
+  if(downstream->get_expect_100_continue()) {
+    static const char reply_100[] = "HTTP/1.1 100 Continue\r\n\r\n";
+    bufferevent_write(upstream->get_client_handler()->get_bev(),
+                      reply_100, sizeof(reply_100)-1);
+  }
+
   int rv =  dconn->attach_downstream(downstream);
   if(rv != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);

@@ -49,6 +49,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     request_minor_(1),
     chunked_request_(false),
     request_connection_close_(false),
+    request_expect_100_continue_(false),
     response_state_(INITIAL),
     response_http_status_(0),
     response_major_(1),
@@ -112,14 +113,30 @@ void Downstream::force_resume_read()
 }
 
 namespace {
+void check_header_field(bool *result, const Headers::value_type &item,
+                        const char *name, const char *value)
+{
+  if(util::strieq(item.first.c_str(), name)) {
+    if(util::strifind(item.second.c_str(), value)) {
+      *result = true;
+    }
+  }
+}
+} // namespace
+
+namespace {
 void check_transfer_encoding_chunked(bool *chunked,
                                      const Headers::value_type &item)
 {
-  if(util::strieq(item.first.c_str(), "transfer-encoding")) {
-    if(util::strifind(item.second.c_str(), "chunked")) {
-      *chunked = true;
-    }
-  }
+  return check_header_field(chunked, item, "transfer-encoding", "chunked");
+}
+} // namespace
+
+namespace {
+void check_expect_100_continue(bool *res,
+                               const Headers::value_type& item)
+{
+  return check_header_field(res, item, "expect", "100-continue");
 }
 } // namespace
 
@@ -136,7 +153,7 @@ void check_connection_close(bool *connection_close,
   }
 }
 } // namespace
-  
+
 void Downstream::add_request_header(const std::string& name,
                                     const std::string& value)
 {
@@ -148,6 +165,7 @@ void Downstream::set_last_request_header_value(const std::string& value)
   Headers::value_type &item = request_headers_.back();
   item.second = value;
   check_transfer_encoding_chunked(&chunked_request_, item);
+  check_expect_100_continue(&request_expect_100_continue_, item);
   check_connection_close(&request_connection_close_, item);
 }
 
@@ -216,6 +234,11 @@ void Downstream::set_request_connection_close(bool f)
   request_connection_close_ = f;
 }
 
+bool Downstream::get_expect_100_continue() const
+{
+  return request_expect_100_continue_;
+}
+
 namespace {
 const size_t DOWNSTREAM_OUTPUT_UPPER_THRES = 64*1024;
 } // namespace
@@ -253,6 +276,10 @@ int Downstream::push_request_headers()
       continue;
     }
     if(util::strieq((*i).first.c_str(), "host")) {
+      continue;
+    }
+    if(util::strieq((*i).first.c_str(), "expect") &&
+       util::strifind((*i).second.c_str(), "100-continue")) {
       continue;
     }
     hdrs += (*i).first;

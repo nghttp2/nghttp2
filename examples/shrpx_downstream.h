@@ -80,6 +80,7 @@ public:
   bool get_chunked_request() const;
   bool get_request_connection_close() const;
   void set_request_connection_close(bool f);
+  bool get_expect_100_continue() const;
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
   enum {
@@ -122,6 +123,7 @@ private:
   int request_minor_;
   bool chunked_request_;
   bool request_connection_close_;
+  bool request_expect_100_continue_;
   Headers request_headers_;
 
   int response_state_;
