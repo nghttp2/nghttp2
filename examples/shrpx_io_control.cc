@@ -44,14 +44,18 @@ void IOControl::set_bev(bufferevent *bev)
 void IOControl::pause_read(IOCtrlReason reason)
 {
   rdbits_ |= reason;
-  bufferevent_disable(bev_, EV_READ);
+  if(bev_) {
+    bufferevent_disable(bev_, EV_READ);
+  }
 }
 
 bool IOControl::resume_read(IOCtrlReason reason)
 {
   rdbits_ &= ~reason;
   if(rdbits_ == 0) {
-    bufferevent_enable(bev_, EV_READ);
+    if(bev_) {
+      bufferevent_enable(bev_, EV_READ);
+    }
     return true;
   } else {
     return false;
@@ -61,7 +65,9 @@ bool IOControl::resume_read(IOCtrlReason reason)
 void IOControl::force_resume_read()
 {
   rdbits_ = 0;
-  bufferevent_enable(bev_, EV_READ);
+  if(bev_) {
+    bufferevent_enable(bev_, EV_READ);
+  }
 }
 
 } // namespace shrpx

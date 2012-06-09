@@ -31,6 +31,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_http.h"
+#include "shrpx_downstream_connection.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -39,10 +40,9 @@ namespace shrpx {
 
 Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
   : upstream_(upstream),
-    bev_(0),
+    dconn_(0),
     stream_id_(stream_id),
     priority_(priority),
-    counter_(1),
     ioctrl_(0),
     request_state_(INITIAL),
     request_major_(1),
@@ -60,11 +60,6 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
 {
   htparser_init(response_htp_, htp_type_response);
   htparser_set_userdata(response_htp_, this);
-  event_base *evbase = upstream_->get_client_handler()->get_evbase();
-  bev_ = bufferevent_socket_new
-    (evbase, -1,
-     BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  ioctrl_.set_bev(bev_);
 }
 
 Downstream::~Downstream()
@@ -76,51 +71,28 @@ Downstream::~Downstream()
     // Passing NULL to evbuffer_free() causes segmentation fault.
     evbuffer_free(response_body_buf_);
   }
-  bufferevent_disable(bev_, EV_READ | EV_WRITE);
-  bufferevent_free(bev_);
+  if(dconn_) {
+    delete dconn_;
+  }
   free(response_htp_);
   if(ENABLE_LOG) {
     LOG(INFO) << "Deleted";
   }
 }
 
-int Downstream::get_counter() const
+void Downstream::set_downstream_connection(DownstreamConnection *dconn)
 {
-  return counter_;
-}
-
-void Downstream::reuse(int stream_id)
-{
-  stream_id_ = stream_id;
-  ++counter_;
-  request_state_ = INITIAL;
-}
-
-void Downstream::idle()
-{
-  stream_id_ = -1;
-  priority_ = 0;
-  ioctrl_.force_resume_read();
-  request_state_ = IDLE;
-  request_method_.clear();
-  request_path_.clear();
-  request_major_ = 1;
-  request_minor_ = 1;
-  chunked_request_ = false;
-  request_connection_close_ = false;
-  request_headers_.clear();
-
-  response_state_ = INITIAL;
-  response_http_status_ = 0;
-  response_major_ = 1;
-  response_minor_ = 1;
-  chunked_response_ = false;
-  response_connection_close_ = false;
-  response_headers_.clear();
-  if(response_body_buf_) {
-    size_t len = evbuffer_get_length(response_body_buf_);
-    evbuffer_drain(response_body_buf_, len);
+  dconn_ = dconn;
+  if(dconn_) {
+    ioctrl_.set_bev(dconn_->get_bev());
+  } else {
+    ioctrl_.set_bev(0);
   }
+}
+
+DownstreamConnection* Downstream::get_downstream_connection()
+{
+  return dconn_;
 }
 
 void Downstream::pause_read(IOCtrlReason reason)
@@ -218,28 +190,6 @@ int32_t Downstream::get_stream_id() const
   return stream_id_;
 }
 
-int Downstream::start_connection()
-{
-  bufferevent_setcb(bev_,
-                    upstream_->get_downstream_readcb(),
-                    upstream_->get_downstream_writecb(),
-                    upstream_->get_downstream_eventcb(), this);
-  bufferevent_enable(bev_, EV_READ | EV_WRITE);
-  bufferevent_set_timeouts(bev_,
-                           &get_config()->downstream_read_timeout,
-                           &get_config()->downstream_write_timeout);
-  int rv = bufferevent_socket_connect
-    (bev_,
-     // TODO maybe not thread-safe?
-     const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
-     get_config()->downstream_addrlen);
-  if(rv == 0) {
-    return 0;
-  } else {
-    return SHRPX_ERR_NETWORK;
-  }
-}
-
 void Downstream::set_request_state(int state)
 {
   request_state_ = state;
@@ -286,6 +236,9 @@ int Downstream::push_request_headers()
       via_value = (*i).second;
       continue;
     }
+    if(util::strieq((*i).first.c_str(), "host")) {
+      continue;
+    }
     hdrs += (*i).first;
     hdrs += ": ";
     hdrs += (*i).second;
@@ -318,7 +271,8 @@ int Downstream::push_request_headers()
   if(ENABLE_LOG) {
     LOG(INFO) << "Downstream request headers\n" << hdrs;
   }
-  evbuffer *output = bufferevent_get_output(bev_);
+  bufferevent *bev = dconn_->get_bev();
+  evbuffer *output = bufferevent_get_output(bev);
   evbuffer_add(output, hdrs.c_str(), hdrs.size());
   return 0;
 }
@@ -329,13 +283,17 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
   // buffer using push_request_headers().
   ssize_t res = 0;
   int rv;
-  evbuffer *output = bufferevent_get_output(bev_);
+  bufferevent *bev = dconn_->get_bev();
+  evbuffer *output = bufferevent_get_output(bev);
   if(chunked_request_) {
     char chunk_size_hex[16];
     rv = snprintf(chunk_size_hex, sizeof(chunk_size_hex), "%X\r\n",
                   static_cast<unsigned int>(datalen));
-    evbuffer_add(output, chunk_size_hex, rv);
     res += rv;
+    rv = evbuffer_add(output, chunk_size_hex, rv);
+    if(rv == -1) {
+      return -1;
+    }
   }
   rv = evbuffer_add(output, data, datalen);
   if(rv == -1) {
@@ -348,7 +306,8 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
 int Downstream::end_upload_data()
 {
   if(chunked_request_) {
-    evbuffer *output = bufferevent_get_output(bev_);
+    bufferevent *bev = dconn_->get_bev();
+    evbuffer *output = bufferevent_get_output(bev);
     evbuffer_add(output, "0\r\n\r\n", 5);
   }
   return 0;
@@ -493,7 +452,8 @@ htparse_hooks htp_hooks = {
 
 int Downstream::parse_http_response()
 {
-  evbuffer *input = bufferevent_get_input(bev_);
+  bufferevent *bev = dconn_->get_bev();
+  evbuffer *input = bufferevent_get_input(bev);
   unsigned char *mem = evbuffer_pullup(input, -1);
   size_t nread = htparser_run(response_htp_, &htp_hooks,
                               reinterpret_cast<const char*>(mem),

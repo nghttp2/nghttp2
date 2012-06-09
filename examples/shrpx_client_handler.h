@@ -27,12 +27,15 @@
 
 #include "shrpx.h"
 
+#include <set>
+
 #include <event.h>
 #include <openssl/ssl.h>
 
 namespace shrpx {
 
 class Upstream;
+class DownstreamConnection;
 
 class ClientHandler {
 public:
@@ -51,12 +54,18 @@ public:
   bool get_should_close_after_write() const;
   void set_should_close_after_write(bool f);
   Upstream* get_upstream();
+
+  void pool_downstream_connection(DownstreamConnection *dconn);
+  void remove_downstream_connection(DownstreamConnection *dconn);
+  DownstreamConnection* get_downstream_connection();
 private:
   bufferevent *bev_;
   SSL *ssl_;
   Upstream *upstream_;
   std::string ipaddr_;
   bool should_close_after_write_;
+
+  std::set<DownstreamConnection*> dconn_pool_;
 };
 
 } // namespace shrpx

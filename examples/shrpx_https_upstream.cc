@@ -29,6 +29,7 @@
 
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
+#include "shrpx_downstream_connection.h"
 #include "shrpx_http.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
@@ -39,7 +40,7 @@ using namespace spdylay;
 namespace shrpx {
 
 namespace {
-const size_t SHRPX_HTTPS_UPSTREAM_OUTPUT_UPPER_THRES = 512*1024;
+const size_t SHRPX_HTTPS_UPSTREAM_OUTPUT_UPPER_THRES = 64*1024;
 const size_t SHRPX_HTTPS_MAX_HEADER_LENGTH = 64*1024;
 } // namespace
 
@@ -76,20 +77,8 @@ int htp_msg_begin(htparser *htp)
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
   upstream->reset_current_header_length();
-  Downstream *downstream = upstream->get_top_downstream();
-  if(downstream) {
-    // Keep-Alived connection
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Reusing downstream";
-    }
-    downstream->reuse(0);
-  } else {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Creating new downstream";
-    }
-    downstream = new Downstream(upstream, 0, 0);
-    upstream->add_downstream(downstream);
-  }
+  Downstream *downstream = new Downstream(upstream, 0, 0);
+  upstream->add_downstream(downstream);
   return 0;
 }
 } // namespace
@@ -169,18 +158,20 @@ int htp_hdrs_completecb(htparser *htp)
   downstream->set_request_major(htparser_get_major(htp));
   downstream->set_request_minor(htparser_get_minor(htp));
 
-  downstream->push_request_headers();
-  downstream->set_request_state(Downstream::HEADER_COMPLETE);
+  DownstreamConnection *dconn;
+  dconn = upstream->get_client_handler()->get_downstream_connection();
 
-  if(downstream->get_counter() == 1) {
-    int rv = downstream->start_connection();
-    if(rv != 0) {
-      LOG(ERROR) << "Upstream connection failed";
-      downstream->set_request_state(Downstream::CONNECT_FAIL);
-      return 1;
-    }
+  int rv =  dconn->attach_downstream(downstream);
+  if(rv != 0) {
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    downstream->set_downstream_connection(0);
+    delete dconn;
+    return 1;
+  } else {
+    downstream->push_request_headers();
+    downstream->set_request_state(Downstream::HEADER_COMPLETE);
+    return 0;
   }
-  return 0;
 }
 } // namespace
 
@@ -250,19 +241,29 @@ int HttpsUpstream::on_read()
   htpparse_error htperr = htparser_get_error(htp_);
   if(htperr == htparse_error_user) {
     Downstream *downstream = get_top_downstream();
-    if(downstream &&
-       downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+    if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       get_client_handler()->set_should_close_after_write(true);
       error_reply(503);
-    } else if(current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
+      // Downstream gets deleted after response body is read.
+    } else {
+      assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
+      if(downstream->get_downstream_connection() == 0) {
+        // Error response already be sent
+        assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
+        pop_downstream();
+        delete downstream;
+      } else {
+        pause_read(SHRPX_MSG_BLOCK);
+      }
+    }
+  } else if(htperr == htparse_error_none) {
+    if(current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
       LOG(WARNING) << "Request Header too long:" << current_header_length_
                    << " bytes";
       get_client_handler()->set_should_close_after_write(true);
       error_reply(400);
-    } else {
-      pause_read(SHRPX_MSG_BLOCK);
     }
-  } else if(htperr != htparse_error_none) {
+  } else {
     if(ENABLE_LOG) {
       LOG(INFO) << "Upstream http parse failure: "
                 << htparser_get_strerror(htp_);
@@ -272,6 +273,10 @@ int HttpsUpstream::on_read()
   }
   return 0;
 }
+
+namespace {
+void https_downstream_readcb(bufferevent *bev, void *ptr);
+} // namespace
 
 int HttpsUpstream::on_write()
 {
@@ -309,28 +314,28 @@ void HttpsUpstream::resume_read(IOCtrlReason reason)
 namespace {
 void https_downstream_readcb(bufferevent *bev, void *ptr)
 {
-  Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
+  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  Downstream *downstream = dconn->get_downstream();
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
-  if(downstream->get_request_state() == Downstream::IDLE) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Delete idle downstream in https_downstream_readcb";
-    }
-    upstream->pop_downstream();
-    delete downstream;
-    return;
-  }
   int rv = downstream->parse_http_response();
   if(rv == 0) {
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      assert(downstream == upstream->get_top_downstream());
       if(downstream->get_response_connection_close()) {
+        // Connection close
+        downstream->set_downstream_connection(0);
+        delete dconn;
+        dconn = 0;
+      } else {
+        // Keep-alive
+        dconn->detach_downstream(downstream);
+      }
+      if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         upstream->pop_downstream();
         delete downstream;
-      } else {
-        downstream->idle();
+        // Process next HTTP request
+        upstream->resume_read(SHRPX_MSG_BLOCK);
       }
-      upstream->resume_read(SHRPX_MSG_BLOCK);
     } else {
       ClientHandler *handler = upstream->get_client_handler();
       bufferevent *bev = handler->get_bev();
@@ -341,13 +346,19 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
     }
   } else {
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+      // We already sent HTTP response headers to upstream
+      // client. Just close the upstream connection.
       delete upstream->get_client_handler();
     } else {
+      // We did not sent any HTTP response, so sent error
+      // response. Cannot reuse downstream connection in this case.
       upstream->error_reply(502);
-      assert(downstream == upstream->get_top_downstream());
-      upstream->pop_downstream();
-      delete downstream;
-      upstream->resume_read(SHRPX_MSG_BLOCK);
+      if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+        upstream->pop_downstream();
+        delete downstream;
+        // Process next HTTP request
+        upstream->resume_read(SHRPX_MSG_BLOCK);
+      }
     }
   }
 }
@@ -362,18 +373,10 @@ void https_downstream_writecb(bufferevent *bev, void *ptr)
 namespace {
 void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
+  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  Downstream *downstream = dconn->get_downstream();
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
-  if(downstream->get_request_state() == Downstream::IDLE) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Delete idle downstream in https_downstream_eventcb";
-    }
-    upstream->pop_downstream();
-    delete downstream;
-    upstream->resume_read(SHRPX_MSG_BLOCK);
-    return;
-  }
   if(events & BEV_EVENT_CONNECTED) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream connection established. downstream "
@@ -400,9 +403,11 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       }
       upstream->error_reply(502);
     }
-    upstream->pop_downstream();
-    delete downstream;
-    upstream->resume_read(SHRPX_MSG_BLOCK);
+    if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+      upstream->pop_downstream();
+      delete downstream;
+      upstream->resume_read(SHRPX_MSG_BLOCK);
+    }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream error/timeout. " << downstream;
@@ -416,9 +421,11 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       }
       upstream->error_reply(status);
     }
-    upstream->pop_downstream();
-    delete downstream;
-    upstream->resume_read(SHRPX_MSG_BLOCK);
+    if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+      upstream->pop_downstream();
+      delete downstream;
+      upstream->resume_read(SHRPX_MSG_BLOCK);
+    }
   }
 }
 } // namespace
@@ -439,6 +446,10 @@ void HttpsUpstream::error_reply(int status_code)
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
   evbuffer_add(output, header.c_str(), header.size());
   evbuffer_add(output, html.c_str(), html.size());
+  Downstream *downstream = get_top_downstream();
+  if(downstream) {
+    downstream->set_response_state(Downstream::MSG_COMPLETE);
+  }
 }
 
 bufferevent_data_cb HttpsUpstream::get_downstream_readcb()

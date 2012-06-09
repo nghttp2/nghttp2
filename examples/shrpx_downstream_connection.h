@@ -22,43 +22,36 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_downstream_queue.h"
+#ifndef SHRPX_DOWNSTREAM_CONNECTION_H
+#define SHRPX_DOWNSTREAM_CONNECTION_H
 
-#include <cassert>
+#include "shrpx.h"
 
-#include "shrpx_downstream.h"
+#include <event.h>
+#include <event2/bufferevent.h>
 
 namespace shrpx {
 
-DownstreamQueue::DownstreamQueue()
-{}
+class ClientHandler;
+class Downstream;
 
-DownstreamQueue::~DownstreamQueue()
-{
-  for(std::map<int32_t, Downstream*>::iterator i = downstreams_.begin();
-      i != downstreams_.end(); ++i) {
-    delete (*i).second;
-  }
-}
+class DownstreamConnection {
+public:
+  DownstreamConnection(ClientHandler *client_handler);
+  ~DownstreamConnection();
+  int attach_downstream(Downstream *downstream);
+  void detach_downstream(Downstream *downstream);
+  bufferevent* get_bev();
+  int push_data(const void *data, size_t len);
 
-void DownstreamQueue::add(Downstream *downstream)
-{
-  downstreams_[downstream->get_stream_id()] = downstream;
-}
-
-void DownstreamQueue::remove(Downstream *downstream)
-{
-  downstreams_.erase(downstream->get_stream_id());
-}
-
-Downstream* DownstreamQueue::find(int32_t stream_id)
-{
-  std::map<int32_t, Downstream*>::iterator i = downstreams_.find(stream_id);
-  if(i == downstreams_.end()) {
-    return 0;
-  } else {
-    return (*i).second;
-  }
-}
+  ClientHandler* get_client_handler();
+  Downstream* get_downstream();
+private:
+  ClientHandler *client_handler_;
+  bufferevent *bev_;
+  Downstream *downstream_;
+};
 
 } // namespace shrpx
+
+#endif // SHRPX_DOWNSTREAM_CONNECTION_H

@@ -29,6 +29,7 @@
 
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
+#include "shrpx_downstream_connection.h"
 #include "shrpx_config.h"
 #include "shrpx_http.h"
 #include "util.h"
@@ -38,7 +39,7 @@ using namespace spdylay;
 namespace shrpx {
 
 namespace {
-const size_t SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES = 512*1024;
+const size_t SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES = 64*1024;
 } // namespace
 
 namespace {
@@ -101,7 +102,16 @@ void on_stream_close_callback
     } else {
       downstream->set_request_state(Downstream::STREAM_CLOSED);
       if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-        upstream->remove_or_idle_downstream(downstream);
+        // At this point, downstream response was read
+        if(!downstream->get_response_connection_close()) {
+          // Keep-alive
+          DownstreamConnection *dconn;
+          dconn = downstream->get_downstream_connection();
+          if(dconn) {
+            dconn->detach_downstream(downstream);
+          }
+        }
+        upstream->remove_downstream(downstream);
       } else {
         // At this point, downstream read may be paused. To reclaim
         // file descriptor, enable read here and catch read
@@ -126,22 +136,10 @@ void on_ctrl_recv_callback
                 << frame->syn_stream.stream_id;
     }
     Downstream *downstream;
-    downstream = upstream->reuse_downstream(frame->syn_stream.stream_id);
-    if(downstream) {
-      if(ENABLE_LOG) {
-        LOG(INFO) << "Reusing downstream for stream_id="
-                  << frame->syn_stream.stream_id;
-      }
-      downstream->set_priority(frame->syn_stream.pri);
-    } else {
-      if(ENABLE_LOG) {
-        LOG(INFO) << "Creating new downstream for stream_id="
-                  << frame->syn_stream.stream_id;
-      }
-      downstream = new Downstream(upstream,
-                                  frame->syn_stream.stream_id,
-                                  frame->syn_stream.pri);
-    }
+    downstream = new Downstream(upstream,
+                                frame->syn_stream.stream_id,
+                                frame->syn_stream.pri);
+    upstream->add_downstream(downstream);
     downstream->init_response_body_buf();
 
     char **nv = frame->syn_stream.nv;
@@ -164,6 +162,15 @@ void on_ctrl_recv_callback
       LOG(INFO) << "Upstream spdy request headers:\n" << ss.str();
     }
 
+    DownstreamConnection *dconn;
+    dconn = upstream->get_client_handler()->get_downstream_connection();
+    int rv = dconn->attach_downstream(downstream);
+    if(rv != 0) {
+      // If downstream connection fails, issue RST_STREAM.
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      downstream->set_request_state(Downstream::CONNECT_FAIL);
+      return;
+    }
     downstream->push_request_headers();
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
@@ -173,14 +180,6 @@ void on_ctrl_recv_callback
                   << downstream;
       }
       downstream->set_request_state(Downstream::MSG_COMPLETE);
-    }
-    if(downstream->get_counter() == 1) {
-      upstream->add_downstream(downstream);
-      if(upstream->start_downstream(downstream) != 0) {
-        // If downstream connection fails, issue RST_STREAM.
-        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-        downstream->set_request_state(Downstream::CONNECT_FAIL);
-      }
     }
     break;
   }
@@ -297,20 +296,14 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
   if(ENABLE_LOG) {
     LOG(INFO) << "spdy_downstream_readcb";
   }
-  Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
+  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  Downstream *downstream = dconn->get_downstream();
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
-  if(downstream->get_request_state() == Downstream::IDLE) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Delete idle downstream in spdy_downstream_readcb";
-    }
-    upstream->remove_downstream(downstream);
-    delete downstream;
-    return;
-  }
-  // If upstream SPDY stream was closed, we just close downstream,
-  // because there is no consumer now.
   if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
+    // If upstream SPDY stream was closed, we just close downstream,
+    // because there is no consumer now. Downstream connection is also
+    // closed in this case.
     upstream->remove_downstream(downstream);
     delete downstream;
     return;
@@ -326,6 +319,11 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
       upstream->error_reply(downstream, 502);
     }
     downstream->set_response_state(Downstream::MSG_COMPLETE);
+    // Clearly, we have to close downstream connection on http parser
+    // failure.
+    downstream->set_downstream_connection(0);
+    delete dconn;
+    dconn = 0;
   }
   upstream->send();
 }
@@ -340,17 +338,10 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
 namespace {
 void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  Downstream *downstream = reinterpret_cast<Downstream*>(ptr);
+  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  Downstream *downstream = dconn->get_downstream();
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
-  if(downstream->get_request_state() == Downstream::IDLE) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Delete idle downstream in spdy_downstream_eventcb";
-    }
-    upstream->remove_downstream(downstream);
-    delete downstream;
-    return;
-  }
   if(events & BEV_EVENT_CONNECTED) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream connection established. Downstream "
@@ -362,11 +353,16 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
                 << downstream->get_stream_id();
     }
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-      //If stream was closed already, we don't need to send reply at
+      // If stream was closed already, we don't need to send reply at
       // the first place. We can delete downstream.
       upstream->remove_downstream(downstream);
       delete downstream;
     } else {
+      // Delete downstream connection. If we don't delete it here, it
+      // will be pooled in on_stream_close_callback.
+      downstream->set_downstream_connection(0);
+      delete dconn;
+      dconn = 0;
       // downstream wil be deleted in on_stream_close_callback.
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         // Server may indicate the end of the request by EOF
@@ -391,6 +387,11 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       upstream->remove_downstream(downstream);
       delete downstream;
     } else {
+      // Delete downstream connection. If we don't delete it here, it
+      // will be pooled in on_stream_close_callback.
+      downstream->set_downstream_connection(0);
+      delete dconn;
+      dconn = 0;
       if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
         if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
           upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -499,11 +500,6 @@ void SpdyUpstream::add_downstream(Downstream *downstream)
   downstream_queue_.add(downstream);
 }
 
-int SpdyUpstream::start_downstream(Downstream *downstream)
-{
-  return downstream_queue_.start(downstream);
-}
-
 void SpdyUpstream::remove_downstream(Downstream *downstream)
 {
   downstream_queue_.remove(downstream);
@@ -512,21 +508,6 @@ void SpdyUpstream::remove_downstream(Downstream *downstream)
 Downstream* SpdyUpstream::find_downstream(int32_t stream_id)
 {
   return downstream_queue_.find(stream_id);
-}
-
-Downstream* SpdyUpstream::reuse_downstream(int32_t stream_id)
-{
-  return downstream_queue_.reuse(stream_id);
-}
-
-void SpdyUpstream::remove_or_idle_downstream(Downstream *downstream)
-{
-  if(downstream->get_response_connection_close()) {
-    downstream_queue_.remove(downstream);
-    delete downstream;
-  } else {
-    downstream_queue_.idle(downstream);
-  }
 }
 
 spdylay_session* SpdyUpstream::get_spdy_session()

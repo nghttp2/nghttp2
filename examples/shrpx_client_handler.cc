@@ -28,6 +28,7 @@
 #include "shrpx_spdy_upstream.h"
 #include "shrpx_https_upstream.h"
 #include "shrpx_config.h"
+#include "shrpx_downstream_connection.h"
 
 namespace shrpx {
 
@@ -108,6 +109,7 @@ ClientHandler::ClientHandler(bufferevent *bev, SSL *ssl, const char *ipaddr)
     should_close_after_write_(false)
 {
   bufferevent_enable(bev_, EV_READ | EV_WRITE);
+  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
                         &get_config()->upstream_write_timeout);
   set_bev_cb(0, upstream_writecb, upstream_eventcb);
@@ -126,6 +128,10 @@ ClientHandler::~ClientHandler()
   shutdown(fd, SHUT_WR);
   close(fd);
   delete upstream_;
+  for(std::set<DownstreamConnection*>::iterator i = dconn_pool_.begin();
+      i != dconn_pool_.end(); ++i) {
+    delete *i;
+  }
   if(ENABLE_LOG) {
     LOG(INFO) << "Deleted";
   }
@@ -211,6 +217,41 @@ bool ClientHandler::get_should_close_after_write() const
 void ClientHandler::set_should_close_after_write(bool f)
 {
   should_close_after_write_ = f;
+}
+
+void ClientHandler::pool_downstream_connection(DownstreamConnection *dconn)
+{
+  if(ENABLE_LOG) {
+    LOG(INFO) << "Pooling downstream connection " << dconn;
+  }
+  dconn_pool_.insert(dconn);
+}
+
+void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn)
+{
+  if(ENABLE_LOG) {
+    LOG(INFO) << "Removing downstream connection " << dconn
+              << " from pool";
+  }
+  dconn_pool_.erase(dconn);
+}
+
+DownstreamConnection* ClientHandler::get_downstream_connection()
+{
+  if(dconn_pool_.empty()) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Downstream connection pool is empty. Create new one";
+    }
+    return new DownstreamConnection(this);
+  } else {
+    DownstreamConnection *dconn = *dconn_pool_.begin();
+    dconn_pool_.erase(dconn);
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Reuse downstream connection " << dconn
+                << " from pool";
+    }
+    return dconn;
+  }
 }
 
 } // namespace shrpx

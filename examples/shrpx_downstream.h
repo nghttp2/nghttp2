@@ -44,6 +44,7 @@ extern "C" {
 namespace shrpx {
 
 class Upstream;
+class DownstreamConnection;
 
 typedef std::vector<std::pair<std::string, std::string> > Headers;
 
@@ -51,16 +52,14 @@ class Downstream {
 public:
   Downstream(Upstream *upstream, int stream_id, int priority);
   ~Downstream();
-  int start_connection();
   Upstream* get_upstream() const;
   int32_t get_stream_id() const;
   void set_priority(int pri);
   void pause_read(IOCtrlReason reason);
   bool resume_read(IOCtrlReason reason);
   void force_resume_read();
-  void idle();
-  void reuse(int stream_id);
-  int get_counter() const;
+  void set_downstream_connection(DownstreamConnection *dconn);
+  DownstreamConnection* get_downstream_connection();
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
@@ -106,10 +105,9 @@ public:
   evbuffer* get_response_body_buf();
 private:
   Upstream *upstream_;
-  bufferevent *bev_;
+  DownstreamConnection *dconn_;
   int32_t stream_id_;
   int priority_;
-  int counter_;
   IOControl ioctrl_;
   int request_state_;
   std::string request_method_;
