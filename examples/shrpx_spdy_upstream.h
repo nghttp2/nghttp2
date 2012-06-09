@@ -55,15 +55,21 @@ public:
   spdylay_session* get_spdy_session();
 
   int rst_stream(Downstream *downstream, int status_code);
+  int window_update(Downstream *downstream);
   int error_reply(Downstream *downstream, int status_code);
 
   virtual int on_downstream_header_complete(Downstream *downstream);
   virtual int on_downstream_body(Downstream *downstream,
                                  const uint8_t *data, size_t len);
   virtual int on_downstream_body_complete(Downstream *downstream);
+
+  bool get_flow_control() const;
+  int32_t get_initial_window_size() const;
 private:
   ClientHandler *handler_;
   spdylay_session *session_;
+  bool flow_control_;
+  int32_t initial_window_size_;
   DownstreamQueue downstream_queue_;
 };
 

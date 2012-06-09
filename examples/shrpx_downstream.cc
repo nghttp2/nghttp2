@@ -56,7 +56,8 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     chunked_response_(false),
     response_connection_close_(false),
     response_htp_(htparser_new()),
-    response_body_buf_(0)
+    response_body_buf_(0),
+    recv_window_size_(0)
 {
   htparser_init(response_htp_, htp_type_response);
   htparser_set_userdata(response_htp_, this);
@@ -529,6 +530,21 @@ evbuffer* Downstream::get_response_body_buf()
 void Downstream::set_priority(int pri)
 {
   priority_ = pri;
+}
+
+int32_t Downstream::get_recv_window_size() const
+{
+  return recv_window_size_;
+}
+
+void Downstream::inc_recv_window_size(int32_t amount)
+{
+  recv_window_size_ += amount;
+}
+
+void Downstream::set_recv_window_size(int32_t new_size)
+{
+  recv_window_size_ = new_size;
 }
 
 } // namespace shrpx

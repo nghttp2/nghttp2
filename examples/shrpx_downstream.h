@@ -63,6 +63,9 @@ public:
   // Returns true if output buffer is full. If underlying dconn_ is
   // NULL, this function always returns false.
   bool get_output_buffer_full();
+  int32_t get_recv_window_size() const;
+  void inc_recv_window_size(int32_t amount);
+  void set_recv_window_size(int32_t new_size);
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
@@ -132,6 +135,7 @@ private:
   // This buffer is used to temporarily store downstream response
   // body. Spdylay reads data from this in the callback.
   evbuffer *response_body_buf_;
+  int32_t recv_window_size_;
 };
 
 } // namespace shrpx

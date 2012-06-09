@@ -195,14 +195,24 @@ void on_data_chunk_recv_callback(spdylay_session *session,
                                  const uint8_t *data, size_t len,
                                  void *user_data)
 {
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Upstream spdy received upstream DATA data stream_id="
-              << stream_id;
-  }
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   Downstream *downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     downstream->push_upload_data_chunk(data, len);
+    if(upstream->get_flow_control()) {
+      downstream->inc_recv_window_size(len);
+      if(downstream->get_recv_window_size() >
+         upstream->get_initial_window_size()) {
+        if(ENABLE_LOG) {
+          LOG(INFO) << "Flow control error: recv_window_size="
+                    << downstream->get_recv_window_size()
+                    << ", initial_window_size="
+                    << upstream->get_initial_window_size();
+        }
+        upstream->rst_stream(downstream, SPDYLAY_FLOW_CONTROL_ERROR);
+        return;
+      }
+    }
     if(flags & SPDYLAY_DATA_FLAG_FIN) {
       if(ENABLE_LOG) {
         LOG(INFO) << "Upstream spdy "
@@ -234,13 +244,32 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   int rv;
   rv = spdylay_session_server_new(&session_, version, &callbacks, this);
   assert(rv == 0);
+
+  if(version == SPDYLAY_PROTO_SPDY3) {
+    int val = 1;
+    flow_control_ = true;
+    initial_window_size_ = 64*1024; // specified by SPDY/3 spec.
+    rv = spdylay_session_set_option(session_,
+                                    SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
+                                    sizeof(val));
+    assert(rv == 0);
+  } else {
+    flow_control_ = false;
+    initial_window_size_ = 0;
+  }
   // TODO Maybe call from outside?
-  spdylay_settings_entry entry;
-  entry.settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry.value = get_config()->spdy_max_concurrent_streams;
-  entry.flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
-  rv = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE,
-                               &entry, 1);
+  spdylay_settings_entry entry[2];
+  entry[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
+  entry[0].value = get_config()->spdy_max_concurrent_streams;
+  entry[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+  entry[1].value = initial_window_size_;
+  entry[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  rv = spdylay_submit_settings
+    (session_, SPDYLAY_FLAG_SETTINGS_NONE,
+     entry, sizeof(entry)/sizeof(spdylay_settings_entry));
   assert(rv == 0);
   // TODO Maybe call from outside?
   send();
@@ -332,6 +361,16 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
 namespace {
 void spdy_downstream_writecb(bufferevent *bev, void *ptr)
 {
+  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  Downstream *downstream = dconn->get_downstream();
+  SpdyUpstream *upstream;
+  upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  if(upstream->get_flow_control()) {
+    if(downstream->get_recv_window_size() >=
+       upstream->get_initial_window_size()/2) {
+      upstream->window_update(downstream);
+    }
+  }
 }
 } // namespace
 
@@ -414,9 +453,26 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
 int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
 {
+  if(ENABLE_LOG) {
+    LOG(INFO) << "RST_STREAM stream_id="
+              << downstream->get_stream_id();
+  }
   int rv;
   rv = spdylay_submit_rst_stream(session_, downstream->get_stream_id(),
                                  status_code);
+  if(rv < SPDYLAY_ERR_FATAL) {
+    DIE();
+  } else {
+    return 0;
+  }
+}
+
+int SpdyUpstream::window_update(Downstream *downstream)
+{
+  int rv;
+  rv = spdylay_submit_window_update(session_, downstream->get_stream_id(),
+                                    downstream->get_recv_window_size());
+  downstream->set_recv_window_size(0);
   if(rv < SPDYLAY_ERR_FATAL) {
     DIE();
   } else {
@@ -593,6 +649,16 @@ int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
   }
   spdylay_session_resume_data(session_, downstream->get_stream_id());
   return 0;
+}
+
+bool SpdyUpstream::get_flow_control() const
+{
+  return flow_control_;
+}
+
+int32_t SpdyUpstream::get_initial_window_size() const
+{
+  return initial_window_size_;
 }
 
 } // namespace shrpx
