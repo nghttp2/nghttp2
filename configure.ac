@@ -39,6 +39,12 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE()
 AC_CONFIG_HEADERS([config.h])
 
+dnl Checks for command-line options
+AC_ARG_ENABLE([maintainer-mode],
+    [AS_HELP_STRING([--enable-maintainer-mode],
+                    [Turn on compile time warnings])],
+    [maintainer_mode=$withval], [maintainer_mode=no])
+
 dnl Checks for programs
 AC_PROG_CC
 AC_PROG_CXX
@@ -156,6 +162,18 @@ AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
 
 AC_CHECK_FUNCS([kqueue], [have_kqueue=yes])
 AM_CONDITIONAL([HAVE_KQUEUE], [test "x${have_kqueue}" = "xyes"])
+
+if test "x$maintainer_mode" != "xno"; then
+    CFLAGS="$CFLAGS -Wall -Wextra -Werror"
+    CFLAGS="$CFLAGS -Wmissing-prototypes -Wstrict-prototypes"
+    CFLAGS="$CFLAGS -Wmissing-declarations -Wpointer-arith"
+    CFLAGS="$CFLAGS -Wdeclaration-after-statement"
+    CFLAGS="$CFLAGS -Wformat-security"
+    CFLAGS="$CFLAGS -Wwrite-strings -Wshadow -Winline -Wnested-externs"
+    CFLAGS="$CFLAGS -Wfloat-equal -Wundef -Wendif-labels -Wempty-body"
+    CFLAGS="$CFLAGS -Wcast-align -Wclobbered -Wvla"
+    CFLAGS="$CFLAGS -Wno-unused-parameter"
+fi
 
 AC_CONFIG_FILES([
   Makefile
