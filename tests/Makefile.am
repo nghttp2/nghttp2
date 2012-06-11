@@ -49,7 +49,7 @@ failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
 failmalloc_LDADD = $(main_LDADD) -ldl
 failmalloc_LDFLAGS = $(main_LDFLAGS)
 
-AM_CFLAGS = -Wall -g -O2 -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_builddir}/lib/includes \
+AM_CFLAGS = -Wall -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_builddir}/lib/includes \
 	@CUNIT_CFLAGS@ @DEFS@
 
 TESTS = main failmalloc
