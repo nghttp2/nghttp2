@@ -1560,7 +1560,8 @@ hdrline_start:
                 {
                     const char * pp      = &data[i];
                     const char * pe      = (const char *)(data + len);
-                    size_t       to_read = _MIN_READ(pe - pp, p->content_len);
+                    size_t       to_read = _MIN_READ((uint64_t)(pe - pp),
+                                                     p->content_len);
 
                     if (to_read > 0) {
                         res = hook_body_run(p, hooks, pp, to_read);
@@ -1612,7 +1613,8 @@ hdrline_start:
                 {
                     const char * pp      = &data[i];
                     const char * pe      = (const char *)(data + len);
-                    size_t       to_read = _MIN_READ(pe - pp, p->content_len);
+                    size_t       to_read = _MIN_READ((uint64_t)(pe - pp),
+                                                     p->content_len);
 
                     htparse_log_debug("[%p] s_body_read %zu", p, to_read);
 

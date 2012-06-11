@@ -66,12 +66,12 @@ void test_spdylay_pq(void)
   /* Add bunch of entry to see realloc works */
   for(i = 0; i < 10000; ++i) {
     CU_ASSERT(0 == spdylay_pq_push(&pq, (void*)"foo"));
-    CU_ASSERT(i+1 == spdylay_pq_size(&pq));
+    CU_ASSERT((size_t)(i+1) == spdylay_pq_size(&pq));
   }
   for(i = 10000; i > 0; --i) {
     CU_ASSERT(NULL != spdylay_pq_top(&pq));
     spdylay_pq_pop(&pq);
-    CU_ASSERT(i-1 == spdylay_pq_size(&pq));
+    CU_ASSERT((size_t)(i-1) == spdylay_pq_size(&pq));
   }
 
   spdylay_pq_free(&pq);
