@@ -1,3 +1,34 @@
+spdylay 0.3.1
+=============
+
+Release Note
+------------
+
+This release fixes the bug that on_ctrl_recv_callback is not called
+when RST_STREAM is received.  It also fixes the bug that
+on_data_recv_callback and on_data_chunk_recv_callback is called after
+the stream was closed. A multi-threaded reverse proxy for SPDY/HTTPS
+is added as an example program.
+
+Changes
+-------
+
+* Added --enable-maintainer-mode configure option If it is enabled,
+  turn on extra compiler warnings.
+
+* Don't call on_data_recv_callback and on_data_chunk_recv_callback if
+  stream was closed or being closed.
+
+* Added example program Shrpx: a multi-threaded reverse proxy for
+  SPDY/HTTPS.  It accepts SPDY/HTTPS connections and converts them to
+  normal HTTP and forwards to the downstream servers.
+
+* Fixed bug on_ctrl_recv_callback not called for RST_STREAM
+
+* Return nonzero exit status if test fails. Fixed failmalloc tests.
+
+
+
 spdylay 0.3.0
 =============
 
