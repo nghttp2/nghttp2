@@ -117,6 +117,9 @@ void on_stream_close_callback
         // At this point, downstream read may be paused.
         upstream->remove_downstream(downstream);
         delete downstream;
+        // How to test this case? Request sufficient large download
+        // and make client send RST_STREAM after it gets first DATA
+        // frame chunk.
       }
     }
   }
@@ -575,6 +578,8 @@ spdylay_session* SpdyUpstream::get_spdy_session()
   return session_;
 }
 
+// WARNING: Never call directly or indirectly spdylay_session_send or
+// spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 {
   if(ENABLE_LOG) {
@@ -628,6 +633,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   return 0;
 }
 
+// WARNING: Never call directly or indirectly spdylay_session_send or
+// spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len)
 {
@@ -646,6 +653,8 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
   return 0;
 }
 
+// WARNING: Never call directly or indirectly spdylay_session_send or
+// spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
 {
   if(ENABLE_LOG) {
