@@ -521,6 +521,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     LOG(INFO) << "Downstream on_downstream_header_complete";
   }
   std::string via_value;
+  std::string location;
   std::string hdrs = "HTTP/1.1 ";
   hdrs += http::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
@@ -532,12 +533,19 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
       // These are ignored
     } else if(util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
+    } else if(util::strieq((*i).first.c_str(), "location")) {
+      location = (*i).second;
     } else {
       hdrs += (*i).first;
       hdrs += ": ";
       hdrs += (*i).second;
       hdrs += "\r\n";
     }
+  }
+  if(!location.empty()) {
+    hdrs += "Location: ";
+    hdrs += http::modify_location_header_value(location);
+    hdrs += "\r\n";
   }
   if(get_client_handler()->get_should_close_after_write()) {
     hdrs += "Connection: close\r\n";

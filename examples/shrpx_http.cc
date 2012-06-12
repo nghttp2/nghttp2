@@ -27,6 +27,11 @@
 #include <sstream>
 
 #include "shrpx_config.h"
+#include "util.h"
+#include "uri.h"
+
+using namespace spdylay;
+
 namespace shrpx {
 
 namespace http {
@@ -101,6 +106,27 @@ std::string create_via_header_value(int major, int minor)
   hdrs += static_cast<char>(minor+'0');
   hdrs += " shrpx";
   return hdrs;
+}
+
+std::string modify_location_header_value(const std::string& uri)
+{
+  std::string norm_uri = uri;
+  if(util::istartsWith(uri.c_str(), "//")) {
+    norm_uri.insert(0, "http:");
+  } else if(!util::istartsWith(uri.c_str(), "http://")) {
+    return uri;
+  }
+  uri::UriStruct us;
+  if(uri::parse(us, norm_uri)) {
+    if(util::strieq(us.host.c_str(), get_config()->downstream_host) &&
+       us.port == get_config()->downstream_port) {
+      us.protocol = "https";
+      us.host = get_config()->host;
+      us.port = get_config()->port;
+      return uri::construct(us);
+    }
+  }
+  return uri;
 }
 
 } // namespace http

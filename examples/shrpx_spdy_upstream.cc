@@ -590,6 +590,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   const char **nv = new const char*[nheader * 2 + 6 + 1];
   size_t hdidx = 0;
   std::string via_value;
+  std::string location;
   nv[hdidx++] = ":status";
   nv[hdidx++] = http::get_status_string(downstream->get_response_http_status());
   nv[hdidx++] = ":version";
@@ -603,10 +604,19 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
       // These are ignored
     } else if(util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
+    } else if(util::strieq((*i).first.c_str(), "location")) {
+      location = (*i).second;
     } else {
       nv[hdidx++] = (*i).first.c_str();
       nv[hdidx++] = (*i).second.c_str();
     }
+  }
+  if(!location.empty()) {
+    nv[hdidx++] = "location";
+    // Assign location to store the result. Otherwise we lose the
+    // return value.
+    location = http::modify_location_header_value(location);
+    nv[hdidx++] = location.c_str();
   }
   if(!via_value.empty()) {
     via_value += ", ";
