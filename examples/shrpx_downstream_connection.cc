@@ -87,11 +87,27 @@ int DownstreamConnection::attach_downstream(Downstream *downstream)
                     upstream->get_downstream_readcb(),
                     upstream->get_downstream_writecb(),
                     upstream->get_downstream_eventcb(), this);
-
+  // HTTP request/response model, we first issue request to downstream
+  // server, so just enable write timeout here.
   bufferevent_set_timeouts(bev_,
-                           &get_config()->downstream_read_timeout,
+                           0,
                            &get_config()->downstream_write_timeout);
   return 0;
+}
+
+// When downstream request is issued, call this function to set read
+// timeout. We don't know when the request is completely received by
+// the downstream server. This function may be called before that
+// happens. Overall it does not cause problem for most of the time.
+// If the downstream server is too slow to recv/send, the connection
+// will be dropped by read timeout.
+void DownstreamConnection::start_waiting_response()
+{
+  if(bev_) {
+    bufferevent_set_timeouts(bev_,
+                             &get_config()->downstream_read_timeout,
+                             0);
+  }
 }
 
 namespace {
@@ -136,6 +152,11 @@ void DownstreamConnection::detach_downstream(Downstream *downstream)
   downstream_ = 0;
   bufferevent_enable(bev_, EV_READ);
   bufferevent_setcb(bev_, 0, 0, idle_eventcb, this);
+  // On idle state, just enable read timeout. Normally idle downstream
+  // connection will get EOF from the downstream server and closed.
+  bufferevent_set_timeouts(bev_,
+                           &get_config()->downstream_idle_read_timeout,
+                           0);
   client_handler_->pool_downstream_connection(this);
 }
 

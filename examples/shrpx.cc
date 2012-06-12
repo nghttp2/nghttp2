@@ -251,6 +251,8 @@ void fill_default_config()
   mod_config()->downstream_write_timeout.tv_sec = 30;
   mod_config()->downstream_write_timeout.tv_usec = 0;
 
+  mod_config()->downstream_idle_read_timeout.tv_sec = 15;
+
   mod_config()->downstream_host = "localhost";
   mod_config()->downstream_port = 80;
 

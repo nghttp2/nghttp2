@@ -269,6 +269,7 @@ void on_data_chunk_recv_callback
   std::map<int32_t, Request*>::iterator itr =
     spdySession->streams.find(stream_id);
   if(itr != spdySession->streams.end()) {
+    spdylay_submit_rst_stream(session, stream_id, SPDYLAY_PROTOCOL_ERROR);
     Request *req = (*itr).second;
     if(req->inflater) {
       while(len > 0) {
@@ -387,7 +388,7 @@ void on_stream_close_callback
     (*itr).second->record_complete_time();
     ++spdySession->complete;
     if(spdySession->all_requests_processed()) {
-      spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
+      //spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
     }
   }
 }

@@ -254,6 +254,8 @@ bool Downstream::get_output_buffer_full()
   }
 }
 
+// Call this function after this object is attached to
+// Downstream. Otherwise, the program will crash.
 int Downstream::push_request_headers()
 {
   bool xff_found = false;
@@ -317,6 +319,8 @@ int Downstream::push_request_headers()
   bufferevent *bev = dconn_->get_bev();
   evbuffer *output = bufferevent_get_output(bev);
   evbuffer_add(output, hdrs.c_str(), hdrs.size());
+
+  dconn_->start_waiting_response();
   return 0;
 }
 
