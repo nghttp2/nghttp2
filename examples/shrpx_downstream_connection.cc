@@ -82,7 +82,7 @@ int DownstreamConnection::attach_downstream(Downstream *downstream)
   downstream->set_downstream_connection(this);
   downstream_ = downstream;
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
-  bufferevent_disable(bev_, EV_READ);
+  bufferevent_enable(bev_, EV_READ);
   bufferevent_setcb(bev_,
                     upstream->get_downstream_readcb(),
                     upstream->get_downstream_writecb(),
@@ -134,7 +134,7 @@ void DownstreamConnection::detach_downstream(Downstream *downstream)
   }
   downstream->set_downstream_connection(0);
   downstream_ = 0;
-  bufferevent_disable(bev_, EV_READ);
+  bufferevent_enable(bev_, EV_READ);
   bufferevent_setcb(bev_, 0, 0, idle_eventcb, this);
   client_handler_->pool_downstream_connection(this);
 }

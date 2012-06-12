@@ -112,11 +112,11 @@ void on_stream_close_callback
           }
         }
         upstream->remove_downstream(downstream);
+        delete downstream;
       } else {
-        // At this point, downstream read may be paused. To reclaim
-        // file descriptor, enable read here and catch read
-        // notification. And delete downstream there.
-        downstream->force_resume_read();
+        // At this point, downstream read may be paused.
+        upstream->remove_downstream(downstream);
+        delete downstream;
       }
     }
   }
@@ -180,7 +180,6 @@ void on_ctrl_recv_callback
                   << downstream;
       }
       downstream->set_request_state(Downstream::MSG_COMPLETE);
-      downstream->force_resume_read();
     }
     break;
   }
@@ -221,7 +220,6 @@ void on_data_chunk_recv_callback(spdylay_session *session,
                   << downstream;
       }
       downstream->set_request_state(Downstream::MSG_COMPLETE);
-      downstream->force_resume_read();
     }
   }
 }
@@ -301,6 +299,7 @@ int SpdyUpstream::on_write()
   return 0;
 }
 
+// After this function call, downstream may be deleted.
 int SpdyUpstream::send()
 {
   int rv;
@@ -357,6 +356,7 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     dconn = 0;
   }
   upstream->send();
+  // At this point, downstream may be deleted.
 }
 } // namespace
 
@@ -418,6 +418,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         upstream->error_reply(downstream, 502);
         downstream->set_response_state(Downstream::MSG_COMPLETE);
         upstream->send();
+        // At this point, downstream may be deleted.
       }
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
@@ -447,6 +448,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
         upstream->send();
+        // At this point, downstream may be deleted.
       }
     }
   }
