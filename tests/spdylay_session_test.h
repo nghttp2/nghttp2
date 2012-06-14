@@ -71,5 +71,6 @@ void test_spdylay_session_set_option(void);
 void test_spdylay_submit_window_update(void);
 void test_spdylay_session_data_read_temporal_failure(void);
 void test_spdylay_session_recv_eof(void);
+void test_spdylay_session_recv_data(void);
 
 #endif /* SPDYLAY_SESSION_TEST_H */

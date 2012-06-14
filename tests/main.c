@@ -162,6 +162,8 @@ int main(int argc, char* argv[])
                    test_spdylay_session_data_read_temporal_failure) ||
       !CU_add_test(pSuite, "session_recv_eof",
                    test_spdylay_session_recv_eof) ||
+      !CU_add_test(pSuite, "session_recv_data",
+                   test_spdylay_session_recv_data) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy2",
                    test_spdylay_frame_unpack_nv_spdy2) ||
       !CU_add_test(pSuite, "frame_unpack_nv_spdy3",

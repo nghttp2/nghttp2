@@ -65,6 +65,8 @@ typedef struct {
   size_t data_source_length;
   int32_t stream_id;
   size_t block_count;
+  int data_chunk_recv_cb_called;
+  int data_recv_cb_called;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -164,6 +166,23 @@ static void on_ctrl_not_send_callback(spdylay_session *session,
   ++ud->ctrl_not_send_cb_called;
   ud->not_sent_frame_type = type;
   ud->not_sent_error = error;
+}
+
+static void on_data_chunk_recv_callback(spdylay_session *session,
+                                        uint8_t flags, int32_t stream_id,
+                                        const uint8_t *data, size_t len,
+                                        void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->data_chunk_recv_cb_called;
+}
+
+static void on_data_recv_callback(spdylay_session *session,
+                                  uint8_t flags, int32_t stream_id,
+                                  int32_t length, void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->data_recv_cb_called;
 }
 
 static ssize_t fixed_length_data_source_read_callback
@@ -2543,6 +2562,70 @@ void test_spdylay_session_recv_eof(void)
                              &callbacks, NULL);
 
   CU_ASSERT(SPDYLAY_ERR_EOF == spdylay_session_recv(session));
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_session_recv_data(void)
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+  my_user_data ud;
+  uint8_t data[8092];
+  int rv;
+  spdylay_outbound_item *item;
+  spdylay_stream *stream;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_data_recv_callback = on_data_recv_callback;
+
+  spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks, &ud);
+
+  /* Create DATA frame with length 4KiB */
+  memset(data, 0, sizeof(data));
+  spdylay_put_uint32be(data, 1);
+  spdylay_put_uint32be(data+4, 4096);
+
+  /* stream 1 is not opened, so it must be responded with RST_STREAM */
+  ud.data_chunk_recv_cb_called = 0;
+  ud.data_recv_cb_called = 0;
+  rv = spdylay_session_mem_recv(session, data, 8+4096);
+  CU_ASSERT(8+4096 == rv);
+
+  CU_ASSERT(0 == ud.data_chunk_recv_cb_called);
+  CU_ASSERT(0 == ud.data_recv_cb_called);
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(SPDYLAY_RST_STREAM == OB_CTRL_TYPE(item));
+
+  CU_ASSERT(0 == spdylay_session_send(session));
+
+  /* Create stream 1 with CLOSING state. It is ignored. */
+  stream = spdylay_session_open_stream(session, 1,
+                                       SPDYLAY_CTRL_FLAG_NONE, 3,
+                                       SPDYLAY_STREAM_CLOSING, NULL);
+
+  ud.data_chunk_recv_cb_called = 0;
+  ud.data_recv_cb_called = 0;
+  rv = spdylay_session_mem_recv(session, data, 8+4096);
+  CU_ASSERT(8+4096 == rv);
+
+  CU_ASSERT(0 == ud.data_chunk_recv_cb_called);
+  CU_ASSERT(0 == ud.data_recv_cb_called);
+  item = spdylay_session_get_next_ob_item(session);
+  CU_ASSERT(NULL == item);
+
+  /* This is normal case. DATA is acceptable. */
+  stream->state = SPDYLAY_STREAM_OPENED;
+
+  ud.data_chunk_recv_cb_called = 0;
+  ud.data_recv_cb_called = 0;
+  rv = spdylay_session_mem_recv(session, data, 8+4096);
+  CU_ASSERT(8+4096 == rv);
+
+  CU_ASSERT(1 == ud.data_chunk_recv_cb_called);
+  CU_ASSERT(1 == ud.data_recv_cb_called);
 
   spdylay_session_del(session);
 }

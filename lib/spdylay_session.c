@@ -2449,6 +2449,32 @@ static int spdylay_session_update_recv_window_size(spdylay_session *session,
   return 0;
 }
 
+/*
+ * Returns nonzero if the reception of DATA for stream |stream_id| is
+ * allowed.
+ */
+static int spdylay_session_check_data_recv_allowed(spdylay_session *session,
+                                                   int32_t stream_id)
+{
+  spdylay_stream *stream;
+  stream = spdylay_session_get_stream(session, stream_id);
+  if(stream) {
+    if((stream->shut_flags & SPDYLAY_SHUT_RD) == 0) {
+      if(spdylay_session_is_my_stream_id(session, stream_id)) {
+        if(stream->state == SPDYLAY_STREAM_OPENED) {
+          return 1;
+        }
+      } else if(stream->state != SPDYLAY_STREAM_CLOSING) {
+        /* It is OK if this is remote peer initiated stream and we did
+           not receive FIN unless stream is in SPDYLAY_STREAM_CLOSING
+           state. This is a race condition. */
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
 ssize_t spdylay_session_mem_recv(spdylay_session *session,
                                  const uint8_t *in, size_t inlen)
 {
@@ -2510,6 +2536,14 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
             assert(r < SPDYLAY_ERR_FATAL);
             return r;
           }
+        } else {
+          /* Check stream is open. If it is not open or closing,
+             ignore payload. */
+          int32_t stream_id;
+          stream_id = spdylay_get_uint32(session->iframe.headbuf);
+          if(!spdylay_session_check_data_recv_allowed(session, stream_id)) {
+            session->iframe.state = SPDYLAY_RECV_PAYLOAD_IGN;
+          }
         }
       } else {
         break;
@@ -2523,7 +2557,6 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
       size_t bufavail, readlen;
       int32_t data_stream_id = 0;
       uint8_t data_flags = SPDYLAY_DATA_FLAG_NONE;
-      spdylay_stream *data_stream = NULL;
 
       rempayloadlen = session->iframe.payloadlen - session->iframe.off;
       bufavail = inlimit - inmark;
@@ -2583,8 +2616,7 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
         data_stream_id = spdylay_get_uint32(session->iframe.headbuf) &
           SPDYLAY_STREAM_ID_MASK;
         data_flags = session->iframe.headbuf[4];
-        data_stream = spdylay_session_get_stream(session, data_stream_id);
-        if(data_stream && data_stream->state != SPDYLAY_STREAM_CLOSING) {
+        if(session->iframe.state != SPDYLAY_RECV_PAYLOAD_IGN) {
           if(session->callbacks.on_data_chunk_recv_callback) {
             session->callbacks.on_data_chunk_recv_callback(session,
                                                            data_flags,
@@ -2599,7 +2631,7 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
       inmark += readlen;
 
       if(session->flow_control &&
-         data_stream && data_stream->state != SPDYLAY_STREAM_CLOSING &&
+         session->iframe.state != SPDYLAY_RECV_PAYLOAD_IGN &&
          !spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
         if(readlen > 0 &&
            (session->iframe.payloadlen != session->iframe.off ||
@@ -2618,11 +2650,7 @@ ssize_t spdylay_session_mem_recv(spdylay_session *session,
         if(spdylay_frame_is_ctrl_frame(session->iframe.headbuf[0])) {
           r = spdylay_session_process_ctrl_frame(session);
         } else {
-          if(data_stream && data_stream->state != SPDYLAY_STREAM_CLOSING) {
-            r = spdylay_session_process_data_frame(session);
-          } else {
-            r = 0;
-          }
+          r = spdylay_session_process_data_frame(session);
         }
         if(r < 0) {
           /* FATAL */
