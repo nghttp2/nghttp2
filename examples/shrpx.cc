@@ -61,6 +61,14 @@ void ssl_acceptcb(evconnlistener *listener, int fd,
 } // namespace
 
 namespace {
+bool is_ipv6_numeric_addr(const char *host)
+{
+  uint8_t dst[16];
+  return inet_pton(AF_INET6, host, dst) == 1;
+}
+} // namespace
+
+namespace {
 int cache_downstream_host_address()
 {
   addrinfo hints;
@@ -421,14 +429,22 @@ int main(int argc, char **argv)
   mod_config()->private_key_file = argv[optind++];
   mod_config()->cert_file = argv[optind++];
 
-  char hostport[NI_MAXHOST];
+  char hostport[NI_MAXHOST+16];
+  bool downstream_ipv6_addr =
+    is_ipv6_numeric_addr(get_config()->downstream_host);
   if(get_config()->downstream_port == 80) {
-    mod_config()->downstream_hostport = get_config()->downstream_host;
+    snprintf(hostport, sizeof(hostport), "%s%s%s",
+             downstream_ipv6_addr ? "[" : "",
+             get_config()->downstream_host,
+             downstream_ipv6_addr ? "]" : "");
   } else {
-    snprintf(hostport, sizeof(hostport), "%s:%u",
-             get_config()->downstream_host, get_config()->downstream_port);
-    mod_config()->downstream_hostport = hostport;
+    snprintf(hostport, sizeof(hostport), "%s%s%s:%u",
+             downstream_ipv6_addr ? "[" : "",
+             get_config()->downstream_host,
+             downstream_ipv6_addr ? "]" : "",
+             get_config()->downstream_port);
   }
+  mod_config()->downstream_hostport = hostport;
 
   if(cache_downstream_host_address() == -1) {
     exit(EXIT_FAILURE);
