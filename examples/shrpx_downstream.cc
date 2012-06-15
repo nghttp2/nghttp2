@@ -270,14 +270,15 @@ int Downstream::push_request_headers()
   std::string via_value;
   for(Headers::const_iterator i = request_headers_.begin();
       i != request_headers_.end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto")) {
+    if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto") ||
+       util::strieq((*i).first.c_str(), "host") ||
+       util::strieq((*i).first.c_str(), "keep-alive") ||
+       util::strieq((*i).first.c_str(), "connection") ||
+       util::strieq((*i).first.c_str(), "proxy-connection")) {
       continue;
     }
     if(util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
-      continue;
-    }
-    if(util::strieq((*i).first.c_str(), "host")) {
       continue;
     }
     if(util::strieq((*i).first.c_str(), "expect") &&
