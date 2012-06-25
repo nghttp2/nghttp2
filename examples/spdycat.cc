@@ -482,6 +482,10 @@ int communicate(const std::string& host, uint16_t port,
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
   }
+  if (!SSL_set_tlsext_host_name(ssl, host.c_str())) {
+    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+    return -1;
+  }
   if(ssl_handshake(ssl, fd) == -1) {
     return -1;
   }
