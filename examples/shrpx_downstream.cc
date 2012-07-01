@@ -500,6 +500,7 @@ htparse_hooks htp_hooks = {
   0, /* htparse_hook      on_hdrs_begin; */
   htp_hdr_keycb, /* htparse_data_hook hdr_key; */
   htp_hdr_valcb, /* htparse_data_hook hdr_val; */
+  0, /* htparse_data_hook hostname; */
   htp_hdrs_completecb, /* htparse_hook      on_hdrs_complete; */
   0, /*htparse_hook      on_new_chunk;*/
   0, /*htparse_hook      on_chunk_complete;*/
