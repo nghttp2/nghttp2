@@ -40,7 +40,8 @@ Config::Config()
     downstream_hostport(0),
     downstream_addrlen(0),
     num_worker(0),
-    spdy_max_concurrent_streams(0)
+    spdy_max_concurrent_streams(0),
+    spdy_proxy(false)
 {}
 
 namespace {

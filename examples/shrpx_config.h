@@ -67,6 +67,7 @@ struct Config {
   timeval downstream_idle_read_timeout;
   size_t num_worker;
   size_t spdy_max_concurrent_streams;
+  bool spdy_proxy;
   Config();
 };
 

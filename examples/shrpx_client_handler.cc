@@ -254,4 +254,10 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
   }
 }
 
+size_t ClientHandler::get_pending_write_length()
+{
+  evbuffer *output = bufferevent_get_output(bev_);
+  return evbuffer_get_length(output);
+}
+
 } // namespace shrpx

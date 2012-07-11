@@ -66,12 +66,16 @@ public:
   int32_t get_recv_window_size() const;
   void inc_recv_window_size(int32_t amount);
   void set_recv_window_size(int32_t new_size);
+  // Returns true if tunnel connection has been established.
+  bool tunnel_established() const;
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
   void set_last_request_header_value(const std::string& value);
   void set_request_method(const std::string& method);
+  const std::string& get_request_method() const;
   void set_request_path(const std::string& path);
+  const std::string& get_request_path() const;
   void set_request_major(int major);
   void set_request_minor(int minor);
   int get_request_major() const;
@@ -103,8 +107,10 @@ public:
   void set_response_minor(int minor);
   int get_response_major() const;
   int get_response_minor() const;
+  int get_response_version() const;
   bool get_chunked_response() const;
   bool get_response_connection_close() const;
+  void set_response_connection_close(bool f);
   int parse_http_response();
   void set_response_state(int state);
   int get_response_state() const;

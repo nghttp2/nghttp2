@@ -104,7 +104,7 @@ SSL_CTX* create_ssl_context()
                        SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                        verify_callback);
   }
-  // We speaks "http/1.1", "spdy/2" and "spdy/3".
+  // We speak "http/1.1", "spdy/2" and "spdy/3".
   proto_list[0] = 6;
   memcpy(&proto_list[1], "spdy/3", 6);
   proto_list[7] = 6;

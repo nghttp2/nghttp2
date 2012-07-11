@@ -166,7 +166,7 @@ void Downstream::set_last_request_header_value(const std::string& value)
   item.second = value;
   check_transfer_encoding_chunked(&chunked_request_, item);
   check_expect_100_continue(&request_expect_100_continue_, item);
-  check_connection_close(&request_connection_close_, item);
+  //check_connection_close(&request_connection_close_, item);
 }
 
 void Downstream::set_request_method(const std::string& method)
@@ -174,9 +174,19 @@ void Downstream::set_request_method(const std::string& method)
   request_method_ = method;
 }
 
+const std::string& Downstream::get_request_method() const
+{
+  return request_method_;
+}
+
 void Downstream::set_request_path(const std::string& path)
 {
   request_path_ = path;
+}
+
+const std::string& Downstream::get_request_path() const
+{
+  return request_path_;
 }
 
 void Downstream::set_request_major(int major)
@@ -264,14 +274,10 @@ int Downstream::push_request_headers()
   hdrs += request_path_;
   hdrs += " ";
   hdrs += "HTTP/1.1\r\n";
-  hdrs += "Host: ";
-  hdrs += get_config()->downstream_hostport;
-  hdrs += "\r\n";
   std::string via_value;
   for(Headers::const_iterator i = request_headers_.begin();
       i != request_headers_.end(); ++i) {
     if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto") ||
-       util::strieq((*i).first.c_str(), "host") ||
        util::strieq((*i).first.c_str(), "keep-alive") ||
        util::strieq((*i).first.c_str(), "connection") ||
        util::strieq((*i).first.c_str(), "proxy-connection")) {
@@ -298,13 +304,20 @@ int Downstream::push_request_headers()
   if(request_connection_close_) {
     hdrs += "Connection: close\r\n";
   }
-  if(!xff_found) {
-    hdrs += "X-Forwarded-For: ";
-    hdrs += upstream_->get_client_handler()->get_ipaddr();
+  if(request_method_ != "CONNECT") {
+    if(!xff_found) {
+      hdrs += "X-Forwarded-For: ";
+      hdrs += upstream_->get_client_handler()->get_ipaddr();
+      hdrs += "\r\n";
+    }
+    hdrs += "X-Forwarded-Proto: ";
+    if(util::istartsWith(request_path_, "http:")) {
+      hdrs += "http";
+    } else {
+      hdrs += "https";
+    }
     hdrs += "\r\n";
   }
-  hdrs += "X-Forwarded-Proto: https\r\n";
-
   hdrs += "Via: ";
   hdrs += via_value;
   if(!via_value.empty()) {
@@ -388,7 +401,7 @@ void Downstream::set_last_response_header_value(const std::string& value)
   Headers::value_type &item = response_headers_.back();
   item.second = value;
   check_transfer_encoding_chunked(&chunked_response_, item);
-  check_connection_close(&response_connection_close_, item);
+  //check_connection_close(&response_connection_close_, item);
 }
 
 unsigned int Downstream::get_response_http_status() const
@@ -421,6 +434,11 @@ int Downstream::get_response_minor() const
   return response_minor_;
 }
 
+int Downstream::get_response_version() const
+{
+  return response_major_*100+response_minor_;
+}
+
 bool Downstream::get_chunked_response() const
 {
   return chunked_response_;
@@ -431,6 +449,11 @@ bool Downstream::get_response_connection_close() const
   return response_connection_close_;
 }
 
+void Downstream::set_response_connection_close(bool f)
+{
+  response_connection_close_ = f;
+}
+
 namespace {
 int htp_hdrs_completecb(htparser *htp)
 {
@@ -439,6 +462,7 @@ int htp_hdrs_completecb(htparser *htp)
   downstream->set_response_http_status(htparser_get_status(htp));
   downstream->set_response_major(htparser_get_major(htp));
   downstream->set_response_minor(htparser_get_minor(htp));
+  downstream->set_response_connection_close(!htparser_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->get_upstream()->on_downstream_header_complete(downstream);
   return 0;
@@ -470,6 +494,7 @@ int htp_bodycb(htparser *htp, const char *data, size_t len)
 {
   Downstream *downstream;
   downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
+
   downstream->get_upstream()->on_downstream_body
     (downstream, reinterpret_cast<const uint8_t*>(data), len);
   return 0;
@@ -481,6 +506,12 @@ int htp_body_completecb(htparser *htp)
 {
   Downstream *downstream;
   downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
+
+  if(downstream->tunnel_established()) {
+    // For tunneling, we remove timeouts.
+    downstream->get_downstream_connection()->remove_timeouts();
+  }
+
   downstream->set_response_state(Downstream::MSG_COMPLETE);
   downstream->get_upstream()->on_downstream_body_complete(downstream);
   return 0;
@@ -515,9 +546,11 @@ int Downstream::parse_http_response()
   bufferevent *bev = dconn_->get_bev();
   evbuffer *input = bufferevent_get_input(bev);
   unsigned char *mem = evbuffer_pullup(input, -1);
+
   size_t nread = htparser_run(response_htp_, &htp_hooks,
                               reinterpret_cast<const char*>(mem),
                               evbuffer_get_length(input));
+
   evbuffer_drain(input, nread);
   if(htparser_get_error(response_htp_) == htparse_error_none) {
     return 0;
@@ -585,6 +618,11 @@ void Downstream::inc_recv_window_size(int32_t amount)
 void Downstream::set_recv_window_size(int32_t new_size)
 {
   recv_window_size_ = new_size;
+}
+
+bool Downstream::tunnel_established() const
+{
+  return request_method_ == "CONNECT" && response_http_status_ == 200;
 }
 
 } // namespace shrpx

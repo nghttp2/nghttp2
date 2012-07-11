@@ -58,6 +58,7 @@ public:
   void pool_downstream_connection(DownstreamConnection *dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
   DownstreamConnection* get_downstream_connection();
+  size_t get_pending_write_length();
 private:
   bufferevent *bev_;
   SSL *ssl_;

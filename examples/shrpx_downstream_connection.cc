@@ -110,6 +110,13 @@ void DownstreamConnection::start_waiting_response()
   }
 }
 
+void DownstreamConnection::remove_timeouts()
+{
+  if(bev_) {
+    bufferevent_set_timeouts(bev_, 0, 0);
+  }
+}
+
 namespace {
 // Gets called when DownstreamConnection is pooled in ClientHandler.
 void idle_eventcb(bufferevent *bev, short events, void *arg)

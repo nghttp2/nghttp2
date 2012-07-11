@@ -103,7 +103,8 @@ void on_stream_close_callback
       downstream->set_request_state(Downstream::STREAM_CLOSED);
       if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
         // At this point, downstream response was read
-        if(!downstream->get_response_connection_close()) {
+        if(!downstream->tunnel_established() &&
+           !downstream->get_response_connection_close()) {
           // Keep-alive
           DownstreamConnection *dconn;
           dconn = downstream->get_downstream_connection();
@@ -146,15 +147,39 @@ void on_ctrl_recv_callback
     downstream->init_response_body_buf();
 
     char **nv = frame->syn_stream.nv;
+    const char *path = 0;
+    const char *scheme = 0;
+    const char *host = 0;
+    const char *method = 0;
     for(size_t i = 0; nv[i]; i += 2) {
       if(strcmp(nv[i], ":path") == 0) {
-        downstream->set_request_path(nv[i+1]);
+        path = nv[i+1];
+      } else if(strcmp(nv[i], ":scheme") == 0) {
+        scheme = nv[i+1];
       } else if(strcmp(nv[i], ":method") == 0) {
+        method = nv[i+1];
         downstream->set_request_method(nv[i+1]);
+      } else if(strcmp(nv[i], ":host") == 0) {
+        host = nv[i+1];
       } else if(nv[i][0] != ':') {
         downstream->add_request_header(nv[i], nv[i+1]);
       }
     }
+    if(!path || !host || !method) {
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      return;
+    }
+    if(get_config()->spdy_proxy && scheme) {
+      std::string reqpath = scheme;
+      reqpath += "://";
+      reqpath += host;
+      reqpath += path;
+      downstream->set_request_path(reqpath);
+    } else {
+      downstream->set_request_path(path);
+    }
+
+    downstream->add_request_header("host", host);
     downstream->add_request_header("X-Forwarded-Spdy", "true");
 
     if(ENABLE_LOG) {
@@ -411,11 +436,15 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         // Server may indicate the end of the request by EOF
         if(ENABLE_LOG) {
-          LOG(INFO) << "Assuming downstream content-length is 0 byte";
+          LOG(INFO) << "Downstream body was ended by EOF";
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
         upstream->on_downstream_body_complete(downstream);
-      } else if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+        upstream->send();
+      } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+        // For SSL tunneling?
+        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      } else {
         // If stream was not closed, then we set MSG_COMPLETE and let
         // on_stream_close_callback delete downstream.
         upstream->error_reply(downstream, 502);
@@ -437,7 +466,10 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       downstream->set_downstream_connection(0);
       delete dconn;
       dconn = 0;
-      if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+      if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+        // For SSL tunneling
+        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      } else {
         if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
           upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
         } else {
@@ -499,7 +531,9 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
   evbuffer *body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
-  if(nread == 0 &&
+  // For tunneling, DATA stream is endless
+  if(!downstream->tunnel_established() &&
+     nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     *eof = 1;
   }
@@ -590,7 +624,6 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   const char **nv = new const char*[nheader * 2 + 6 + 1];
   size_t hdidx = 0;
   std::string via_value;
-  std::string location;
   nv[hdidx++] = ":status";
   nv[hdidx++] = http::get_status_string(downstream->get_response_http_status());
   nv[hdidx++] = ":version";
@@ -604,19 +637,10 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
       // These are ignored
     } else if(util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
-    } else if(util::strieq((*i).first.c_str(), "location")) {
-      location = (*i).second;
     } else {
       nv[hdidx++] = (*i).first.c_str();
       nv[hdidx++] = (*i).second.c_str();
     }
-  }
-  if(!location.empty()) {
-    nv[hdidx++] = "location";
-    // Assign location to store the result. Otherwise we lose the
-    // return value.
-    location = http::modify_location_header_value(location);
-    nv[hdidx++] = location.c_str();
   }
   if(!via_value.empty()) {
     via_value += ", ";
@@ -631,7 +655,9 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     for(size_t i = 0; nv[i]; i += 2) {
       ss << nv[i] << ": " << nv[i+1] << "\n";
     }
-    LOG(INFO) << "Upstream spdy response headers\n" << ss.str();
+    LOG(INFO) << "Upstream spdy response headers id="
+              << downstream->get_stream_id() << "\n"
+              << ss.str();
   }
   spdylay_data_provider data_prd;
   data_prd.source.ptr = downstream;

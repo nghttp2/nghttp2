@@ -343,6 +343,7 @@ void print_help(std::ostream& out)
       << "                       Default: WARNING\n"
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
+      << "    -s, --spdy-proxy   SSL/SPDY proxy mode.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -367,11 +368,12 @@ int main(int argc, char **argv)
       {"spdy-max-concurrent-streams", required_argument, 0, 'c' },
       {"log-level", required_argument, 0, 'L' },
       {"daemon", no_argument, 0, 'D' },
+      {"spdy-proxy", no_argument, 0, 's' },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DL:b:c:f:n:h", long_options,
+    int c = getopt_long(argc, argv, "DL:sb:c:f:n:h", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -412,6 +414,9 @@ int main(int argc, char **argv)
       break;
     case 'c':
       mod_config()->spdy_max_concurrent_streams = strtol(optarg, 0, 10);
+      break;
+    case 's':
+      mod_config()->spdy_proxy = true;
       break;
     case '?':
       exit(EXIT_FAILURE);
