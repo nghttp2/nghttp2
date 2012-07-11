@@ -304,7 +304,7 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: shrpx [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]\n"
+  out << "Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]\n"
       << "             [-c <NUM>] [-L <LEVEL>] <PRIVATE_KEY> <CERT>\n"
       << "\n"
       << "A reverse proxy for SPDY/HTTPS.\n"
