@@ -55,6 +55,7 @@ enum parser_flags {
     parser_flag_connection_keep_alive = 1 << 1,
     parser_flag_connection_close      = 1 << 2,
     parser_flag_trailing              = 1 << 3,
+    parser_flag_content_length        = 1 << 4,
 };
 
 enum parser_state {
@@ -216,11 +217,11 @@ static inline uint32_t to_uint32(char *m) {
 
 #define _str8cmp(m, c0, c1, c2, c3, c4, c5, c6, c7)              \
     to_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0) \
-    && to_uint32(m) == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
+    && to_uint32(m+4) == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
 
 #define _str9cmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8)                 \
     to_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0) \
-    && to_uint32(m) == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4) \
+    && to_uint32(m+4) == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4) \
     && m[8] == c8
 
 #define __HTPARSE_GENHOOK(__n)                                                    \
@@ -579,6 +580,10 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                                 p->method = htp_method_OPTIONS;
                             }
 
+                            if (_str7_cmp(m, 'C', 'O', 'N', 'N', 'E', 'C', 'T', '\0')) {
+                                p->method = htp_method_CONNECT;
+                            }
+
                             break;
                         case 8:
                             if (_str8cmp(m, 'P', 'R', 'O', 'P', 'F', 'I', 'N', 'D')) {
@@ -632,6 +637,14 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         c        = (unsigned char)(ch | 0x20);
 
                         if (c >= 'a' && c <= 'z') {
+                            if(p->method == htp_method_CONNECT) {
+                                p->path_offset       = &p->buf[p->buf_idx];
+
+                                p->buf[p->buf_idx++] = ch;
+                                p->buf[p->buf_idx]   = '\0';
+                                p->state = s_after_slash_in_uri;
+                                break;
+                            }
                             p->scheme_offset     = &p->buf[p->buf_idx];
                             p->buf[p->buf_idx++] = ch;
                             p->buf[p->buf_idx]   = '\0';
@@ -983,8 +996,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                                                (&p->buf[p->buf_idx] - p->path_offset));
                         }
 
-                        r2 = hook_uri_run(p, hooks, p->path_offset,
-                                          (&p->buf[p->buf_idx] - p->path_offset));
+                        r2 = hook_uri_run(p, hooks, p->buf, p->buf_idx);
 
                         p->buf_idx = 0;
                         p->state   = s_http_09;
@@ -1230,6 +1242,12 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 switch (ch) {
                     case CR:
                         p->state = s_hdrline_almost_done;
+                        res      = hook_on_hdrs_complete_run(p, hooks);
+
+                        if (res) {
+                            p->error = htparse_error_user;
+                            return i + 1;
+                        }
                         break;
                     case LF:
                         return i + 1;
@@ -1333,9 +1351,19 @@ hdrline_start:
                         break;
                     case CR:
                     case LF:
-                        /* empty header value, is this legal? */
-                        p->error             = htparse_error_inval_hdr;
-                        return i + 1;
+                        /* empty header value, is this legal? Don't
+                           nknow but we want to support it */
+                        res = hook_hdr_val_run(p, hooks, p->buf, p->buf_idx);
+
+                        if(ch == CR) {
+                          p->state             = s_hdrline_hdr_almost_done;
+                        } else {
+                          p->state             = s_hdrline_hdr_done;
+                        }
+                        p->buf_idx           = 0;
+                        break;
+                        /* p->error             = htparse_error_inval_hdr; */
+                        /* return i + 1; */
                     default:
                         p->buf[p->buf_idx++] = ch;
                         p->buf[p->buf_idx]   = '\0';
@@ -1350,6 +1378,7 @@ hdrline_start:
 
                 switch (ch) {
                     case CR:
+                    case LF:
                         res = hook_hdr_val_run(p, hooks, p->buf, p->buf_idx);
 
                         switch (p->heval) {
@@ -1365,26 +1394,29 @@ hdrline_start:
                                     p->error = htparse_error_too_big;
                                     return i + 1;
                                 }
-
+                                p->flags |= parser_flag_content_length;
                                 break;
                             case eval_hdr_val_connection:
                                 switch (p->buf[0]) {
                                     case 'K':
                                     case 'k':
-                                        if (_str9cmp((p->buf + 1),
-                                                     'e', 'e', 'p', '-', 'A', 'l', 'i', 'v', 'e')) {
+                                        if( !strcasecmp(p->buf, "keep-alive")) {
+                                            /* if (_str9cmp((p->buf + 1), */
+                                            /*              'e', 'e', 'p', '-', 'a', 'l', 'i', 'v', 'e')) { */
                                             p->flags |= parser_flag_connection_keep_alive;
                                         }
                                         break;
                                     case 'c':
-                                        if (_str5cmp(p->buf, 'c', 'l', 'o', 's', 'e')) {
+                                        if(!strcasecmp(p->buf, "close")) {
+                                            /* if (_str5cmp(p->buf, 'c', 'l', 'o', 's', 'e')) { */
                                             p->flags |= parser_flag_connection_close;
                                         }
                                         break;
                                 }
                                 break;
                             case eval_hdr_val_transfer_encoding:
-                                if (_str7_cmp(p->buf, 'c', 'h', 'u', 'n', 'k', 'e', 'd', '\0')) {
+                                if(!strcasecmp(p->buf, "chunked")) {
+                                    /* if (_str7_cmp(p->buf, 'c', 'h', 'u', 'n', 'k', 'e', 'd', '\0')) { */
                                     p->flags |= parser_flag_chunked;
                                 }
 
@@ -1399,14 +1431,18 @@ hdrline_start:
                             default:
                                 break;
                         } /* switch */
-
-                        p->state             = s_hdrline_hdr_almost_done;
+                        if(ch == CR) {
+                          p->state             = s_hdrline_hdr_almost_done;
+                        } else {
+                          /* TODO Run hook_on_msg_complete_run ? */
+                          p->state             = s_hdrline_hdr_done;
+                        }
                         p->buf_idx           = 0;
 
                         break;
-                    case LF:
-                        p->state             = s_hdrline_hdr_done;
-                        break;
+                    /* case LF: */
+                    /*     p->state             = s_hdrline_hdr_done; */
+                    /*     break; */
                     default:
                         p->buf[p->buf_idx++] = ch;
                         p->buf[p->buf_idx]   = '\0';
@@ -1450,6 +1486,7 @@ hdrline_start:
                 switch (ch) {
                     case CR:
                         p->state = s_hdrline_almost_done;
+
                         res      = hook_on_hdrs_complete_run(p, hooks);
 
                         if (res) {
@@ -1487,13 +1524,18 @@ hdrline_start:
                             p->state = s_chunk_size_start;
                         } else if (p->content_len > 0) {
                             p->state = s_body_read;
+                        } else if (!(p->flags & parser_flag_content_length) &&
+                                   ((p->type == htp_type_response &&
+                                     !htparser_should_keep_alive(p)) ||
+                                    (p->type == htp_type_request &&
+                                     (p->method == htp_method_CONNECT)))) {
+                            p->state = s_body_read;
                         } else if (p->content_len == 0) {
                             res      = hook_on_msg_complete_run(p, hooks);
                             p->state = s_start;
+                        } else {
+                            p->state = s_hdrline_done;
                         }
-
-                        p->state = s_hdrline_done;
-
                         if (res) {
                             p->error = htparse_error_user;
                             return i + 1;
@@ -1645,8 +1687,13 @@ hdrline_start:
                 {
                     const char * pp      = &data[i];
                     const char * pe      = (const char *)(data + len);
-                    size_t       to_read = _MIN_READ((uint64_t)(pe - pp),
-                                                     p->content_len);
+                    size_t       to_read;
+                    if(p->flags & parser_flag_content_length) {
+                        to_read = _MIN_READ((uint64_t)(pe - pp),
+                                            p->content_len);
+                    } else {
+                        to_read = pe-pp;
+                    }
 
                     htparse_log_debug("[%p] s_body_read %zu", p, to_read);
 
@@ -1656,7 +1703,8 @@ hdrline_start:
                         i  += to_read - 1;
                         p->content_len -= to_read;
 
-                        if (p->content_len == 0) {
+                        if ((p->flags & parser_flag_content_length) &&
+                            p->content_len == 0) {
                             res      = hook_on_msg_complete_run(p, hooks);
 
                             p->state = s_start;

@@ -32,6 +32,7 @@ enum htp_method {
     htp_method_LOCK,
     htp_method_UNLOCK,
     htp_method_TRACE,
+    htp_method_CONNECT,
     htp_method_UNKNOWN
 };
 
