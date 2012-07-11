@@ -436,7 +436,11 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
           LOG(INFO) << "Downstream body was ended by EOF";
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
-        upstream->on_downstream_body_complete(downstream);
+        if(downstream->tunnel_established()) {
+          upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+        } else {
+          upstream->on_downstream_body_complete(downstream);
+        }
         upstream->send();
       } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
         // For SSL tunneling?
