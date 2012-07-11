@@ -50,18 +50,20 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     chunked_request_(false),
     request_connection_close_(false),
     request_expect_100_continue_(false),
+    request_header_key_prev_(false),
     response_state_(INITIAL),
     response_http_status_(0),
     response_major_(1),
     response_minor_(1),
     chunked_response_(false),
     response_connection_close_(false),
-    response_htp_(htparser_new()),
+    response_header_key_prev_(false),
+    response_htp_(new http_parser()),
     response_body_buf_(0),
     recv_window_size_(0)
 {
-  htparser_init(response_htp_, htp_type_response);
-  htparser_set_userdata(response_htp_, this);
+  http_parser_init(response_htp_, HTTP_RESPONSE);
+  response_htp_->data = this;
 }
 
 Downstream::~Downstream()
@@ -157,16 +159,37 @@ void check_connection_close(bool *connection_close,
 void Downstream::add_request_header(const std::string& name,
                                     const std::string& value)
 {
+  request_header_key_prev_ = true;
   request_headers_.push_back(std::make_pair(name, value));
 }
 
 void Downstream::set_last_request_header_value(const std::string& value)
 {
+  request_header_key_prev_ = false;
   Headers::value_type &item = request_headers_.back();
   item.second = value;
   check_transfer_encoding_chunked(&chunked_request_, item);
   check_expect_100_continue(&request_expect_100_continue_, item);
   //check_connection_close(&request_connection_close_, item);
+}
+
+bool Downstream::get_request_header_key_prev() const
+{
+  return request_header_key_prev_;
+}
+
+void Downstream::append_last_request_header_key(const char *data, size_t len)
+{
+  assert(request_header_key_prev_);
+  Headers::value_type &item = request_headers_.back();
+  item.first.append(data, len);
+}
+
+void Downstream::append_last_request_header_value(const char *data, size_t len)
+{
+  assert(!request_header_key_prev_);
+  Headers::value_type &item = request_headers_.back();
+  item.second.append(data, len);
 }
 
 void Downstream::set_request_method(const std::string& method)
@@ -182,6 +205,11 @@ const std::string& Downstream::get_request_method() const
 void Downstream::set_request_path(const std::string& path)
 {
   request_path_ = path;
+}
+
+void Downstream::append_request_path(const char *data, size_t len)
+{
+  request_path_.append(data, len);
 }
 
 const std::string& Downstream::get_request_path() const
@@ -393,15 +421,37 @@ const Headers& Downstream::get_response_headers() const
 void Downstream::add_response_header(const std::string& name,
                                      const std::string& value)
 {
+  response_header_key_prev_ = true;
   response_headers_.push_back(std::make_pair(name, value));
 }
 
 void Downstream::set_last_response_header_value(const std::string& value)
 {
+  response_header_key_prev_ = false;
   Headers::value_type &item = response_headers_.back();
   item.second = value;
   check_transfer_encoding_chunked(&chunked_response_, item);
   //check_connection_close(&response_connection_close_, item);
+}
+
+bool Downstream::get_response_header_key_prev() const
+{
+  return response_header_key_prev_;
+}
+
+void Downstream::append_last_response_header_key(const char *data, size_t len)
+{
+  assert(response_header_key_prev_);
+  Headers::value_type &item = response_headers_.back();
+  item.first.append(data, len);
+}
+
+void Downstream::append_last_response_header_value(const char *data,
+                                                   size_t len)
+{
+  assert(!response_header_key_prev_);
+  Headers::value_type &item = response_headers_.back();
+  item.second.append(data, len);
 }
 
 unsigned int Downstream::get_response_http_status() const
@@ -455,14 +505,14 @@ void Downstream::set_response_connection_close(bool f)
 }
 
 namespace {
-int htp_hdrs_completecb(htparser *htp)
+int htp_hdrs_completecb(http_parser *htp)
 {
   Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
-  downstream->set_response_http_status(htparser_get_status(htp));
-  downstream->set_response_major(htparser_get_major(htp));
-  downstream->set_response_minor(htparser_get_minor(htp));
-  downstream->set_response_connection_close(!htparser_should_keep_alive(htp));
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+  downstream->set_response_http_status(htp->status_code);
+  downstream->set_response_major(htp->http_major);
+  downstream->set_response_minor(htp->http_minor);
+  downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->get_upstream()->on_downstream_header_complete(downstream);
   return 0;
@@ -470,30 +520,38 @@ int htp_hdrs_completecb(htparser *htp)
 } // namespace
 
 namespace {
-int htp_hdr_keycb(htparser *htp, const char *data, size_t len)
+int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
 {
   Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
-  downstream->add_response_header(std::string(data, len), "");
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+  if(downstream->get_response_header_key_prev()) {
+    downstream->append_last_response_header_key(data, len);
+  } else {
+    downstream->add_response_header(std::string(data, len), "");
+  }
   return 0;
 }
 } // namespace
 
 namespace {
-int htp_hdr_valcb(htparser *htp, const char *data, size_t len)
+int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
 {
   Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
-  downstream->set_last_response_header_value(std::string(data, len));
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+  if(downstream->get_response_header_key_prev()) {
+    downstream->set_last_response_header_value(std::string(data, len));
+  } else {
+    downstream->append_last_response_header_value(data, len);
+  }
   return 0;
 }
 } // namespace
 
 namespace {
-int htp_bodycb(htparser *htp, const char *data, size_t len)
+int htp_bodycb(http_parser *htp, const char *data, size_t len)
 {
   Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
+  downstream = reinterpret_cast<Downstream*>(htp->data);
 
   downstream->get_upstream()->on_downstream_body
     (downstream, reinterpret_cast<const uint8_t*>(data), len);
@@ -502,10 +560,10 @@ int htp_bodycb(htparser *htp, const char *data, size_t len)
 } // namespace
 
 namespace {
-int htp_body_completecb(htparser *htp)
+int htp_msg_completecb(http_parser *htp)
 {
   Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htparser_get_userdata(htp));
+  downstream = reinterpret_cast<Downstream*>(htp->data);
 
   if(downstream->tunnel_established()) {
     // For tunneling, we remove timeouts.
@@ -514,30 +572,26 @@ int htp_body_completecb(htparser *htp)
 
   downstream->set_response_state(Downstream::MSG_COMPLETE);
   downstream->get_upstream()->on_downstream_body_complete(downstream);
-  return 0;
+
+  if(downstream->get_request_method() == "HEAD") {
+    // Ignore the response body. HEAD response may contain
+    // Content-Length or Transfer-Encoding: chunked.
+    return 1;
+  } else {
+    return 0;
+  }
 }
 } // namespace
 
 namespace {
-htparse_hooks htp_hooks = {
-  0, /*htparse_hook      on_msg_begin;*/
-  0, /*htparse_data_hook method;*/
-  0, /* htparse_data_hook scheme;*/
-  0, /* htparse_data_hook host; */
-  0, /* htparse_data_hook port; */
-  0, /* htparse_data_hook path; */
-  0, /* htparse_data_hook args; */
-  0, /* htparse_data_hook uri; */
-  0, /* htparse_hook      on_hdrs_begin; */
-  htp_hdr_keycb, /* htparse_data_hook hdr_key; */
-  htp_hdr_valcb, /* htparse_data_hook hdr_val; */
-  0, /* htparse_data_hook hostname; */
-  htp_hdrs_completecb, /* htparse_hook      on_hdrs_complete; */
-  0, /*htparse_hook      on_new_chunk;*/
-  0, /*htparse_hook      on_chunk_complete;*/
-  0, /*htparse_hook      on_chunks_complete;*/
-  htp_bodycb, /* htparse_data_hook body; */
-  htp_body_completecb /* htparse_hook      on_msg_complete;*/
+http_parser_settings htp_hooks = {
+  0, /*http_cb      on_message_begin;*/
+  0, /*http_data_cb on_url;*/
+  htp_hdr_keycb, /*http_data_cb on_header_field;*/
+  htp_hdr_valcb, /*http_data_cb on_header_value;*/
+  htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
+  htp_bodycb, /*http_data_cb on_body;*/
+  htp_msg_completecb /*http_cb      on_message_complete;*/
 };
 } // namespace
 
@@ -547,17 +601,19 @@ int Downstream::parse_http_response()
   evbuffer *input = bufferevent_get_input(bev);
   unsigned char *mem = evbuffer_pullup(input, -1);
 
-  size_t nread = htparser_run(response_htp_, &htp_hooks,
-                              reinterpret_cast<const char*>(mem),
-                              evbuffer_get_length(input));
+  size_t nread = http_parser_execute(response_htp_, &htp_hooks,
+                                     reinterpret_cast<const char*>(mem),
+                                     evbuffer_get_length(input));
 
   evbuffer_drain(input, nread);
-  if(htparser_get_error(response_htp_) == htparse_error_none) {
+  http_errno htperr = HTTP_PARSER_ERRNO(response_htp_);
+  if(htperr == HPE_OK) {
     return 0;
   } else {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream HTTP parser failure: "
-                << htparser_get_strerror(response_htp_);
+                << "(" << http_errno_name(htperr) << ") "
+                << http_errno_description(htperr);
     }
     return SHRPX_ERR_HTTP_PARSE;
   }

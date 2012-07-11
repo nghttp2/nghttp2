@@ -36,7 +36,7 @@
 #include <event2/bufferevent.h>
 
 extern "C" {
-#include "htparse/htparse.h"
+#include "http-parser/http_parser.h"
 }
 
 #include "shrpx_io_control.h"
@@ -72,9 +72,15 @@ public:
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
   void set_last_request_header_value(const std::string& value);
+
+  bool get_request_header_key_prev() const;
+  void append_last_request_header_key(const char *data, size_t len);
+  void append_last_request_header_value(const char *data, size_t len);
+
   void set_request_method(const std::string& method);
   const std::string& get_request_method() const;
   void set_request_path(const std::string& path);
+  void append_request_path(const char *data, size_t len);
   const std::string& get_request_path() const;
   void set_request_major(int major);
   void set_request_minor(int minor);
@@ -101,6 +107,11 @@ public:
   const Headers& get_response_headers() const;
   void add_response_header(const std::string& name, const std::string& value);
   void set_last_response_header_value(const std::string& value);
+
+  bool get_response_header_key_prev() const;
+  void append_last_response_header_key(const char *data, size_t len);
+  void append_last_response_header_value(const char *data, size_t len);
+
   unsigned int get_response_http_status() const;
   void set_response_http_status(unsigned int status);
   void set_response_major(int major);
@@ -131,6 +142,7 @@ private:
   bool request_connection_close_;
   bool request_expect_100_continue_;
   Headers request_headers_;
+  bool request_header_key_prev_;
 
   int response_state_;
   unsigned int response_http_status_;
@@ -139,7 +151,8 @@ private:
   bool chunked_response_;
   bool response_connection_close_;
   Headers response_headers_;
-  htparser *response_htp_;
+  bool response_header_key_prev_;
+  http_parser *response_htp_;
   // This buffer is used to temporarily store downstream response
   // body. Spdylay reads data from this in the callback.
   evbuffer *response_body_buf_;

@@ -351,9 +351,6 @@ ClientHandler* SpdyUpstream::get_client_handler() const
 namespace {
 void spdy_downstream_readcb(bufferevent *bev, void *ptr)
 {
-  if(ENABLE_LOG) {
-    LOG(INFO) << "spdy_downstream_readcb";
-  }
   DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
   Downstream *downstream = dconn->get_downstream();
   SpdyUpstream *upstream;
@@ -674,9 +671,6 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 int SpdyUpstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len)
 {
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Downstream on_downstream_body";
-  }
   evbuffer *body = downstream->get_response_body_buf();
   evbuffer_add(body, data, len);
   spdylay_session_resume_data(session_, downstream->get_stream_id());

@@ -32,7 +32,7 @@
 #include <deque>
 
 extern "C" {
-#include "htparse/htparse.h"
+#include "http-parser/http_parser.h"
 }
 
 #include "shrpx_upstream.h"
@@ -71,7 +71,7 @@ public:
   void reset_current_header_length();
 private:
   ClientHandler *handler_;
-  htparser *htp_;
+  http_parser *htp_;
   size_t current_header_length_;
   std::deque<Downstream*> downstream_queue_;
   IOControl ioctrl_;

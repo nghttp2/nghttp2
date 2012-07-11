@@ -88,7 +88,7 @@ shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	shrpx_ssl.cc shrpx_ssl.h \
 	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
 	shrpx_worker.cc shrpx_worker.h \
-	htparse/htparse.c htparse/htparse.h
+	http-parser/http_parser.c http-parser/http_parser.h
 endif # HAVE_LIBEVENT_OPENSSL
 
 noinst_PROGRAMS = spdycli

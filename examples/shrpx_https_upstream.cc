@@ -46,12 +46,12 @@ const size_t SHRPX_HTTPS_MAX_HEADER_LENGTH = 64*1024;
 
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
   : handler_(handler),
-    htp_(htparser_new()),
+    htp_(new http_parser()),
     current_header_length_(0),
     ioctrl_(handler->get_bev())
 {
-  htparser_init(htp_, htp_type_request);
-  htparser_set_userdata(htp_, this);
+  http_parser_init(htp_, HTTP_REQUEST);
+  htp_->data = this;
 }
 
 HttpsUpstream::~HttpsUpstream()
@@ -69,10 +69,10 @@ void HttpsUpstream::reset_current_header_length()
 }
 
 namespace {
-int htp_msg_begin(htparser *htp)
+int htp_msg_begin(http_parser *htp)
 {
   HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
+  upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   if(ENABLE_LOG) {
     LOG(INFO) << "Upstream https request start " << upstream;
   }
@@ -84,73 +84,61 @@ int htp_msg_begin(htparser *htp)
 } // namespace
 
 namespace {
-int htp_methodcb(htparser *htp, const char *data, size_t len)
+int htp_uricb(http_parser *htp, const char *data, size_t len)
 {
   HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
+  upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_last_downstream();
-  downstream->set_request_method(std::string(data, len));
+  downstream->append_request_path(data, len);
   return 0;
 }
 } // namespace
 
 namespace {
-int htp_uricb(htparser *htp, const char *data, size_t len)
+int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
 {
   HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
+  upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_last_downstream();
-  downstream->set_request_path(std::string(data, len));
-  return 0;
-}
-} // namespace
-
-namespace {
-int htp_hdrs_begincb(htparser *htp)
-{
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Upstream https request headers start";
+  if(downstream->get_request_header_key_prev()) {
+    downstream->append_last_request_header_key(data, len);
+  } else {
+    downstream->add_request_header(std::string(data, len), "");
   }
   return 0;
 }
 } // namespace
 
 namespace {
-int htp_hdr_keycb(htparser *htp, const char *data, size_t len)
+int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
 {
   HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
+  upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_last_downstream();
-  downstream->add_request_header(std::string(data, len), "");
+  if(downstream->get_request_header_key_prev()) {
+    downstream->set_last_request_header_value(std::string(data, len));
+  } else {
+    downstream->append_last_request_header_value(data, len);
+  }
   return 0;
 }
 } // namespace
 
 namespace {
-int htp_hdr_valcb(htparser *htp, const char *data, size_t len)
+int htp_hdrs_completecb(http_parser *htp)
 {
   HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
-  Downstream *downstream = upstream->get_last_downstream();
-  downstream->set_last_request_header_value(std::string(data, len));
-  return 0;
-}
-} // namespace
-
-namespace {
-int htp_hdrs_completecb(htparser *htp)
-{
-  HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
+  upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   if(ENABLE_LOG) {
     LOG(INFO) << "Upstream https request headers complete " << upstream;
   }
   Downstream *downstream = upstream->get_last_downstream();
 
-  downstream->set_request_major(htparser_get_major(htp));
-  downstream->set_request_minor(htparser_get_minor(htp));
+  downstream->set_request_method(http_method_str((enum http_method)htp->method));
+  downstream->set_request_major(htp->http_major);
+  downstream->set_request_minor(htp->http_minor);
 
-  downstream->set_request_connection_close(!htparser_should_keep_alive(htp));
+  downstream->set_request_connection_close(!http_should_keep_alive(htp));
 
   DownstreamConnection *dconn;
   dconn = upstream->get_client_handler()->get_downstream_connection();
@@ -176,10 +164,10 @@ int htp_hdrs_completecb(htparser *htp)
 } // namespace
 
 namespace {
-int htp_bodycb(htparser *htp, const char *data, size_t len)
+int htp_bodycb(http_parser *htp, const char *data, size_t len)
 {
   HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
+  upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_last_downstream();
   downstream->push_upload_data_chunk(reinterpret_cast<const uint8_t*>(data),
                                      len);
@@ -188,43 +176,34 @@ int htp_bodycb(htparser *htp, const char *data, size_t len)
 } // namespace
 
 namespace {
-int htp_msg_completecb(htparser *htp)
+int htp_msg_completecb(http_parser *htp)
 {
   if(ENABLE_LOG) {
     LOG(INFO) << "Upstream https request complete";
   }
   HttpsUpstream *upstream;
-  upstream = reinterpret_cast<HttpsUpstream*>(htparser_get_userdata(htp));
+  upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_last_downstream();
   downstream->end_upload_data();
   downstream->set_request_state(Downstream::MSG_COMPLETE);
   // Stop further processing to complete this request
-  return 1;
+  http_parser_pause(htp, 1);
+  return 0;
 }
 } // namespace
 
 namespace {
-htparse_hooks htp_hooks = {
-  htp_msg_begin, /*htparse_hook      on_msg_begin;*/
-  htp_methodcb, /*htparse_data_hook method;*/
-  0, /* htparse_data_hook scheme;*/
-  0, /* htparse_data_hook host; */
-  0, /* htparse_data_hook port; */
-  0, /* htparse_data_hook path; */
-  0, /* htparse_data_hook args; */
-  htp_uricb, /* htparse_data_hook uri; */
-  htp_hdrs_begincb, /* htparse_hook      on_hdrs_begin; */
-  htp_hdr_keycb, /* htparse_data_hook hdr_key; */
-  htp_hdr_valcb, /* htparse_data_hook hdr_val; */
-  0, /* htparse_data_hook hostname; */
-  htp_hdrs_completecb, /* htparse_hook      on_hdrs_complete; */
-  0, /*htparse_hook      on_new_chunk;*/
-  0, /*htparse_hook      on_chunk_complete;*/
-  0, /*htparse_hook      on_chunks_complete;*/
-  htp_bodycb, /* htparse_data_hook body; */
-  htp_msg_completecb /* htparse_hook      on_msg_complete;*/
+http_parser_settings htp_hooks = {
+  htp_msg_begin, /*http_cb      on_message_begin;*/
+  htp_uricb, /*http_data_cb on_url;*/
+  htp_hdr_keycb, /*http_data_cb on_header_field;*/
+  htp_hdr_valcb, /*http_data_cb on_header_value;*/
+  htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
+  htp_bodycb, /*http_data_cb on_body;*/
+  htp_msg_completecb /*http_cb      on_message_complete;*/
 };
 } // namespace
+
 
 // on_read() does not consume all available data in input buffer if
 // one http request is fully received.
@@ -235,15 +214,19 @@ int HttpsUpstream::on_read()
 
   unsigned char *mem = evbuffer_pullup(input, -1);
 
-  int nread = htparser_run(htp_, &htp_hooks,
-                           reinterpret_cast<const char*>(mem),
-                           evbuffer_get_length(input));
+  if(evbuffer_get_length(input) == 0) {
+    return 0;
+  }
+
+  size_t nread = http_parser_execute(htp_, &htp_hooks,
+                                     reinterpret_cast<const char*>(mem),
+                                     evbuffer_get_length(input));
   evbuffer_drain(input, nread);
   // Well, actually header length + some body bytes
   current_header_length_ += nread;
-  htpparse_error htperr = htparser_get_error(htp_);
   Downstream *downstream = get_top_downstream();
-  if(htperr == htparse_error_user) {
+  http_errno htperr = HTTP_PARSER_ERRNO(htp_);
+  if(htperr == HPE_PAUSED) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       get_client_handler()->set_should_close_after_write(true);
       error_reply(503);
@@ -259,7 +242,7 @@ int HttpsUpstream::on_read()
         pause_read(SHRPX_MSG_BLOCK);
       }
     }
-  } else if(htperr == htparse_error_none) {
+  } else if(htperr == HPE_OK) {
     // downstream can be NULL here.
     if(downstream) {
       if(downstream->get_request_state() == Downstream::INITIAL &&
@@ -278,7 +261,8 @@ int HttpsUpstream::on_read()
   } else {
     if(ENABLE_LOG) {
       LOG(INFO) << "Upstream http parse failure: "
-                << htparser_get_strerror(htp_);
+                << "(" << http_errno_name(htperr) << ") "
+                << http_errno_description(htperr);
     }
     get_client_handler()->set_should_close_after_write(true);
     error_reply(400);
@@ -319,6 +303,7 @@ void HttpsUpstream::resume_read(IOCtrlReason reason)
   if(ioctrl_.resume_read(reason)) {
     // Process remaining data in input buffer here because these bytes
     // are not notified by readcb until new data arrive.
+    http_parser_pause(htp_, 0);
     on_read();
   }
 }
