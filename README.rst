@@ -208,12 +208,14 @@ Shrpx - A reverse proxy for SPDY/HTTPS
 ++++++++++++++++++++++++++++++++++++++
 
 The ``shrpx`` is a multi-threaded reverse proxy for SPDY/HTTPS.  It
-converts SPDY/HTTPS traffic to plain HTTP.
+converts SPDY/HTTPS traffic to plain HTTP. It can be used as SSL/SPDY
+proxy with the http proxy (e.g., Squid) in the backend. To enable
+SSL/SPDY proxy mode, use ``--spdy-proxy`` option.
 
 Here is the command-line options::
 
     $ examples/shrpx -h
-    Usage: shrpx [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]
+    Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]
                  [-c <NUM>] [-L <LEVEL>] <PRIVATE_KEY> <CERT>
 
     A reverse proxy for SPDY/HTTPS.
@@ -228,15 +230,23 @@ Here is the command-line options::
                            Default: 'localhost,3000'
         -n, --workers=<CORES>
                            Set the number of worker threads.
+                           Default: 1
         -c, --spdy-max-concurrent-streams=<NUM>
                            Set the maximum number of the concurrent
                            streams in one SPDY session.
+                           Default: 100
         -L, --log-level=<LEVEL>
                            Set the severity level of log output.
-                           INFO, WARNING, ERROR and FATAL
+                           INFO, WARNING, ERROR and FATAL.
+                           Default: WARNING
         -D, --daemon       Run in a background. If -D is used, the
                            current working directory is changed to '/'.
+        -s, --spdy-proxy   SSL/SPDY proxy mode.
+        --add-x-forwarded-for
+                           Append X-Forwarded-For header field to the
+                           downstream request.
         -h, --help         Print this help.
+
 
 For those of you who are curious, ``shrpx`` is an abbreviation of
 "Spdy/https to Http Reverse ProXy".
