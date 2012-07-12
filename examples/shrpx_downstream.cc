@@ -296,13 +296,13 @@ bool Downstream::get_output_buffer_full()
 // Downstream. Otherwise, the program will crash.
 int Downstream::push_request_headers()
 {
-  bool xff_found = false;
   std::string hdrs = request_method_;
   hdrs += " ";
   hdrs += request_path_;
   hdrs += " ";
   hdrs += "HTTP/1.1\r\n";
   std::string via_value;
+  std::string xff_value;
   for(Headers::const_iterator i = request_headers_.begin();
       i != request_headers_.end(); ++i) {
     if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto") ||
@@ -315,6 +315,10 @@ int Downstream::push_request_headers()
       via_value = (*i).second;
       continue;
     }
+    if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
+      xff_value = (*i).second;
+      continue;
+    }
     if(util::strieq((*i).first.c_str(), "expect") &&
        util::strifind((*i).second.c_str(), "100-continue")) {
       continue;
@@ -322,22 +326,25 @@ int Downstream::push_request_headers()
     hdrs += (*i).first;
     hdrs += ": ";
     hdrs += (*i).second;
-    if(!xff_found && util::strieq((*i).first.c_str(), "X-Forwarded-For")) {
-      xff_found = true;
-      hdrs += ", ";
-      hdrs += upstream_->get_client_handler()->get_ipaddr();
-    }
     hdrs += "\r\n";
   }
   if(request_connection_close_) {
     hdrs += "Connection: close\r\n";
   }
-  if(request_method_ != "CONNECT") {
-    if(!xff_found) {
-      hdrs += "X-Forwarded-For: ";
-      hdrs += upstream_->get_client_handler()->get_ipaddr();
-      hdrs += "\r\n";
+  if(get_config()->add_x_forwarded_for) {
+    hdrs += "X-Forwarded-For: ";
+    if(!xff_value.empty()) {
+      hdrs += xff_value;
+      hdrs += ", ";
     }
+    hdrs += upstream_->get_client_handler()->get_ipaddr();
+    hdrs += "\r\n";
+  } else if(!xff_value.empty()) {
+    hdrs += "X-Forwarded-For: ";
+    hdrs += xff_value;
+    hdrs += "\r\n";
+  }
+  if(request_method_ != "CONNECT") {
     hdrs += "X-Forwarded-Proto: ";
     if(util::istartsWith(request_path_, "http:")) {
       hdrs += "http";

@@ -344,6 +344,9 @@ void print_help(std::ostream& out)
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
       << "    -s, --spdy-proxy   SSL/SPDY proxy mode.\n"
+      << "    --add-x-forwarded-for\n"
+      << "                       Append X-Forwarded-For header field to the\n"
+      << "                       downstream request.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -361,6 +364,7 @@ int main(int argc, char **argv)
   uint16_t backend_port;
 
   while(1) {
+    int flag;
     static option long_options[] = {
       {"backend", required_argument, 0, 'b' },
       {"frontend", required_argument, 0, 'f' },
@@ -369,6 +373,7 @@ int main(int argc, char **argv)
       {"log-level", required_argument, 0, 'L' },
       {"daemon", no_argument, 0, 'D' },
       {"spdy-proxy", no_argument, 0, 's' },
+      {"add-x-forwarded-for", no_argument, &flag, 1},
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -420,6 +425,16 @@ int main(int argc, char **argv)
       break;
     case '?':
       exit(EXIT_FAILURE);
+    case 0:
+      switch(flag) {
+      case 1:
+        // --add-x-forwarded-for
+        mod_config()->add_x_forwarded_for = true;
+        break;
+      default:
+        break;
+      }
+      break;
     default:
       break;
     }
