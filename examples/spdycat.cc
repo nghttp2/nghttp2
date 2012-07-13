@@ -448,7 +448,7 @@ int communicate(const std::string& host, uint16_t port,
     return -1;
   }
   SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  ssl_ctx = SSL_CTX_new(TLSv1_client_method());
   if(!ssl_ctx) {
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
