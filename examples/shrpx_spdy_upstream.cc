@@ -169,8 +169,7 @@ void on_ctrl_recv_callback
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }
-    if(get_config()->spdy_proxy && scheme &&
-       !util::istartsWith(path, scheme)) {
+    if(get_config()->spdy_proxy && scheme && path[0] == '/') {
       std::string reqpath = scheme;
       reqpath += "://";
       reqpath += host;
