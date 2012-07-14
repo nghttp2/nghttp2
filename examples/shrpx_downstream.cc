@@ -78,7 +78,7 @@ Downstream::~Downstream()
   if(dconn_) {
     delete dconn_;
   }
-  free(response_htp_);
+  delete response_htp_;
   if(ENABLE_LOG) {
     LOG(INFO) << "Deleted";
   }
@@ -692,7 +692,8 @@ void Downstream::set_recv_window_size(int32_t new_size)
 
 bool Downstream::tunnel_established() const
 {
-  return request_method_ == "CONNECT" && response_http_status_ == 200;
+  return request_method_ == "CONNECT" &&
+    200 <= response_http_status_ && response_http_status_ < 300;
 }
 
 } // namespace shrpx

@@ -56,7 +56,7 @@ HttpsUpstream::HttpsUpstream(ClientHandler *handler)
 
 HttpsUpstream::~HttpsUpstream()
 {
-  free(htp_);
+  delete htp_;
   for(std::deque<Downstream*>::iterator i = downstream_queue_.begin();
       i != downstream_queue_.end(); ++i) {
     delete *i;
