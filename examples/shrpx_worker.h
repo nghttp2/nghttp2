@@ -30,11 +30,13 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#include "shrpx_listen_handler.h"
+
 namespace shrpx {
 
 class Worker {
 public:
-  Worker(int fd);
+  Worker(WorkerInfo *info);
   ~Worker();
   void run();
 private:

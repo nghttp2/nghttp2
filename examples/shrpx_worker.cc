@@ -36,14 +36,13 @@
 
 namespace shrpx {
 
-Worker::Worker(int fd)
-  : fd_(fd),
-    ssl_ctx_(ssl::create_ssl_context())
+Worker::Worker(WorkerInfo *info)
+  : fd_(info->sv[1]),
+    ssl_ctx_(info->ssl_ctx)
 {}
   
 Worker::~Worker()
 {
-  SSL_CTX_free(ssl_ctx_);
   shutdown(fd_, SHUT_WR);
   close(fd_);
 }
@@ -84,8 +83,8 @@ void Worker::run()
 
 void* start_threaded_worker(void *arg)
 {
-  int fd = *reinterpret_cast<int*>(arg);
-  Worker worker(fd);
+  WorkerInfo *info = reinterpret_cast<WorkerInfo*>(arg);
+  Worker worker(info);
   worker.run();
   return 0;
 }

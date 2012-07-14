@@ -59,6 +59,7 @@ public:
   void remove_downstream_connection(DownstreamConnection *dconn);
   DownstreamConnection* get_downstream_connection();
   size_t get_pending_write_length();
+  SSL* get_ssl() const;
 private:
   bufferevent *bev_;
   SSL *ssl_;

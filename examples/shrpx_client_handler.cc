@@ -92,6 +92,11 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
       }
       handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
       handler->validate_next_proto();
+      if(ENABLE_LOG) {
+        if(SSL_session_reused(handler->get_ssl())) {
+          LOG(INFO) << "SSL/TLS session reused";
+        }
+      }
       // At this point, input buffer is already filled with some
       // bytes.  The read callback is not called until new data
       // come. So consume input buffer here.
@@ -258,6 +263,11 @@ size_t ClientHandler::get_pending_write_length()
 {
   evbuffer *output = bufferevent_get_output(bev_);
   return evbuffer_get_length(output);
+}
+
+SSL* ClientHandler::get_ssl() const
+{
+  return ssl_;
 }
 
 } // namespace shrpx

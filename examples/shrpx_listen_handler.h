@@ -38,6 +38,7 @@ namespace shrpx {
 
 struct WorkerInfo {
   int sv[2];
+  SSL_CTX *ssl_ctx;
   bufferevent *bev;
 };
 

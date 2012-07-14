@@ -65,7 +65,8 @@ void ListenHandler::create_worker_thread(size_t num)
       LOG(ERROR) << "socketpair() failed: " << strerror(errno);
       continue;
     }
-    rv = pthread_create(&thread, &attr, start_threaded_worker, &info->sv[1]);
+    info->ssl_ctx = ssl_ctx_;
+    rv = pthread_create(&thread, &attr, start_threaded_worker, info);
     if(rv != 0) {
       LOG(ERROR) << "pthread_create() failed: " << strerror(rv);
       for(size_t j = 0; j < 2; ++j) {
