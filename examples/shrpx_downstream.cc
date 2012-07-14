@@ -522,7 +522,25 @@ int htp_hdrs_completecb(http_parser *htp)
   downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->get_upstream()->on_downstream_header_complete(downstream);
-  return 0;
+
+  if(downstream->tunnel_established()) {
+    downstream->get_downstream_connection()->set_tunneling_timeout();
+    // For tunneling, we remove upstream read timeouts. But it seems
+    // libevent cannot remove timeouts for SSL based bufferevent. Set
+    // long timeout here as a workaround.
+    timeval rtv = { 3600*24, 0 };
+    timeval wtv = { 30, 0 };
+    downstream->get_upstream()->get_client_handler()
+      ->set_upstream_timeouts(&rtv, &wtv);
+  }
+
+  if(downstream->get_request_method() == "HEAD") {
+    // Ignore the response body. HEAD response may contain
+    // Content-Length or Transfer-Encoding: chunked.
+    return 1;
+  } else {
+    return 0;
+  }
 }
 } // namespace
 
@@ -572,21 +590,10 @@ int htp_msg_completecb(http_parser *htp)
   Downstream *downstream;
   downstream = reinterpret_cast<Downstream*>(htp->data);
 
-  if(downstream->tunnel_established()) {
-    // For tunneling, we remove timeouts.
-    downstream->get_downstream_connection()->remove_timeouts();
-  }
-
   downstream->set_response_state(Downstream::MSG_COMPLETE);
   downstream->get_upstream()->on_downstream_body_complete(downstream);
 
-  if(downstream->get_request_method() == "HEAD") {
-    // Ignore the response body. HEAD response may contain
-    // Content-Length or Transfer-Encoding: chunked.
-    return 1;
-  } else {
-    return 0;
-  }
+  return 0;
 }
 } // namespace
 

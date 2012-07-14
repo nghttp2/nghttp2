@@ -110,10 +110,11 @@ void DownstreamConnection::start_waiting_response()
   }
 }
 
-void DownstreamConnection::remove_timeouts()
+void DownstreamConnection::set_tunneling_timeout()
 {
   if(bev_) {
-    bufferevent_set_timeouts(bev_, 0, 0);
+    bufferevent_set_timeouts(bev_, 0,
+                             &get_config()->downstream_write_timeout);
   }
 }
 
