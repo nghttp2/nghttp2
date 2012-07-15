@@ -51,6 +51,20 @@ example program), the following packages are needed:
 
 * libevent-openssl >= 2.0.8
 
+If you are using Ubuntu 12.04, you need the following packages
+installed:
+
+* autoconf
+* automake
+* autotools-dev
+* libtool
+* pkg-config
+* zlib1g-dev
+* libcunit1-dev
+* libssl-dev
+* libxml2-dev
+* libevent-dev
+
 Build from git
 --------------
 
@@ -250,6 +264,33 @@ Here is the command-line options::
 
 For those of you who are curious, ``shrpx`` is an abbreviation of
 "Spdy/https to Http Reverse ProXy".
+
+Without ``-s`` option, it works in the following configuration::
+
+    client <-- SPDY, HTTPS --> Shrpx <-- HTTP --> Web Server
+
+With ``-s`` option, it works in the following configuration::
+
+    client <-- SPDY, HTTPS --> Shrpx <-- HTTP --> Proxy server (e.g., Squid)
+
+    * client is configured to use Shrpx as SSL/SPDY proxy.
+
+At the time of this writing, Chrome is the only browser which supports
+SSL/SPDY proxy. The one way to configure Chrome to use SSL/SPDY proxy
+is create proxy.pac script like this::
+
+    function FindProxyForURL(url, host) {
+        return "HTTPS SERVERADDR:PORT";
+    }
+
+``SERVERADDR`` and ``PORT`` is the hostname/address and port of the
+machine shrpx is running.  Please note that Chrome requires valid
+certificate for SSL/PROXY.
+
+Then run chrome with the following arguments::
+
+    $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
+
 
 Other examples
 ++++++++++++++
