@@ -24,6 +24,8 @@
  */
 #include "shrpx_client_handler.h"
 
+#include <cerrno>
+
 #include "shrpx_upstream.h"
 #include "shrpx_spdy_upstream.h"
 #include "shrpx_https_upstream.h"
@@ -73,7 +75,8 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
   }
   if(events & BEV_EVENT_ERROR) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Upstream network error";
+      LOG(INFO) << "Upstream network error: "
+                << evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR());
     }
     finish = true;
   }

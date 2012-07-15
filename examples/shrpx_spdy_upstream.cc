@@ -25,6 +25,7 @@
 #include "shrpx_spdy_upstream.h"
 
 #include <assert.h>
+#include <cerrno>
 #include <sstream>
 
 #include "shrpx_client_handler.h"
@@ -441,7 +442,6 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         } else {
           upstream->on_downstream_body_complete(downstream);
         }
-        upstream->send();
       } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
         // For SSL tunneling?
         upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -450,13 +450,21 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         // on_stream_close_callback delete downstream.
         upstream->error_reply(downstream, 502);
         downstream->set_response_state(Downstream::MSG_COMPLETE);
-        upstream->send();
-        // At this point, downstream may be deleted.
       }
+      upstream->send();
+      // At this point, downstream may be deleted.
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream error/timeout. Downstream " << downstream;
+      if(events & BEV_EVENT_ERROR) {
+        LOG(INFO) << "Downstream network error: "
+                  << evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR());
+      } else {
+        LOG(INFO) << "Downstream timeout";
+      }
+      if(downstream->tunnel_established()) {
+        LOG(INFO) << "Note: this is tunnel connection";
+      }
     }
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
       upstream->remove_downstream(downstream);
@@ -483,9 +491,9 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
           upstream->error_reply(downstream, status);
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
-        upstream->send();
-        // At this point, downstream may be deleted.
       }
+      upstream->send();
+      // At this point, downstream may be deleted.
     }
   }
 }
