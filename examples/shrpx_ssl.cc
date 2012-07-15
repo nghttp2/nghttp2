@@ -68,6 +68,18 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 }
 } // namespace
 
+namespace {
+void set_npn_prefs(unsigned char *out, const char **protos, size_t len)
+{
+  unsigned char *ptr = out;
+  for(size_t i = 0; i < len; ++i) {
+    *ptr = strlen(protos[i]);
+    memcpy(ptr+1, protos[i], *ptr);
+    ptr += *ptr+1;
+  }
+}
+} // namespace
+
 SSL_CTX* create_ssl_context()
 {
   SSL_CTX *ssl_ctx;
@@ -109,12 +121,15 @@ SSL_CTX* create_ssl_context()
                        verify_callback);
   }
   // We speak "http/1.1", "spdy/2" and "spdy/3".
-  proto_list[0] = 6;
-  memcpy(&proto_list[1], "spdy/3", 6);
-  proto_list[7] = 6;
-  memcpy(&proto_list[8], "spdy/2", 6);
-  proto_list[14] = 8;
-  memcpy(&proto_list[15], "http/1.1", 8);
+  if(get_config()->spdy_proxy) {
+    // It seems SPDY/3 flow control does not work well in proxy
+    // connection.
+    const char *protos[] = { "spdy/2", "spdy/3", "http/1.1" };
+    set_npn_prefs(proto_list, protos, 3);
+  } else {
+    const char *protos[] = { "spdy/3", "spdy/2", "http/1.1" };
+    set_npn_prefs(proto_list, protos, 3);
+  }
 
   next_proto.first = proto_list;
   next_proto.second = sizeof(proto_list);
