@@ -145,8 +145,11 @@ int htp_hdrs_completecb(http_parser *htp)
 
   if(downstream->get_expect_100_continue()) {
     static const char reply_100[] = "HTTP/1.1 100 Continue\r\n\r\n";
-    bufferevent_write(upstream->get_client_handler()->get_bev(),
-                      reply_100, sizeof(reply_100)-1);
+    if(bufferevent_write(upstream->get_client_handler()->get_bev(),
+                         reply_100, sizeof(reply_100)-1) != 0) {
+      LOG(FATAL) << "bufferevent_write() faild";
+      return -1;
+    }
   }
 
   int rv =  dconn->attach_downstream(downstream);
@@ -154,7 +157,7 @@ int htp_hdrs_completecb(http_parser *htp)
     downstream->set_request_state(Downstream::CONNECT_FAIL);
     downstream->set_downstream_connection(0);
     delete dconn;
-    return 1;
+    return -1;
   } else {
     downstream->push_request_headers();
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
@@ -229,7 +232,9 @@ int HttpsUpstream::on_read()
   if(htperr == HPE_PAUSED) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       get_client_handler()->set_should_close_after_write(true);
-      error_reply(503);
+      if(error_reply(503) != 0) {
+        return -1;
+      }
       // Downstream gets deleted after response body is read.
     } else {
       assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
@@ -250,7 +255,9 @@ int HttpsUpstream::on_read()
         LOG(WARNING) << "Request Header too long:" << current_header_length_
                      << " bytes";
         get_client_handler()->set_should_close_after_write(true);
-        error_reply(400);
+        if(error_reply(400) != 0) {
+          return -1;
+        }
       } else if(downstream->get_output_buffer_full()) {
         if(ENABLE_LOG) {
           LOG(INFO) << "Downstream output buffer is full";
@@ -265,7 +272,9 @@ int HttpsUpstream::on_read()
                 << http_errno_description(htperr);
     }
     get_client_handler()->set_should_close_after_write(true);
-    error_reply(400);
+    if(error_reply(400) != 0) {
+      return -1;
+    }
   }
   return 0;
 }
@@ -359,7 +368,10 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
     } else {
       // We did not sent any HTTP response, so sent error
       // response. Cannot reuse downstream connection in this case.
-      upstream->error_reply(502);
+      if(upstream->error_reply(502) != 0) {
+        delete upstream->get_client_handler();
+        return;
+      }
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         upstream->pop_downstream();
         delete downstream;
@@ -423,7 +435,10 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       if(ENABLE_LOG) {
         LOG(INFO) << "Treated as downstream error";
       }
-      upstream->error_reply(502);
+      if(upstream->error_reply(502) != 0) {
+        delete upstream->get_client_handler();
+        return;
+      }
     }
     if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       upstream->pop_downstream();
@@ -441,7 +456,10 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       } else {
         status = 502;
       }
-      upstream->error_reply(status);
+      if(upstream->error_reply(status) != 0) {
+        delete upstream->get_client_handler();
+        return;
+      }
     }
     if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       upstream->pop_downstream();
@@ -452,7 +470,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 }
 } // namespace
 
-void HttpsUpstream::error_reply(int status_code)
+int HttpsUpstream::error_reply(int status_code)
 {
   std::string html = http::create_error_html(status_code);
   std::stringstream ss;
@@ -466,12 +484,16 @@ void HttpsUpstream::error_reply(int status_code)
   ss << "\r\n";
   std::string header = ss.str();
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
-  evbuffer_add(output, header.c_str(), header.size());
-  evbuffer_add(output, html.c_str(), html.size());
+  if(evbuffer_add(output, header.c_str(), header.size()) != 0 ||
+     evbuffer_add(output, html.c_str(), html.size()) != 0) {
+    LOG(FATAL) << "evbuffer_add() failed";
+    return -1;
+  }
   Downstream *downstream = get_top_downstream();
   if(downstream) {
     downstream->set_response_state(Downstream::MSG_COMPLETE);
   }
+  return 0;
 }
 
 bufferevent_data_cb HttpsUpstream::get_downstream_readcb()

@@ -58,7 +58,7 @@ public:
   void pop_downstream();
   Downstream* get_top_downstream();
   Downstream* get_last_downstream();
-  void error_reply(int status_code);
+  int error_reply(int status_code);
 
   void pause_read(IOCtrlReason reason);
   void resume_read(IOCtrlReason reason);

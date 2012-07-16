@@ -374,7 +374,10 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
     } else {
-      upstream->error_reply(downstream, 502);
+      if(upstream->error_reply(downstream, 502) != 0) {
+        delete upstream->get_client_handler();
+        return;
+      }
     }
     downstream->set_response_state(Downstream::MSG_COMPLETE);
     // Clearly, we have to close downstream connection on http parser
@@ -383,7 +386,10 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     delete dconn;
     dconn = 0;
   }
-  upstream->send();
+  if(upstream->send() != 0) {
+    delete upstream->get_client_handler();
+    return;
+  }
   // At this point, downstream may be deleted.
 }
 } // namespace
@@ -450,10 +456,16 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       } else {
         // If stream was not closed, then we set MSG_COMPLETE and let
         // on_stream_close_callback delete downstream.
-        upstream->error_reply(downstream, 502);
+        if(upstream->error_reply(downstream, 502) != 0) {
+          upstream->get_client_handler();
+          return;
+        }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
       }
-      upstream->send();
+      if(upstream->send() != 0) {
+        delete upstream->get_client_handler();
+        return;
+      }
       // At this point, downstream may be deleted.
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
@@ -490,11 +502,17 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
           } else {
             status = 502;
           }
-          upstream->error_reply(downstream, status);
+          if(upstream->error_reply(downstream, status) != 0) {
+            delete upstream->get_client_handler();
+            return;
+          }
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
       }
-      upstream->send();
+      if(upstream->send() != 0) {
+        delete upstream->get_client_handler();
+        return;
+      }
       // At this point, downstream may be deleted.
     }
   }
@@ -568,7 +586,7 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
   rv = evbuffer_add(body, html.c_str(), html.size());
   if(rv == -1) {
     LOG(FATAL) << "evbuffer_add() failed";
-    DIE();
+    return -1;
   }
   downstream->set_response_state(Downstream::MSG_COMPLETE);
   
