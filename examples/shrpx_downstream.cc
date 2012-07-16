@@ -367,7 +367,11 @@ int Downstream::push_request_headers()
   }
   bufferevent *bev = dconn_->get_bev();
   evbuffer *output = bufferevent_get_output(bev);
-  evbuffer_add(output, hdrs.c_str(), hdrs.size());
+  int rv;
+  rv = evbuffer_add(output, hdrs.c_str(), hdrs.size());
+  if(rv != 0) {
+    return -1;
+  }
 
   dconn_->start_waiting_response();
   return 0;
@@ -392,17 +396,20 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
     res += rv;
     rv = evbuffer_add(output, chunk_size_hex, rv);
     if(rv == -1) {
+      LOG(FATAL) << "evbuffer_add() failed";
       return -1;
     }
   }
   rv = evbuffer_add(output, data, datalen);
   if(rv == -1) {
+    LOG(FATAL) << "evbuffer_add() failed";
     return -1;
   }
   res += rv;
   if(chunked_request_) {
     rv = evbuffer_add(output, "\r\n", 2);
     if(rv == -1) {
+      LOG(FATAL) << "evbuffer_add() failed";
       return -1;
     }
     res += 2;
@@ -415,7 +422,10 @@ int Downstream::end_upload_data()
   if(chunked_request_) {
     bufferevent *bev = dconn_->get_bev();
     evbuffer *output = bufferevent_get_output(bev);
-    evbuffer_add(output, "0\r\n\r\n", 5);
+    if(evbuffer_add(output, "0\r\n\r\n", 5) != 0) {
+      LOG(FATAL) << "evbuffer_add() failed";
+      return -1;
+    }
   }
   return 0;
 }

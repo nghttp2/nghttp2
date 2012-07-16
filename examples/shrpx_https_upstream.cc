@@ -159,7 +159,10 @@ int htp_hdrs_completecb(http_parser *htp)
     delete dconn;
     return -1;
   } else {
-    downstream->push_request_headers();
+    rv = downstream->push_request_headers();
+    if(rv != 0) {
+      return -1;
+    }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     return 0;
   }
@@ -169,11 +172,15 @@ int htp_hdrs_completecb(http_parser *htp)
 namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len)
 {
+  int rv;
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_last_downstream();
-  downstream->push_upload_data_chunk(reinterpret_cast<const uint8_t*>(data),
-                                     len);
+  rv = downstream->push_upload_data_chunk
+    (reinterpret_cast<const uint8_t*>(data), len);
+  if(rv != 0) {
+    return -1;
+  }
   return 0;
 }
 } // namespace
@@ -181,13 +188,17 @@ int htp_bodycb(http_parser *htp, const char *data, size_t len)
 namespace {
 int htp_msg_completecb(http_parser *htp)
 {
+  int rv;
   if(ENABLE_LOG) {
     LOG(INFO) << "Upstream https request complete";
   }
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_last_downstream();
-  downstream->end_upload_data();
+  rv = downstream->end_upload_data();
+  if(rv != 0) {
+    return -1;
+  }
   downstream->set_request_state(Downstream::MSG_COMPLETE);
   // Stop further processing to complete this request
   http_parser_pause(htp, 1);

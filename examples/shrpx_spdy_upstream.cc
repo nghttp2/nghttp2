@@ -118,6 +118,9 @@ void on_stream_close_callback
         delete downstream;
       } else {
         // At this point, downstream read may be paused.
+
+        // If shrpx_downstream::push_request_headers() failed, the
+        // error is handled here.
         upstream->remove_downstream(downstream);
         delete downstream;
         // How to test this case? Request sufficient large download
@@ -201,7 +204,11 @@ void on_ctrl_recv_callback
       downstream->set_request_state(Downstream::CONNECT_FAIL);
       return;
     }
-    downstream->push_request_headers();
+    rv = downstream->push_request_headers();
+    if(rv != 0) {
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      return;
+    }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
       if(ENABLE_LOG) {
@@ -228,7 +235,10 @@ void on_data_chunk_recv_callback(spdylay_session *session,
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   Downstream *downstream = upstream->find_downstream(stream_id);
   if(downstream) {
-    downstream->push_upload_data_chunk(data, len);
+    if(downstream->push_upload_data_chunk(data, len) != 0) {
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      return;
+    }
     if(upstream->get_flow_control()) {
       downstream->inc_recv_window_size(len);
       if(downstream->get_recv_window_size() >
