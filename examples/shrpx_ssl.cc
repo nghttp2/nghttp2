@@ -105,8 +105,8 @@ SSL_CTX* create_ssl_context()
     LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed.";
     DIE();
   }
-  if(SSL_CTX_use_certificate_file(ssl_ctx, get_config()->cert_file,
-                                  SSL_FILETYPE_PEM) != 1) {
+  if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
+                                        get_config()->cert_file) != 1) {
     LOG(FATAL) << "SSL_CTX_use_certificate_file failed.";
     DIE();
   }
