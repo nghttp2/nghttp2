@@ -254,7 +254,7 @@ void fill_default_config()
   mod_config()->spdy_upstream_write_timeout.tv_sec = 30;
   mod_config()->spdy_upstream_write_timeout.tv_usec = 0;
 
-  mod_config()->downstream_read_timeout.tv_sec = 30;
+  mod_config()->downstream_read_timeout.tv_sec = 60;
   mod_config()->downstream_read_timeout.tv_usec = 0;
   mod_config()->downstream_write_timeout.tv_sec = 30;
   mod_config()->downstream_write_timeout.tv_usec = 0;
