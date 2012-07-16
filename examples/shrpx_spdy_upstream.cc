@@ -699,8 +699,13 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   data_prd.source.ptr = downstream;
   data_prd.read_callback = spdy_data_read_callback;
 
-  spdylay_submit_response(session_, downstream->get_stream_id(), nv,
-                          &data_prd);
+  int rv;
+  rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,
+                               &data_prd);
+  if(rv != 0) {
+    LOG(FATAL) << "spdylay_submit_response() failed";
+    return -1;
+  }
   delete [] nv;
   return 0;
 }

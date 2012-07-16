@@ -521,7 +521,10 @@ int htp_hdrs_completecb(http_parser *htp)
   downstream->set_response_minor(htp->http_minor);
   downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
-  downstream->get_upstream()->on_downstream_header_complete(downstream);
+  if(downstream->get_upstream()->on_downstream_header_complete(downstream)
+     != 0) {
+    return -1;
+  }
 
   if(downstream->tunnel_established()) {
     downstream->get_downstream_connection()->set_tunneling_timeout();
@@ -578,9 +581,8 @@ int htp_bodycb(http_parser *htp, const char *data, size_t len)
   Downstream *downstream;
   downstream = reinterpret_cast<Downstream*>(htp->data);
 
-  downstream->get_upstream()->on_downstream_body
+  return downstream->get_upstream()->on_downstream_body
     (downstream, reinterpret_cast<const uint8_t*>(data), len);
-  return 0;
 }
 } // namespace
 
@@ -591,9 +593,7 @@ int htp_msg_completecb(http_parser *htp)
   downstream = reinterpret_cast<Downstream*>(htp->data);
 
   downstream->set_response_state(Downstream::MSG_COMPLETE);
-  downstream->get_upstream()->on_downstream_body_complete(downstream);
-
-  return 0;
+  return downstream->get_upstream()->on_downstream_body_complete(downstream);
 }
 } // namespace
 

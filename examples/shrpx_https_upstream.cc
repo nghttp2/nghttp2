@@ -591,7 +591,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     LOG(INFO) << "Upstream https response headers\n" << hdrs;
   }
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
-  evbuffer_add(output, hdrs.c_str(), hdrs.size());
+  if(evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
+    LOG(FATAL) << "evbuffer_add() failed";
+    return -1;
+  }
   return 0;
 }
 
@@ -604,7 +607,10 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
     char chunk_size_hex[16];
     rv = snprintf(chunk_size_hex, sizeof(chunk_size_hex), "%X\r\n",
                   static_cast<unsigned int>(len));
-    evbuffer_add(output, chunk_size_hex, rv);
+    if(evbuffer_add(output, chunk_size_hex, rv) != 0) {
+      LOG(FATAL) << "evbuffer_add() failed";
+      return -1;
+    }
   }
   evbuffer_add(output, data, len);
   if(downstream->get_chunked_response()) {
@@ -617,7 +623,10 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream)
 {
   if(downstream->get_chunked_response()) {
     evbuffer *output = bufferevent_get_output(handler_->get_bev());
-    evbuffer_add(output, "0\r\n\r\n", 5);
+    if(evbuffer_add(output, "0\r\n\r\n", 5) != 0) {
+      LOG(FATAL) << "evbuffer_add() failed";
+      return -1;
+    }
   }
   if(ENABLE_LOG) {
     LOG(INFO) << "Downstream on_downstream_body_complete";
