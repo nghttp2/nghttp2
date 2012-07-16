@@ -32,6 +32,12 @@
 
 namespace shrpx {
 
+// Workaround for the inability for Bufferevent to remove timeout from
+// bufferevent. Specify this long timeout instead of removing.
+namespace {
+timeval max_timeout = { 86400, 0 };
+} // namespace
+
 DownstreamConnection::DownstreamConnection(ClientHandler *client_handler)
   : client_handler_(client_handler),
     bev_(0),
@@ -90,7 +96,7 @@ int DownstreamConnection::attach_downstream(Downstream *downstream)
   // HTTP request/response model, we first issue request to downstream
   // server, so just enable write timeout here.
   bufferevent_set_timeouts(bev_,
-                           0,
+                           &max_timeout,
                            &get_config()->downstream_write_timeout);
   return 0;
 }
@@ -106,14 +112,15 @@ void DownstreamConnection::start_waiting_response()
   if(bev_) {
     bufferevent_set_timeouts(bev_,
                              &get_config()->downstream_read_timeout,
-                             0);
+                             &get_config()->downstream_write_timeout);
   }
 }
 
 void DownstreamConnection::set_tunneling_timeout()
 {
   if(bev_) {
-    bufferevent_set_timeouts(bev_, 0,
+    bufferevent_set_timeouts(bev_,
+                             &max_timeout,
                              &get_config()->downstream_write_timeout);
   }
 }
@@ -164,7 +171,7 @@ void DownstreamConnection::detach_downstream(Downstream *downstream)
   // connection will get EOF from the downstream server and closed.
   bufferevent_set_timeouts(bev_,
                            &get_config()->downstream_idle_read_timeout,
-                           0);
+                           &get_config()->downstream_write_timeout);
   client_handler_->pool_downstream_connection(this);
 }
 
