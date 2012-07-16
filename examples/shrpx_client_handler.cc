@@ -40,9 +40,7 @@ void upstream_readcb(bufferevent *bev, void *arg)
   ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
   int rv = handler->on_read();
   if(rv != 0) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "<upstream> Read operation (application level) failure";
-    }
+    LOG(WARNING) << "<upstream> Read operation (application level) failure";
     delete handler;
   }
 }
@@ -57,7 +55,11 @@ void upstream_writecb(bufferevent *bev, void *arg)
     delete handler;
   } else {
     Upstream *upstream = handler->get_upstream();
-    upstream->on_write();
+    int rv = upstream->on_write();
+    if(rv != 0) {
+      LOG(WARNING) << "<upstream> Write operation (application level) failure";
+      delete handler;
+    }
   }
 }
 } // namespace

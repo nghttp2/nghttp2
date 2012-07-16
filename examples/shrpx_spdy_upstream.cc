@@ -60,6 +60,7 @@ ssize_t send_callback(spdylay_session *session,
 
   rv = evbuffer_add(output, data, len);
   if(rv == -1) {
+    LOG(FATAL) << "evbuffer_add() failed";
     return SPDYLAY_ERR_CALLBACK_FAILURE;
   } else {
     return len;
@@ -311,32 +312,33 @@ SpdyUpstream::~SpdyUpstream()
 
 int SpdyUpstream::on_read()
 {
-  int rv;
-  if((rv = spdylay_session_recv(session_)) ||
-     (rv = spdylay_session_send(session_))) {
+  int rv = 0;
+  if((rv = spdylay_session_recv(session_)) < 0) {
     if(rv != SPDYLAY_ERR_EOF) {
-      LOG(ERROR) << "spdylay error: " << spdylay_strerror(rv);
-      DIE();
+      LOG(ERROR) << "spdylay_session_recv() returned error: "
+                 << spdylay_strerror(rv);
     }
+  } else if((rv = spdylay_session_send(session_)) < 0) {
+    LOG(ERROR) << "spdylay_session_send() returned error: "
+               << spdylay_strerror(rv);
   }
-  return 0;
+  return rv;
 }
 
 int SpdyUpstream::on_write()
 {
-  send();
-  return 0;
+  return send();
 }
 
 // After this function call, downstream may be deleted.
 int SpdyUpstream::send()
 {
-  int rv;
-  if((rv = spdylay_session_send(session_))) {
-    LOG(ERROR) << "spdylay error: " << spdylay_strerror(rv);
-    DIE();
+  int rv = 0;
+  if((rv = spdylay_session_send(session_)) < 0) {
+    LOG(ERROR) << "spdylay_session_send() returned error: "
+               << spdylay_strerror(rv);
   }
-  return 0;
+  return rv;
 }
 
 int SpdyUpstream::on_event()
@@ -509,6 +511,8 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
   rv = spdylay_submit_rst_stream(session_, downstream->get_stream_id(),
                                  status_code);
   if(rv < SPDYLAY_ERR_FATAL) {
+    LOG(FATAL) << "spdylay_submit_rst_stream() failed: "
+               << spdylay_strerror(rv);
     DIE();
   } else {
     return 0;
@@ -522,6 +526,8 @@ int SpdyUpstream::window_update(Downstream *downstream)
                                     downstream->get_recv_window_size());
   downstream->set_recv_window_size(0);
   if(rv < SPDYLAY_ERR_FATAL) {
+    LOG(FATAL) << "spdylay_submit_window_update() failed: "
+               << spdylay_strerror(rv);
     DIE();
   } else {
     return 0;
@@ -561,6 +567,7 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
   evbuffer *body = downstream->get_response_body_buf();
   rv = evbuffer_add(body, html.c_str(), html.size());
   if(rv == -1) {
+    LOG(FATAL) << "evbuffer_add() failed";
     DIE();
   }
   downstream->set_response_state(Downstream::MSG_COMPLETE);
@@ -580,6 +587,8 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
   rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,
                                &data_prd);
   if(rv < SPDYLAY_ERR_FATAL) {
+    LOG(FATAL) << "spdylay_submit_response() failed: "
+               << spdylay_strerror(rv);
     DIE();
   } else {
     return 0;
@@ -684,7 +693,11 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len)
 {
   evbuffer *body = downstream->get_response_body_buf();
-  evbuffer_add(body, data, len);
+  int rv = evbuffer_add(body, data, len);
+  if(rv != 0) {
+    LOG(FATAL) << "evbuffer_add() failed";
+    return -1;
+  }
   spdylay_session_resume_data(session_, downstream->get_stream_id());
 
   size_t bodylen = evbuffer_get_length(body);
