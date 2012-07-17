@@ -47,7 +47,6 @@ public:
   ClientHandler* get_client_handler();
   Downstream* get_downstream();
   void start_waiting_response();
-  void set_tunneling_timeout();
 private:
   ClientHandler *client_handler_;
   bufferevent *bev_;

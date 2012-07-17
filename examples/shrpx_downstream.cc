@@ -536,17 +536,6 @@ int htp_hdrs_completecb(http_parser *htp)
     return -1;
   }
 
-  if(downstream->tunnel_established()) {
-    downstream->get_downstream_connection()->set_tunneling_timeout();
-    // For tunneling, we remove upstream read timeouts. But it seems
-    // libevent cannot remove timeouts for SSL based bufferevent. Set
-    // long timeout here as a workaround.
-    timeval rtv = { 86400, 0 };
-    timeval wtv = { 30, 0 };
-    downstream->get_upstream()->get_client_handler()
-      ->set_upstream_timeouts(&rtv, &wtv);
-  }
-
   if(downstream->get_request_method() == "HEAD") {
     // Ignore the response body. HEAD response may contain
     // Content-Length or Transfer-Encoding: chunked.

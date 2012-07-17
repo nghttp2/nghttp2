@@ -271,7 +271,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
-                                 &get_config()->spdy_upstream_write_timeout);
+                                 &get_config()->upstream_write_timeout);
 
   spdylay_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(callbacks));

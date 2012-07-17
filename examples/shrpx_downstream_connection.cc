@@ -116,15 +116,6 @@ void DownstreamConnection::start_waiting_response()
   }
 }
 
-void DownstreamConnection::set_tunneling_timeout()
-{
-  if(bev_) {
-    bufferevent_set_timeouts(bev_,
-                             &max_timeout,
-                             &get_config()->downstream_write_timeout);
-  }
-}
-
 namespace {
 // Gets called when DownstreamConnection is pooled in ClientHandler.
 void idle_eventcb(bufferevent *bev, short events, void *arg)

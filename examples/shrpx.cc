@@ -244,22 +244,26 @@ void fill_default_config()
   mod_config()->private_key_file = 0;
   mod_config()->cert_file = 0;
 
-  mod_config()->upstream_read_timeout.tv_sec = 60;
+  // Read timeout for SPDY upstream connection
+  mod_config()->spdy_upstream_read_timeout.tv_sec = 180;
+  mod_config()->spdy_upstream_read_timeout.tv_usec = 0;
+
+  // Read timeout for non-SPDY upstream connection
+  mod_config()->upstream_read_timeout.tv_sec = 180;
   mod_config()->upstream_read_timeout.tv_usec = 0;
-  mod_config()->upstream_write_timeout.tv_sec = 30;
+
+  // Write timeout for SPDY/non-SPDY upstream connection
+  mod_config()->upstream_write_timeout.tv_sec = 60;
   mod_config()->upstream_write_timeout.tv_usec = 0;
 
-  mod_config()->spdy_upstream_read_timeout.tv_sec = 600;
-  mod_config()->spdy_upstream_read_timeout.tv_usec = 0;
-  mod_config()->spdy_upstream_write_timeout.tv_sec = 30;
-  mod_config()->spdy_upstream_write_timeout.tv_usec = 0;
-
-  mod_config()->downstream_read_timeout.tv_sec = 60;
+  // Read/Write timeouts for downstream connection
+  mod_config()->downstream_read_timeout.tv_sec = 900;
   mod_config()->downstream_read_timeout.tv_usec = 0;
-  mod_config()->downstream_write_timeout.tv_sec = 30;
+  mod_config()->downstream_write_timeout.tv_sec = 60;
   mod_config()->downstream_write_timeout.tv_usec = 0;
 
-  mod_config()->downstream_idle_read_timeout.tv_sec = 15;
+  // Timeout for pooled (idle) connections
+  mod_config()->downstream_idle_read_timeout.tv_sec = 60;
 
   mod_config()->downstream_host = "localhost";
   mod_config()->downstream_port = 80;
@@ -305,7 +309,8 @@ namespace {
 void print_usage(std::ostream& out)
 {
   out << "Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]\n"
-      << "             [-c <NUM>] [-L <LEVEL>] <PRIVATE_KEY> <CERT>\n"
+      << "             [-c <NUM>] [-L <LEVEL>] [OPTIONS...]\n"
+      << "             <PRIVATE_KEY> <CERT>\n"
       << "\n"
       << "A reverse proxy for SPDY/HTTPS.\n"
       << std::endl;
@@ -347,6 +352,27 @@ void print_help(std::ostream& out)
       << "    --add-x-forwarded-for\n"
       << "                       Append X-Forwarded-For header field to the\n"
       << "                       downstream request.\n"
+      << "    --frontend-spdy-read-timeout=<SEC>\n"
+      << "                       Specify read timeout for SPDY frontend\n"
+      << "                       connection. Default: "
+      << get_config()->spdy_upstream_read_timeout.tv_sec << "\n"
+      << "    --frontend-read-timeout=<SEC>\n"
+      << "                       Specify read timeout for non-SPDY frontend\n"
+      << "                       connection. Default: "
+      << get_config()->upstream_read_timeout.tv_sec << "\n"
+      << "    --frontend-write-timeout=<SEC>\n"
+      << "                       Specify write timeout for both SPDY and\n"
+      << "                       non-SPDY frontends.\n"
+      << "                       connection. Default: "
+      << get_config()->upstream_write_timeout.tv_sec << "\n"
+      << "    --backend-read-timeout=<SEC>\n"
+      << "                       Specify read timeout for backend connection.\n"
+      << "                       Default: "
+      << get_config()->downstream_read_timeout.tv_sec << "\n"
+      << "    --backend-write-timeout=<SEC>\n"
+      << "                       Specify write timeout for backend\n"
+      << "                       connection. Default: "
+      << get_config()->downstream_write_timeout.tv_sec << "\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -373,7 +399,12 @@ int main(int argc, char **argv)
       {"log-level", required_argument, 0, 'L' },
       {"daemon", no_argument, 0, 'D' },
       {"spdy-proxy", no_argument, 0, 's' },
-      {"add-x-forwarded-for", no_argument, &flag, 1},
+      {"add-x-forwarded-for", no_argument, &flag, 1 },
+      {"frontend-spdy-read-timeout", required_argument, &flag, 2 },
+      {"frontend-read-timeout", required_argument, &flag, 3 },
+      {"frontend-write-timeout", required_argument, &flag, 4 },
+      {"backend-read-timeout", required_argument, &flag, 5 },
+      {"backend-write-timeout", required_argument, &flag, 6 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -431,6 +462,36 @@ int main(int argc, char **argv)
         // --add-x-forwarded-for
         mod_config()->add_x_forwarded_for = true;
         break;
+      case 2: {
+        // --frontend-spdy-read-timeout
+        timeval tv = {strtol(optarg, 0, 10), 0};
+        mod_config()->spdy_upstream_read_timeout = tv;
+        break;
+      }
+      case 3: {
+        // --frontend-read-timeout
+        timeval tv = {strtol(optarg, 0, 10), 0};
+        mod_config()->upstream_read_timeout = tv;
+        break;
+      }
+      case 4: {
+        // --frontend-write-timeout
+        timeval tv = {strtol(optarg, 0, 10), 0};
+        mod_config()->upstream_write_timeout = tv;
+        break;
+      }
+      case 5: {
+        // --backend-read-timeout
+        timeval tv = {strtol(optarg, 0, 10), 0};
+        mod_config()->downstream_read_timeout = tv;
+        break;
+      }
+      case 6: {
+        // --backend-write-timeout
+        timeval tv = {strtol(optarg, 0, 10), 0};
+        mod_config()->downstream_write_timeout = tv;
+        break;
+      }
       default:
         break;
       }

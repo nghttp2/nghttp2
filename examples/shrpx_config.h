@@ -58,10 +58,9 @@ struct Config {
   const char *downstream_hostport;
   sockaddr_union downstream_addr;
   size_t downstream_addrlen;
+  timeval spdy_upstream_read_timeout;
   timeval upstream_read_timeout;
   timeval upstream_write_timeout;
-  timeval spdy_upstream_read_timeout;
-  timeval spdy_upstream_write_timeout;
   timeval downstream_read_timeout;
   timeval downstream_write_timeout;
   timeval downstream_idle_read_timeout;
