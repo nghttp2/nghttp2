@@ -363,7 +363,8 @@ int Downstream::push_request_headers()
 
   hdrs += "\r\n";
   if(ENABLE_LOG) {
-    LOG(INFO) << "Downstream request headers\n" << hdrs;
+    LOG(INFO) << "Downstream request headers id="
+              << stream_id_ << "\n" << hdrs;
   }
   bufferevent *bev = dconn_->get_bev();
   evbuffer *output = bufferevent_get_output(bev);

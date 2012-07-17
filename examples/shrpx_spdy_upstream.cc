@@ -192,7 +192,9 @@ void on_ctrl_recv_callback
       for(size_t i = 0; nv[i]; i += 2) {
         ss << nv[i] << ": " << nv[i+1] << "\n";
       }
-      LOG(INFO) << "Upstream spdy request headers:\n" << ss.str();
+      LOG(INFO) << "Upstream spdy request headers id="
+                << downstream->get_stream_id()
+                << "\n" << ss.str();
     }
 
     DownstreamConnection *dconn;
