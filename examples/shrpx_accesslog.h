@@ -22,47 +22,18 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_config.h"
+#ifndef SHRPX_ACCESSLOG_H
+#define SHRPX_ACCESSLOG_H
+
+#include "shrpx.h"
+
+#include <stdint.h>
 
 namespace shrpx {
 
-Config::Config()
-  : verbose(false),
-    daemon(false),
-    host(0),
-    port(0),
-    private_key_file(0),
-    cert_file(0),
-    verify_client(false),
-    server_name(0),
-    downstream_host(0),
-    downstream_port(0),
-    downstream_hostport(0),
-    downstream_addrlen(0),
-    num_worker(0),
-    spdy_max_concurrent_streams(0),
-    spdy_proxy(false),
-    add_x_forwarded_for(false),
-    accesslog(false)
-{}
-
-namespace {
-Config *config = 0;
-} // namespace
-
-const Config* get_config()
-{
-  return config;
-}
-
-Config* mod_config()
-{
-  return config;
-}
-
-void create_config()
-{
-  config = new Config();
-}
+void upstream_connect(const std::string& client_ip);
+void upstream_spdy_stream(const std::string& client_ip, int32_t stream_id);
 
 } // namespace shrpx
+
+#endif // SHRPX_LOG_H

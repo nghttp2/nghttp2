@@ -88,6 +88,7 @@ shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	shrpx_ssl.cc shrpx_ssl.h \
 	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
 	shrpx_worker.cc shrpx_worker.h \
+	shrpx_accesslog.cc shrpx_accesslog.h\
 	http-parser/http_parser.c http-parser/http_parser.h
 endif # HAVE_LIBEVENT_OPENSSL
 

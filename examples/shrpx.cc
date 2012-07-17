@@ -373,6 +373,7 @@ void print_help(std::ostream& out)
       << "                       Specify write timeout for backend\n"
       << "                       connection. Default: "
       << get_config()->downstream_write_timeout.tv_sec << "\n"
+      << "    --accesslog        Print simple accesslog to stderr.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -405,6 +406,7 @@ int main(int argc, char **argv)
       {"frontend-write-timeout", required_argument, &flag, 4 },
       {"backend-read-timeout", required_argument, &flag, 5 },
       {"backend-write-timeout", required_argument, &flag, 6 },
+      {"accesslog", no_argument, &flag, 7 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -492,6 +494,9 @@ int main(int argc, char **argv)
         mod_config()->downstream_write_timeout = tv;
         break;
       }
+      case 7:
+        mod_config()->accesslog = true;
+        break;
       default:
         break;
       }

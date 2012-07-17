@@ -68,6 +68,7 @@ struct Config {
   size_t spdy_max_concurrent_streams;
   bool spdy_proxy;
   bool add_x_forwarded_for;
+  bool accesslog;
   Config();
 };
 

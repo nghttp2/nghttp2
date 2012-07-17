@@ -31,6 +31,7 @@
 #include "shrpx_https_upstream.h"
 #include "shrpx_config.h"
 #include "shrpx_downstream_connection.h"
+#include "shrpx_accesslog.h"
 
 namespace shrpx {
 
@@ -94,6 +95,9 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
     if(events & BEV_EVENT_CONNECTED) {
       if(ENABLE_LOG) {
         LOG(INFO) << "Upstream connected. handler " << handler;
+      }
+      if(get_config()->accesslog) {
+        upstream_connect(handler->get_ipaddr());
       }
       handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
       handler->validate_next_proto();

@@ -33,6 +33,7 @@
 #include "shrpx_downstream_connection.h"
 #include "shrpx_config.h"
 #include "shrpx_http.h"
+#include "shrpx_accesslog.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -210,6 +211,10 @@ void on_ctrl_recv_callback
     if(rv != 0) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
+    }
+    if(get_config()->accesslog) {
+      upstream_spdy_stream(upstream->get_client_handler()->get_ipaddr(),
+                           frame->syn_stream.stream_id);
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
