@@ -339,6 +339,15 @@ int SpdyUpstream::on_read()
     LOG(ERROR) << "spdylay_session_send() returned error: "
                << spdylay_strerror(rv);
   }
+  if(rv == 0) {
+    if(spdylay_session_want_read(session_) == 0 &&
+       spdylay_session_want_write(session_) == 0) {
+      if(ENABLE_LOG) {
+        LOG(INFO) << "No more read/write for this SPDY session";
+      }
+      rv = -1;
+    }
+  }
   return rv;
 }
 
@@ -354,6 +363,15 @@ int SpdyUpstream::send()
   if((rv = spdylay_session_send(session_)) < 0) {
     LOG(ERROR) << "spdylay_session_send() returned error: "
                << spdylay_strerror(rv);
+  }
+  if(rv == 0) {
+    if(spdylay_session_want_read(session_) == 0 &&
+       spdylay_session_want_write(session_) == 0) {
+      if(ENABLE_LOG) {
+        LOG(INFO) << "No more read/write for this SPDY session";
+      }
+      rv = -1;
+    }
   }
   return rv;
 }
