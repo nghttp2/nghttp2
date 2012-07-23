@@ -186,7 +186,9 @@ void on_ctrl_recv_callback
     }
 
     downstream->add_request_header("host", host);
-    downstream->add_request_header("X-Forwarded-Spdy", "true");
+    if(!get_config()->spdy_proxy) {
+      downstream->add_request_header("X-Forwarded-Spdy", "true");
+    }
 
     if(ENABLE_LOG) {
       std::stringstream ss;
