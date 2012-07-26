@@ -43,7 +43,8 @@ Config::Config()
     spdy_max_concurrent_streams(0),
     spdy_proxy(false),
     add_x_forwarded_for(false),
-    accesslog(false)
+    accesslog(false),
+    spdy_upstream_window_bits(0)
 {}
 
 namespace {

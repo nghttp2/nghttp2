@@ -69,6 +69,7 @@ struct Config {
   bool spdy_proxy;
   bool add_x_forwarded_for;
   bool accesslog;
+  size_t spdy_upstream_window_bits;
   Config();
 };
 

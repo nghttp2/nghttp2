@@ -265,6 +265,10 @@ void fill_default_config()
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout.tv_sec = 60;
 
+  // window bits for SPDY upstream connection
+  // 2**16 = 64KiB, which is SPDY/3 default.
+  mod_config()->spdy_upstream_window_bits = 16;
+
   mod_config()->downstream_host = "localhost";
   mod_config()->downstream_port = 80;
 
@@ -378,6 +382,11 @@ void print_help(std::ostream& out)
       << "                       connection. Default: "
       << get_config()->downstream_idle_read_timeout.tv_sec << "\n"
       << "    --accesslog        Print simple accesslog to stderr.\n"
+      << "    --frontend-spdy-window-bits=<N>\n"
+      << "                       Sets the initial window size of SPDY\n"
+      << "                       frontend connection to 2**<N>.\n"
+      << "                       Default: "
+      << get_config()->spdy_upstream_window_bits << "\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -412,6 +421,7 @@ int main(int argc, char **argv)
       {"backend-write-timeout", required_argument, &flag, 6 },
       {"accesslog", no_argument, &flag, 7 },
       {"backend-keep-alive-timeout", required_argument, &flag, 8 },
+      {"frontend-spdy-window-bits", required_argument, &flag, 9 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -506,6 +516,19 @@ int main(int argc, char **argv)
         // --backend-keep-alive-timeout
         timeval tv = {strtol(optarg, 0, 10), 0};
         mod_config()->downstream_idle_read_timeout = tv;
+        break;
+      }
+      case 9: {
+        // --frontend-spdy-window-bits
+        errno = 0;
+        unsigned long int n = strtoul(optarg, 0, 10);
+        if(errno == 0 && n < 31) {
+          mod_config()->spdy_upstream_window_bits = n;
+        } else {
+          std::cerr << "-w: specify the integer in the range [0, 30], inclusive"
+                    << std::endl;
+          exit(EXIT_FAILURE);
+        }
         break;
       }
       default:
