@@ -912,8 +912,8 @@ int SpdyServer::run()
     std::cerr << "SSL_CTX_use_PrivateKey_file failed." << std::endl;
     return -1;
   }
-  if(SSL_CTX_use_certificate_file(ssl_ctx, config_->cert_file.c_str(),
-                                  SSL_FILETYPE_PEM) != 1) {
+  if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
+                                        config_->cert_file.c_str()) != 1) {
     std::cerr << "SSL_CTX_use_certificate_file failed." << std::endl;
     return -1;
   }
