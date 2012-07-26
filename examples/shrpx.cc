@@ -373,6 +373,10 @@ void print_help(std::ostream& out)
       << "                       Specify write timeout for backend\n"
       << "                       connection. Default: "
       << get_config()->downstream_write_timeout.tv_sec << "\n"
+      << "    --backend-keep-alive-timeout=<SEC>\n"
+      << "                       Specify keep-alive timeout for backend\n"
+      << "                       connection. Default: "
+      << get_config()->downstream_idle_read_timeout.tv_sec << "\n"
       << "    --accesslog        Print simple accesslog to stderr.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
@@ -407,6 +411,7 @@ int main(int argc, char **argv)
       {"backend-read-timeout", required_argument, &flag, 5 },
       {"backend-write-timeout", required_argument, &flag, 6 },
       {"accesslog", no_argument, &flag, 7 },
+      {"backend-keep-alive-timeout", required_argument, &flag, 8 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -497,6 +502,12 @@ int main(int argc, char **argv)
       case 7:
         mod_config()->accesslog = true;
         break;
+      case 8: {
+        // --backend-keep-alive-timeout
+        timeval tv = {strtol(optarg, 0, 10), 0};
+        mod_config()->downstream_idle_read_timeout = tv;
+        break;
+      }
       default:
         break;
       }
