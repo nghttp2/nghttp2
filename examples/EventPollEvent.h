@@ -25,6 +25,8 @@
 #ifndef EVENT_POLL_EVENT_H
 #define EVENT_POLL_EVENT_H
 
+#include "spdylay_config.h"
+
 namespace spdylay {
 
 enum EventPollEvent {

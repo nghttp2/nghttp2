@@ -569,9 +569,8 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
     LOG(FATAL) << "spdylay_submit_rst_stream() failed: "
                << spdylay_strerror(rv);
     DIE();
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 int SpdyUpstream::window_update(Downstream *downstream)
@@ -584,9 +583,8 @@ int SpdyUpstream::window_update(Downstream *downstream)
     LOG(FATAL) << "spdylay_submit_window_update() failed: "
                << spdylay_strerror(rv);
     DIE();
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 namespace {
@@ -626,7 +624,7 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
     return -1;
   }
   downstream->set_response_state(Downstream::MSG_COMPLETE);
-  
+
   spdylay_data_provider data_prd;
   data_prd.source.ptr = downstream;
   data_prd.read_callback = spdy_data_read_callback;
@@ -645,9 +643,8 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
     LOG(FATAL) << "spdylay_submit_response() failed: "
                << spdylay_strerror(rv);
     DIE();
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 bufferevent_data_cb SpdyUpstream::get_downstream_readcb()

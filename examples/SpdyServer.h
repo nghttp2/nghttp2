@@ -25,6 +25,8 @@
 #ifndef SPDY_SERVER_H
 #define SPDY_SERVER_H
 
+#include "spdylay_config.h"
+
 #include <stdint.h>
 #include <sys/types.h>
 

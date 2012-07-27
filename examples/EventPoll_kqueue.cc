@@ -29,6 +29,12 @@
 #include <cerrno>
 #include <cassert>
 
+#ifdef KEVENT_UDATA_INTPTR_T
+# define PTR_TO_UDATA(X) (reinterpret_cast<intptr_t>(X))
+#else // !KEVENT_UDATA_INTPTR_T
+# define PTR_TO_UDATA(X) (X)
+#endif // !KEVENT_UDATA_INTPTR_T
+
 namespace spdylay {
 
 EventPoll::EventPoll(size_t max_events)
@@ -46,7 +52,7 @@ EventPoll::~EventPoll()
   }
   delete [] evlist_;
 }
-    
+
 int EventPoll::poll(int timeout)
 {
   timespec ts, *ts_ptr;
@@ -74,7 +80,7 @@ int EventPoll::get_num_events()
 
 void* EventPoll::get_user_data(size_t p)
 {
-  return evlist_[p].udata;
+  return reinterpret_cast<void*>(evlist_[p].udata);
 }
 
 int EventPoll::get_events(size_t p)
@@ -96,10 +102,10 @@ int update_event(int kq, int fd, int events, void *user_data)
   struct kevent changelist[2];
   EV_SET(&changelist[0], fd, EVFILT_READ,
          EV_ADD | ((events & EP_POLLIN) ? EV_ENABLE : EV_DISABLE),
-         0, 0, user_data);
+         0, 0, PTR_TO_UDATA(user_data));
   EV_SET(&changelist[1], fd, EVFILT_WRITE,
          EV_ADD | ((events & EP_POLLOUT) ? EV_ENABLE : EV_DISABLE),
-         0, 0, user_data);
+         0, 0, PTR_TO_UDATA(user_data));
   timespec ts = { 0, 0 };
   return kevent(kq, changelist, 2, changelist, 0, &ts);
 }

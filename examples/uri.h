@@ -25,6 +25,8 @@
 #ifndef URI_H
 #define URI_H
 
+#include "spdylay_config.h"
+
 #include <stdint.h>
 
 #include <string>

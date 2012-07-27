@@ -36,7 +36,7 @@ bin_PROGRAMS += shrpx
 endif # HAVE_LIBEVENT_OPENSSL
 
 HELPER_OBJECTS = uri.cc util.cc spdylay_ssl.cc
-HELPER_HFILES = uri.h util.h spdylay_ssl.h
+HELPER_HFILES = uri.h util.h spdylay_ssl.h spdylay_config.h
 
 EVENT_OBJECTS =
 EVENT_HFILES = EventPoll.h EventPollEvent.h

@@ -22,6 +22,11 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef SPDY_H
+#define SPDY_H
+
+#include "spdylay_config.h"
+
 #include <signal.h>
 
 #include <vector>
@@ -172,7 +177,7 @@ void on_request_recv_callback
   hd->submit_response(response_obj.get_status_string(), stream_id,
                       response_obj.get_headers(), &data_prd);
 }
-                              
+
 class spdy {
 public:
   spdy() : server_(0) {}
@@ -197,7 +202,7 @@ public:
     server_ = new SpdyServer(&config_);
     return server_->listen() == 0;
   }
-  
+
   int run()
   {
     return server_->run();
@@ -232,3 +237,5 @@ int run(Server& server)
 } // namespace reactor
 
 } // namespace spdylay
+
+#endif // SPDY_H

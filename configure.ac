@@ -59,6 +59,10 @@ AM_CONDITIONAL([HAVE_STDCXX_11],
 
 # Checks for libraries.
 
+# Search for dlsym function, which is used in tests. Linux needs -ldl,
+# but netbsd does not need it.
+AC_SEARCH_LIBS([dlsym], [dl])
+
 # zlib
 PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
 LIBS="$ZLIB_LIBS $LIBS"
@@ -162,6 +166,23 @@ AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
 
 AC_CHECK_FUNCS([kqueue], [have_kqueue=yes])
 AM_CONDITIONAL([HAVE_KQUEUE], [test "x${have_kqueue}" = "xyes"])
+
+AC_MSG_CHECKING([whether struct kevent.udata is intptr_t])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
+]],
+[[
+struct kevent event;
+event.udata = (intptr_t*)(&event);
+]])],
+[kevent_udata_intptr_t=yes], [kevent_udata_intptr_t=no])
+AC_MSG_RESULT([$kevent_udata_intptr_t])
+if test "x$kevent_udata_intptr_t" = "xyes"; then
+  AC_DEFINE([KEVENT_UDATA_INTPTR_T], [1],
+            [Define to 1 if struct kevent.udata is intptr_t])
+fi
 
 if test "x$maintainer_mode" != "xno"; then
     CFLAGS="$CFLAGS -Wall -Wextra -Werror"

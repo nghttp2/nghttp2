@@ -25,6 +25,8 @@
 #ifndef EVENT_POLL_EPOLL_H
 #define EVENT_POLL_EPOLL_H
 
+#include "spdylay_config.h"
+
 #include <cstdlib>
 
 #include <sys/epoll.h>

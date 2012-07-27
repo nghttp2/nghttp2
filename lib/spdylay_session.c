@@ -349,7 +349,7 @@ int spdylay_session_add_frame(spdylay_session *session,
                               void *abs_frame,
                               void *aux_data)
 {
-  int r;
+  int r = 0;
   spdylay_outbound_item *item;
   item = malloc(sizeof(spdylay_outbound_item));
   if(item == NULL) {
@@ -929,7 +929,7 @@ int spdylay_session_prep_credential(spdylay_session *session,
 static ssize_t spdylay_session_prep_frame(spdylay_session *session,
                                           spdylay_outbound_item *item)
 {
-  ssize_t framebuflen;
+  ssize_t framebuflen = 0;
   if(item->frame_cat == SPDYLAY_CTRL) {
     spdylay_frame *frame;
     spdylay_frame_type frame_type;

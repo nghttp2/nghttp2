@@ -25,6 +25,8 @@
 #ifndef SPDYLAY_SSL_H
 #define SPDYLAY_SSL_H
 
+#include "spdylay_config.h"
+
 #include <stdint.h>
 #include <cstdlib>
 #include <sys/time.h>

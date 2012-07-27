@@ -25,6 +25,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include "spdylay_config.h"
+
 #include <vector>
 #include <string>
 #include <algorithm>

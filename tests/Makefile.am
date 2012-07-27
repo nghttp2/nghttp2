@@ -46,7 +46,7 @@ main_LDFLAGS = -static @CUNIT_LIBS@
 failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
 	malloc_wrapper.c malloc_wrapper.h \
 	spdylay_test_helper.c spdylay_test_helper.h
-failmalloc_LDADD = $(main_LDADD) -ldl
+failmalloc_LDADD = $(main_LDADD)
 failmalloc_LDFLAGS = $(main_LDFLAGS)
 
 AM_CFLAGS = -Wall -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_builddir}/lib/includes \

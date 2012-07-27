@@ -22,15 +22,11 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef EVENT_POLL_H
-#define EVENT_POLL_H
+#ifndef SPDYLAY_CONFIG_H
+#define SPDYLAY_CONFIG_H
 
-#include "spdylay_config.h"
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif // HAVE_CONFIG_H
 
-#ifdef HAVE_EPOLL
-#  include "EventPoll_epoll.h"
-#elif HAVE_KQUEUE
-#  include "EventPoll_kqueue.h"
-#endif // HAVE_KQUEUE
-
-#endif // EVENT_POLL_H
+#endif // SPDYLAY_CONFIG_H
