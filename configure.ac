@@ -131,6 +131,7 @@ AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 AC_CHECK_HEADERS([ \
   arpa/inet.h \
   netinet/in.h \
+  pwd.h \
   stddef.h \
   stdint.h \
   stdlib.h \
@@ -154,6 +155,7 @@ if test "x$cross_compiling" != "xyes"; then
   AC_FUNC_MALLOC
 fi
 AC_CHECK_FUNCS([ \
+  getpwnam \
   memmove \
   memset \
 ])
