@@ -44,7 +44,10 @@ Config::Config()
     spdy_proxy(false),
     add_x_forwarded_for(false),
     accesslog(false),
-    spdy_upstream_window_bits(0)
+    spdy_upstream_window_bits(0),
+    pid_file(0),
+    uid(0),
+    gid(0)
 {}
 
 namespace {

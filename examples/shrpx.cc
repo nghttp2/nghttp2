@@ -33,10 +33,12 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <pwd.h>
 
 #include <limits>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -234,6 +236,19 @@ int event_loop()
 } // namespace
 
 namespace {
+void save_pid()
+{
+  std::ofstream out(get_config()->pid_file, std::ios::binary);
+  out << getpid() << "\n";
+  out.close();
+  if(!out) {
+    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
+    exit(EXIT_FAILURE);
+  }
+}
+} // namespace
+
+namespace {
 void fill_default_config()
 {
   mod_config()->daemon = false;
@@ -387,6 +402,9 @@ void print_help(std::ostream& out)
       << "                       frontend connection to 2**<N>.\n"
       << "                       Default: "
       << get_config()->spdy_upstream_window_bits << "\n"
+      << "    --pid-file=<PATH>  Set path to save PID of this program.\n"
+      << "    --user=<USER>      Run this program as USER. This option is\n"
+      << "                       intended to be used to drop root privileges.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -422,6 +440,8 @@ int main(int argc, char **argv)
       {"accesslog", no_argument, &flag, 7 },
       {"backend-keep-alive-timeout", required_argument, &flag, 8 },
       {"frontend-spdy-window-bits", required_argument, &flag, 9 },
+      {"pid-file", required_argument, &flag, 10 },
+      {"user", required_argument, &flag, 11 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -531,6 +551,20 @@ int main(int argc, char **argv)
         }
         break;
       }
+      case 10:
+        mod_config()->pid_file = optarg;
+        break;
+      case 11: {
+        passwd *pwd = getpwnam(optarg);
+        if(pwd == 0) {
+          std::cerr << "--user: failed to get uid from " << optarg
+                    << ": " << strerror(errno) << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        mod_config()->uid = pwd->pw_uid;
+        mod_config()->gid = pwd->pw_gid;
+        break;
+      }
       default:
         break;
       }
@@ -573,6 +607,23 @@ int main(int argc, char **argv)
   if(get_config()->daemon) {
     if(daemon(0, 0) == -1) {
       perror("daemon");
+      exit(EXIT_FAILURE);
+    }
+  }
+  if(get_config()->pid_file) {
+    save_pid();
+  }
+  if(getuid() == 0 && get_config()->uid != 0) {
+    if(setgid(get_config()->gid) != 0) {
+      std::cerr << "Could not change gid: " << strerror(errno) << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    if(setuid(get_config()->uid) != 0) {
+      std::cerr << "Could not change uid: " << strerror(errno) << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    if(setuid(0) != -1) {
+      std::cerr << "FATAL: Still have root privileges?" << std::endl;
       exit(EXIT_FAILURE);
     }
   }

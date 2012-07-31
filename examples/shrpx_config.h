@@ -70,6 +70,9 @@ struct Config {
   bool add_x_forwarded_for;
   bool accesslog;
   size_t spdy_upstream_window_bits;
+  const char* pid_file;
+  uid_t uid;
+  gid_t gid;
   Config();
 };
 
