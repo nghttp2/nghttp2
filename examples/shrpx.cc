@@ -328,6 +328,10 @@ void fill_default_config()
   mod_config()->spdy_max_concurrent_streams =
     SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
 
+  mod_config()->spdy_proxy = false;
+  mod_config()->add_x_forwarded_for = false;
+  mod_config()->accesslog = false;
+
   set_config_str(&mod_config()->conf_path, "/etc/shrpx/shrpx.conf");
 
   mod_config()->syslog = false;
