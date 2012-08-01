@@ -31,8 +31,8 @@
 #include <cerrno>
 #include <limits>
 #include <fstream>
-#include <iostream>
 
+#include "shrpx_log.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -115,12 +115,12 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
   // host and port in |hostport| is separated by single ','.
   const char *p = strchr(hostport, ',');
   if(!p) {
-    std::cerr << "Invalid host, port: " << hostport << std::endl;
+    LOG(ERROR) << "Invalid host, port: " << hostport;
     return -1;
   }
   size_t len = p-hostport;
   if(hostlen < len+1) {
-    std::cerr << "Hostname too long: " << hostport << std::endl;
+    LOG(ERROR) << "Hostname too long: " << hostport;
     return -1;
   }
   memcpy(host, hostport, len);
@@ -132,7 +132,7 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
     *port_ptr = d;
     return 0;
   } else {
-    std::cerr << "Port is invalid: " << p+1 << std::endl;
+    LOG(ERROR) << "Port is invalid: " << p+1;
     return -1;
   }
 }
@@ -170,7 +170,7 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->spdy_max_concurrent_streams = strtol(optarg, 0, 10);
   } else if(util::strieq(opt, SHRPX_OPT_LOG_LEVEL)) {
     if(Log::set_severity_level_by_name(optarg) == -1) {
-      std::cerr << "Invalid severity level: " << optarg << std::endl;
+      LOG(ERROR) << "Invalid severity level: " << optarg;
       return -1;
     }
   } else if(util::strieq(opt, SHRPX_OPT_DAEMON)) {
@@ -205,8 +205,7 @@ int parse_config(const char *opt, const char *optarg)
     if(errno == 0 && n < 31) {
       mod_config()->spdy_upstream_window_bits = n;
     } else {
-      std::cerr << "-w: specify the integer in the range [0, 30], inclusive"
-                << std::endl;
+      LOG(ERROR) << "-w: specify the integer in the range [0, 30], inclusive";
       return -1;
     }
   } else if(util::strieq(opt, SHRPX_OPT_PID_FILE)) {
@@ -214,8 +213,8 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_USER)) {
     passwd *pwd = getpwnam(optarg);
     if(pwd == 0) {
-      std::cerr << "--user: failed to get uid from " << optarg
-                << ": " << strerror(errno) << std::endl;
+      LOG(ERROR) << "--user: failed to get uid from " << optarg
+                 << ": " << strerror(errno);
       return -1;
     }
     mod_config()->uid = pwd->pw_uid;
@@ -225,9 +224,9 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_CERTIFICATE_FILE)) {
     set_config_str(&mod_config()->cert_file, optarg);
   } else if(util::strieq(opt, "conf")) {
-    std::cerr << "conf is ignored" << std::endl;
+    LOG(WARNING) << "conf is ignored";
   } else {
-    std::cerr << "Unknown option: " << opt << std::endl;
+    LOG(ERROR) << "Unknown option: " << opt;
     return -1;
   }
   return 0;
@@ -237,7 +236,7 @@ int load_config(const char *filename)
 {
   std::ifstream in(filename, std::ios::binary);
   if(!in) {
-    std::cerr << "Could not open config file " << filename << std::endl;
+    LOG(ERROR) << "Could not open config file " << filename;
     return -1;
   }
   std::string line;
@@ -251,7 +250,7 @@ int load_config(const char *filename)
     size_t size = line.size();
     for(i = 0; i < size && line[i] != '='; ++i);
     if(i == size) {
-      std::cerr << "Bad configuration format at line " << linenum << std::endl;
+      LOG(ERROR) << "Bad configuration format at line " << linenum;
       return -1;
     }
     line[i] = '\0';

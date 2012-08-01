@@ -527,8 +527,8 @@ int main(int argc, char **argv)
 
   if(conf_exists(get_config()->conf_path)) {
     if(load_config(get_config()->conf_path) == -1) {
-      std::cerr << "Failed to load configuration from "
-                << get_config()->conf_path << std::endl;
+      LOG(FATAL) << "Failed to load configuration from "
+                 << get_config()->conf_path;
       exit(EXIT_FAILURE);
     }
   }
@@ -536,7 +536,7 @@ int main(int argc, char **argv)
   if((!get_config()->private_key_file || !get_config()->cert_file) &&
      argc - optind < 2) {
     print_usage(std::cerr);
-    std::cerr << "Too few arguments" << std::endl;
+    LOG(FATAL) << "Too few arguments";
     exit(EXIT_FAILURE);
   }
   if(argc - optind >= 2) {
@@ -548,7 +548,7 @@ int main(int argc, char **argv)
 
   for(size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
     if(parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
-      std::cerr << "Failed to parse command-line argument." << std::endl;
+      LOG(FATAL) << "Failed to parse command-line argument.";
       exit(EXIT_FAILURE);
     }
   }
@@ -576,7 +576,7 @@ int main(int argc, char **argv)
 
   if(get_config()->daemon) {
     if(daemon(0, 0) == -1) {
-      perror("daemon");
+      LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
       exit(EXIT_FAILURE);
     }
   }
@@ -585,15 +585,15 @@ int main(int argc, char **argv)
   }
   if(getuid() == 0 && get_config()->uid != 0) {
     if(setgid(get_config()->gid) != 0) {
-      std::cerr << "Could not change gid: " << strerror(errno) << std::endl;
+      LOG(FATAL) << "Could not change gid: " << strerror(errno);
       exit(EXIT_FAILURE);
     }
     if(setuid(get_config()->uid) != 0) {
-      std::cerr << "Could not change uid: " << strerror(errno) << std::endl;
+      LOG(FATAL) << "Could not change uid: " << strerror(errno);
       exit(EXIT_FAILURE);
     }
     if(setuid(0) != -1) {
-      std::cerr << "FATAL: Still have root privileges?" << std::endl;
+      LOG(FATAL) << "Still have root privileges?";
       exit(EXIT_FAILURE);
     }
   }
