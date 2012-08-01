@@ -24,9 +24,13 @@
  */
 #include "shrpx_accesslog.h"
 
+#include <syslog.h>
+
 #include <ctime>
 #include <cstdio>
 #include <cstring>
+
+#include "shrpx_config.h"
 
 namespace shrpx {
 
@@ -51,17 +55,23 @@ void upstream_connect(const std::string& client_ip)
 {
   char datestr[64];
   get_datestr(datestr);
-  fprintf(stderr, "[%s] %s\n", datestr, client_ip.c_str());
+  fprintf(stderr, "[%s] Accepted %s\n", datestr, client_ip.c_str());
   fflush(stderr);
+  if(get_config()->use_syslog) {
+    syslog(LOG_INFO, "Accepted %s\n", client_ip.c_str());
+  }
 }
 
 void upstream_spdy_stream(const std::string& client_ip, int32_t stream_id)
 {
   char datestr[64];
   get_datestr(datestr);
-  fprintf(stderr, "[%s] %s stream_id=%d\n", datestr, client_ip.c_str(),
+  fprintf(stderr, "[%s] %s SPDY stream_id=%d\n", datestr, client_ip.c_str(),
           stream_id);
   fflush(stderr);
+  if(get_config()->use_syslog) {
+    syslog(LOG_INFO, "%s SPDY stream_id=%d\n", client_ip.c_str(), stream_id);
+  }
 }
 
 } // namespace shrpx

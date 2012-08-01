@@ -56,6 +56,8 @@ extern const char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS[];
 extern const char SHRPX_OPT_PID_FILE[];
 extern const char SHRPX_OPT_USER[];
+extern const char SHRPX_OPT_SYSLOG[];
+extern const char SHRPX_OPT_SYSLOG_FACILITY[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -94,6 +96,10 @@ struct Config {
   uid_t uid;
   gid_t gid;
   char *conf_path;
+  bool syslog;
+  int syslog_facility;
+  // This member finally decides syslog is used or not
+  bool use_syslog;
   Config();
 };
 
@@ -114,6 +120,12 @@ int load_config(const char *filename);
 // Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
 // NULL, it is freed before copying.
 void set_config_str(char **destp, const char *val);
+
+// Returns string for syslog |facility|.
+const char* str_syslog_facility(int facility);
+
+// Returns integer value of syslog |facility| string.
+int int_syslog_facility(const char *strfacility);
 
 } // namespace shrpx
 

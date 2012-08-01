@@ -26,6 +26,7 @@
 
 #include <pwd.h>
 #include <netdb.h>
+#include <syslog.h>
 
 #include <cstring>
 #include <cerrno>
@@ -63,6 +64,8 @@ SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] = "backend-keep-alive-timeout";
 const char SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS[] = "frontend-spdy-window-bits";
 const char SHRPX_OPT_PID_FILE[] = "pid-file";
 const char SHRPX_OPT_USER[] = "user";
+const char SHRPX_OPT_SYSLOG[] = "syslog";
+const char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
 
 Config::Config()
   : verbose(false),
@@ -86,7 +89,10 @@ Config::Config()
     pid_file(0),
     uid(0),
     gid(0),
-    conf_path(0)
+    conf_path(0),
+    syslog(false),
+    syslog_facility(0),
+    use_syslog(false)
 {}
 
 namespace {
@@ -223,6 +229,15 @@ int parse_config(const char *opt, const char *optarg)
     set_config_str(&mod_config()->private_key_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_CERTIFICATE_FILE)) {
     set_config_str(&mod_config()->cert_file, optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_SYSLOG)) {
+    mod_config()->syslog = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_SYSLOG_FACILITY)) {
+    int facility = int_syslog_facility(optarg);
+    if(facility == -1) {
+      LOG(ERROR) << "Unknown syslog facility: " << optarg;
+      return -1;
+    }
+    mod_config()->syslog_facility = facility;
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {
@@ -260,6 +275,99 @@ int load_config(const char *filename)
     }
   }
   return 0;
+}
+
+const char* str_syslog_facility(int facility)
+{
+  switch(facility) {
+  case(LOG_AUTH):
+    return "auth";
+  case(LOG_AUTHPRIV):
+    return "authpriv";
+  case(LOG_CRON):
+    return "cron";
+  case(LOG_DAEMON):
+    return "daemon";
+  case(LOG_FTP):
+    return "ftp";
+  case(LOG_KERN):
+    return "kern";
+  case(LOG_LOCAL0):
+    return "local0";
+  case(LOG_LOCAL1):
+    return "local1";
+  case(LOG_LOCAL2):
+    return "local2";
+  case(LOG_LOCAL3):
+    return "local3";
+  case(LOG_LOCAL4):
+    return "local4";
+  case(LOG_LOCAL5):
+    return "local5";
+  case(LOG_LOCAL6):
+    return "local6";
+  case(LOG_LOCAL7):
+    return "local7";
+  case(LOG_LPR):
+    return "lpr";
+  case(LOG_MAIL):
+    return "mail";
+  case(LOG_SYSLOG):
+    return "syslog";
+  case(LOG_USER):
+    return "user";
+  case(LOG_UUCP):
+    return "uucp";
+  default:
+    return "(unknown)";
+  }
+}
+
+int int_syslog_facility(const char *strfacility)
+{
+  if(util::strieq(strfacility, "auth")) {
+    return LOG_AUTH;
+  } else if(util::strieq(strfacility, "authpriv")) {
+    return LOG_AUTHPRIV;
+  } else if(util::strieq(strfacility, "cron")) {
+    return LOG_CRON;
+  } else if(util::strieq(strfacility, "daemon")) {
+    return LOG_DAEMON;
+  } else if(util::strieq(strfacility, "ftp")) {
+    return LOG_FTP;
+  } else if(util::strieq(strfacility, "kern")) {
+    return LOG_KERN;
+  } else if(util::strieq(strfacility, "local0")) {
+    return LOG_LOCAL0;
+  } else if(util::strieq(strfacility, "local1")) {
+    return LOG_LOCAL1;
+  } else if(util::strieq(strfacility, "local2")) {
+    return LOG_LOCAL2;
+  } else if(util::strieq(strfacility, "local3")) {
+    return LOG_LOCAL3;
+  } else if(util::strieq(strfacility, "local4")) {
+    return LOG_LOCAL4;
+  } else if(util::strieq(strfacility, "local5")) {
+    return LOG_LOCAL5;
+  } else if(util::strieq(strfacility, "local6")) {
+    return LOG_LOCAL6;
+  } else if(util::strieq(strfacility, "local7")) {
+    return LOG_LOCAL7;
+  } else if(util::strieq(strfacility, "lpr")) {
+    return LOG_LPR;
+  } else if(util::strieq(strfacility, "mail")) {
+    return LOG_MAIL;
+  } else if(util::strieq(strfacility, "news")) {
+    return LOG_NEWS;
+  } else if(util::strieq(strfacility, "syslog")) {
+    return LOG_SYSLOG;
+  } else if(util::strieq(strfacility, "user")) {
+    return LOG_USER;
+  } else if(util::strieq(strfacility, "uucp")) {
+    return LOG_UUCP;
+  } else {
+    return -1;
+  }
 }
 
 } // namespace shrpx

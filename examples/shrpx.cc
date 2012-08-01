@@ -34,6 +34,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <syslog.h>
 
 #include <limits>
 #include <cstdlib>
@@ -328,6 +329,10 @@ void fill_default_config()
     SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
 
   set_config_str(&mod_config()->conf_path, "/etc/shrpx/shrpx.conf");
+
+  mod_config()->syslog = false;
+  mod_config()->syslog_facility = LOG_DAEMON;
+  mod_config()->use_syslog = false;
 }
 } // namespace
 
@@ -414,6 +419,11 @@ void print_help(std::ostream& out)
       << "    --conf=<PATH>      Load configuration from PATH.\n"
       << "                       Default: "
       << get_config()->conf_path << "\n"
+      << "    --syslog           Send log messages to syslog.\n"
+      << "    --syslog-facility=<FACILITY>\n"
+      << "                       Set syslog facility.\n"
+      << "                       Default: "
+      << str_syslog_facility(get_config()->syslog_facility) << "\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -448,6 +458,8 @@ int main(int argc, char **argv)
       {"pid-file", required_argument, &flag, 10 },
       {"user", required_argument, &flag, 11 },
       {"conf", required_argument, &flag, 12 },
+      {"syslog", no_argument, &flag, 13 },
+      {"syslog-facility", required_argument, &flag, 14 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -540,6 +552,14 @@ int main(int argc, char **argv)
         // --conf
         set_config_str(&mod_config()->conf_path, optarg);
         break;
+      case 13:
+        // --syslog
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SYSLOG, "yes"));
+        break;
+      case 14:
+        // --syslog-facility
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SYSLOG_FACILITY, optarg));
+        break;
       default:
         break;
       }
@@ -596,6 +616,12 @@ int main(int argc, char **argv)
 
   if(cache_downstream_host_address() == -1) {
     exit(EXIT_FAILURE);
+  }
+
+  if(get_config()->syslog) {
+    openlog("shrpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
+            get_config()->syslog_facility);
+    mod_config()->use_syslog = true;
   }
 
   if(get_config()->daemon) {

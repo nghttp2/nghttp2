@@ -24,8 +24,12 @@
  */
 #include "shrpx_log.h"
 
+#include <syslog.h>
+
 #include <cstdio>
 #include <cstring>
+
+#include "shrpx_config.h"
 
 namespace shrpx {
 
@@ -51,6 +55,23 @@ int Log::set_severity_level_by_name(const char *name)
   return -1;
 }
 
+int severity_to_syslog_level(int severity)
+{
+  switch(severity) {
+  case(INFO):
+    return LOG_INFO;
+  case(WARNING):
+    return LOG_WARNING;
+  case(ERROR):
+    return LOG_ERR;
+  case(FATAL):
+    return LOG_CRIT;
+  default:
+    // Not reachable
+    assert(0);
+  }
+}
+
 Log::Log(int severity, const char *filename, int linenum)
   : severity_(severity),
     filename_(filename),
@@ -64,6 +85,10 @@ Log::~Log()
             SEVERITY_STR[severity_], stream_.str().c_str(),
             filename_, linenum_);
     fflush(stderr);
+    if(get_config()->use_syslog) {
+      syslog(severity_to_syslog_level(severity_), "%s (%s, line %d)\n",
+             stream_.str().c_str(), filename_, linenum_);
+    }
   }
 }
 
