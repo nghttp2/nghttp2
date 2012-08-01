@@ -67,8 +67,7 @@ int severity_to_syslog_level(int severity)
   case(FATAL):
     return LOG_CRIT;
   default:
-    // Not reachable
-    assert(0);
+    return -1;
   }
 }
 
