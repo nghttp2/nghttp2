@@ -230,7 +230,8 @@ Here is the command-line options::
 
     $ examples/shrpx -h
     Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]
-                 [-c <NUM>] [-L <LEVEL>] <PRIVATE_KEY> <CERT>
+                 [-c <NUM>] [-L <LEVEL>] [OPTIONS...]
+                 <PRIVATE_KEY> <CERT>
 
     A reverse proxy for SPDY/HTTPS.
 
@@ -259,6 +260,41 @@ Here is the command-line options::
         --add-x-forwarded-for
                            Append X-Forwarded-For header field to the
                            downstream request.
+        --frontend-spdy-read-timeout=<SEC>
+                           Specify read timeout for SPDY frontend
+                           connection. Default: 180
+        --frontend-read-timeout=<SEC>
+                           Specify read timeout for non-SPDY frontend
+                           connection. Default: 180
+        --frontend-write-timeout=<SEC>
+                           Specify write timeout for both SPDY and
+                           non-SPDY frontends.
+                           connection. Default: 60
+        --backend-read-timeout=<SEC>
+                           Specify read timeout for backend connection.
+                           Default: 900
+        --backend-write-timeout=<SEC>
+                           Specify write timeout for backend
+                           connection. Default: 60
+        --backend-keep-alive-timeout=<SEC>
+                           Specify keep-alive timeout for backend
+                           connection. Default: 60
+        --accesslog        Print simple accesslog to stderr.
+        --frontend-spdy-window-bits=<N>
+                           Sets the initial window size of SPDY
+                           frontend connection to 2**<N>.
+                           Default: 16
+        --pid-file=<PATH>  Set path to save PID of this program.
+        --user=<USER>      Run this program as USER. This option is
+                           intended to be used to drop root privileges.
+        --conf=<PATH>      Load configuration from PATH.
+                           Default: /etc/shrpx/shrpx.conf
+        --syslog           Send log messages to syslog.
+        --syslog-facility=<FACILITY>
+                           Set syslog facility.
+                           Default: daemon
+        --backlog=<NUM>    Set listen backlog size.
+                           Default: 256
         -h, --help         Print this help.
 
 
