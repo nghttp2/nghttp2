@@ -33,9 +33,29 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <string>
-
 namespace shrpx {
+
+extern const char SHRPX_OPT_PRIVATE_KEY_FILE[];
+extern const char SHRPX_OPT_CERTIFICATE_FILE[];
+
+extern const char SHRPX_OPT_BACKEND[];
+extern const char SHRPX_OPT_FRONTEND[];
+extern const char SHRPX_OPT_WORKERS[];
+extern const char SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS[];
+extern const char SHRPX_OPT_LOG_LEVEL[];
+extern const char SHRPX_OPT_DAEMON[];
+extern const char SHRPX_OPT_SPDY_PROXY[];
+extern const char SHRPX_OPT_ADD_X_FORWARDED_FOR[];
+extern const char SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT[];
+extern const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[];
+extern const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[];
+extern const char SHRPX_OPT_BACKEND_READ_TIMEOUT[];
+extern const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[];
+extern const char SHRPX_OPT_ACCESSLOG[];
+extern const char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[];
+extern const char SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS[];
+extern const char SHRPX_OPT_PID_FILE[];
+extern const char SHRPX_OPT_USER[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -47,15 +67,15 @@ union sockaddr_union {
 struct Config {
   bool verbose;
   bool daemon;
-  const char *host;
+  char *host;
   uint16_t port;
-  const char *private_key_file;
-  const char *cert_file;
+  char *private_key_file;
+  char *cert_file;
   bool verify_client;
   const char *server_name;
-  const char *downstream_host;
+  char *downstream_host;
   uint16_t downstream_port;
-  const char *downstream_hostport;
+  char *downstream_hostport;
   sockaddr_union downstream_addr;
   size_t downstream_addrlen;
   timeval spdy_upstream_read_timeout;
@@ -70,15 +90,30 @@ struct Config {
   bool add_x_forwarded_for;
   bool accesslog;
   size_t spdy_upstream_window_bits;
-  const char* pid_file;
+  char *pid_file;
   uid_t uid;
   gid_t gid;
+  char *conf_path;
   Config();
 };
 
 const Config* get_config();
 Config* mod_config();
 void create_config();
+
+// Parses option name |opt| and value |optarg|.  The results are
+// stored into statically allocated Config object. This function
+// returns 0 if it succeeds, or -1.
+int parse_config(const char *opt, const char *optarg);
+
+// Loads configurations from |filename| and stores them in statically
+// allocated Config object. This function returns 0 if it succeeds, or
+// -1.
+int load_config(const char *filename);
+
+// Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
+// NULL, it is freed before copying.
+void set_config_str(char **destp, const char *val);
 
 } // namespace shrpx
 

@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <signal.h>
@@ -33,12 +34,12 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <pwd.h>
 
 #include <limits>
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -249,12 +250,22 @@ void save_pid()
 } // namespace
 
 namespace {
+// Returns true if regular file or symbolic link |path| exists.
+bool conf_exists(const char *path)
+{
+  struct stat buf;
+  int rv = stat(path, &buf);
+  return rv == 0 && (buf.st_mode & (S_IFREG | S_IFLNK));
+}
+} // namespace
+
+namespace {
 void fill_default_config()
 {
   mod_config()->daemon = false;
 
   mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;
-  mod_config()->host = "localhost";
+  set_config_str(&mod_config()->host, "localhost");
   mod_config()->port = 3000;
   mod_config()->private_key_file = 0;
   mod_config()->cert_file = 0;
@@ -284,43 +295,15 @@ void fill_default_config()
   // 2**16 = 64KiB, which is SPDY/3 default.
   mod_config()->spdy_upstream_window_bits = 16;
 
-  mod_config()->downstream_host = "localhost";
+  set_config_str(&mod_config()->downstream_host, "localhost");
   mod_config()->downstream_port = 80;
 
   mod_config()->num_worker = 1;
 
   mod_config()->spdy_max_concurrent_streams =
     SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
-}
-} // namespace
 
-namespace {
-int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
-                    const char *hostport)
-{
-  // host and port in |hostport| is separated by single ','.
-  const char *p = strchr(hostport, ',');
-  if(!p) {
-    std::cerr << "Invalid host, port: " << hostport << std::endl;
-    return -1;
-  }
-  size_t len = p-hostport;
-  if(hostlen < len+1) {
-    std::cerr << "Hostname too long: " << hostport << std::endl;
-    return -1;
-  }
-  memcpy(host, hostport, len);
-  host[len] = '\0';
-
-  errno = 0;
-  unsigned long d = strtoul(p+1, 0, 10);
-  if(errno == 0 && 1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
-    *port_ptr = d;
-    return 0;
-  } else {
-    std::cerr << "Port is invalid: " << p+1 << std::endl;
-    return -1;
-  }
+  set_config_str(&mod_config()->conf_path, "/etc/shrpx/shrpx.conf");
 }
 } // namespace
 
@@ -339,7 +322,6 @@ void print_usage(std::ostream& out)
 namespace {
 void print_help(std::ostream& out)
 {
-  fill_default_config();
   print_usage(out);
   out << "\n"
       << "OPTIONS:\n"
@@ -405,6 +387,9 @@ void print_help(std::ostream& out)
       << "    --pid-file=<PATH>  Set path to save PID of this program.\n"
       << "    --user=<USER>      Run this program as USER. This option is\n"
       << "                       intended to be used to drop root privileges.\n"
+      << "    --conf=<PATH>      Load configuration from PATH.\n"
+      << "                       Default: "
+      << get_config()->conf_path << "\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -416,11 +401,7 @@ int main(int argc, char **argv)
   create_config();
   fill_default_config();
 
-  char frontend_host[NI_MAXHOST];
-  uint16_t frontend_port;
-  char backend_host[NI_MAXHOST];
-  uint16_t backend_port;
-
+  std::vector<std::pair<const char*, const char*> > cmdcfgs;
   while(1) {
     int flag;
     static option long_options[] = {
@@ -442,6 +423,7 @@ int main(int argc, char **argv)
       {"frontend-spdy-window-bits", required_argument, &flag, 9 },
       {"pid-file", required_argument, &flag, 10 },
       {"user", required_argument, &flag, 11 },
+      {"conf", required_argument, &flag, 12 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -453,43 +435,29 @@ int main(int argc, char **argv)
     }
     switch(c) {
     case 'D':
-      mod_config()->daemon = true;
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_DAEMON, "yes"));
       break;
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'L':
-      if(Log::set_severity_level_by_name(optarg) == -1) {
-        std::cerr << "Invalid severity level: " << optarg << std::endl;
-        exit(EXIT_SUCCESS);
-      }
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_LOG_LEVEL, optarg));
       break;
     case 'b':
-      if(split_host_port(backend_host, sizeof(backend_host),
-                         &backend_port, optarg) == -1) {
-        exit(EXIT_FAILURE);
-      } else {
-        mod_config()->downstream_host = backend_host;
-        mod_config()->downstream_port = backend_port;
-      }
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND, optarg));
       break;
     case 'f':
-      if(split_host_port(frontend_host, sizeof(frontend_host),
-                         &frontend_port, optarg) == -1) {
-        exit(EXIT_FAILURE);
-      } else {
-        mod_config()->host = frontend_host;
-        mod_config()->port = frontend_port;
-      }
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND, optarg));
       break;
     case 'n':
-      mod_config()->num_worker = strtol(optarg, 0, 10);
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WORKERS, optarg));
       break;
     case 'c':
-      mod_config()->spdy_max_concurrent_streams = strtol(optarg, 0, 10);
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS,
+                                       optarg));
       break;
     case 's':
-      mod_config()->spdy_proxy = true;
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_PROXY, "yes"));
       break;
     case '?':
       exit(EXIT_FAILURE);
@@ -497,74 +465,57 @@ int main(int argc, char **argv)
       switch(flag) {
       case 1:
         // --add-x-forwarded-for
-        mod_config()->add_x_forwarded_for = true;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_ADD_X_FORWARDED_FOR,
+                                         "yes"));
         break;
-      case 2: {
+      case 2:
         // --frontend-spdy-read-timeout
-        timeval tv = {strtol(optarg, 0, 10), 0};
-        mod_config()->spdy_upstream_read_timeout = tv;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT,
+                                         optarg));
         break;
-      }
-      case 3: {
+      case 3:
         // --frontend-read-timeout
-        timeval tv = {strtol(optarg, 0, 10), 0};
-        mod_config()->upstream_read_timeout = tv;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_READ_TIMEOUT,
+                                         optarg));
         break;
-      }
-      case 4: {
+      case 4:
         // --frontend-write-timeout
-        timeval tv = {strtol(optarg, 0, 10), 0};
-        mod_config()->upstream_write_timeout = tv;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_WRITE_TIMEOUT,
+                                         optarg));
         break;
-      }
-      case 5: {
+      case 5:
         // --backend-read-timeout
-        timeval tv = {strtol(optarg, 0, 10), 0};
-        mod_config()->downstream_read_timeout = tv;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_READ_TIMEOUT,
+                                         optarg));
         break;
-      }
-      case 6: {
+      case 6:
         // --backend-write-timeout
-        timeval tv = {strtol(optarg, 0, 10), 0};
-        mod_config()->downstream_write_timeout = tv;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_WRITE_TIMEOUT,
+                                         optarg));
         break;
-      }
       case 7:
-        mod_config()->accesslog = true;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_ACCESSLOG, "yes"));
         break;
-      case 8: {
+      case 8:
         // --backend-keep-alive-timeout
-        timeval tv = {strtol(optarg, 0, 10), 0};
-        mod_config()->downstream_idle_read_timeout = tv;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT,
+                                         optarg));
         break;
-      }
-      case 9: {
+      case 9:
         // --frontend-spdy-window-bits
-        errno = 0;
-        unsigned long int n = strtoul(optarg, 0, 10);
-        if(errno == 0 && n < 31) {
-          mod_config()->spdy_upstream_window_bits = n;
-        } else {
-          std::cerr << "-w: specify the integer in the range [0, 30], inclusive"
-                    << std::endl;
-          exit(EXIT_FAILURE);
-        }
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS,
+                                         optarg));
         break;
-      }
       case 10:
-        mod_config()->pid_file = optarg;
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PID_FILE, optarg));
         break;
-      case 11: {
-        passwd *pwd = getpwnam(optarg);
-        if(pwd == 0) {
-          std::cerr << "--user: failed to get uid from " << optarg
-                    << ": " << strerror(errno) << std::endl;
-          exit(EXIT_FAILURE);
-        }
-        mod_config()->uid = pwd->pw_uid;
-        mod_config()->gid = pwd->pw_gid;
+      case 11:
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_USER, optarg));
         break;
-      }
+      case 12:
+        // --conf
+        set_config_str(&mod_config()->conf_path, optarg);
+        break;
       default:
         break;
       }
@@ -574,14 +525,33 @@ int main(int argc, char **argv)
     }
   }
 
-  if(argc-optind < 2) {
+  if(conf_exists(get_config()->conf_path)) {
+    if(load_config(get_config()->conf_path) == -1) {
+      std::cerr << "Failed to load configuration from "
+                << get_config()->conf_path << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if((!get_config()->private_key_file || !get_config()->cert_file) &&
+     argc - optind < 2) {
     print_usage(std::cerr);
     std::cerr << "Too few arguments" << std::endl;
     exit(EXIT_FAILURE);
   }
+  if(argc - optind >= 2) {
+    cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PRIVATE_KEY_FILE,
+                                     argv[optind++]));
+    cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CERTIFICATE_FILE,
+                                     argv[optind++]));
+  }
 
-  mod_config()->private_key_file = argv[optind++];
-  mod_config()->cert_file = argv[optind++];
+  for(size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
+    if(parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
+      std::cerr << "Failed to parse command-line argument." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
 
   char hostport[NI_MAXHOST+16];
   bool downstream_ipv6_addr =
@@ -598,7 +568,7 @@ int main(int argc, char **argv)
              downstream_ipv6_addr ? "]" : "",
              get_config()->downstream_port);
   }
-  mod_config()->downstream_hostport = hostport;
+  set_config_str(&mod_config()->downstream_hostport, hostport);
 
   if(cache_downstream_host_address() == -1) {
     exit(EXIT_FAILURE);
