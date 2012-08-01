@@ -66,6 +66,7 @@ const char SHRPX_OPT_PID_FILE[] = "pid-file";
 const char SHRPX_OPT_USER[] = "user";
 const char SHRPX_OPT_SYSLOG[] = "syslog";
 const char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
+const char SHRPX_OPT_BACKLOG[] = "backlog";
 
 Config::Config()
   : verbose(false),
@@ -92,7 +93,8 @@ Config::Config()
     conf_path(0),
     syslog(false),
     syslog_facility(0),
-    use_syslog(false)
+    use_syslog(false),
+    backlog(0)
 {}
 
 namespace {
@@ -238,6 +240,8 @@ int parse_config(const char *opt, const char *optarg)
       return -1;
     }
     mod_config()->syslog_facility = facility;
+  } else if(util::strieq(opt, SHRPX_OPT_BACKLOG)) {
+    mod_config()->backlog = strtol(optarg, 0, 10);
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {

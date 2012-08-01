@@ -58,6 +58,7 @@ extern const char SHRPX_OPT_PID_FILE[];
 extern const char SHRPX_OPT_USER[];
 extern const char SHRPX_OPT_SYSLOG[];
 extern const char SHRPX_OPT_SYSLOG_FACILITY[];
+extern const char SHRPX_OPT_BACKLOG[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -100,6 +101,7 @@ struct Config {
   int syslog_facility;
   // This member finally decides syslog is used or not
   bool use_syslog;
+  int backlog;
   Config();
 };
 

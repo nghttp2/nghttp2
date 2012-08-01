@@ -196,7 +196,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
      ssl_acceptcb,
      handler,
      LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
-     512,
+     get_config()->backlog,
      fd);
   evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
   return evlistener;
@@ -333,6 +333,9 @@ void fill_default_config()
   mod_config()->syslog = false;
   mod_config()->syslog_facility = LOG_DAEMON;
   mod_config()->use_syslog = false;
+
+  // Default accept() backlog
+  mod_config()->backlog = 256;
 }
 } // namespace
 
@@ -424,6 +427,9 @@ void print_help(std::ostream& out)
       << "                       Set syslog facility.\n"
       << "                       Default: "
       << str_syslog_facility(get_config()->syslog_facility) << "\n"
+      << "    --backlog=<NUM>    Set listen backlog size.\n"
+      << "                       Default: "
+      << get_config()->backlog << "\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -460,6 +466,7 @@ int main(int argc, char **argv)
       {"conf", required_argument, &flag, 12 },
       {"syslog", no_argument, &flag, 13 },
       {"syslog-facility", required_argument, &flag, 14 },
+      {"backlog", required_argument, &flag, 15 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -559,6 +566,10 @@ int main(int argc, char **argv)
       case 14:
         // --syslog-facility
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SYSLOG_FACILITY, optarg));
+        break;
+      case 15:
+        // --backlog
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKLOG, optarg));
         break;
       default:
         break;
