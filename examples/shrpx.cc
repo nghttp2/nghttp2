@@ -203,11 +203,35 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
 } // namespace
 
 namespace {
+void drop_privileges()
+{
+  if(getuid() == 0 && get_config()->uid != 0) {
+    if(setgid(get_config()->gid) != 0) {
+      LOG(FATAL) << "Could not change gid: " << strerror(errno);
+      exit(EXIT_FAILURE);
+    }
+    if(setuid(get_config()->uid) != 0) {
+      LOG(FATAL) << "Could not change uid: " << strerror(errno);
+      exit(EXIT_FAILURE);
+    }
+    if(setuid(0) != -1) {
+      LOG(FATAL) << "Still have root privileges?";
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+} // namespace
+
+namespace {
 int event_loop()
 {
   event_base *evbase = event_base_new();
 
   ListenHandler *listener_handler = new ListenHandler(evbase);
+
+  // ListenHandler loads private key. After that, we drop the root
+  // privileges if needed.
+  drop_privileges();
 
   evconnlistener *evlistener6, *evlistener4;
   evlistener6 = create_evlistener(listener_handler, AF_INET6);
@@ -582,20 +606,6 @@ int main(int argc, char **argv)
   }
   if(get_config()->pid_file) {
     save_pid();
-  }
-  if(getuid() == 0 && get_config()->uid != 0) {
-    if(setgid(get_config()->gid) != 0) {
-      LOG(FATAL) << "Could not change gid: " << strerror(errno);
-      exit(EXIT_FAILURE);
-    }
-    if(setuid(get_config()->uid) != 0) {
-      LOG(FATAL) << "Could not change uid: " << strerror(errno);
-      exit(EXIT_FAILURE);
-    }
-    if(setuid(0) != -1) {
-      LOG(FATAL) << "Still have root privileges?";
-      exit(EXIT_FAILURE);
-    }
   }
 
   struct sigaction act;
