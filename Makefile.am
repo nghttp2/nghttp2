@@ -25,3 +25,5 @@ SUBDIRS = lib examples tests doc
 ACLOCAL_AMFLAGS = -I m4
 
 dist_doc_DATA = README.rst
+
+EXTRA_DIST = shrpx.conf.sample
