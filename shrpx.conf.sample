@@ -4,7 +4,7 @@
 # * Line staring '#' is treated as comment.
 #
 # * The option name in the configuration file is the long command-line
-#   option name, stripped leading '--' (e.g., frontend). Put '='
+#   option name with leading '--' stripped (e.g., frontend). Put '='
 #   between option name and value. Don't put extra leading or trailing
 #   spaces.
 #
@@ -21,8 +21,8 @@
 #
 # Examples:
 #
-# frontend=localhost,3000
-# backend=localhost,80
+# frontend=0.0.0.0,3000
+# backend=127.0.0.1,80
 # private-key-file=/path/to/server.key
 # certificate-file=/path/to/server.crt
 # spdy-proxy=no
