@@ -123,7 +123,11 @@ def process_enum(infile):
         elif re.match(r'\s*/\*\*\n', line):
             member_content = read_content(infile)
             line = infile.readline()
-            member_name = line.split()[0]
+            items = line.split()
+            member_name = items[0]
+            if len(items) >= 3:
+                member_content.insert(0, '(``{}``) '\
+                                          .format(items[2].rstrip(',')))
             members.append((member_name, member_content))
         elif line.startswith('}'):
             enum_name = line.rstrip().split()[1]
