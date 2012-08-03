@@ -27,7 +27,7 @@ LT_INIT()
 dnl See versioning rule:
 dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 AC_SUBST(LT_CURRENT, 2)
-AC_SUBST(LT_REVISION, 1)
+AC_SUBST(LT_REVISION, 2)
 AC_SUBST(LT_AGE, 1)
 
 AC_CANONICAL_BUILD
