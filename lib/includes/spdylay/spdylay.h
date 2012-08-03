@@ -112,7 +112,7 @@ typedef enum {
    */
   SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE = -509,
   /**
-   *  The stream is already closed; or the stream ID is invalid.
+   * The stream is already closed; or the stream ID is invalid.
    */
   SPDYLAY_ERR_STREAM_CLOSED = -510,
   /**
