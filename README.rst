@@ -241,10 +241,10 @@ Here is the command-line options::
     OPTIONS:
         -b, --backend=<HOST,PORT>
                            Set backend host and port.
-                           Default: 'localhost,80'
+                           Default: '127.0.0.1,80'
         -f, --frontend=<HOST,PORT>
                            Set frontend host and port.
-                           Default: 'localhost,3000'
+                           Default: '0.0.0.0,3000'
         -n, --workers=<CORES>
                            Set the number of worker threads.
                            Default: 1
