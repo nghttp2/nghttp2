@@ -224,7 +224,9 @@ Shrpx - A reverse proxy for SPDY/HTTPS
 The ``shrpx`` is a multi-threaded reverse proxy for SPDY/HTTPS.  It
 converts SPDY/HTTPS traffic to plain HTTP. It can be used as SSL/SPDY
 proxy with the http proxy (e.g., Squid) in the backend. To enable
-SSL/SPDY proxy mode, use ``--spdy-proxy`` option.
+SSL/SPDY proxy mode, use ``--spdy-proxy`` option.  It also supports
+configuration file. See ``--conf`` option and sample configuration
+file ``shrpx.conf.sample``.
 
 Here is the command-line options::
 
