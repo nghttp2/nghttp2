@@ -290,7 +290,7 @@ void fill_default_config()
   mod_config()->daemon = false;
 
   mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;
-  set_config_str(&mod_config()->host, "localhost");
+  set_config_str(&mod_config()->host, "0.0.0.0");
   mod_config()->port = 3000;
   mod_config()->private_key_file = 0;
   mod_config()->cert_file = 0;
@@ -320,7 +320,7 @@ void fill_default_config()
   // 2**16 = 64KiB, which is SPDY/3 default.
   mod_config()->spdy_upstream_window_bits = 16;
 
-  set_config_str(&mod_config()->downstream_host, "localhost");
+  set_config_str(&mod_config()->downstream_host, "127.0.0.1");
   mod_config()->downstream_port = 80;
 
   mod_config()->num_worker = 1;
