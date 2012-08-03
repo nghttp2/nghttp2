@@ -1,3 +1,29 @@
+spdylay 0.3.2
+=============
+
+Release Note
+------------
+
+This release adds many features and options to shrpx, HTTPS/SPDY
+reverse proxy. Secure SPDY proxy mode was added to shrpx. Spdycat now
+supports SNI, thanks to the patch contributed by Piotr Sikora.
+
+Changes
+-------
+
+* spdycat: Add support for Server Name Indication (SNI). Patch from
+  Piotr Sikora.
+
+* spdycat: Use TLSv1_client_method
+
+* shrpx: Add many new command-line options. It also now supports
+  configuration file. Use http-parser instead of htparse. Add SPDY
+  proxy mode.
+
+* lib: Take into account shut_flags when accepting DATA frame.
+
+
+
 spdylay 0.3.1
 =============
 
