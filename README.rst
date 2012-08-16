@@ -361,3 +361,8 @@ not support asynchronous I/O at all.
 
 If you are looking for the example program written in C, see
 ``spdycli`` which is the simple SPDY client.
+
+Python wrapper
+--------------
+
+See ``python`` directory.
