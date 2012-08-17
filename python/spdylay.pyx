@@ -326,6 +326,31 @@ cdef void on_data_chunk_recv_callback(cspdylay.spdylay_session *session,
         except BaseException as e:
             pysession.base_error = e
 
+cdef void on_stream_close_callback(cspdylay.spdylay_session *session,
+                                   int32_t stream_id,
+                                   cspdylay.spdylay_status_code status_code,
+                                   void *user_data):
+    cdef Session pysession = <Session>user_data
+    if pysession.on_stream_close_cb:
+        try:
+            pysession.on_stream_close_cb(pysession, stream_id, status_code)
+        except Exception as e:
+            pysession.error = e
+        except BaseException as e:
+            pysession.base_error = e
+
+cdef void on_request_recv_callback(cspdylay.spdylay_session *session,
+                                   int32_t stream_id,
+                                   void *user_data):
+    cdef Session pysession = <Session>user_data
+    if pysession.on_request_recv_cb:
+        try:
+            pysession.on_request_recv_cb(pysession, stream_id)
+        except Exception as e:
+            pysession.error = e
+        except BaseException as e:
+            pysession.base_error = e
+
 cdef ssize_t read_callback(cspdylay.spdylay_session *session,
                            int32_t stream_id, uint8_t *buf, size_t length,
                            int *eof, cspdylay.spdylay_data_source *source,
@@ -365,7 +390,8 @@ cdef class Session:
     cdef object send_callback
     cdef object on_ctrl_recv_cb
     cdef object on_data_chunk_recv_cb
-
+    cdef object on_stream_close_cb
+    cdef object on_request_recv_cb
     cdef object user_data
 
     cdef object error
@@ -379,6 +405,8 @@ cdef class Session:
                   recv_cb=None, send_cb=None,
                   on_data_chunk_recv_cb=None,
                   on_ctrl_recv_cb=None,
+                  on_stream_close_cb=None,
+                  on_request_recv_cb=None,
                   user_data=None):
         cdef cspdylay.spdylay_session_callbacks c_session_callbacks
         cdef int rv
@@ -399,8 +427,10 @@ cdef class Session:
         # c_session_callbacks.on_ctrl_send_callback = NULL
         # c_session_callbacks.on_ctrl_not_send_callback = NULL
         # c_session_callbacks.on_data_send_callback = NULL
-        # c_session_callbacks.on_stream_close_callback = NULL
-        # c_session_callbacks.on_request_recv_callback = NULL
+        c_session_callbacks.on_stream_close_callback = \
+            <cspdylay.spdylay_on_stream_close_callback>on_stream_close_callback
+        c_session_callbacks.on_request_recv_callback = \
+            <cspdylay.spdylay_on_request_recv_callback>on_request_recv_callback
         # c_session_callbacks.get_credential_proof = NULL
         # c_session_callbacks.get_credential_ncerts = NULL
         # c_session_callbacks.get_credential_cert = NULL
@@ -411,6 +441,9 @@ cdef class Session:
         self.send_callback = send_cb
         self.on_data_chunk_recv_cb = on_data_chunk_recv_cb
         self.on_ctrl_recv_cb = on_ctrl_recv_cb
+        self.on_stream_close_cb = on_stream_close_cb
+        self.on_request_recv_cb = on_request_recv_cb
+
         self.user_data = user_data
 
         if side == CLIENT:
@@ -439,6 +472,8 @@ cdef class Session:
                  recv_cb=None, send_cb=None,
                  on_data_chunk_recv_cb=None,
                  on_ctrl_recv_cb=None,
+                 on_stream_close_cb=None,
+                 on_request_recv_cb=None,
                  user_data=None):
         pass
 

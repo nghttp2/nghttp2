@@ -159,11 +159,20 @@ cdef extern from 'spdylay/spdylay.h':
         (spdylay_session *session, uint8_t flags, int32_t stream_id,
          uint8_t *data, size_t len, void *user_data)
 
+    ctypedef void (*spdylay_on_stream_close_callback)\
+        (spdylay_session *session, int32_t stream_id,
+         spdylay_status_code status_code, void *user_data)
+
+    ctypedef void (*spdylay_on_request_recv_callback)\
+        (spdylay_session *session, int32_t stream_id, void *user_data)
+
     ctypedef struct spdylay_session_callbacks:
         spdylay_send_callback send_callback
         spdylay_recv_callback recv_callback
         spdylay_on_ctrl_recv_callback on_ctrl_recv_callback
         spdylay_on_data_chunk_recv_callback on_data_chunk_recv_callback
+        spdylay_on_stream_close_callback on_stream_close_callback
+        spdylay_on_request_recv_callback on_request_recv_callback
 
     int spdylay_session_client_new(spdylay_session **session_ptr,
                                    int version,

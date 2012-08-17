@@ -28,10 +28,23 @@ def read_cb(session, stream_id, length, source):
 def on_ctrl_recv_cb(session, frame):
     ssctrl = session.user_data
     if frame.frame_type == spdylay.SYN_STREAM:
-        # This will crash cookies...
-        nv = dict(frame.nv)
-        if b'user-agent' in nv:
-            user_agent = nv[b'user-agent'].decode('utf-8')
+        stctrl = StreamCtrl(frame.stream_id)
+        stctrl.headers.extend(frame.nv)
+        ssctrl.streams[frame.stream_id] = stctrl
+
+def on_stream_close_cb(session, stream_id, status_code):
+    ssctrl = session.user_data
+    if stream_id in ssctrl.streams:
+        del ssctrl.streams[stream_id]
+
+def on_request_recv_cb(session, stream_id):
+    ssctrl = session.user_data
+    if stream_id in ssctrl.streams:
+        stctrl = ssctrl.streams[stream_id]
+        for name, value in stctrl.headers:
+            if name == b'user-agent':
+                user_agent = value.decode('utf-8')
+                break
         else:
             user_agent = ''
         html = '''\
@@ -47,17 +60,17 @@ def on_ctrl_recv_cb(session, frame):
         data_prd = spdylay.DataProvider(io.BytesIO(bytes(html, 'utf-8')),
                                         read_cb)
 
-        stctrl = StreamCtrl(frame.stream_id, data_prd)
-        ssctrl.streams[frame.stream_id] = stctrl
+        stctrl.data_prd = data_prd
         nv = [(b':status', b'200 OK'),
               (b':version', b'HTTP/1.1'),
               (b'server', b'python+spdylay')]
-        session.submit_response(frame.stream_id, nv, data_prd)
+        session.submit_response(stream_id, nv, data_prd)
 
 class StreamCtrl:
-    def __init__(self, stream_id, data_prd):
+    def __init__(self, stream_id):
         self.stream_id = stream_id
-        self.data_prd = data_prd
+        self.data_prd = None
+        self.headers = []
 
 class SessionCtrl:
     def __init__(self, sock):
@@ -83,6 +96,8 @@ class ThreadedSPDYRequestHandler(socketserver.BaseRequestHandler):
                                   version,
                                   send_cb=send_cb,
                                   on_ctrl_recv_cb=on_ctrl_recv_cb,
+                                  on_stream_close_cb=on_stream_close_cb,
+                                  on_request_recv_cb=on_request_recv_cb,
                                   user_data=ssctrl)
 
         session.submit_settings(\
