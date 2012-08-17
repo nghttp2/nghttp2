@@ -334,8 +334,8 @@ cdef ssize_t read_callback(cspdylay.spdylay_session *session,
     data_prd = <object>source.ptr
 
     try:
-        data, status = data_prd.read_cb(pysession, stream_id, length,
-                                        data_prd.source)
+        res = data_prd.read_cb(pysession, stream_id, length,
+                               data_prd.source)
     except TemporalCallbackFailureError as e:
         return cspdylay.SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE
     except CallbackFailureError as e:
@@ -348,16 +348,15 @@ cdef ssize_t read_callback(cspdylay.spdylay_session *session,
         pysession.base_error = e
         return cspdylay.SPDYLAY_ERR_CALLBACK_FAILURE
 
-    if status == cspdylay.SPDYLAY_ERR_EOF:
-        eof[0] = 1
-    elif status == cspdylay.SPDYLAY_ERR_DEFERRED:
-        return status
-    if data:
-        if len(data) > length:
+    if res == cspdylay.SPDYLAY_ERR_DEFERRED:
+        return res
+    elif res:
+        if len(res) > length:
             return cspdylay.SPDYLAY_ERR_CALLBACK_FAILURE
-        memcpy(buf, <char*>data, len(data))
-        return len(data)
+        memcpy(buf, <char*>res, len(res))
+        return len(res)
     else:
+        eof[0] = 1
         return 0
 
 cdef class Session:
@@ -427,7 +426,9 @@ cdef class Session:
         else:
             raise InvalidArgumentError('side must be either CLIENT or SERVER')
 
-        if rv == cspdylay.SPDYLAY_ERR_NOMEM:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
         elif rv == cspdylay.SPDYLAY_ERR_ZLIB:
             raise ZlibError(cspdylay.spdylay_strerror(rv))
@@ -458,7 +459,10 @@ cdef class Session:
             raise self.base_error
         if self.error:
             raise self.error
-        if rv == cspdylay.SPDYLAY_ERR_EOF:
+
+        if rv >= 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_EOF:
             raise EOFError()
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
@@ -473,7 +477,10 @@ cdef class Session:
             raise self.base_error
         elif self.error:
             raise self.error
-        if rv == cspdylay.SPDYLAY_ERR_NOMEM:
+
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
         elif rv == cspdylay.SPDYLAY_ERR_CALLBACK_FAILURE:
             raise CallbackFailureError()
@@ -481,7 +488,9 @@ cdef class Session:
     cpdef resume_data(self, stream_id):
         cpdef int rv
         rv = cspdylay.spdylay_session_resume_data(self._c_session, stream_id)
-        if rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
             raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
@@ -508,7 +517,9 @@ cdef class Session:
         cdef int rv
         rv = cspdylay.spdylay_session_fail_session(self._c_session,
                                                    status_code)
-        if rv == cspdylay.SPDYLAY_ERR_NOMEM:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
     cpdef submit_request(self, pri, nv, data_prd=None, stream_user_data=None):
@@ -539,7 +550,9 @@ cdef class Session:
                                              c_data_prd_ptr,
                                              <void*>stream_user_data)
         free(cnv)
-        if rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
             raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
@@ -558,7 +571,9 @@ cdef class Session:
         rv = cspdylay.spdylay_submit_response(self._c_session, stream_id,
                                               cnv, c_data_prd_ptr)
         free(cnv)
-        if rv == cspdylay.SPDYLAY_ERR_NOMEM:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
     cpdef submit_syn_stream(self, flags, assoc_stream_id, pri, nv,
@@ -572,7 +587,9 @@ cdef class Session:
                                                 cnv,
                                                 <void*>stream_user_data)
         free(cnv)
-        if rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
             raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
@@ -583,20 +600,26 @@ cdef class Session:
         rv = cspdylay.spdylay_submit_syn_reply(self._c_session,
                                                flags, stream_id, cnv)
         free(cnv)
-        if rv == cspdylay.SPDYLAY_ERR_NOMEM:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
     cpdef submit_rst_stream(self, stream_id, status_code):
         cdef int rv
         rv = cspdylay.spdylay_submit_rst_stream(self._c_session, stream_id,
                                                 status_code)
-        if rv == cspdylay.SPDYLAY_ERR_NOMEM:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
     cpdef submit_goaway(self, status_code):
         cdef int rv
         rv = cspdylay.spdylay_submit_goaway(self._c_session, status_code)
-        if rv == cspdylay.SPDYLAY_ERR_NOMEM:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
     cpdef submit_settings(self, flags, iv):
@@ -608,7 +631,9 @@ cdef class Session:
         rv = cspdylay.spdylay_submit_settings(self._c_session, flags,
                                               civ, len(iv))
         free(civ)
-        if rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
             raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()

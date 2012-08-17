@@ -23,12 +23,7 @@ def send_cb(session, data):
     return len(data)
 
 def read_cb(session, stream_id, length, source):
-    data = source.read(length)
-    if data:
-        status = spdylay.ERR_OK
-    else:
-        status = spdylay.ERR_EOF
-    return data, status
+    return source.read(length)
 
 def on_ctrl_recv_cb(session, frame):
     ssctrl = session.user_data
