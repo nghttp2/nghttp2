@@ -23,6 +23,10 @@ cdef extern from 'spdylay/spdylay.h':
         SPDYLAY_CTRL_FLAG_FIN
         SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL
 
+    ctypedef enum spdylay_data_flag:
+        SPDYLAY_DATA_FLAG_NONE
+        SPDYLAY_DATA_FLAG_FIN
+
     ctypedef enum spdylay_frame_type:
         SPDYLAY_SYN_STREAM
         SPDYLAY_SYN_REPLY

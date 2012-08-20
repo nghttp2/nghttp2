@@ -303,10 +303,10 @@ cdef ssize_t send_callback(cspdylay.spdylay_session *session,
             pysession.base_error = e
             return cspdylay.SPDYLAY_ERR_CALLBACK_FAILURE
 
-        if rv == cspdylay.SPDYLAY_ERR_WOULDBLOCK:
-            return cspdylay.SPDYLAY_ERR_WOULDBLOCK
-        else:
+        if rv:
             return rv
+        else:
+            return cspdylay.SPDYLAY_ERR_WOULDBLOCK
     else:
         # If no send_callback is given, pretend all data were sent and
         # just return length
@@ -402,9 +402,9 @@ cdef class Session:
             return self.user_data
 
     def __cinit__(self, side, version,
-                  recv_cb=None, send_cb=None,
-                  on_data_chunk_recv_cb=None,
+                  send_cb=None, recv_cb=None,
                   on_ctrl_recv_cb=None,
+                  on_data_chunk_recv_cb=None,
                   on_stream_close_cb=None,
                   on_request_recv_cb=None,
                   user_data=None):
@@ -469,9 +469,9 @@ cdef class Session:
             raise UnsupportedVersionError(cspdylay.spdylay_strerror(rv))
 
     def __init__(self, side, version,
-                 recv_cb=None, send_cb=None,
-                 on_data_chunk_recv_cb=None,
+                 send_cb=None, recv_cb=None,
                  on_ctrl_recv_cb=None,
+                 on_data_chunk_recv_cb=None,
                  on_stream_close_cb=None,
                  on_request_recv_cb=None,
                  user_data=None):
@@ -685,6 +685,10 @@ PROTO_SPDY3 = cspdylay.SPDYLAY_PROTO_SPDY3
 CTRL_FLAG_NONE = cspdylay.SPDYLAY_CTRL_FLAG_NONE
 CTRL_FLAG_FIN = cspdylay.SPDYLAY_CTRL_FLAG_FIN
 CTRL_FLAG_UNIDIRECTIONAL = cspdylay.SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL
+
+# Data frame flags
+DATA_FLAG_NONE = cspdylay.SPDYLAY_DATA_FLAG_NONE
+DATA_FLAG_FIN = cspdylay.SPDYLAY_DATA_FLAG_FIN
 
 # Error codes used in callback
 ERR_OK = 0 # Not defined in <spdylay/spdylay.h>
