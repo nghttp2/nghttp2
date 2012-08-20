@@ -96,6 +96,13 @@ SSL_CTX* create_ssl_context()
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx)-1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
+  if(get_config()->ciphers) {
+    if(SSL_CTX_set_cipher_list(ssl_ctx, get_config()->ciphers) == 0) {
+      LOG(FATAL) << "SSL_CTX_set_cipher_list failed.";
+      DIE();
+    }
+  }
+
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);

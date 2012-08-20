@@ -340,6 +340,8 @@ void fill_default_config()
 
   // Default accept() backlog
   mod_config()->backlog = 256;
+
+  mod_config()->ciphers = 0;
 }
 } // namespace
 
@@ -434,6 +436,8 @@ void print_help(std::ostream& out)
       << "    --backlog=<NUM>    Set listen backlog size.\n"
       << "                       Default: "
       << get_config()->backlog << "\n"
+      << "    --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
+      << "                       string is described in OpenSSL ciphers(1).\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -471,6 +475,7 @@ int main(int argc, char **argv)
       {"syslog", no_argument, &flag, 13 },
       {"syslog-facility", required_argument, &flag, 14 },
       {"backlog", required_argument, &flag, 15 },
+      {"ciphers", required_argument, &flag, 16 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -574,6 +579,10 @@ int main(int argc, char **argv)
       case 15:
         // --backlog
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKLOG, optarg));
+        break;
+      case 16:
+        // --ciphers
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CIPHERS, optarg));
         break;
       default:
         break;

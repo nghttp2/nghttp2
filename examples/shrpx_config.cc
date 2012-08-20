@@ -67,6 +67,7 @@ const char SHRPX_OPT_USER[] = "user";
 const char SHRPX_OPT_SYSLOG[] = "syslog";
 const char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
 const char SHRPX_OPT_BACKLOG[] = "backlog";
+const char SHRPX_OPT_CIPHERS[] = "ciphers";
 
 Config::Config()
   : verbose(false),
@@ -94,7 +95,8 @@ Config::Config()
     syslog(false),
     syslog_facility(0),
     use_syslog(false),
-    backlog(0)
+    backlog(0),
+    ciphers(0)
 {}
 
 namespace {
@@ -242,6 +244,8 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->syslog_facility = facility;
   } else if(util::strieq(opt, SHRPX_OPT_BACKLOG)) {
     mod_config()->backlog = strtol(optarg, 0, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_CIPHERS)) {
+    set_config_str(&mod_config()->ciphers, optarg);
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {
