@@ -1653,8 +1653,7 @@ const char* spdylay_strerror(int error_code);
  * negative error codes:
  *
  * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the Associated-To-Stream-ID is
- *     invalid.
+ *     The |pri| is invalid.
  * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory.
  */
