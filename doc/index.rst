@@ -30,6 +30,7 @@ Contents:
 
    package_README
    apiref
+   python
 
 Resources
 ---------
