@@ -122,20 +122,71 @@ void* Spdylay::user_data()
 }
 
 int Spdylay::submit_request(const std::string& hostport,
-                            const std::string& path, uint8_t pri,
+                            const std::string& path,
+                            const std::map<std::string,std::string> &headers,
+                            uint8_t pri,
                             void *stream_user_data)
 {
-  const char *nv[] = {
+  enum eStaticHeaderPosition
+  {
+    POS_METHOD = 0,
+    POS_PATH,
+    POS_VERSION,
+    POS_SCHEME,
+    POS_HOST,
+    POS_ACCEPT,
+    POS_USERAGENT
+  };
+
+  const char *static_nv[] = {
     ":method", "GET",
     ":path", path.c_str(),
     ":version", "HTTP/1.1",
     ":scheme", "https",
     ":host", hostport.c_str(),
     "accept", "*/*",
-    "user-agent", "spdylay/" SPDYLAY_VERSION,
-    NULL
+    "user-agent", "spdylay/" SPDYLAY_VERSION
   };
-  return spdylay_submit_request(session_, pri, nv, NULL, stream_user_data);
+
+  int hardcoded_entry_count = sizeof(static_nv) / sizeof(*static_nv);
+  int header_count          = headers.size();
+  int total_entry_count     = hardcoded_entry_count + header_count * 2;
+
+  const char **nv = new const char*[total_entry_count + 1];
+
+  memcpy(nv, static_nv, hardcoded_entry_count * sizeof(*static_nv));
+
+  std::map<std::string,std::string>::const_iterator i = headers.begin();
+  std::map<std::string,std::string>::const_iterator end = headers.end();
+
+  int pos = hardcoded_entry_count;
+
+  while( i != end ) {
+    const char *key = (*i).first.c_str();
+    const char *value = (*i).second.c_str();
+    if ( strcasecmp( key, "accept" ) == 0 ) {
+      nv[POS_ACCEPT*2+1] = value;
+    }
+    else if ( strcasecmp( key, "user-agent" ) == 0 ) {
+      nv[POS_USERAGENT*2+1] = value;
+    }
+    else if ( strcasecmp( key, "host" ) == 0 ) {
+      nv[POS_HOST*2+1] = value;
+    }
+    else {
+      nv[pos] = key;
+      nv[pos+1] = value;
+      pos += 2;
+    }
+    ++i;
+  }
+  nv[pos] = NULL;
+
+  int r = spdylay_submit_request(session_, pri, nv, NULL, stream_user_data);
+
+  delete [] nv;
+
+  return r;
 }
 
 int Spdylay::submit_settings(int flags, spdylay_settings_entry *iv, size_t niv)

@@ -72,6 +72,7 @@ struct Config {
   std::string certfile;
   std::string keyfile;
   int window_bits;
+  std::map<std::string,std::string> headers;
   Config():null_out(false), remote_name(false), verbose(false),
            get_assets(false), stat(false),
            spdy_version(-1), timeout(-1), window_bits(-1)
@@ -223,11 +224,11 @@ struct SpdySession {
 Config config;
 extern bool ssl_debug;
 
-void submit_request(Spdylay& sc, const std::string& hostport, Request* req)
+void submit_request(Spdylay& sc, const std::string& hostport, const std::map<std::string,std::string> &headers, Request* req)
 {
   uri::UriStruct& us = req->us;
   std::string path = us.dir+us.file+us.query;
-  int r = sc.submit_request(hostport, path, 3, req);
+  int r = sc.submit_request(hostport, path, headers, 3, req);
   assert(r == 0);
 }
 
@@ -246,7 +247,7 @@ void update_html_parser(SpdySession *spdySession, Request *req,
        req->us.protocol == us.protocol && req->us.host == us.host &&
        req->us.port == us.port) {
       spdySession->add_request(us, req->level+1);
-      submit_request(*spdySession->sc, spdySession->hostport,
+      submit_request(*spdySession->sc, spdySession->hostport, config.headers,
                      spdySession->reqvec.back());
     }
   }
@@ -511,7 +512,7 @@ int communicate(const std::string& host, uint16_t port,
     assert(rv == 0);
   }
   for(int i = 0, n = spdySession.reqvec.size(); i < n; ++i) {
-    submit_request(sc, spdySession.hostport, spdySession.reqvec[i]);
+    submit_request(sc, spdySession.hostport, config.headers, spdySession.reqvec[i]);
   }
   pollfds[0].fd = fd;
   ctl_poll(pollfds, &sc);
@@ -645,6 +646,7 @@ void print_help(std::ostream& out)
       << "                       same with the linking resource will be\n"
       << "                       downloaded.\n"
       << "    -s, --stat         Print statistics.\n"
+      << "    -H, --header       Add a header to the requests.\n"
       << "    --cert=<CERT>      Use the specified client certificate file.\n"
       << "                       The file must be in PEM format.\n"
       << "    --key=<KEY>        Use the client private key file. The file\n"
@@ -669,10 +671,11 @@ int main(int argc, char **argv)
       {"cert", required_argument, &flag, 1 },
       {"key", required_argument, &flag, 2 },
       {"help", no_argument, 0, 'h' },
+      {"header", required_argument, 0, 'H' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Oanhv23st:w:", long_options,
+    int c = getopt_long(argc, argv, "OanhH:v23st:w:", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -710,6 +713,27 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
       }
       break;
+    }
+    case 'H': {
+      char *header = optarg;
+      char *value = strchr( optarg, ':' );
+      if ( ! value ) {
+        std::cerr << "-H: invalid header: " << optarg
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      *value = 0;
+      value++;
+      while( isspace( *value ) ) { value++; }
+      if ( *value == 0 ) {
+        // This could also be a valid case for suppressing a header similar to curl
+        std::cerr << "-H: invalid header - value missing: " << optarg
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      // Note that there is no processing currently to handle multiple message-header
+      // fields with the same field name
+      config.headers.insert( std::pair<std::string,std::string>( header, value ) );
     }
     case 'a':
 #ifdef HAVE_LIBXML2
