@@ -24,6 +24,7 @@
  */
 #include "shrpx_client_handler.h"
 
+#include <unistd.h>
 #include <cerrno>
 
 #include "shrpx_upstream.h"

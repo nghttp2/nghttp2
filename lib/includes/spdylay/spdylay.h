@@ -32,7 +32,6 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <zlib.h>
 
 #include <spdylay/spdylayver.h>
 
