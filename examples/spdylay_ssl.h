@@ -55,7 +55,8 @@ public:
   bool want_write();
   bool finish();
   int fd() const;
-  int submit_request(const std::string& hostport, const std::string& path, const std::map<std::string,std::string>& headers,
+  int submit_request(const std::string& hostport, const std::string& path,
+                     const std::map<std::string,std::string>& headers,
                      uint8_t pri, void *stream_user_data);
   int submit_settings(int flags, spdylay_settings_entry *iv, size_t niv);
   bool would_block(int r);

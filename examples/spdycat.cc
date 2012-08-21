@@ -224,7 +224,9 @@ struct SpdySession {
 Config config;
 extern bool ssl_debug;
 
-void submit_request(Spdylay& sc, const std::string& hostport, const std::map<std::string,std::string> &headers, Request* req)
+void submit_request(Spdylay& sc, const std::string& hostport,
+                    const std::map<std::string,std::string> &headers,
+                    Request* req)
 {
   uri::UriStruct& us = req->us;
   std::string path = us.dir+us.file+us.query;
@@ -512,7 +514,8 @@ int communicate(const std::string& host, uint16_t port,
     assert(rv == 0);
   }
   for(int i = 0, n = spdySession.reqvec.size(); i < n; ++i) {
-    submit_request(sc, spdySession.hostport, config.headers, spdySession.reqvec[i]);
+    submit_request(sc, spdySession.hostport, config.headers,
+                   spdySession.reqvec[i]);
   }
   pollfds[0].fd = fd;
   ctl_poll(pollfds, &sc);
@@ -726,14 +729,15 @@ int main(int argc, char **argv)
       value++;
       while( isspace( *value ) ) { value++; }
       if ( *value == 0 ) {
-        // This could also be a valid case for suppressing a header similar to curl
+        // This could also be a valid case for suppressing a header
+        // similar to curl
         std::cerr << "-H: invalid header - value missing: " << optarg
                   << std::endl;
         exit(EXIT_FAILURE);
       }
-      // Note that there is no processing currently to handle multiple message-header
-      // fields with the same field name
-      config.headers.insert( std::pair<std::string,std::string>( header, value ) );
+      // Note that there is no processing currently to handle multiple
+      // message-header fields with the same field name
+      config.headers.insert(std::pair<std::string,std::string>(header, value));
     }
     case 'a':
 #ifdef HAVE_LIBXML2
