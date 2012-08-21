@@ -129,6 +129,11 @@ Session objects
         The *session* is the :py:class:`Session` object invoking the
         callback. The *stream_id* indicates the stream ID.
 
+
+    The :py:class:`UnsupportedVersionError` will be raised if the
+    *version* is not supported. The :py:class:`ZlibError` will be
+    raised if initialization of zlib failed.
+
 .. py:attribute:: Session.user_data
 
     The object passed in the constructor as *user_data* argument.
@@ -145,6 +150,9 @@ Session objects
     :func:`spdylay_session_send` about the callback functions invoked
     from this method.
 
+    The :py:class:`CallbackFailureError` will be raised if the
+    callback function failed.
+
 .. py:method:: Session.recv(data=None)
 
     Receives frames from the remote peer.  This method receives as
@@ -157,6 +165,10 @@ Session objects
     data.  If data is not ``None``, it must be a bytestring and this
     method uses it as the incoming data and does not call
     :py:func:`recv_cb` callback function.
+
+    The :py:class:`EOFError` will be raised if the remote peer did
+    shutdown on the connection. The :py:class:`CallbackFailureError`
+    will be raised if the callback function failed.
 
 .. py:method:: Session.resume_data(stream_id)
 
@@ -218,9 +230,9 @@ Session objects
     priority value. Use :py:meth:`get_pri_lowest()` to know the lowest
     priority value for this session.
 
-    The *nv* contains the name/value pairs. For ``i >= 0``,
-    ``nv[2 * i]`` contains a bytestring indicating name and
-    ``nv[2 * i + 1]`` contains a bytestring indicating value.
+    The *nv* is a list containing the name/value pairs.  The each
+    element is a tuple of 2 bytestrings: name and value (e.g.,
+    ``(b'host', b'localhost')``).
 
     The *nv* must include following name/value pairs:
 
@@ -271,16 +283,16 @@ Session objects
     stream_user_data to identify which SYN_STREAM we are processing.
 
     The :py:class:`InvalidArgumentError` will be raised if the *pri*
-    is invalid.
+    is invalid; or the *nv* includes empty name or ``None`` value.
 
 .. py:method:: Session.submit_response(stream_id, nv, data_prd=None)
 
     Submits SYN_REPLY frame and optionally one or more DATA frames
     against the stream *stream_id*.
 
-    The *nv* contains the name/value pairs. For ``i >= 0``,
-    ``nv[2 * i]`` contains a bytestring indicating name and
-    ``nv[2 * i + 1]`` contains a bytestring indicating value.
+    The *nv* is a list containing the name/value pairs.  The each
+    element is a tuple of 2 bytestrings: name and value (e.g.,
+    ``(b'host', b'localhost')``).
 
     The *nv* must include following name/value pairs:
 
@@ -302,7 +314,91 @@ Session objects
     reference to it until the stream is closed.  If *data_prd* is
     ``None``, SYN_REPLY have FLAG_FIN set.
 
-.. py:method:: Session.submit_request()
+    The :py:class:`InvalidArgumentError` will be raised if the *nv*
+    includes empty name or ``None`` value.
+
+.. py:method:: Session.submit_syn_stream(flags, assoc_stream_id, pri, nv, stream_user_data)
+
+    Submits SYN_STREAM frame. The *flags* is bitwise OR of the
+    following values:
+
+    * :py:const:`CTRL_FLAG_FIN`
+    * :py:const:`CTRL_FLAG_UNIDIRECTIONAL`
+
+    If *flags* includes :py:const:`CTRL_FLAG_FIN`, this frame has
+    FLAG_FIN flag set.
+
+    The *assoc_stream_id* is used for server-push. If session is
+    initialized for client use, *assoc_stream_id* is ignored.
+
+    The *pri* is priority of this request. ``0`` is the highest
+    priority value. Use :py:meth:`get_pri_lowest()` to know the lowest
+    priority value for this session.
+
+    The *nv* is a list containing the name/value pairs.  The each
+    element is a tuple of 2 bytestrings: name and value (e.g.,
+    ``(b'host', b'localhost')``).
+
+    The names in *nv* will be lower-cased when they are sent.
+
+    The *stream_user_data* is data associated to the stream opened by
+    this request and can be an arbitrary object, which can be
+    retrieved later by :py:meth:`get_stream_user_data()`.
+
+    This function is low-level in a sense that the application code
+    can specify flags and the Associated-To-Stream-ID directly. For
+    usual HTTP request, :py:meth:`submit_request()` is useful.
+
+    The :py:class:`InvalidArgumentError` will be raised if the *pri*
+    is invalid; or the *assoc_stream_id* is invalid; or the *nv*
+    includes empty name or ``None`` value.
+
+.. py:method:: Session.submit_syn_reply(flags, stream_id, nv)
+
+    Submits SYN_REPLY frame. The *flags* is bitwise OR of the
+    following values:
+
+    * :py:const:`CTRL_FLAG_FIN`
+
+    If *flags* includes :py:const:`CTRL_FLAG_FIN`, this frame has
+    FLAG_FIN flag set.
+
+    The stream which this frame belongs to is given in the
+    *stream_id*. The *nv* is the name/value pairs in this frame.
+
+    The *nv* is a list containing the name/value pairs.  The each
+    element is a tuple of 2 bytestrings: name and value (e.g.,
+    ``(b'host', b'localhost')``).
+
+    The names in *nv* will be lower-cased when they are sent.
+
+    The :py:class:`InvalidArgumentError` will be raised if the *nv*
+    includes empty name or ``None`` value.
+
+.. py:method:: Session.submit_rst_stream(stream_id, status_code)
+
+    Submits RST_STREAM frame to cancel/reject the stream *stream_id*
+    with the status code *status_code*. See `Stream Status Codes`_ for
+    available status codes.
+
+.. py:method:: Session.submit_goaway(status_code)
+
+    Submits GOAWAY frame. The status code *status_code* is ignored if
+    the protocol version is :py:const:`PROTO_SPDY2`. See `GOAWAY
+    Status Codes`_ for available status codes.
+
+.. py:method:: Session.submit_settings(flags, iv)
+
+    Stores local settings and submits SETTINGS frame. The *flags* is
+    bitwise OR of the values described in `SETTINGS Frame Flags`_.
+
+    The *iv* is a list of tuple ``(settings_id, flag, value)``.  For
+    settings_id, see `SETTINGS IDs`_. For flag, see `SETTINGS ID
+    Flags`_.
+
+    The :py:class:`InvalidArgumentError` will be raised if the *iv*
+    contains duplicate settings ID or invalid value.
+
 
 Frame Types
 -----------
@@ -333,10 +429,24 @@ Frame Types
 
    This first appeared in SPDY/3.
 
+Control Frame Flags
+-------------------
+
+.. py:data:: CTRL_FLAG_NONE
+
+   Indicates no flags set.
+
+.. py:data:: CTRL_FLAG_FIN
+
+.. py:data:: CTRL_FLAG_UNIDIRECTIONAL
+
 Stream Status Codes
 -------------------
 
 .. py:data:: OK
+
+   This is not a valid status code for RST_STREAM. Don't use this in
+   :py:meth:`Session.submit_rst_stream()`.
 
 .. py:data:: PROTOCOL_ERROR
 
@@ -361,3 +471,50 @@ Following status codes were introduced in SPDY/3.
 .. py:data:: INVALID_CREDENTIALS
 
 .. py:data:: FRAME_TOO_LARGE
+
+GOAWAY Status Codes
+-------------------
+
+.. py:data:: GOAWAY_OK
+
+.. py:data:: GOAWAY_PROTOCOL_ERROR
+
+.. py:data:: GOAWAY_INTERNAL_ERROR
+
+SETTINGS Frame Flags
+--------------------
+
+.. py:data:: FLAG_SETTINGS_NONE
+
+.. py:data:: FLAG_SETTINGS_CLEAR_SETTINGS
+
+SETTINGS IDs
+------------
+
+.. py:data:: SETTINGS_UPLOAD_BANDWIDTH
+
+.. py:data:: SETTINGS_DOWNLOAD_BANDWIDTH
+
+.. py:data:: SETTINGS_ROUND_TRIP_TIME
+
+.. py:data:: SETTINGS_MAX_CONCURRENT_STREAMS
+
+.. py:data:: SETTINGS_CURRENT_CWND
+
+.. py:data:: SETTINGS_DOWNLOAD_RETRANS_RATE
+
+.. py:data:: SETTINGS_INITIAL_WINDOW_SIZE
+
+.. py:data:: SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE
+
+.. py:data::  SETTINGS_MAX
+
+SETTINGS ID Flags
+-----------------
+
+.. py:data:: ID_FLAG_SETTINGS_NONE
+
+.. py:data:: ID_FLAG_SETTINGS_PERSIST_VALUE
+
+.. py:data:: ID_FLAG_SETTINGS_PERSISTED
+
