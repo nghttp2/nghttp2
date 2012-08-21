@@ -1718,8 +1718,9 @@ int spdylay_submit_response(spdylay_session *session,
  * If |flags| includes :enum:`SPDYLAY_CTRL_FLAG_FIN`, this frame has
  * FLAG_FIN flag set.
  *
- * The |assoc_stream_id| is used for server-push. If |session| is
- * initialized for client use, |assoc_stream_id| is ignored.
+ * The |assoc_stream_id| is used for server-push. Specify 0 if this
+ * stream is not server-push. If |session| is initialized for client
+ * use, |assoc_stream_id| is ignored.
  *
  * The |pri| is priority of this request. 0 is the highest priority
  * value. Use `spdylay_session_get_pri_lowest()` to know the lowest
@@ -1745,8 +1746,8 @@ int spdylay_submit_response(spdylay_session *session,
  * negative error codes:
  *
  * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the Associated-To-Stream-ID is
- *     invalid; or the |nv| includes empty name or NULL value.
+ *     The |pri| is invalid; or the |assoc_stream_id| is invalid; or
+ *     the |nv| includes empty name or NULL value.
  * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory.
  */
