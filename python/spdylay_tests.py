@@ -304,5 +304,15 @@ class SpdylayTests(unittest.TestCase):
         self.assertEqual(1, frame.stream_id)
         self.assertEqual((b':host', b'localhost'), frame.nv[0])
 
+    def test_submit_ping(self):
+        self.client_session.submit_ping()
+        self.client_session.send()
+        self.server_session.recv()
+
+        self.assertEqual(1, len(self.server_streams.recv_frames))
+        frame = self.server_streams.recv_frames[0]
+        self.assertEqual(spdylay.PING, frame.frame_type)
+        self.assertEqual(1, frame.unique_id)
+
 if __name__ == '__main__':
     unittest.main()

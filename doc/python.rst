@@ -426,6 +426,10 @@ Session objects
     with the status code *status_code*. See `Stream Status Codes`_ for
     available status codes.
 
+.. py:method:: Session.submit_ping()
+
+    Submits PING frame.
+
 .. py:method:: Session.submit_goaway(status_code)
 
     Submits GOAWAY frame. The status code *status_code* is ignored if

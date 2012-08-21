@@ -119,6 +119,10 @@ cdef extern from 'spdylay/spdylay.h':
         size_t niv
         spdylay_settings_entry *iv
 
+    ctypedef struct spdylay_ping:
+        spdylay_ctrl_hd hd
+        uint32_t unique_id
+
     ctypedef struct spdylay_goaway:
         spdylay_ctrl_hd hd
         int32_t last_good_stream_id
@@ -129,7 +133,7 @@ cdef extern from 'spdylay/spdylay.h':
         spdylay_syn_reply syn_reply
         spdylay_rst_stream rst_stream
         spdylay_settings settings
-        #spdylay_ping ping
+        spdylay_ping ping
         spdylay_goaway goaway
         spdylay_headers headers
         #spdylay_window_update window_update
@@ -246,6 +250,8 @@ cdef extern from 'spdylay/spdylay.h':
 
     int spdylay_submit_rst_stream(spdylay_session *session,
                                   int32_t stream_id, uint32_t status_code)
+
+    int spdylay_submit_ping(spdylay_session *session)
 
     int spdylay_submit_goaway(spdylay_session *session, uint32_t status_code)
 

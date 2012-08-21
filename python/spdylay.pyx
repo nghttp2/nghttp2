@@ -153,6 +153,18 @@ cdef class SettingsFrame(CtrlFrame):
         def __get__(self):
             return self.iv
 
+cdef class PingFrame(CtrlFrame):
+    cdef uint32_t unique_id
+
+    cdef void fill(self, cspdylay.spdylay_ping *frame):
+        self.fillhd(&frame.hd)
+
+        self.unique_id = frame.unique_id
+
+    property unique_id:
+        def __get__(self):
+            return self.unique_id
+
 cdef class GoawayFrame(CtrlFrame):
     cdef int32_t last_good_stream_id
     cdef uint32_t status_code
@@ -239,6 +251,7 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
     cdef HeadersFrame headers
     cdef RstStreamFrame rst_stream
     cdef SettingsFrame settings
+    cdef PingFrame ping
     cdef GoawayFrame goaway
 
     cdef Session pysession = <Session>user_data
@@ -267,6 +280,10 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
         settings = SettingsFrame()
         settings.fill(&frame.settings)
         pyframe = settings
+    elif frame_type == cspdylay.SPDYLAY_PING:
+        ping = PingFrame()
+        ping.fill(&frame.ping)
+        pyframe = ping
     elif frame_type == cspdylay.SPDYLAY_GOAWAY:
         goaway = GoawayFrame()
         goaway.fill(&frame.goaway)
@@ -701,6 +718,14 @@ cdef class Session:
         cdef int rv
         rv = cspdylay.spdylay_submit_rst_stream(self._c_session, stream_id,
                                                 status_code)
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
+            raise MemoryError()
+
+    cpdef submit_ping(self):
+        cdef int rv
+        rv = cspdylay.spdylay_submit_ping(self._c_session)
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
