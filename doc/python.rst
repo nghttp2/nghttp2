@@ -448,6 +448,17 @@ Session objects
     The :py:class:`InvalidArgumentError` will be raised if the *iv*
     contains duplicate settings ID or invalid value.
 
+.. py:method:: Session.submit_window_update(stream_id, delta_window_size)
+
+    Submits WINDOW_UPDATE frame. The effective range of the
+    *delta_window_size* is ``[1, (1 << 31)-1]``, inclusive. But the
+    application must be responsible to keep the resulting window
+    ``size <= (1 << 31)-1``.
+
+    The :py:class:`InvalidArgumentError` will be raised if the
+    *delta_window_size* is 0 or negative. The
+    :py:class:`StreamClosedError` will be raised if the stream is
+    already closed or does not exist.
 
 Frame Types
 -----------

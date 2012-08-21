@@ -314,5 +314,26 @@ class SpdylayTests(unittest.TestCase):
         self.assertEqual(spdylay.PING, frame.frame_type)
         self.assertEqual(1, frame.unique_id)
 
+    def test_submit_window_update(self):
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 0, 2,
+                                              [(b':path', b'/')], None)
+        self.client_session.send()
+        self.server_session.recv()
+
+        self.assertEqual(1, len(self.server_streams.recv_frames))
+        frame = self.server_streams.recv_frames[0]
+        self.assertEqual(spdylay.SYN_STREAM, frame.frame_type)
+        self.assertEqual(1, frame.stream_id)
+
+        self.server_session.submit_window_update(1, 4096)
+        self.server_session.send()
+        self.client_session.recv()
+
+        self.assertEqual(1, len(self.client_streams.recv_frames))
+        frame = self.client_streams.recv_frames[0]
+        self.assertEqual(spdylay.WINDOW_UPDATE, frame.frame_type)
+        self.assertEqual(1, frame.stream_id)
+        self.assertEqual(4096, frame.delta_window_size)
+
 if __name__ == '__main__':
     unittest.main()

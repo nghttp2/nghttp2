@@ -22,6 +22,9 @@ class ZlibError(Exception):
 class UnsupportedVersionError(Exception):
     pass
 
+class StreamClosedError(Exception):
+    pass
+
 class DataProvider:
     def __init__(self, source, read_cb):
         self.source = source
@@ -183,6 +186,24 @@ cdef class GoawayFrame(CtrlFrame):
         def __get__(self):
             return self.status_code
 
+cdef class WindowUpdateFrame(CtrlFrame):
+    cdef int32_t stream_id
+    cdef int32_t delta_window_size
+
+    cdef void fill(self, cspdylay.spdylay_window_update *frame):
+        self.fillhd(&frame.hd)
+
+        self.stream_id = frame.stream_id
+        self.delta_window_size = frame.delta_window_size
+
+    property stream_id:
+        def __get__(self):
+            return self.stream_id
+
+    property delta_window_size:
+        def __get__(self):
+            return self.delta_window_size
+
 cdef object cnv2pynv(char **nv):
     ''' Convert C-style name/value pairs ``nv`` to Python style
     pairs. '''
@@ -253,6 +274,7 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
     cdef SettingsFrame settings
     cdef PingFrame ping
     cdef GoawayFrame goaway
+    cdef WindowUpdateFrame window_update
 
     cdef Session pysession = <Session>user_data
 
@@ -288,6 +310,10 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
         goaway = GoawayFrame()
         goaway.fill(&frame.goaway)
         pyframe = goaway
+    elif frame_type == cspdylay.SPDYLAY_WINDOW_UPDATE:
+        window_update = WindowUpdateFrame()
+        window_update.fill(&frame.window_update)
+        pyframe = window_update
 
     if pyframe:
         try:
@@ -736,6 +762,19 @@ cdef class Session:
         rv = cspdylay.spdylay_submit_goaway(self._c_session, status_code)
         if rv == 0:
             return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
+            raise MemoryError()
+
+    cpdef submit_window_update(self, stream_id, delta_window_size):
+        cdef int rv
+        rv = cspdylay.spdylay_submit_window_update(self._c_session, stream_id,
+                                                   delta_window_size)
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+            raise InvalidArgumentError()
+        elif rv == cspdylay.SPDYLAY_ERR_STREAM_CLOSED:
+            raise StreamClosedError()
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 

@@ -128,6 +128,11 @@ cdef extern from 'spdylay/spdylay.h':
         int32_t last_good_stream_id
         uint32_t status_code
 
+    ctypedef struct spdylay_window_update:
+        spdylay_ctrl_hd hd
+        int32_t stream_id
+        int32_t delta_window_size
+
     ctypedef union spdylay_frame:
         spdylay_syn_stream syn_stream
         spdylay_syn_reply syn_reply
@@ -136,7 +141,7 @@ cdef extern from 'spdylay/spdylay.h':
         spdylay_ping ping
         spdylay_goaway goaway
         spdylay_headers headers
-        #spdylay_window_update window_update
+        spdylay_window_update window_update
         #spdylay_credential credential
 
     ctypedef union spdylay_data_source:
@@ -257,3 +262,7 @@ cdef extern from 'spdylay/spdylay.h':
 
     int spdylay_submit_settings(spdylay_session *session, uint8_t flags,
                                 spdylay_settings_entry *iv, size_t niv)
+
+    int spdylay_submit_window_update(spdylay_session *session,
+                                     int32_t stream_id,
+                                     int32_t delta_window_size)
