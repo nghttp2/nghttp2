@@ -1653,7 +1653,8 @@ const char* spdylay_strerror(int error_code);
  * negative error codes:
  *
  * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid.
+ *     The |pri| is invalid; or the |nv| includes empty name or NULL
+ *     value.
  * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1697,6 +1698,8 @@ int spdylay_submit_request(spdylay_session *session, uint8_t pri,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
+ * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
+ *     The |nv| includes empty name or NULL value.
  * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1744,7 +1747,7 @@ int spdylay_submit_response(spdylay_session *session,
  *
  * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
  *     The |pri| is invalid; or the Associated-To-Stream-ID is
- *     invalid.
+ *     invalid; or the |nv| includes empty name or NULL value.
  * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1778,6 +1781,8 @@ int spdylay_submit_syn_stream(spdylay_session *session, uint8_t flags,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
+ * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
+ *     The |nv| includes empty name or NULL value.
  * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1810,6 +1815,8 @@ int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
+ * :enum:`SPDYLAY_ERR_INVALID_ARGUMENT`
+ *     The |nv| includes empty name or NULL value.
  * :enum:`SPDYLAY_ERR_NOMEM`
  *     Out of memory.
  */

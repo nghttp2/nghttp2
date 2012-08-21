@@ -55,6 +55,9 @@ static int spdylay_submit_syn_stream_shared
       return SPDYLAY_ERR_INVALID_ARGUMENT;
     }
   }
+  if(!spdylay_frame_nv_check_null(nv)) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
   if(data_prd != NULL && data_prd->read_callback != NULL) {
     data_prd_copy = malloc(sizeof(spdylay_data_provider));
     if(data_prd_copy == NULL) {
@@ -119,6 +122,9 @@ int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
   spdylay_frame *frame;
   char **nv_copy;
   uint8_t flags_copy;
+  if(!spdylay_frame_nv_check_null(nv)) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
   frame = malloc(sizeof(spdylay_frame));
   if(frame == NULL) {
     return SPDYLAY_ERR_NOMEM;
@@ -149,6 +155,9 @@ int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
   spdylay_frame *frame;
   char **nv_copy;
   uint8_t flags_copy;
+  if(!spdylay_frame_nv_check_null(nv)) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
   frame = malloc(sizeof(spdylay_frame));
   if(frame == NULL) {
     return SPDYLAY_ERR_NOMEM;
@@ -270,6 +279,9 @@ int spdylay_submit_response(spdylay_session *session,
   char **nv_copy;
   uint8_t flags = 0;
   spdylay_data_provider *data_prd_copy = NULL;
+  if(!spdylay_frame_nv_check_null(nv)) {
+    return SPDYLAY_ERR_INVALID_ARGUMENT;
+  }
   if(data_prd != NULL && data_prd->read_callback != NULL) {
     data_prd_copy = malloc(sizeof(spdylay_data_provider));
     if(data_prd_copy == NULL) {

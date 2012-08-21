@@ -41,6 +41,7 @@ void test_spdylay_submit_request_with_null_data_read_callback(void);
 void test_spdylay_submit_syn_stream(void);
 void test_spdylay_submit_syn_reply(void);
 void test_spdylay_submit_headers(void);
+void test_spdylay_submit_invalid_nv(void);
 void test_spdylay_session_reply_fail(void);
 void test_spdylay_session_on_headers_received(void);
 void test_spdylay_session_on_ping_received(void);

@@ -1267,3 +1267,14 @@ ssize_t spdylay_frame_nv_offset(spdylay_frame_type type, uint16_t version)
   }
   return -1;
 }
+
+int spdylay_frame_nv_check_null(const char **nv)
+{
+  size_t i;
+  for(i = 0; nv[i]; i += 2) {
+    if(nv[i][0] == '\0' || nv[i+1] == NULL) {
+      return 0;
+    }
+  }
+  return 1;
+}

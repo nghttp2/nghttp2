@@ -100,6 +100,8 @@ int main(int argc, char* argv[])
                    test_spdylay_submit_syn_stream) ||
       !CU_add_test(pSuite, "submit_syn_reply", test_spdylay_submit_syn_reply) ||
       !CU_add_test(pSuite, "submit_headers", test_spdylay_submit_headers) ||
+      !CU_add_test(pSuite, "submit_invalid_nv",
+                   test_spdylay_submit_invalid_nv) ||
       !CU_add_test(pSuite, "session_reply_fail",
                    test_spdylay_session_reply_fail) ||
       !CU_add_test(pSuite, "session_on_headers_received",

@@ -249,6 +249,14 @@ static spdylay_settings_entry* dup_iv(const spdylay_settings_entry *iv,
   return spdylay_frame_iv_copy(iv, niv);
 }
 
+static const char *empty_name_nv[] = { "Version", "HTTP/1.1",
+                                       "", "empty name",
+                                       NULL };
+
+static const char *null_val_nv[] = { "Version", "HTTP/1.1",
+                                     "Foo", NULL,
+                                     NULL };
+
 void test_spdylay_session_recv(void)
 {
   spdylay_session *session;
@@ -1061,6 +1069,60 @@ void test_spdylay_submit_headers(void)
                                             acc.buf, acc.length));
   CU_ASSERT(0 == strcmp("version", frame.headers.nv[0]));
   spdylay_frame_headers_free(&frame.headers);
+
+  spdylay_session_del(session);
+}
+
+void test_spdylay_submit_invalid_nv(void)
+{
+  spdylay_session *session;
+  spdylay_session_callbacks callbacks;
+
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+
+  CU_ASSERT(0 == spdylay_session_client_new(&session, SPDYLAY_PROTO_SPDY3,
+                                            &callbacks, NULL));
+
+  /* spdylay_submit_request */
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_request(session, 3, empty_name_nv, NULL, NULL));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_request(session, 3, null_val_nv, NULL, NULL));
+
+  /* spdylay_submit_response */
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_response(session, 2, empty_name_nv, NULL));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_response(session, 2, null_val_nv, NULL));
+
+  /* spdylay_submit_syn_stream */
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_NONE, 0,
+                                      0, empty_name_nv, NULL));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_NONE, 0,
+                                      0, null_val_nv, NULL));
+
+  /* spdylay_submit_syn_reply */
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_NONE, 2,
+                                     empty_name_nv));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_syn_reply(session, SPDYLAY_CTRL_FLAG_NONE, 2,
+                                     null_val_nv));
+
+  /* spdylay_submit_headers */
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_headers(session, SPDYLAY_CTRL_FLAG_NONE, 2,
+                                   empty_name_nv));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_submit_headers(session, SPDYLAY_CTRL_FLAG_NONE, 2,
+                                   null_val_nv));
 
   spdylay_session_del(session);
 }

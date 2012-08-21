@@ -783,4 +783,11 @@ void spdylay_frame_iv_sort(spdylay_settings_entry *iv, size_t niv);
  */
 ssize_t spdylay_frame_nv_offset(spdylay_frame_type type, uint16_t version);
 
+/*
+ * Checks names are not empty string and values are not NULL.
+ *
+ * This function returns nonzero if it succeeds, or 0.
+ */
+int spdylay_frame_nv_check_null(const char **nv);
+
 #endif /* SPDYLAY_FRAME_H */
