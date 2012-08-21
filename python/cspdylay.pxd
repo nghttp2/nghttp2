@@ -99,6 +99,11 @@ cdef extern from 'spdylay/spdylay.h':
         int32_t stream_id
         char **nv
 
+    ctypedef struct spdylay_headers:
+        spdylay_ctrl_hd hd
+        int32_t stream_id
+        char **nv
+
     ctypedef struct spdylay_rst_stream:
         spdylay_ctrl_hd hd
         int32_t stream_id
@@ -126,7 +131,7 @@ cdef extern from 'spdylay/spdylay.h':
         spdylay_settings settings
         #spdylay_ping ping
         spdylay_goaway goaway
-        #spdylay_headers headers
+        spdylay_headers headers
         #spdylay_window_update window_update
         #spdylay_credential credential
 
@@ -232,6 +237,9 @@ cdef extern from 'spdylay/spdylay.h':
 
     int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
                                  int32_t stream_id, char **nv)
+
+    int spdylay_submit_headers(spdylay_session *session, uint8_t flags,
+                               int32_t stream_id, char **nv)
 
     int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
                             uint8_t flags, spdylay_data_provider *data_prd)

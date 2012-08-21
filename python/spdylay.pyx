@@ -104,6 +104,24 @@ cdef class SynReplyFrame(CtrlFrame):
         def __get__(self):
             return self.nv
 
+cdef class HeadersFrame(CtrlFrame):
+    cdef int32_t stream_id
+    cdef object nv
+
+    cdef void fill(self, cspdylay.spdylay_headers *frame):
+        self.fillhd(&frame.hd)
+
+        self.stream_id = frame.stream_id
+        self.nv = cnv2pynv(frame.nv)
+
+    property stream_id:
+        def __get__(self):
+            return self.stream_id
+
+    property nv:
+        def __get__(self):
+            return self.nv
+
 cdef class RstStreamFrame(CtrlFrame):
     cdef int32_t stream_id
     cdef uint32_t status_code
@@ -218,6 +236,7 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
                                 void *user_data):
     cdef SynStreamFrame syn_stream
     cdef SynReplyFrame syn_reply
+    cdef HeadersFrame headers
     cdef RstStreamFrame rst_stream
     cdef SettingsFrame settings
     cdef GoawayFrame goaway
@@ -236,6 +255,10 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
         syn_reply = SynReplyFrame()
         syn_reply.fill(&frame.syn_reply)
         pyframe = syn_reply
+    elif frame_type == cspdylay.SPDYLAY_HEADERS:
+        headers = HeadersFrame()
+        headers.fill(&frame.headers)
+        pyframe = headers
     elif frame_type == cspdylay.SPDYLAY_RST_STREAM:
         rst_stream = RstStreamFrame()
         rst_stream.fill(&frame.rst_stream)
@@ -636,6 +659,19 @@ cdef class Session:
         cdef int rv
         rv = cspdylay.spdylay_submit_syn_reply(self._c_session,
                                                flags, stream_id, cnv)
+        free(cnv)
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
+            raise MemoryError()
+
+    cpdef submit_headers(self, flags, stream_id, nv):
+        cdef char **cnv = pynv2cnv(nv)
+        cdef int rv
+        rv = cspdylay.spdylay_submit_headers(self._c_session,
+                                             flags, stream_id, cnv)
         free(cnv)
         if rv == 0:
             return

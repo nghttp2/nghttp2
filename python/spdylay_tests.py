@@ -282,5 +282,27 @@ class SpdylayTests(unittest.TestCase):
         self.assertEqual(b'Hello World',
                          self.server_streams.recv_data.getvalue())
 
+    def test_submit_headers(self):
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 0, 2,
+                                              [(b':path', b'/')], None)
+        self.client_session.send()
+        self.server_session.recv()
+
+        self.assertEqual(1, len(self.server_streams.recv_frames))
+        frame = self.server_streams.recv_frames[0]
+        self.assertEqual(spdylay.SYN_STREAM, frame.frame_type)
+        self.assertEqual(1, frame.stream_id)
+
+        self.client_session.submit_headers(spdylay.CTRL_FLAG_FIN, 1,
+                                           [(b':host', b'localhost')])
+        self.client_session.send()
+        self.server_session.recv()
+
+        self.assertEqual(2, len(self.server_streams.recv_frames))
+        frame = self.server_streams.recv_frames[1]
+        self.assertEqual(spdylay.HEADERS, frame.frame_type)
+        self.assertEqual(1, frame.stream_id)
+        self.assertEqual((b':host', b'localhost'), frame.nv[0])
+
 if __name__ == '__main__':
     unittest.main()

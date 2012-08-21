@@ -384,6 +384,28 @@ Session objects
     The :py:class:`InvalidArgumentError` will be raised if the *nv*
     includes empty name or ``None`` value.
 
+.. py:method:: Session.submit_headers(flags, stream_id, nv)
+
+    Submits HEADERS frame. The *flags* is bitwise OR of the following
+    values:
+
+    * :py:const:`CTRL_FLAG_FIN`
+
+    If *flags* includes :py:const:`CTRL_FLAG_FIN`, this frame has
+    FLAG_FIN flag set.
+
+    The stream which this frame belongs to is given in the
+    *stream_id*. The *nv* is the name/value pairs in this frame.
+
+    The *nv* is a list containing the name/value pairs.  The each
+    element is a tuple of 2 bytestrings: name and value (e.g.,
+    ``(b'host', b'localhost')``).
+
+    The names in *nv* will be lower-cased when they are sent.
+
+    The :py:class:`InvalidArgumentError` will be raised if the *nv*
+    includes empty name or ``None`` value.
+
 .. py:method:: Session.submit_data(stream_id, flags, data_prd)
 
     Submits one or more DATA frames to the stream *stream_id*. The
