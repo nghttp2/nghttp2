@@ -177,7 +177,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 ]],
 [[
 struct kevent event;
-event.udata = (intptr_t*)(&event);
+event.udata = (intptr_t)(&event);
 ]])],
 [kevent_udata_intptr_t=yes], [kevent_udata_intptr_t=no])
 AC_MSG_RESULT([$kevent_udata_intptr_t])
