@@ -22,7 +22,7 @@ To build extension, run ``setup.py``::
 Session objects
 ---------------
 
-.. py:class:: Session(side, version, send_cb=None, recv_cb=None, on_ctrl_recv_cb=None, on_data_chunk_recv_cb=None, on_stream_close_cb=None, on_request_recv_cb=None, user_data=None)
+.. py:class:: Session(side, version, config=None, send_cb=None, recv_cb=None, on_ctrl_recv_cb=None, on_data_chunk_recv_cb=None, on_stream_close_cb=None, on_request_recv_cb=None, user_data=None)
 
     This is the class to hold the resources needed for a SPDY session.
     Sending and receiving SPDY frames are done using the methods of
@@ -328,8 +328,9 @@ Session objects
     If *flags* includes :py:const:`CTRL_FLAG_FIN`, this frame has
     FLAG_FIN flag set.
 
-    The *assoc_stream_id* is used for server-push. If session is
-    initialized for client use, *assoc_stream_id* is ignored.
+    The *assoc_stream_id* is used for server-push. Specify 0 if this
+    stream is not server-push. If session is initialized for client
+    use, *assoc_stream_id* is ignored.
 
     The *pri* is priority of this request. ``0`` is the highest
     priority value. Use :py:meth:`get_pri_lowest()` to know the lowest

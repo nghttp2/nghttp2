@@ -401,7 +401,7 @@ cdef class Session:
         def __get__(self):
             return self.user_data
 
-    def __cinit__(self, side, version,
+    def __cinit__(self, side, version, config=None,
                   send_cb=None, recv_cb=None,
                   on_ctrl_recv_cb=None,
                   on_data_chunk_recv_cb=None,
@@ -468,7 +468,7 @@ cdef class Session:
         elif rv == cspdylay.SPDYLAY_ERR_UNSUPPORTED_VERSION:
             raise UnsupportedVersionError(cspdylay.spdylay_strerror(rv))
 
-    def __init__(self, side, version,
+    def __init__(self, side, version, config=None,
                  send_cb=None, recv_cb=None,
                  on_ctrl_recv_cb=None,
                  on_data_chunk_recv_cb=None,
