@@ -717,7 +717,7 @@ int main(int argc, char **argv)
     case 'H': {
       char *header = optarg;
       char *value = strchr( optarg, ':' );
-      if ( ! value ) {
+      if ( ! value || header == value) {
         std::cerr << "-H: invalid header: " << optarg
                   << std::endl;
         exit(EXIT_FAILURE);
