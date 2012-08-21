@@ -262,10 +262,14 @@ Session objects
     request message bodies
     (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must
     be specified with ``:method`` key in nv (e.g. ``POST``).  The type
-    of *data_prd* is expected to be :py:class:`DataProvider`.  This
-    method does not increase reference count of *data_prd*, so the
-    application must hold the reference to it until the stream is
-    closed.  If *data_prd* is ``None``, SYN_STREAM have FLAG_FIN set.
+    of *data_prd* is expected to be :py:class:`DataProvider`. If
+    *data_prd* is ``None``, SYN_STREAM have FLAG_FIN set.
+
+    .. note::
+
+         This method does not increase reference count of *data_prd*,
+         so the application must hold the reference to it until the
+         stream is closed.
 
     The *stream_user_data* is data associated to the stream opened by
     this request and can be an arbitrary object, which can be
@@ -309,10 +313,14 @@ Session objects
 
     If *data_prd* is not ``None``, it provides data which will be sent
     in subsequent DATA frames. The type of *data_prd* is expected to
-    be :py:class:`DataProvider`.  This method does not increase
-    reference count of *data_prd*, so the application must hold the
-    reference to it until the stream is closed.  If *data_prd* is
-    ``None``, SYN_REPLY have FLAG_FIN set.
+    be :py:class:`DataProvider`.  If *data_prd* is ``None``, SYN_REPLY
+    have FLAG_FIN set.
+
+    .. note::
+
+         This method does not increase reference count of *data_prd*,
+         so the application must hold the reference to it until the
+         stream is closed.
 
     The :py:class:`InvalidArgumentError` will be raised if the *nv*
     includes empty name or ``None`` value.
@@ -375,6 +383,20 @@ Session objects
 
     The :py:class:`InvalidArgumentError` will be raised if the *nv*
     includes empty name or ``None`` value.
+
+.. py:method:: Session.submit_data(stream_id, flags, data_prd)
+
+    Submits one or more DATA frames to the stream *stream_id*. The
+    data to be sent are provided by *data_prd*.  The type of
+    *data_prd* is expected to be :py:class:`DataProvider`. If *flags*
+    contains :py:const:`DATA_FLAG_FIN`, the last DATA frame has
+    FLAG_FIN set.
+
+    .. note::
+
+         This method does not increase reference count of *data_prd*,
+         so the application must hold the reference to it until the
+         stream is closed.
 
 .. py:method:: Session.submit_rst_stream(stream_id, status_code)
 

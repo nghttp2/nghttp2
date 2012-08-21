@@ -644,6 +644,23 @@ cdef class Session:
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
+    cpdef submit_data(self, stream_id, flags, data_prd):
+        cdef cspdylay.spdylay_data_provider c_data_prd
+        cdef cspdylay.spdylay_data_provider *c_data_prd_ptr
+        cpdef int rv
+        if data_prd:
+            create_c_data_prd(&c_data_prd, data_prd)
+            c_data_prd_ptr = &c_data_prd
+        else:
+            c_data_prd_ptr = NULL
+
+        rv = cspdylay.spdylay_submit_data(self._c_session, stream_id,
+                                          flags, c_data_prd_ptr)
+        if rv == 0:
+            return
+        elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
+            raise MemoryError()
+
     cpdef submit_rst_stream(self, stream_id, status_code):
         cdef int rv
         rv = cspdylay.spdylay_submit_rst_stream(self._c_session, stream_id,

@@ -121,9 +121,9 @@ class SpdylayTests(unittest.TestCase):
 
     def test_submit_syn_stream_and_syn_stream(self):
         self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_FIN, 0, 2,
-                                              [(b':path', b'/')], None);
-        self.client_session.send();
-        self.server_session.recv();
+                                              [(b':path', b'/')], None)
+        self.client_session.send()
+        self.server_session.recv()
 
         self.assertEqual(1, len(self.server_streams.recv_frames))
         frame = self.server_streams.recv_frames[0]
@@ -135,8 +135,8 @@ class SpdylayTests(unittest.TestCase):
 
         self.server_session.submit_syn_reply(spdylay.CTRL_FLAG_FIN, 1,
                                              [(b':version', b'HTTP/1.1')])
-        self.server_session.send();
-        self.client_session.recv();
+        self.server_session.send()
+        self.client_session.recv()
 
         self.assertEqual(1, len(self.client_streams.recv_frames))
         frame = self.client_streams.recv_frames[0]
@@ -146,13 +146,13 @@ class SpdylayTests(unittest.TestCase):
 
     def test_submit_rst_stream(self):
         self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_FIN, 0, 2,
-                                              [(b':path', b'/')], None);
-        self.client_session.send();
-        self.server_session.recv();
+                                              [(b':path', b'/')], None)
+        self.client_session.send()
+        self.server_session.recv()
 
         self.server_session.submit_rst_stream(1, spdylay.PROTOCOL_ERROR)
-        self.server_session.send();
-        self.client_session.recv();
+        self.server_session.send()
+        self.client_session.recv()
 
         self.assertEqual(1, len(self.client_streams.recv_frames))
         frame = self.client_streams.recv_frames[0]
@@ -162,8 +162,8 @@ class SpdylayTests(unittest.TestCase):
 
     def test_submit_goaway(self):
         self.client_session.submit_goaway(spdylay.GOAWAY_PROTOCOL_ERROR)
-        self.client_session.send();
-        self.server_session.recv();
+        self.client_session.send()
+        self.server_session.recv()
 
         self.assertEqual(1, len(self.server_streams.recv_frames))
         frame = self.server_streams.recv_frames[0]
@@ -179,8 +179,8 @@ class SpdylayTests(unittest.TestCase):
 
     def test_fail_session(self):
         self.client_session.fail_session(spdylay.GOAWAY_PROTOCOL_ERROR)
-        self.client_session.send();
-        self.server_session.recv();
+        self.client_session.send()
+        self.server_session.recv()
 
         self.assertEqual(1, len(self.server_streams.recv_frames))
         frame = self.server_streams.recv_frames[0]
@@ -262,6 +262,25 @@ class SpdylayTests(unittest.TestCase):
 
         with self.assertRaises(spdylay.CallbackFailureError):
             self.client_session.send()
+
+    def test_submit_data(self):
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 0, 2,
+                                              [(b':path', b'/')], None)
+        self.client_session.send()
+        self.server_session.recv()
+
+        self.assertEqual(1, len(self.server_streams.recv_frames))
+        frame = self.server_streams.recv_frames[0]
+        self.assertEqual(spdylay.SYN_STREAM, frame.frame_type)
+        self.assertEqual(1, frame.stream_id)
+
+        data_prd = spdylay.DataProvider(io.BytesIO(b'Hello World'), read_cb)
+        self.client_session.submit_data(1, spdylay.DATA_FLAG_FIN, data_prd)
+        self.client_session.send()
+        self.server_session.recv()
+
+        self.assertEqual(b'Hello World',
+                         self.server_streams.recv_data.getvalue())
 
 if __name__ == '__main__':
     unittest.main()

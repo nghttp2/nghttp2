@@ -233,6 +233,9 @@ cdef extern from 'spdylay/spdylay.h':
     int spdylay_submit_syn_reply(spdylay_session *session, uint8_t flags,
                                  int32_t stream_id, char **nv)
 
+    int spdylay_submit_data(spdylay_session *session, int32_t stream_id,
+                            uint8_t flags, spdylay_data_provider *data_prd)
+
     int spdylay_submit_rst_stream(spdylay_session *session,
                                   int32_t stream_id, uint32_t status_code)
 
