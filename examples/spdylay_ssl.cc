@@ -43,6 +43,7 @@
 #include <fstream>
 
 #include "spdylay_ssl.h"
+#include "util.h"
 
 namespace spdylay {
 
@@ -164,13 +165,13 @@ int Spdylay::submit_request(const std::string& hostport,
   while( i != end ) {
     const char *key = (*i).first.c_str();
     const char *value = (*i).second.c_str();
-    if ( strcasecmp( key, "accept" ) == 0 ) {
+    if ( util::strieq( key, "accept" ) ) {
       nv[POS_ACCEPT*2+1] = value;
     }
-    else if ( strcasecmp( key, "user-agent" ) == 0 ) {
+    else if ( util::strieq( key, "user-agent" ) ) {
       nv[POS_USERAGENT*2+1] = value;
     }
-    else if ( strcasecmp( key, "host" ) == 0 ) {
+    else if ( util::strieq( key, "host" ) ) {
       nv[POS_HOST*2+1] = value;
     }
     else {
