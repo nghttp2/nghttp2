@@ -608,6 +608,8 @@ cdef class Session:
         free(cnv)
         if rv == 0:
             return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
@@ -637,6 +639,8 @@ cdef class Session:
         free(cnv)
         if rv == 0:
             return
+        elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
+            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
