@@ -263,10 +263,9 @@ cdef cspdylay.spdylay_data_provider create_c_data_prd\
     cdata_prd.source.ptr = <void*>pydata_prd
     cdata_prd.read_callback = read_callback
 
-cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
-                                cspdylay.spdylay_frame_type frame_type,
-                                cspdylay.spdylay_frame *frame,
-                                void *user_data):
+
+cdef object cframe2pyframe(cspdylay.spdylay_frame_type frame_type,
+                           cspdylay.spdylay_frame *frame):
     cdef SynStreamFrame syn_stream
     cdef SynReplyFrame syn_reply
     cdef HeadersFrame headers
@@ -275,13 +274,7 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
     cdef PingFrame ping
     cdef GoawayFrame goaway
     cdef WindowUpdateFrame window_update
-
-    cdef Session pysession = <Session>user_data
-
-    if not pysession.on_ctrl_recv_cb:
-        return
-
-    pyframe = None
+    cdef object pyframe = None
     if frame_type == cspdylay.SPDYLAY_SYN_STREAM:
         syn_stream = SynStreamFrame()
         syn_stream.fill(&frame.syn_stream)
@@ -314,14 +307,119 @@ cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
         window_update = WindowUpdateFrame()
         window_update.fill(&frame.window_update)
         pyframe = window_update
+    return pyframe
 
+cdef void _call_frame_callback(Session pysession,
+                               cspdylay.spdylay_frame_type frame_type,
+                               cspdylay.spdylay_frame *frame,
+                               object callback):
+    if not callback:
+        return
+    pyframe = cframe2pyframe(frame_type, frame)
     if pyframe:
         try:
-            pysession.on_ctrl_recv_cb(pysession, pyframe)
+            callback(pysession, pyframe)
         except Exception as e:
             pysession.error = e
         except BaseException as e:
             pysession.base_error = e
+
+cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
+                                cspdylay.spdylay_frame_type frame_type,
+                                cspdylay.spdylay_frame *frame,
+                                void *user_data):
+    cdef Session pysession = <Session>user_data
+    _call_frame_callback(pysession, frame_type, frame,
+                         pysession.on_ctrl_recv_cb)
+
+cdef void on_invalid_ctrl_recv_callback(cspdylay.spdylay_session *session,
+                                        cspdylay.spdylay_frame_type frame_type,
+                                        cspdylay.spdylay_frame *frame,
+                                        uint32_t status_code,
+                                        void *user_data):
+    cdef Session pysession = <Session>user_data
+
+    if not pysession.on_invalid_ctrl_recv_cb:
+        return
+    pyframe = cframe2pyframe(frame_type, frame)
+    if pyframe:
+        try:
+            pysession.on_invalid_ctrl_recv_cb(pysession, pyframe, status_code)
+        except Exception as e:
+            pysession.error = e
+        except BaseException as e:
+            pysession.base_error = e
+
+cdef void before_ctrl_send_callback(cspdylay.spdylay_session *session,
+                                    cspdylay.spdylay_frame_type frame_type,
+                                    cspdylay.spdylay_frame *frame,
+                                    void *user_data):
+    cdef Session pysession = <Session>user_data
+    _call_frame_callback(pysession, frame_type, frame,
+                         pysession.before_ctrl_send_cb)
+
+cdef void on_ctrl_send_callback(cspdylay.spdylay_session *session,
+                                cspdylay.spdylay_frame_type frame_type,
+                                cspdylay.spdylay_frame *frame,
+                                void *user_data):
+    cdef Session pysession = <Session>user_data
+    _call_frame_callback(pysession, frame_type, frame,
+                         pysession.on_ctrl_send_cb)
+
+cdef void on_ctrl_not_send_callback(cspdylay.spdylay_session *session,
+                                    cspdylay.spdylay_frame_type frame_type,
+                                    cspdylay.spdylay_frame *frame,
+                                    int error_code,
+                                    void *user_data):
+    cdef Session pysession = <Session>user_data
+
+    if not pysession.on_ctrl_not_send_cb:
+        return
+    pyframe = cframe2pyframe(frame_type, frame)
+    if pyframe:
+        try:
+            pysession.on_ctrl_not_send_cb(pysession, pyframe, error_code)
+        except Exception as e:
+            pysession.error = e
+        except BaseException as e:
+            pysession.base_error = e
+
+cdef void on_ctrl_recv_parse_error_callback(\
+    cspdylay.spdylay_session *session,
+    cspdylay.spdylay_frame_type frame_type,
+    uint8_t *head, size_t headlen,
+    uint8_t *payload, size_t payloadlen,
+    int error_code, void *user_data):
+    cdef Session pysession = <Session>user_data
+
+    if not pysession.on_ctrl_recv_parse_error_cb:
+        return
+    try:
+        pysession.on_ctrl_recv_parse_error_cb(pysession, frame_type,
+                                              (<char*>head)[:headlen],
+                                              (<char*>payload)[:payloadlen],
+                                              error_code)
+    except Exception as e:
+        pysession.error = e
+    except BaseException as e:
+        pysession.base_error = e
+
+cdef void on_unknown_ctrl_recv_callback(cspdylay.spdylay_session *session,
+                                        uint8_t *head, size_t headlen,
+                                        uint8_t *payload, size_t payloadlen,
+                                        void *user_data):
+    cdef Session pysession = <Session>user_data
+
+    if not pysession.on_unknown_ctrl_recv_cb:
+        return
+    try:
+        pysession.on_unknown_ctrl_recv_cb(pysession,
+                                          (<char*>head)[:headlen],
+                                          (<char*>payload)[:payloadlen])
+    except Exception as e:
+        pysession.error = e
+    except BaseException as e:
+        pysession.base_error = e
 
 cdef ssize_t recv_callback(cspdylay.spdylay_session *session,
                            uint8_t *buf, size_t length,
@@ -387,6 +485,30 @@ cdef void on_data_chunk_recv_callback(cspdylay.spdylay_session *session,
         try:
             pysession.on_data_chunk_recv_cb(pysession, flags, stream_id,
                                             (<char*>data)[:length])
+        except Exception as e:
+            pysession.error = e
+        except BaseException as e:
+            pysession.base_error = e
+
+cdef void on_data_recv_callback(cspdylay.spdylay_session *session,
+                                uint8_t flags, int32_t stream_id,
+                                int32_t length, void *user_data):
+    cdef Session pysession = <Session>user_data
+    if pysession.on_data_recv_cb:
+        try:
+            pysession.on_data_recv_cb(pysession, flags, stream_id, length)
+        except Exception as e:
+            pysession.error = e
+        except BaseException as e:
+            pysession.base_error = e
+
+cdef void on_data_send_callback(cspdylay.spdylay_session *session,
+                                uint8_t flags, int32_t stream_id,
+                                int32_t length, void *user_data):
+    cdef Session pysession = <Session>user_data
+    if pysession.on_data_send_cb:
+        try:
+            pysession.on_data_send_cb(pysession, flags, stream_id, length)
         except Exception as e:
             pysession.error = e
         except BaseException as e:
@@ -467,9 +589,17 @@ cdef class Session:
     cdef object recv_callback
     cdef object send_callback
     cdef object on_ctrl_recv_cb
+    cdef object on_invalid_ctrl_recv_cb
     cdef object on_data_chunk_recv_cb
+    cdef object on_data_recv_cb
+    cdef object before_ctrl_send_cb
+    cdef object on_ctrl_send_cb
+    cdef object on_ctrl_not_send_cb
+    cdef object on_data_send_cb
     cdef object on_stream_close_cb
     cdef object on_request_recv_cb
+    cdef object on_ctrl_recv_parse_error_cb
+    cdef object on_unknown_ctrl_recv_cb
     cdef object user_data
 
     cdef object error
@@ -482,9 +612,17 @@ cdef class Session:
     def __cinit__(self, side, version, config=None,
                   send_cb=None, recv_cb=None,
                   on_ctrl_recv_cb=None,
+                  on_invalid_ctrl_recv_cb=None,
                   on_data_chunk_recv_cb=None,
+                  on_data_recv_cb=None,
+                  before_ctrl_send_cb=None,
+                  on_ctrl_send_cb=None,
+                  on_ctrl_not_send_cb=None,
+                  on_data_send_cb=None,
                   on_stream_close_cb=None,
                   on_request_recv_cb=None,
+                  on_ctrl_recv_parse_error_cb=None,
+                  on_unknown_ctrl_recv_cb=None,
                   user_data=None):
         cdef cspdylay.spdylay_session_callbacks c_session_callbacks
         cdef int rv
@@ -496,15 +634,24 @@ cdef class Session:
             <cspdylay.spdylay_send_callback>send_callback
         c_session_callbacks.on_ctrl_recv_callback = \
             <cspdylay.spdylay_on_ctrl_recv_callback>on_ctrl_recv_callback
-        # c_session_callbacks.on_invalid_ctrl_recv_callback = NULL
+        c_session_callbacks.on_invalid_ctrl_recv_callback = \
+            <cspdylay.spdylay_on_invalid_ctrl_recv_callback>\
+            on_invalid_ctrl_recv_callback
         c_session_callbacks.on_data_chunk_recv_callback = \
             <cspdylay.spdylay_on_data_chunk_recv_callback>\
             on_data_chunk_recv_callback
-        # c_session_callbacks.on_data_recv_callback = NULL
-        # c_session_callbacks.before_ctrl_send_callback = NULL
-        # c_session_callbacks.on_ctrl_send_callback = NULL
-        # c_session_callbacks.on_ctrl_not_send_callback = NULL
-        # c_session_callbacks.on_data_send_callback = NULL
+        c_session_callbacks.on_data_recv_callback = \
+            <cspdylay.spdylay_on_data_recv_callback>on_data_recv_callback
+        c_session_callbacks.before_ctrl_send_callback = \
+            <cspdylay.spdylay_before_ctrl_send_callback>\
+            before_ctrl_send_callback
+        c_session_callbacks.on_ctrl_send_callback = \
+            <cspdylay.spdylay_on_ctrl_send_callback>on_ctrl_send_callback
+        c_session_callbacks.on_ctrl_not_send_callback = \
+            <cspdylay.spdylay_on_ctrl_not_send_callback>\
+            on_ctrl_not_send_callback
+        c_session_callbacks.on_data_send_callback = \
+            <cspdylay.spdylay_on_data_send_callback>on_data_send_callback
         c_session_callbacks.on_stream_close_callback = \
             <cspdylay.spdylay_on_stream_close_callback>on_stream_close_callback
         c_session_callbacks.on_request_recv_callback = \
@@ -512,15 +659,27 @@ cdef class Session:
         # c_session_callbacks.get_credential_proof = NULL
         # c_session_callbacks.get_credential_ncerts = NULL
         # c_session_callbacks.get_credential_cert = NULL
-        # c_session_callbacks.on_ctrl_recv_parse_error_callback = NULL
-        # c_session_callbacks.on_unknown_ctrl_recv_callback = NULL
+        c_session_callbacks.on_ctrl_recv_parse_error_callback = \
+            <cspdylay.spdylay_on_ctrl_recv_parse_error_callback>\
+            on_ctrl_recv_parse_error_callback
+        c_session_callbacks.on_unknown_ctrl_recv_callback = \
+            <cspdylay.spdylay_on_unknown_ctrl_recv_callback>\
+            on_unknown_ctrl_recv_callback
 
         self.recv_callback = recv_cb
         self.send_callback = send_cb
-        self.on_data_chunk_recv_cb = on_data_chunk_recv_cb
         self.on_ctrl_recv_cb = on_ctrl_recv_cb
+        self.on_invalid_ctrl_recv_cb = on_invalid_ctrl_recv_cb
+        self.on_data_chunk_recv_cb = on_data_chunk_recv_cb
+        self.on_data_recv_cb = on_data_recv_cb
+        self.before_ctrl_send_cb = before_ctrl_send_cb
+        self.on_ctrl_send_cb = on_ctrl_send_cb
+        self.on_ctrl_not_send_cb = on_ctrl_not_send_cb
+        self.on_data_send_cb = on_data_send_cb
         self.on_stream_close_cb = on_stream_close_cb
         self.on_request_recv_cb = on_request_recv_cb
+        self.on_ctrl_recv_parse_error_cb = on_ctrl_recv_parse_error_cb
+        self.on_unknown_ctrl_recv_cb = on_unknown_ctrl_recv_cb
 
         self.user_data = user_data
 
@@ -549,9 +708,16 @@ cdef class Session:
     def __init__(self, side, version, config=None,
                  send_cb=None, recv_cb=None,
                  on_ctrl_recv_cb=None,
+                 on_invalid_ctrl_recv_cb=None,
                  on_data_chunk_recv_cb=None,
+                 on_data_recv_cb=None,
+                 before_ctrl_send_cb=None,
+                 on_ctrl_send_cb=None,
+                 on_ctrl_not_send_cb=None,
+                 on_data_send_cb=None,
                  on_stream_close_cb=None,
                  on_request_recv_cb=None,
+                 on_ctrl_recv_parse_error_cb=None,
                  user_data=None):
         pass
 
@@ -636,19 +802,6 @@ cdef class Session:
             raise MemoryError()
 
     cpdef submit_request(self, pri, nv, data_prd=None, stream_user_data=None):
-        ''' Submits frame and optionally one or more DATA frames.  If
-        data_prd is not None, it provides data which will be sent in
-        subsequent DATA frames. It must have 2 attributes: source and
-        read_cb. source is an opaque object and passed to read_cb
-        callback.  read_cb must be None or a callable object. The
-        library calls it when it needs data. 4 arguments are passed to
-        read_cb: session, stream_id, length and source. And it returns
-        at most length bytes of byte string. The session is self. The
-        stream_id is the stream ID of the stream.  The length is the
-        maximum length the library expects. read_cb must not return
-        more that length bytes. The source is the object passed in
-        data_prd.source.
-        '''
         cdef cspdylay.spdylay_data_provider c_data_prd
         cdef cspdylay.spdylay_data_provider *c_data_prd_ptr
         cdef char **cnv = pynv2cnv(nv)
@@ -823,10 +976,31 @@ CTRL_FLAG_UNIDIRECTIONAL = cspdylay.SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL
 DATA_FLAG_NONE = cspdylay.SPDYLAY_DATA_FLAG_NONE
 DATA_FLAG_FIN = cspdylay.SPDYLAY_DATA_FLAG_FIN
 
-# Error codes used in callback
-ERR_OK = 0 # Not defined in <spdylay/spdylay.h>
+# Error codes
+ERR_INVALID_ARGUMENT = cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT
+ERR_ZLIB = cspdylay.SPDYLAY_ERR_ZLIB
+ERR_UNSUPPORTED_VERSION = cspdylay.SPDYLAY_ERR_UNSUPPORTED_VERSION
+ERR_WOULDBLOCK = cspdylay.SPDYLAY_ERR_WOULDBLOCK
+ERR_PROTO = cspdylay.SPDYLAY_ERR_PROTO
+ERR_INVALID_FRAME = cspdylay.SPDYLAY_ERR_INVALID_FRAME
 ERR_EOF = cspdylay.SPDYLAY_ERR_EOF
 ERR_DEFERRED = cspdylay.SPDYLAY_ERR_DEFERRED
+ERR_STREAM_ID_NOT_AVAILABLE = cspdylay.SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE
+ERR_STREAM_CLOSED = cspdylay.SPDYLAY_ERR_STREAM_CLOSED
+ERR_STREAM_CLOSING = cspdylay.SPDYLAY_ERR_STREAM_CLOSING
+ERR_STREAM_SHUT_WR = cspdylay.SPDYLAY_ERR_STREAM_SHUT_WR
+ERR_INVALID_STREAM_ID = cspdylay.SPDYLAY_ERR_INVALID_STREAM_ID
+ERR_INVALID_STREAM_STATE = cspdylay.SPDYLAY_ERR_INVALID_STREAM_STATE
+ERR_DEFERRED_DATA_EXIST = cspdylay.SPDYLAY_ERR_DEFERRED_DATA_EXIST
+ERR_SYN_STREAM_NOT_ALLOWED = cspdylay.SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED
+ERR_GOAWAY_ALREADY_SENT = cspdylay.SPDYLAY_ERR_GOAWAY_ALREADY_SENT
+ERR_INVALID_HEADER_BLOCK = cspdylay.SPDYLAY_ERR_INVALID_HEADER_BLOCK
+ERR_INVALID_STATE = cspdylay.SPDYLAY_ERR_INVALID_STATE
+ERR_GZIP = cspdylay.SPDYLAY_ERR_GZIP
+ERR_TEMPORAL_CALLBACK_FAILURE = cspdylay.SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE
+ERR_FATAL = cspdylay.SPDYLAY_ERR_FATAL
+ERR_NOMEM = cspdylay.SPDYLAY_ERR_NOMEM
+ERR_CALLBACK_FAILURE = cspdylay.SPDYLAY_ERR_CALLBACK_FAILURE
 
 # Read Callback Flags
 READ_EOF = 1

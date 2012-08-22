@@ -19,7 +19,7 @@ To build extension, run ``setup.py``::
 Session Objects
 ---------------
 
-.. py:class:: Session(side, version, config=None, send_cb=None, recv_cb=None, on_ctrl_recv_cb=None, on_data_chunk_recv_cb=None, on_stream_close_cb=None, on_request_recv_cb=None, user_data=None)
+.. py:class:: Session(side, version, config=None, send_cb=None, recv_cb=None, on_ctrl_recv_cb=None, on_invalid_ctrl_recv_cb=None, on_data_chunk_recv_cb=None, on_data_recv_cb=None, before_ctrl_send_cb=None, on_ctrl_send_cb=None, on_ctrl_not_send_cb=None, on_data_send_cb=None, on_stream_close_cb=None, on_request_recv_cb=None, on_ctrl_recv_parse_error_cb=None, on_unknown_ctrl_recv_cb=None, user_data=None)
 
     This is the class to hold the resources needed for a SPDY session.
     Sending and receiving SPDY frames are done using the methods of
@@ -88,6 +88,20 @@ Session Objects
         identified, access attribute of the *frame* to get
         information.
 
+    The *on_invalid_ctrl_recv_cb* specifies callback function
+    (callable) invoked when an invalid control frame is received.
+
+    .. py:function:: on_invalid_ctrl_recv_cb(session, frame, status_code)
+
+        The *session* is the :py:class:`Session` object invoking the
+        callback. The *frame* is the received control
+        frame. ``frame.frame_type`` tells the type of frame. See
+        `Frame Types`_ for the details. Once the frame type is
+        identified, access attribute of the *frame* to get
+        information.  The *status_code* is one of the `Stream Status
+        Codes`_ and indicates the error. When this callback function
+        is invoked, either RST_STREAM or GOAWAY will be sent.
+
     The *on_data_chunk_recv_cb* specifies callback function (callable)
     invoked when a chunk of data in DATA frame is received.
 
@@ -101,6 +115,54 @@ Session Objects
         stream. You should use :py:func:`on_data_recv_cb` to know all
         data frames are received. The *data* is the bytestring of
         received data.
+
+    The *on_data_recv_cb* specifies callback function (callable)
+    invoked when DATA frame is received.
+
+    .. py:function:: on_data_recv_cb(session, flags, stream_id, length)
+
+        The actual data it contains are received by
+        :py:func:`on_data_chunk_recv_cb()`.
+
+    The *before_ctrl_send_cb* specifies callback function (callable)
+    invoked before the control frame is sent.
+
+    .. py:function:: before_ctrl_send_cb(session, frame)
+
+        The *session* is the :py:class:`Session` object invoking the
+        callback. The *frame* is the control frame to be
+        sent. ``frame.frame_type`` tells the type of frame. See `Frame
+        Types`_ for the details. Once the frame type is identified,
+        access attribute of the *frame* to get information.
+
+    The *on_ctrl_send_cb* specifies callback function (callable)
+    invoked after the control frame is sent.
+
+    .. py:function:: on_ctrl_send_cb(session, frame)
+
+        The *session* is the :py:class:`Session` object invoking the
+        callback. The *frame* is the control frame to be
+        sent. ``frame.frame_type`` tells the type of frame. See `Frame
+        Types`_ for the details. Once the frame type is identified,
+        access attribute of the *frame* to get information.
+
+    The *on_ctrl_not_send_cb* specifies callback function (callable)
+    after the control frame is not sent because of the error.
+
+    .. py:function:: on_ctrl_not_send_cb(session, frame, error_code)
+
+        The *session* is the :py:class:`Session` object invoking the
+        callback. The *frame* is the received control
+        frame. ``frame.frame_type`` tells the type of frame. See
+        `Frame Types`_ for the details. Once the frame type is
+        identified, access attribute of the *frame* to get
+        information.  The *error_code* is one of the `Error Codes`_
+        and indicates the error.
+
+    The *on_data_send_cb* specifies callback function (callable)
+    invoked after DATA frame is sent.
+
+    .. py:function:: on_data_send_cb(session, flags, stream_id, length)
 
     The *on_stream_close_cb* specifies callback function (callable)
     invoked when the stream is closed.
@@ -126,10 +188,33 @@ Session Objects
         The *session* is the :py:class:`Session` object invoking the
         callback. The *stream_id* indicates the stream ID.
 
+    The *on_ctrl_recv_parse_error_cb* specifies callback function
+    (callable) invoked when the received control frame octets could
+    not be parsed correctly.
 
-    The :py:class:`UnsupportedVersionError` will be raised if the
-    *version* is not supported. The :py:class:`ZlibError` will be
-    raised if initialization of zlib failed.
+    .. py:function:: on_ctrl_recv_parse_error_cb(session, type, head, payload, error_code)
+
+        The *type* indicates the type of received control frame. The
+        *head* is the bytestring of control frame header. The
+        *payload* is the bytestring of data portion of the received
+        frame. The *error_code* is one of the error code defined in
+        `Error Codes`_ and indicates the error.
+
+    The *on_unknown_ctrl_recv_cb* specifies callback function
+    (callable) invoked when the received control frame type is
+    unknown.
+
+    .. py:function:: on_unknown_ctrl_recv_cb(session, head, payload)
+
+        The *head* is the bytestring of control frame header. The
+        *payload* is the bytestring of data portion of the received
+        frame.
+
+    The :py:class:`InvalidArgumentError` will be raised if the given
+    argument is invalid.  The :py:class:`UnsupportedVersionError` will
+    be raised if the *version* is not supported. The
+    :py:class:`ZlibError` will be raised if initialization of zlib
+    failed.
 
 .. py:attribute:: Session.user_data
 
@@ -499,10 +584,36 @@ Read Callback Flags
 
 .. py:data:: READ_EOF
 
-Callback Error Codes
---------------------
+Error Codes
+-----------
 
+.. py:data:: ERR_INVALID_ARGUMENT
+.. py:data:: ERR_ZLIB
+.. py:data:: ERR_UNSUPPORTED_VERSION
+.. py:data:: ERR_WOULDBLOCK
+.. py:data:: ERR_PROTO
+.. py:data:: ERR_INVALID_FRAME
+.. py:data:: ERR_EOF
 .. py:data:: ERR_DEFERRED
+.. py:data:: ERR_STREAM_ID_NOT_AVAILABLE
+.. py:data:: ERR_STREAM_CLOSED
+.. py:data:: ERR_STREAM_CLOSING
+.. py:data:: ERR_STREAM_SHUT_WR
+.. py:data:: ERR_INVALID_STREAM_ID
+.. py:data:: ERR_INVALID_STREAM_STATE
+.. py:data:: ERR_DEFERRED_DATA_EXIST
+.. py:data:: ERR_SYN_STREAM_NOT_ALLOWED
+.. py:data:: ERR_GOAWAY_ALREADY_SENT
+.. py:data:: ERR_INVALID_HEADER_BLOCK
+.. py:data:: ERR_INVALID_STATE
+.. py:data:: ERR_GZIP
+.. py:data:: ERR_TEMPORAL_CALLBACK_FAILURE
+
+Following error codes indicate fatal error.
+
+.. py:data:: ERR_FATAL
+.. py:data:: ERR_NOMEM
+.. py:data:: ERR_CALLBACK_FAILURE
 
 Frame Types
 -----------

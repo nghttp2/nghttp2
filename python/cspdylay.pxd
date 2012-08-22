@@ -11,10 +11,24 @@ cdef extern from 'spdylay/spdylay.h':
         SPDYLAY_ERR_ZLIB
         SPDYLAY_ERR_UNSUPPORTED_VERSION
         SPDYLAY_ERR_WOULDBLOCK
+        SPDYLAY_ERR_PROTO
+        SPDYLAY_ERR_INVALID_FRAME
         SPDYLAY_ERR_EOF
         SPDYLAY_ERR_DEFERRED
+        SPDYLAY_ERR_STREAM_ID_NOT_AVAILABLE
+        SPDYLAY_ERR_STREAM_CLOSED
+        SPDYLAY_ERR_STREAM_CLOSING
+        SPDYLAY_ERR_STREAM_SHUT_WR
+        SPDYLAY_ERR_INVALID_STREAM_ID
+        SPDYLAY_ERR_INVALID_STREAM_STATE
+        SPDYLAY_ERR_DEFERRED_DATA_EXIST
+        SPDYLAY_ERR_SYN_STREAM_NOT_ALLOWED
+        SPDYLAY_ERR_GOAWAY_ALREADY_SENT
+        SPDYLAY_ERR_INVALID_HEADER_BLOCK
+        SPDYLAY_ERR_INVALID_STATE
+        SPDYLAY_ERR_GZIP
         SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE
-        # Fatal errors follow
+        SPDYLAY_ERR_FATAL
         SPDYLAY_ERR_NOMEM
         SPDYLAY_ERR_CALLBACK_FAILURE
 
@@ -173,9 +187,33 @@ cdef extern from 'spdylay/spdylay.h':
         (spdylay_session *session, spdylay_frame_type frame_type,
          spdylay_frame *frame, void *user_data)
 
+    ctypedef void (*spdylay_on_invalid_ctrl_recv_callback)\
+        (spdylay_session *session, spdylay_frame_type type,
+         spdylay_frame *frame, uint32_t status_code, void *user_data)
+
     ctypedef void (*spdylay_on_data_chunk_recv_callback)\
         (spdylay_session *session, uint8_t flags, int32_t stream_id,
          uint8_t *data, size_t len, void *user_data)
+
+    ctypedef void (*spdylay_on_data_recv_callback)\
+        (spdylay_session *session, uint8_t flags, int32_t stream_id,
+         int32_t length, void *user_data)
+
+    ctypedef void (*spdylay_before_ctrl_send_callback)\
+        (spdylay_session *session, spdylay_frame_type type,
+         spdylay_frame *frame, void *user_data)
+
+    ctypedef void (*spdylay_on_ctrl_send_callback)\
+        (spdylay_session *session, spdylay_frame_type type,
+         spdylay_frame *frame, void *user_data)
+
+    ctypedef void (*spdylay_on_ctrl_not_send_callback)\
+        (spdylay_session *session, spdylay_frame_type type,
+         spdylay_frame *frame, int error_code, void *user_data)
+
+    ctypedef void (*spdylay_on_data_send_callback)\
+        (spdylay_session *session, uint8_t flags, int32_t stream_id,
+         int32_t length, void *user_data)
 
     ctypedef void (*spdylay_on_stream_close_callback)\
         (spdylay_session *session, int32_t stream_id,
@@ -184,13 +222,31 @@ cdef extern from 'spdylay/spdylay.h':
     ctypedef void (*spdylay_on_request_recv_callback)\
         (spdylay_session *session, int32_t stream_id, void *user_data)
 
+    ctypedef void (*spdylay_on_ctrl_recv_parse_error_callback)\
+        (spdylay_session *session, spdylay_frame_type type,
+         uint8_t *head, size_t headlen, uint8_t *payload, size_t payloadlen,
+         int error_code, void *user_data)
+
+    ctypedef void (*spdylay_on_unknown_ctrl_recv_callback)\
+        (spdylay_session *session, uint8_t *head, size_t headlen,
+         uint8_t *payload, size_t payloadlen, void *user_data)
+
     ctypedef struct spdylay_session_callbacks:
         spdylay_send_callback send_callback
         spdylay_recv_callback recv_callback
         spdylay_on_ctrl_recv_callback on_ctrl_recv_callback
+        spdylay_on_invalid_ctrl_recv_callback on_invalid_ctrl_recv_callback
         spdylay_on_data_chunk_recv_callback on_data_chunk_recv_callback
+        spdylay_on_data_recv_callback on_data_recv_callback
+        spdylay_before_ctrl_send_callback before_ctrl_send_callback
+        spdylay_on_ctrl_send_callback on_ctrl_send_callback
+        spdylay_on_ctrl_not_send_callback on_ctrl_not_send_callback
+        spdylay_on_data_send_callback on_data_send_callback
         spdylay_on_stream_close_callback on_stream_close_callback
         spdylay_on_request_recv_callback on_request_recv_callback
+        spdylay_on_ctrl_recv_parse_error_callback \
+            on_ctrl_recv_parse_error_callback
+        spdylay_on_unknown_ctrl_recv_callback on_unknown_ctrl_recv_callback
 
     int spdylay_session_client_new(spdylay_session **session_ptr,
                                    int version,
