@@ -44,8 +44,11 @@ def send_cb(session, data):
     iob.outputs.add_buffer(io.BytesIO(data))
     return len(data)
 
-def read_cb(session, stream_id, length, source):
-    return source.read(length)
+def read_cb(session, stream_id, length, read_ctrl, source):
+    data = source.read(length)
+    if not data:
+        read_ctrl.flags = spdylay.READ_EOF
+    return data
 
 def on_data_chunk_recv_cb(session, flags, stream_id, data):
     session.user_data.recv_data.write(data)
@@ -191,7 +194,7 @@ class SpdylayTests(unittest.TestCase):
         self.assertFalse(self.client_session.want_write())
 
     def test_deferred_data(self):
-        def deferred_read_cb(session, stream_id, length, source):
+        def deferred_read_cb(session, stream_id, length, read_ctrl, source):
             return spdylay.ERR_DEFERRED
 
         data_prd = spdylay.DataProvider(io.BytesIO(b'Hello World'),

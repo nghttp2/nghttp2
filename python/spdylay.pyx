@@ -417,15 +417,26 @@ cdef void on_request_recv_callback(cspdylay.spdylay_session *session,
         except BaseException as e:
             pysession.base_error = e
 
+cdef class ReadCtrl:
+    cdef int flags
+
+    def __cinit__(self):
+        self.flags = 0
+
+    property flags:
+        def __set__(self, value):
+            self.flags = value
+
 cdef ssize_t read_callback(cspdylay.spdylay_session *session,
                            int32_t stream_id, uint8_t *buf, size_t length,
                            int *eof, cspdylay.spdylay_data_source *source,
                            void *user_data):
     cdef Session pysession = <Session>user_data
+    cdef ReadCtrl read_ctrl = ReadCtrl()
     data_prd = <object>source.ptr
 
     try:
-        res = data_prd.read_cb(pysession, stream_id, length,
+        res = data_prd.read_cb(pysession, stream_id, length, read_ctrl,
                                data_prd.source)
     except TemporalCallbackFailureError as e:
         return cspdylay.SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE
@@ -439,6 +450,8 @@ cdef ssize_t read_callback(cspdylay.spdylay_session *session,
         pysession.base_error = e
         return cspdylay.SPDYLAY_ERR_CALLBACK_FAILURE
 
+    if read_ctrl.flags & READ_EOF:
+        eof[0] = 1
     if res == cspdylay.SPDYLAY_ERR_DEFERRED:
         return res
     elif res:
@@ -447,7 +460,6 @@ cdef ssize_t read_callback(cspdylay.spdylay_session *session,
         memcpy(buf, <char*>res, len(res))
         return len(res)
     else:
-        eof[0] = 1
         return 0
 
 cdef class Session:
@@ -815,6 +827,9 @@ DATA_FLAG_FIN = cspdylay.SPDYLAY_DATA_FLAG_FIN
 ERR_OK = 0 # Not defined in <spdylay/spdylay.h>
 ERR_EOF = cspdylay.SPDYLAY_ERR_EOF
 ERR_DEFERRED = cspdylay.SPDYLAY_ERR_DEFERRED
+
+# Read Callback Flags
+READ_EOF = 1
 
 # The status code for RST_STREAM
 OK = cspdylay.SPDYLAY_OK

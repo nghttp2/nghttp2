@@ -22,8 +22,11 @@ def send_cb(session, data):
     ssctrl.sock.sendall(data)
     return len(data)
 
-def read_cb(session, stream_id, length, source):
-    return source.read(length)
+def read_cb(session, stream_id, length, read_ctrl, source):
+    data = source.read(length)
+    if not data:
+        read_ctrl.flags = spdylay.READ_EOF
+    return data
 
 def on_ctrl_recv_cb(session, frame):
     ssctrl = session.user_data
