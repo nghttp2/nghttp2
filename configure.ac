@@ -169,6 +169,7 @@ AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
 AC_CHECK_FUNCS([kqueue], [have_kqueue=yes])
 AM_CONDITIONAL([HAVE_KQUEUE], [test "x${have_kqueue}" = "xyes"])
 
+AC_LANG_PUSH(C++)
 AC_MSG_CHECKING([whether struct kevent.udata is intptr_t])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
@@ -185,6 +186,7 @@ if test "x$kevent_udata_intptr_t" = "xyes"; then
   AC_DEFINE([KEVENT_UDATA_INTPTR_T], [1],
             [Define to 1 if struct kevent.udata is intptr_t])
 fi
+AC_LANG_POP()
 
 if test "x$maintainer_mode" != "xno"; then
     CFLAGS="$CFLAGS -Wall -Wextra -Werror"
