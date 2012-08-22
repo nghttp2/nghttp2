@@ -3,7 +3,8 @@ Python-spdylay - Spdylay Python Extension Module
 
 .. py:module:: spdylay
 
-Python-spdylay is the Python extension module of Spdylay library.
+Python-spdylay is the Python extension module of Spdylay SPDY C
+library.
 
 Build
 -----
@@ -578,6 +579,133 @@ Data Provider Objects
 .. py:attribute:: DataProvider.source
 
 .. py:attribute:: DataProvider.read_cb
+
+Control Frame Objects
+---------------------
+
+.. py:class:: CtrlFrame
+
+    The base class of SPDY control frames.
+
+    .. py:attribute:: version
+
+        Version
+
+    .. py:attribute:: frame_type
+
+        Frame type. See `Frame Types`_.
+
+    .. py:attribute:: flags
+
+        Flags. See `Control Frame Flags`_.
+
+    .. py:attribute:: length
+
+        Frame payload length
+
+The following frame classes inherit :py:class:`CtrlFrame` class.
+
+.. py:class:: SynStreamFrame
+
+    .. py:attribute:: stream_id
+
+        Stream ID
+
+    .. py:attribute:: assoc_stream_id
+
+        Associated-To-Stream-ID
+
+    .. py:attribute:: pri
+
+        Priority
+
+    .. py:attribute:: slot
+
+        Credential slot
+
+    .. py:attribute:: nv
+
+        List of name/value pair.
+
+.. py:class:: SynReplyFrame
+
+    .. py:attribute:: stream_id
+
+        Stream ID
+
+    .. py:attribute:: nv
+
+        List of name/value pair.
+
+.. py:class:: HeadersFrame
+
+    .. py:attribute:: stream_id
+
+        Stream ID
+
+    .. py:attribute:: nv
+
+        List of name/value pair.
+
+.. py:class:: RstStreamFrame
+
+
+    .. py:attribute:: stream_id
+
+        Stream ID
+
+    .. py:attribute:: status_code
+
+        Status code
+
+.. py:class:: SettingsFrame
+
+    .. py:attribute:: iv
+
+        List of tuple ``(settings_id, flags, value)``
+
+.. py:class:: PingFrame
+
+    .. py:attribute:: unique_id
+
+        Unique ID
+
+.. py:class:: GoawayFrame
+
+    .. py:attribute:: last_good_stream_id
+
+        Last good stream ID
+
+    .. py:attribute:: status_code
+
+        Status code
+
+.. py:class:: WindowUpdateFrame
+
+    .. py:attribute:: stream_id
+
+        Stream ID
+
+    .. py:attribute:: delta_window_size
+
+        Delta window size
+
+Exceptions
+----------
+
+.. py:class:: EOFError
+
+.. py:class:: CallbackFailureError
+
+.. py:class:: TemporalCallbackFailureError
+
+.. py:class:: InvalidArgumentError
+
+.. py:class:: ZlibError
+
+.. py:class:: UnsupportedVersionError
+
+.. py:class:: StreamClosedError
 
 Read Callback Flags
 -------------------
