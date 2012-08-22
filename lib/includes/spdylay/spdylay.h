@@ -864,8 +864,8 @@ typedef void (*spdylay_on_ctrl_recv_callback)
  * Callback function invoked by `spdylay_session_recv()` when an
  * invalid control frame is received. The |status_code| is one of the
  * :enum:`spdylay_status_code` and indicates the error. When this
- * callback function is invoked, either RST_STREAM or GOAWAY will be
- * sent.
+ * callback function is invoked, the library automatically submits
+ * either RST_STREAM or GOAWAY frame.
  */
 typedef void (*spdylay_on_invalid_ctrl_recv_callback)
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
@@ -1861,7 +1861,9 @@ int spdylay_submit_rst_stream(spdylay_session *session, int32_t stream_id,
 /**
  * @function
  *
- * Submits PING frame.
+ * Submits PING frame. You don't have to send PING back when you
+ * received PING frame. The library automatically submits PING frame
+ * in this case.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
