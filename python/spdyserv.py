@@ -9,6 +9,7 @@ import threading
 import socketserver
 import ssl
 import io
+import select
 
 import spdylay
 
@@ -19,8 +20,8 @@ CERT_FILE='server.crt'
 
 def send_cb(session, data):
     ssctrl = session.user_data
-    ssctrl.sock.sendall(data)
-    return len(data)
+    wlen = ssctrl.sock.send(data)
+    return wlen
 
 def read_cb(session, stream_id, length, read_ctrl, source):
     data = source.read(length)
@@ -66,7 +67,7 @@ def on_request_recv_cb(session, stream_id):
         stctrl.data_prd = data_prd
         nv = [(b':status', b'200 OK'),
               (b':version', b'HTTP/1.1'),
-              (b'server', b'python+spdylay')]
+              (b'server', b'python-spdylay')]
         session.submit_response(stream_id, nv, data_prd)
 
 class StreamCtrl:
@@ -86,7 +87,20 @@ class ThreadedSPDYRequestHandler(socketserver.BaseRequestHandler):
         ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         ctx.load_cert_chain(CERT_FILE, KEY_FILE)
         ctx.set_npn_protocols(['spdy/3', 'spdy/2'])
-        sock = ctx.wrap_socket(self.request, server_side=True)
+
+        sock = ctx.wrap_socket(self.request, server_side=True,
+                               do_handshake_on_connect=False)
+        sock.setblocking(False)
+
+        while True:
+            try:
+                sock.do_handshake()
+                break
+            except ssl.SSLWantReadError as e:
+                select.select([sock], [], [])
+            except ssl.SSLWantWriteError as e:
+                select.select([], [sock], [])
+
         if sock.selected_npn_protocol() == 'spdy/3':
             version = spdylay.PROTO_SPDY3
         elif sock.selected_npn_protocol() == 'spdy/2':
@@ -108,13 +122,19 @@ class ThreadedSPDYRequestHandler(socketserver.BaseRequestHandler):
             [(spdylay.SETTINGS_MAX_CONCURRENT_STREAMS,
               spdylay.ID_FLAG_SETTINGS_NONE,
               100)])
+
         while session.want_read() or session.want_write():
-            data = sock.recv(4096)
-            if data:
-                session.recv(data)
+            try:
+                data = sock.recv(4096)
+                if data:
+                    session.recv(data)
+                else:
+                    break
                 session.send()
-            else:
-                break
+            except ssl.SSLWantReadError:
+                select.select([sock], [], [])
+            except ssl.SSLWantWriteError:
+                select.select([], [sock], [])
 
 class ThreadedSPDYServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, svaddr, handler):
