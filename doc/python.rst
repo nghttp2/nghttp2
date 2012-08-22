@@ -1,12 +1,9 @@
-Spdylay Python Extension
-========================
+Python-spdylay - Spdylay Python Extension Module
+================================================
 
 .. py:module:: spdylay
 
-This is the Python extension of Spdylay library.  The wrapping is made
-using Cython.  The extension provides mostly same APIs as original C
-API. The API is still callback-centric.  We use exceptions instead of
-error code where they are appropriate.
+Python-spdylay is the Python extension module of Spdylay library.
 
 Build
 -----
@@ -19,7 +16,7 @@ To build extension, run ``setup.py``::
 
     $ python setup.py build_ext
 
-Session objects
+Session Objects
 ---------------
 
 .. py:class:: Session(side, version, config=None, send_cb=None, recv_cb=None, on_ctrl_recv_cb=None, on_data_chunk_recv_cb=None, on_stream_close_cb=None, on_request_recv_cb=None, user_data=None)
@@ -459,6 +456,53 @@ Session objects
     *delta_window_size* is 0 or negative. The
     :py:class:`StreamClosedError` will be raised if the stream is
     already closed or does not exist.
+
+Data Provider Objects
+---------------------
+
+.. py:class:: DataProvider(source, read_cb)
+
+    This class represents the data source and the way to read a chunk
+    of data from it. The *source* is expected to be the data source to
+    read, but the application can freely pass any object including
+    ``None``. The *read_cb* is the callback function invoked when the
+    library needs to read data. The data read will be sent as DATA
+    frame.
+
+    .. py:function:: read_cb(session, stream_id, length, read_ctrl, source)
+
+        The *session* is the :py:class:`Session` object. The
+        *stream_id* is the stream to send data. The *source* is the
+        object passed as a *source* in DataProvider constructor. The
+        implementation of this callback must read at most *length*
+        bytes of data and return it as bytestring. When all data is
+        read, assign :py:const:`READ_EOF` to ``read_ctrl.flags``.  If
+        the application wants to postpone DATA frames, (e.g.,
+        asynchronous I/O, or reading data blocks for long time), it is
+        achieved by returning :py:const:`ERR_DEFERRED` without reading
+        any data in this invocation. The library removes DATA frame
+        from the outgoing queue temporarily. To move back deferred
+        DATA frame to outgoing queue, call
+        :py:meth:`Session.resume_data()`. In case of error, there are
+        2 choices. Raising :py:class:`TemporalCallbackFailureError`
+        will close the stream by issuing RST_STREAM with
+        :py:const:`INTERNAL_ERROR`. Raising
+        :py:class:`CallbackFailureError` will signal the entire
+        session failure.
+
+.. py:attribute:: DataProvider.source
+
+.. py:attribute:: DataProvider.read_cb
+
+Read Callback Flags
+-------------------
+
+.. py:data:: READ_EOF
+
+Callback Error Codes
+--------------------
+
+.. py:data:: ERR_DEFERRED
 
 Frame Types
 -----------
