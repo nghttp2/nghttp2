@@ -124,17 +124,28 @@ class ThreadedSPDYRequestHandler(socketserver.BaseRequestHandler):
               100)])
 
         while session.want_read() or session.want_write():
+            want_read = want_write = False
             try:
                 data = sock.recv(4096)
                 if data:
                     session.recv(data)
                 else:
                     break
+            except ssl.SSLWantReadError:
+                want_read = True
+            except ssl.SSLWantWriteError:
+                want_write = True
+            try:
                 session.send()
             except ssl.SSLWantReadError:
-                select.select([sock], [], [])
+                want_read = True
             except ssl.SSLWantWriteError:
-                select.select([], [sock], [])
+                want_write = True
+
+            if want_read or want_write:
+                select.select([sock] if want_read else [],
+                              [sock] if want_write else [],
+                              [])
 
 class ThreadedSPDYServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, svaddr, handler):
