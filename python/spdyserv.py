@@ -15,6 +15,7 @@ class MySPDYRequestHandler(spdylay.BaseSPDYRequestHandler):
 
     def do_GET(self):
         if self.path == '/notfound':
+            # Example code to return error
             self.send_error(404)
             return
 
