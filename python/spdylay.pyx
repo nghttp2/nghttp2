@@ -976,6 +976,14 @@ cdef class Session:
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
+cpdef int npn_get_version(proto):
+    cdef char *cproto
+    if proto == None:
+        return 0
+    proto = proto.encode('UTF-8')
+    cproto = proto
+    return cspdylay.spdylay_npn_get_version(<unsigned char*>cproto, len(proto))
+
 # Side
 CLIENT = 1
 SERVER = 2
@@ -1076,3 +1084,383 @@ SETTINGS_INITIAL_WINDOW_SIZE = cspdylay.SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE
 SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE = \
     cspdylay.SPDYLAY_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE
 SETTINGS_MAX = cspdylay.SPDYLAY_SETTINGS_MAX
+
+try:
+    # Simple SPDY Server implementation. We mimics the methods and
+    # attributes of http.server.BaseHTTPRequestHandler. Since this
+    # implementation uses TLS NPN, Python 3.3.0 or later is required.
+
+    import socket
+    import threading
+    import socketserver
+    import ssl
+    import io
+    import select
+    import sys
+    import time
+    from xml.sax.saxutils import escape
+
+    def send_cb(session, data):
+        ssctrl = session.user_data
+        wlen = ssctrl.sock.send(data)
+        return wlen
+
+    def read_cb(session, stream_id, length, read_ctrl, source):
+        data = source.read(length)
+        if not data:
+            read_ctrl.flags = READ_EOF
+        return data
+
+    def on_ctrl_recv_cb(session, frame):
+        ssctrl = session.user_data
+        if frame.frame_type == SYN_STREAM:
+            stream = Stream(frame.stream_id)
+            ssctrl.streams[frame.stream_id] = stream
+
+            stream.process_headers(frame.nv)
+        elif frame.frame_type == HEADERS:
+            if frame.stream_id in ssctrl.streams:
+                stream = ssctrl.streams[frame.stream_id]
+                stream.process_headers(frame.nv)
+
+    def on_data_chunk_recv_cb(session, flags, stream_id, data):
+        ssctrl = session.user_data
+        if stream_id in ssctrl.streams:
+            stream = ssctrl.streams[stream_id]
+            if stream.method == 'POST':
+                if not stream.rfile:
+                    stream.rfile = io.BytesIO()
+                stream.rfile.write(data)
+            else:
+                # We don't allow request body if method is not POST
+                session.submit_rst_stream(stream_id, PROTOCOL_ERROR)
+
+    def on_stream_close_cb(session, stream_id, status_code):
+        ssctrl = session.user_data
+        if stream_id in ssctrl.streams:
+            del ssctrl.streams[stream_id]
+
+    def on_request_recv_cb(session, stream_id):
+        ssctrl = session.user_data
+        if stream_id in ssctrl.streams:
+            stream = ssctrl.streams[stream_id]
+            ssctrl.handler.handle_one_request(stream)
+
+    class Stream:
+        def __init__(self, stream_id):
+            self.stream_id = stream_id
+            self.data_prd = None
+
+            self.method = None
+            self.path = None
+            self.version = None
+            self.scheme = None
+            self.host = None
+            self.headers = []
+
+            self.rfile = None
+            self.wfile = None
+
+        def process_headers(self, headers):
+            for k, v in headers:
+                if k == ':method':
+                    self.method = v
+                elif k == ':scheme':
+                    self.scheme = v
+                elif k == ':path':
+                    self.path = v
+                elif k == ':version':
+                    self.version = v
+                elif k == ':host':
+                    self.host = v
+                else:
+                    self.headers.extend(headers)
+
+    class SessionCtrl:
+        def __init__(self, handler, sock):
+            self.handler = handler
+            self.sock = sock
+            self.streams = {}
+
+    class BaseSPDYRequestHandler(socketserver.BaseRequestHandler):
+
+        server_version = 'Python-spdylay'
+
+        error_content_type = 'text/html'
+
+        error_message_format = '''\
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>{code} {reason}</title>
+</head><body>
+<h1>{reason}</h1>
+<p>{explain}</p>
+<hr>
+<address>{server} at {hostname} Port {port}</address>
+</body></html>
+'''
+
+        def send_error(self, code, message=None):
+            # Make sure that code is really int
+            code = int(code)
+            try:
+                shortmsg, longmsg = self.responses[code]
+            except KeyError:
+                shortmsg, longmsg = '???', '???'
+            if message is None:
+                message = shortmsg
+            explain = longmsg
+
+            content = self.error_message_format.format(\
+                code=code, reason = escape(message), explain=explain,
+                server=self.server_version, hostname=socket.getfqdn(),
+                port=self.server.server_address[1]).encode('UTF-8')
+
+            self.send_response(code, message)
+            self.send_header('content-type', self.error_content_type)
+            self.send_header('content-length', str(len(content)))
+
+            self.wfile.write(content)
+
+        def send_response(self, code, message=None):
+            if message is None:
+                try:
+                    shortmsg, _ = self.responses[code]
+                except KeyError:
+                    shortmsg = '???'
+                message = shortmsg
+
+            self._response_headers.append((':status',
+                                           '{} {}'.format(code, message)))
+
+        def send_header(self, keyword, value):
+            self._response_headers.append((keyword, value))
+
+        def version_string(self):
+            return self.server_version + ' ' + self.sys_version
+
+        def handle_one_request(self, stream):
+            self.stream = stream
+
+            stream.wfile = io.BytesIO()
+
+            self.command = stream.method
+            self.path = stream.path
+            self.request_version = stream.version
+            self.headers = stream.headers
+            self.rfile = stream.rfile
+            self.wfile = stream.wfile
+            self._response_headers = []
+
+            if stream.method is None:
+                self.send_error(400)
+            else:
+                mname = 'do_' + stream.method
+                if hasattr(self, mname):
+                    method = getattr(self, mname)
+
+                    if self.rfile is not None:
+                        self.rfile.seek(0)
+
+                    method()
+                else:
+                    self.send_error(501, 'Unsupported method ({})'\
+                                        .format(stream.method))
+
+            self.wfile.seek(0)
+            data_prd = DataProvider(self.wfile, read_cb)
+            stream.data_prd = data_prd
+
+            self.send_header(':version', 'HTTP/1.1')
+            self.send_header('server', self.version_string())
+            self.send_header('date', self.date_time_string())
+
+            self.session.submit_response(stream.stream_id,
+                                         self._response_headers, data_prd)
+
+        def handle(self):
+            # TODO We need to call handshake manually because 3.3.0b2
+            # crashes if do_handshake_on_connect=True
+            sock = self.server.ctx.wrap_socket(self.request, server_side=True,
+                                               do_handshake_on_connect=False)
+            sock.setblocking(False)
+
+            while True:
+                try:
+                    sock.do_handshake()
+                    break
+                except ssl.SSLWantReadError as e:
+                    select.select([sock], [], [])
+                except ssl.SSLWantWriteError as e:
+                    select.select([], [sock], [])
+
+            version = npn_get_version(sock.selected_npn_protocol())
+            if version == 0:
+                return
+
+            ssctrl = SessionCtrl(self, sock)
+            self.session = Session(\
+                SERVER,
+                version,
+                send_cb=send_cb,
+                on_ctrl_recv_cb=on_ctrl_recv_cb,
+                on_data_chunk_recv_cb=on_data_chunk_recv_cb,
+                on_stream_close_cb=on_stream_close_cb,
+                on_request_recv_cb=on_request_recv_cb,
+                user_data=ssctrl)
+
+            self.session.submit_settings(\
+                FLAG_SETTINGS_NONE,
+                [(SETTINGS_MAX_CONCURRENT_STREAMS, ID_FLAG_SETTINGS_NONE, 100)]
+                )
+
+            while self.session.want_read() or self.session.want_write():
+                want_read = want_write = False
+                try:
+                    data = sock.recv(4096)
+                    if data:
+                        self.session.recv(data)
+                    else:
+                        break
+                except ssl.SSLWantReadError:
+                    want_read = True
+                except ssl.SSLWantWriteError:
+                    want_write = True
+                try:
+                    self.session.send()
+                except ssl.SSLWantReadError:
+                    want_read = True
+                except ssl.SSLWantWriteError:
+                    want_write = True
+
+                if want_read or want_write:
+                    select.select([sock] if want_read else [],
+                                  [sock] if want_write else [],
+                                  [])
+
+        # The following methods and attributes are copied from
+        # Lib/http/server.py of cpython source code
+
+        def date_time_string(self, timestamp=None):
+            """Return the current date and time formatted for a
+            message header."""
+            if timestamp is None:
+                timestamp = time.time()
+            year, month, day, hh, mm, ss, wd, y, z = time.gmtime(timestamp)
+            s = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+                    self.weekdayname[wd],
+                    day, self.monthname[month], year,
+                    hh, mm, ss)
+            return s
+
+        weekdayname = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+        monthname = [None,
+                     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+        # The Python system version, truncated to its first component.
+        sys_version = "Python/" + sys.version.split()[0]
+
+        # Table mapping response codes to messages; entries have the
+        # form {code: (shortmessage, longmessage)}.
+        # See RFC 2616 and 6585.
+        responses = {
+            100: ('Continue', 'Request received, please continue'),
+            101: ('Switching Protocols',
+                  'Switching to new protocol; obey Upgrade header'),
+
+            200: ('OK', 'Request fulfilled, document follows'),
+            201: ('Created', 'Document created, URL follows'),
+            202: ('Accepted',
+                  'Request accepted, processing continues off-line'),
+            203: ('Non-Authoritative Information',
+                  'Request fulfilled from cache'),
+            204: ('No Content', 'Request fulfilled, nothing follows'),
+            205: ('Reset Content', 'Clear input form for further input.'),
+            206: ('Partial Content', 'Partial content follows.'),
+
+            300: ('Multiple Choices',
+                  'Object has several resources -- see URI list'),
+            301: ('Moved Permanently',
+                  'Object moved permanently -- see URI list'),
+            302: ('Found', 'Object moved temporarily -- see URI list'),
+            303: ('See Other', 'Object moved -- see Method and URL list'),
+            304: ('Not Modified',
+                  'Document has not changed since given time'),
+            305: ('Use Proxy',
+                  'You must use proxy specified in Location to access this '
+                  'resource.'),
+            307: ('Temporary Redirect',
+                  'Object moved temporarily -- see URI list'),
+
+            400: ('Bad Request',
+                  'Bad request syntax or unsupported method'),
+            401: ('Unauthorized',
+                  'No permission -- see authorization schemes'),
+            402: ('Payment Required',
+                  'No payment -- see charging schemes'),
+            403: ('Forbidden',
+                  'Request forbidden -- authorization will not help'),
+            404: ('Not Found', 'Nothing matches the given URI'),
+            405: ('Method Not Allowed',
+                  'Specified method is invalid for this resource.'),
+            406: ('Not Acceptable', 'URI not available in preferred format.'),
+            407: ('Proxy Authentication Required', 'You must authenticate with '
+                  'this proxy before proceeding.'),
+            408: ('Request Timeout', 'Request timed out; try again later.'),
+            409: ('Conflict', 'Request conflict.'),
+            410: ('Gone',
+                  'URI no longer exists and has been permanently removed.'),
+            411: ('Length Required', 'Client must specify Content-Length.'),
+            412: ('Precondition Failed', 'Precondition in headers is false.'),
+            413: ('Request Entity Too Large', 'Entity is too large.'),
+            414: ('Request-URI Too Long', 'URI is too long.'),
+            415: ('Unsupported Media Type',
+                  'Entity body in unsupported format.'),
+            416: ('Requested Range Not Satisfiable',
+                  'Cannot satisfy request range.'),
+            417: ('Expectation Failed',
+                  'Expect condition could not be satisfied.'),
+            428: ('Precondition Required',
+                  'The origin server requires the request to be conditional.'),
+            429: ('Too Many Requests', 'The user has sent too many requests '
+                  'in a given amount of time ("rate limiting").'),
+            431: ('Request Header Fields Too Large',
+                  'The server is unwilling to process '
+                  'the request because its header fields are too large.'),
+
+            500: ('Internal Server Error', 'Server got itself in trouble'),
+            501: ('Not Implemented',
+                  'Server does not support this operation'),
+            502: ('Bad Gateway',
+                  'Invalid responses from another server/proxy.'),
+            503: ('Service Unavailable',
+                  'The server cannot process the request due to a high load'),
+            504: ('Gateway Timeout',
+                  'The gateway server did not receive a timely response'),
+            505: ('HTTP Version Not Supported', 'Cannot fulfill request.'),
+            511: ('Network Authentication Required',
+                  'The client needs to authenticate to gain network access.'),
+            }
+
+    class ThreadedSPDYServer(socketserver.ThreadingMixIn,
+                             socketserver.TCPServer):
+        def __init__(self, svaddr, handler, cert_file, key_file):
+            self.allow_reuse_address = True
+
+            self.ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            # TODO Add SSL option here
+            self.ctx.load_cert_chain(cert_file, key_file)
+            self.ctx.set_npn_protocols(['spdy/3', 'spdy/2'])
+
+            socketserver.TCPServer.__init__(self, svaddr, handler)
+
+        def start(self, daemon=False):
+            server_thread = threading.Thread(target=self.serve_forever)
+            server_thread.daemon = daemon
+            server_thread.start()
+
+except ImportError:
+    # No server for 2.x because they lack TLS NPN.
+    pass

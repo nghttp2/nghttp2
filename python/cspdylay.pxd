@@ -322,3 +322,6 @@ cdef extern from 'spdylay/spdylay.h':
     int spdylay_submit_window_update(spdylay_session *session,
                                      int32_t stream_id,
                                      int32_t delta_window_size)
+
+    uint16_t spdylay_npn_get_version(unsigned char *proto,
+                                     size_t protolen)

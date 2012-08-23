@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 
-# The example SPDY server.  You need Python 3.3 or later because we
-# use TLS NPN. Put private key and certificate file in the current
-# working directory.
-
-import socket
-import threading
-import socketserver
-import ssl
-import io
-import select
+# The example SPDY server. Python 3.3 or later is required because TLS
+# NPN is used in spdylay.ThreadedSPDYServer. Put private key and
+# certificate file in the current working directory.
 
 import spdylay
 
@@ -18,150 +11,32 @@ KEY_FILE='server.key'
 # certificate file
 CERT_FILE='server.crt'
 
-def send_cb(session, data):
-    ssctrl = session.user_data
-    wlen = ssctrl.sock.send(data)
-    return wlen
+class MySPDYRequestHandler(spdylay.BaseSPDYRequestHandler):
 
-def read_cb(session, stream_id, length, read_ctrl, source):
-    data = source.read(length)
-    if not data:
-        read_ctrl.flags = spdylay.READ_EOF
-    return data
+    def do_GET(self):
+        if self.path == '/notfound':
+            self.send_error(404)
+            return
 
-def on_ctrl_recv_cb(session, frame):
-    ssctrl = session.user_data
-    if frame.frame_type == spdylay.SYN_STREAM:
-        stctrl = StreamCtrl(frame.stream_id)
-        stctrl.headers.extend(frame.nv)
-        ssctrl.streams[frame.stream_id] = stctrl
+        self.send_response(200)
+        self.send_header('conten-type', 'text/html; charset=UTF-8')
 
-def on_stream_close_cb(session, stream_id, status_code):
-    ssctrl = session.user_data
-    if stream_id in ssctrl.streams:
-        del ssctrl.streams[stream_id]
-
-def on_request_recv_cb(session, stream_id):
-    ssctrl = session.user_data
-    if stream_id in ssctrl.streams:
-        stctrl = ssctrl.streams[stream_id]
-        for name, value in stctrl.headers:
-            if name == 'user-agent':
-                user_agent = value
-                break
-        else:
-            user_agent = ''
-        html = '''\
+        content = '''\
 <html>
 <head><title>SPDY FTW</title></head>
 <body>
 <h1>SPDY FTW</h1>
 <p>The age of HTTP/1.1 is over. The time of SPDY has come.</p>
-<p>Your browser {} supports SPDY.</p>
 </body>
-</html>
-'''.format(user_agent)
-        data_prd = spdylay.DataProvider(io.BytesIO(bytes(html, 'utf-8')),
-                                        read_cb)
+</html>'''.encode('UTF-8')
 
-        stctrl.data_prd = data_prd
-        nv = [(':status', '200 OK'),
-              (':version', 'HTTP/1.1'),
-              ('server', 'python-spdylay')]
-        session.submit_response(stream_id, nv, data_prd)
-
-class StreamCtrl:
-    def __init__(self, stream_id):
-        self.stream_id = stream_id
-        self.data_prd = None
-        self.headers = []
-
-class SessionCtrl:
-    def __init__(self, sock):
-        self.sock = sock
-        self.streams = {}
-
-class ThreadedSPDYRequestHandler(socketserver.BaseRequestHandler):
-
-    def handle(self):
-        ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        ctx.load_cert_chain(CERT_FILE, KEY_FILE)
-        ctx.set_npn_protocols(['spdy/3', 'spdy/2'])
-
-        sock = ctx.wrap_socket(self.request, server_side=True,
-                               do_handshake_on_connect=False)
-        sock.setblocking(False)
-
-        while True:
-            try:
-                sock.do_handshake()
-                break
-            except ssl.SSLWantReadError as e:
-                select.select([sock], [], [])
-            except ssl.SSLWantWriteError as e:
-                select.select([], [sock], [])
-
-        if sock.selected_npn_protocol() == 'spdy/3':
-            version = spdylay.PROTO_SPDY3
-        elif sock.selected_npn_protocol() == 'spdy/2':
-            version = spdylay.PROTO_SPDY2
-        else:
-            return
-
-        ssctrl = SessionCtrl(sock)
-        session = spdylay.Session(spdylay.SERVER,
-                                  version,
-                                  send_cb=send_cb,
-                                  on_ctrl_recv_cb=on_ctrl_recv_cb,
-                                  on_stream_close_cb=on_stream_close_cb,
-                                  on_request_recv_cb=on_request_recv_cb,
-                                  user_data=ssctrl)
-
-        session.submit_settings(\
-            spdylay.FLAG_SETTINGS_NONE,
-            [(spdylay.SETTINGS_MAX_CONCURRENT_STREAMS,
-              spdylay.ID_FLAG_SETTINGS_NONE,
-              100)])
-
-        while session.want_read() or session.want_write():
-            want_read = want_write = False
-            try:
-                data = sock.recv(4096)
-                if data:
-                    session.recv(data)
-                else:
-                    break
-            except ssl.SSLWantReadError:
-                want_read = True
-            except ssl.SSLWantWriteError:
-                want_write = True
-            try:
-                session.send()
-            except ssl.SSLWantReadError:
-                want_read = True
-            except ssl.SSLWantWriteError:
-                want_write = True
-
-            if want_read or want_write:
-                select.select([sock] if want_read else [],
-                              [sock] if want_write else [],
-                              [])
-
-class ThreadedSPDYServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    def __init__(self, svaddr, handler):
-        self.allow_reuse_address = True
-        socketserver.TCPServer.__init__(self, svaddr, handler)
+        self.wfile.write(content)
 
 if __name__ == "__main__":
-    # Port 0 means to select an arbitrary unused port
     HOST, PORT = "localhost", 3000
 
-    server = ThreadedSPDYServer((HOST, PORT), ThreadedSPDYRequestHandler)
-    ip, port = server.server_address
-
-    # Start a thread with the server -- that thread will then start one
-    # more thread for each request
-    server_thread = threading.Thread(target=server.serve_forever)
-    # Exit the server thread when the main thread terminates
-    #server_thread.daemon = True
-    server_thread.start()
+    server = spdylay.ThreadedSPDYServer((HOST, PORT),
+                                        MySPDYRequestHandler,
+                                        cert_file=CERT_FILE,
+                                        key_file=KEY_FILE)
+    server.start()

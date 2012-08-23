@@ -543,6 +543,20 @@ Session Objects
     :py:class:`StreamClosedError` will be raised if the stream is
     already closed or does not exist.
 
+Helper Functions
+----------------
+
+.. py:function:: npn_get_version(proto)
+
+    Returns SPDY version which spdylay library supports from the given
+    protocol name. The *proto* is the unicode string to the protocol
+    name. Currently, ``spdy/2`` and ``spdy/3`` are supported.  The
+    returned nonzero SPDY version can be passed as the version
+    argument in :py:class:`Session` constructor.
+
+    This function returns nonzero SPDY version if it succeeds, or 0.
+
+
 Data Provider Objects
 ---------------------
 
