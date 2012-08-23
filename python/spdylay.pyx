@@ -1174,7 +1174,7 @@ try:
                 elif k == ':host':
                     self.host = v
                 else:
-                    self.headers.extend(headers)
+                    self.headers.append((k, v))
 
     class SessionCtrl:
         def __init__(self, handler, sock):
@@ -1446,15 +1446,18 @@ try:
 
     class ThreadedSPDYServer(socketserver.ThreadingMixIn,
                              socketserver.TCPServer):
-        def __init__(self, svaddr, handler, cert_file, key_file):
+        def __init__(self, server_address, RequestHandlerCalss,
+                     cert_file, key_file):
             self.allow_reuse_address = True
 
             self.ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            # TODO Add SSL option here
+            self.ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2 | \
+                ssl.OP_NO_COMPRESSION
             self.ctx.load_cert_chain(cert_file, key_file)
             self.ctx.set_npn_protocols(['spdy/3', 'spdy/2'])
 
-            socketserver.TCPServer.__init__(self, svaddr, handler)
+            socketserver.TCPServer.__init__(self, server_address,
+                                            RequestHandlerCalss)
 
         def start(self, daemon=False):
             server_thread = threading.Thread(target=self.serve_forever)
