@@ -80,5 +80,7 @@ int spdylay_gzip_inflate(spdylay_gzip *inflater,
     return SPDYLAY_ERR_GZIP;
   default:
     assert(0);
+    /* We need this for some compilers */
+    return 0;
   }
 }

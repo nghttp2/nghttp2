@@ -37,4 +37,8 @@
 #  include <netinet/in.h>
 #endif /* HAVE_NETINET_IN_H */
 
+#ifdef HAVE_WINSOCK2_H
+#  include <winsock2.h>
+#endif /* HAVE_WINSOCK2_H */
+
 #endif /* SPDYLAY_NET_H */

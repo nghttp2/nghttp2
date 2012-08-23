@@ -2784,16 +2784,16 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
                                   spdylay_data *frame)
 {
   ssize_t framelen = datamax+8, r;
-  int eof;
+  int eof_flags;
   uint8_t flags;
   r = spdylay_reserve_buffer(buf_ptr, buflen_ptr, framelen);
   if(r != 0) {
     return r;
   }
-  eof = 0;
+  eof_flags = 0;
   r = frame->data_prd.read_callback
     (session, frame->stream_id, (*buf_ptr)+8, datamax,
-     &eof, &frame->data_prd.source, session->user_data);
+     &eof_flags, &frame->data_prd.source, session->user_data);
   if(r == SPDYLAY_ERR_DEFERRED || r == SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE) {
     return r;
   } else if(r < 0 || datamax < (size_t)r) {
@@ -2804,7 +2804,7 @@ ssize_t spdylay_session_pack_data(spdylay_session *session,
   spdylay_put_uint32be(&(*buf_ptr)[0], frame->stream_id);
   spdylay_put_uint32be(&(*buf_ptr)[4], r);
   flags = 0;
-  if(eof) {
+  if(eof_flags) {
     frame->eof = 1;
     if(frame->flags & SPDYLAY_DATA_FLAG_FIN) {
       flags |= SPDYLAY_DATA_FLAG_FIN;

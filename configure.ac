@@ -45,6 +45,11 @@ AC_ARG_ENABLE([maintainer-mode],
                     [Turn on compile time warnings])],
     [maintainer_mode=$withval], [maintainer_mode=no])
 
+AC_ARG_ENABLE([examples],
+    [AS_HELP_STRING([--enable-examples],
+                    [Build example programs])],
+    [request_examples=$withval], [request_examples=yes])
+
 dnl Checks for programs
 AC_PROG_CC
 AC_PROG_CXX
@@ -124,7 +129,12 @@ fi
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 
 # The example programs depend on OpenSSL
-enable_examples=$have_openssl
+enable_examples=no
+if test "x${request_examples}" = "xyes" &&
+   test "x${have_openssl}" = "xyes"; then
+    enable_examples=yes
+fi
+
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
 # Checks for header files.
@@ -139,6 +149,9 @@ AC_CHECK_HEADERS([ \
   time.h \
   unistd.h \
 ])
+
+# For ntohl, ntohs in Windows
+AC_CHECK_HEADERS([winsock2.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
@@ -187,6 +200,13 @@ if test "x$kevent_udata_intptr_t" = "xyes"; then
             [Define to 1 if struct kevent.udata is intptr_t])
 fi
 AC_LANG_POP()
+
+dnl Windows library for winsock2
+case "${host}" in
+  *mingw*)
+    LIBS="$LIBS -lws2_32"
+    ;;
+esac
 
 if test "x$maintainer_mode" != "xno"; then
     CFLAGS="$CFLAGS -Wall -Wextra -Werror"
