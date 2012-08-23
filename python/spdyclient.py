@@ -65,8 +65,8 @@ def on_ctrl_recv_cb(session, frame):
             if req.decomp:
                 return
             for k, v in frame.nv:
-                if k == b'content-encoding' and \
-                        (v.lower() == b'gzip' or v.lower() == b'deflate'):
+                if k == 'content-encoding' and \
+                        (v.lower() == 'gzip' or v.lower() == 'deflate'):
                     req.decomp = zlib.decompressobj()
 
 def on_data_chunk_recv_cb(session, flags, stream_id, data):
@@ -148,13 +148,13 @@ def get(uri):
     if uricomps.query:
         path = '?'.join([path, uricomps.query])
 
-    session.submit_request(0, [(b':method', b'GET'),
-                               (b':scheme', b'https'),
-                               (b':path', path.encode('utf-8')),
-                               (b':version', b'HTTP/1.1'),
-                               (b':host', hostport.encode('utf-8')),
-                               (b'accept', b'*/*'),
-                               (b'user-agent', b'python-spdylay')],
+    session.submit_request(0, [(':method', 'GET'),
+                               (':scheme', 'https'),
+                               (':path', path),
+                               (':version', 'HTTP/1.1'),
+                               (':host', hostport),
+                               ('accept', '*/*'),
+                               ('user-agent', 'python-spdylay')],
                            stream_user_data=req)
 
     while (session.want_read() or session.want_write()) \

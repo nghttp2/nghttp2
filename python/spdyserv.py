@@ -46,8 +46,8 @@ def on_request_recv_cb(session, stream_id):
     if stream_id in ssctrl.streams:
         stctrl = ssctrl.streams[stream_id]
         for name, value in stctrl.headers:
-            if name == b'user-agent':
-                user_agent = value.decode('utf-8')
+            if name == 'user-agent':
+                user_agent = value
                 break
         else:
             user_agent = ''
@@ -65,9 +65,9 @@ def on_request_recv_cb(session, stream_id):
                                         read_cb)
 
         stctrl.data_prd = data_prd
-        nv = [(b':status', b'200 OK'),
-              (b':version', b'HTTP/1.1'),
-              (b'server', b'python-spdylay')]
+        nv = [(':status', '200 OK'),
+              (':version', 'HTTP/1.1'),
+              ('server', 'python-spdylay')]
         session.submit_response(stream_id, nv, data_prd)
 
 class StreamCtrl:

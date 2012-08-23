@@ -206,17 +206,18 @@ cdef class WindowUpdateFrame(CtrlFrame):
 
 cdef object cnv2pynv(char **nv):
     ''' Convert C-style name/value pairs ``nv`` to Python style
-    pairs. '''
+    pairs. We assume that strings in nv is UTF-8 encoded as per SPDY
+    spec. In Python pairs, we use unicode string.'''
     cdef size_t i
     pynv = []
     i = 0
     while nv[i] != NULL:
-        pynv.append((nv[i], nv[i+1]))
+        pynv.append((nv[i].decode('UTF-8'), nv[i+1].decode('UTF-8')))
         i += 2
     return pynv
 
 cdef char** pynv2cnv(object nv) except *:
-    ''' Convert Python style name/value pairs ``nv`` to C-style
+    ''' Convert Python style UTF-8 name/value pairs ``nv`` to C-style
     pairs. Python style name/value pairs are list of tuple (key,
     value).'''
     cdef char **cnv = <char**>malloc((len(nv)*2+1)*sizeof(char*))
@@ -231,6 +232,12 @@ cdef char** pynv2cnv(object nv) except *:
         i += 1
     cnv[i] = NULL
     return cnv
+
+cdef pynv_encode(nv):
+    res = []
+    for k, v in nv:
+        res.append((k.encode('UTF-8'), v.encode('UTF-8')))
+    return res
 
 cdef object csettings2pysettings(size_t niv,
                                  cspdylay.spdylay_settings_entry *iv):
@@ -804,8 +811,10 @@ cdef class Session:
     cpdef submit_request(self, pri, nv, data_prd=None, stream_user_data=None):
         cdef cspdylay.spdylay_data_provider c_data_prd
         cdef cspdylay.spdylay_data_provider *c_data_prd_ptr
-        cdef char **cnv = pynv2cnv(nv)
         cpdef int rv
+        cdef char **cnv
+        nv = pynv_encode(nv)
+        cnv = pynv2cnv(nv)
         if data_prd:
             create_c_data_prd(&c_data_prd, data_prd)
             c_data_prd_ptr = &c_data_prd
@@ -826,8 +835,10 @@ cdef class Session:
     cpdef submit_response(self, stream_id, nv, data_prd=None):
         cdef cspdylay.spdylay_data_provider c_data_prd
         cdef cspdylay.spdylay_data_provider *c_data_prd_ptr
-        cdef char **cnv = pynv2cnv(nv)
         cpdef int rv
+        cdef char **cnv
+        nv = pynv_encode(nv)
+        cnv = pynv2cnv(nv)
         if data_prd:
             create_c_data_prd(&c_data_prd, data_prd)
             c_data_prd_ptr = &c_data_prd
@@ -846,8 +857,10 @@ cdef class Session:
 
     cpdef submit_syn_stream(self, flags, assoc_stream_id, pri, nv,
                             stream_user_data):
-        cdef char **cnv = pynv2cnv(nv)
         cdef int rv
+        cdef char **cnv
+        nv = pynv_encode(nv)
+        cnv = pynv2cnv(nv)
         rv = cspdylay.spdylay_submit_syn_stream(self._c_session,
                                                 flags,
                                                 assoc_stream_id,
@@ -863,8 +876,10 @@ cdef class Session:
             raise MemoryError()
 
     cpdef submit_syn_reply(self, flags, stream_id, nv):
-        cdef char **cnv = pynv2cnv(nv)
         cdef int rv
+        cdef char **cnv
+        nv = pynv_encode(nv)
+        cnv = pynv2cnv(nv)
         rv = cspdylay.spdylay_submit_syn_reply(self._c_session,
                                                flags, stream_id, cnv)
         free(cnv)
@@ -876,8 +891,10 @@ cdef class Session:
             raise MemoryError()
 
     cpdef submit_headers(self, flags, stream_id, nv):
-        cdef char **cnv = pynv2cnv(nv)
         cdef int rv
+        cdef char **cnv
+        nv = pynv_encode(nv)
+        cnv = pynv2cnv(nv)
         rv = cspdylay.spdylay_submit_headers(self._c_session,
                                              flags, stream_id, cnv)
         free(cnv)
