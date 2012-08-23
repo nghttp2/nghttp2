@@ -875,3 +875,131 @@ SETTINGS ID Flags
 
 .. py:data:: ID_FLAG_SETTINGS_PERSISTED
 
+Simple SPDY Server
+------------------
+
+This module offers a simple SPDY server implementation to ready for
+use with little additional code.
+
+The :py:class:`ThreadedSPDYServer` is a ``socketserver.TCPServer``
+subclass.  As the name of the class suggests, it is multi threaded.
+It only supports SPDY connection and does not fallback to HTTP/1.1.
+Since it uses TLS NPN extension, Python 3.3.0 or later is required.
+
+.. py:class:: ThreadedSPDYServer(server_address, RequestHandlerCalss, cert_file, key_file)
+
+    This class builds on ``TCPServer`` class by passing
+    *server_address* and *RequestHandlerCalss*. The request is handled
+    by the instance of *RequestHandlerCalss*.
+
+The :py:class:`ThreadedSPDYServer` requires a *RequestHandlerCalss* on
+instantiation, which must be a subclass of
+:py:class:`BaseSPDYRequestHandler`.
+
+Most texts are copied (and modified) from ``http.server``
+documentation.
+
+.. py:class:: BaseSPDYRequestHandler(request, client_address, server)
+
+    This class is used to handle the SPDY requests (streams) that
+    arrive at the server. By itself, it cannot respond to any actual
+    SPDY requests; it must be subclassed to handle each request method
+    (e.g. ``GET`` or ``POST``). ``BaseSPDYRequestHandler`` provides a
+    number of class and instance variables, and methods for use by
+    subclasses.
+
+    The handler will gather headers (name/value pairs in SPDY terms)
+    and read POST data (if any), then call a method specific to the
+    request type. The method name is constructed from the request. For
+    example, for the request method ``SPAM``, the ``do_SPAM()`` method
+    will be called with no arguments. All of the relevant information
+    is stored in instance variables of the handler. Subclasses should
+    not need to override or extend the ``__init__()`` method.
+
+    .. note::
+
+        Currently, this implementation accepts request body only if
+        method is POST and the request body will be stored in memory.
+
+    ``BaseSPDYRequestHandler`` has the following instance variables:
+
+    .. py:attribute:: client_address
+
+        Contains a tuple of the form ``(host, port)`` referring to the
+        client's address.
+
+    .. py:attribute:: server
+
+        Contains the server instance.
+
+    .. py:attribute:: command
+
+        Contains the command (request type, method). For example,
+        ``GET``.
+
+    .. py:attribute:: path
+
+        Contains the request path.
+
+    .. py:attribute:: request_version
+
+        Contains the version string from the request. For example,
+        ``HTTP/1.1``.
+
+    .. py:attribute:: headers
+
+        Contains the request headers. Each name/value pair is a tuple
+        of the form ``(name, value)``.
+
+    .. py:attribute:: rfile
+
+        Contains an input stream, positioned at the start of the
+        optional input data. If there is no optional input data, it
+        may be ``None``.
+
+    .. py:attribute:: wfile
+
+        Contains the output stream for writing a response back to the
+        client.
+
+    ``BaseSPDYRequestHandler`` has the following class variables:
+
+    .. py:attribute:: server_version
+
+        Specifies the server software version.
+
+    .. py:attribute:: sys_version
+
+        Contains the Python system version.
+
+    A ``BaseSPDYRequestHandler`` instance has the following methods:
+
+    .. py:method:: handle()
+
+        Interacts client exchanging SPDY frames. When a request is
+        completely received, it calls appropriate ``do_*()`` method.
+        This method will handle multiple requests (streams) until SPDY
+        session is over.
+
+    .. py:method:: send_error(code, message=None)
+
+        Send a complete error reply to the client The numeric *code*
+        specifies the HTTP error code, with *message* as optional,
+        more specific text. A complete set of headers is sent,
+        followed by HTML text.
+
+    .. py:method:: send_response(code, message=None)
+
+        Adds a response code and, optionally, short message.
+        This will be formatted as ':status' response header field.
+
+    .. py:method:: send_header(keyword, value)
+
+        Adds the HTTP header. The *keyword* and *value* must be
+        unicode strings and not ``None``.
+
+The example of ``BaseSPDYRequestHandler`` and ``ThreadedSPDYServer``
+follows:
+
+.. literalinclude:: ../python/spdyserv.py
+    :language: python
