@@ -314,8 +314,8 @@ Session Objects
     priority value for this session.
 
     The *nv* is a list containing the name/value pairs.  The each
-    element is a tuple of 2 bytestrings: name and value (e.g.,
-    ``(b'host', b'localhost')``).
+    element is a pair of unicode strings: name and value (e.g.,
+    ``(u'host', u'localhost')``).
 
     The *nv* must include following name/value pairs:
 
@@ -378,8 +378,8 @@ Session Objects
     against the stream *stream_id*.
 
     The *nv* is a list containing the name/value pairs.  The each
-    element is a tuple of 2 bytestrings: name and value (e.g.,
-    ``(b'host', b'localhost')``).
+    element is a pair of unicode strings: name and value (e.g.,
+    ``(u'host', u'localhost')``).
 
     The *nv* must include following name/value pairs:
 
@@ -428,8 +428,8 @@ Session Objects
     priority value for this session.
 
     The *nv* is a list containing the name/value pairs.  The each
-    element is a tuple of 2 bytestrings: name and value (e.g.,
-    ``(b'host', b'localhost')``).
+    element is a pair of unicode strings: name and value (e.g.,
+    ``(u'host', u'localhost')``).
 
     The names in *nv* will be lower-cased when they are sent.
 
@@ -459,8 +459,8 @@ Session Objects
     *stream_id*. The *nv* is the name/value pairs in this frame.
 
     The *nv* is a list containing the name/value pairs.  The each
-    element is a tuple of 2 bytestrings: name and value (e.g.,
-    ``(b'host', b'localhost')``).
+    element is a pair of unicode strings: name and value (e.g.,
+    ``(u'host', u'localhost')``).
 
     The names in *nv* will be lower-cased when they are sent.
 
@@ -481,8 +481,8 @@ Session Objects
     *stream_id*. The *nv* is the name/value pairs in this frame.
 
     The *nv* is a list containing the name/value pairs.  The each
-    element is a tuple of 2 bytestrings: name and value (e.g.,
-    ``(b'host', b'localhost')``).
+    element is a pair of unicode strings: name and value (e.g.,
+    ``(u'host', u'localhost')``).
 
     The names in *nv* will be lower-cased when they are sent.
 
