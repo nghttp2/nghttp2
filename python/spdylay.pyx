@@ -1186,7 +1186,7 @@ try:
 
         server_version = 'Python-spdylay'
 
-        error_content_type = 'text/html'
+        error_content_type = 'text/html; charset=UTF-8'
 
         error_message_format = '''\
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
