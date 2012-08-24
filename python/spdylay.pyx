@@ -1235,7 +1235,7 @@ try:
 
 
         def send_cb(self, session, data):
-            return self.sslsock.send(data)
+            return self.request.send(data)
 
         def read_cb(self, session, stream_id, length, read_ctrl, source):
             data = source.read(length)
@@ -1277,65 +1277,54 @@ try:
         def handle(self):
             self.request.setsockopt(socket.IPPROTO_TCP,
                                     socket.TCP_NODELAY, True)
-            # TODO We need to call handshake manually because 3.3.0b2
-            # crashes if do_handshake_on_connect=True
-            self.sslsock = self.server.ctx.wrap_socket(\
-                self.request,
-                server_side=True,
-                do_handshake_on_connect=False)
+            try:
+                self.request.do_handshake()
+                self.request.setblocking(False)
 
-            self.sslsock.setblocking(False)
+                version = npn_get_version(self.request.selected_npn_protocol())
+                if version == 0:
+                    return
 
-            while True:
-                try:
-                    self.sslsock.do_handshake()
-                    break
-                except ssl.SSLWantReadError as e:
-                    select.select([self.sslsock], [], [])
-                except ssl.SSLWantWriteError as e:
-                    select.select([], [self.sslsock], [])
+                self.ssctrl = SessionCtrl()
+                self.session = Session(\
+                    SERVER, version,
+                    send_cb=self.send_cb,
+                    on_ctrl_recv_cb=self.on_ctrl_recv_cb,
+                    on_data_chunk_recv_cb=self.on_data_chunk_recv_cb,
+                    on_stream_close_cb=self.on_stream_close_cb,
+                    on_request_recv_cb=self.on_request_recv_cb)
 
-            version = npn_get_version(self.sslsock.selected_npn_protocol())
-            if version == 0:
-                return
+                self.session.submit_settings(\
+                    FLAG_SETTINGS_NONE,
+                    [(SETTINGS_MAX_CONCURRENT_STREAMS, ID_FLAG_SETTINGS_NONE,
+                      100)]
+                    )
 
-            self.ssctrl = SessionCtrl()
-            self.session = Session(\
-                SERVER, version,
-                send_cb=self.send_cb,
-                on_ctrl_recv_cb=self.on_ctrl_recv_cb,
-                on_data_chunk_recv_cb=self.on_data_chunk_recv_cb,
-                on_stream_close_cb=self.on_stream_close_cb,
-                on_request_recv_cb=self.on_request_recv_cb)
+                while self.session.want_read() or self.session.want_write():
+                    want_read = want_write = False
+                    try:
+                        data = self.request.recv(4096)
+                        if data:
+                            self.session.recv(data)
+                        else:
+                            break
+                    except ssl.SSLWantReadError:
+                        want_read = True
+                    except ssl.SSLWantWriteError:
+                        want_write = True
+                    try:
+                        self.session.send()
+                    except ssl.SSLWantReadError:
+                        want_read = True
+                    except ssl.SSLWantWriteError:
+                        want_write = True
 
-            self.session.submit_settings(\
-                FLAG_SETTINGS_NONE,
-                [(SETTINGS_MAX_CONCURRENT_STREAMS, ID_FLAG_SETTINGS_NONE, 100)]
-                )
-
-            while self.session.want_read() or self.session.want_write():
-                want_read = want_write = False
-                try:
-                    data = self.sslsock.recv(4096)
-                    if data:
-                        self.session.recv(data)
-                    else:
-                        break
-                except ssl.SSLWantReadError:
-                    want_read = True
-                except ssl.SSLWantWriteError:
-                    want_write = True
-                try:
-                    self.session.send()
-                except ssl.SSLWantReadError:
-                    want_read = True
-                except ssl.SSLWantWriteError:
-                    want_write = True
-
-                if want_read or want_write:
-                    select.select([self.sslsock] if want_read else [],
-                                  [self.sslsock] if want_write else [],
-                                  [])
+                    if want_read or want_write:
+                        select.select([self.request] if want_read else [],
+                                      [self.request] if want_write else [],
+                                      [])
+            finally:
+                self.request.setblocking(True)
 
         # The following methods and attributes are copied from
         # Lib/http/server.py of cpython source code
@@ -1462,6 +1451,18 @@ try:
             server_thread = threading.Thread(target=self.serve_forever)
             server_thread.daemon = daemon
             server_thread.start()
+
+        def process_request(self, request, client_address):
+            # ThreadingMixIn.process_request() dispatches request and
+            # client_address to separate thread. To cleanly shutdown
+            # SSL/TLS wrapped socket, we wrap socket here.
+
+            # SSL/TLS handshake is postponed to each thread.
+            request = self.ctx.wrap_socket(\
+                request, server_side=True, do_handshake_on_connect=False)
+
+            socketserver.ThreadingMixIn.process_request(self,
+                                                        request, client_address)
 
 except ImportError:
     # No server for 2.x because they lack TLS NPN.
