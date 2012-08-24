@@ -1279,6 +1279,8 @@ try:
                                          self._response_headers, data_prd)
 
         def handle(self):
+            self.request.setsockopt(socket.IPPROTO_TCP,
+                                    socket.TCP_NODELAY, True)
             # TODO We need to call handshake manually because 3.3.0b2
             # crashes if do_handshake_on_connect=True
             sock = self.server.ctx.wrap_socket(self.request, server_side=True,
