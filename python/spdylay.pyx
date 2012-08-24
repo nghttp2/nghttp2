@@ -65,7 +65,7 @@ cdef class SynStreamFrame(CtrlFrame):
     cdef uint8_t slot
     cdef object nv
 
-    cdef void fill(self, cspdylay.spdylay_syn_stream *frame):
+    cdef fill(self, cspdylay.spdylay_syn_stream *frame):
         self.fillhd(&frame.hd)
 
         self.stream_id = frame.stream_id
@@ -94,7 +94,7 @@ cdef class SynReplyFrame(CtrlFrame):
     cdef int32_t stream_id
     cdef object nv
 
-    cdef void fill(self, cspdylay.spdylay_syn_reply *frame):
+    cdef fill(self, cspdylay.spdylay_syn_reply *frame):
         self.fillhd(&frame.hd)
 
         self.stream_id = frame.stream_id
@@ -111,7 +111,7 @@ cdef class HeadersFrame(CtrlFrame):
     cdef int32_t stream_id
     cdef object nv
 
-    cdef void fill(self, cspdylay.spdylay_headers *frame):
+    cdef fill(self, cspdylay.spdylay_headers *frame):
         self.fillhd(&frame.hd)
 
         self.stream_id = frame.stream_id
@@ -129,7 +129,7 @@ cdef class RstStreamFrame(CtrlFrame):
     cdef int32_t stream_id
     cdef uint32_t status_code
 
-    cdef void fill(self, cspdylay.spdylay_rst_stream *frame):
+    cdef fill(self, cspdylay.spdylay_rst_stream *frame):
         self.fillhd(&frame.hd)
 
         self.stream_id = frame.stream_id
@@ -146,7 +146,7 @@ cdef class RstStreamFrame(CtrlFrame):
 cdef class SettingsFrame(CtrlFrame):
     cdef object iv
 
-    cdef void fill(self, cspdylay.spdylay_settings *frame):
+    cdef fill(self, cspdylay.spdylay_settings *frame):
         self.fillhd(&frame.hd)
 
         self.iv = csettings2pysettings(frame.niv, frame.iv)
@@ -159,7 +159,7 @@ cdef class SettingsFrame(CtrlFrame):
 cdef class PingFrame(CtrlFrame):
     cdef uint32_t unique_id
 
-    cdef void fill(self, cspdylay.spdylay_ping *frame):
+    cdef fill(self, cspdylay.spdylay_ping *frame):
         self.fillhd(&frame.hd)
 
         self.unique_id = frame.unique_id
@@ -172,7 +172,7 @@ cdef class GoawayFrame(CtrlFrame):
     cdef int32_t last_good_stream_id
     cdef uint32_t status_code
 
-    cdef void fill(self, cspdylay.spdylay_goaway *frame):
+    cdef fill(self, cspdylay.spdylay_goaway *frame):
         self.fillhd(&frame.hd)
 
         self.last_good_stream_id = frame.last_good_stream_id
@@ -190,7 +190,7 @@ cdef class WindowUpdateFrame(CtrlFrame):
     cdef int32_t stream_id
     cdef int32_t delta_window_size
 
-    cdef void fill(self, cspdylay.spdylay_window_update *frame):
+    cdef fill(self, cspdylay.spdylay_window_update *frame):
         self.fillhd(&frame.hd)
 
         self.stream_id = frame.stream_id
@@ -204,7 +204,7 @@ cdef class WindowUpdateFrame(CtrlFrame):
         def __get__(self):
             return self.delta_window_size
 
-cdef object cnv2pynv(char **nv):
+cdef cnv2pynv(char **nv):
     ''' Convert C-style name/value pairs ``nv`` to Python style
     pairs. We assume that strings in nv is UTF-8 encoded as per SPDY
     spec. In Python pairs, we use unicode string.'''
@@ -322,14 +322,14 @@ cdef void _call_frame_callback(Session pysession,
                                object callback):
     if not callback:
         return
-    pyframe = cframe2pyframe(frame_type, frame)
-    if pyframe:
-        try:
+    try:
+        pyframe = cframe2pyframe(frame_type, frame)
+        if pyframe:
             callback(pysession, pyframe)
-        except Exception as e:
-            pysession.error = e
-        except BaseException as e:
-            pysession.base_error = e
+    except Exception as e:
+        pysession.error = e
+    except BaseException as e:
+        pysession.base_error = e
 
 cdef void on_ctrl_recv_callback(cspdylay.spdylay_session *session,
                                 cspdylay.spdylay_frame_type frame_type,
@@ -348,14 +348,14 @@ cdef void on_invalid_ctrl_recv_callback(cspdylay.spdylay_session *session,
 
     if not pysession.on_invalid_ctrl_recv_cb:
         return
-    pyframe = cframe2pyframe(frame_type, frame)
-    if pyframe:
-        try:
+    try:
+        pyframe = cframe2pyframe(frame_type, frame)
+        if pyframe:
             pysession.on_invalid_ctrl_recv_cb(pysession, pyframe, status_code)
-        except Exception as e:
-            pysession.error = e
-        except BaseException as e:
-            pysession.base_error = e
+    except Exception as e:
+        pysession.error = e
+    except BaseException as e:
+        pysession.base_error = e
 
 cdef void before_ctrl_send_callback(cspdylay.spdylay_session *session,
                                     cspdylay.spdylay_frame_type frame_type,
@@ -382,14 +382,14 @@ cdef void on_ctrl_not_send_callback(cspdylay.spdylay_session *session,
 
     if not pysession.on_ctrl_not_send_cb:
         return
-    pyframe = cframe2pyframe(frame_type, frame)
-    if pyframe:
-        try:
+    try:
+        pyframe = cframe2pyframe(frame_type, frame)
+        if pyframe:
             pysession.on_ctrl_not_send_cb(pysession, pyframe, error_code)
-        except Exception as e:
-            pysession.error = e
-        except BaseException as e:
-            pysession.base_error = e
+    except Exception as e:
+        pysession.error = e
+    except BaseException as e:
+        pysession.base_error = e
 
 cdef void on_ctrl_recv_parse_error_callback(\
     cspdylay.spdylay_session *session,
