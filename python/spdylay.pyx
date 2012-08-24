@@ -1143,6 +1143,7 @@ try:
 
         error_content_type = 'text/html; charset=UTF-8'
 
+        # Same HTML from Apache error page
         error_message_format = '''\
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
 <html><head>
@@ -1167,8 +1168,11 @@ try:
             explain = longmsg
 
             content = self.error_message_format.format(\
-                code=code, reason = escape(message), explain=explain,
-                server=self.server_version, hostname=socket.getfqdn(),
+                code=code,
+                reason = escape(message),
+                explain=escape(explain),
+                server=escape(self.server_version),
+                hostname=escape(socket.getfqdn()),
                 port=self.server.server_address[1]).encode('UTF-8')
 
             self.send_response(code, message)
