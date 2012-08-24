@@ -855,8 +855,8 @@ cdef class Session:
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
-    cpdef submit_syn_stream(self, flags, assoc_stream_id, pri, nv,
-                            stream_user_data):
+    cpdef submit_syn_stream(self, flags, pri, nv, assoc_stream_id=0,
+                            stream_user_data=None):
         cdef int rv
         cdef char **cnv
         nv = pynv_encode(nv)

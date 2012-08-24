@@ -123,8 +123,8 @@ class SpdylayTests(unittest.TestCase):
                          self.client_streams.recv_data.getvalue())
 
     def test_submit_syn_stream_and_syn_stream(self):
-        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_FIN, 0, 2,
-                                              [(u':path', u'/')], None)
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_FIN, 2,
+                                              [(u':path', u'/')])
         self.client_session.send()
         self.server_session.recv()
 
@@ -148,8 +148,8 @@ class SpdylayTests(unittest.TestCase):
         self.assertEqual((u':version', u'HTTP/1.1'), frame.nv[0])
 
     def test_submit_rst_stream(self):
-        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_FIN, 0, 2,
-                                              [(u':path', u'/')], None)
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_FIN, 2,
+                                              [(u':path', u'/')])
         self.client_session.send()
         self.server_session.recv()
 
@@ -267,8 +267,8 @@ class SpdylayTests(unittest.TestCase):
             self.client_session.send()
 
     def test_submit_data(self):
-        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 0, 2,
-                                              [(u':path', u'/')], None)
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 2,
+                                              [(u':path', u'/')])
         self.client_session.send()
         self.server_session.recv()
 
@@ -286,8 +286,8 @@ class SpdylayTests(unittest.TestCase):
                          self.server_streams.recv_data.getvalue())
 
     def test_submit_headers(self):
-        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 0, 2,
-                                              [(u':path', u'/')], None)
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 2,
+                                              [(u':path', u'/')])
         self.client_session.send()
         self.server_session.recv()
 
@@ -318,8 +318,8 @@ class SpdylayTests(unittest.TestCase):
         self.assertEqual(1, frame.unique_id)
 
     def test_submit_window_update(self):
-        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 0, 2,
-                                              [(u':path', u'/')], None)
+        self.client_session.submit_syn_stream(spdylay.CTRL_FLAG_NONE, 2,
+                                              [(u':path', u'/')])
         self.client_session.send()
         self.server_session.recv()
 

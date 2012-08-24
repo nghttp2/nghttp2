@@ -408,7 +408,7 @@ Session Objects
     The :py:class:`InvalidArgumentError` will be raised if the *nv*
     includes empty name or ``None`` value.
 
-.. py:method:: Session.submit_syn_stream(flags, assoc_stream_id, pri, nv, stream_user_data)
+.. py:method:: Session.submit_syn_stream(flags, pri, nv, assoc_stream_id=0, stream_user_data=None)
 
     Submits SYN_STREAM frame. The *flags* is bitwise OR of the
     following values:
