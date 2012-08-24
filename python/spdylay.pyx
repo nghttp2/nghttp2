@@ -708,9 +708,9 @@ cdef class Session:
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
         elif rv == cspdylay.SPDYLAY_ERR_ZLIB:
-            raise ZlibError(cspdylay.spdylay_strerror(rv))
+            raise ZlibError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_UNSUPPORTED_VERSION:
-            raise UnsupportedVersionError(cspdylay.spdylay_strerror(rv))
+            raise UnsupportedVersionError(_strerror(rv))
 
     def __init__(self, side, version, config=None,
                  send_cb=None, recv_cb=None,
@@ -777,7 +777,7 @@ cdef class Session:
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+            raise InvalidArgumentError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
@@ -828,7 +828,7 @@ cdef class Session:
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+            raise InvalidArgumentError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
@@ -851,7 +851,7 @@ cdef class Session:
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+            raise InvalidArgumentError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
@@ -871,7 +871,7 @@ cdef class Session:
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+            raise InvalidArgumentError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
@@ -886,7 +886,7 @@ cdef class Session:
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+            raise InvalidArgumentError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
@@ -901,7 +901,7 @@ cdef class Session:
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+            raise InvalidArgumentError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
@@ -972,9 +972,12 @@ cdef class Session:
         if rv == 0:
             return
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(cspdylay.spdylay_strerror(rv))
+            raise InvalidArgumentError(_strerror(rv))
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
+
+cdef _strerror(int error_code):
+    return cspdylay.spdylay_strerror(error_code).decode('UTF-8')
 
 cpdef int npn_get_version(proto):
     cdef char *cproto
