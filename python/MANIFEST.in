@@ -1,0 +1,1 @@
+include spdylay.pyx cspdylay.pxd spdylay_tests.py spdyclient.py spdyserv.py README.rst
