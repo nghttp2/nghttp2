@@ -20,7 +20,7 @@ class MySPDYRequestHandler(spdylay.BaseSPDYRequestHandler):
             return
 
         self.send_response(200)
-        self.send_header('conten-type', 'text/html; charset=UTF-8')
+        self.send_header('content-type', 'text/html; charset=UTF-8')
 
         content = '''\
 <html>
