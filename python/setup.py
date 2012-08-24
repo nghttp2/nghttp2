@@ -3,6 +3,7 @@ from distutils.extension import Extension
 
 setup(
     name = 'python-spdylay',
+    # Also update __version__ in spdylay.pyx
     version = '0.1.0',
     description = 'SPDY library',
     author = 'Tatsuhiro Tsujikawa',
