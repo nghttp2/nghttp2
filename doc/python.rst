@@ -884,6 +884,68 @@ SETTINGS ID Flags
 
 .. py:data:: ID_FLAG_SETTINGS_PERSISTED
 
+Simple SPDY Client
+------------------
+
+This module offers a simple SPDY client implementation.  The function
+:py:func:`urlfetch()` fetches given URLs. For each URL,
+*StreamHandlerClass* is instantiated and its methods are called when
+certain event occurs. The *StreamHandlerClass* must be a subclass of
+:py:class:`BaseSPDYStreamHandler`.
+
+.. py:function:: urlfetch(url_or_urls, StreamHandlerClass)
+
+    Opens URL and handles the response from the servers.
+
+    The *url_or_urls* is either one URL string or list of URL string.
+    For each URL, *StreamHandlerClass* is instantiated and it handles
+    the request to and response from the server. If successive URLs in
+    *url_or_urls* list have same origin, they are processed in one
+    SPDY session.
+
+.. py:class:: BaseSPDYStreamHandler(url, fetcher)
+
+    This class handles one URL retrieval, which corresponds one SPDY
+    stream. The *url* is the URL to fetch. The *fetcher* is a driver
+    object to call methods of this object. For now it is opaque
+    object. This class is intended to be subclassed by the application
+    to add specific behavior.
+
+    ``BaseSPDYStreamHandler`` has the following instance variables:
+
+    .. py:attribute:: url
+
+        The URL for this stream.
+
+    .. py:attribute:: stream_id
+
+        The stream ID for this stream.
+
+    ``BaseSPDYStreamHandler`` has the following methods:
+
+    .. py:method:: on_header(nv)
+
+        Called when name/value pairs (headers) *nv* is received.  This
+        method may be overridden by subclasses. The default
+        implementation does nothing.
+
+    .. py:method:: on_data(data)
+
+        Called when *data* is received. This method may be overridden
+        by subclass. The default implementation does nothing.
+
+    .. py:method:: on_close(status_code)
+
+        Called when this stream is closed. The *status_code* indicates
+        the reason of the closure. See `Stream Status Codes`_.  This
+        method may be overridden by subclass. The default
+        implementation does nothing.
+
+The example follows:
+
+.. literalinclude:: ../python/spdyclient.py
+    :language: python
+
 Simple SPDY Server
 ------------------
 
