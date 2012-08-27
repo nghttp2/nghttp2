@@ -323,5 +323,12 @@ cdef extern from 'spdylay/spdylay.h':
                                      int32_t stream_id,
                                      int32_t delta_window_size)
 
+    ctypedef struct spdylay_npn_proto:
+        unsigned char *proto
+        uint8_t len
+        uint16_t version
+
+    spdylay_npn_proto* spdylay_npn_get_proto_list(size_t *len_ptr)
+
     uint16_t spdylay_npn_get_version(unsigned char *proto,
                                      size_t protolen)

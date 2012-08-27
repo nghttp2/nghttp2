@@ -982,6 +982,16 @@ cdef class Session:
 cdef _strerror(int error_code):
     return cspdylay.spdylay_strerror(error_code).decode('UTF-8')
 
+cpdef get_npn_protocols():
+    cdef size_t proto_list_len
+    cdef cspdylay.spdylay_npn_proto *proto_list
+    proto_list = cspdylay.spdylay_npn_get_proto_list(&proto_list_len)
+    res = []
+    for i in range(proto_list_len):
+        res.append((<char*>proto_list[i].proto)[:proto_list[i].len]\
+                       .decode('UTF-8'))
+    return res
+
 cpdef int npn_get_version(proto):
     cdef char *cproto
     if proto == None:
@@ -1449,7 +1459,7 @@ try:
             self.ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2 | \
                 ssl.OP_NO_COMPRESSION
             self.ctx.load_cert_chain(cert_file, key_file)
-            self.ctx.set_npn_protocols(['spdy/3', 'spdy/2'])
+            self.ctx.set_npn_protocols(get_npn_protocols())
 
             socketserver.TCPServer.__init__(self, server_address,
                                             RequestHandlerCalss)

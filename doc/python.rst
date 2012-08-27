@@ -546,6 +546,15 @@ Session Objects
 Helper Functions
 ----------------
 
+.. py:function:: get_npn_protocols()
+
+    Returns SPDY version strings which can be directly passed to
+    ``ssl.SSLContext.set_npn_protocols()``. Please note that the
+    returned list only includes SPDY version strings this library
+    supports. If the application intends to support other fallback
+    protocols (e.g., ``http/1.1``), the application should add them to
+    the returned list.
+
 .. py:function:: npn_get_version(proto)
 
     Returns SPDY version which spdylay library supports from the given

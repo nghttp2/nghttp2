@@ -338,5 +338,9 @@ class SpdylayTests(unittest.TestCase):
         self.assertEqual(1, frame.stream_id)
         self.assertEqual(4096, frame.delta_window_size)
 
+    def test_get_npn_protocols(self):
+        protos = spdylay.get_npn_protocols()
+        self.assertEqual(['spdy/3', 'spdy/2'], protos)
+
 if __name__ == '__main__':
     unittest.main()
