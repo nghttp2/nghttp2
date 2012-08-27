@@ -79,3 +79,17 @@ void test_spdylay_npn(void)
   http11();
   no_overlap();
 }
+
+void test_spdylay_npn_get_proto_list(void)
+{
+  size_t len;
+  const spdylay_npn_proto *list = spdylay_npn_get_proto_list(&len);
+  CU_ASSERT_EQUAL(2, len);
+  CU_ASSERT_STRING_EQUAL("spdy/3", list[0].proto);
+  CU_ASSERT_EQUAL(6, list[0].len);
+  CU_ASSERT_EQUAL(SPDYLAY_PROTO_SPDY3, list[0].version);
+
+  CU_ASSERT_STRING_EQUAL("spdy/2", list[1].proto);
+  CU_ASSERT_EQUAL(6, list[1].len);
+  CU_ASSERT_EQUAL(SPDYLAY_PROTO_SPDY2, list[1].version);
+}

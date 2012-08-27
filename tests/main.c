@@ -74,6 +74,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "zlib_spdy2", test_spdylay_zlib_spdy2) ||
       !CU_add_test(pSuite, "zlib_spdy3", test_spdylay_zlib_spdy3) ||
       !CU_add_test(pSuite, "npn", test_spdylay_npn) ||
+      !CU_add_test(pSuite, "npn_get_proto_list",
+                   test_spdylay_npn_get_proto_list) ||
       !CU_add_test(pSuite, "session_recv", test_spdylay_session_recv) ||
       !CU_add_test(pSuite, "session_recv_invalid_stream_id",
                    test_spdylay_session_recv_invalid_stream_id) ||

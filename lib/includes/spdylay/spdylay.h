@@ -1994,6 +1994,41 @@ int spdylay_select_next_protocol(unsigned char **out, unsigned char *outlen,
                                  const unsigned char *in, unsigned int inlen);
 
 /**
+ * @struct
+ *
+ * This struct contains SPDY version information this library
+ * supports.
+ */
+typedef struct {
+  /**
+   * SPDY protocol version name which can be used as TLS NPN protocol
+   * string.
+   */
+  const unsigned char *proto;
+  /**
+   * The length of proto member.
+   */
+  uint8_t len;
+  /**
+   * The corresponding SPDY version constant which can be passed to
+   * `spdylay_session_client_new()` and `spdylay_session_server_new()`
+   * as version argument.
+   */
+  uint16_t version;
+} spdylay_npn_proto;
+
+/**
+ * @function
+ *
+ * Returns a pointer to the supported SPDY version list. The number of
+ * elements in the list will be assigned to the |*len_ptr|. It
+ * contains all SPDY version information this library supports. The
+ * application can use this information to configure NPN protocol
+ * offerings/selection.
+ */
+const spdylay_npn_proto* spdylay_npn_get_proto_list(size_t *len_ptr);
+
+/**
  * @function
  *
  * Returns spdy version which spdylay library supports from the given
