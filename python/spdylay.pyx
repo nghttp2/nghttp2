@@ -1488,8 +1488,8 @@ try:
     from urllib.parse import urlsplit
 
     class BaseSPDYStreamHandler:
-        def __init__(self, uri, fetcher):
-            self.uri = uri
+        def __init__(self, url, fetcher):
+            self.url = url
             self.fetcher = fetcher
             self.stream_id = None
 
@@ -1506,9 +1506,9 @@ try:
         pass
 
     class UrlFetcher:
-        def __init__(self, server_address, uris, StreamHandlerClass):
+        def __init__(self, server_address, urls, StreamHandlerClass):
             self.server_address = server_address
-            self.handlers = [StreamHandlerClass(uri, self) for uri in uris]
+            self.handlers = [StreamHandlerClass(url, self) for url in urls]
             self.streams = {}
             self.finished = []
 
@@ -1601,7 +1601,7 @@ try:
                                           self.server_address[1])
 
             for handler in self.handlers:
-                res = urlsplit(handler.uri)
+                res = urlsplit(handler.url)
                 if res.path:
                     path = res.path
                 else:
@@ -1644,33 +1644,33 @@ try:
                                   [self.sock] if want_write else [],
                                   [])
 
-    def _urlfetch_session_one(uris, StreamHandlerClass):
-        res = urlsplit(uris[0])
+    def _urlfetch_session_one(urls, StreamHandlerClass):
+        res = urlsplit(urls[0])
         if res.scheme != 'https':
             raise UrlFetchError('Unsupported scheme {}'.format(res.scheme))
         hostname = res.hostname
         port = res.port if res.port else 443
 
-        f = UrlFetcher((hostname, port), uris, StreamHandlerClass)
+        f = UrlFetcher((hostname, port), urls, StreamHandlerClass)
         f.loop()
 
-    def urlfetch(uri_or_uris, StreamHandlerClass):
-        if isinstance(uri_or_uris, str):
-            _urlfetch_session_one([uri_or_uris], StreamHandlerClass)
+    def urlfetch(url_or_urls, StreamHandlerClass):
+        if isinstance(url_or_urls, str):
+            _urlfetch_session_one([url_or_urls], StreamHandlerClass)
         else:
-            uris = []
+            urls = []
             prev_addr = (None, None)
-            for uri in uri_or_uris:
-                res = urlsplit(uri)
+            for url in url_or_urls:
+                res = urlsplit(url)
                 port = res.port if res.port else 443
                 if prev_addr != (res.hostname, port):
-                    if uris:
-                        _urlfetch_session_one(uris, StreamHandlerClass)
-                        uris = []
+                    if urls:
+                        _urlfetch_session_one(urls, StreamHandlerClass)
+                        urls = []
                 prev_addr = (res.hostname, port)
-                uris.append(uri)
-            if uris:
-                _urlfetch_session_one(uris, StreamHandlerClass)
+                urls.append(url)
+            if urls:
+                _urlfetch_session_one(urls, StreamHandlerClass)
 
 except ImportError:
     # No server for 2.x because they lack TLS NPN.
