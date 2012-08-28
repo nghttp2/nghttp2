@@ -113,16 +113,16 @@ Here is a simple SPDY client::
 
     class MyStreamHandler(spdylay.BaseSPDYStreamHandler):
         def on_header(self, nv):
-            sys.stdout.write('Stream#{}\n'.format(self.stream_id))
+            sys.stdout.write('Stream#{}\\n'.format(self.stream_id))
             for k, v in nv:
-                sys.stdout.write('{}: {}\n'.format(k, v))
+                sys.stdout.write('{}: {}\\n'.format(k, v))
 
         def on_data(self, data):
-            sys.stdout.write('Stream#{}\n'.format(self.stream_id))
+            sys.stdout.write('Stream#{}\\n'.format(self.stream_id))
             sys.stdout.buffer.write(data)
 
         def on_close(self, status_code):
-            sys.stdout.write('Stream#{} closed\n'.format(self.stream_id))
+            sys.stdout.write('Stream#{} closed\\n'.format(self.stream_id))
 
     if __name__ == '__main__':
         uris = sys.argv[1:]
