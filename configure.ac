@@ -231,6 +231,7 @@ AC_CONFIG_FILES([
   examples/Makefile
   doc/Makefile
   doc/conf.py
+  python/Makefile
 ])
 AC_OUTPUT
 

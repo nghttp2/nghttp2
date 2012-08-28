@@ -20,10 +20,5 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib examples tests doc python
-
-ACLOCAL_AMFLAGS = -I m4
-
-dist_doc_DATA = README.rst
-
-EXTRA_DIST = shrpx.conf.sample
+EXTRA_DIST = MANIFEST.in README.rst cspdylay.pxd setup.py \
+	spdyclient.py spdylay.pyx spdylay_tests.py spdyserv.py
