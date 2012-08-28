@@ -5,7 +5,7 @@ from libc.string cimport memcpy, memset
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, int32_t
 
 # Also update version in setup.py
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 class EOFError(Exception):
     pass
