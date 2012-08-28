@@ -1,3 +1,48 @@
+spdylay 0.3.3
+=============
+
+Release Note
+------------
+
+This release fixes the segmentation fault error if the name/value
+pairs which include empty string name are passed as nv argument to
+spdylay_submit_* functions. Spdycat gets new option to specify
+arbitrary headers from command line. Shrpx gets new option to specify
+allowed cipher list. Python wrapper python-spdylay was added.
+
+Changes
+-------
+
+* Add spdylay_npn_get_proto_list() public API function.
+  spdylay_npn_get_proto_list() returns a pointer to the supported SPDY
+  version list. The element of the list is spdylay_npn_proto
+  struct. It contains all SPDY version information this library
+  supports. The application can use this information to configure NPN
+  protocol offerings/selection.
+
+* Add --enable-example configure option. If --disable-example is used,
+  example programs will not be compiled.
+
+* Fix error with w64-mingw32 cross compiler.
+
+* Remove unused zlib.h header file from spdylay.h
+
+* Fix segmentation fault error if the name/value pairs which include
+  empty string name are passed as nv argument to spdylay_submit_*
+  functions.
+
+* spdycat: Adding arbitrary headers form the command line. Patch from
+  Stephen Ludin.
+
+* Fix intptr_t check in configure.ac. Patch from Stephen Ludin.
+
+* shrpx: add --ciphers option to specify allowed cipher list
+
+* python: Add Python wrapper for spdylay. It is released separately as
+  python-spdylay package from PyPI.
+
+
+
 spdylay 0.3.2
 =============
 
