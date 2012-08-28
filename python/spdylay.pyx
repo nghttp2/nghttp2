@@ -1578,6 +1578,13 @@ try:
 
         def loop(self):
             self.connect(self.server_address)
+            try:
+                self._loop()
+            finally:
+                self.sock.shutdown(socket.SHUT_RDWR)
+                self.sock.close()
+
+        def _loop(self):
             self.tls_handshake()
             self.sock.setblocking(False)
 
