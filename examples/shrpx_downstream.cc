@@ -536,14 +536,15 @@ int htp_hdrs_completecb(http_parser *htp)
      != 0) {
     return -1;
   }
-
-  if(downstream->get_request_method() == "HEAD") {
-    // Ignore the response body. HEAD response may contain
-    // Content-Length or Transfer-Encoding: chunked.
-    return 1;
-  } else {
-    return 0;
-  }
+  unsigned int status = downstream->get_response_http_status();
+  // Ignore the response body. HEAD response may contain
+  // Content-Length or Transfer-Encoding: chunked.  Some server send
+  // 304 status code with nonzero Content-Length, but without response
+  // body. See
+  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-20#section-3.3
+  return downstream->get_request_method() == "HEAD" ||
+    (100 <= status && status <= 199) || status == 204 ||
+    status == 304 ? 1 : 0;
 }
 } // namespace
 
