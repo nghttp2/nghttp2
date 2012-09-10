@@ -258,8 +258,9 @@ Session Objects
     Puts back previously deferred DATA frame in the stream *stream_id*
     to the outbound queue.
 
-    The :py:class:`InvalidArgumentError` will be raised if the stream
-    does not exist or no deferred data exist.
+    This method returns ``True`` if it succeeds, or ``False``.  This
+    method will fail if the stream does not exist or no deferred data
+    exist.
 
 .. py:method:: Session.want_read()
 

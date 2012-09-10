@@ -174,8 +174,7 @@ class SpdylayTests(unittest.TestCase):
         self.assertEqual(spdylay.GOAWAY_PROTOCOL_ERROR, frame.status_code)
 
     def test_resume_data(self):
-        with self.assertRaises(spdylay.InvalidArgumentError):
-            self.client_session.resume_data(1)
+        self.assertFalse(self.client_session.resume_data(1))
 
     def test_get_pri_lowest(self):
         self.assertEqual(7, self.client_session.get_pri_lowest())

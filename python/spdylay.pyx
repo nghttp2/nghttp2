@@ -778,9 +778,9 @@ cdef class Session:
         cpdef int rv
         rv = cspdylay.spdylay_session_resume_data(self._c_session, stream_id)
         if rv == 0:
-            return
+            return True
         elif rv == cspdylay.SPDYLAY_ERR_INVALID_ARGUMENT:
-            raise InvalidArgumentError(_strerror(rv))
+            return False
         elif rv == cspdylay.SPDYLAY_ERR_NOMEM:
             raise MemoryError()
 
