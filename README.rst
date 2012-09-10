@@ -96,13 +96,13 @@ http://spdylay.sourceforge.net/.  All public APIs are in
 *spdylay/spdylay.h*. All public API functions as well as the callback
 function typedefs are documented.
 
-Examples
---------
+SPDY Client/Server Programs
+---------------------------
 
-*examples* directory contains SPDY client and server implementation
-using Spdylay. These programs are intended to make sure that Spdylay
-API is acutally usable for real implementation and also for debugging
-purposes. Please note that OpenSSL with `NPN
+The *src* directory contains SPDY client and server implementations
+using Spdylay library. These programs are intended to make sure that
+Spdylay API is acutally usable for real implementation and also for
+debugging purposes. Please note that OpenSSL with `NPN
 <http://technotes.googlecode.com/git/nextprotoneg.html>`_ support is
 required in order to build and run these programs.  At the time of
 this writing, the OpenSSL 1.0.1 supports NPN.
@@ -114,7 +114,7 @@ The SPDY client is called ``spdycat``. It is a dead simple downloader
 like wget/curl. It connects to SPDY server and gets resources given in
 the command-line::
 
-    $ examples/spdycat -h
+    $ src/spdycat -h
     Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
                    [--key=<KEY>] <URI>...
 
@@ -141,7 +141,7 @@ the command-line::
                            The file must be in PEM format.
         --key=<KEY>        Use the client private key file. The file
                            must be in PEM format.
-    $ examples/spdycat -nv https://www.google.com/
+    $ src/spdycat -nv https://www.google.com/
     [  0.025] NPN select next protocol: the remote server offers:
               * spdy/3
               * spdy/2
@@ -181,10 +181,10 @@ Spdyd - SPDY server
 
 SPDY server is called ``spdyd`` and serves static files. It is single
 threaded and multiplexes connections using non-blocking socket. The
-static files are read using blocking I/O system call, read(2). It
+static files are read using blocking I/O system call, ``read(2)``. It
 speaks SPDY/2 and SPDY/3::
 
-    $ examples/spdyd --htdocs=/your/htdocs/ -v 3000 server.key server.crt
+    $ src/spdyd --htdocs=/your/htdocs/ -v 3000 server.key server.crt
     IPv4: listen on port 3000
     IPv6: listen on port 3000
     The negotiated next protocol: spdy/3
@@ -230,7 +230,7 @@ file ``shrpx.conf.sample``.
 
 Here is the command-line options::
 
-    $ examples/shrpx -h
+    $ src/shrpx -h
     Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]
                  [-c <NUM>] [-L <LEVEL>] [OPTIONS...]
                  <PRIVATE_KEY> <CERT>
@@ -297,6 +297,8 @@ Here is the command-line options::
                            Default: daemon
         --backlog=<NUM>    Set listen backlog size.
                            Default: 256
+        --ciphers=<SUITE>  Set allowed cipher list. The format of the
+                           string is described in OpenSSL ciphers(1).
         -h, --help         Print this help.
 
 
@@ -305,13 +307,13 @@ For those of you who are curious, ``shrpx`` is an abbreviation of
 
 Without ``-s`` option, it works in the following configuration::
 
-    client <-- SPDY, HTTPS --> Shrpx <-- HTTP --> Web Server
+    Client <-- (SPDY, HTTPS) --> Shrpx <-- (HTTP) --> Web Server
 
 With ``-s`` option, it works in the following configuration::
 
-    client <-- SPDY, HTTPS --> Shrpx <-- HTTP --> Proxy server (e.g., Squid)
+    Client <-- (SPDY, HTTPS) --> Shrpx <-- (HTTP) --> Proxy (e.g., Squid)
 
-    * client is configured to use Shrpx as SSL/SPDY proxy.
+    * Client is configured to use Shrpx as SSL/SPDY proxy.
 
 At the time of this writing, Chrome is the only browser which supports
 SSL/SPDY proxy. The one way to configure Chrome to use SSL/SPDY proxy
@@ -330,39 +332,14 @@ Then run chrome with the following arguments::
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
 
-Other examples
-++++++++++++++
+Examples
+--------
 
-There is another SPDY server called ``spdynative``, which is
-`node.native <https://github.com/d5/node.native>`_ style simple SPDY
-server::
+The *examples* directory contains a simple SPDY client implementation
+in C.
 
-    #include <iostream>
+Python-Spdylay - Python Wrapper
+-------------------------------
 
-    #include "spdy.h"
-
-    int main()
-    {
-      spdy server;
-      if(!server.listen("localhost", 8080, "server.key", "server.crt",
-                        [](request& req, response& res) {
-                          res.set_status(200);
-                          res.set_header("content-type", "text/plain");
-                          res.end("C++ FTW\n");
-                        }))
-        return EXIT_FAILURE;
-
-      std::cout << "Server running at http://localhost:8080/" << std::endl;
-      return reactor::run(server);
-    }
-
-Don't expect much from ``spdynative``. It is just an example and does
-not support asynchronous I/O at all.
-
-If you are looking for the example program written in C, see
-``spdycli`` which is the simple SPDY client.
-
-Python wrapper
---------------
-
-See ``python`` directory.
+The library comes with Python wrapper ``python-spdylay``. See
+``python`` directory.
