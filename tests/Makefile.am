@@ -54,11 +54,11 @@ AM_CFLAGS = -Wall -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_build
 
 TESTS = main failmalloc
 
-if ENABLE_EXAMPLES
+if ENABLE_SRC
 
 EXTRA_DIST = end_to_end.py
 TESTS += end_to_end.py
 
-endif # ENABLE_EXAMPLES
+endif # ENABLE_SRC
 
 endif # HAVE_CUNIT

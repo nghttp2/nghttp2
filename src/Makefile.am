@@ -21,7 +21,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-if ENABLE_EXAMPLES
+if ENABLE_SRC
 
 AM_CFLAGS = -Wall
 AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
@@ -92,4 +92,4 @@ shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	http-parser/http_parser.c http-parser/http_parser.h
 endif # HAVE_LIBEVENT_OPENSSL
 
-endif # ENABLE_EXAMPLES
+endif # ENABLE_SRC

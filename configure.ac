@@ -45,6 +45,11 @@ AC_ARG_ENABLE([maintainer-mode],
                     [Turn on compile time warnings])],
     [maintainer_mode=$withval], [maintainer_mode=no])
 
+AC_ARG_ENABLE([src],
+    [AS_HELP_STRING([--enable-src],
+                    [Build installable SPDY client/server programs in src])],
+    [request_src=$withval], [request_src=yes])
+
 AC_ARG_ENABLE([examples],
     [AS_HELP_STRING([--enable-examples],
                     [Build example programs])],
@@ -127,6 +132,15 @@ if test "x${have_libxml2}" = "xyes"; then
   AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
 fi
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
+
+# The src programs depend on OpenSSL
+enable_src=no
+if test "x${request_src}" = "xyes" &&
+   test "x${have_openssl}" = "xyes"; then
+    enable_src=yes
+fi
+
+AM_CONDITIONAL([ENABLE_SRC], [ test "x${enable_src}" = "xyes" ])
 
 # The example programs depend on OpenSSL
 enable_examples=no
@@ -255,5 +269,6 @@ AC_MSG_NOTICE([summary of build options:
     OpenSSL:        ${have_openssl}
     Libxml2:        ${have_libxml2}
     Libevent(SSL):  ${have_libevent_openssl}
+    Src:            ${enable_src}
     Examples:       ${enable_examples}
 ])
