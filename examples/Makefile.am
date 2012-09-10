@@ -33,3 +33,5 @@ noinst_PROGRAMS = spdycli
 spdycli_SOURCES = spdycli.c
 
 endif # ENABLE_EXAMPLES
+
+EXTRA_DIST = README.rst
