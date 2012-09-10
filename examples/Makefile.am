@@ -25,83 +25,11 @@ if ENABLE_EXAMPLES
 
 AM_CFLAGS = -Wall
 AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
-	@OPENSSL_CFLAGS@ @XML_CPPFLAGS@ @LIBEVENT_OPENSSL_CFLAGS@ @DEFS@
-AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@ @LIBEVENT_OPENSSL_LIBS@ -pthread
+	@OPENSSL_CFLAGS@ @DEFS@
+AM_LDFLAGS = @OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libspdylay.la
-
-bin_PROGRAMS = spdycat spdyd
-
-if HAVE_LIBEVENT_OPENSSL
-bin_PROGRAMS += shrpx
-endif # HAVE_LIBEVENT_OPENSSL
-
-HELPER_OBJECTS = uri.cc util.cc spdylay_ssl.cc
-HELPER_HFILES = uri.h util.h spdylay_ssl.h spdylay_config.h
-
-EVENT_OBJECTS =
-EVENT_HFILES = EventPoll.h EventPollEvent.h
-
-if HAVE_EPOLL
-EVENT_OBJECTS += EventPoll_epoll.cc
-EVENT_HFILES += EventPoll_epoll.h
-endif # HAVE_EPOLL
-
-if HAVE_KQUEUE
-EVENT_OBJECTS += EventPoll_kqueue.cc
-EVENT_HFILES += EventPoll_kqueue.h
-endif # HAVE_KQUEUE
-
-HTML_PARSER_OBJECTS =
-HTML_PARSER_HFILES = HtmlParser.h
-
-if HAVE_LIBXML2
-HTML_PARSER_OBJECTS += HtmlParser.cc
-endif # HAVE_LIBXML2
-
-SPDY_SERVER_OBJECTS = SpdyServer.cc
-SPDY_SERVER_HFILES = SpdyServer.h
-
-spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc \
-	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES}
-
-spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
-	${EVENT_OBJECTS} ${EVENT_HFILES} \
-	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES} \
-	spdyd.cc
-
-if HAVE_LIBEVENT_OPENSSL
-shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
-	shrpx_config.cc shrpx_config.h \
-	shrpx.cc shrpx.h \
-	shrpx_error.h \
-	shrpx_listen_handler.cc shrpx_listen_handler.h \
-	shrpx_client_handler.cc shrpx_client_handler.h \
-	shrpx_upstream.h \
-	shrpx_spdy_upstream.cc shrpx_spdy_upstream.h \
-	shrpx_https_upstream.cc shrpx_https_upstream.h \
-	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
-	shrpx_downstream.cc shrpx_downstream.h \
-	shrpx_downstream_connection.cc shrpx_downstream_connection.h \
-	shrpx_log.cc shrpx_log.h \
-	shrpx_http.cc shrpx_http.h \
-	shrpx_io_control.cc shrpx_io_control.h \
-	shrpx_ssl.cc shrpx_ssl.h \
-	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
-	shrpx_worker.cc shrpx_worker.h \
-	shrpx_accesslog.cc shrpx_accesslog.h\
-	http-parser/http_parser.c http-parser/http_parser.h
-endif # HAVE_LIBEVENT_OPENSSL
 
 noinst_PROGRAMS = spdycli
 spdycli_SOURCES = spdycli.c
-
-if HAVE_STDCXX_11
-noinst_PROGRAMS += spdynative
-spdynative_CXXFLAGS = -std=c++0x
-spdynative_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
-	${EVENT_OBJECTS} ${EVENT_HFILES} \
-	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES} \
-	spdy.h spdynative.cc
-endif # HAVE_STDCXX_11
 
 endif # ENABLE_EXAMPLES

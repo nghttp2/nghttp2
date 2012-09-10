@@ -228,6 +228,7 @@ AC_CONFIG_FILES([
   lib/includes/spdylay/spdylayver.h
   tests/Makefile
   tests/testdata/Makefile
+  src/Makefile
   examples/Makefile
   doc/Makefile
   doc/conf.py
