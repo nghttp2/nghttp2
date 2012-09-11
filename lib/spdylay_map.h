@@ -39,7 +39,6 @@ typedef uint32_t pri_type;
 
 typedef struct spdylay_map_entry {
   key_type key;
-  void *val;
   struct spdylay_map_entry *left, *right;
   pri_type priority;
 } spdylay_map_entry;
@@ -55,43 +54,56 @@ typedef struct {
 void spdylay_map_init(spdylay_map *map);
 
 /*
- * Deallocates any resources allocated for |map|. The stored items are
- * not freed by this function. Use spdylay_map_each() to free each
- * item.
+ * Deallocates any resources allocated for |map|. The stored entries
+ * are not freed by this function. Use spdylay_map_each_free() to free
+ * each entries.
  */
 void spdylay_map_free(spdylay_map *map);
 
 /*
- * Inserts the new item |val| with the key |key| to the map |map|.
+ * Deallocates each entries using |func| function and any resources
+ * allocated for |map|. The |func| function is responsible for freeing
+ * given the |entry| object. The |ptr| will be passed to the |func| as
+ * send argument. The return value of the |func| will be ignored.
+ */
+void spdylay_map_each_free(spdylay_map *map,
+                           int (*func)(spdylay_map_entry *entry, void *ptr),
+                           void *ptr);
+
+/*
+ * Initializes the |entry| with the |key|. All entries to be inserted
+ * to the map must be initialized with this function.
+ */
+void spdylay_map_entry_init(spdylay_map_entry *entry, key_type key);
+
+/*
+ * Inserts the new |entry| with the key |entry->key| to the map |map|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error code:
  *
  * SPDYLAY_ERR_INVALID_ARGUMENT
  *     The item associated by |key| already exists.
- *
- * SPDYLAY_ERR_NOMEM
- *     Out of memory.
  */
-int spdylay_map_insert(spdylay_map *map, key_type key, void *val);
+int spdylay_map_insert(spdylay_map *map, spdylay_map_entry *entry);
 
 /*
- * Returns the item associated by the key |key|.  If there is no such
- * item, this function returns NULL.
+ * Returns the entry associated by the key |key|.  If there is no such
+ * entry, this function returns NULL.
  */
-void* spdylay_map_find(spdylay_map *map, key_type key);
+spdylay_map_entry* spdylay_map_find(spdylay_map *map, key_type key);
 
 /*
- * Erases the item associated by the key |key|.  The erased item is
- * not freed by this function.
+ * Removes the entry associated by the key |key| from the |map|.  The
+ * removed entry is not freed by this function.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * SPDYLAY_ERR_INVALID_ARGUMENT
- *     The item associated by |key| does not exist.
+ *     The entry associated by |key| does not exist.
  */
-void spdylay_map_erase(spdylay_map *map, key_type key);
+int spdylay_map_remove(spdylay_map *map, key_type key);
 
 /*
  * Returns the number of items stored in the map |map|.
@@ -99,19 +111,21 @@ void spdylay_map_erase(spdylay_map *map, key_type key);
 size_t spdylay_map_size(spdylay_map *map);
 
 /*
- * Applies the function |func| to each key/item pair in the map |map|
- * with the optional user supplied pointer |ptr|.  This function is
- * useful to free item in the map.
+ * Applies the function |func| to each entry in the |map| with the
+ * optional user supplied pointer |ptr|.
  *
  * If the |func| returns 0, this function calls the |func| with the
- * next key and value pair. If the |func| returns nonzero, it will not
- * call the |func| for further key and value pair and return the
- * return value of the |func| immediately.  Thus, this function
- * returns 0 if all the invocations of the |func| return 0, or nonzero
- * value which the last invocation of |func| returns.
+ * next entry. If the |func| returns nonzero, it will not call the
+ * |func| for further entries and return the return value of the
+ * |func| immediately.  Thus, this function returns 0 if all the
+ * invocations of the |func| return 0, or nonzero value which the last
+ * invocation of |func| returns.
+ *
+ * Don't use this function to free each entry. Use
+ * spdylay_map_each_free() instead.
  */
 int spdylay_map_each(spdylay_map *map,
-                     int (*func)(key_type key, void *val, void *ptr),
+                     int (*func)(spdylay_map_entry *entry, void *ptr),
                      void *ptr);
 
 #endif /* SPDYLAY_MAP_H */

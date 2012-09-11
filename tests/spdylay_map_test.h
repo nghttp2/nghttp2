@@ -26,5 +26,6 @@
 #define SPDYLAY_MAP_TEST_H
 
 void test_spdylay_map(void);
+void test_spdylay_map_each_free(void);
 
 #endif /* SPDYLAY_MAP_TEST_H */

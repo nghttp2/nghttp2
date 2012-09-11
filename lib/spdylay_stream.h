@@ -31,6 +31,7 @@
 
 #include <spdylay/spdylay.h>
 #include "spdylay_outbound_item.h"
+#include "spdylay_map.h"
 
 /*
  * If local peer is stream initiator:
@@ -76,6 +77,9 @@ typedef enum {
 } spdylay_deferred_flag;
 
 typedef struct {
+  /* Intrusive Map */
+  spdylay_map_entry map_entry;
+  /* stream ID */
   int32_t stream_id;
   spdylay_stream_state state;
   /* Use same value in SYN_STREAM frame */

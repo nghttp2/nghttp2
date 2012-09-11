@@ -252,7 +252,7 @@ static int spdylay_session_new(spdylay_session **session_ptr,
  fail_ob_ss_pq:
   spdylay_pq_free(&(*session_ptr)->ob_pq);
  fail_ob_pq:
-  spdylay_map_free(&(*session_ptr)->streams);
+  /* No need to free (*session_ptr)->streams) here. */
   spdylay_zlib_inflate_free(&(*session_ptr)->hd_inflater);
  fail_hd_inflater:
   spdylay_zlib_deflate_free(&(*session_ptr)->hd_deflater);
@@ -297,10 +297,10 @@ int spdylay_session_server_new(spdylay_session **session_ptr,
   return r;
 }
 
-static int spdylay_free_streams(key_type key, void *val, void *ptr)
+static int spdylay_free_streams(spdylay_map_entry *entry, void *ptr)
 {
-  spdylay_stream_free((spdylay_stream*)val);
-  free(val);
+  spdylay_stream_free((spdylay_stream*)entry);
+  free(entry);
   return 0;
 }
 
@@ -329,8 +329,7 @@ void spdylay_session_del(spdylay_session *session)
   if(session == NULL) {
     return;
   }
-  spdylay_map_each(&session->streams, spdylay_free_streams, NULL);
-  spdylay_map_free(&session->streams);
+  spdylay_map_each_free(&session->streams, spdylay_free_streams, NULL);
   spdylay_session_ob_pq_free(&session->ob_pq);
   spdylay_session_ob_pq_free(&session->ob_ss_pq);
   spdylay_zlib_deflate_free(&session->hd_deflater);
@@ -479,7 +478,7 @@ spdylay_stream* spdylay_session_open_stream(spdylay_session *session,
                       session->remote_settings
                       [SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE],
                       stream_user_data);
-  r = spdylay_map_insert(&session->streams, stream_id, stream);
+  r = spdylay_map_insert(&session->streams, &stream->map_entry);
   if(r != 0) {
     free(stream);
     stream = NULL;
@@ -508,7 +507,7 @@ int spdylay_session_close_stream(spdylay_session *session, int32_t stream_id,
     } else {
       --session->num_incoming_streams;
     }
-    spdylay_map_erase(&session->streams, stream_id);
+    spdylay_map_remove(&session->streams, stream_id);
     spdylay_stream_free(stream);
     free(stream);
     return 0;
@@ -1828,13 +1827,13 @@ int spdylay_session_on_rst_stream_received(spdylay_session *session,
   return 0;
 }
 
-static int spdylay_update_initial_window_size_func(key_type key, void *value,
+static int spdylay_update_initial_window_size_func(spdylay_map_entry *entry,
                                                    void *ptr)
 {
   spdylay_update_window_size_arg *arg;
   spdylay_stream *stream;
   arg = (spdylay_update_window_size_arg*)ptr;
-  stream = (spdylay_stream*)value;
+  stream = (spdylay_stream*)entry;
   spdylay_stream_update_initial_window_size(stream,
                                             arg->new_window_size,
                                             arg->old_window_size);

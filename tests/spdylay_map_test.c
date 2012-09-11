@@ -28,39 +28,94 @@
 
 #include "spdylay_map.h"
 
+typedef struct strentry {
+  spdylay_map_entry map_entry;
+  const char *str;
+} strentry;
+
+static void strentry_init(strentry *entry, key_type key, const char *str)
+{
+  spdylay_map_entry_init(&entry->map_entry, key);
+  entry->str = str;
+}
+
 void test_spdylay_map(void)
 {
+  strentry foo, FOO, bar, baz, shrubbery;
   spdylay_map map;
   spdylay_map_init(&map);
-  CU_ASSERT(0 == spdylay_map_insert(&map, 1, (void*)"foo"));
-  CU_ASSERT(strcmp("foo", spdylay_map_find(&map, 1)) == 0);
-  CU_ASSERT(1 == spdylay_map_size(&map));
-  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT == spdylay_map_insert(&map, 1,
-                                                               (void*)"FOO"));
-  CU_ASSERT(1 == spdylay_map_size(&map));
-  CU_ASSERT(strcmp("foo", spdylay_map_find(&map, 1)) == 0);
-  CU_ASSERT(0 == spdylay_map_insert(&map, 2, (void*)"bar"));
-  CU_ASSERT(2 == spdylay_map_size(&map));
-  CU_ASSERT(0 == spdylay_map_insert(&map, 3, (void*)"baz"));
-  CU_ASSERT(3 == spdylay_map_size(&map));
-  CU_ASSERT(0 == spdylay_map_insert(&map, 4, (void*)"shrubbery"));
-  CU_ASSERT(4 == spdylay_map_size(&map));
-  CU_ASSERT(strcmp("baz", spdylay_map_find(&map, 3)) == 0);
 
-  spdylay_map_erase(&map, 3);
+  strentry_init(&foo, 1, "foo");
+  strentry_init(&FOO, 1, "FOO");
+  strentry_init(&bar, 2, "bar");
+  strentry_init(&baz, 3, "baz");
+  strentry_init(&shrubbery, 4, "shrubbery");
+
+  CU_ASSERT(0 == spdylay_map_insert(&map, &foo.map_entry));
+  CU_ASSERT(strcmp("foo", ((strentry*)spdylay_map_find(&map, 1))->str) == 0);
+  CU_ASSERT(1 == spdylay_map_size(&map));
+
+  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
+            spdylay_map_insert(&map, &FOO.map_entry));
+
+  CU_ASSERT(1 == spdylay_map_size(&map));
+  CU_ASSERT(strcmp("foo", ((strentry*)spdylay_map_find(&map, 1))->str) == 0);
+
+  CU_ASSERT(0 == spdylay_map_insert(&map, &bar.map_entry));
+  CU_ASSERT(2 == spdylay_map_size(&map));
+
+  CU_ASSERT(0 == spdylay_map_insert(&map, &baz.map_entry));
+  CU_ASSERT(3 == spdylay_map_size(&map));
+
+  CU_ASSERT(0 == spdylay_map_insert(&map, &shrubbery.map_entry));
+  CU_ASSERT(4 == spdylay_map_size(&map));
+
+  CU_ASSERT(strcmp("baz", ((strentry*)spdylay_map_find(&map, 3))->str) == 0);
+
+  spdylay_map_remove(&map, 3);
   CU_ASSERT(3 == spdylay_map_size(&map));
   CU_ASSERT(NULL == spdylay_map_find(&map, 3));
-  spdylay_map_erase(&map, 1);
+
+  spdylay_map_remove(&map, 1);
   CU_ASSERT(2 == spdylay_map_size(&map));
   CU_ASSERT(NULL == spdylay_map_find(&map, 1));
 
   /* Erasing non-existent entry */
-  spdylay_map_erase(&map, 1);
+  spdylay_map_remove(&map, 1);
   CU_ASSERT(2 == spdylay_map_size(&map));
   CU_ASSERT(NULL == spdylay_map_find(&map, 1));
 
-  CU_ASSERT(strcmp("bar", spdylay_map_find(&map, 2)) == 0);
-  CU_ASSERT(strcmp("shrubbery", spdylay_map_find(&map, 4)) == 0);
+  CU_ASSERT(strcmp("bar", ((strentry*)spdylay_map_find(&map, 2))->str) == 0);
+  CU_ASSERT(strcmp("shrubbery",
+                   ((strentry*)spdylay_map_find(&map, 4))->str) == 0);
 
   spdylay_map_free(&map);
+}
+
+static int entry_free(spdylay_map_entry *entry, void *ptr)
+{
+  free(entry);
+  return 0;
+}
+
+void test_spdylay_map_each_free(void)
+{
+  strentry *foo = malloc(sizeof(strentry)),
+    *bar = malloc(sizeof(strentry)),
+    *baz = malloc(sizeof(strentry)),
+    *shrubbery = malloc(sizeof(strentry));
+  spdylay_map map;
+  spdylay_map_init(&map);
+
+  strentry_init(foo, 1, "foo");
+  strentry_init(bar, 2, "bar");
+  strentry_init(baz, 3, "baz");
+  strentry_init(shrubbery, 4, "shrubbery");
+
+  spdylay_map_insert(&map, &foo->map_entry);
+  spdylay_map_insert(&map, &bar->map_entry);
+  spdylay_map_insert(&map, &baz->map_entry);
+  spdylay_map_insert(&map, &shrubbery->map_entry);
+
+  spdylay_map_each_free(&map, entry_free, NULL);
 }

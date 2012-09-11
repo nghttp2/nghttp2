@@ -32,6 +32,7 @@ void spdylay_stream_init(spdylay_stream *stream, int32_t stream_id,
                          int32_t initial_window_size,
                          void *stream_user_data)
 {
+  spdylay_map_entry_init(&stream->map_entry, stream_id);
   stream->stream_id = stream_id;
   stream->flags = flags;
   stream->pri = pri;
