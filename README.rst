@@ -12,7 +12,7 @@ library code does not depend on any particular SSL library (except for
 example programs which depend on OpenSSL 1.0.1 or later).
 
 This project also develops SPDY client, server and proxy on top of
-Spdylay library. See `SPDY Client/Server Programs`_ section.
+Spdylay library. See `SPDY Client and Server Programs`_ section.
 
 Development Status
 ------------------
@@ -99,8 +99,8 @@ http://spdylay.sourceforge.net/.  All public APIs are in
 *spdylay/spdylay.h*. All public API functions as well as the callback
 function typedefs are documented.
 
-SPDY Client/Server Programs
----------------------------
+SPDY Client and Server Programs
+-------------------------------
 
 The *src* directory contains SPDY client and server implementations
 using Spdylay library. These programs are intended to make sure that
