@@ -228,6 +228,15 @@ SSL/SPDY proxy mode, use ``--spdy-proxy`` option.  It also supports
 configuration file. See ``--conf`` option and sample configuration
 file ``shrpx.conf.sample``.
 
+We briefly describe the architecture of ``shrpx`` here.  It has a
+dedicated thread which listens on server sockets.  When it accepted
+the incoming connection, it passes the file descriptor of the incoming
+connection to one of the worker thread.  Each worker thread has its
+own event loop and can handle many connections using non-blocking I/O.
+The number of worker thread can be specified using the command-line
+option. The `libevent <http://libevent.org/>`_ is used to handle
+low-level network I/O.
+
 Here is the command-line options::
 
     $ src/shrpx -h
