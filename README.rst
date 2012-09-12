@@ -11,6 +11,9 @@ the application can freely choose the way of handling events. This
 library code does not depend on any particular SSL library (except for
 example programs which depend on OpenSSL 1.0.1 or later).
 
+This project also develops SPDY client, server and proxy on top of
+Spdylay library. See `SPDY Client/Server Programs`_ section.
+
 Development Status
 ------------------
 
