@@ -4,7 +4,7 @@ from distutils.extension import Extension
 setup(
     name = 'python-spdylay',
     # Also update __version__ in spdylay.pyx
-    version = '0.1.1',
+    version = '0.1.2',
     description = 'Python SPDY library on top of Spdylay C library',
     author = 'Tatsuhiro Tsujikawa',
     author_email = 'tatsuhiro.t@gmail.com',
