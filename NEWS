@@ -1,3 +1,51 @@
+spdylay 0.3.5
+=============
+
+Release Note
+------------
+
+This release fixes the bug that shrpx tries to read response body when
+HTTP status code is 304 and nonzero Content-Length is returned.  The
+SPDY client and server programs, spdycat, spdyd and shrpx, were moved
+to src directory. The --enable-src configure option was added to
+enable/disable to build them. In Python API, Session.resume_data() now
+returns boolean value to indicate error instead of raising
+InvalidArgumentError.
+
+This release was made because the previous release, 0.3.4, did not
+update library version. Other than updated library version number,
+anything has not been changed since 0.3.4.
+
+Changes
+-------
+
+* shrpx: Check request_connection_close_ when deciding closing
+  connection.  When deciding whether to close the client connection,
+  check request_connection_close_ of Downstream in addition of
+  response_connection_close_. Also we only add "Connection:
+  Keep-Alive" header to the HTTP/1.0 or HTTP/0.9 clients.
+
+* python: Don't raise exception from Session.resume_data().  In
+  practice, Session.resume_data() will be used without checking there
+  is deferred data or not. Actually, there is no API to check this.
+  So it is better not to raise exception. Instead return False to
+  notify error. If the method succeeds, it returns True.
+
+* Add --enable-src configure option.  When --enable-src is given, the
+  programs in src directory will be built. If --disable-src is given,
+  those programs will not be built. If none of them are given,
+  --enable-src is assumed.
+
+* Move spdycat, spdyd and shrpx from examples to src.  To distinguish
+  the to-be-installed programs and non-installable example source
+  code, the former programs, spdycat, spdydyd and shrpx, were moved to
+  src directory. spdynative was removed from Makefile because it does
+  not appeal to any users much.
+
+* shrpx: Ignore response body if HTTP status code is 1xx, 204 or 304.
+
+
+
 spdylay 0.3.4
 =============
 
