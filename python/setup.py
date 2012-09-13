@@ -79,7 +79,7 @@ Here is a simple SPDY server::
             self.send_response(200)
             self.send_header('content-type', 'text/html; charset=UTF-8')
 
-            content = '''\
+            content = '''\\
     <html>
     <head><title>SPDY FTW</title></head>
     <body>
