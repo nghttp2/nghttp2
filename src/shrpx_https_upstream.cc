@@ -579,14 +579,17 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     }
   }
 
-  if(downstream->get_response_version() < 101) {
-    if(!downstream->get_response_connection_close()) {
+  // We check downstream->get_response_connection_close() in case when
+  // the Content-Length is not available.
+  if(!downstream->get_request_connection_close() &&
+     !downstream->get_response_connection_close()) {
+    if(downstream->get_request_major() <= 0 ||
+       downstream->get_request_minor() <= 0) {
+      // We add this header for HTTP/1.0 or HTTP/0.9 clients
       hdrs += "Connection: Keep-Alive\r\n";
     }
   } else {
-    if(downstream->get_response_connection_close()) {
-      hdrs += "Connection: close\r\n";
-    }
+    hdrs += "Connection: close\r\n";
   }
 
   hdrs += "Via: ";
@@ -642,7 +645,8 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream)
   if(ENABLE_LOG) {
     LOG(INFO) << "Downstream on_downstream_body_complete";
   }
-  if(downstream->get_response_connection_close()) {
+  if(downstream->get_request_connection_close() ||
+     downstream->get_response_connection_close()) {
     ClientHandler *handler = get_client_handler();
     handler->set_should_close_after_write(true);
   }
