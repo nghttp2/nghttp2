@@ -26,7 +26,13 @@
 
 #include <assert.h>
 
-#define COMPRESSION_LEVEL 9
+/* By default header compression is disabled */
+#undef ENABLE_HD_COMP
+#ifdef ENABLE_HD_COMP
+#  define COMPRESSION_LEVEL 9
+#else /* !ENABLE_HD_COMP */
+#  define COMPRESSION_LEVEL 0
+#endif /* !ENABLE_HD_COMP */
 #define WINDOW_BITS 11
 #define MEM_LEVEL 1
 
