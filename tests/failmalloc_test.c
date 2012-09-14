@@ -299,7 +299,7 @@ static void run_spdylay_session_recv(void)
   ud.df = &df;
 
   spdylay_failmalloc_pause();
-  spdylay_zlib_deflate_hd_init(&deflater, SPDYLAY_PROTO_SPDY3);
+  spdylay_zlib_deflate_hd_init(&deflater, 1, SPDYLAY_PROTO_SPDY3);
   spdylay_session_server_new(&session, SPDYLAY_PROTO_SPDY3, &callbacks, &ud);
   spdylay_failmalloc_unpause();
 
@@ -414,7 +414,7 @@ static void run_spdylay_frame_pack_syn_stream(void)
   int rv;
 
   spdylay_buffer_init(&inflatebuf, 4096);
-  rv = spdylay_zlib_deflate_hd_init(&deflater, SPDYLAY_PROTO_SPDY3);
+  rv = spdylay_zlib_deflate_hd_init(&deflater, 1, SPDYLAY_PROTO_SPDY3);
   if(rv != 0) {
     goto deflate_init_fail;
   }

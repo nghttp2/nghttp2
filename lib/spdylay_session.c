@@ -140,7 +140,8 @@ static int spdylay_session_new(spdylay_session **session_ptr,
                                uint16_t version,
                                const spdylay_session_callbacks *callbacks,
                                void *user_data,
-                               size_t cli_certvec_length)
+                               size_t cli_certvec_length,
+                               int hd_comp)
 {
   int r;
   if(version != SPDYLAY_PROTO_SPDY2 && version != SPDYLAY_PROTO_SPDY3) {
@@ -172,6 +173,7 @@ static int spdylay_session_new(spdylay_session **session_ptr,
   (*session_ptr)->max_recv_ctrl_frame_buf = (1 << 24)-1;
 
   r = spdylay_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater,
+                                   hd_comp,
                                    (*session_ptr)->version);
   if(r != 0) {
     goto fail_hd_deflater;
@@ -268,8 +270,9 @@ int spdylay_session_client_new(spdylay_session **session_ptr,
                                void *user_data)
 {
   int r;
+  /* For client side session, header compression is disabled. */
   r = spdylay_session_new(session_ptr, version, callbacks, user_data,
-                          SPDYLAY_INITIAL_CLIENT_CERT_VECTOR_LENGTH);
+                          SPDYLAY_INITIAL_CLIENT_CERT_VECTOR_LENGTH, 0);
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 1;
@@ -285,8 +288,9 @@ int spdylay_session_server_new(spdylay_session **session_ptr,
                                void *user_data)
 {
   int r;
+  /* Enable header compression on server side. */
   r = spdylay_session_new(session_ptr, version, callbacks, user_data,
-                          0);
+                          0, 1 /* hd_comp */);
   if(r == 0) {
     (*session_ptr)->server = 1;
     /* IDs for use in client */

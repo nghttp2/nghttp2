@@ -26,13 +26,7 @@
 
 #include <assert.h>
 
-/* By default header compression is disabled */
-#undef ENABLE_HD_COMP
-#ifdef ENABLE_HD_COMP
-#  define COMPRESSION_LEVEL 9
-#else /* !ENABLE_HD_COMP */
-#  define COMPRESSION_LEVEL 0
-#endif /* !ENABLE_HD_COMP */
+#define COMPRESSION_LEVEL 9
 #define WINDOW_BITS 11
 #define MEM_LEVEL 1
 
@@ -246,7 +240,8 @@ static const uint8_t* spdylay_select_hd_dict(size_t *len_ptr, uint16_t version)
   return hd_dict;
 }
 
-int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater, uint16_t version)
+int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater, int comp,
+                                 uint16_t version)
 {
   const unsigned char *hd_dict;
   size_t hd_dict_length;
@@ -259,8 +254,10 @@ int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater, uint16_t version)
   if(hd_dict == NULL) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
   }
-  if(Z_OK != deflateInit2(&deflater->zst, COMPRESSION_LEVEL, Z_DEFLATED,
-                          WINDOW_BITS, MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
+  if(Z_OK != deflateInit2(&deflater->zst,
+                          comp ? COMPRESSION_LEVEL : Z_NO_COMPRESSION,
+                          Z_DEFLATED, WINDOW_BITS, MEM_LEVEL,
+                          Z_DEFAULT_STRATEGY)) {
     return SPDYLAY_ERR_ZLIB;
   }
   if(Z_OK != deflateSetDictionary(&deflater->zst, (uint8_t*)hd_dict,

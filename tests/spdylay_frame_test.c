@@ -305,7 +305,7 @@ static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   size_t buflen = 0, nvbuflen = 0;
   ssize_t framelen;
 
-  spdylay_zlib_deflate_hd_init(&deflater, version);
+  spdylay_zlib_deflate_hd_init(&deflater, 1, version);
   spdylay_zlib_inflate_hd_init(&inflater, version);
   spdylay_frame_syn_stream_init(&frame.syn_stream, version,
                                 SPDYLAY_CTRL_FLAG_FIN, 65536, 1000000007, 3,
@@ -358,8 +358,8 @@ void test_spdylay_frame_pack_syn_stream_frame_too_large(void)
   const char *big_hds[] = { "header", big_val, NULL };
   memset(big_val, '0', big_vallen);
   big_val[big_vallen] = '\0';
-
-  spdylay_zlib_deflate_hd_init(&deflater, SPDYLAY_PROTO_SPDY3);
+  /* No compression */
+  spdylay_zlib_deflate_hd_init(&deflater, 0, SPDYLAY_PROTO_SPDY3);
   spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY3,
                                 SPDYLAY_CTRL_FLAG_FIN, 65536, 1000000007, 3,
                                 spdylay_frame_nv_copy(big_hds));
@@ -382,7 +382,7 @@ static void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
   uint8_t *buf = NULL, *nvbuf = NULL;
   size_t buflen = 0, nvbuflen = 0;
   ssize_t framelen;
-  spdylay_zlib_deflate_hd_init(&deflater, version);
+  spdylay_zlib_deflate_hd_init(&deflater, 1, version);
   spdylay_zlib_inflate_hd_init(&inflater, version);
   spdylay_frame_syn_reply_init(&frame.syn_reply, version,
                                SPDYLAY_CTRL_FLAG_FIN, 3,
@@ -430,7 +430,7 @@ static void test_spdylay_frame_pack_headers_version(uint16_t version)
   spdylay_buffer inflatebuf;
   ssize_t framelen;
   spdylay_buffer_init(&inflatebuf, 4096);
-  spdylay_zlib_deflate_hd_init(&deflater, version);
+  spdylay_zlib_deflate_hd_init(&deflater, 1, version);
   spdylay_zlib_inflate_hd_init(&inflater, version);
   spdylay_frame_headers_init(&frame.headers, version,
                              SPDYLAY_CTRL_FLAG_FIN, 3,

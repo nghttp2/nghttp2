@@ -40,8 +40,9 @@ typedef struct {
 } spdylay_zlib;
 
 /*
- * Initializes |deflater| for deflating name/values pairs in the
- * frame of the protocol version |version|.
+ * Initializes |deflater| for deflating name/values pairs in the frame
+ * of the protocol version |version|. If the |comp| is zero,
+ * compression level becomes 0, which means no compression.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -51,7 +52,8 @@ typedef struct {
  * SPDYLAY_ERR_UNSUPPORTED_VERSION
  *     The version is not supported.
  */
-int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater, uint16_t version);
+int spdylay_zlib_deflate_hd_init(spdylay_zlib *deflater, int comp,
+                                 uint16_t version);
 
 /*
  * Initializes |inflater| for inflating name/values pairs in the
