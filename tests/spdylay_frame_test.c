@@ -346,6 +346,35 @@ void test_spdylay_frame_pack_syn_stream_spdy3(void)
   test_spdylay_frame_pack_syn_stream_version(SPDYLAY_PROTO_SPDY3);
 }
 
+void test_spdylay_frame_pack_syn_stream_frame_too_large(void)
+{
+  spdylay_zlib deflater;
+  spdylay_frame frame;
+  uint8_t *buf = NULL, *nvbuf = NULL;
+  size_t buflen = 0, nvbuflen = 0;
+  ssize_t framelen;
+  size_t big_vallen = 16777215;
+  char *big_val = malloc(big_vallen + 1);
+  const char *big_hds[] = { "header", big_val, NULL };
+  memset(big_val, '0', big_vallen);
+  big_val[big_vallen] = '\0';
+
+  spdylay_zlib_deflate_hd_init(&deflater, SPDYLAY_PROTO_SPDY3);
+  spdylay_frame_syn_stream_init(&frame.syn_stream, SPDYLAY_PROTO_SPDY3,
+                                SPDYLAY_CTRL_FLAG_FIN, 65536, 1000000007, 3,
+                                spdylay_frame_nv_copy(big_hds));
+  framelen = spdylay_frame_pack_syn_stream(&buf, &buflen,
+                                           &nvbuf, &nvbuflen,
+                                           &frame.syn_stream, &deflater);
+  CU_ASSERT_EQUAL(SPDYLAY_ERR_FRAME_TOO_LARGE, framelen);
+
+  spdylay_frame_syn_stream_free(&frame.syn_stream);
+  free(buf);
+  free(nvbuf);
+  free(big_val);
+  spdylay_zlib_deflate_free(&deflater);
+}
+
 static void test_spdylay_frame_pack_syn_reply_version(uint16_t version)
 {
   spdylay_zlib deflater, inflater;

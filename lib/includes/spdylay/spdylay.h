@@ -168,6 +168,10 @@ typedef enum {
    */
   SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE = -521,
   /**
+   * The length of the frame is too large.
+   */
+  SPDYLAY_ERR_FRAME_TOO_LARGE = -522,
+  /**
    * The errors < :enum:`SPDYLAY_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).

@@ -107,6 +107,11 @@ ssize_t spdylay_frame_alloc_pack_nv(uint8_t **buf_ptr,
     return framelen;
   }
   framelen += nv_offset;
+
+  if(framelen - SPDYLAY_FRAME_HEAD_LENGTH > SPDYLAY_LENGTH_MASK) {
+    /* In SPDY/2 and 3, Max frame size is 2**24 - 1. */
+    return SPDYLAY_ERR_FRAME_TOO_LARGE;
+  }
   return framelen;
 }
 

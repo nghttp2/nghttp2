@@ -186,6 +186,8 @@ int main(int argc, char* argv[])
                    test_spdylay_frame_pack_syn_stream_spdy2) ||
       !CU_add_test(pSuite, "frame_pack_syn_stream_spdy3",
                    test_spdylay_frame_pack_syn_stream_spdy3) ||
+      !CU_add_test(pSuite, "frame_pack_syn_stream_frame_too_large",
+                   test_spdylay_frame_pack_syn_stream_frame_too_large) ||
       !CU_add_test(pSuite, "frame_pack_syn_reply_spdy2",
                    test_spdylay_frame_pack_syn_reply_spdy2) ||
       !CU_add_test(pSuite, "frame_pack_syn_reply_spdy3",

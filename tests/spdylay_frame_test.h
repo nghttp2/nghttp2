@@ -35,6 +35,7 @@ void test_spdylay_frame_pack_goaway_spdy2(void);
 void test_spdylay_frame_pack_goaway_spdy3(void);
 void test_spdylay_frame_pack_syn_stream_spdy2(void);
 void test_spdylay_frame_pack_syn_stream_spdy3(void);
+void test_spdylay_frame_pack_syn_stream_frame_too_large(void);
 void test_spdylay_frame_pack_syn_reply_spdy2(void);
 void test_spdylay_frame_pack_syn_reply_spdy3(void);
 void test_spdylay_frame_pack_headers_spdy2(void);
