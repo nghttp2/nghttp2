@@ -274,6 +274,55 @@ void on_data_chunk_recv_callback(spdylay_session *session,
 }
 } // namespace
 
+namespace {
+void on_ctrl_not_send_callback(spdylay_session *session,
+                               spdylay_frame_type type,
+                               spdylay_frame *frame,
+                               int error_code, void *user_data)
+{
+  LOG(WARNING) << "Failed to send control frame type=" << type << ", "
+               << "error_code=" << error_code << ":"
+               << spdylay_strerror(error_code);
+  if(type == SPDYLAY_SYN_REPLY) {
+    // To avoid stream hanging around, issue RST_STREAM.
+    SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+    int32_t stream_id = frame->syn_reply.stream_id;
+    Downstream *downstream = upstream->find_downstream(stream_id);
+    if(downstream) {
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    }
+  }
+}
+} // namespace
+
+namespace {
+void on_ctrl_recv_parse_error_callback(spdylay_session *session,
+                                       spdylay_frame_type type,
+                                       const uint8_t *head, size_t headlen,
+                                       const uint8_t *payload,
+                                       size_t payloadlen, int error_code,
+                                       void *user_data)
+{
+  if(ENABLE_LOG) {
+    LOG(INFO) << "Failed to parse received control frame. type=" << type
+              << ", error_code=" << error_code << ":"
+              << spdylay_strerror(error_code);
+  }
+}
+} // namespace
+
+namespace {
+void on_unknown_ctrl_recv_callback(spdylay_session *session,
+                                   const uint8_t *head, size_t headlen,
+                                   const uint8_t *payload, size_t payloadlen,
+                                   void *user_data)
+{
+  if(ENABLE_LOG) {
+    LOG(INFO) << "Received unknown control frame.";
+  }
+}
+} // namespace
+
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   : handler_(handler),
     session_(0)
@@ -289,6 +338,10 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_ctrl_not_send_callback = on_ctrl_not_send_callback;
+  callbacks.on_ctrl_recv_parse_error_callback =
+    on_ctrl_recv_parse_error_callback;
+  callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
 
   int rv;
   rv = spdylay_session_server_new(&session_, version, &callbacks, this);
