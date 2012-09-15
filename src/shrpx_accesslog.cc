@@ -74,4 +74,18 @@ void upstream_spdy_stream(const std::string& client_ip, int32_t stream_id)
   }
 }
 
+void upstream_spdy_stream_close(const std::string& client_ip,
+                                int32_t stream_id)
+{
+  char datestr[64];
+  get_datestr(datestr);
+  fprintf(stderr, "[%s] %s SPDY stream_id=%d closed\n",
+          datestr, client_ip.c_str(), stream_id);
+  fflush(stderr);
+  if(get_config()->use_syslog) {
+    syslog(LOG_INFO, "%s SPDY stream_id=%d closed\n",
+           client_ip.c_str(), stream_id);
+  }
+}
+
 } // namespace shrpx

@@ -33,6 +33,8 @@ namespace shrpx {
 
 void upstream_connect(const std::string& client_ip);
 void upstream_spdy_stream(const std::string& client_ip, int32_t stream_id);
+void upstream_spdy_stream_close(const std::string& client_ip,
+                                int32_t stream_id);
 
 } // namespace shrpx
 

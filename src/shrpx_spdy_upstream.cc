@@ -98,6 +98,10 @@ void on_stream_close_callback
   }
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   Downstream *downstream = upstream->find_downstream(stream_id);
+  if(get_config()->accesslog) {
+    upstream_spdy_stream_close(upstream->get_client_handler()->get_ipaddr(),
+                               stream_id);
+  }
   if(downstream) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       upstream->remove_downstream(downstream);
