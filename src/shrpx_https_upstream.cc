@@ -540,8 +540,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   std::string via_value;
   char temp[16];
   snprintf(temp, sizeof(temp), "HTTP/%d.%d ",
-           downstream->get_response_major(),
-           downstream->get_response_minor());
+           downstream->get_request_major(),
+           downstream->get_request_minor());
   std::string hdrs = temp;
   hdrs += http::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
