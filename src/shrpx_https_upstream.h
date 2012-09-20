@@ -29,8 +29,6 @@
 
 #include <stdint.h>
 
-#include <deque>
-
 extern "C" {
 #include "http-parser/http_parser.h"
 }
@@ -54,10 +52,9 @@ public:
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
   virtual bufferevent_event_cb get_downstream_eventcb();
-  void add_downstream(Downstream *downstream);
-  void pop_downstream();
-  Downstream* get_top_downstream();
-  Downstream* get_last_downstream();
+  void attach_downstream(Downstream *downstream);
+  void delete_downstream();
+  Downstream* get_downstream() const;
   int error_reply(int status_code);
 
   void pause_read(IOCtrlReason reason);
@@ -73,7 +70,7 @@ private:
   ClientHandler *handler_;
   http_parser *htp_;
   size_t current_header_length_;
-  std::deque<Downstream*> downstream_queue_;
+  Downstream *downstream_;
   IOControl ioctrl_;
 };
 
