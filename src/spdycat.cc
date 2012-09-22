@@ -738,6 +738,7 @@ int main(int argc, char **argv)
       // Note that there is no processing currently to handle multiple
       // message-header fields with the same field name
       config.headers.insert(std::pair<std::string,std::string>(header, value));
+      break;
     }
     case 'a':
 #ifdef HAVE_LIBXML2
