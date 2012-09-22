@@ -43,17 +43,17 @@ dnl Checks for command-line options
 AC_ARG_ENABLE([maintainer-mode],
     [AS_HELP_STRING([--enable-maintainer-mode],
                     [Turn on compile time warnings])],
-    [maintainer_mode=$withval], [maintainer_mode=no])
+    [maintainer_mode=$enableval], [maintainer_mode=no])
 
 AC_ARG_ENABLE([src],
     [AS_HELP_STRING([--enable-src],
                     [Build installable SPDY client/server programs in src])],
-    [request_src=$withval], [request_src=yes])
+    [request_src=$enableval], [request_src=yes])
 
 AC_ARG_ENABLE([examples],
     [AS_HELP_STRING([--enable-examples],
                     [Build example programs])],
-    [request_examples=$withval], [request_examples=yes])
+    [request_examples=$enableval], [request_examples=yes])
 
 dnl Checks for programs
 AC_PROG_CC
