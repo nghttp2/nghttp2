@@ -339,7 +339,10 @@ void check_response_header
   }
   Request *req = (Request*)spdylay_session_get_stream_user_data(session,
                                                                 stream_id);
-  assert(req);
+  if(!req) {
+    // Server-pushed stream does not have stream user data
+    return;
+  }
   bool gzip = false;
   for(size_t i = 0; nv[i]; i += 2) {
     if(strcmp("content-encoding", nv[i]) == 0) {
