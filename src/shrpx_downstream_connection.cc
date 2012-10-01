@@ -70,7 +70,7 @@ int DownstreamConnection::attach_downstream(Downstream *downstream)
     event_base *evbase = client_handler_->get_evbase();
     bev_ = bufferevent_socket_new
       (evbase, -1,
-       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);    
+       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
     int rv = bufferevent_socket_connect
       (bev_,
        // TODO maybe not thread-safe?

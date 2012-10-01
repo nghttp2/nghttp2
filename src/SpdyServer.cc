@@ -189,7 +189,7 @@ SpdyEventHandler::SpdyEventHandler(const Config* config,
                               &entry, 1);
   assert(r == 0);
 }
-    
+
 SpdyEventHandler::~SpdyEventHandler()
 {
   on_session_closed(this, session_id_);
@@ -756,7 +756,7 @@ private:
       sessions->add_handler(hd);
     }
   }
-  
+
   int fd_;
   SSL *ssl_;
   uint16_t version_;

@@ -50,7 +50,7 @@ void test_spdylay_pq(void)
   CU_ASSERT(strcmp("bar", spdylay_pq_top(&pq)) == 0);
   CU_ASSERT(0 == spdylay_pq_push(&pq, (void*)"C"));
   CU_ASSERT(4 == spdylay_pq_size(&pq));
-  CU_ASSERT(strcmp("C", spdylay_pq_top(&pq)) == 0);  
+  CU_ASSERT(strcmp("C", spdylay_pq_top(&pq)) == 0);
   spdylay_pq_pop(&pq);
   CU_ASSERT(3 == spdylay_pq_size(&pq));
   CU_ASSERT(strcmp("bar", spdylay_pq_top(&pq)) == 0);

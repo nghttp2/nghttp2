@@ -51,7 +51,7 @@ void test_spdylay_buffer(void)
   memcpy(spdylay_buffer_get(&buffer), "34567", 5);
   spdylay_buffer_advance(&buffer, 5);
   CU_ASSERT(8 == spdylay_buffer_length(&buffer));
-  
+
   CU_ASSERT(0 == spdylay_buffer_avail(&buffer));
   CU_ASSERT(0 == spdylay_buffer_alloc(&buffer));
   memcpy(spdylay_buffer_get(&buffer), "89ABCDE", 7);
@@ -59,7 +59,7 @@ void test_spdylay_buffer(void)
   CU_ASSERT(15 == spdylay_buffer_length(&buffer));
 
   CU_ASSERT(1 == spdylay_buffer_avail(&buffer));
-  
+
   spdylay_buffer_serialize(&buffer, out);
   CU_ASSERT(0 == memcmp("0123456789ABCDE", out, 15));
 

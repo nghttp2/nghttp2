@@ -40,7 +40,7 @@ struct WorkerEvent {
   sockaddr_union client_addr;
   size_t client_addrlen;
 };
-  
+
 class ThreadEventReceiver {
 public:
   ThreadEventReceiver(SSL_CTX *ssl_ctx);

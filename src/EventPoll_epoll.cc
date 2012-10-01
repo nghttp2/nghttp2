@@ -45,7 +45,7 @@ EventPoll::~EventPoll()
   }
   delete [] evlist_;
 }
-    
+
 int EventPoll::poll(int timeout)
 {
   num_events_ = 0;

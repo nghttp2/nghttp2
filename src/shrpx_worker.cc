@@ -40,7 +40,7 @@ Worker::Worker(WorkerInfo *info)
   : fd_(info->sv[1]),
     ssl_ctx_(info->ssl_ctx)
 {}
-  
+
 Worker::~Worker()
 {
   shutdown(fd_, SHUT_WR);

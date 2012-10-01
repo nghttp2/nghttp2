@@ -440,15 +440,15 @@ static void run_spdylay_frame_pack_syn_stream(void)
     goto fail;
   }
   spdylay_frame_syn_stream_free(&oframe.syn_stream);
- fail:  
+ fail:
   free(buf);
   free(nvbuf);
   spdylay_frame_syn_stream_free(&frame.syn_stream);
  nv_copy_fail:
   spdylay_zlib_inflate_free(&inflater);
  inflate_init_fail:
-  spdylay_zlib_deflate_free(&deflater);  
- deflate_init_fail:  
+  spdylay_zlib_deflate_free(&deflater);
+ deflate_init_fail:
   spdylay_buffer_free(&inflatebuf);
 }
 

@@ -34,8 +34,7 @@
 #include "spdylay_gzip.h"
 
 static ssize_t deflate_data(uint8_t *out, size_t outlen,
-                            const 
-uint8_t *in, size_t inlen)
+                            const uint8_t *in, size_t inlen)
 {
   int rv;
   z_stream zst;
@@ -46,7 +45,7 @@ uint8_t *in, size_t inlen)
 
   rv = deflateInit(&zst, Z_DEFAULT_COMPRESSION);
   assert(rv == Z_OK);
-  
+
   zst.avail_in = inlen;
   zst.next_in = (uint8_t*)in;
   zst.avail_out = outlen;
@@ -110,7 +109,7 @@ void test_spdylay_gzip_inflate(void)
   CU_ASSERT(sizeof(input)-49 == outproclen);
   CU_ASSERT(inproclen > 0);
   CU_ASSERT(0 == memcmp(inputptr, out, outproclen));
-  
+
   inlen -= inproclen;
   CU_ASSERT(0 == inlen);
 

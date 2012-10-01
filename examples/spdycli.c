@@ -576,7 +576,7 @@ static void fetch_uri(const struct URI *uri)
 {
   spdylay_session_callbacks callbacks;
   int fd;
-  SSL_CTX *ssl_ctx;  
+  SSL_CTX *ssl_ctx;
   SSL *ssl;
   struct Request req;
   struct Connection connection;
@@ -610,14 +610,14 @@ static void fetch_uri(const struct URI *uri)
   /* Here make file descriptor non-block */
   make_non_block(fd);
   set_tcp_nodelay(fd);
-  
+
   printf("[INFO] SPDY protocol version = %d\n", spdy_proto_version);
   rv = spdylay_session_client_new(&connection.session, spdy_proto_version,
                                   &callbacks, &connection);
   if(rv != 0) {
     diec("spdylay_session_client_new", rv);
   }
-  
+
   /* Submit the HTTP request to the outbound queue. */
   submit_request(&connection, &req);
 

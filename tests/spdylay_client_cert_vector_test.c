@@ -90,7 +90,7 @@ void test_spdylay_client_cert_vector_resize(void)
   spdylay_client_cert_vector_put(&certvec, origin);
   origin = create_origin("https", "example.com", 443);
   spdylay_client_cert_vector_put(&certvec, origin);
-  
+
   CU_ASSERT(0 == spdylay_client_cert_vector_resize(&certvec, 1));
   CU_ASSERT(NULL != spdylay_client_cert_vector_get_origin(&certvec, 1));
   CU_ASSERT(1 == certvec.last_slot);
