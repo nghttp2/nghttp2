@@ -1,3 +1,45 @@
+spdylay 0.3.6
+=============
+
+Release Note
+------------
+
+This release fixes bugs in configure command-line options and spdycat.
+The client side header block compression was disabled to avoid the
+attack. The on_ctrl_not_send_callback now gets
+SPDYLAY_ERR_FRAME_TOO_LARGE as error code when packed frame is too
+large to fit in SPDY frame size limit. Shrpx SPDY proxy mode now
+announces SPDY/3 as default protocol.
+
+Changes
+-------
+
+* shrpx: Made SPDY/3 default protocol in SPDY proxy mode.  The reason
+  why we choose SPDY/2 as default for SPDY prxy was due to Chrome's
+  window update bug. Now its fix is available in Chrome stable, we
+  make SPDY/3 as default.
+
+* spdycat: Just return in check_response_header if stream_user_data is
+  NULL.
+
+* spdycat: Add missing break after handling -H option
+
+* configure: Fix bug that $withval is used where $enableval should be
+  used
+
+* shrpx: Use request HTTP version in HTTPS upstream response
+
+* shrpx: Log when SPDY stream is closed
+
+* Check provisioned frame length when packing a frame.  If resultant
+  length of a frame exceeds the maximum value (which is 2**24 - 1 for
+  SPDY/2 and 3), SPDYLAY_ERR_FRAME_TOO_LARGE is used to indicate this
+  error. This error will be notified by on_ctrl_not_send_callback.
+
+* Disable client side header block compression.
+
+
+
 spdylay 0.3.5
 =============
 
