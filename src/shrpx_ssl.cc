@@ -128,15 +128,8 @@ SSL_CTX* create_ssl_context()
                        verify_callback);
   }
   // We speak "http/1.1", "spdy/2" and "spdy/3".
-  if(get_config()->spdy_proxy) {
-    // It seems SPDY/3 flow control does not work well in proxy
-    // connection.
-    const char *protos[] = { "spdy/2", "spdy/3", "http/1.1" };
-    set_npn_prefs(proto_list, protos, 3);
-  } else {
-    const char *protos[] = { "spdy/3", "spdy/2", "http/1.1" };
-    set_npn_prefs(proto_list, protos, 3);
-  }
+  const char *protos[] = { "spdy/3", "spdy/2", "http/1.1" };
+  set_npn_prefs(proto_list, protos, 3);
 
   next_proto.first = proto_list;
   next_proto.second = sizeof(proto_list);
