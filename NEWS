@@ -5,11 +5,10 @@ Release Note
 ------------
 
 This release fixes bugs in configure command-line options and spdycat.
-The client side header block compression was disabled to avoid the
-attack. The on_ctrl_not_send_callback now gets
-SPDYLAY_ERR_FRAME_TOO_LARGE as error code when packed frame is too
-large to fit in SPDY frame size limit. Shrpx SPDY proxy mode now
-announces SPDY/3 as default protocol.
+The client side header block compression was disabled. The
+on_ctrl_not_send_callback now gets SPDYLAY_ERR_FRAME_TOO_LARGE as
+error code when packed frame is too large to fit in SPDY frame size
+limit. Shrpx SPDY proxy mode now announces SPDY/3 as default protocol.
 
 Changes
 -------
