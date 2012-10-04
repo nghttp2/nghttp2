@@ -398,15 +398,9 @@ void on_stream_close_callback
 
 int64_t time_delta(const timeval& a, const timeval& b)
 {
-  int64_t res;
-  res = a.tv_usec - b.tv_usec;
-  int off = 0;
-  if(res < 0) {
-    res += 1000000;
-    off = -1;
-  }
-  res += (a.tv_sec + off - b.tv_sec)*1000000;
-  return res/1000;
+  int64_t res = (a.tv_sec - b.tv_sec) * 1000;
+  res += (a.tv_usec - b.tv_usec) / 1000;
+  return res;
 }
 
 void print_stats(const SpdySession& spdySession)
