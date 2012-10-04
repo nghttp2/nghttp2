@@ -92,6 +92,57 @@ void test_spdylay_map(void)
   spdylay_map_free(&map);
 }
 
+static void shuffle(int *a, int n)
+{
+  int i;
+  for(i = n - 1; i >= 1; --i) {
+    size_t j = (int)((double)(i + 1) * rand() / (RAND_MAX + 1.0));
+    int t = a[j];
+    a[j] = a[i];
+    a[i] = t;
+  }
+}
+
+static int eachfun(spdylay_map_entry *entry, void *ptr)
+{
+  return 0;
+}
+
+#define NUM_ENT 6000
+strentry arr[NUM_ENT];
+int order[NUM_ENT];
+
+void test_spdylay_map_functional(void)
+{
+  spdylay_map map;
+  int i;
+
+  spdylay_map_init(&map);
+  for(i = 0; i < NUM_ENT; ++i) {
+    strentry_init(&arr[i], i + 1, "foo");
+    order[i] = i + 1;
+  }
+  // insertion
+  shuffle(order, NUM_ENT);
+  for(i = 0; i < NUM_ENT; ++i) {
+    CU_ASSERT(0 == spdylay_map_insert(&map, &arr[i].map_entry));
+  }
+  // traverse
+  spdylay_map_each(&map, eachfun, NULL);
+  // find
+  shuffle(order, NUM_ENT);
+  for(i = 0; i < NUM_ENT; ++i) {
+    spdylay_map_find(&map, order[i]);
+  }
+  // remove
+  shuffle(order, NUM_ENT);
+  for(i = 0; i < NUM_ENT; ++i) {
+    CU_ASSERT(0 == spdylay_map_remove(&map, order[i]));
+  }
+
+  spdylay_map_free(&map);
+}
+
 static int entry_free(spdylay_map_entry *entry, void *ptr)
 {
   free(entry);

@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
    /* add the tests to the suite */
    if(!CU_add_test(pSuite, "pq", test_spdylay_pq) ||
       !CU_add_test(pSuite, "map", test_spdylay_map) ||
+      !CU_add_test(pSuite, "map_functional", test_spdylay_map_functional) ||
       !CU_add_test(pSuite, "map_each_free", test_spdylay_map_each_free) ||
       !CU_add_test(pSuite, "queue", test_spdylay_queue) ||
       !CU_add_test(pSuite, "buffer", test_spdylay_buffer) ||

@@ -39,8 +39,9 @@ typedef uint32_t pri_type;
 
 typedef struct spdylay_map_entry {
   key_type key;
-  struct spdylay_map_entry *left, *right;
+  struct spdylay_map_entry *parent, *left, *right;
   pri_type priority;
+  uint8_t flags;
 } spdylay_map_entry;
 
 typedef struct {
