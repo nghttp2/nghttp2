@@ -125,7 +125,7 @@ void test_spdylay_map_functional(void)
   // insertion
   shuffle(order, NUM_ENT);
   for(i = 0; i < NUM_ENT; ++i) {
-    CU_ASSERT(0 == spdylay_map_insert(&map, &arr[i].map_entry));
+    CU_ASSERT(0 == spdylay_map_insert(&map, &arr[order[i] - 1].map_entry));
   }
   // traverse
   spdylay_map_each(&map, eachfun, NULL);
@@ -140,7 +140,15 @@ void test_spdylay_map_functional(void)
     CU_ASSERT(0 == spdylay_map_remove(&map, order[i]));
   }
 
-  spdylay_map_free(&map);
+  // each_free (but no op function for testing purpose)
+  for(i = 0; i < NUM_ENT; ++i) {
+    strentry_init(&arr[i], i + 1, "foo");
+  }
+  // insert once again
+  for(i = 0; i < NUM_ENT; ++i) {
+    CU_ASSERT(0 == spdylay_map_insert(&map, &arr[i].map_entry));
+  }
+  spdylay_map_each_free(&map, eachfun, NULL);
 }
 
 static int entry_free(spdylay_map_entry *entry, void *ptr)

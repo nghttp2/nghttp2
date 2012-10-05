@@ -24,12 +24,6 @@
  */
 #include "spdylay_map.h"
 
-typedef enum {
-  SUB_LEFT = 1,
-  SUB_RIGHT = 1 << 1,
-  SUB_ALL = (1 << 2) - 1
-} spdylay_map_subtr;
-
 void spdylay_map_init(spdylay_map *map)
 {
   map->root = NULL;
@@ -41,29 +35,100 @@ void spdylay_map_free(spdylay_map *map)
   map->root = NULL;
 }
 
+/* Find left most node, which is not necessarily a leaf. */
+static spdylay_map_entry* find_left_most(spdylay_map_entry *entry)
+{
+  while(entry->left) {
+    entry = entry->left;
+  }
+  return entry;
+}
+
+/* Find left most leaf. */
+static spdylay_map_entry* find_left_most_leaf(spdylay_map_entry *entry)
+{
+  for(;;) {
+    entry = find_left_most(entry);
+    if(entry->right) {
+      entry = entry->right;
+    } else {
+      break;
+    }
+  }
+  return entry;
+}
+
+/* Returns next node in postorder traversal. Returns NULL if there is
+   no next node. */
+static spdylay_map_entry* traverse_postorder(spdylay_map_entry *parent,
+                                             spdylay_map_entry *entry)
+{
+  if(!parent) {
+    return NULL;
+  }
+  if(parent->left == entry) {
+    if(parent->right) {
+      return find_left_most_leaf(parent->right);
+    } else {
+      return parent;
+    }
+  } else {
+    return parent;
+  }
+}
+
 void spdylay_map_each_free(spdylay_map *map,
                            int (*func)(spdylay_map_entry *entry, void *ptr),
                            void *ptr)
 {
-  spdylay_map_entry *entry = map->root;
+  spdylay_map_entry *entry;
+  if(!map->root) {
+    return;
+  }
+  entry = find_left_most_leaf(map->root);
   while(entry) {
-    if(entry->flags == SUB_ALL) {
-      spdylay_map_entry *parent = entry->parent;
-      func(entry, ptr);
-      entry = parent;
-    } else if(entry->flags == SUB_LEFT) {
-      entry->flags |= SUB_RIGHT;
-      if(entry->right) {
-        entry = entry->right;
-      }
-    } else {
-      entry->flags |= SUB_LEFT;
-      if(entry->left) {
-        entry = entry->left;
-      }
-    }
+    spdylay_map_entry *parent = entry->parent;
+    /* Ignore return value. */
+    func(entry, ptr);
+    /* entry has been deleted. */
+    entry = traverse_postorder(parent, entry);
   }
   map->root = NULL;
+}
+
+/* Returns next node in inorder traversal. Returns NULL if there is no
+   next node. */
+static spdylay_map_entry* traverse_inorder(spdylay_map_entry *entry)
+{
+  spdylay_map_entry *parent;
+  if(entry->right) {
+    return find_left_most(entry->right);
+  }
+  parent = entry->parent;
+  while(parent && parent->right == entry) {
+    entry = entry->parent;
+    parent = parent->parent;
+  }
+  return parent;
+}
+
+int spdylay_map_each(spdylay_map *map,
+                     int (*func)(spdylay_map_entry *entry, void *ptr),
+                     void *ptr)
+{
+  spdylay_map_entry *entry;
+  if(!map->root) {
+    return 0;
+  }
+  entry = find_left_most(map->root);
+  while(entry) {
+    int rv = func(entry, ptr);
+    if(rv != 0) {
+      return rv;
+    }
+    entry = traverse_inorder(entry);
+  }
+  return 0;
 }
 
 /*
@@ -87,7 +152,6 @@ void spdylay_map_entry_init(spdylay_map_entry *entry, key_type key)
   entry->key = key;
   entry->parent = entry->left = entry->right = NULL;
   entry->priority = hash32shift(key);
-  entry->flags = 0;
 }
 
 static spdylay_map_entry* rotate_left(spdylay_map_entry *entry)
@@ -269,37 +333,4 @@ int spdylay_map_remove(spdylay_map *map, key_type key)
 size_t spdylay_map_size(spdylay_map *map)
 {
   return map->size;
-}
-
-int spdylay_map_each(spdylay_map *map,
-                     int (*func)(spdylay_map_entry *entry, void *ptr),
-                     void *ptr)
-{
-  spdylay_map_entry *entry = map->root;
-  while(entry) {
-    if(entry->flags == SUB_ALL) {
-      entry->flags = 0;
-      entry = entry->parent;
-    } else if(entry->flags == SUB_LEFT) {
-      int rv;
-      rv = func(entry, ptr);
-      if(rv != 0) {
-        while(entry) {
-          entry->flags = 0;
-          entry = entry->parent;
-        }
-        return rv;
-      }
-      entry->flags |= SUB_RIGHT;
-      if(entry->right) {
-        entry = entry->right;
-      }
-    } else {
-      entry->flags |= SUB_LEFT;
-      if(entry->left) {
-        entry = entry->left;
-      }
-    }
-  }
-  return 0;
 }
