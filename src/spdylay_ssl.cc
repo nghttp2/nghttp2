@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <poll.h>
 
 #include <cassert>
 #include <cstdio>
@@ -229,6 +230,74 @@ int connect_to(const std::string& host, uint16_t port)
     }
     close(fd);
     fd = -1;
+  }
+  freeaddrinfo(res);
+  return fd;
+}
+
+int nonblock_connect_to(const std::string& host, uint16_t port, int timeout)
+{
+  struct addrinfo hints;
+  int fd = -1;
+  int r;
+  char service[10];
+  snprintf(service, sizeof(service), "%u", port);
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  struct addrinfo *res;
+  r = getaddrinfo(host.c_str(), service, &hints, &res);
+  if(r != 0) {
+    std::cerr << "getaddrinfo: " << gai_strerror(r) << std::endl;
+    return -1;
+  }
+  for(struct addrinfo *rp = res; rp; rp = rp->ai_next) {
+    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if(fd == -1) {
+      continue;
+    }
+    if(make_non_block(fd) == -1) {
+      close(fd);
+      fd = -1;
+      continue;
+    }
+    while((r = connect(fd, rp->ai_addr, rp->ai_addrlen)) == -1 &&
+          errno == EINTR);
+    if(r == 0) {
+      break;
+    } else if(errno == EINPROGRESS) {
+      struct timeval tv1, tv2;
+      struct pollfd pfd = {fd, POLLOUT, 0};
+      if(timeout != -1) {
+        gettimeofday(&tv1, 0);
+      }
+      r = poll(&pfd, 1, timeout);
+      if(r == 0) {
+        return -2;
+      } else if(r == -1) {
+        return -1;
+      } else {
+        if(timeout != -1) {
+          gettimeofday(&tv2, 0);
+          timeout -= time_delta(tv2, tv1);
+          if(timeout <= 0) {
+            return -2;
+          }
+        }
+        int socket_error;
+        socklen_t optlen = sizeof(socket_error);
+        r = getsockopt(fd, SOL_SOCKET, SO_ERROR, &socket_error, &optlen);
+        if(r == 0 && socket_error == 0) {
+          break;
+        } else {
+          close(fd);
+          fd = -1;
+        }
+      }
+    } else {
+      close(fd);
+      fd = -1;
+    }
   }
   freeaddrinfo(res);
   return fd;
@@ -662,6 +731,65 @@ int ssl_handshake(SSL *ssl, int fd)
     return -1;
   }
   return 0;
+}
+
+int ssl_nonblock_handshake(SSL *ssl, int fd, int& timeout)
+{
+  if(SSL_set_fd(ssl, fd) == 0) {
+    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+    return -1;
+  }
+  ERR_clear_error();
+  pollfd pfd;
+  pfd.fd = fd;
+  pfd.events = POLLOUT;
+  timeval tv1, tv2;
+  while(1) {
+    if(timeout != -1) {
+      gettimeofday(&tv1, 0);
+    }
+    int rv = poll(&pfd, 1, timeout);
+    if(rv == 0) {
+      return -2;
+    } else if(rv == -1) {
+      return -1;
+    }
+    ERR_clear_error();
+    rv = SSL_connect(ssl);
+    if(rv == 0) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      return -1;
+    } else if(rv < 0) {
+      if(timeout != -1) {
+        gettimeofday(&tv2, 0);
+        timeout -= time_delta(tv2, tv1);
+        if(timeout <= 0) {
+          return -2;
+        }
+      }
+      switch(SSL_get_error(ssl, rv)) {
+      case SSL_ERROR_WANT_READ:
+        pfd.events = POLLIN;
+        break;
+      case SSL_ERROR_WANT_WRITE:
+        pfd.events = POLLOUT;
+        break;
+      default:
+        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        return -1;
+      }
+    } else {
+      break;
+    }
+  }
+  return 0;
+}
+
+int64_t time_delta(const timeval& a, const timeval& b)
+{
+  int64_t res = (a.tv_sec - b.tv_sec) * 1000;
+  res += (a.tv_usec - b.tv_usec) / 1000;
+  return res;
 }
 
 namespace {

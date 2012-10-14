@@ -68,6 +68,7 @@ struct Config {
   bool get_assets;
   bool stat;
   int spdy_version;
+  // milliseconds
   int timeout;
   std::string certfile;
   std::string keyfile;
@@ -396,13 +397,6 @@ void on_stream_close_callback
   }
 }
 
-int64_t time_delta(const timeval& a, const timeval& b)
-{
-  int64_t res = (a.tv_sec - b.tv_sec) * 1000;
-  res += (a.tv_usec - b.tv_usec) / 1000;
-  return res;
-}
-
 void print_stats(const SpdySession& spdySession)
 {
   std::cout << "***** Statistics *****" << std::endl;
@@ -440,11 +434,19 @@ int communicate(const std::string& host, uint16_t port,
                 SpdySession& spdySession,
                 const spdylay_session_callbacks *callbacks)
 {
-  int fd = connect_to(host, port);
+  int rv;
+  int timeout = config.timeout;
+  int fd = nonblock_connect_to(host, port, timeout);
   if(fd == -1) {
     std::cerr << "Could not connect to the host" << std::endl;
     return -1;
+  } else if(fd == -2) {
+    std::cerr << "Request to " << spdySession.hostport << " timed out "
+              << "during establishing connection."
+              << std::endl;
+    return -1;
   }
+  set_tcp_nodelay(fd);
   SSL_CTX *ssl_ctx;
   ssl_ctx = SSL_CTX_new(TLSv1_client_method());
   if(!ssl_ctx) {
@@ -484,12 +486,17 @@ int communicate(const std::string& host, uint16_t port,
     std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
     return -1;
   }
-  if(ssl_handshake(ssl, fd) == -1) {
+  rv = ssl_nonblock_handshake(ssl, fd, timeout);
+  if(rv == -1) {
+    return -1;
+  } else if(rv == -2) {
+    std::cerr << "Request to " << spdySession.hostport
+              << " timed out in SSL/TLS handshake."
+              << std::endl;
     return -1;
   }
+
   spdySession.record_handshake_time();
-  make_non_block(fd);
-  set_tcp_nodelay(fd);
   int spdy_version = spdylay_npn_get_version(
       reinterpret_cast<const unsigned char*>(next_proto.c_str()),
       next_proto.size());
@@ -516,11 +523,13 @@ int communicate(const std::string& host, uint16_t port,
   }
   pollfds[0].fd = fd;
   ctl_poll(pollfds, &sc);
-  int end_time = time(NULL) + config.timeout;
-  int timeout = config.timeout;
 
   bool ok = true;
+  timeval tv1, tv2;
   while(!sc.finish()) {
+    if(config.timeout != -1) {
+      gettimeofday(&tv1, 0);
+    }
     int nfds = poll(pollfds, npollfds, timeout);
     if(nfds == -1) {
       perror("poll");
@@ -543,11 +552,15 @@ int communicate(const std::string& host, uint16_t port,
       ok = false;
       break;
     }
-    timeout = timeout == -1 ? timeout : end_time - time(NULL);
-    if (config.timeout != -1 && timeout <= 0) {
-      std::cout << "Requests to " << spdySession.hostport << "timed out.";
-      ok = false;
-      break;
+    if(config.timeout != -1) {
+      gettimeofday(&tv2, 0);
+      timeout -= time_delta(tv2, tv1);
+      if (timeout <= 0) {
+        std::cerr << "Requests to " << spdySession.hostport << " timed out."
+                  << std::endl;
+        ok = false;
+        break;
+      }
     }
     assert(ok);
     ctl_poll(pollfds, &sc);
@@ -700,7 +713,7 @@ int main(int argc, char **argv)
       config.spdy_version = SPDYLAY_PROTO_SPDY3;
       break;
     case 't':
-      config.timeout = atoi(optarg);
+      config.timeout = atoi(optarg) * 1000;
       break;
     case 'w': {
       errno = 0;

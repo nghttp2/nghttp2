@@ -73,6 +73,8 @@ private:
 
 int connect_to(const std::string& host, uint16_t port);
 
+int nonblock_connect_to(const std::string& host, uint16_t port, int timeout);
+
 int make_listen_socket(const std::string& host, uint16_t port, int family);
 
 int make_non_block(int fd);
@@ -133,6 +135,12 @@ int select_next_proto_cb(SSL* ssl,
 void setup_ssl_ctx(SSL_CTX *ssl_ctx, void *next_proto_select_cb_arg);
 
 int ssl_handshake(SSL *ssl, int fd);
+
+int ssl_nonblock_handshake(SSL *ssl, int fd, int& timeout);
+
+// Returns difference between |a| and |b| in milliseconds, assuming
+// |a| is more recent than |b|.
+int64_t time_delta(const timeval& a, const timeval& b);
 
 void reset_timer();
 
