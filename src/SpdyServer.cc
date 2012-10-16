@@ -44,6 +44,10 @@
 #include "util.h"
 #include "EventPoll.h"
 
+#ifndef O_BINARY
+# define O_BINARY (0)
+#endif // O_BINARY
+
 namespace spdylay {
 
 namespace {
@@ -510,7 +514,7 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
   if(path[path.size()-1] == '/') {
     path += DEFAULT_HTML;
   }
-  int file = open(path.c_str(), O_RDONLY);
+  int file = open(path.c_str(), O_RDONLY | O_BINARY);
   if(file == -1) {
     prepare_status_response(req, hd, STATUS_404);
   } else {
