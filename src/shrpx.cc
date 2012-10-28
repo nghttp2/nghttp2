@@ -230,6 +230,13 @@ int event_loop()
 
   ListenHandler *listener_handler = new ListenHandler(evbase);
 
+  if(get_config()->daemon) {
+    if(daemon(0, 0) == -1) {
+      LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
+      exit(EXIT_FAILURE);
+    }
+  }
+
   // ListenHandler loads private key. After that, we drop the root
   // privileges if needed.
   drop_privileges();
@@ -648,12 +655,6 @@ int main(int argc, char **argv)
     mod_config()->use_syslog = true;
   }
 
-  if(get_config()->daemon) {
-    if(daemon(0, 0) == -1) {
-      LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
-      exit(EXIT_FAILURE);
-    }
-  }
   if(get_config()->pid_file) {
     save_pid();
   }
