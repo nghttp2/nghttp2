@@ -98,7 +98,8 @@ SSL_CTX* create_ssl_context()
 
   if(get_config()->ciphers) {
     if(SSL_CTX_set_cipher_list(ssl_ctx, get_config()->ciphers) == 0) {
-      LOG(FATAL) << "SSL_CTX_set_cipher_list failed.";
+      LOG(FATAL) << "SSL_CTX_set_cipher_list failed: "
+                 << ERR_error_string(ERR_get_error(), NULL);
       DIE();
     }
   }
@@ -109,16 +110,19 @@ SSL_CTX* create_ssl_context()
   if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
                                  get_config()->private_key_file,
                                  SSL_FILETYPE_PEM) != 1) {
-    LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed.";
+    LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed: "
+               << ERR_error_string(ERR_get_error(), NULL);
     DIE();
   }
   if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
                                         get_config()->cert_file) != 1) {
-    LOG(FATAL) << "SSL_CTX_use_certificate_file failed.";
+    LOG(FATAL) << "SSL_CTX_use_certificate_file failed: "
+               << ERR_error_string(ERR_get_error(), NULL);
     DIE();
   }
   if(SSL_CTX_check_private_key(ssl_ctx) != 1) {
-    LOG(FATAL) << "SSL_CTX_check_private_key failed.";
+    LOG(FATAL) << "SSL_CTX_check_private_key failed: "
+               << ERR_error_string(ERR_get_error(), NULL);
     DIE();
   }
   if(get_config()->verify_client) {
@@ -147,14 +151,16 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
   if(rv == 0) {
     SSL *ssl = SSL_new(ssl_ctx);
     if(!ssl) {
-      LOG(ERROR) << "SSL_new() failed";
+      LOG(ERROR) << "SSL_new() failed: "
+                 << ERR_error_string(ERR_get_error(), NULL);
       return 0;
     }
     int val = 1;
     rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                     reinterpret_cast<char *>(&val), sizeof(val));
     if(rv == -1) {
-      LOG(WARNING) << "Setting option TCP_NODELAY failed";
+      LOG(WARNING) << "Setting option TCP_NODELAY failed: "
+                   << strerror(errno);
     }
     bufferevent *bev = bufferevent_openssl_socket_new
       (evbase, fd, ssl,
