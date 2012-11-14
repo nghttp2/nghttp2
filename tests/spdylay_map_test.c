@@ -122,29 +122,29 @@ void test_spdylay_map_functional(void)
     strentry_init(&arr[i], i + 1, "foo");
     order[i] = i + 1;
   }
-  // insertion
+  /* insertion */
   shuffle(order, NUM_ENT);
   for(i = 0; i < NUM_ENT; ++i) {
     CU_ASSERT(0 == spdylay_map_insert(&map, &arr[order[i] - 1].map_entry));
   }
-  // traverse
+  /* traverse */
   spdylay_map_each(&map, eachfun, NULL);
-  // find
+  /* find */
   shuffle(order, NUM_ENT);
   for(i = 0; i < NUM_ENT; ++i) {
     spdylay_map_find(&map, order[i]);
   }
-  // remove
+  /* remove */
   shuffle(order, NUM_ENT);
   for(i = 0; i < NUM_ENT; ++i) {
     CU_ASSERT(0 == spdylay_map_remove(&map, order[i]));
   }
 
-  // each_free (but no op function for testing purpose)
+  /* each_free (but no op function for testing purpose) */
   for(i = 0; i < NUM_ENT; ++i) {
     strentry_init(&arr[i], i + 1, "foo");
   }
-  // insert once again
+  /* insert once again */
   for(i = 0; i < NUM_ENT; ++i) {
     CU_ASSERT(0 == spdylay_map_insert(&map, &arr[i].map_entry));
   }
