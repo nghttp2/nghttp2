@@ -430,7 +430,7 @@ typedef enum {
   /**
    * INTERNAL_ERROR
    */
-  SPDYLAY_GOAWAY_INTERNAL_ERROR = 11
+  SPDYLAY_GOAWAY_INTERNAL_ERROR = 2
 } spdylay_goaway_status_code;
 
 /**
