@@ -235,6 +235,9 @@ int SpdyDownstreamConnection::push_request_headers()
       via_value = (*i).second;
     } else if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
       xff_value = (*i).second;
+    } else if(util::strieq((*i).first.c_str(), "expect") &&
+       util::strifind((*i).second.c_str(), "100-continue")) {
+      // Ignore
     } else if(util::strieq((*i).first.c_str(), "host")) {
       nv[hdidx++] = ":host";
       nv[hdidx++] = (*i).second.c_str();
