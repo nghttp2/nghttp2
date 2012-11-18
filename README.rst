@@ -247,6 +247,9 @@ Here is the command-line options::
                  [-c <NUM>] [-L <LEVEL>] [OPTIONS...]
                  <PRIVATE_KEY> <CERT>
 
+           shrpx --client-mode [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>]
+                 [-n <CORES>] [-c <NUM>] [-L <LEVEL>] [OPTIONS...]
+
     A reverse proxy for SPDY/HTTPS.
 
 
@@ -311,6 +314,10 @@ Here is the command-line options::
                            Default: 256
         --ciphers=<SUITE>  Set allowed cipher list. The format of the
                            string is described in OpenSSL ciphers(1).
+        --client-mode      Instead of accepting SPDY/HTTPS connection,
+                           accept HTTP connection and communicate with
+                           backend server in SPDY. This is for testing
+                           purpose.
         -h, --help         Print this help.
 
 
@@ -343,6 +350,13 @@ Then run chrome with the following arguments::
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
+There is an interesting option ``--client-mode``. If it is given,
+``shrpx`` accepts HTTP connections and communicates with the backend
+in SPDY::
+
+    Client <-- (HTTP) --> Shrpx <-- (SPDY) --> Web Server or another Shrpx
+
+It is for testing purpose only.
 
 Examples
 --------
