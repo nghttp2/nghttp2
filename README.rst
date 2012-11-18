@@ -356,7 +356,7 @@ in SPDY::
 
     Client <-- (HTTP) --> Shrpx <-- (SPDY) --> Web Server or another Shrpx
 
-It is for testing purpose only.
+``--client-mode`` option is for testing purpose only.
 
 Examples
 --------
