@@ -194,11 +194,11 @@ int htp_msg_completecb(http_parser *htp)
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   Downstream *downstream = upstream->get_downstream();
+  downstream->set_request_state(Downstream::MSG_COMPLETE);
   rv = downstream->end_upload_data();
   if(rv != 0) {
     return -1;
   }
-  downstream->set_request_state(Downstream::MSG_COMPLETE);
   // Stop further processing to complete this request
   http_parser_pause(htp, 1);
   return 0;
@@ -238,10 +238,13 @@ int HttpsUpstream::on_read()
   // Well, actually header length + some body bytes
   current_header_length_ += nread;
   Downstream *downstream = get_downstream();
+
   http_errno htperr = HTTP_PARSER_ERRNO(htp_);
   if(htperr == HPE_PAUSED) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       get_client_handler()->set_should_close_after_write(true);
+      // Following paues_read is needed to avoid reading next data.
+      pause_read(SHRPX_MSG_BLOCK);
       if(error_reply(503) != 0) {
         return -1;
       }
@@ -264,6 +267,7 @@ int HttpsUpstream::on_read()
         LOG(WARNING) << "Request Header too long:" << current_header_length_
                      << " bytes";
         get_client_handler()->set_should_close_after_write(true);
+        pause_read(SHRPX_MSG_BLOCK);
         if(error_reply(400) != 0) {
           return -1;
         }
@@ -281,6 +285,7 @@ int HttpsUpstream::on_read()
                 << http_errno_description(htperr);
     }
     get_client_handler()->set_should_close_after_write(true);
+    pause_read(SHRPX_MSG_BLOCK);
     if(error_reply(400) != 0) {
       return -1;
     }

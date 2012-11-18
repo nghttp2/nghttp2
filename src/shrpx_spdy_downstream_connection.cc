@@ -77,20 +77,6 @@ SpdyDownstreamConnection::~SpdyDownstreamConnection()
   }
 }
 
-namespace {
-void body_buf_cb(evbuffer *body, size_t oldlen, size_t newlen, void *arg)
-{
-  SpdyDownstreamConnection *dconn;
-  dconn = reinterpret_cast<SpdyDownstreamConnection*>(arg);
-  if(newlen == 0) {
-    Downstream *downstream = dconn->get_downstream();
-    if(downstream) {
-      downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER);
-    }
-  }
-}
-} // namespace
-
 int SpdyDownstreamConnection::init_request_body_buf()
 {
   int rv;
@@ -105,7 +91,7 @@ int SpdyDownstreamConnection::init_request_body_buf()
     if(request_body_buf_ == 0) {
       return -1;
     }
-    evbuffer_setcb(request_body_buf_, body_buf_cb, this);
+    evbuffer_setcb(request_body_buf_, 0, this);
   }
   return 0;
 }
@@ -312,17 +298,19 @@ int SpdyDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
     LOG(FATAL) << "evbuffer_add() failed";
     return -1;
   }
+  if(downstream_->get_downstream_stream_id() != -1) {
+    spdylay_session_resume_data(session_,
+                                downstream_->get_downstream_stream_id());
+    rv = send();
+    if(rv != 0) {
+      return -1;
+    }
+  }
   size_t bodylen = evbuffer_get_length(request_body_buf_);
   if(bodylen > Downstream::DOWNSTREAM_OUTPUT_UPPER_THRES) {
     downstream_->get_upstream()->pause_read(SHRPX_NO_BUFFER);
   }
-  if(downstream_->get_downstream_stream_id() != -1) {
-    spdylay_session_resume_data(session_,
-                                downstream_->get_downstream_stream_id());
-    return send();
-  } else {
-    return 0;
-  }
+  return 0;
 }
 
 int SpdyDownstreamConnection::end_upload_data()
