@@ -309,15 +309,17 @@ int SpdyDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
     LOG(FATAL) << "evbuffer_add() failed";
     return -1;
   }
-  if(downstream_->get_downstream_stream_id() != -1) {
-    spdylay_session_resume_data(session_,
-                                downstream_->get_downstream_stream_id());
-  }
   size_t bodylen = evbuffer_get_length(request_body_buf_);
   if(bodylen > Downstream::DOWNSTREAM_OUTPUT_UPPER_THRES) {
     downstream_->get_upstream()->pause_read(SHRPX_NO_BUFFER);
   }
-  return 0;
+  if(downstream_->get_downstream_stream_id() != -1) {
+    spdylay_session_resume_data(session_,
+                                downstream_->get_downstream_stream_id());
+    return send();
+  } else {
+    return 0;
+  }
 }
 
 int SpdyDownstreamConnection::end_upload_data()
@@ -325,8 +327,10 @@ int SpdyDownstreamConnection::end_upload_data()
   if(downstream_->get_downstream_stream_id() != -1) {
     spdylay_session_resume_data(session_,
                                 downstream_->get_downstream_stream_id());
+    return send();
+  } else {
+    return 0;
   }
-  return 0;
 }
 
 namespace {
