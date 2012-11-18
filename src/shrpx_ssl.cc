@@ -150,7 +150,7 @@ int select_next_proto_cb(SSL* ssl,
                          void *arg)
 {
   if(spdylay_select_next_protocol(out, outlen, in, inlen) <= 0) {
-    *out = (unsigned char*)"SPDY/3";
+    *out = (unsigned char*)"spdy/3";
     *outlen = 6;
   }
   return SSL_TLSEXT_ERR_OK;
