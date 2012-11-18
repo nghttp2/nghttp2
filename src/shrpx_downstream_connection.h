@@ -38,16 +38,21 @@ class Downstream;
 class DownstreamConnection {
 public:
   DownstreamConnection(ClientHandler *client_handler);
-  ~DownstreamConnection();
-  int attach_downstream(Downstream *downstream);
+  virtual ~DownstreamConnection();
+  virtual int attach_downstream(Downstream *downstream) = 0;
   void detach_downstream(Downstream *downstream);
   bufferevent* get_bev();
-  int push_data(const void *data, size_t len);
+
+  virtual int push_request_headers() = 0;
+  virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen) = 0;
+  virtual int end_upload_data() = 0;
+
+  virtual int on_connect() = 0;
 
   ClientHandler* get_client_handler();
   Downstream* get_downstream();
   void start_waiting_response();
-private:
+protected:
   ClientHandler *client_handler_;
   bufferevent *bev_;
   Downstream *downstream_;

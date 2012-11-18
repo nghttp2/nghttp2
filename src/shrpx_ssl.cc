@@ -34,6 +34,8 @@
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_ssl.h>
 
+#include <spdylay/spdylay.h>
+
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
@@ -141,6 +143,48 @@ SSL_CTX* create_ssl_context()
   return ssl_ctx;
 }
 
+namespace {
+int select_next_proto_cb(SSL* ssl,
+                         unsigned char **out, unsigned char *outlen,
+                         const unsigned char *in, unsigned int inlen,
+                         void *arg)
+{
+  if(spdylay_select_next_protocol(out, outlen, in, inlen) <= 0) {
+    *out = (unsigned char*)"SPDY/3";
+    *outlen = 6;
+  }
+  return SSL_TLSEXT_ERR_OK;
+}
+} // namespace
+
+SSL_CTX* create_ssl_client_context()
+{
+  SSL_CTX *ssl_ctx;
+  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  if(!ssl_ctx) {
+    LOG(FATAL) << ERR_error_string(ERR_get_error(), 0);
+    DIE();
+  }
+  SSL_CTX_set_options(ssl_ctx,
+                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+
+  if(get_config()->ciphers) {
+    if(SSL_CTX_set_cipher_list(ssl_ctx, get_config()->ciphers) == 0) {
+      LOG(FATAL) << "SSL_CTX_set_cipher_list failed: "
+                 << ERR_error_string(ERR_get_error(), NULL);
+      DIE();
+    }
+  }
+
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+
+  SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, 0);
+  return ssl_ctx;
+}
+
 ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
                                      evutil_socket_t fd,
                                      sockaddr *addr, int addrlen)
@@ -149,12 +193,6 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
   int rv;
   rv = getnameinfo(addr, addrlen, host, sizeof(host), 0, 0, NI_NUMERICHOST);
   if(rv == 0) {
-    SSL *ssl = SSL_new(ssl_ctx);
-    if(!ssl) {
-      LOG(ERROR) << "SSL_new() failed: "
-                 << ERR_error_string(ERR_get_error(), NULL);
-      return 0;
-    }
     int val = 1;
     rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                     reinterpret_cast<char *>(&val), sizeof(val));
@@ -162,11 +200,25 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
       LOG(WARNING) << "Setting option TCP_NODELAY failed: "
                    << strerror(errno);
     }
-    bufferevent *bev = bufferevent_openssl_socket_new
-      (evbase, fd, ssl,
-       BUFFEREVENT_SSL_ACCEPTING, BEV_OPT_DEFER_CALLBACKS);
-
-    ClientHandler *client_handler = new ClientHandler(bev, ssl, host);
+    SSL *ssl = 0;
+    bufferevent *bev;
+    if(get_config()->client_mode) {
+      bev = bufferevent_socket_new(evbase, fd, BEV_OPT_DEFER_CALLBACKS);
+    } else {
+      ssl = SSL_new(ssl_ctx);
+      if(!ssl) {
+        LOG(ERROR) << "SSL_new() failed: "
+                   << ERR_error_string(ERR_get_error(), NULL);
+        return 0;
+      }
+      bev = bufferevent_openssl_socket_new
+        (evbase, fd, ssl,
+         BUFFEREVENT_SSL_ACCEPTING, BEV_OPT_DEFER_CALLBACKS);
+    }
+    ClientHandler *client_handler = new ClientHandler(bev, fd, ssl, host);
+    if(get_config()->client_mode) {
+      client_handler->set_ssl_client_ctx(ssl_ctx);
+    }
     return client_handler;
   } else {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);

@@ -30,6 +30,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
 #include "shrpx_downstream_connection.h"
+#include "shrpx_spdy_downstream_connection.h"
 #include "shrpx_http.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
@@ -248,7 +249,7 @@ int HttpsUpstream::on_read()
     } else {
       assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
       if(downstream->get_downstream_connection() == 0) {
-        // Error response already be sent
+        // Error response has already be sent
         assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
         delete_downstream();
       } else {
@@ -286,10 +287,6 @@ int HttpsUpstream::on_read()
   }
   return 0;
 }
-
-namespace {
-void https_downstream_readcb(bufferevent *bev, void *ptr);
-} // namespace
 
 int HttpsUpstream::on_write()
 {
@@ -332,7 +329,12 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
   Downstream *downstream = dconn->get_downstream();
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
-  int rv = downstream->parse_http_response();
+  int rv;
+  if(get_config()->client_mode) {
+    rv = reinterpret_cast<SpdyDownstreamConnection*>(dconn)->on_read();
+  } else {
+    rv = downstream->parse_http_response();
+  }
   if(rv == 0) {
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       if(downstream->get_response_connection_close()) {
@@ -372,6 +374,8 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
       // We already sent HTTP response headers to upstream
       // client. Just close the upstream connection.
       delete upstream->get_client_handler();
+    } else if(downstream->get_response_state() == Downstream::MSG_RESET) {
+      delete upstream->get_client_handler();
     } else {
       // We did not sent any HTTP response, so sent error
       // response. Cannot reuse downstream connection in this case.
@@ -397,6 +401,14 @@ void https_downstream_writecb(bufferevent *bev, void *ptr)
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   upstream->resume_read(SHRPX_NO_BUFFER);
+  if(get_config()->client_mode) {
+    int rv;
+    rv = reinterpret_cast<SpdyDownstreamConnection*>(dconn)->on_write();
+    if(rv != 0) {
+      delete upstream->get_client_handler();
+      return;
+    }
+  }
 }
 } // namespace
 
@@ -411,6 +423,11 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream connection established. downstream "
                 << downstream;
+    }
+    if(dconn->on_connect() != 0) {
+      // TODO Return error status 502
+      delete upstream->get_client_handler();
+      return;
     }
   } else if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
@@ -555,6 +572,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
       via_value = (*i).second;
     } else {
       hdrs += (*i).first;
+      http::capitalize(hdrs, hdrs.size()-(*i).first.size());
       hdrs += ": ";
       hdrs += (*i).second;
       hdrs += "\r\n";

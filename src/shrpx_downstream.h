@@ -58,6 +58,10 @@ public:
   void pause_read(IOCtrlReason reason);
   bool resume_read(IOCtrlReason reason);
   void force_resume_read();
+  // Set stream ID for downstream SPDY connection.
+  void set_downstream_stream_id(int32_t stream_id);
+  int32_t get_downstream_stream_id() const;
+
   void set_downstream_connection(DownstreamConnection *dconn);
   DownstreamConnection* get_downstream_connection();
   // Returns true if output buffer is full. If underlying dconn_ is
@@ -99,7 +103,8 @@ public:
     MSG_COMPLETE,
     STREAM_CLOSED,
     CONNECT_FAIL,
-    IDLE
+    IDLE,
+    MSG_RESET
   };
   void set_request_state(int state);
   int get_request_state() const;
@@ -120,6 +125,7 @@ public:
   int get_response_minor() const;
   int get_response_version() const;
   bool get_chunked_response() const;
+  void set_chunked_response(bool f);
   bool get_response_connection_close() const;
   void set_response_connection_close(bool f);
   int parse_http_response();
@@ -127,12 +133,17 @@ public:
   int get_response_state() const;
   int init_response_body_buf();
   evbuffer* get_response_body_buf();
+
+  static const size_t DOWNSTREAM_OUTPUT_UPPER_THRES = 64*1024;
 private:
   Upstream *upstream_;
   DownstreamConnection *dconn_;
   int32_t stream_id_;
   int priority_;
   IOControl ioctrl_;
+  // stream ID in backend connection
+  int32_t downstream_stream_id_;
+
   int request_state_;
   std::string request_method_;
   std::string request_path_;

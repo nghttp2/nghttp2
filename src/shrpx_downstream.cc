@@ -30,7 +30,6 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
-#include "shrpx_http.h"
 #include "shrpx_downstream_connection.h"
 #include "util.h"
 
@@ -44,6 +43,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     stream_id_(stream_id),
     priority_(priority),
     ioctrl_(0),
+    downstream_stream_id_(-1),
     request_state_(INITIAL),
     request_major_(1),
     request_minor_(1),
@@ -155,6 +155,11 @@ void check_connection_close(bool *connection_close,
   }
 }
 } // namespace
+
+const Headers& Downstream::get_request_headers() const
+{
+  return request_headers_;
+}
 
 void Downstream::add_request_header(const std::string& name,
                                     const std::string& value)
@@ -277,10 +282,6 @@ bool Downstream::get_expect_100_continue() const
   return request_expect_100_continue_;
 }
 
-namespace {
-const size_t DOWNSTREAM_OUTPUT_UPPER_THRES = 64*1024;
-} // namespace
-
 bool Downstream::get_output_buffer_full()
 {
   if(dconn_) {
@@ -296,86 +297,7 @@ bool Downstream::get_output_buffer_full()
 // Downstream. Otherwise, the program will crash.
 int Downstream::push_request_headers()
 {
-  std::string hdrs = request_method_;
-  hdrs += " ";
-  hdrs += request_path_;
-  hdrs += " ";
-  hdrs += "HTTP/1.1\r\n";
-  std::string via_value;
-  std::string xff_value;
-  for(Headers::const_iterator i = request_headers_.begin();
-      i != request_headers_.end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto") ||
-       util::strieq((*i).first.c_str(), "keep-alive") ||
-       util::strieq((*i).first.c_str(), "connection") ||
-       util::strieq((*i).first.c_str(), "proxy-connection")) {
-      continue;
-    }
-    if(util::strieq((*i).first.c_str(), "via")) {
-      via_value = (*i).second;
-      continue;
-    }
-    if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
-      xff_value = (*i).second;
-      continue;
-    }
-    if(util::strieq((*i).first.c_str(), "expect") &&
-       util::strifind((*i).second.c_str(), "100-continue")) {
-      continue;
-    }
-    hdrs += (*i).first;
-    hdrs += ": ";
-    hdrs += (*i).second;
-    hdrs += "\r\n";
-  }
-  if(request_connection_close_) {
-    hdrs += "Connection: close\r\n";
-  }
-  if(get_config()->add_x_forwarded_for) {
-    hdrs += "X-Forwarded-For: ";
-    if(!xff_value.empty()) {
-      hdrs += xff_value;
-      hdrs += ", ";
-    }
-    hdrs += upstream_->get_client_handler()->get_ipaddr();
-    hdrs += "\r\n";
-  } else if(!xff_value.empty()) {
-    hdrs += "X-Forwarded-For: ";
-    hdrs += xff_value;
-    hdrs += "\r\n";
-  }
-  if(request_method_ != "CONNECT") {
-    hdrs += "X-Forwarded-Proto: ";
-    if(util::istartsWith(request_path_, "http:")) {
-      hdrs += "http";
-    } else {
-      hdrs += "https";
-    }
-    hdrs += "\r\n";
-  }
-  hdrs += "Via: ";
-  hdrs += via_value;
-  if(!via_value.empty()) {
-    hdrs += ", ";
-  }
-  hdrs += http::create_via_header_value(request_major_, request_minor_);
-  hdrs += "\r\n";
-
-  hdrs += "\r\n";
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Downstream request headers id="
-              << stream_id_ << "\n" << hdrs;
-  }
-  bufferevent *bev = dconn_->get_bev();
-  evbuffer *output = bufferevent_get_output(bev);
-  int rv;
-  rv = evbuffer_add(output, hdrs.c_str(), hdrs.size());
-  if(rv != 0) {
-    return -1;
-  }
-
-  dconn_->start_waiting_response();
-  return 0;
+  return dconn_->push_request_headers();
 }
 
 int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
@@ -386,49 +308,12 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
     LOG(WARNING) << "dconn_ is NULL";
     return 0;
   }
-  ssize_t res = 0;
-  int rv;
-  bufferevent *bev = dconn_->get_bev();
-  evbuffer *output = bufferevent_get_output(bev);
-  if(chunked_request_) {
-    char chunk_size_hex[16];
-    rv = snprintf(chunk_size_hex, sizeof(chunk_size_hex), "%X\r\n",
-                  static_cast<unsigned int>(datalen));
-    res += rv;
-    rv = evbuffer_add(output, chunk_size_hex, rv);
-    if(rv == -1) {
-      LOG(FATAL) << "evbuffer_add() failed";
-      return -1;
-    }
-  }
-  rv = evbuffer_add(output, data, datalen);
-  if(rv == -1) {
-    LOG(FATAL) << "evbuffer_add() failed";
-    return -1;
-  }
-  res += rv;
-  if(chunked_request_) {
-    rv = evbuffer_add(output, "\r\n", 2);
-    if(rv == -1) {
-      LOG(FATAL) << "evbuffer_add() failed";
-      return -1;
-    }
-    res += 2;
-  }
-  return res;
+  return dconn_->push_upload_data_chunk(data, datalen);
 }
 
 int Downstream::end_upload_data()
 {
-  if(chunked_request_) {
-    bufferevent *bev = dconn_->get_bev();
-    evbuffer *output = bufferevent_get_output(bev);
-    if(evbuffer_add(output, "0\r\n\r\n", 5) != 0) {
-      LOG(FATAL) << "evbuffer_add() failed";
-      return -1;
-    }
-  }
-  return 0;
+  return dconn_->end_upload_data();
 }
 
 const Headers& Downstream::get_response_headers() const
@@ -441,6 +326,8 @@ void Downstream::add_response_header(const std::string& name,
 {
   response_header_key_prev_ = true;
   response_headers_.push_back(std::make_pair(name, value));
+  check_transfer_encoding_chunked(&chunked_response_,
+                                  response_headers_.back());
 }
 
 void Downstream::set_last_response_header_value(const std::string& value)
@@ -510,6 +397,11 @@ int Downstream::get_response_version() const
 bool Downstream::get_chunked_response() const
 {
   return chunked_response_;
+}
+
+void Downstream::set_chunked_response(bool f)
+{
+  chunked_response_ = f;
 }
 
 bool Downstream::get_response_connection_close() const
@@ -695,6 +587,16 @@ bool Downstream::tunnel_established() const
 {
   return request_method_ == "CONNECT" &&
     200 <= response_http_status_ && response_http_status_ < 300;
+}
+
+void Downstream::set_downstream_stream_id(int32_t stream_id)
+{
+  downstream_stream_id_ = stream_id;
+}
+
+int32_t Downstream::get_downstream_stream_id() const
+{
+  return downstream_stream_id_;
 }
 
 } // namespace shrpx

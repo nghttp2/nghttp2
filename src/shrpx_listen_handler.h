@@ -51,6 +51,8 @@ public:
   event_base* get_evbase() const;
 private:
   event_base *evbase_;
+  // In client-mode, this is for backend SPDY connection. Otherwise,
+  // frontend SSL/TLS connection.
   SSL_CTX *ssl_ctx_;
   unsigned int worker_round_robin_cnt_;
   WorkerInfo *workers_;

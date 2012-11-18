@@ -32,19 +32,11 @@
 
 namespace shrpx {
 
-// Workaround for the inability for Bufferevent to remove timeout from
-// bufferevent. Specify this long timeout instead of removing.
-namespace {
-timeval max_timeout = { 86400, 0 };
-} // namespace
-
 DownstreamConnection::DownstreamConnection(ClientHandler *client_handler)
   : client_handler_(client_handler),
     bev_(0),
     downstream_(0)
-{
-
-}
+{}
 
 DownstreamConnection::~DownstreamConnection()
 {
@@ -57,48 +49,6 @@ DownstreamConnection::~DownstreamConnection()
   if(downstream_) {
     downstream_->set_downstream_connection(0);
   }
-}
-
-int DownstreamConnection::attach_downstream(Downstream *downstream)
-{
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Attaching downstream connection " << this << " to "
-              << "downstream " << downstream;
-  }
-  Upstream *upstream = downstream->get_upstream();
-  if(!bev_) {
-    event_base *evbase = client_handler_->get_evbase();
-    bev_ = bufferevent_socket_new
-      (evbase, -1,
-       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-    int rv = bufferevent_socket_connect
-      (bev_,
-       // TODO maybe not thread-safe?
-       const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
-       get_config()->downstream_addrlen);
-    if(rv != 0) {
-      bufferevent_free(bev_);
-      bev_ = 0;
-      return SHRPX_ERR_NETWORK;
-    }
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Connecting to downstream server " << this;
-    }
-  }
-  downstream->set_downstream_connection(this);
-  downstream_ = downstream;
-  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
-  bufferevent_enable(bev_, EV_READ);
-  bufferevent_setcb(bev_,
-                    upstream->get_downstream_readcb(),
-                    upstream->get_downstream_writecb(),
-                    upstream->get_downstream_eventcb(), this);
-  // HTTP request/response model, we first issue request to downstream
-  // server, so just enable write timeout here.
-  bufferevent_set_timeouts(bev_,
-                           &max_timeout,
-                           &get_config()->downstream_write_timeout);
-  return 0;
 }
 
 // When downstream request is issued, call this function to set read

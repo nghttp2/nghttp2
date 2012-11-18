@@ -34,7 +34,6 @@ extern "C" {
 }
 
 #include "shrpx_upstream.h"
-#include "shrpx_io_control.h"
 
 namespace shrpx {
 
@@ -57,8 +56,8 @@ public:
   Downstream* get_downstream() const;
   int error_reply(int status_code);
 
-  void pause_read(IOCtrlReason reason);
-  void resume_read(IOCtrlReason reason);
+  virtual void pause_read(IOCtrlReason reason);
+  virtual void resume_read(IOCtrlReason reason);
 
   virtual int on_downstream_header_complete(Downstream *downstream);
   virtual int on_downstream_body(Downstream *downstream,

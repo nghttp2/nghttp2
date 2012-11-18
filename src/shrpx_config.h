@@ -60,6 +60,7 @@ extern const char SHRPX_OPT_SYSLOG[];
 extern const char SHRPX_OPT_SYSLOG_FACILITY[];
 extern const char SHRPX_OPT_BACKLOG[];
 extern const char SHRPX_OPT_CIPHERS[];
+extern const char SHRPX_OPT_CLIENT_MODE[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -104,6 +105,7 @@ struct Config {
   bool use_syslog;
   int backlog;
   char *ciphers;
+  bool client_mode;
   Config();
 };
 

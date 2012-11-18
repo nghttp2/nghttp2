@@ -39,7 +39,7 @@ class DownstreamConnection;
 
 class ClientHandler {
 public:
-  ClientHandler(bufferevent *bev, SSL *ssl, const char *ipaddr);
+  ClientHandler(bufferevent *bev, int fd, SSL *ssl, const char *ipaddr);
   ~ClientHandler();
   int on_read();
   int on_event();
@@ -60,8 +60,13 @@ public:
   DownstreamConnection* get_downstream_connection();
   size_t get_pending_write_length();
   SSL* get_ssl() const;
+  void set_ssl_client_ctx(SSL_CTX *ssl_ctx);
+  SSL_CTX* get_ssl_client_ctx() const;
 private:
   bufferevent *bev_;
+  int fd_;
+  // SSL_CTX for SSL object to connect backend SPDY server
+  SSL_CTX *ssl_client_ctx_;
   SSL *ssl_;
   Upstream *upstream_;
   std::string ipaddr_;

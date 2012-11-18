@@ -31,7 +31,8 @@
 #include "shrpx_spdy_upstream.h"
 #include "shrpx_https_upstream.h"
 #include "shrpx_config.h"
-#include "shrpx_downstream_connection.h"
+#include "shrpx_http_downstream_connection.h"
+#include "shrpx_spdy_downstream_connection.h"
 #include "shrpx_accesslog.h"
 
 namespace shrpx {
@@ -116,8 +117,11 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
 }
 } // namespace
 
-ClientHandler::ClientHandler(bufferevent *bev, SSL *ssl, const char *ipaddr)
+ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
+                             const char *ipaddr)
   : bev_(bev),
+    fd_(fd),
+    ssl_client_ctx_(0),
     ssl_(ssl),
     upstream_(0),
     ipaddr_(ipaddr),
@@ -127,7 +131,13 @@ ClientHandler::ClientHandler(bufferevent *bev, SSL *ssl, const char *ipaddr)
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
                         &get_config()->upstream_write_timeout);
-  set_bev_cb(0, upstream_writecb, upstream_eventcb);
+  if(ssl_) {
+    set_bev_cb(0, upstream_writecb, upstream_eventcb);
+  } else {
+    // For client-mode
+    upstream_ = new HttpsUpstream(this);
+    set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+  }
 }
 
 ClientHandler::~ClientHandler()
@@ -135,13 +145,16 @@ ClientHandler::~ClientHandler()
   if(ENABLE_LOG) {
     LOG(INFO) << "Deleting ClientHandler " << this;
   }
-  int fd = SSL_get_fd(ssl_);
-  SSL_shutdown(ssl_);
+  if(ssl_) {
+    SSL_shutdown(ssl_);
+  }
   bufferevent_disable(bev_, EV_READ | EV_WRITE);
   bufferevent_free(bev_);
-  SSL_free(ssl_);
-  shutdown(fd, SHUT_WR);
-  close(fd);
+  if(ssl_) {
+    SSL_free(ssl_);
+  }
+  shutdown(fd_, SHUT_WR);
+  close(fd_);
   delete upstream_;
   for(std::set<DownstreamConnection*>::iterator i = dconn_pool_.begin();
       i != dconn_pool_.end(); ++i) {
@@ -186,8 +199,8 @@ int ClientHandler::validate_next_proto()
   unsigned int next_proto_len;
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
   if(next_proto) {
-    std::string proto(next_proto, next_proto+next_proto_len);
     if(ENABLE_LOG) {
+      std::string proto(next_proto, next_proto+next_proto_len);
       LOG(INFO) << "Upstream negotiated next protocol: " << proto;
     }
     uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
@@ -257,7 +270,11 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream connection pool is empty. Create new one";
     }
-    return new DownstreamConnection(this);
+    if(get_config()->client_mode) {
+      return new SpdyDownstreamConnection(this);
+    } else {
+      return new HttpDownstreamConnection(this);
+    }
   } else {
     DownstreamConnection *dconn = *dconn_pool_.begin();
     dconn_pool_.erase(dconn);
@@ -278,6 +295,16 @@ size_t ClientHandler::get_pending_write_length()
 SSL* ClientHandler::get_ssl() const
 {
   return ssl_;
+}
+
+void ClientHandler::set_ssl_client_ctx(SSL_CTX *ssl_ctx)
+{
+  ssl_client_ctx_ = ssl_ctx;
+}
+
+SSL_CTX* ClientHandler::get_ssl_client_ctx() const
+{
+  return ssl_client_ctx_;
 }
 
 } // namespace shrpx

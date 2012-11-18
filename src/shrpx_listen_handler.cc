@@ -35,12 +35,14 @@
 #include "shrpx_thread_event_receiver.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
+#include "shrpx_config.h"
 
 namespace shrpx {
 
 ListenHandler::ListenHandler(event_base *evbase)
   : evbase_(evbase),
-    ssl_ctx_(ssl::create_ssl_context()),
+    ssl_ctx_(get_config()->client_mode ?
+             ssl::create_ssl_client_context() : ssl::create_ssl_context()),
     worker_round_robin_cnt_(0),
     workers_(0),
     num_worker_(0)

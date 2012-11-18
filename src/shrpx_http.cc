@@ -129,6 +129,18 @@ std::string modify_location_header_value(const std::string& uri)
   return uri;
 }
 
+void capitalize(std::string& s, size_t offset)
+{
+  s[offset] = util::upcase(s[offset]);
+  for(size_t i = offset+1, eoi = s.size(); i < eoi; ++i) {
+    if(s[i-1] == '-') {
+      s[i] = util::upcase(s[i]);
+    } else {
+      s[i] = util::lowcase(s[i]);
+    }
+  }
+}
+
 } // namespace http
 
 } // namespace shrpx

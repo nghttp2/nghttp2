@@ -793,11 +793,11 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   int rv;
   rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,
                                &data_prd);
+  delete [] nv;
   if(rv != 0) {
     LOG(FATAL) << "spdylay_submit_response() failed";
     return -1;
   }
-  delete [] nv;
   return 0;
 }
 
@@ -842,5 +842,11 @@ int32_t SpdyUpstream::get_initial_window_size() const
 {
   return initial_window_size_;
 }
+
+void SpdyUpstream::pause_read(IOCtrlReason reason)
+{}
+
+void SpdyUpstream::resume_read(IOCtrlReason reason)
+{}
 
 } // namespace shrpx

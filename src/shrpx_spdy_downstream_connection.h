@@ -22,36 +22,43 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_SSL_H
-#define SHRPX_SSL_H
+#ifndef SHRPX_SPDY_DOWNSTREAM_CONNECTION_H
+#define SHRPX_SPDY_DOWNSTREAM_CONNECTION_H
 
 #include "shrpx.h"
 
 #include <openssl/ssl.h>
-#include <openssl/err.h>
 
-#include <event.h>
+#include <spdylay/spdylay.h>
+
+#include "shrpx_downstream_connection.h"
 
 namespace shrpx {
 
-class ClientHandler;
+class SpdyDownstreamConnection : public DownstreamConnection {
+public:
+  SpdyDownstreamConnection(ClientHandler *client_handler);
+  virtual ~SpdyDownstreamConnection();
+  virtual int attach_downstream(Downstream *downstream);
 
-namespace ssl {
+  virtual int push_request_headers();
+  virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen);
+  virtual int end_upload_data();
 
-SSL_CTX* create_ssl_context();
+  virtual int on_connect();
 
-SSL_CTX* create_ssl_client_context();
+  int on_read();
+  int on_write();
+  int send();
 
-ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
-                                     evutil_socket_t fd,
-                                     sockaddr *addr, int addrlen);
-
-void setup_ssl_lock();
-
-void teardown_ssl_lock();
-
-} // namespace ssl
+  int init_request_body_buf();
+  evbuffer* get_request_body_buf() const;
+private:
+  SSL *ssl_;
+  spdylay_session *session_;
+  evbuffer *request_body_buf_;
+};
 
 } // namespace shrpx
 
-#endif // SHRPX_SSL_H
+#endif // SHRPX_SPDY_DOWNSTREAM_CONNECTION_H

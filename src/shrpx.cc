@@ -349,6 +349,7 @@ void fill_default_config()
   mod_config()->backlog = 256;
 
   mod_config()->ciphers = 0;
+  mod_config()->client_mode = false;
 }
 } // namespace
 
@@ -358,6 +359,9 @@ void print_usage(std::ostream& out)
   out << "Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]\n"
       << "             [-c <NUM>] [-L <LEVEL>] [OPTIONS...]\n"
       << "             <PRIVATE_KEY> <CERT>\n"
+      << "\n"
+      << "       shrpx --client-mode [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>]\n"
+      << "             [-n <CORES>] [-c <NUM>] [-L <LEVEL>] [OPTIONS...]\n"
       << "\n"
       << "A reverse proxy for SPDY/HTTPS.\n"
       << std::endl;
@@ -445,6 +449,10 @@ void print_help(std::ostream& out)
       << get_config()->backlog << "\n"
       << "    --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
       << "                       string is described in OpenSSL ciphers(1).\n"
+      << "    --client-mode      Instead of accepting SPDY/HTTPS connection,\n"
+      << "                       accept HTTP connection and communicate with\n"
+      << "                       backend server in SPDY. This is for testing\n"
+      << "                       purpose.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -483,6 +491,7 @@ int main(int argc, char **argv)
       {"syslog-facility", required_argument, &flag, 14 },
       {"backlog", required_argument, &flag, 15 },
       {"ciphers", required_argument, &flag, 16 },
+      {"client-mode", no_argument, &flag, 17 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -591,6 +600,10 @@ int main(int argc, char **argv)
         // --ciphers
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CIPHERS, optarg));
         break;
+      case 17:
+        // --client-mode
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_MODE, "yes"));
+        break;
       default:
         break;
       }
@@ -608,12 +621,6 @@ int main(int argc, char **argv)
     }
   }
 
-  if((!get_config()->private_key_file || !get_config()->cert_file) &&
-     argc - optind < 2) {
-    print_usage(std::cerr);
-    LOG(FATAL) << "Too few arguments";
-    exit(EXIT_FAILURE);
-  }
   if(argc - optind >= 2) {
     cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PRIVATE_KEY_FILE,
                                      argv[optind++]));
@@ -626,6 +633,20 @@ int main(int argc, char **argv)
       LOG(FATAL) << "Failed to parse command-line argument.";
       exit(EXIT_FAILURE);
     }
+  }
+
+  if(!get_config()->client_mode) {
+    if(!get_config()->private_key_file || !get_config()->cert_file) {
+      print_usage(std::cerr);
+      LOG(FATAL) << "Too few arguments";
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if(get_config()->spdy_proxy && get_config()->client_mode) {
+    LOG(FATAL) << "--spdy-proxy and --client-mode cannot be used "
+               << "at the same time.";
+    exit(EXIT_FAILURE);
   }
 
   char hostport[NI_MAXHOST+16];

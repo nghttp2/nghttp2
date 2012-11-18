@@ -82,6 +82,8 @@ shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
 	shrpx_downstream.cc shrpx_downstream.h \
 	shrpx_downstream_connection.cc shrpx_downstream_connection.h \
+	shrpx_http_downstream_connection.cc shrpx_http_downstream_connection.h \
+	shrpx_spdy_downstream_connection.cc shrpx_spdy_downstream_connection.h \
 	shrpx_log.cc shrpx_log.h \
 	shrpx_http.cc shrpx_http.h \
 	shrpx_io_control.cc shrpx_io_control.h \

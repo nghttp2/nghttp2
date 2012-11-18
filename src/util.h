@@ -239,6 +239,10 @@ bool strieq(const char *a, const char *b);
 
 bool strifind(const char *a, const char *b);
 
+char upcase(char c);
+
+char lowcase(char c);
+
 } // namespace util
 
 } // namespace spdylay

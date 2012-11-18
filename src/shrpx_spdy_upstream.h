@@ -58,6 +58,9 @@ public:
   int window_update(Downstream *downstream);
   int error_reply(Downstream *downstream, int status_code);
 
+  virtual void pause_read(IOCtrlReason reason);
+  virtual void resume_read(IOCtrlReason reason);
+
   virtual int on_downstream_header_complete(Downstream *downstream);
   virtual int on_downstream_body(Downstream *downstream,
                                  const uint8_t *data, size_t len);

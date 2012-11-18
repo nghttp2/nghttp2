@@ -119,17 +119,6 @@ time_t parse_http_date(const std::string& s)
   return timegm(&tm);
 }
 
-namespace {
-char lowcase(char c)
-{
-  if('A' <= c && c <= 'Z') {
-    return c+('a'-'A');
-  } else {
-    return c;
-  }
-}
-} // namespace
-
 bool startsWith(const std::string& a, const std::string& b)
 {
   return startsWith(a.begin(), a.end(), b.begin(), b.end());
@@ -182,6 +171,24 @@ bool strifind(const char *a, const char *b)
     }
   }
   return false;
+}
+
+char upcase(char c)
+{
+  if('a' <= c && c <= 'z') {
+    return c-'a'+'A';
+  } else {
+    return c;
+  }
+}
+
+char lowcase(char c)
+{
+  if('A' <= c && c <= 'Z') {
+    return c-'A'+'a';
+  } else {
+    return c;
+  }
 }
 
 } // namespace util

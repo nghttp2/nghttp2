@@ -39,6 +39,8 @@ std::string create_via_header_value(int major, int minor);
 
 std::string modify_location_header_value(const std::string& uri);
 
+void capitalize(std::string& s, size_t offset);
+
 } // namespace http
 
 } // namespace shrpx
