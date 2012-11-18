@@ -202,11 +202,13 @@ int SpdyDownstreamConnection::push_request_headers()
     return 0;
   }
   size_t nheader = downstream_->get_request_headers().size();
-  // 10 means :method, :scheme, :path, :version and possible via
-  // header field. We rename host header field as :host.
-  const char **nv = new const char*[nheader * 2 + 10 + 1];
+  // 14 means :method, :scheme, :path, :version and possible via,
+  // x-forwarded-for and x-forwarded-proto header fields. We rename
+  // host header field as :host.
+  const char **nv = new const char*[nheader * 2 + 14 + 1];
   size_t hdidx = 0;
   std::string via_value;
+  std::string xff_value;
   nv[hdidx++] = ":method";
   nv[hdidx++] = downstream_->get_request_method().c_str();
   nv[hdidx++] = ":scheme";
@@ -224,12 +226,15 @@ int SpdyDownstreamConnection::push_request_headers()
         chunked_encoding = true;
       }
       // Ignore transfer-encoding
-    } else if(util::strieq((*i).first.c_str(), "keep-alive") || // HTTP/1.0?
+    } else if(util::strieq((*i).first.c_str(), "x-forwarded-proto") ||
+              util::strieq((*i).first.c_str(), "keep-alive") ||
               util::strieq((*i).first.c_str(), "connection") ||
               util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
     } else if(util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
+    } else if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
+      xff_value = (*i).second;
     } else if(util::strieq((*i).first.c_str(), "host")) {
       nv[hdidx++] = ":host";
       nv[hdidx++] = (*i).second.c_str();
@@ -241,6 +246,26 @@ int SpdyDownstreamConnection::push_request_headers()
       nv[hdidx++] = (*i).second.c_str();
     }
   }
+
+  if(get_config()->add_x_forwarded_for) {
+    nv[hdidx++] = "x-forwarded-for";
+    if(!xff_value.empty()) {
+      xff_value += ", ";
+    }
+    xff_value += downstream_->get_upstream()->get_client_handler()->
+      get_ipaddr();
+    nv[hdidx++] = xff_value.c_str();
+  } else if(!xff_value.empty()) {
+    nv[hdidx++] = "x-forwarded-for";
+    nv[hdidx++] = xff_value.c_str();
+  }
+  if(downstream_->get_request_method() != "CONNECT") {
+    // Currently, HTTP connection is used as upstream, so we just
+    // specify it here.
+    nv[hdidx++] = "x-forwarded-proto";
+    nv[hdidx++] = "http";
+  }
+
   if(!via_value.empty()) {
     via_value += ", ";
   }
