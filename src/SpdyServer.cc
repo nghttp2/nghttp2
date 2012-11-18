@@ -432,7 +432,7 @@ void prepare_status_response(Request *req, SpdyEventHandler *hd,
                              const std::string& status)
 {
   int pipefd[2];
-  if(pipe(pipefd) == -1) {
+  if(status == STATUS_304 || pipe(pipefd) == -1) {
     hd->submit_response(status, req->stream_id, 0);
   } else {
     std::stringstream ss;
