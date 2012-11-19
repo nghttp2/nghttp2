@@ -175,6 +175,16 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
 }
 } // namespace
 
+namespace {
+void copy_url_component(std::string& dest, http_parser_url *u, int field,
+                        const char* url)
+{
+  if(u->field_set & (1 << field)) {
+    dest.assign(url+u->field_data[field].off, u->field_data[field].len);
+  }
+}
+} // namespace
+
 int SpdyDownstreamConnection::push_request_headers()
 {
   int rv;
@@ -195,12 +205,41 @@ int SpdyDownstreamConnection::push_request_headers()
   size_t hdidx = 0;
   std::string via_value;
   std::string xff_value;
+  std::string scheme, path, query;
+  if(downstream_->get_request_method() != "CONNECT") {
+    http_parser_url u;
+    const char *url = downstream_->get_request_path().c_str();
+    memset(&u, 0, sizeof(u));
+    rv = http_parser_parse_url(url,
+                               downstream_->get_request_path().size(),
+                               0, &u);
+    if(rv == 0) {
+      copy_url_component(scheme, &u, UF_SCHEMA, url);
+      copy_url_component(path, &u, UF_PATH, url);
+      copy_url_component(query, &u, UF_QUERY, url);
+      if(!query.empty()) {
+        path += "?";
+        path += query;
+      }
+    }
+  }
+
   nv[hdidx++] = ":method";
   nv[hdidx++] = downstream_->get_request_method().c_str();
   nv[hdidx++] = ":scheme";
-  nv[hdidx++] = "https";
+  if(scheme.empty()) {
+    // Currently, the user of this downstream connecion is HTTP
+    // only.
+    nv[hdidx++] = "http";
+  } else {
+    nv[hdidx++] = scheme.c_str();
+  }
   nv[hdidx++] = ":path";
-  nv[hdidx++] = downstream_->get_request_path().c_str();
+  if(downstream_->get_request_method() == "CONNECT" || path.empty()) {
+    nv[hdidx++] = downstream_->get_request_path().c_str();
+  } else {
+    nv[hdidx++] = path.c_str();
+  }
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
   bool chunked_encoding = false;
@@ -273,7 +312,8 @@ int SpdyDownstreamConnection::push_request_headers()
               << ss.str();
   }
 
-  if(chunked_encoding || content_length) {
+  if(downstream_->get_request_method() == "CONNECT" ||
+     chunked_encoding || content_length) {
     // Request-body is expected.
     spdylay_data_provider data_prd;
     data_prd.source.ptr = this;
@@ -462,7 +502,8 @@ void on_ctrl_recv_callback
       return;
     }
 
-    if(!content_length && downstream->get_request_method() != "HEAD") {
+    if(!content_length && downstream->get_request_method() != "HEAD" &&
+       downstream->get_request_method() != "CONNECT") {
       unsigned int status;
       status = downstream->get_response_http_status();
       if(!((100 <= status && status <= 199) || status == 204 ||

@@ -98,9 +98,6 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
       if(ENABLE_LOG) {
         LOG(INFO) << "Upstream connected. handler " << handler;
       }
-      if(get_config()->accesslog) {
-        upstream_connect(handler->get_ipaddr());
-      }
       handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
       handler->validate_next_proto();
       if(ENABLE_LOG) {

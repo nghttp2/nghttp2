@@ -39,6 +39,7 @@
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
+#include "shrpx_accesslog.h"
 
 namespace shrpx {
 
@@ -193,6 +194,10 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
   int rv;
   rv = getnameinfo(addr, addrlen, host, sizeof(host), 0, 0, NI_NUMERICHOST);
   if(rv == 0) {
+    if(get_config()->accesslog) {
+      upstream_connect(host);
+    }
+
     int val = 1;
     rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                     reinterpret_cast<char *>(&val), sizeof(val));
