@@ -252,6 +252,8 @@ int event_loop()
 
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
+  } else if(get_config()->client_mode) {
+    listener_handler->create_spdy_session();
   }
 
   if(ENABLE_LOG) {

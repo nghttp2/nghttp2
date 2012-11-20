@@ -27,8 +27,7 @@
 
 #include "shrpx.h"
 
-#include <event.h>
-#include <event2/bufferevent.h>
+#include "shrpx_io_control.h"
 
 namespace shrpx {
 
@@ -40,21 +39,25 @@ public:
   DownstreamConnection(ClientHandler *client_handler);
   virtual ~DownstreamConnection();
   virtual int attach_downstream(Downstream *downstream) = 0;
-  void detach_downstream(Downstream *downstream);
-  bufferevent* get_bev();
+  virtual void detach_downstream(Downstream *downstream) = 0;
 
   virtual int push_request_headers() = 0;
   virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen) = 0;
   virtual int end_upload_data() = 0;
 
-  virtual int on_connect() = 0;
+  virtual void pause_read(IOCtrlReason reason) = 0;
+  virtual bool resume_read(IOCtrlReason reason) = 0;
+  virtual void force_resume_read() = 0;
+
+  virtual bool get_output_buffer_full() = 0;
+
+  virtual int on_read() = 0;
+  virtual int on_write() = 0;
 
   ClientHandler* get_client_handler();
   Downstream* get_downstream();
-  void start_waiting_response();
 protected:
   ClientHandler *client_handler_;
-  bufferevent *bev_;
   Downstream *downstream_;
 };
 

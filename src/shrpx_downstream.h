@@ -35,10 +35,6 @@
 #include <event.h>
 #include <event2/bufferevent.h>
 
-extern "C" {
-#include "http-parser/http_parser.h"
-}
-
 #include "shrpx_io_control.h"
 
 namespace shrpx {
@@ -128,19 +124,21 @@ public:
   void set_chunked_response(bool f);
   bool get_response_connection_close() const;
   void set_response_connection_close(bool f);
-  int parse_http_response();
   void set_response_state(int state);
   int get_response_state() const;
   int init_response_body_buf();
   evbuffer* get_response_body_buf();
 
-  static const size_t DOWNSTREAM_OUTPUT_UPPER_THRES = 64*1024;
+  // Call this method when there is incoming data in downstream
+  // connection.
+  int on_read();
+
+  static const size_t OUTPUT_UPPER_THRES = 64*1024;
 private:
   Upstream *upstream_;
   DownstreamConnection *dconn_;
   int32_t stream_id_;
   int priority_;
-  IOControl ioctrl_;
   // stream ID in backend connection
   int32_t downstream_stream_id_;
 
@@ -163,7 +161,6 @@ private:
   bool response_connection_close_;
   Headers response_headers_;
   bool response_header_key_prev_;
-  http_parser *response_htp_;
   // This buffer is used to temporarily store downstream response
   // body. Spdylay reads data from this in the callback.
   evbuffer *response_body_buf_;

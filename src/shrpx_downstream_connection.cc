@@ -25,96 +25,17 @@
 #include "shrpx_downstream_connection.h"
 
 #include "shrpx_client_handler.h"
-#include "shrpx_upstream.h"
 #include "shrpx_downstream.h"
-#include "shrpx_config.h"
-#include "shrpx_error.h"
 
 namespace shrpx {
 
 DownstreamConnection::DownstreamConnection(ClientHandler *client_handler)
   : client_handler_(client_handler),
-    bev_(0),
     downstream_(0)
 {}
 
 DownstreamConnection::~DownstreamConnection()
-{
-  if(bev_) {
-    bufferevent_disable(bev_, EV_READ | EV_WRITE);
-    bufferevent_free(bev_);
-  }
-  // Downstream and DownstreamConnection may be deleted
-  // asynchronously.
-  if(downstream_) {
-    downstream_->set_downstream_connection(0);
-  }
-}
-
-// When downstream request is issued, call this function to set read
-// timeout. We don't know when the request is completely received by
-// the downstream server. This function may be called before that
-// happens. Overall it does not cause problem for most of the time.
-// If the downstream server is too slow to recv/send, the connection
-// will be dropped by read timeout.
-void DownstreamConnection::start_waiting_response()
-{
-  if(bev_) {
-    bufferevent_set_timeouts(bev_,
-                             &get_config()->downstream_read_timeout,
-                             &get_config()->downstream_write_timeout);
-  }
-}
-
-namespace {
-// Gets called when DownstreamConnection is pooled in ClientHandler.
-void idle_eventcb(bufferevent *bev, short events, void *arg)
-{
-  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(arg);
-  if(events & BEV_EVENT_CONNECTED) {
-    // Downstream was detached before connection established?
-    // This may be safe to be left.
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connected?" << dconn;
-    }
-    return;
-  }
-  if(events & BEV_EVENT_EOF) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connection EOF " << dconn;
-    }
-  } else if(events & BEV_EVENT_TIMEOUT) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connection timeout " << dconn;
-    }
-  } else if(events & BEV_EVENT_ERROR) {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connection error " << dconn;
-    }
-  }
-  ClientHandler *client_handler = dconn->get_client_handler();
-  client_handler->remove_downstream_connection(dconn);
-  delete dconn;
-}
-} // namespace
-
-void DownstreamConnection::detach_downstream(Downstream *downstream)
-{
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Detaching downstream connection " << this << " from "
-              << "downstream " << downstream;
-  }
-  downstream->set_downstream_connection(0);
-  downstream_ = 0;
-  bufferevent_enable(bev_, EV_READ);
-  bufferevent_setcb(bev_, 0, 0, idle_eventcb, this);
-  // On idle state, just enable read timeout. Normally idle downstream
-  // connection will get EOF from the downstream server and closed.
-  bufferevent_set_timeouts(bev_,
-                           &get_config()->downstream_idle_read_timeout,
-                           &get_config()->downstream_write_timeout);
-  client_handler_->pool_downstream_connection(this);
-}
+{}
 
 ClientHandler* DownstreamConnection::get_client_handler()
 {
@@ -124,11 +45,6 @@ ClientHandler* DownstreamConnection::get_client_handler()
 Downstream* DownstreamConnection::get_downstream()
 {
   return downstream_;
-}
-
-bufferevent* DownstreamConnection::get_bev()
-{
-  return bev_;
 }
 
 } // namespace shrpx

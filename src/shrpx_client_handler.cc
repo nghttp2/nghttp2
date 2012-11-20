@@ -118,11 +118,11 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
                              const char *ipaddr)
   : bev_(bev),
     fd_(fd),
-    ssl_client_ctx_(0),
     ssl_(ssl),
     upstream_(0),
     ipaddr_(ipaddr),
-    should_close_after_write_(false)
+    should_close_after_write_(false),
+    spdy_(0)
 {
   bufferevent_enable(bev_, EV_READ | EV_WRITE);
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
@@ -294,14 +294,14 @@ SSL* ClientHandler::get_ssl() const
   return ssl_;
 }
 
-void ClientHandler::set_ssl_client_ctx(SSL_CTX *ssl_ctx)
+void ClientHandler::set_spdy_session(SpdySession *spdy)
 {
-  ssl_client_ctx_ = ssl_ctx;
+  spdy_ = spdy;
 }
 
-SSL_CTX* ClientHandler::get_ssl_client_ctx() const
+SpdySession* ClientHandler::get_spdy_session() const
 {
-  return ssl_client_ctx_;
+  return spdy_;
 }
 
 } // namespace shrpx

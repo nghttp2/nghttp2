@@ -44,11 +44,25 @@ timeval max_timeout = { 86400, 0 };
 
 HttpDownstreamConnection::HttpDownstreamConnection
 (ClientHandler *client_handler)
-  : DownstreamConnection(client_handler)
+  : DownstreamConnection(client_handler),
+    bev_(0),
+    ioctrl_(0),
+    response_htp_(new http_parser())
 {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection()
-{}
+{
+  delete response_htp_;
+  if(bev_) {
+    bufferevent_disable(bev_, EV_READ | EV_WRITE);
+    bufferevent_free(bev_);
+  }
+  // Downstream and DownstreamConnection may be deleted
+  // asynchronously.
+  if(downstream_) {
+    downstream_->set_downstream_connection(0);
+  }
+}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 {
@@ -78,6 +92,12 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
   }
   downstream->set_downstream_connection(this);
   downstream_ = downstream;
+
+  ioctrl_.set_bev(bev_);
+
+  http_parser_init(response_htp_, HTTP_RESPONSE);
+  response_htp_->data = downstream_;
+
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
   bufferevent_enable(bev_, EV_READ);
   bufferevent_setcb(bev_,
@@ -172,7 +192,17 @@ int HttpDownstreamConnection::push_request_headers()
   if(rv != 0) {
     return -1;
   }
-  start_waiting_response();
+
+  // When downstream request is issued, set read timeout. We don't
+  // know when the request is completely received by the downstream
+  // server. This function may be called before that happens. Overall
+  // it does not cause problem for most of the time.  If the
+  // downstream server is too slow to recv/send, the connection will
+  // be dropped by read timeout.
+  bufferevent_set_timeouts(bev_,
+                           &get_config()->downstream_read_timeout,
+                           &get_config()->downstream_write_timeout);
+
   return 0;
 }
 
@@ -223,7 +253,196 @@ int HttpDownstreamConnection::end_upload_data()
   return 0;
 }
 
-int HttpDownstreamConnection::on_connect()
+namespace {
+// Gets called when DownstreamConnection is pooled in ClientHandler.
+void idle_eventcb(bufferevent *bev, short events, void *arg)
+{
+  HttpDownstreamConnection *dconn;
+  dconn = reinterpret_cast<HttpDownstreamConnection*>(arg);
+  if(events & BEV_EVENT_CONNECTED) {
+    // Downstream was detached before connection established?
+    // This may be safe to be left.
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Idle downstream connected?" << dconn;
+    }
+    return;
+  }
+  if(events & BEV_EVENT_EOF) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Idle downstream connection EOF " << dconn;
+    }
+  } else if(events & BEV_EVENT_TIMEOUT) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Idle downstream connection timeout " << dconn;
+    }
+  } else if(events & BEV_EVENT_ERROR) {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Idle downstream connection error " << dconn;
+    }
+  }
+  ClientHandler *client_handler = dconn->get_client_handler();
+  client_handler->remove_downstream_connection(dconn);
+  delete dconn;
+}
+} // namespace
+
+void HttpDownstreamConnection::detach_downstream(Downstream *downstream)
+{
+  if(ENABLE_LOG) {
+    LOG(INFO) << "Detaching downstream connection " << this << " from "
+              << "downstream " << downstream;
+  }
+  downstream->set_downstream_connection(0);
+  downstream_ = 0;
+  ioctrl_.force_resume_read();
+  bufferevent_enable(bev_, EV_READ);
+  bufferevent_setcb(bev_, 0, 0, idle_eventcb, this);
+  // On idle state, just enable read timeout. Normally idle downstream
+  // connection will get EOF from the downstream server and closed.
+  bufferevent_set_timeouts(bev_,
+                           &get_config()->downstream_idle_read_timeout,
+                           &get_config()->downstream_write_timeout);
+  client_handler_->pool_downstream_connection(this);
+}
+
+bufferevent* HttpDownstreamConnection::get_bev()
+{
+  return bev_;
+}
+
+void HttpDownstreamConnection::pause_read(IOCtrlReason reason)
+{
+  ioctrl_.pause_read(reason);
+}
+
+bool HttpDownstreamConnection::resume_read(IOCtrlReason reason)
+{
+  return ioctrl_.resume_read(reason);
+}
+
+void HttpDownstreamConnection::force_resume_read()
+{
+  ioctrl_.force_resume_read();
+}
+
+bool HttpDownstreamConnection::get_output_buffer_full()
+{
+  evbuffer *output = bufferevent_get_output(bev_);
+  return evbuffer_get_length(output) >= Downstream::OUTPUT_UPPER_THRES;
+}
+
+namespace {
+int htp_hdrs_completecb(http_parser *htp)
+{
+  Downstream *downstream;
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+  downstream->set_response_http_status(htp->status_code);
+  downstream->set_response_major(htp->http_major);
+  downstream->set_response_minor(htp->http_minor);
+  downstream->set_response_connection_close(!http_should_keep_alive(htp));
+  downstream->set_response_state(Downstream::HEADER_COMPLETE);
+  if(downstream->get_upstream()->on_downstream_header_complete(downstream)
+     != 0) {
+    return -1;
+  }
+  unsigned int status = downstream->get_response_http_status();
+  // Ignore the response body. HEAD response may contain
+  // Content-Length or Transfer-Encoding: chunked.  Some server send
+  // 304 status code with nonzero Content-Length, but without response
+  // body. See
+  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-20#section-3.3
+  return downstream->get_request_method() == "HEAD" ||
+    (100 <= status && status <= 199) || status == 204 ||
+    status == 304 ? 1 : 0;
+}
+} // namespace
+
+namespace {
+int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
+{
+  Downstream *downstream;
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+  if(downstream->get_response_header_key_prev()) {
+    downstream->append_last_response_header_key(data, len);
+  } else {
+    downstream->add_response_header(std::string(data, len), "");
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
+{
+  Downstream *downstream;
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+  if(downstream->get_response_header_key_prev()) {
+    downstream->set_last_response_header_value(std::string(data, len));
+  } else {
+    downstream->append_last_response_header_value(data, len);
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+int htp_bodycb(http_parser *htp, const char *data, size_t len)
+{
+  Downstream *downstream;
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+
+  return downstream->get_upstream()->on_downstream_body
+    (downstream, reinterpret_cast<const uint8_t*>(data), len);
+}
+} // namespace
+
+namespace {
+int htp_msg_completecb(http_parser *htp)
+{
+  Downstream *downstream;
+  downstream = reinterpret_cast<Downstream*>(htp->data);
+
+  downstream->set_response_state(Downstream::MSG_COMPLETE);
+  return downstream->get_upstream()->on_downstream_body_complete(downstream);
+}
+} // namespace
+
+namespace {
+http_parser_settings htp_hooks = {
+  0, /*http_cb      on_message_begin;*/
+  0, /*http_data_cb on_url;*/
+  htp_hdr_keycb, /*http_data_cb on_header_field;*/
+  htp_hdr_valcb, /*http_data_cb on_header_value;*/
+  htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
+  htp_bodycb, /*http_data_cb on_body;*/
+  htp_msg_completecb /*http_cb      on_message_complete;*/
+};
+} // namespace
+
+int HttpDownstreamConnection::on_read()
+{
+  evbuffer *input = bufferevent_get_input(bev_);
+  unsigned char *mem = evbuffer_pullup(input, -1);
+
+  size_t nread = http_parser_execute(response_htp_, &htp_hooks,
+                                     reinterpret_cast<const char*>(mem),
+                                     evbuffer_get_length(input));
+
+  evbuffer_drain(input, nread);
+  http_errno htperr = HTTP_PARSER_ERRNO(response_htp_);
+  if(htperr == HPE_OK) {
+    return 0;
+  } else {
+    if(ENABLE_LOG) {
+      LOG(INFO) << "Downstream HTTP parser failure: "
+                << "(" << http_errno_name(htperr) << ") "
+                << http_errno_description(htperr);
+    }
+    return SHRPX_ERR_HTTP_PARSE;
+  }
+}
+
+int HttpDownstreamConnection::on_write()
 {
   return 0;
 }

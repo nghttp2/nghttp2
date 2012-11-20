@@ -35,28 +35,39 @@
 
 namespace shrpx {
 
+struct StreamData;
+class SpdySession;
+
 class SpdyDownstreamConnection : public DownstreamConnection {
 public:
   SpdyDownstreamConnection(ClientHandler *client_handler);
   virtual ~SpdyDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
+  virtual void detach_downstream(Downstream *downstream);
 
   virtual int push_request_headers();
   virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   virtual int end_upload_data();
 
-  virtual int on_connect();
+  virtual void pause_read(IOCtrlReason reason) {}
+  virtual bool resume_read(IOCtrlReason reason) { return true; }
+  virtual void force_resume_read() {}
 
-  int on_read();
-  int on_write();
+  virtual bool get_output_buffer_full();
+
+  virtual int on_read();
+  virtual int on_write();
   int send();
 
   int init_request_body_buf();
   evbuffer* get_request_body_buf() const;
+
+  void attach_stream_data(StreamData *sd);
+  StreamData* detach_stream_data();
 private:
-  SSL *ssl_;
-  spdylay_session *session_;
+  SpdySession *spdy_;
   evbuffer *request_body_buf_;
+  StreamData *sd_;
 };
 
 } // namespace shrpx

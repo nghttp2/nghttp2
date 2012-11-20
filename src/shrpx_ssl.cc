@@ -221,9 +221,6 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
          BUFFEREVENT_SSL_ACCEPTING, BEV_OPT_DEFER_CALLBACKS);
     }
     ClientHandler *client_handler = new ClientHandler(bev, fd, ssl, host);
-    if(get_config()->client_mode) {
-      client_handler->set_ssl_client_ctx(ssl_ctx);
-    }
     return client_handler;
   } else {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);

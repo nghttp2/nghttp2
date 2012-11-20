@@ -36,6 +36,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
 #include "shrpx_config.h"
+#include "shrpx_spdy_session.h"
 
 namespace shrpx {
 
@@ -45,7 +46,8 @@ ListenHandler::ListenHandler(event_base *evbase)
              ssl::create_ssl_client_context() : ssl::create_ssl_context()),
     worker_round_robin_cnt_(0),
     workers_(0),
-    num_worker_(0)
+    num_worker_(0),
+    spdy_(0)
 {}
 
 ListenHandler::~ListenHandler()
@@ -93,8 +95,11 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     LOG(INFO) << "<listener> Accepted connection. fd=" << fd;
   }
   if(num_worker_ == 0) {
-    /*ClientHandler* client = */
-    ssl::accept_ssl_connection(evbase_, ssl_ctx_, fd, addr, addrlen);
+    ClientHandler* client =
+      ssl::accept_ssl_connection(evbase_, ssl_ctx_, fd, addr, addrlen);
+    if(get_config()->client_mode) {
+      client->set_spdy_session(spdy_);
+    }
   } else {
     size_t idx = worker_round_robin_cnt_ % num_worker_;
     ++worker_round_robin_cnt_;
@@ -112,6 +117,14 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
 event_base* ListenHandler::get_evbase() const
 {
   return evbase_;
+}
+
+int ListenHandler::create_spdy_session()
+{
+  int rv;
+  spdy_ = new SpdySession(evbase_, ssl_ctx_);
+  rv = spdy_->init_notification();
+  return rv;
 }
 
 } // namespace shrpx

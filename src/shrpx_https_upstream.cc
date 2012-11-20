@@ -317,13 +317,15 @@ void HttpsUpstream::pause_read(IOCtrlReason reason)
   ioctrl_.pause_read(reason);
 }
 
-void HttpsUpstream::resume_read(IOCtrlReason reason)
+int HttpsUpstream::resume_read(IOCtrlReason reason)
 {
   if(ioctrl_.resume_read(reason)) {
     // Process remaining data in input buffer here because these bytes
     // are not notified by readcb until new data arrive.
     http_parser_pause(htp_, 0);
-    on_read();
+    return on_read();
+  } else {
+    return 0;
   }
 }
 
@@ -335,12 +337,10 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   int rv;
-  if(get_config()->client_mode) {
-    rv = reinterpret_cast<SpdyDownstreamConnection*>(dconn)->on_read();
-  } else {
-    rv = downstream->parse_http_response();
-  }
-  if(rv == 0) {
+  rv = downstream->on_read();
+  if(downstream->get_response_state() == Downstream::MSG_RESET) {
+    delete upstream->get_client_handler();
+  } else if(rv == 0) {
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       if(downstream->get_response_connection_close()) {
         // Connection close
@@ -379,8 +379,6 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
       // We already sent HTTP response headers to upstream
       // client. Just close the upstream connection.
       delete upstream->get_client_handler();
-    } else if(downstream->get_response_state() == Downstream::MSG_RESET) {
-      delete upstream->get_client_handler();
     } else {
       // We did not sent any HTTP response, so sent error
       // response. Cannot reuse downstream connection in this case.
@@ -406,14 +404,6 @@ void https_downstream_writecb(bufferevent *bev, void *ptr)
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   upstream->resume_read(SHRPX_NO_BUFFER);
-  if(get_config()->client_mode) {
-    int rv;
-    rv = reinterpret_cast<SpdyDownstreamConnection*>(dconn)->on_write();
-    if(rv != 0) {
-      delete upstream->get_client_handler();
-      return;
-    }
-  }
 }
 } // namespace
 
@@ -428,11 +418,6 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream connection established. downstream "
                 << downstream;
-    }
-    if(dconn->on_connect() != 0) {
-      // TODO Return error status 502
-      delete upstream->get_client_handler();
-      return;
     }
   } else if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {

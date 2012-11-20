@@ -42,7 +42,6 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     dconn_(0),
     stream_id_(stream_id),
     priority_(priority),
-    ioctrl_(0),
     downstream_stream_id_(-1),
     request_state_(INITIAL),
     request_major_(1),
@@ -58,13 +57,9 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     chunked_response_(false),
     response_connection_close_(false),
     response_header_key_prev_(false),
-    response_htp_(new http_parser()),
     response_body_buf_(0),
     recv_window_size_(0)
-{
-  http_parser_init(response_htp_, HTTP_RESPONSE);
-  response_htp_->data = this;
-}
+{}
 
 Downstream::~Downstream()
 {
@@ -78,7 +73,6 @@ Downstream::~Downstream()
   if(dconn_) {
     delete dconn_;
   }
-  delete response_htp_;
   if(ENABLE_LOG) {
     LOG(INFO) << "Deleted";
   }
@@ -87,11 +81,6 @@ Downstream::~Downstream()
 void Downstream::set_downstream_connection(DownstreamConnection *dconn)
 {
   dconn_ = dconn;
-  if(dconn_) {
-    ioctrl_.set_bev(dconn_->get_bev());
-  } else {
-    ioctrl_.set_bev(0);
-  }
 }
 
 DownstreamConnection* Downstream::get_downstream_connection()
@@ -101,17 +90,25 @@ DownstreamConnection* Downstream::get_downstream_connection()
 
 void Downstream::pause_read(IOCtrlReason reason)
 {
-  ioctrl_.pause_read(reason);
+  if(dconn_) {
+    dconn_->pause_read(reason);
+  }
 }
 
 bool Downstream::resume_read(IOCtrlReason reason)
 {
-  return ioctrl_.resume_read(reason);
+  if(dconn_) {
+    return dconn_->resume_read(reason);
+  } else {
+    return false;
+  }
 }
 
 void Downstream::force_resume_read()
 {
-  ioctrl_.force_resume_read();
+  if(dconn_) {
+    dconn_->force_resume_read();
+  }
 }
 
 namespace {
@@ -285,9 +282,7 @@ bool Downstream::get_expect_100_continue() const
 bool Downstream::get_output_buffer_full()
 {
   if(dconn_) {
-    bufferevent *bev = dconn_->get_bev();
-    evbuffer *output = bufferevent_get_output(bev);
-    return evbuffer_get_length(output) >= DOWNSTREAM_OUTPUT_UPPER_THRES;
+    return dconn_->get_output_buffer_full();
   } else {
     return false;
   }
@@ -414,116 +409,9 @@ void Downstream::set_response_connection_close(bool f)
   response_connection_close_ = f;
 }
 
-namespace {
-int htp_hdrs_completecb(http_parser *htp)
+int Downstream::on_read()
 {
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
-  downstream->set_response_http_status(htp->status_code);
-  downstream->set_response_major(htp->http_major);
-  downstream->set_response_minor(htp->http_minor);
-  downstream->set_response_connection_close(!http_should_keep_alive(htp));
-  downstream->set_response_state(Downstream::HEADER_COMPLETE);
-  if(downstream->get_upstream()->on_downstream_header_complete(downstream)
-     != 0) {
-    return -1;
-  }
-  unsigned int status = downstream->get_response_http_status();
-  // Ignore the response body. HEAD response may contain
-  // Content-Length or Transfer-Encoding: chunked.  Some server send
-  // 304 status code with nonzero Content-Length, but without response
-  // body. See
-  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-20#section-3.3
-  return downstream->get_request_method() == "HEAD" ||
-    (100 <= status && status <= 199) || status == 204 ||
-    status == 304 ? 1 : 0;
-}
-} // namespace
-
-namespace {
-int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
-{
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
-  if(downstream->get_response_header_key_prev()) {
-    downstream->append_last_response_header_key(data, len);
-  } else {
-    downstream->add_response_header(std::string(data, len), "");
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
-int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
-{
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
-  if(downstream->get_response_header_key_prev()) {
-    downstream->set_last_response_header_value(std::string(data, len));
-  } else {
-    downstream->append_last_response_header_value(data, len);
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
-int htp_bodycb(http_parser *htp, const char *data, size_t len)
-{
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
-
-  return downstream->get_upstream()->on_downstream_body
-    (downstream, reinterpret_cast<const uint8_t*>(data), len);
-}
-} // namespace
-
-namespace {
-int htp_msg_completecb(http_parser *htp)
-{
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
-
-  downstream->set_response_state(Downstream::MSG_COMPLETE);
-  return downstream->get_upstream()->on_downstream_body_complete(downstream);
-}
-} // namespace
-
-namespace {
-http_parser_settings htp_hooks = {
-  0, /*http_cb      on_message_begin;*/
-  0, /*http_data_cb on_url;*/
-  htp_hdr_keycb, /*http_data_cb on_header_field;*/
-  htp_hdr_valcb, /*http_data_cb on_header_value;*/
-  htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
-  htp_bodycb, /*http_data_cb on_body;*/
-  htp_msg_completecb /*http_cb      on_message_complete;*/
-};
-} // namespace
-
-int Downstream::parse_http_response()
-{
-  bufferevent *bev = dconn_->get_bev();
-  evbuffer *input = bufferevent_get_input(bev);
-  unsigned char *mem = evbuffer_pullup(input, -1);
-
-  size_t nread = http_parser_execute(response_htp_, &htp_hooks,
-                                     reinterpret_cast<const char*>(mem),
-                                     evbuffer_get_length(input));
-
-  evbuffer_drain(input, nread);
-  http_errno htperr = HTTP_PARSER_ERRNO(response_htp_);
-  if(htperr == HPE_OK) {
-    return 0;
-  } else {
-    if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream HTTP parser failure: "
-                << "(" << http_errno_name(htperr) << ") "
-                << http_errno_description(htperr);
-    }
-    return SHRPX_ERR_HTTP_PARSE;
-  }
+  return dconn_->on_read();
 }
 
 void Downstream::set_response_state(int state)

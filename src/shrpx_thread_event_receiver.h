@@ -35,6 +35,8 @@
 
 namespace shrpx {
 
+class SpdySession;
+
 struct WorkerEvent {
   evutil_socket_t client_fd;
   sockaddr_union client_addr;
@@ -43,11 +45,14 @@ struct WorkerEvent {
 
 class ThreadEventReceiver {
 public:
-  ThreadEventReceiver(SSL_CTX *ssl_ctx);
+  ThreadEventReceiver(SSL_CTX *ssl_ctx, SpdySession *spdy);
   ~ThreadEventReceiver();
   void on_read(bufferevent *bev);
 private:
   SSL_CTX *ssl_ctx_;
+  // Shared SPDY session for each thread. NULL if not client mode. Not
+  // deleted by this object.
+  SpdySession *spdy_;
 };
 
 } // namespace shrpx

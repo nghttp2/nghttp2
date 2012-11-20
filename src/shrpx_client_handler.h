@@ -36,6 +36,7 @@ namespace shrpx {
 
 class Upstream;
 class DownstreamConnection;
+class SpdySession;
 
 class ClientHandler {
 public:
@@ -60,19 +61,19 @@ public:
   DownstreamConnection* get_downstream_connection();
   size_t get_pending_write_length();
   SSL* get_ssl() const;
-  void set_ssl_client_ctx(SSL_CTX *ssl_ctx);
-  SSL_CTX* get_ssl_client_ctx() const;
+  void set_spdy_session(SpdySession *spdy);
+  SpdySession* get_spdy_session() const;
 private:
   bufferevent *bev_;
   int fd_;
-  // SSL_CTX for SSL object to connect backend SPDY server
-  SSL_CTX *ssl_client_ctx_;
   SSL *ssl_;
   Upstream *upstream_;
   std::string ipaddr_;
   bool should_close_after_write_;
-
   std::set<DownstreamConnection*> dconn_pool_;
+  // Shared SPDY session for each thread. NULL if not client mode. Not
+  // deleted by this object.
+  SpdySession *spdy_;
 };
 
 } // namespace shrpx

@@ -460,7 +460,7 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     delete downstream;
     return;
   }
-  int rv = downstream->parse_http_response();
+  int rv = downstream->on_read();
   if(rv != 0) {
     if(ENABLE_LOG) {
       LOG(INFO) << "Downstream HTTP parser failure";
@@ -846,7 +846,9 @@ int32_t SpdyUpstream::get_initial_window_size() const
 void SpdyUpstream::pause_read(IOCtrlReason reason)
 {}
 
-void SpdyUpstream::resume_read(IOCtrlReason reason)
-{}
+int SpdyUpstream::resume_read(IOCtrlReason reason)
+{
+  return 0;
+}
 
 } // namespace shrpx
