@@ -325,9 +325,10 @@ void fill_default_config()
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout.tv_sec = 60;
 
-  // window bits for SPDY upstream connection
-  // 2**16 = 64KiB, which is SPDY/3 default.
+  // window bits for SPDY upstream/downstream connection. 2**16 =
+  // 64KiB, which is SPDY/3 default.
   mod_config()->spdy_upstream_window_bits = 16;
+  mod_config()->spdy_downstream_window_bits = 16;
 
   set_config_str(&mod_config()->downstream_host, "127.0.0.1");
   mod_config()->downstream_port = 80;
@@ -443,6 +444,11 @@ void print_help(std::ostream& out)
       << "                       frontend connection to 2**<N>.\n"
       << "                       Default: "
       << get_config()->spdy_upstream_window_bits << "\n"
+      << "    --backend-spdy-window-bits=<N>\n"
+      << "                       Sets the initial window size of SPDY\n"
+      << "                       backend connection to 2**<N>.\n"
+      << "                       Default: "
+      << get_config()->spdy_downstream_window_bits << "\n"
       << "    --pid-file=<PATH>  Set path to save PID of this program.\n"
       << "    --user=<USER>      Run this program as USER. This option is\n"
       << "                       intended to be used to drop root privileges.\n"
@@ -499,6 +505,7 @@ int main(int argc, char **argv)
       {"backlog", required_argument, &flag, 15 },
       {"ciphers", required_argument, &flag, 16 },
       {"client", no_argument, &flag, 17 },
+      {"backend-spdy-window-bits", required_argument, &flag, 18 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
@@ -613,6 +620,11 @@ int main(int argc, char **argv)
       case 17:
         // --client
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT, "yes"));
+        break;
+      case 18:
+        // --backend-spdy-window-bits
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS,
+                                         optarg));
         break;
       default:
         break;

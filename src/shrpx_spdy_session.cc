@@ -52,7 +52,8 @@ SpdySession::SpdySession(event_base *evbase, SSL_CTX *ssl_ctx)
     state_(DISCONNECTED),
     notified_(false),
     wrbev_(0),
-    rdbev_(0)
+    rdbev_(0),
+    flow_control_(false)
 {}
 
 SpdySession::~SpdySession()
@@ -313,7 +314,7 @@ int SpdySession::submit_request(SpdyDownstreamConnection *dconn,
   return 0;
 }
 
-int SpdySession::submit_rst_stream(SpdyDownstreamConnection *docnn,
+int SpdySession::submit_rst_stream(SpdyDownstreamConnection *dconn,
                                    int32_t stream_id, uint32_t status_code)
 {
   assert(state_ == CONNECTED);
@@ -324,6 +325,32 @@ int SpdySession::submit_rst_stream(SpdyDownstreamConnection *docnn,
     return -1;
   }
   return 0;
+}
+
+int SpdySession::submit_window_update(SpdyDownstreamConnection *dconn,
+                                      int32_t amount)
+{
+  assert(state_ == CONNECTED);
+  int rv;
+  int32_t stream_id;
+  stream_id = dconn->get_downstream()->get_downstream_stream_id();
+  rv = spdylay_submit_window_update(session_, stream_id, amount);
+  if(rv < SPDYLAY_ERR_FATAL) {
+    LOG(FATAL) << "spdylay_submit_window_update() failed: "
+               << spdylay_strerror(rv);
+    return -1;
+  }
+  return 0;
+}
+
+int32_t SpdySession::get_initial_window_size() const
+{
+  return 1 << get_config()->spdy_downstream_window_bits;
+}
+
+bool SpdySession::get_flow_control() const
+{
+  return flow_control_;
 }
 
 int SpdySession::resume_data(SpdyDownstreamConnection *dconn)
@@ -585,7 +612,24 @@ void on_data_chunk_recv_callback(spdylay_session *session,
     spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
     return;
   }
-  // TODO No manual flow control at the moment.
+
+  if(spdy->get_flow_control()) {
+    sd->dconn->inc_recv_window_size(len);
+    if(sd->dconn->get_recv_window_size() > spdy->get_initial_window_size()) {
+      if(ENABLE_LOG) {
+        LOG(INFO) << "Flow control error: recv_window_size="
+                  << sd->dconn->get_recv_window_size()
+                  << ", initial_window_size="
+                  << spdy->get_initial_window_size();
+      }
+      spdylay_submit_rst_stream(session, stream_id,
+                                SPDYLAY_FLOW_CONTROL_ERROR);
+      downstream->set_response_state(Downstream::MSG_RESET);
+      call_downstream_readcb(spdy, downstream);
+      return;
+    }
+  }
+
   Upstream *upstream = downstream->get_upstream();
   rv = upstream->on_downstream_body(downstream, data, len);
   if(rv != 0) {
@@ -719,12 +763,26 @@ int SpdySession::on_connect()
     return -1;
   }
 
-  // TODO Send initial window size when manual flow control is
-  // implemented.
-  spdylay_settings_entry entry[1];
+  if(version == SPDYLAY_PROTO_SPDY3) {
+    int val = 1;
+    flow_control_ = true;
+    rv = spdylay_session_set_option(session_,
+                                    SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
+                                    sizeof(val));
+    assert(rv == 0);
+  } else {
+    flow_control_ = false;
+  }
+
+  spdylay_settings_entry entry[2];
   entry[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = get_config()->spdy_max_concurrent_streams;
   entry[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
+  entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+  entry[1].value = get_initial_window_size();
+  entry[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+
   rv = spdylay_submit_settings
     (session_, SPDYLAY_FLAG_SETTINGS_NONE,
      entry, sizeof(entry)/sizeof(spdylay_settings_entry));

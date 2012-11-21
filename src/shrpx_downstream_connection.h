@@ -53,6 +53,7 @@ public:
 
   virtual int on_read() = 0;
   virtual int on_write() = 0;
+  virtual int on_upstream_write() = 0;
 
   ClientHandler* get_client_handler();
   Downstream* get_downstream();

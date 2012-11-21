@@ -57,6 +57,7 @@ public:
 
   virtual int on_read();
   virtual int on_write();
+  virtual int on_upstream_write();
   int send();
 
   int init_request_body_buf();
@@ -64,10 +65,14 @@ public:
 
   void attach_stream_data(StreamData *sd);
   StreamData* detach_stream_data();
+
+  int32_t get_recv_window_size() const;
+  void inc_recv_window_size(int32_t amount);
 private:
   SpdySession *spdy_;
   evbuffer *request_body_buf_;
   StreamData *sd_;
+  int32_t recv_window_size_;
 };
 
 } // namespace shrpx

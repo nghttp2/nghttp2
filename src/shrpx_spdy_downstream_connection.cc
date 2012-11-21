@@ -50,7 +50,8 @@ SpdyDownstreamConnection::SpdyDownstreamConnection
   : DownstreamConnection(client_handler),
     spdy_(client_handler->get_spdy_session()),
     request_body_buf_(0),
-    sd_(0)
+    sd_(0),
+    recv_window_size_(0)
 {}
 
 SpdyDownstreamConnection::~SpdyDownstreamConnection()
@@ -101,7 +102,7 @@ int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
   }
   downstream->set_downstream_connection(this);
   downstream_ = downstream;
-
+  recv_window_size_ = 0;
   return 0;
 }
 
@@ -362,6 +363,23 @@ int SpdyDownstreamConnection::on_write()
   return 0;
 }
 
+int SpdyDownstreamConnection::on_upstream_write()
+{
+  int rv;
+  if(spdy_->get_state() == SpdySession::CONNECTED &&
+     spdy_->get_flow_control() &&
+     downstream_ && downstream_->get_downstream_stream_id() != -1 &&
+     recv_window_size_ >= spdy_->get_initial_window_size()/2) {
+    rv = spdy_->submit_window_update(this, recv_window_size_);
+    if(rv == -1) {
+      return -1;
+    }
+    spdy_->notify();
+    recv_window_size_ = 0;
+  }
+  return 0;
+}
+
 evbuffer* SpdyDownstreamConnection::get_request_body_buf() const
 {
   return request_body_buf_;
@@ -394,6 +412,16 @@ bool SpdyDownstreamConnection::get_output_buffer_full()
   } else {
     return false;
   }
+}
+
+int32_t SpdyDownstreamConnection::get_recv_window_size() const
+{
+  return recv_window_size_;
+}
+
+void SpdyDownstreamConnection::inc_recv_window_size(int32_t amount)
+{
+  recv_window_size_ += amount;
 }
 
 } // namespace shrpx

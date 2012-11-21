@@ -132,6 +132,7 @@ public:
   // Call this method when there is incoming data in downstream
   // connection.
   int on_read();
+  int on_upstream_write();
 
   static const size_t OUTPUT_UPPER_THRES = 64*1024;
 private:

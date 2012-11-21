@@ -311,11 +311,13 @@ int HttpsUpstream::on_read()
 
 int HttpsUpstream::on_write()
 {
+  int rv = 0;
   Downstream *downstream = get_downstream();
   if(downstream) {
     downstream->resume_read(SHRPX_NO_BUFFER);
+    rv = downstream->on_upstream_write();
   }
-  return 0;
+  return rv;
 }
 
 int HttpsUpstream::on_event()

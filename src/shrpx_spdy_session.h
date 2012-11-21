@@ -64,8 +64,14 @@ public:
                      uint8_t pri, const char **nv,
                      const spdylay_data_provider *data_prd);
 
-  int submit_rst_stream(SpdyDownstreamConnection *docnn,
+  int submit_rst_stream(SpdyDownstreamConnection *dconn,
                         int32_t stream_id, uint32_t status_code);
+
+  int submit_window_update(SpdyDownstreamConnection *dconn, int32_t amount);
+
+  int32_t get_initial_window_size() const;
+
+  bool get_flow_control() const;
 
   int resume_data(SpdyDownstreamConnection *dconn);
 
@@ -99,6 +105,7 @@ private:
   bool notified_;
   bufferevent *wrbev_;
   bufferevent *rdbev_;
+  bool flow_control_;
 };
 
 } // namespace shrpx

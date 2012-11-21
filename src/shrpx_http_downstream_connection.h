@@ -56,6 +56,7 @@ public:
 
   virtual int on_read();
   virtual int on_write();
+  virtual int on_upstream_write();
 
   bufferevent* get_bev();
 private:

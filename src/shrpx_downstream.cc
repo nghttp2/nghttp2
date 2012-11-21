@@ -487,4 +487,13 @@ int32_t Downstream::get_downstream_stream_id() const
   return downstream_stream_id_;
 }
 
+int Downstream::on_upstream_write()
+{
+  if(dconn_) {
+    return dconn_->on_upstream_write();
+  } else {
+    return 0;
+  }
+}
+
 } // namespace shrpx

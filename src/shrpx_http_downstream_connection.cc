@@ -447,4 +447,9 @@ int HttpDownstreamConnection::on_write()
   return 0;
 }
 
+int HttpDownstreamConnection::on_upstream_write()
+{
+  return 0;
+}
+
 } // namespace shrpx

@@ -55,6 +55,7 @@ extern const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[];
 extern const char SHRPX_OPT_ACCESSLOG[];
 extern const char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS[];
+extern const char SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS[];
 extern const char SHRPX_OPT_PID_FILE[];
 extern const char SHRPX_OPT_USER[];
 extern const char SHRPX_OPT_SYSLOG[];
@@ -97,6 +98,7 @@ struct Config {
   bool add_x_forwarded_for;
   bool accesslog;
   size_t spdy_upstream_window_bits;
+  size_t spdy_downstream_window_bits;
   char *pid_file;
   uid_t uid;
   gid_t gid;
