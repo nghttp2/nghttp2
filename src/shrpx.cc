@@ -351,6 +351,9 @@ void fill_default_config()
   mod_config()->backlog = 256;
 
   mod_config()->ciphers = 0;
+
+  mod_config()->client_proxy = false;
+  mod_config()->client = false;
   mod_config()->client_mode = false;
 }
 } // namespace
@@ -358,12 +361,9 @@ void fill_default_config()
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]\n"
-      << "             [-c <NUM>] [-L <LEVEL>] [OPTIONS...]\n"
-      << "             <PRIVATE_KEY> <CERT>\n"
-      << "\n"
-      << "       shrpx --client-mode [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>]\n"
-      << "             [-n <CORES>] [-c <NUM>] [-L <LEVEL>] [OPTIONS...]\n"
+  out << "Usage: shrpx [-Dh] [-s|--client|-p] [-b <HOST,PORT>]\n"
+      << "             [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]\n"
+      << "             [OPTIONS...] <PRIVATE_KEY> <CERT>\n"
       << "\n"
       << "A reverse proxy for SPDY/HTTPS.\n"
       << std::endl;
@@ -401,6 +401,14 @@ void print_help(std::ostream& out)
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
       << "    -s, --spdy-proxy   SSL/SPDY proxy mode.\n"
+      << "    --client           Instead of accepting SPDY/HTTPS connection,\n"
+      << "                       accept HTTP connection and communicate with\n"
+      << "                       backend server in SPDY. To use shrpx as\n"
+      << "                       a forward proxy, use -p option instead.\n"
+      << "    -p, --client-proxy Like --client option, but it also requires\n"
+      << "                       the request path from frontend must be\n"
+      << "                       an absolute URI, suitable for use as a\n"
+      << "                       forward proxy."
       << "    --add-x-forwarded-for\n"
       << "                       Append X-Forwarded-For header field to the\n"
       << "                       downstream request.\n"
@@ -451,10 +459,6 @@ void print_help(std::ostream& out)
       << get_config()->backlog << "\n"
       << "    --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
       << "                       string is described in OpenSSL ciphers(1).\n"
-      << "    --client-mode      Instead of accepting SPDY/HTTPS connection,\n"
-      << "                       accept HTTP connection and communicate with\n"
-      << "                       backend server in SPDY. This is for testing\n"
-      << "                       purpose.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -477,6 +481,7 @@ int main(int argc, char **argv)
       {"log-level", required_argument, 0, 'L' },
       {"daemon", no_argument, 0, 'D' },
       {"spdy-proxy", no_argument, 0, 's' },
+      {"client-proxy", no_argument, 0, 'p' },
       {"add-x-forwarded-for", no_argument, &flag, 1 },
       {"frontend-spdy-read-timeout", required_argument, &flag, 2 },
       {"frontend-read-timeout", required_argument, &flag, 3 },
@@ -493,12 +498,12 @@ int main(int argc, char **argv)
       {"syslog-facility", required_argument, &flag, 14 },
       {"backlog", required_argument, &flag, 15 },
       {"ciphers", required_argument, &flag, 16 },
-      {"client-mode", no_argument, &flag, 17 },
+      {"client", no_argument, &flag, 17 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DL:sb:c:f:n:h", long_options,
+    int c = getopt_long(argc, argv, "DL:sb:c:f:n:hp", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -528,6 +533,9 @@ int main(int argc, char **argv)
       break;
     case 's':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_PROXY, "yes"));
+      break;
+    case 'p':
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_PROXY, "yes"));
       break;
     case '?':
       exit(EXIT_FAILURE);
@@ -603,8 +611,8 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CIPHERS, optarg));
         break;
       case 17:
-        // --client-mode
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_MODE, "yes"));
+        // --client
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT, "yes"));
         break;
       default:
         break;
@@ -637,18 +645,24 @@ int main(int argc, char **argv)
     }
   }
 
+  int mode = get_config()->spdy_proxy |
+    (get_config()->client_proxy << 1) | (get_config()->client << 2);
+  if(mode != 0 && mode != 1 && mode != 2 && mode != 4) {
+    LOG(FATAL) << "--spdy-proxy, --client-proxy and --client cannot be used "
+               << "at the same time.";
+    exit(EXIT_FAILURE);
+  }
+
+  if(get_config()->client || get_config()->client_proxy) {
+    mod_config()->client_mode = true;
+  }
+
   if(!get_config()->client_mode) {
     if(!get_config()->private_key_file || !get_config()->cert_file) {
       print_usage(std::cerr);
       LOG(FATAL) << "Too few arguments";
       exit(EXIT_FAILURE);
     }
-  }
-
-  if(get_config()->spdy_proxy && get_config()->client_mode) {
-    LOG(FATAL) << "--spdy-proxy and --client-mode cannot be used "
-               << "at the same time.";
-    exit(EXIT_FAILURE);
   }
 
   char hostport[NI_MAXHOST+16];

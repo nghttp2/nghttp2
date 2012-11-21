@@ -51,6 +51,7 @@ SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS[] = "spdy-max-concurrent-streams";
 const char SHRPX_OPT_LOG_LEVEL[] = "log-level";
 const char SHRPX_OPT_DAEMON[] = "daemon";
 const char SHRPX_OPT_SPDY_PROXY[] = "spdy-proxy";
+const char SHRPX_OPT_CLIENT_PROXY[] = "client-proxy";
 const char SHRPX_OPT_ADD_X_FORWARDED_FOR[] = "add-x-forwarded-for";
 const char
 SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT[] = "frontend-spdy-read-timeout";
@@ -68,7 +69,7 @@ const char SHRPX_OPT_SYSLOG[] = "syslog";
 const char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
 const char SHRPX_OPT_BACKLOG[] = "backlog";
 const char SHRPX_OPT_CIPHERS[] = "ciphers";
-const char SHRPX_OPT_CLIENT_MODE[] = "client-mode";
+const char SHRPX_OPT_CLIENT[] = "client";
 
 Config::Config()
   : verbose(false),
@@ -86,6 +87,7 @@ Config::Config()
     num_worker(0),
     spdy_max_concurrent_streams(0),
     spdy_proxy(false),
+    client_proxy(false),
     add_x_forwarded_for(false),
     accesslog(false),
     spdy_upstream_window_bits(0),
@@ -98,6 +100,7 @@ Config::Config()
     use_syslog(false),
     backlog(0),
     ciphers(0),
+    client(false),
     client_mode(false)
 {}
 
@@ -189,6 +192,8 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->daemon = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_SPDY_PROXY)) {
     mod_config()->spdy_proxy = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_CLIENT_PROXY)) {
+    mod_config()->client_proxy = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_ADD_X_FORWARDED_FOR)) {
     mod_config()->add_x_forwarded_for = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT)) {
@@ -248,8 +253,8 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->backlog = strtol(optarg, 0, 10);
   } else if(util::strieq(opt, SHRPX_OPT_CIPHERS)) {
     set_config_str(&mod_config()->ciphers, optarg);
-  } else if(util::strieq(opt, SHRPX_OPT_CLIENT_MODE)) {
-    mod_config()->client_mode = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_CLIENT)) {
+    mod_config()->client = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {

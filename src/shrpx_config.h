@@ -45,6 +45,7 @@ extern const char SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS[];
 extern const char SHRPX_OPT_LOG_LEVEL[];
 extern const char SHRPX_OPT_DAEMON[];
 extern const char SHRPX_OPT_SPDY_PROXY[];
+extern const char SHRPX_OPT_CLIENT_PROXY[];
 extern const char SHRPX_OPT_ADD_X_FORWARDED_FOR[];
 extern const char SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[];
@@ -60,7 +61,7 @@ extern const char SHRPX_OPT_SYSLOG[];
 extern const char SHRPX_OPT_SYSLOG_FACILITY[];
 extern const char SHRPX_OPT_BACKLOG[];
 extern const char SHRPX_OPT_CIPHERS[];
-extern const char SHRPX_OPT_CLIENT_MODE[];
+extern const char SHRPX_OPT_CLIENT[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -92,6 +93,7 @@ struct Config {
   size_t num_worker;
   size_t spdy_max_concurrent_streams;
   bool spdy_proxy;
+  bool client_proxy;
   bool add_x_forwarded_for;
   bool accesslog;
   size_t spdy_upstream_window_bits;
@@ -105,6 +107,8 @@ struct Config {
   bool use_syslog;
   int backlog;
   char *ciphers;
+  bool client;
+  // true if --client or --client-proxy are enabled.
   bool client_mode;
   Config();
 };

@@ -126,6 +126,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
 namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
+  int rv;
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   if(ENABLE_LOG) {
@@ -139,6 +140,21 @@ int htp_hdrs_completecb(http_parser *htp)
 
   downstream->set_request_connection_close(!http_should_keep_alive(htp));
 
+  if(get_config()->client_proxy &&
+     downstream->get_request_method() != "CONNECT") {
+    // Make sure that request path is an absolute URI.
+    http_parser_url u;
+    const char *url = downstream->get_request_path().c_str();
+    memset(&u, 0, sizeof(u));
+    rv = http_parser_parse_url(url,
+                               downstream->get_request_path().size(),
+                               0, &u);
+    if(rv != 0 || !(u.field_set & (1 << UF_SCHEMA))) {
+      // Expect to respond with 400 bad request
+      return -1;
+    }
+  }
+
   DownstreamConnection *dconn;
   dconn = upstream->get_client_handler()->get_downstream_connection();
 
@@ -151,7 +167,7 @@ int htp_hdrs_completecb(http_parser *htp)
     }
   }
 
-  int rv =  dconn->attach_downstream(downstream);
+  rv =  dconn->attach_downstream(downstream);
   if(rv != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
     downstream->set_downstream_connection(0);
