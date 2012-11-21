@@ -491,6 +491,9 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
 namespace {
 void spdy_downstream_writecb(bufferevent *bev, void *ptr)
 {
+  if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
+    return;
+  }
   DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
   Downstream *downstream = dconn->get_downstream();
   SpdyUpstream *upstream;

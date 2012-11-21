@@ -54,6 +54,11 @@ void upstream_writecb(bufferevent *bev, void *arg)
 {
   ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
   // We actually depend on write low-warter mark == 0.
+  if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
+    // Possibly because of deferred callback, we may get this callback
+    // when the output buffer is not empty.
+    return;
+  }
   if(handler->get_should_close_after_write()) {
     delete handler;
   } else {

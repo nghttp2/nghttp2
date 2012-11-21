@@ -194,6 +194,9 @@ void readcb(bufferevent *bev, void *ptr)
 namespace {
 void writecb(bufferevent *bev, void *ptr)
 {
+  if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
+    return;
+  }
   int rv;
   SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
   rv = spdy->on_write();
