@@ -51,6 +51,8 @@ public:
 
   int init_notification();
 
+  int check_cert();
+
   int disconnect();
   int initiate_connection();
   void connected();

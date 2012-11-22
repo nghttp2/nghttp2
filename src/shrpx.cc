@@ -356,6 +356,9 @@ void fill_default_config()
   mod_config()->client_proxy = false;
   mod_config()->client = false;
   mod_config()->client_mode = false;
+
+  mod_config()->insecure = false;
+  mod_config()->cacert = 0;
 }
 } // namespace
 
@@ -465,6 +468,15 @@ void print_help(std::ostream& out)
       << get_config()->backlog << "\n"
       << "    --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
       << "                       string is described in OpenSSL ciphers(1).\n"
+      << "    -k, --insecure     When used with -p or --client, don't verify\n"
+      << "                       backend server's certificate.\n"
+      << "    --cacert=<PATH>    When used with -p or --client, set path to\n"
+      << "                       trusted CA certificate file.\n"
+      << "                       The file must be in PEM format. It can\n"
+      << "                       contain multiple certificates. If the\n"
+      << "                       linked OpenSSL is configured to load system\n"
+      << "                       wide certificates, they are loaded\n"
+      << "                       at startup regardless of this option.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -482,6 +494,7 @@ int main(int argc, char **argv)
     static option long_options[] = {
       {"backend", required_argument, 0, 'b' },
       {"frontend", required_argument, 0, 'f' },
+      {"insecure", no_argument, 0, 'k' },
       {"workers", required_argument, 0, 'n' },
       {"spdy-max-concurrent-streams", required_argument, 0, 'c' },
       {"log-level", required_argument, 0, 'L' },
@@ -506,11 +519,12 @@ int main(int argc, char **argv)
       {"ciphers", required_argument, &flag, 16 },
       {"client", no_argument, &flag, 17 },
       {"backend-spdy-window-bits", required_argument, &flag, 18 },
+      {"cacert", required_argument, &flag, 19 },
       {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DL:sb:c:f:n:hp", long_options,
+    int c = getopt_long(argc, argv, "DL:ksb:c:f:n:hp", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -530,6 +544,9 @@ int main(int argc, char **argv)
       break;
     case 'f':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND, optarg));
+      break;
+    case 'k':
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_INSECURE, "yes"));
       break;
     case 'n':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WORKERS, optarg));
@@ -625,6 +642,10 @@ int main(int argc, char **argv)
         // --backend-spdy-window-bits
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS,
                                          optarg));
+        break;
+      case 19:
+        // --cacert
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CACERT, optarg));
         break;
       default:
         break;

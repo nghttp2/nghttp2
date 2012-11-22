@@ -37,6 +37,7 @@
 #include "shrpx_error.h"
 #include "shrpx_spdy_downstream_connection.h"
 #include "shrpx_client_handler.h"
+#include "shrpx_ssl.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -215,7 +216,8 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       LOG(INFO) << "Downstream spdy connection established. " << spdy;
     }
     spdy->connected();
-    if(spdy->on_connect() != 0) {
+    if((!get_config()->insecure && spdy->check_cert() != 0) ||
+       spdy->on_connect() != 0) {
       spdy->disconnect();
       return;
     }
@@ -232,6 +234,11 @@ void eventcb(bufferevent *bev, short events, void *ptr)
   }
 }
 } // namespace
+
+int SpdySession::check_cert()
+{
+  return ssl::check_cert(ssl_);
+}
 
 int SpdySession::initiate_connection()
 {

@@ -29,7 +29,12 @@
 #include <netinet/tcp.h>
 #include <pthread.h>
 
+#include <vector>
+#include <string>
+
 #include <openssl/crypto.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_ssl.h>
@@ -40,6 +45,9 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_accesslog.h"
+#include "util.h"
+
+using namespace spdylay;
 
 namespace shrpx {
 
@@ -182,6 +190,20 @@ SSL_CTX* create_ssl_client_context()
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
+  if(SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
+    LOG(WARNING) << "Could not load system trusted ca certificates: "
+                 << ERR_error_string(ERR_get_error(), NULL);
+  }
+
+  if(get_config()->cacert) {
+    if(SSL_CTX_load_verify_locations(ssl_ctx, get_config()->cacert, 0) != 1) {
+      LOG(FATAL) << "Could not load trusted ca certificates from "
+                 << get_config()->cacert << ": "
+                 << ERR_error_string(ERR_get_error(), NULL);
+      DIE();
+    }
+  }
+
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, 0);
   return ssl_ctx;
 }
@@ -226,6 +248,184 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
     return 0;
   }
+}
+
+namespace {
+bool numeric_host(const char *hostname)
+{
+  struct addrinfo hints;
+  struct addrinfo* res;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_flags = AI_NUMERICHOST;
+  if(getaddrinfo(hostname, 0, &hints, &res)) {
+    return false;
+  }
+  freeaddrinfo(res);
+  return true;
+}
+} // namespace
+
+namespace {
+bool tls_hostname_match(const char *pattern, const char *hostname)
+{
+  const char *ptWildcard = strchr(pattern, '*');
+  if(ptWildcard == 0) {
+    return util::strieq(pattern, hostname);
+  }
+  const char *ptLeftLabelEnd = strchr(pattern, '.');
+  bool wildcardEnabled = true;
+  // Do case-insensitive match. At least 2 dots are required to enable
+  // wildcard match. Also wildcard must be in the left-most label.
+  // Don't attempt to match a presented identifier where the wildcard
+  // character is embedded within an A-label.
+  if(ptLeftLabelEnd == 0 || strchr(ptLeftLabelEnd+1, '.') == 0 ||
+     ptLeftLabelEnd < ptWildcard || util::istartsWith(pattern, "xn--")) {
+    wildcardEnabled = false;
+  }
+  if(!wildcardEnabled) {
+    return util::strieq(pattern, hostname);
+  }
+  const char *hnLeftLabelEnd = strchr(hostname, '.');
+  if(hnLeftLabelEnd == 0 || !util::strieq(ptLeftLabelEnd, hnLeftLabelEnd)) {
+    return false;
+  }
+  // Perform wildcard match. Here '*' must match at least one
+  // character.
+  if(hnLeftLabelEnd - hostname < ptLeftLabelEnd - pattern) {
+    return false;
+  }
+  return util::istartsWith(hostname, hnLeftLabelEnd, pattern, ptWildcard) &&
+    util::iendsWith(hostname, hnLeftLabelEnd, ptWildcard+1, ptLeftLabelEnd);
+}
+} // namespace
+
+namespace {
+int verify_hostname(const char *hostname,
+                    const sockaddr_union *su,
+                    size_t salen,
+                    const std::vector<std::string>& dns_names,
+                    const std::vector<std::string>& ip_addrs,
+                    const std::string& common_name)
+{
+  if(numeric_host(hostname)) {
+    if(ip_addrs.empty()) {
+      return util::strieq(common_name.c_str(), hostname) ? 0 : -1;
+    }
+    const void *saddr;
+    switch(su->storage.ss_family) {
+    case AF_INET:
+      saddr = &su->in.sin_addr;
+      break;
+    case AF_INET6:
+      saddr = &su->in6.sin6_addr;
+      break;
+    default:
+      return -1;
+    }
+    for(size_t i = 0; i < ip_addrs.size(); ++i) {
+      if(salen == ip_addrs[i].size() &&
+         memcmp(saddr, ip_addrs[i].c_str(), salen) == 0) {
+        return 0;
+      }
+    }
+  } else {
+    if(dns_names.empty()) {
+      return tls_hostname_match(common_name.c_str(), hostname) ? 0 : -1;
+    }
+    for(size_t i = 0; i < dns_names.size(); ++i) {
+      if(tls_hostname_match(dns_names[i].c_str(), hostname)) {
+        return 0;
+      }
+    }
+  }
+  return -1;
+}
+} // namespace
+
+int check_cert(SSL *ssl)
+{
+  X509 *cert = SSL_get_peer_certificate(ssl);
+  if(!cert) {
+    LOG(ERROR) << "No certificate found";
+    return -1;
+  }
+  util::auto_delete<X509*> cert_deleter(cert, X509_free);
+  long verify_res = SSL_get_verify_result(ssl);
+  if(verify_res != X509_V_OK) {
+    LOG(ERROR) << "Certificate verification failed: "
+               << X509_verify_cert_error_string(verify_res);
+    return -1;
+  }
+  std::string common_name;
+  std::vector<std::string> dns_names;
+  std::vector<std::string> ip_addrs;
+  GENERAL_NAMES* altnames;
+  altnames = reinterpret_cast<GENERAL_NAMES*>
+    (X509_get_ext_d2i(cert, NID_subject_alt_name, 0, 0));
+  if(altnames) {
+    util::auto_delete<GENERAL_NAMES*> altnames_deleter(altnames,
+                                                       GENERAL_NAMES_free);
+    size_t n = sk_GENERAL_NAME_num(altnames);
+    for(size_t i = 0; i < n; ++i) {
+      const GENERAL_NAME *altname = sk_GENERAL_NAME_value(altnames, i);
+      if(altname->type == GEN_DNS) {
+        const char *name;
+        name = reinterpret_cast<char*>(ASN1_STRING_data(altname->d.ia5));
+        if(!name) {
+          continue;
+        }
+        size_t len = ASN1_STRING_length(altname->d.ia5);
+        if(std::find(name, name+len, '\0') != name+len) {
+          // Embedded NULL is not permitted.
+          continue;
+        }
+        dns_names.push_back(std::string(name, len));
+      } else if(altname->type == GEN_IPADD) {
+        const unsigned char *ip_addr = altname->d.iPAddress->data;
+        if(!ip_addr) {
+          continue;
+        }
+        size_t len = altname->d.iPAddress->length;
+        ip_addrs.push_back(std::string(reinterpret_cast<const char*>(ip_addr),
+                                      len));
+      }
+    }
+  }
+  X509_NAME *subjectname = X509_get_subject_name(cert);
+  if(!subjectname) {
+    LOG(ERROR) << "Could not get X509 name object from the certificate.";
+    return -1;
+  }
+  int lastpos = -1;
+  while(1) {
+    lastpos = X509_NAME_get_index_by_NID(subjectname, NID_commonName,
+                                         lastpos);
+    if(lastpos == -1) {
+      break;
+    }
+    X509_NAME_ENTRY *entry = X509_NAME_get_entry(subjectname, lastpos);
+    unsigned char *out;
+    int outlen = ASN1_STRING_to_UTF8(&out, X509_NAME_ENTRY_get_data(entry));
+    if(outlen < 0) {
+      continue;
+    }
+    if(std::find(out, out+outlen, '\0') != out+outlen) {
+      // Embedded NULL is not permitted.
+      continue;
+    }
+    common_name.assign(&out[0], &out[outlen]);
+    OPENSSL_free(out);
+    break;
+  }
+  if(verify_hostname(get_config()->downstream_host,
+                     &get_config()->downstream_addr,
+                     get_config()->downstream_addrlen,
+                     dns_names, ip_addrs, common_name) != 0) {
+    LOG(ERROR) << "Certificate verification failed: hostname does not match";
+    return -1;
+  }
+  return 0;
 }
 
 namespace {

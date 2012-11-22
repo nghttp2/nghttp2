@@ -36,6 +36,47 @@ namespace spdylay {
 
 namespace util {
 
+template<typename T>
+class auto_delete {
+private:
+  T obj_;
+  void (*deleter_)(T);
+public:
+  auto_delete(T obj, void (*deleter)(T)):obj_(obj), deleter_(deleter) {}
+
+  ~auto_delete()
+  {
+    deleter_(obj_);
+  }
+};
+
+template<typename T>
+class auto_delete_d {
+private:
+  T obj_;
+public:
+  auto_delete_d(T obj):obj_(obj) {}
+
+  ~auto_delete_d()
+  {
+    delete obj_;
+  }
+};
+
+template<typename T, typename R>
+class auto_delete_r {
+private:
+  T obj_;
+  R (*deleter_)(T);
+public:
+  auto_delete_r(T obj, R (*deleter)(T)):obj_(obj), deleter_(deleter) {}
+
+  ~auto_delete_r()
+  {
+    (void)deleter_(obj_);
+  }
+};
+
 extern const std::string DEFAULT_STRIP_CHARSET;
 
 template<typename InputIterator>
@@ -233,7 +274,22 @@ bool endsWith
   return std::equal(first2, last2, last1-(last2-first2));
 }
 
+template<typename InputIterator1, typename InputIterator2>
+bool iendsWith
+(InputIterator1 first1,
+ InputIterator1 last1,
+ InputIterator2 first2,
+ InputIterator2 last2)
+{
+  if(last1-first1 < last2-first2) {
+    return false;
+  }
+  return std::equal(first2, last2, last1-(last2-first2), CaseCmp());
+}
+
 bool endsWith(const std::string& a, const std::string& b);
+
+bool strieq(const std::string& a, const std::string& b);
 
 bool strieq(const char *a, const char *b);
 

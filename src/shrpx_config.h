@@ -63,6 +63,8 @@ extern const char SHRPX_OPT_SYSLOG_FACILITY[];
 extern const char SHRPX_OPT_BACKLOG[];
 extern const char SHRPX_OPT_CIPHERS[];
 extern const char SHRPX_OPT_CLIENT[];
+extern const char SHRPX_OPT_INSECURE[];
+extern const char SHRPX_OPT_CACERT[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -112,6 +114,8 @@ struct Config {
   bool client;
   // true if --client or --client-proxy are enabled.
   bool client_mode;
+  bool insecure;
+  char *cacert;
   Config();
 };
 
