@@ -367,7 +367,7 @@ void print_usage(std::ostream& out)
 {
   out << "Usage: shrpx [-Dh] [-s|--client|-p] [-b <HOST,PORT>]\n"
       << "             [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]\n"
-      << "             [OPTIONS...] <PRIVATE_KEY> <CERT>\n"
+      << "             [OPTIONS...] [<PRIVATE_KEY> <CERT>]\n"
       << "\n"
       << "A reverse proxy for SPDY/HTTPS.\n"
       << std::endl;
@@ -378,7 +378,12 @@ namespace {
 void print_help(std::ostream& out)
 {
   print_usage(out);
-  out << "\n"
+  out << "Positional arguments:\n"
+      << "    <PRIVATE_KEY>      Set path to server's private key. Required\n"
+      << "                       unless either -p or --client is specified.\n"
+      << "    <CERT>             Set path to server's certificate. Required\n"
+      << "                       unless either -p or --client is specified.\n"
+      << "\n"
       << "OPTIONS:\n"
       << "    -b, --backend=<HOST,PORT>\n"
       << "                       Set backend host and port.\n"
