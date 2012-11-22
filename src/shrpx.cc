@@ -363,6 +363,13 @@ void fill_default_config()
 } // namespace
 
 namespace {
+void print_version(std::ostream& out)
+{
+  out << get_config()->server_name << std::endl;
+}
+} // namespace
+
+namespace {
 void print_usage(std::ostream& out)
 {
   out << "Usage: shrpx [-Dh] [-s|--client|-p] [-b <HOST,PORT>]\n"
@@ -498,7 +505,8 @@ void print_help(std::ostream& out)
       << "    --conf=<PATH>      Load configuration from PATH.\n"
       << "                       Default: "
       << get_config()->conf_path << "\n"
-      << "    -h, --help         Print this help.\n"
+      << "    -v, --version      Print version and exit.\n"
+      << "    -h, --help         Print this help and exit.\n"
       << std::endl;
 }
 } // namespace
@@ -523,6 +531,7 @@ int main(int argc, char **argv)
       {"workers", required_argument, 0, 'n' },
       {"client-proxy", no_argument, 0, 'p' },
       {"spdy-proxy", no_argument, 0, 's' },
+      {"version", no_argument, 0, 'v' },
       {"add-x-forwarded-for", no_argument, &flag, 1 },
       {"frontend-spdy-read-timeout", required_argument, &flag, 2 },
       {"frontend-read-timeout", required_argument, &flag, 3 },
@@ -545,7 +554,7 @@ int main(int argc, char **argv)
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DL:b:c:f:hkn:ps", long_options,
+    int c = getopt_long(argc, argv, "DL:b:c:f:hkn:psv", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -582,6 +591,9 @@ int main(int argc, char **argv)
     case 's':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_PROXY, "yes"));
       break;
+    case 'v':
+      print_version(std::cout);
+      exit(EXIT_SUCCESS);
     case '?':
       exit(EXIT_FAILURE);
     case 0:
