@@ -225,11 +225,15 @@ Shrpx - A reverse proxy for SPDY/HTTPS
 ++++++++++++++++++++++++++++++++++++++
 
 The ``shrpx`` is a multi-threaded reverse proxy for SPDY/HTTPS.  It
-converts SPDY/HTTPS traffic to plain HTTP. It can be used as SSL/SPDY
-proxy with the http proxy (e.g., Squid) in the backend. To enable
-SSL/SPDY proxy mode, use ``--spdy-proxy`` option.  It also supports
-configuration file. See ``--conf`` option and sample configuration
-file ``shrpx.conf.sample``.
+converts SPDY/HTTPS traffic to plain HTTP.  It is first developed as a
+reverse proxy, but now can be used as a forward proxy.  For example,
+with ``--spdy-proxy`` (``-s`` in shorthand) option, it can be used as
+secure SPDY proxy with a proxy (e.g., Squid) in the backend.  With
+``--cliet-proxy`` (``-p``) option, it acts like an ordinaly forward
+proxy but expects secure SPDY proxy in the backend. Thus it becomes an
+adapter to secure SPDY proxy for clients which does not support secure
+SPDY proxy.  It also supports configuration file. See ``--conf``
+option and sample configuration file ``shrpx.conf.sample``.
 
 We briefly describe the architecture of ``shrpx`` here.  It has a
 dedicated thread which listens on server sockets.  When it accepted
@@ -243,40 +247,36 @@ low-level network I/O.
 Here is the command-line options::
 
     $ src/shrpx -h
-    Usage: shrpx [-Dhs] [-b <HOST,PORT>] [-f <HOST,PORT>] [-n <CORES>]
-                 [-c <NUM>] [-L <LEVEL>] [OPTIONS...]
-                 <PRIVATE_KEY> <CERT>
-
-           shrpx --client-mode [-Dh] [-b <HOST,PORT>] [-f <HOST,PORT>]
-                 [-n <CORES>] [-c <NUM>] [-L <LEVEL>] [OPTIONS...]
+    Usage: shrpx [-Dh] [-s|--client|-p] [-b <HOST,PORT>]
+                 [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]
+                 [OPTIONS...] [<PRIVATE_KEY> <CERT>]
 
     A reverse proxy for SPDY/HTTPS.
 
+    Positional arguments:
+        <PRIVATE_KEY>      Set path to server's private key. Required
+                           unless either -p or --client is specified.
+        <CERT>             Set path to server's certificate. Required
+                           unless either -p or --client is specified.
 
     OPTIONS:
+
+      Connections:
         -b, --backend=<HOST,PORT>
                            Set backend host and port.
                            Default: '127.0.0.1,80'
         -f, --frontend=<HOST,PORT>
                            Set frontend host and port.
                            Default: '0.0.0.0,3000'
+        --backlog=<NUM>    Set listen backlog size.
+                           Default: 256
+
+      Performance:
         -n, --workers=<CORES>
                            Set the number of worker threads.
                            Default: 1
-        -c, --spdy-max-concurrent-streams=<NUM>
-                           Set the maximum number of the concurrent
-                           streams in one SPDY session.
-                           Default: 100
-        -L, --log-level=<LEVEL>
-                           Set the severity level of log output.
-                           INFO, WARNING, ERROR and FATAL.
-                           Default: WARNING
-        -D, --daemon       Run in a background. If -D is used, the
-                           current working directory is changed to '/'.
-        -s, --spdy-proxy   SSL/SPDY proxy mode.
-        --add-x-forwarded-for
-                           Append X-Forwarded-For header field to the
-                           downstream request.
+
+      Timeout:
         --frontend-spdy-read-timeout=<SEC>
                            Specify read timeout for SPDY frontend
                            connection. Default: 180
@@ -296,47 +296,88 @@ Here is the command-line options::
         --backend-keep-alive-timeout=<SEC>
                            Specify keep-alive timeout for backend
                            connection. Default: 60
-        --accesslog        Print simple accesslog to stderr.
+
+      SSL/TLS:
+        --ciphers=<SUITE>  Set allowed cipher list. The format of the
+                           string is described in OpenSSL ciphers(1).
+        -k, --insecure     When used with -p or --client, don't verify
+                           backend server's certificate.
+        --cacert=<PATH>    When used with -p or --client, set path to
+                           trusted CA certificate file.
+                           The file must be in PEM format. It can
+                           contain multiple certificates. If the
+                           linked OpenSSL is configured to load system
+                           wide certificates, they are loaded
+                           at startup regardless of this option.
+
+      SPDY:
+        -c, --spdy-max-concurrent-streams=<NUM>
+                           Set the maximum number of the concurrent
+                           streams in one SPDY session.
+                           Default: 100
         --frontend-spdy-window-bits=<N>
                            Sets the initial window size of SPDY
                            frontend connection to 2**<N>.
                            Default: 16
+        --backend-spdy-window-bits=<N>
+                           Sets the initial window size of SPDY
+                           backend connection to 2**<N>.
+                           Default: 16
+
+      Mode:
+        -s, --spdy-proxy   Enable secure SPDY proxy mode.
+        --client           Instead of accepting SPDY/HTTPS connection,
+                           accept HTTP connection and communicate with
+                           backend server in SPDY. To use shrpx as
+                           a forward proxy, use -p option instead.
+        -p, --client-proxy Like --client option, but it also requires
+                           the request path from frontend must be
+                           an absolute URI, suitable for use as a
+                           forward proxy.
+      Logging:
+        -L, --log-level=<LEVEL>
+                           Set the severity level of log output.
+                           INFO, WARNING, ERROR and FATAL.
+                           Default: WARNING
+        --accesslog        Print simple accesslog to stderr.
+        --syslog           Send log messages to syslog.
+        --syslog-facility=<FACILITY>
+                           Set syslog facility.
+                           Default: daemon
+
+      Misc:
+        --add-x-forwarded-for
+                           Append X-Forwarded-For header field to the
+                           downstream request.
+        -D, --daemon       Run in a background. If -D is used, the
+                           current working directory is changed to '/'.
         --pid-file=<PATH>  Set path to save PID of this program.
         --user=<USER>      Run this program as USER. This option is
                            intended to be used to drop root privileges.
         --conf=<PATH>      Load configuration from PATH.
                            Default: /etc/shrpx/shrpx.conf
-        --syslog           Send log messages to syslog.
-        --syslog-facility=<FACILITY>
-                           Set syslog facility.
-                           Default: daemon
-        --backlog=<NUM>    Set listen backlog size.
-                           Default: 256
-        --ciphers=<SUITE>  Set allowed cipher list. The format of the
-                           string is described in OpenSSL ciphers(1).
-        --client-mode      Instead of accepting SPDY/HTTPS connection,
-                           accept HTTP connection and communicate with
-                           backend server in SPDY. This is for testing
-                           purpose.
-        -h, --help         Print this help.
-
+        -v, --version      Print version and exit.
+        -h, --help         Print this help and exit.
 
 For those of you who are curious, ``shrpx`` is an abbreviation of
 "Spdy/https to Http Reverse ProXy".
 
-Without ``-s`` option, it works in the following configuration::
+Without any of ``-s``, ``-p`` and ``--client`` options, ``shrpx``
+works as reverse proxy to the backend server::
 
     Client <-- (SPDY, HTTPS) --> Shrpx <-- (HTTP) --> Web Server
+                            [reverse proxy]
 
-With ``-s`` option, it works in the following configuration::
+With ``-s`` option, it works as secure SPDY proxy::
 
-    Client <-- (SPDY, HTTPS) --> Shrpx <-- (HTTP) --> Proxy (e.g., Squid)
+    Client <-- (SPDY, HTTPS) --> Shrpx <-- (HTTP) --> Proxy
+                              [SPDY proxy]            (e.g., Squid)
 
-    * Client is configured to use Shrpx as SSL/SPDY proxy.
+    * Client is needs to be configured to use shrpx as secure SPDY proxy.
 
 At the time of this writing, Chrome is the only browser which supports
-SSL/SPDY proxy. The one way to configure Chrome to use SSL/SPDY proxy
-is create proxy.pac script like this::
+secure SPDY proxy. The one way to configure Chrome to use secure SPDY
+proxy is create proxy.pac script like this::
 
     function FindProxyForURL(url, host) {
         return "HTTPS SERVERADDR:PORT";
@@ -344,19 +385,30 @@ is create proxy.pac script like this::
 
 ``SERVERADDR`` and ``PORT`` is the hostname/address and port of the
 machine shrpx is running.  Please note that Chrome requires valid
-certificate for SSL/PROXY.
+certificate for secure SPDY proxy.
 
 Then run chrome with the following arguments::
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
-There is an interesting option ``--client-mode``. If it is given,
-``shrpx`` accepts HTTP connections and communicates with the backend
-in SPDY::
+With ``-p`` option, it works as forward proxy and expects that the
+backend is secure SPDY proxy::
 
-    Client <-- (HTTP) --> Shrpx <-- (SPDY) --> Web Server or another Shrpx
+    Client <-- (HTTP) --> Shrpx <-- (SPDY) --> Secure SPDY Proxy
+                     [forward proxy]         (e.g., shrpx -s or node-spdyproxy)
 
-``--client-mode`` option is for testing purpose only.
+    * Client is needs to be configured to use shrpx as forward proxy.
+
+In this configuration, clients which do not support secure SPDY proxy
+can use secure SPDY proxy through ``shrpx``. Putting ``shrpx`` in the
+same box or same network with the clients, this configuration can
+bring the benefits of secure SPDY proxy to those clients.
+
+With ``--client`` option, it works as reverse proxy and expects that
+the backend is SPDY-enabled Web server::
+
+    Client <-- (HTTP) --> Shrpx <-- (SPDY) --> Web Server
+                     [reverse proxy]
 
 Examples
 --------
