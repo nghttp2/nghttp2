@@ -497,15 +497,16 @@ int main(int argc, char **argv)
   while(1) {
     int flag;
     static option long_options[] = {
+      {"daemon", no_argument, 0, 'D' },
+      {"log-level", required_argument, 0, 'L' },
       {"backend", required_argument, 0, 'b' },
+      {"spdy-max-concurrent-streams", required_argument, 0, 'c' },
       {"frontend", required_argument, 0, 'f' },
+      {"help", no_argument, 0, 'h' },
       {"insecure", no_argument, 0, 'k' },
       {"workers", required_argument, 0, 'n' },
-      {"spdy-max-concurrent-streams", required_argument, 0, 'c' },
-      {"log-level", required_argument, 0, 'L' },
-      {"daemon", no_argument, 0, 'D' },
-      {"spdy-proxy", no_argument, 0, 's' },
       {"client-proxy", no_argument, 0, 'p' },
+      {"spdy-proxy", no_argument, 0, 's' },
       {"add-x-forwarded-for", no_argument, &flag, 1 },
       {"frontend-spdy-read-timeout", required_argument, &flag, 2 },
       {"frontend-read-timeout", required_argument, &flag, 3 },
@@ -525,11 +526,10 @@ int main(int argc, char **argv)
       {"client", no_argument, &flag, 17 },
       {"backend-spdy-window-bits", required_argument, &flag, 18 },
       {"cacert", required_argument, &flag, 19 },
-      {"help", no_argument, 0, 'h' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DL:ksb:c:f:n:hp", long_options,
+    int c = getopt_long(argc, argv, "DL:b:c:f:hkn:ps", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -538,33 +538,33 @@ int main(int argc, char **argv)
     case 'D':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_DAEMON, "yes"));
       break;
-    case 'h':
-      print_help(std::cout);
-      exit(EXIT_SUCCESS);
     case 'L':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_LOG_LEVEL, optarg));
       break;
     case 'b':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND, optarg));
       break;
+    case 'c':
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS,
+                                       optarg));
+      break;
     case 'f':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND, optarg));
       break;
+    case 'h':
+      print_help(std::cout);
+      exit(EXIT_SUCCESS);
     case 'k':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_INSECURE, "yes"));
       break;
     case 'n':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WORKERS, optarg));
       break;
-    case 'c':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS,
-                                       optarg));
+    case 'p':
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_PROXY, "yes"));
       break;
     case 's':
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_PROXY, "yes"));
-      break;
-    case 'p':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_PROXY, "yes"));
       break;
     case '?':
       exit(EXIT_FAILURE);
