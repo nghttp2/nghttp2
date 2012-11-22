@@ -296,7 +296,11 @@ bool conf_exists(const char *path)
 namespace {
 void fill_default_config()
 {
+  memset(mod_config(), 0, sizeof(*mod_config()));
+
+  mod_config()->verbose = false;
   mod_config()->daemon = false;
+  mod_config()->verify_client = false;
 
   mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;
   set_config_str(&mod_config()->host, "0.0.0.0");
@@ -332,33 +336,30 @@ void fill_default_config()
 
   set_config_str(&mod_config()->downstream_host, "127.0.0.1");
   mod_config()->downstream_port = 80;
+  mod_config()->downstream_hostport = 0;
+  mod_config()->downstream_addrlen = 0;
 
   mod_config()->num_worker = 1;
-
   mod_config()->spdy_max_concurrent_streams =
     SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
-
-  mod_config()->spdy_proxy = false;
   mod_config()->add_x_forwarded_for = false;
   mod_config()->accesslog = false;
-
   set_config_str(&mod_config()->conf_path, "/etc/shrpx/shrpx.conf");
-
   mod_config()->syslog = false;
   mod_config()->syslog_facility = LOG_DAEMON;
   mod_config()->use_syslog = false;
-
   // Default accept() backlog
   mod_config()->backlog = 256;
-
   mod_config()->ciphers = 0;
-
+  mod_config()->spdy_proxy = false;
   mod_config()->client_proxy = false;
   mod_config()->client = false;
   mod_config()->client_mode = false;
-
   mod_config()->insecure = false;
   mod_config()->cacert = 0;
+  mod_config()->pid_file = 0;
+  mod_config()->uid = 0;
+  mod_config()->gid = 0;
 }
 } // namespace
 

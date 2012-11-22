@@ -74,42 +74,6 @@ const char SHRPX_OPT_CLIENT[] = "client";
 const char SHRPX_OPT_INSECURE[] = "insecure";
 const char SHRPX_OPT_CACERT[] = "cacert";
 
-Config::Config()
-  : verbose(false),
-    daemon(false),
-    host(0),
-    port(0),
-    private_key_file(0),
-    cert_file(0),
-    verify_client(false),
-    server_name(0),
-    downstream_host(0),
-    downstream_port(0),
-    downstream_hostport(0),
-    downstream_addrlen(0),
-    num_worker(0),
-    spdy_max_concurrent_streams(0),
-    spdy_proxy(false),
-    client_proxy(false),
-    add_x_forwarded_for(false),
-    accesslog(false),
-    spdy_upstream_window_bits(0),
-    spdy_downstream_window_bits(0),
-    pid_file(0),
-    uid(0),
-    gid(0),
-    conf_path(0),
-    syslog(false),
-    syslog_facility(0),
-    use_syslog(false),
-    backlog(0),
-    ciphers(0),
-    client(false),
-    client_mode(false),
-    insecure(false),
-    cacert(0)
-{}
-
 namespace {
 Config *config = 0;
 } // namespace

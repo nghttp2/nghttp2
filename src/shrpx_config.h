@@ -116,7 +116,6 @@ struct Config {
   bool client_mode;
   bool insecure;
   char *cacert;
-  Config();
 };
 
 const Config* get_config();
