@@ -250,7 +250,6 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
   }
 }
 
-namespace {
 bool numeric_host(const char *hostname)
 {
   struct addrinfo hints;
@@ -264,7 +263,6 @@ bool numeric_host(const char *hostname)
   freeaddrinfo(res);
   return true;
 }
-} // namespace
 
 namespace {
 bool tls_hostname_match(const char *pattern, const char *hostname)

@@ -254,6 +254,14 @@ int SpdySession::initiate_connection()
                << ERR_error_string(ERR_get_error(), NULL);
     return -1;
   }
+
+  if(!ssl::numeric_host(get_config()->downstream_host)) {
+    // TLS extensions: SNI. There is no documentation about the return
+    // code for this function (actually this is macro wrapping SSL_ctrl
+    // at the time of this writing).
+    SSL_set_tlsext_host_name(ssl_, get_config()->downstream_host);
+  }
+
   bev_ = bufferevent_openssl_socket_new(evbase_, -1, ssl_,
                                         BUFFEREVENT_SSL_CONNECTING,
                                         BEV_OPT_DEFER_CALLBACKS);

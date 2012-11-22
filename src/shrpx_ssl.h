@@ -46,6 +46,8 @@ ClientHandler* accept_ssl_connection(event_base *evbase, SSL_CTX *ssl_ctx,
                                      evutil_socket_t fd,
                                      sockaddr *addr, int addrlen);
 
+bool numeric_host(const char *hostname);
+
 int check_cert(SSL *ssl);
 
 void setup_ssl_lock();
