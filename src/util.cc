@@ -33,7 +33,7 @@ namespace spdylay {
 
 namespace util {
 
-const std::string DEFAULT_STRIP_CHARSET("\r\n\t ");
+const char DEFAULT_STRIP_CHARSET[] = "\r\n\t ";
 
 bool isAlpha(const char c)
 {
