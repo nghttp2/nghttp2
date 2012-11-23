@@ -74,7 +74,7 @@ int htp_msg_begin(http_parser *htp)
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   if(ENABLE_LOG) {
-    LOG(INFO) << "Upstream https request start " << upstream;
+    LOG(INFO) << "Upstream http request start " << upstream;
   }
   upstream->reset_current_header_length();
   Downstream *downstream = new Downstream(upstream, 0, 0);
@@ -131,7 +131,7 @@ int htp_hdrs_completecb(http_parser *htp)
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
   if(ENABLE_LOG) {
-    LOG(INFO) << "Upstream https request headers complete " << upstream;
+    LOG(INFO) << "Upstream http request headers complete " << upstream;
   }
   Downstream *downstream = upstream->get_downstream();
 
@@ -151,7 +151,7 @@ int htp_hdrs_completecb(http_parser *htp)
     for(size_t i = 0; i < headers.size(); ++i) {
       ss << headers[i].first << ": " << headers[i].second << "\n";
     }
-    LOG(INFO) << "Upstream https request headers\n" << ss.str();
+    LOG(INFO) << "Upstream http request headers\n" << ss.str();
   }
 
   if(get_config()->client_proxy &&
@@ -219,7 +219,7 @@ int htp_msg_completecb(http_parser *htp)
 {
   int rv;
   if(ENABLE_LOG) {
-    LOG(INFO) << "Upstream https request complete";
+    LOG(INFO) << "Upstream http request complete";
   }
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
@@ -627,7 +627,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   hdrs += "\r\n";
   hdrs += "\r\n";
   if(ENABLE_LOG) {
-    LOG(INFO) << "Upstream https response headers\n" << hdrs;
+    LOG(INFO) << "Upstream http response headers\n" << hdrs;
   }
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
   if(evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
