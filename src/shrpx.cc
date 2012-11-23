@@ -82,7 +82,13 @@ int cache_downstream_host_address()
   snprintf(service, sizeof(service), "%u", get_config()->downstream_port);
   memset(&hints, 0, sizeof(addrinfo));
 
-  hints.ai_family = AF_UNSPEC;
+  if(get_config()->backend_ipv4) {
+    hints.ai_family = AF_INET;
+  } else if(get_config()->backend_ipv6) {
+    hints.ai_family = AF_INET6;
+  } else {
+    hints.ai_family = AF_UNSPEC;
+  }
   hints.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
@@ -360,6 +366,8 @@ void fill_default_config()
   mod_config()->pid_file = 0;
   mod_config()->uid = 0;
   mod_config()->gid = 0;
+  mod_config()->backend_ipv4 = false;
+  mod_config()->backend_ipv6 = false;
 }
 } // namespace
 
@@ -407,6 +415,10 @@ void print_help(std::ostream& out)
       << "    --backlog=<NUM>    Set listen backlog size.\n"
       << "                       Default: "
       << get_config()->backlog << "\n"
+      << "    --backend-ipv4     Resolve backend hostname to IPv4 address\n"
+      << "                       only.\n"
+      << "    --backend-ipv6     Resolve backend hostname to IPv6 address\n"
+      << "                       only.\n"
       << "\n"
       << "  Performance:\n"
       << "    -n, --workers=<CORES>\n"
@@ -552,6 +564,8 @@ int main(int argc, char **argv)
       {"client", no_argument, &flag, 17 },
       {"backend-spdy-window-bits", required_argument, &flag, 18 },
       {"cacert", required_argument, &flag, 19 },
+      {"backend-ipv4", no_argument, &flag, 20 },
+      {"backend-ipv6", no_argument, &flag, 21 },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -681,6 +695,14 @@ int main(int argc, char **argv)
         // --cacert
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CACERT, optarg));
         break;
+      case 20:
+        // --backend-ipv4
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_IPV4, "yes"));
+        break;
+      case 21:
+        // --backend-ipv6
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_IPV6, "yes"));
+        break;
       default:
         break;
       }
@@ -710,6 +732,12 @@ int main(int argc, char **argv)
       LOG(FATAL) << "Failed to parse command-line argument.";
       exit(EXIT_FAILURE);
     }
+  }
+
+  if(get_config()->backend_ipv4 && get_config()->backend_ipv6) {
+    LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
+               << "same time.";
+    exit(EXIT_FAILURE);
   }
 
   int mode = get_config()->spdy_proxy |

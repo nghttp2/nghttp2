@@ -73,6 +73,8 @@ const char SHRPX_OPT_CIPHERS[] = "ciphers";
 const char SHRPX_OPT_CLIENT[] = "client";
 const char SHRPX_OPT_INSECURE[] = "insecure";
 const char SHRPX_OPT_CACERT[] = "cacert";
+const char SHRPX_OPT_BACKEND_IPV4[] = "backend-ipv4";
+const char SHRPX_OPT_BACKEND_IPV6[] = "backend-ipv6";
 
 namespace {
 Config *config = 0;
@@ -240,6 +242,10 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->insecure = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_CACERT)) {
     set_config_str(&mod_config()->cacert, optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_BACKEND_IPV4)) {
+    mod_config()->backend_ipv4 = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_BACKEND_IPV6)) {
+    mod_config()->backend_ipv6 = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {
