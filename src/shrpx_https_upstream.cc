@@ -26,6 +26,7 @@
 
 #include <cassert>
 #include <set>
+#include <sstream>
 
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
@@ -139,6 +140,19 @@ int htp_hdrs_completecb(http_parser *htp)
   downstream->set_request_minor(htp->http_minor);
 
   downstream->set_request_connection_close(!http_should_keep_alive(htp));
+
+  if(ENABLE_LOG) {
+    std::stringstream ss;
+    ss << downstream->get_request_method() << " "
+       << downstream->get_request_path() << " "
+       << "HTTP/" << downstream->get_request_major() << "."
+       << downstream->get_request_minor() << "\n";
+    const Headers& headers = downstream->get_request_headers();
+    for(size_t i = 0; i < headers.size(); ++i) {
+      ss << headers[i].first << ": " << headers[i].second << "\n";
+    }
+    LOG(INFO) << "Upstream https request headers\n" << ss.str();
+  }
 
   if(get_config()->client_proxy &&
      downstream->get_request_method() != "CONNECT") {
