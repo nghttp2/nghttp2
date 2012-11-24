@@ -402,7 +402,15 @@ backend is secure SPDY proxy::
 In this configuration, clients which do not support secure SPDY proxy
 can use secure SPDY proxy through ``shrpx``. Putting ``shrpx`` in the
 same box or same network with the clients, this configuration can
-bring the benefits of secure SPDY proxy to those clients.
+bring the benefits of secure SPDY proxy to those clients. Since the
+maximum number of connections per server still applies in proxy
+connection, the performance gain is not obvious. For example, if the
+maximum number of connections per server is 6, after sending 6
+requests to the proxy, client blocks further requests, which kills
+performance which might be gained in SPDY connection.  For clients
+which can tweak these values (e.g.,
+``network.http.max-connections-per-server`` in Firefox), increasing
+them may improve the performance.
 
 With ``--client`` option, it works as reverse proxy and expects that
 the backend is SPDY-enabled Web server::
