@@ -61,7 +61,7 @@ const std::string SPDYD_SERVER = "spdyd spdylay/" SPDYLAY_VERSION;
 } // namespace
 
 Config::Config(): verbose(false), daemon(false), port(0), data_ptr(0),
-                  spdy3_only(false), verify_client(false)
+                  version(0), verify_client(false), no_tls(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -180,7 +180,7 @@ SpdyEventHandler::SpdyEventHandler(const Config* config,
                                    int64_t session_id)
   : EventHandler(config),
     fd_(fd), ssl_(ssl), version_(version), session_id_(session_id),
-    want_write_(false)
+    io_flags_(0)
 {
   int r;
   r = spdylay_session_server_new(&session_, version, callbacks, this);
@@ -202,8 +202,10 @@ SpdyEventHandler::~SpdyEventHandler()
         eoi = id2req_.end(); i != eoi; ++i) {
     delete (*i).second;
   }
-  SSL_shutdown(ssl_);
-  SSL_free(ssl_);
+  if(ssl_) {
+    SSL_shutdown(ssl_);
+    SSL_free(ssl_);
+  }
   shutdown(fd_, SHUT_WR);
   close(fd_);
 }
@@ -225,12 +227,12 @@ int SpdyEventHandler::execute(Sessions *sessions)
 
 bool SpdyEventHandler::want_read()
 {
-  return spdylay_session_want_read(session_);
+  return spdylay_session_want_read(session_) || (io_flags_ & WANT_READ);
 }
 
 bool SpdyEventHandler::want_write()
 {
-  return spdylay_session_want_write(session_) || want_write_;
+  return spdylay_session_want_write(session_) || (io_flags_ & WANT_WRITE);
 }
 
 int SpdyEventHandler::fd() const
@@ -247,29 +249,44 @@ bool SpdyEventHandler::finish()
 ssize_t SpdyEventHandler::send_data(const uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
-  ERR_clear_error();
-  r = SSL_write(ssl_, data, len);
+  io_flags_ = 0;
+  if(ssl_) {
+    ERR_clear_error();
+    r = SSL_write(ssl_, data, len);
+    if(r < 0) {
+      io_flags_ = get_ssl_io_demand(ssl_, r);
+    }
+  } else {
+    while((r = ::send(fd_, data, len, 0)) == -1 && errno == EINTR);
+    if(r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      io_flags_ |= WANT_WRITE;
+    }
+  }
   return r;
 }
 
 ssize_t SpdyEventHandler::recv_data(uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
-  want_write_ = false;
-  ERR_clear_error();
-  r = SSL_read(ssl_, data, len);
-  if(r < 0) {
-    if(SSL_get_error(ssl_, r) == SSL_ERROR_WANT_WRITE) {
-      want_write_ = true;
+  io_flags_ = 0;
+  if(ssl_) {
+    ERR_clear_error();
+    r = SSL_read(ssl_, data, len);
+    if(r < 0) {
+      io_flags_ = get_ssl_io_demand(ssl_, r);
+    }
+  } else {
+    while((r = ::recv(fd_, data, len, 0)) == -1 && errno == EINTR);
+    if(r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      io_flags_ |= WANT_READ;
     }
   }
   return r;
 }
 
-bool SpdyEventHandler::would_block(int r)
+bool SpdyEventHandler::would_block() const
 {
-  int e = SSL_get_error(ssl_, r);
-  return e == SSL_ERROR_WANT_WRITE || e == SSL_ERROR_WANT_READ;
+  return io_flags_;
 }
 
 int SpdyEventHandler::submit_file_response(const std::string& status,
@@ -368,11 +385,14 @@ ssize_t hd_send_callback(spdylay_session *session,
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   ssize_t r = hd->send_data(data, len, flags);
   if(r < 0) {
-    if(hd->would_block(r)) {
+    if(hd->would_block()) {
       r = SPDYLAY_ERR_WOULDBLOCK;
     } else {
       r = SPDYLAY_ERR_CALLBACK_FAILURE;
     }
+  } else if(r == 0) {
+    // In OpenSSL, r == 0 means EOF because SSL_write may do read.
+    r = SPDYLAY_ERR_CALLBACK_FAILURE;
   }
   return r;
 }
@@ -385,7 +405,7 @@ ssize_t hd_recv_callback(spdylay_session *session,
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   ssize_t r = hd->recv_data(data, len, flags);
   if(r < 0) {
-    if(hd->would_block(r)) {
+    if(hd->would_block()) {
       r = SPDYLAY_ERR_WOULDBLOCK;
     } else {
       r = SPDYLAY_ERR_CALLBACK_FAILURE;
@@ -649,13 +669,35 @@ void on_stream_close_callback
 }
 } // namespace
 
+namespace {
+void fill_callback(spdylay_session_callbacks& callbacks, const Config *config)
+{
+  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  callbacks.send_callback = hd_send_callback;
+  callbacks.recv_callback = hd_recv_callback;
+  callbacks.on_stream_close_callback = on_stream_close_callback;
+  callbacks.on_ctrl_recv_callback = hd_on_ctrl_recv_callback;
+  callbacks.on_ctrl_send_callback = hd_on_ctrl_send_callback;
+  callbacks.on_data_recv_callback = hd_on_data_recv_callback;
+  callbacks.on_data_send_callback = hd_on_data_send_callback;
+  if(config->verbose) {
+    callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
+    callbacks.on_ctrl_recv_parse_error_callback =
+      on_ctrl_recv_parse_error_callback;
+    callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
+  }
+  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_request_recv_callback = config->on_request_recv_callback;
+}
+} // namespace
+
 class SSLAcceptEventHandler : public EventHandler {
 public:
   SSLAcceptEventHandler(const Config *config,
                         int fd, SSL *ssl, int64_t session_id)
     : EventHandler(config),
       fd_(fd), ssl_(ssl), version_(0), fail_(false), finish_(false),
-      want_read_(true), want_write_(true),
+      io_flags_(WANT_READ),
       session_id_(session_id)
   {}
   virtual ~SSLAcceptEventHandler()
@@ -670,7 +712,7 @@ public:
   }
   virtual int execute(Sessions *sessions)
   {
-    want_read_ = want_write_ = false;
+    io_flags_ = 0;
     ERR_clear_error();
     int r = SSL_accept(ssl_);
     if(r == 1) {
@@ -684,6 +726,13 @@ public:
           std::cout << "The negotiated next protocol: " << proto << std::endl;
         }
         version_ = spdylay_npn_get_version(next_proto, next_proto_len);
+        if(config()->version != 0) {
+          if(config()->version != version_) {
+            version_ = 0;
+            std::cerr << "The negotiated next protocol is not supported."
+                      << std::endl;
+          }
+        }
         if(version_) {
           add_next_handler(sessions);
         } else {
@@ -693,34 +742,28 @@ public:
         fail_ = true;
       }
     } else if(r == 0) {
-      int e = SSL_get_error(ssl_, r);
-      if(e == SSL_ERROR_SSL) {
-        if(config()->verbose) {
-          std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-        }
-      }
       finish_ = true;
       fail_ = true;
     } else {
-      int d = SSL_get_error(ssl_, r);
-      if(d == SSL_ERROR_WANT_READ) {
-        want_read_ = true;
-      } else if(d == SSL_ERROR_WANT_WRITE) {
-        want_write_ = true;
-      } else {
+      io_flags_ = get_ssl_io_demand(ssl_, r);
+      if(io_flags_ == 0) {
         finish_ = true;
         fail_ = true;
       }
+    }
+    if(config()->verbose && fail_) {
+      std::cerr << "SSL/TLS handshake failed: "
+                << ERR_error_string(ERR_get_error(), 0) << std::endl;
     }
     return 0;
   }
   virtual bool want_read()
   {
-    return want_read_;
+    return io_flags_ & WANT_READ;
   }
   virtual bool want_write()
   {
-    return want_write_;
+    return io_flags_ & WANT_WRITE;
   }
   virtual int fd() const
   {
@@ -734,22 +777,7 @@ private:
   void add_next_handler(Sessions *sessions)
   {
     spdylay_session_callbacks callbacks;
-    memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
-    callbacks.send_callback = hd_send_callback;
-    callbacks.recv_callback = hd_recv_callback;
-    callbacks.on_stream_close_callback = on_stream_close_callback;
-    callbacks.on_ctrl_recv_callback = hd_on_ctrl_recv_callback;
-    callbacks.on_ctrl_send_callback = hd_on_ctrl_send_callback;
-    callbacks.on_data_recv_callback = hd_on_data_recv_callback;
-    callbacks.on_data_send_callback = hd_on_data_send_callback;
-    if(config()->verbose) {
-      callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
-      callbacks.on_ctrl_recv_parse_error_callback =
-        on_ctrl_recv_parse_error_callback;
-      callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
-    }
-    callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-    callbacks.on_request_recv_callback = config()->on_request_recv_callback;
+    fill_callback(callbacks, config());
     SpdyEventHandler *hd = new SpdyEventHandler(config(),
                                                 fd_, ssl_, version_, &callbacks,
                                                 session_id_);
@@ -765,7 +793,7 @@ private:
   SSL *ssl_;
   uint16_t version_;
   bool fail_, finish_;
-  bool want_read_, want_write_;
+  uint8_t io_flags_;
   int64_t session_id_;
 };
 
@@ -810,19 +838,34 @@ public:
 private:
   void add_next_handler(Sessions *sessions, int cfd)
   {
-    SSL *ssl = sessions->ssl_session_new(cfd);
-    if(ssl == 0) {
-      close(cfd);
-      return;
-    }
-    SSLAcceptEventHandler *hd = new SSLAcceptEventHandler
-      (config(), cfd, ssl, ++(*session_id_seed_ptr_));
-    if(sessions->add_poll(hd) == -1) {
-      delete hd;
-      SSL_free(ssl);
-      close(cfd);
+    int64_t session_id = ++(*session_id_seed_ptr_);
+    if(config()->no_tls) {
+      spdylay_session_callbacks callbacks;
+      fill_callback(callbacks, config());
+      SpdyEventHandler *hd = new SpdyEventHandler(config(),
+                                                  cfd, 0,
+                                                  config()->version, &callbacks,
+                                                  session_id);
+      if(sessions->add_poll(hd) == -1) {
+        delete hd;
+      } else {
+        sessions->add_handler(hd);
+      }
     } else {
-      sessions->add_handler(hd);
+      SSL *ssl = sessions->ssl_session_new(cfd);
+      if(ssl == 0) {
+        close(cfd);
+        return;
+      }
+      SSLAcceptEventHandler *hd = new SSLAcceptEventHandler(config(), cfd, ssl,
+                                                            session_id);
+      if(sessions->add_poll(hd) == -1) {
+        delete hd;
+        SSL_free(ssl);
+        close(cfd);
+      } else {
+        sessions->add_handler(hd);
+      }
     }
   }
 
@@ -901,55 +944,61 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 
 int SpdyServer::run()
 {
-  SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
-  if(!ssl_ctx) {
-    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-    return -1;
-  }
-  SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
-  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
-  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
-  if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
-                                 config_->private_key_file.c_str(),
-                                 SSL_FILETYPE_PEM) != 1) {
-    std::cerr << "SSL_CTX_use_PrivateKey_file failed." << std::endl;
-    return -1;
-  }
-  if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
-                                        config_->cert_file.c_str()) != 1) {
-    std::cerr << "SSL_CTX_use_certificate_file failed." << std::endl;
-    return -1;
-  }
-  if(SSL_CTX_check_private_key(ssl_ctx) != 1) {
-    std::cerr << "SSL_CTX_check_private_key failed." << std::endl;
-    return -1;
-  }
-  if(config_->verify_client) {
-    SSL_CTX_set_verify(ssl_ctx,
-                       SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
-                       SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-                       verify_callback);
-  }
-  // We speaks "spdy/2" and "spdy/3".
+  SSL_CTX *ssl_ctx = 0;
   std::pair<unsigned char*, size_t> next_proto;
   unsigned char proto_list[14];
+  if(!config_->no_tls) {
+    ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+    if(!ssl_ctx) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      return -1;
+    }
+    SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
+    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
+    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+    if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
+                                   config_->private_key_file.c_str(),
+                                   SSL_FILETYPE_PEM) != 1) {
+      std::cerr << "SSL_CTX_use_PrivateKey_file failed." << std::endl;
+      return -1;
+    }
+    if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
+                                          config_->cert_file.c_str()) != 1) {
+      std::cerr << "SSL_CTX_use_certificate_file failed." << std::endl;
+      return -1;
+    }
+    if(SSL_CTX_check_private_key(ssl_ctx) != 1) {
+      std::cerr << "SSL_CTX_check_private_key failed." << std::endl;
+      return -1;
+    }
+    if(config_->verify_client) {
+      SSL_CTX_set_verify(ssl_ctx,
+                         SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
+                         SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                         verify_callback);
+    }
 
-  if(config_->spdy3_only) {
-    proto_list[0] = 6;
-    memcpy(&proto_list[1], "spdy/3", 6);
-    next_proto.first = proto_list;
-    next_proto.second = 7;
-  } else {
+    // We speaks "spdy/2" and "spdy/3".
     proto_list[0] = 6;
     memcpy(&proto_list[1], "spdy/3", 6);
     proto_list[7] = 6;
     memcpy(&proto_list[8], "spdy/2", 6);
-    next_proto.first = proto_list;
-    next_proto.second = sizeof(proto_list);
-  }
 
-  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
+    switch(config_->version) {
+    case SPDYLAY_PROTO_SPDY3:
+      next_proto.first = proto_list;
+      next_proto.second = 7;
+      break;
+    case SPDYLAY_PROTO_SPDY2:
+      next_proto.first = proto_list+7;
+      next_proto.second = 7;
+      break;
+    default:
+      next_proto.first = proto_list;
+      next_proto.second = sizeof(proto_list);
+    }
+    SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
+  }
 
   const size_t MAX_EVENTS = 256;
   Sessions sessions(MAX_EVENTS, ssl_ctx);

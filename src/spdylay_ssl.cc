@@ -54,7 +54,7 @@ Spdylay::Spdylay(int fd, SSL *ssl, uint16_t version,
                  const spdylay_session_callbacks *callbacks,
                  void *user_data)
   : fd_(fd), ssl_(ssl), version_(version), user_data_(user_data),
-    want_write_(false)
+    io_flags_(0)
 {
   int r = spdylay_session_client_new(&session_, version_, callbacks, this);
   assert(r == 0);
@@ -78,20 +78,36 @@ int Spdylay::send()
 ssize_t Spdylay::send_data(const uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
-  ERR_clear_error();
-  r = SSL_write(ssl_, data, len);
+  io_flags_ = 0;
+  if(ssl_) {
+    ERR_clear_error();
+    r = SSL_write(ssl_, data, len);
+    if(r < 0) {
+      io_flags_ = get_ssl_io_demand(ssl_, r);
+    }
+  } else {
+    while((r = ::send(fd_, data, len, 0)) == -1 && errno == EINTR);
+    if(r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      io_flags_ |= WANT_WRITE;
+    }
+  }
   return r;
 }
 
 ssize_t Spdylay::recv_data(uint8_t *data, size_t len, int flags)
 {
   ssize_t r;
-  want_write_ = false;
-  ERR_clear_error();
-  r = SSL_read(ssl_, data, len);
-  if(r < 0) {
-    if(SSL_get_error(ssl_, r) == SSL_ERROR_WANT_WRITE) {
-      want_write_ = true;
+  io_flags_ = 0;
+  if(ssl_) {
+    ERR_clear_error();
+    r = SSL_read(ssl_, data, len);
+    if(r < 0) {
+      io_flags_ = get_ssl_io_demand(ssl_, r);
+    }
+  } else {
+    while((r = ::recv(fd_, data, len, 0)) == -1 && errno == EINTR);
+    if(r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      io_flags_ |= WANT_READ;
     }
   }
   return r;
@@ -99,12 +115,12 @@ ssize_t Spdylay::recv_data(uint8_t *data, size_t len, int flags)
 
 bool Spdylay::want_read()
 {
-  return spdylay_session_want_read(session_);
+  return spdylay_session_want_read(session_) || (io_flags_ & WANT_READ);
 }
 
 bool Spdylay::want_write()
 {
-  return spdylay_session_want_write(session_) || want_write_;
+  return spdylay_session_want_write(session_) || (io_flags_ & WANT_WRITE);
 }
 
 bool Spdylay::finish()
@@ -123,7 +139,8 @@ void* Spdylay::user_data()
   return user_data_;
 }
 
-int Spdylay::submit_request(const std::string& hostport,
+int Spdylay::submit_request(const std::string& scheme,
+                            const std::string& hostport,
                             const std::string& path,
                             const std::map<std::string,std::string> &headers,
                             uint8_t pri,
@@ -144,7 +161,7 @@ int Spdylay::submit_request(const std::string& hostport,
     ":method", "GET",
     ":path", path.c_str(),
     ":version", "HTTP/1.1",
-    ":scheme", "https",
+    ":scheme", scheme.c_str(),
     ":host", hostport.c_str(),
     "accept", "*/*",
     "user-agent", "spdylay/" SPDYLAY_VERSION
@@ -196,10 +213,9 @@ int Spdylay::submit_settings(int flags, spdylay_settings_entry *iv, size_t niv)
   return spdylay_submit_settings(session_, flags, iv, niv);
 }
 
-bool Spdylay::would_block(int r)
+bool Spdylay::would_block()
 {
-  int e = SSL_get_error(ssl_, r);
-  return e == SSL_ERROR_WANT_WRITE || e == SSL_ERROR_WANT_READ;
+  return io_flags_;
 }
 
 int connect_to(const std::string& host, uint16_t port)
@@ -395,11 +411,14 @@ ssize_t send_callback(spdylay_session *session,
   Spdylay *sc = (Spdylay*)user_data;
   ssize_t r = sc->send_data(data, len, flags);
   if(r < 0) {
-    if(sc->would_block(r)) {
+    if(sc->would_block()) {
       r = SPDYLAY_ERR_WOULDBLOCK;
     } else {
       r = SPDYLAY_ERR_CALLBACK_FAILURE;
     }
+  } else if(r == 0) {
+    // In OpenSSL, r == 0 means EOF because SSL_write may do read.
+    r = SPDYLAY_ERR_CALLBACK_FAILURE;
   }
   return r;
 }
@@ -410,7 +429,7 @@ ssize_t recv_callback(spdylay_session *session,
   Spdylay *sc = (Spdylay*)user_data;
   ssize_t r = sc->recv_data(data, len, flags);
   if(r < 0) {
-    if(sc->would_block(r)) {
+    if(sc->would_block()) {
       r = SPDYLAY_ERR_WOULDBLOCK;
     } else {
       r = SPDYLAY_ERR_CALLBACK_FAILURE;
@@ -790,6 +809,18 @@ int64_t time_delta(const timeval& a, const timeval& b)
   int64_t res = (a.tv_sec - b.tv_sec) * 1000;
   res += (a.tv_usec - b.tv_usec) / 1000;
   return res;
+}
+
+uint8_t get_ssl_io_demand(SSL *ssl, ssize_t r)
+{
+  switch(SSL_get_error(ssl, r)) {
+  case SSL_ERROR_WANT_WRITE:
+    return WANT_WRITE;
+  case SSL_ERROR_WANT_READ:
+    return WANT_READ;
+  default:
+    return 0;
+  }
 }
 
 namespace {

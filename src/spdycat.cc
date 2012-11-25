@@ -67,6 +67,7 @@ struct Config {
   bool verbose;
   bool get_assets;
   bool stat;
+  bool no_tls;
   int spdy_version;
   // milliseconds
   int timeout;
@@ -75,7 +76,7 @@ struct Config {
   int window_bits;
   std::map<std::string,std::string> headers;
   Config():null_out(false), remote_name(false), verbose(false),
-           get_assets(false), stat(false),
+           get_assets(false), stat(false), no_tls(false),
            spdy_version(-1), timeout(-1), window_bits(-1)
   {}
 };
@@ -231,7 +232,7 @@ void submit_request(Spdylay& sc, const std::string& hostport,
 {
   uri::UriStruct& us = req->us;
   std::string path = us.dir+us.file+us.query;
-  int r = sc.submit_request(hostport, path, headers, 3, req);
+  int r = sc.submit_request(us.protocol, hostport, path, headers, 3, req);
   assert(r == 0);
 }
 
@@ -447,12 +448,7 @@ int communicate(const std::string& host, uint16_t port,
     return -1;
   }
   set_tcp_nodelay(fd);
-  SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(TLSv1_client_method());
-  if(!ssl_ctx) {
-    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-    return -1;
-  }
+
   std::string next_proto;
   switch(config.spdy_version) {
   case SPDYLAY_PROTO_SPDY2:
@@ -462,38 +458,48 @@ int communicate(const std::string& host, uint16_t port,
     next_proto = "spdy/3";
     break;
   }
-  setup_ssl_ctx(ssl_ctx, &next_proto);
-  if(!config.keyfile.empty()) {
-    if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
-                                   SSL_FILETYPE_PEM) != 1) {
+
+  SSL_CTX *ssl_ctx = 0;
+  SSL *ssl = 0;
+  if(!config.no_tls) {
+    ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+    if(!ssl_ctx) {
       std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
       return -1;
     }
-  }
-  if(!config.certfile.empty()) {
-    if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
-                                          config.certfile.c_str()) != 1) {
+    setup_ssl_ctx(ssl_ctx, &next_proto);
+    if(!config.keyfile.empty()) {
+      if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
+                                     SSL_FILETYPE_PEM) != 1) {
+        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        return -1;
+      }
+    }
+    if(!config.certfile.empty()) {
+      if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
+                                            config.certfile.c_str()) != 1) {
+        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        return -1;
+      }
+    }
+    ssl = SSL_new(ssl_ctx);
+    if(!ssl) {
       std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
       return -1;
     }
-  }
-  SSL *ssl = SSL_new(ssl_ctx);
-  if(!ssl) {
-    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-    return -1;
-  }
-  if (!SSL_set_tlsext_host_name(ssl, host.c_str())) {
-    std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-    return -1;
-  }
-  rv = ssl_nonblock_handshake(ssl, fd, timeout);
-  if(rv == -1) {
-    return -1;
-  } else if(rv == -2) {
-    std::cerr << "Request to " << spdySession.hostport
-              << " timed out in SSL/TLS handshake."
-              << std::endl;
-    return -1;
+    if (!SSL_set_tlsext_host_name(ssl, host.c_str())) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      return -1;
+    }
+    rv = ssl_nonblock_handshake(ssl, fd, timeout);
+    if(rv == -1) {
+      return -1;
+    } else if(rv == -2) {
+      std::cerr << "Request to " << spdySession.hostport
+                << " timed out in SSL/TLS handshake."
+                << std::endl;
+      return -1;
+    }
   }
 
   spdySession.record_handshake_time();
@@ -503,6 +509,7 @@ int communicate(const std::string& host, uint16_t port,
   if (spdy_version <= 0) {
     return -1;
   }
+
   Spdylay sc(fd, ssl, spdy_version, callbacks, &spdySession);
   spdySession.sc = &sc;
 
@@ -570,9 +577,11 @@ int communicate(const std::string& host, uint16_t port,
               << spdySession.reqvec.size()
               << ", processed=" << spdySession.complete << std::endl;
   }
-  SSL_shutdown(ssl);
-  SSL_free(ssl);
-  SSL_CTX_free(ssl_ctx);
+  if(ssl) {
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+    SSL_CTX_free(ssl_ctx);
+  }
   shutdown(fd, SHUT_WR);
   close(fd);
   if(config.stat) {
@@ -632,7 +641,7 @@ int run(char **uris, int n)
 void print_usage(std::ostream& out)
 {
   out << "Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "               [--key=<KEY>] <URI>..."
+      << "               [--key=<KEY>] [--no-tls] <URI>..."
       << std::endl;
 }
 
@@ -664,6 +673,8 @@ void print_help(std::ostream& out)
       << "                       The file must be in PEM format.\n"
       << "    --key=<KEY>        Use the client private key file. The file\n"
       << "                       must be in PEM format.\n"
+      << "    --no-tls           Disable SSL/TLS. Use -2 or -3 to specify\n"
+      << "                       SPDY protocol version to use.\n"
       << std::endl;
 }
 
@@ -685,6 +696,7 @@ int main(int argc, char **argv)
       {"key", required_argument, &flag, 2 },
       {"help", no_argument, 0, 'h' },
       {"header", required_argument, 0, 'H' },
+      {"no-tls", no_argument, &flag, 3 },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -774,12 +786,25 @@ int main(int argc, char **argv)
         // key option
         config.keyfile = optarg;
         break;
+      case 3:
+        // no-tls option
+        config.no_tls = true;
+        break;
       }
       break;
     default:
       break;
     }
   }
+
+  if(config.no_tls) {
+    if(config.spdy_version == -1) {
+      std::cerr << "Specify SPDY protocol version using either -2 or -3."
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;

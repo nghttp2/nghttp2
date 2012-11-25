@@ -52,8 +52,9 @@ struct Config {
   std::string cert_file;
   spdylay_on_request_recv_callback on_request_recv_callback;
   void *data_ptr;
-  bool spdy3_only;
+  uint16_t version;
   bool verify_client;
+  bool no_tls;
   Config();
 };
 
@@ -113,7 +114,7 @@ public:
 
   ssize_t recv_data(uint8_t *data, size_t len, int flags);
 
-  bool would_block(int r);
+  bool would_block() const;
 
   int submit_file_response(const std::string& status,
                            int32_t stream_id,
@@ -141,7 +142,7 @@ private:
   SSL* ssl_;
   uint16_t version_;
   int64_t session_id_;
-  bool want_write_;
+  uint8_t io_flags_;
   std::map<int32_t, Request*> id2req_;
 };
 
