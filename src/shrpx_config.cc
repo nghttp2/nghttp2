@@ -27,6 +27,9 @@
 #include <pwd.h>
 #include <netdb.h>
 #include <syslog.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <cstring>
 #include <cerrno>
@@ -41,6 +44,7 @@ using namespace spdylay;
 namespace shrpx {
 
 const char SHRPX_OPT_PRIVATE_KEY_FILE[] = "private-key-file";
+const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[] = "private-key-passwd-file";
 const char SHRPX_OPT_CERTIFICATE_FILE[] = "certificate-file";
 
 const char SHRPX_OPT_BACKEND[] = "backend";
@@ -124,6 +128,41 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
   }
 }
 } // namespace
+
+bool is_secure(const char *filename)
+{
+  struct stat buf;
+  int rv = stat(filename, &buf);
+  if (rv == 0) {
+    if ((buf.st_mode & S_IRWXU) &&
+        !(buf.st_mode & S_IRWXG) &&
+        !(buf.st_mode & S_IRWXO)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+std::string read_passwd_from_file(const char *filename)
+{
+  std::string line;
+
+  if (!is_secure(filename)) {
+    LOG(ERROR) << "Private key passwd file " << filename
+               << " has insecure mode.";
+    return line;
+  }
+
+  std::ifstream in(filename, std::ios::binary);
+  if(!in) {
+    LOG(ERROR) << "Could not open key passwd file " << filename;
+    return line;
+  }
+
+  std::getline(in, line);
+  return line;
+}
 
 void set_config_str(char **destp, const char *val)
 {
@@ -221,6 +260,13 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->gid = pwd->pw_gid;
   } else if(util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_FILE)) {
     set_config_str(&mod_config()->private_key_file, optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE)) {
+    std::string passwd = read_passwd_from_file(optarg);
+    if (passwd.empty()) {
+      LOG(ERROR) << "Couldn't read key file's passwd from " << optarg;
+      return -1;
+    }
+    set_config_str(&mod_config()->private_key_passwd, passwd.c_str());
   } else if(util::strieq(opt, SHRPX_OPT_CERTIFICATE_FILE)) {
     set_config_str(&mod_config()->cert_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_SYSLOG)) {

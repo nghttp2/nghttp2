@@ -36,6 +36,7 @@
 namespace shrpx {
 
 extern const char SHRPX_OPT_PRIVATE_KEY_FILE[];
+extern const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[];
 extern const char SHRPX_OPT_CERTIFICATE_FILE[];
 
 extern const char SHRPX_OPT_BACKEND[];
@@ -81,6 +82,7 @@ struct Config {
   char *host;
   uint16_t port;
   char *private_key_file;
+  char *private_key_passwd;
   char *cert_file;
   bool verify_client;
   const char *server_name;
@@ -135,6 +137,9 @@ int parse_config(const char *opt, const char *optarg);
 // allocated Config object. This function returns 0 if it succeeds, or
 // -1.
 int load_config(const char *filename);
+
+// Read passwd from |filename|
+std::string read_passwd_from_file(const char *filename);
 
 // Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
 // NULL, it is freed before copying.

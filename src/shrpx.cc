@@ -312,6 +312,7 @@ void fill_default_config()
   set_config_str(&mod_config()->host, "0.0.0.0");
   mod_config()->port = 3000;
   mod_config()->private_key_file = 0;
+  mod_config()->private_key_passwd = 0;
   mod_config()->cert_file = 0;
 
   // Read timeout for SPDY upstream connection
@@ -465,6 +466,11 @@ void print_help(std::ostream& out)
       << "                       linked OpenSSL is configured to load system\n"
       << "                       wide certificates, they are loaded\n"
       << "                       at startup regardless of this option.\n"
+      << "    --private-key-passwd-file=<FILEPATH>\n"
+      << "                       Path to file that contains password for the\n"
+      << "                       server's private key. If none is given and\n"
+      << "                       the private key is password protected it'll\n"
+      << "                       be requested interactively."
       << "\n"
       << "  SPDY:\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
@@ -566,6 +572,7 @@ int main(int argc, char **argv)
       {"cacert", required_argument, &flag, 19 },
       {"backend-ipv4", no_argument, &flag, 20 },
       {"backend-ipv6", no_argument, &flag, 21 },
+      {"private-key-passwd-file", required_argument, &flag, 22},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -702,6 +709,11 @@ int main(int argc, char **argv)
       case 21:
         // --backend-ipv6
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_IPV6, "yes"));
+        break;
+      case 22:
+        // --private-key-passwd-file
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE,
+                                         optarg));
         break;
       default:
         break;
