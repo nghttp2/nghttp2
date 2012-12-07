@@ -91,8 +91,8 @@ void set_npn_prefs(unsigned char *out, const char **protos, size_t len)
 }
 } // namespace
 
-
-static int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
+namespace {
+int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
 {
   Config *config = (Config *)user_data;
   int len = (int)strlen(config->private_key_passwd);
@@ -100,12 +100,11 @@ static int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
     return 0;
   }
-
-  strncpy(buf, config->private_key_passwd, len);
-  buf[len] = '\0';
+  // Copy string including last '\0'.
+  memcpy(buf, config->private_key_passwd, len+1);
   return len;
 }
-
+} // namespace
 
 SSL_CTX* create_ssl_context()
 {
