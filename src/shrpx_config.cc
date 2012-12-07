@@ -129,6 +129,7 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
 }
 } // namespace
 
+namespace {
 bool is_secure(const char *filename)
 {
   struct stat buf;
@@ -143,6 +144,7 @@ bool is_secure(const char *filename)
 
   return false;
 }
+} // namespace
 
 std::string read_passwd_from_file(const char *filename)
 {
