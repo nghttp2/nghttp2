@@ -369,6 +369,7 @@ void fill_default_config()
   mod_config()->gid = 0;
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
+  mod_config()->tty = isatty(fileno(stderr));
 }
 } // namespace
 

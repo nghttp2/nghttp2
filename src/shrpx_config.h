@@ -122,6 +122,8 @@ struct Config {
   char *cacert;
   bool backend_ipv4;
   bool backend_ipv6;
+  // true if stderr refers to a terminal.
+  bool tty;
 };
 
 const Config* get_config();
