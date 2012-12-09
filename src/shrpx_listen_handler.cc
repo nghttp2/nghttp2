@@ -66,13 +66,13 @@ void ListenHandler::create_worker_thread(size_t num)
     WorkerInfo *info = &workers_[num_worker_];
     rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
     if(rv == -1) {
-      LOG(ERROR) << "socketpair() failed: " << strerror(errno);
+      LLOG(ERROR, this) << "socketpair() failed: " << strerror(errno);
       continue;
     }
     info->ssl_ctx = ssl_ctx_;
     rv = pthread_create(&thread, &attr, start_threaded_worker, info);
     if(rv != 0) {
-      LOG(ERROR) << "pthread_create() failed: " << strerror(rv);
+      LLOG(ERROR, this) << "pthread_create() failed: " << strerror(rv);
       for(size_t j = 0; j < 2; ++j) {
         close(info->sv[j]);
       }
@@ -82,7 +82,7 @@ void ListenHandler::create_worker_thread(size_t num)
                                               BEV_OPT_DEFER_CALLBACKS);
     info->bev = bev;
     if(ENABLE_LOG) {
-      LOG(INFO) << "Created thread#" << num_worker_;
+      LLOG(INFO, this) << "Created thread #" << num_worker_;
     }
     ++num_worker_;
   }
@@ -92,7 +92,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
                                      sockaddr *addr, int addrlen)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "<listener> Accepted connection. fd=" << fd;
+    LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
   if(num_worker_ == 0) {
     ClientHandler* client =

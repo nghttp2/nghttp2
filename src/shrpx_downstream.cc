@@ -64,7 +64,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
 Downstream::~Downstream()
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Deleting downstream " << this;
+    DLOG(INFO, this) << "Deleting";
   }
   if(response_body_buf_) {
     // Passing NULL to evbuffer_free() causes segmentation fault.
@@ -74,7 +74,7 @@ Downstream::~Downstream()
     delete dconn_;
   }
   if(ENABLE_LOG) {
-    LOG(INFO) << "Deleted";
+    DLOG(INFO, this) << "Deleted";
   }
 }
 
@@ -300,7 +300,7 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
   // Assumes that request headers have already been pushed to output
   // buffer using push_request_headers().
   if(!dconn_) {
-    LOG(WARNING) << "dconn_ is NULL";
+    DLOG(WARNING, this) << "dconn_ is NULL";
     return 0;
   }
   return dconn_->push_upload_data_chunk(data, datalen);

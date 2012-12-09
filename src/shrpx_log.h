@@ -35,6 +35,37 @@ namespace shrpx {
 
 #define LOG(SEVERITY) Log(SEVERITY, __FILE__, __LINE__)
 
+// Listener log
+#define LLOG(SEVERITY, LISTEN)                                       \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[LISTEN:" << LISTEN         \
+   << "] ")
+
+// ThreadEventReceiver log
+#define TLOG(SEVERITY, THREAD_RECV)                                     \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[THREAD_RECV:" << THREAD_RECV  \
+   << "] ")
+
+// ClientHandler log
+#define CLOG(SEVERITY, CLIENT_HANDLER)                                  \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[CLIENT_HANDLER:" << CLIENT_HANDLER \
+   << "] ")
+
+// Upstream log
+#define ULOG(SEVERITY, UPSTREAM)                                        \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[UPSTREAM:" << UPSTREAM << "] ")
+
+// Downstream log
+#define DLOG(SEVERITY, DOWNSTREAM)                                      \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[DOWNSTREAM:" << DOWNSTREAM << "] ")
+
+// Downstream connection log
+#define DCLOG(SEVERITY, DCONN)                                          \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[DCONN:" << DCONN << "] ")
+
+// Downstream SPDY session log
+#define SSLOG(SEVERITY, SPDY)                                           \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[DSPDY:" << SPDY << "] ")
+
 enum SeverityLevel {
   INFO, WARNING, ERROR, FATAL
 };

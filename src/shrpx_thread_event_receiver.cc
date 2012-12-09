@@ -48,8 +48,8 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
     WorkerEvent wev;
     evbuffer_remove(input, &wev, sizeof(WorkerEvent));
     if(ENABLE_LOG) {
-      LOG(INFO) << "WorkerEvent: client_fd=" << wev.client_fd
-                << ", addrlen=" << wev.client_addrlen;
+      TLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
+                       << ", addrlen=" << wev.client_addrlen;
     }
     event_base *evbase = bufferevent_get_base(bev);
     ClientHandler *client_handler;
@@ -60,11 +60,11 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
     if(client_handler) {
       client_handler->set_spdy_session(spdy_);
       if(ENABLE_LOG) {
-        LOG(INFO) << "ClientHandler " << client_handler << " created";
+        TLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created";
       }
     } else {
       if(ENABLE_LOG) {
-        LOG(ERROR) << "ClientHandler creation failed";
+        TLOG(ERROR, this) << "ClientHandler creation failed";
       }
       close(wev.client_fd);
     }

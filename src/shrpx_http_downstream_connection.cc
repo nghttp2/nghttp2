@@ -67,8 +67,7 @@ HttpDownstreamConnection::~HttpDownstreamConnection()
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Attaching downstream connection " << this << " to "
-              << "downstream " << downstream;
+    DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
   Upstream *upstream = downstream->get_upstream();
   if(!bev_) {
@@ -87,7 +86,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
       return SHRPX_ERR_NETWORK;
     }
     if(ENABLE_LOG) {
-      LOG(INFO) << "Connecting to downstream server " << this;
+      DCLOG(INFO, this) << "Connecting to downstream server";
     }
   }
   downstream->set_downstream_connection(this);
@@ -183,8 +182,8 @@ int HttpDownstreamConnection::push_request_headers()
 
   hdrs += "\r\n";
   if(ENABLE_LOG) {
-    LOG(INFO) << "Downstream request headers id="
-              << downstream_->get_stream_id() << "\n" << hdrs;
+    DCLOG(INFO, this) << "HTTP request headers. stream_id="
+                     << downstream_->get_stream_id() << "\n" << hdrs;
   }
   evbuffer *output = bufferevent_get_output(bev_);
   int rv;
@@ -220,20 +219,20 @@ int HttpDownstreamConnection::push_upload_data_chunk
     res += rv;
     rv = evbuffer_add(output, chunk_size_hex, rv);
     if(rv == -1) {
-      LOG(FATAL) << "evbuffer_add() failed";
+      DCLOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }
   }
   rv = evbuffer_add(output, data, datalen);
   if(rv == -1) {
-    LOG(FATAL) << "evbuffer_add() failed";
+    DCLOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
   res += rv;
   if(chunked) {
     rv = evbuffer_add(output, "\r\n", 2);
     if(rv == -1) {
-      LOG(FATAL) << "evbuffer_add() failed";
+      DCLOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }
     res += 2;
@@ -246,7 +245,7 @@ int HttpDownstreamConnection::end_upload_data()
   if(downstream_->get_chunked_request()) {
     evbuffer *output = bufferevent_get_output(bev_);
     if(evbuffer_add(output, "0\r\n\r\n", 5) != 0) {
-      LOG(FATAL) << "evbuffer_add() failed";
+      DCLOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }
   }
@@ -263,21 +262,21 @@ void idle_eventcb(bufferevent *bev, short events, void *arg)
     // Downstream was detached before connection established?
     // This may be safe to be left.
     if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connected?" << dconn;
+      DCLOG(INFO, dconn) << "Idle connection connected?";
     }
     return;
   }
   if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connection EOF " << dconn;
+      DCLOG(INFO, dconn) << "Idle connection EOF";
     }
   } else if(events & BEV_EVENT_TIMEOUT) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connection timeout " << dconn;
+      DCLOG(INFO, dconn) << "Idle connection timeout";
     }
   } else if(events & BEV_EVENT_ERROR) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Idle downstream connection error " << dconn;
+      DCLOG(INFO, dconn) << "Idle connection network error";
     }
   }
   ClientHandler *client_handler = dconn->get_client_handler();
@@ -289,8 +288,7 @@ void idle_eventcb(bufferevent *bev, short events, void *arg)
 void HttpDownstreamConnection::detach_downstream(Downstream *downstream)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Detaching downstream connection " << this << " from "
-              << "downstream " << downstream;
+    DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream->set_downstream_connection(0);
   downstream_ = 0;
@@ -434,9 +432,9 @@ int HttpDownstreamConnection::on_read()
     return 0;
   } else {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream HTTP parser failure: "
-                << "(" << http_errno_name(htperr) << ") "
-                << http_errno_description(htperr);
+      DCLOG(INFO, this) << "HTTP parser failure: "
+                        << "(" << http_errno_name(htperr) << ") "
+                        << http_errno_description(htperr);
     }
     return SHRPX_ERR_HTTP_PARSE;
   }

@@ -65,7 +65,7 @@ SpdySession::~SpdySession()
 int SpdySession::disconnect()
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Downstream spdy session disconnecting " << this;
+    SSLOG(INFO, this) << "Disconnecting";
   }
   spdylay_session_del(session_);
   session_ = 0;
@@ -121,7 +121,7 @@ void notify_readcb(bufferevent *bev, void *arg)
   case SpdySession::DISCONNECTED:
     rv = spdy->initiate_connection();
     if(rv != 0) {
-      LOG(FATAL) << "Downstream spdy could not initiate connection " << spdy;
+      SSLOG(FATAL, spdy) << "Could not initiate notification connection";
       DIE();
     }
     break;
@@ -138,12 +138,16 @@ void notify_readcb(bufferevent *bev, void *arg)
 namespace {
 void notify_eventcb(bufferevent *bev, short events, void *arg)
 {
+  SpdySession *spdy = reinterpret_cast<SpdySession*>(arg);
   // TODO should DIE()?
   if(events & BEV_EVENT_EOF) {
-    LOG(ERROR) << "Connection to main thread lost: eof";
+    SSLOG(ERROR, spdy) << "Notification connection lost: EOF";
+  }
+  if(events & BEV_EVENT_TIMEOUT) {
+    SSLOG(ERROR, spdy) << "Notification connection lost: timeout";
   }
   if(events & BEV_EVENT_ERROR) {
-    LOG(ERROR) << "Connection to main thread lost: network error";
+    SSLOG(ERROR, spdy) << "Notification connection lost: network error";
   }
 }
 } // namespace
@@ -154,14 +158,14 @@ int SpdySession::init_notification()
   int sockpair[2];
   rv = socketpair(AF_UNIX, SOCK_STREAM, 0, sockpair);
   if(rv == -1) {
-    LOG(FATAL) << "socketpair() failed: " << strerror(errno);
+    SSLOG(FATAL, this) << "socketpair() failed: " << strerror(errno);
     return -1;
   }
   wrbev_ = bufferevent_socket_new(evbase_, sockpair[0],
                                   BEV_OPT_CLOSE_ON_FREE|
                                   BEV_OPT_DEFER_CALLBACKS);
   if(!wrbev_) {
-    LOG(FATAL) << "bufferevent_socket_new() failed";
+    SSLOG(FATAL, this) << "bufferevent_socket_new() failed";
     for(int i = 0; i < 2; ++i) {
       close(sockpair[i]);
     }
@@ -171,7 +175,7 @@ int SpdySession::init_notification()
                                   BEV_OPT_CLOSE_ON_FREE|
                                   BEV_OPT_DEFER_CALLBACKS);
   if(!rdbev_) {
-    LOG(FATAL) << "bufferevent_socket_new() failed";
+    SSLOG(FATAL, this) << "bufferevent_socket_new() failed";
     close(sockpair[1]);
     return -1;
   }
@@ -213,7 +217,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
   SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream spdy connection established. " << spdy;
+      SSLOG(INFO, spdy) << "Connection established";
     }
     spdy->connected();
     if((!get_config()->insecure && spdy->check_cert() != 0) ||
@@ -223,12 +227,16 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     }
   } else if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream spdy EOF. " << spdy;
+      SSLOG(INFO, spdy) << "EOF";
     }
     spdy->disconnect();
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream spdy error/timeout. " << spdy;
+      if(events & BEV_EVENT_ERROR) {
+        SSLOG(INFO, spdy) << "Network error";
+      } else {
+        SSLOG(INFO, spdy) << "Timeout";
+      }
     }
     spdy->disconnect();
   }
@@ -245,13 +253,13 @@ int SpdySession::initiate_connection()
   int rv;
   assert(state_ == DISCONNECTED);
   if(ENABLE_LOG) {
-    LOG(INFO) << "Downstream spdy initiating connection " << this;
+    SSLOG(INFO, this) << "Connecting to downstream server";
   }
 
   ssl_ = SSL_new(ssl_ctx_);
   if(!ssl_) {
-    LOG(ERROR) << "SSL_new() failed: "
-               << ERR_error_string(ERR_get_error(), NULL);
+    SSLOG(ERROR, this) << "SSL_new() failed: "
+                       << ERR_error_string(ERR_get_error(), NULL);
     return -1;
   }
 
@@ -274,9 +282,6 @@ int SpdySession::initiate_connection()
     bufferevent_free(bev_);
     bev_ = 0;
     return SHRPX_ERR_NETWORK;
-  }
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Connecting to downstream " << this;
   }
 
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
@@ -324,8 +329,8 @@ int SpdySession::submit_request(SpdyDownstreamConnection *dconn,
     dconn->attach_stream_data(sd);
     streams_.insert(sd);
   } else {
-    LOG(FATAL) << "spdylay_submit_request() failed: "
-               << spdylay_strerror(rv);
+    SSLOG(FATAL, this) << "spdylay_submit_request() failed: "
+                       << spdylay_strerror(rv);
     delete sd;
     return -1;
   }
@@ -338,8 +343,8 @@ int SpdySession::submit_rst_stream(SpdyDownstreamConnection *dconn,
   assert(state_ == CONNECTED);
   int rv = spdylay_submit_rst_stream(session_, stream_id, status_code);
   if(rv != 0) {
-    LOG(FATAL) << "spdylay_submit_rst_stream() failed: "
-               << spdylay_strerror(rv);
+    SSLOG(FATAL, this) << "spdylay_submit_rst_stream() failed: "
+                       << spdylay_strerror(rv);
     return -1;
   }
   return 0;
@@ -354,8 +359,8 @@ int SpdySession::submit_window_update(SpdyDownstreamConnection *dconn,
   stream_id = dconn->get_downstream()->get_downstream_stream_id();
   rv = spdylay_submit_window_update(session_, stream_id, amount);
   if(rv < SPDYLAY_ERR_FATAL) {
-    LOG(FATAL) << "spdylay_submit_window_update() failed: "
-               << spdylay_strerror(rv);
+    SSLOG(FATAL, this) << "spdylay_submit_window_update() failed: "
+                       << spdylay_strerror(rv);
     return -1;
   }
   return 0;
@@ -382,8 +387,8 @@ int SpdySession::resume_data(SpdyDownstreamConnection *dconn)
   case SPDYLAY_ERR_INVALID_ARGUMENT:
     return 0;
   default:
-    LOG(FATAL) << "spdylay_resume_session() failed: "
-               << spdylay_strerror(rv);
+    SSLOG(FATAL, this) << "spdylay_resume_session() failed: "
+                       << spdylay_strerror(rv);
     return -1;
   }
 }
@@ -417,7 +422,7 @@ ssize_t send_callback(spdylay_session *session,
 
   rv = evbuffer_add(output, data, len);
   if(rv == -1) {
-    LOG(FATAL) << "evbuffer_add() failed";
+    SSLOG(FATAL, spdy) << "evbuffer_add() failed";
     return SPDYLAY_ERR_CALLBACK_FAILURE;
   } else {
     return len;
@@ -450,10 +455,11 @@ void on_stream_close_callback
  void *user_data)
 {
   int rv;
-  if(ENABLE_LOG) {
-    LOG(INFO) << "Downstream spdy Stream " << stream_id << " is being closed";
-  }
   SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
+  if(ENABLE_LOG) {
+    SSLOG(INFO, spdy) << "Stream stream_id=" << stream_id
+                      << " is being closed";
+  }
   StreamData *sd;
   sd = reinterpret_cast<StreamData*>
     (spdylay_session_get_stream_user_data(session, stream_id));
@@ -497,8 +503,8 @@ void on_ctrl_recv_callback
   switch(type) {
   case SPDYLAY_SYN_STREAM:
     if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream spdy received upstream SYN_STREAM stream_id="
-                << frame->syn_stream.stream_id;
+      SSLOG(INFO, spdy) << "Received upstream SYN_STREAM stream_id="
+                        << frame->syn_stream.stream_id;
     }
     // We just respond pushed stream with RST_STREAM.
     spdylay_submit_rst_stream(session, frame->syn_stream.stream_id,
@@ -588,9 +594,9 @@ void on_ctrl_recv_callback
       for(size_t i = 0; nv[i]; i += 2) {
         ss << nv[i] << ": " << nv[i+1] << "\n";
       }
-      LOG(INFO) << "Downstream spdy response headers id="
-                << frame->syn_reply.stream_id
-                << "\n" << ss.str();
+      SSLOG(INFO, spdy) << "HTTP response headers. stream_id="
+                        << frame->syn_reply.stream_id
+                        << "\n" << ss.str();
     }
 
     Upstream *upstream = downstream->get_upstream();
@@ -635,10 +641,10 @@ void on_data_chunk_recv_callback(spdylay_session *session,
     sd->dconn->inc_recv_window_size(len);
     if(sd->dconn->get_recv_window_size() > spdy->get_initial_window_size()) {
       if(ENABLE_LOG) {
-        LOG(INFO) << "Flow control error: recv_window_size="
-                  << sd->dconn->get_recv_window_size()
-                  << ", initial_window_size="
-                  << spdy->get_initial_window_size();
+        SSLOG(INFO, spdy) << "Flow control error: recv_window_size="
+                          << sd->dconn->get_recv_window_size()
+                          << ", initial_window_size="
+                          << spdy->get_initial_window_size();
       }
       spdylay_submit_rst_stream(session, stream_id,
                                 SPDYLAY_FLOW_CONTROL_ERROR);
@@ -691,13 +697,13 @@ void on_ctrl_not_send_callback(spdylay_session *session,
                                spdylay_frame *frame,
                                int error_code, void *user_data)
 {
-  LOG(WARNING) << "Failed to send control frame type=" << type << ", "
-               << "error_code=" << error_code << ":"
-               << spdylay_strerror(error_code);
+  SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
+  SSLOG(WARNING, spdy) << "Failed to send control frame type=" << type << ", "
+                       << "error_code=" << error_code << ":"
+                       << spdylay_strerror(error_code);
   if(type == SPDYLAY_SYN_STREAM) {
     // To avoid stream hanging around, flag Downstream::MSG_RESET and
     // terminate the upstream and downstream connections.
-    SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
     StreamData *sd;
     sd = reinterpret_cast<StreamData*>
       (spdylay_session_get_stream_user_data(session,
@@ -728,10 +734,12 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        size_t payloadlen, int error_code,
                                        void *user_data)
 {
+  SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
   if(ENABLE_LOG) {
-    LOG(INFO) << "Failed to parse received control frame. type=" << type
-              << ", error_code=" << error_code << ":"
-              << spdylay_strerror(error_code);
+    SSLOG(INFO, spdy) << "Failed to parse received control frame. type="
+                      << type
+                      << ", error_code=" << error_code << ":"
+                      << spdylay_strerror(error_code);
   }
 }
 } // namespace
@@ -742,8 +750,9 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
                                    const uint8_t *payload, size_t payloadlen,
                                    void *user_data)
 {
+  SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
   if(ENABLE_LOG) {
-    LOG(INFO) << "Received unknown control frame.";
+    SSLOG(INFO, spdy) << "Received unknown control frame";
   }
 }
 } // namespace
@@ -757,7 +766,7 @@ int SpdySession::on_connect()
 
   if(ENABLE_LOG) {
     std::string proto(next_proto, next_proto+next_proto_len);
-    LOG(INFO) << "Downstream negotiated next protocol: " << proto;
+    SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
   }
   uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
   if(!version) {
@@ -827,12 +836,12 @@ int SpdySession::on_read()
   int rv = 0;
   if((rv = spdylay_session_recv(session_)) < 0) {
     if(rv != SPDYLAY_ERR_EOF) {
-      LOG(ERROR) << "spdylay_session_recv() returned error: "
-                 << spdylay_strerror(rv);
+      SSLOG(ERROR, this) << "spdylay_session_recv() returned error: "
+                         << spdylay_strerror(rv);
     }
   } else if((rv = spdylay_session_send(session_)) < 0) {
-    LOG(ERROR) << "spdylay_session_send() returned error: "
-               << spdylay_strerror(rv);
+    SSLOG(ERROR, this) << "spdylay_session_send() returned error: "
+                       << spdylay_strerror(rv);
   }
   // if(rv == 0) {
   //   if(spdylay_session_want_read(session_) == 0 &&
@@ -855,8 +864,8 @@ int SpdySession::send()
 {
   int rv = 0;
   if((rv = spdylay_session_send(session_)) < 0) {
-    LOG(ERROR) << "spdylay_session_send() returned error: "
-               << spdylay_strerror(rv);
+    SSLOG(ERROR, this) << "spdylay_session_send() returned error: "
+                       << spdylay_strerror(rv);
   }
   // if(rv == 0) {
   //   if(spdylay_session_want_read(session_) == 0 &&

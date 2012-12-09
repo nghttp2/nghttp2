@@ -90,8 +90,7 @@ int SpdyDownstreamConnection::init_request_body_buf()
 int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Attaching downstream connection " << this << " to "
-              << "downstream " << downstream;
+    DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
   if(init_request_body_buf() == -1) {
     return -1;
@@ -109,8 +108,7 @@ int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
 void SpdyDownstreamConnection::detach_downstream(Downstream *downstream)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Detaching spdy downstream connection " << this << " from "
-              << "downstream " << downstream;
+    DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream->set_downstream_connection(0);
   downstream_ = 0;
@@ -298,9 +296,7 @@ int SpdyDownstreamConnection::push_request_headers()
     for(size_t i = 0; nv[i]; i += 2) {
       ss << nv[i] << ": " << nv[i+1] << "\n";
     }
-    LOG(INFO) << "Downstream spdy request headers id="
-              << downstream_->get_stream_id() << "\n"
-              << ss.str();
+    DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }
 
   if(downstream_->get_request_method() == "CONNECT" ||
@@ -315,7 +311,7 @@ int SpdyDownstreamConnection::push_request_headers()
   }
   delete [] nv;
   if(rv != 0) {
-    LOG(FATAL) << "spdylay_submit_request() failed";
+    DCLOG(FATAL, this) << "spdylay_submit_request() failed";
     return -1;
   }
   spdy_->notify();
@@ -327,7 +323,7 @@ int SpdyDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 {
   int rv = evbuffer_add(request_body_buf_, data, datalen);
   if(rv != 0) {
-    LOG(FATAL) << "evbuffer_add() failed";
+    DCLOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
   if(downstream_->get_downstream_stream_id() != -1) {

@@ -43,7 +43,7 @@ void upstream_readcb(bufferevent *bev, void *arg)
   ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
   int rv = handler->on_read();
   if(rv != 0) {
-    LOG(WARNING) << "<upstream> Read operation (application level) failure";
+    CLOG(WARNING, handler) << "Read operation (application level) failure";
     delete handler;
   }
 }
@@ -65,7 +65,7 @@ void upstream_writecb(bufferevent *bev, void *arg)
     Upstream *upstream = handler->get_upstream();
     int rv = upstream->on_write();
     if(rv != 0) {
-      LOG(WARNING) << "<upstream> Write operation (application level) failure";
+      CLOG(WARNING, handler) << "Write operation (application level) failure";
       delete handler;
     }
   }
@@ -79,20 +79,21 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
   bool finish = false;
   if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Upstream EOF";
+      CLOG(INFO, handler) << "EOF";
     }
     finish = true;
   }
   if(events & BEV_EVENT_ERROR) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Upstream network error: "
-                << evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR());
+      CLOG(INFO, handler) << "Network error: "
+                          << evutil_socket_error_to_string
+        (EVUTIL_SOCKET_ERROR());
     }
     finish = true;
   }
   if(events & BEV_EVENT_TIMEOUT) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Upstream time out";
+      CLOG(INFO, handler) << "Time out";
     }
     finish = true;
   }
@@ -101,13 +102,13 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
   } else {
     if(events & BEV_EVENT_CONNECTED) {
       if(ENABLE_LOG) {
-        LOG(INFO) << "Upstream connected. handler " << handler;
+        CLOG(INFO, handler) << "SSL/TLS handleshake completed";
       }
       handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
       handler->validate_next_proto();
       if(ENABLE_LOG) {
         if(SSL_session_reused(handler->get_ssl())) {
-          LOG(INFO) << "SSL/TLS session reused";
+          CLOG(INFO, handler) << "SSL/TLS session reused";
         }
       }
       // At this point, input buffer is already filled with some
@@ -145,7 +146,7 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
 ClientHandler::~ClientHandler()
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Deleting ClientHandler " << this;
+    CLOG(INFO, this) << "Deleting";
   }
   if(ssl_) {
     SSL_shutdown(ssl_);
@@ -163,7 +164,7 @@ ClientHandler::~ClientHandler()
     delete *i;
   }
   if(ENABLE_LOG) {
-    LOG(INFO) << "Deleted";
+    CLOG(INFO, this) << "Deleted";
   }
 }
 
@@ -203,7 +204,7 @@ int ClientHandler::validate_next_proto()
   if(next_proto) {
     if(ENABLE_LOG) {
       std::string proto(next_proto, next_proto+next_proto_len);
-      LOG(INFO) << "Upstream negotiated next protocol: " << proto;
+      CLOG(INFO, this) << "The negotiated next protocol: " << proto;
     }
     uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
     if(version) {
@@ -213,11 +214,11 @@ int ClientHandler::validate_next_proto()
     }
   } else {
     if(ENABLE_LOG) {
-      LOG(INFO) << "No proto negotiated.";
+      CLOG(INFO, this) << "No proto negotiated.";
     }
   }
   if(ENABLE_LOG) {
-    LOG(INFO) << "Use HTTP/1.1";
+    CLOG(INFO, this) << "Use HTTP/1.1";
   }
   HttpsUpstream *https_upstream = new HttpsUpstream(this);
   upstream_ = https_upstream;
@@ -252,7 +253,7 @@ void ClientHandler::set_should_close_after_write(bool f)
 void ClientHandler::pool_downstream_connection(DownstreamConnection *dconn)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Pooling downstream connection " << dconn;
+    CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn;
   }
   dconn_pool_.insert(dconn);
 }
@@ -260,8 +261,8 @@ void ClientHandler::pool_downstream_connection(DownstreamConnection *dconn)
 void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn)
 {
   if(ENABLE_LOG) {
-    LOG(INFO) << "Removing downstream connection " << dconn
-              << " from pool";
+    CLOG(INFO, this) << "Removing downstream connection DCONN:" << dconn
+                     << " from pool";
   }
   dconn_pool_.erase(dconn);
 }
@@ -270,7 +271,8 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
 {
   if(dconn_pool_.empty()) {
     if(ENABLE_LOG) {
-      LOG(INFO) << "Downstream connection pool is empty. Create new one";
+      CLOG(INFO, this) << "Downstream connection pool is empty."
+                       << " Create new one";
     }
     if(get_config()->client_mode) {
       return new SpdyDownstreamConnection(this);
@@ -281,8 +283,8 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
     DownstreamConnection *dconn = *dconn_pool_.begin();
     dconn_pool_.erase(dconn);
     if(ENABLE_LOG) {
-      LOG(INFO) << "Reuse downstream connection " << dconn
-                << " from pool";
+      CLOG(INFO, this) << "Reuse downstream connection DCONN:" << dconn
+                       << " from pool";
     }
     return dconn;
   }
