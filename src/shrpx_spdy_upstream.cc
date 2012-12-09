@@ -698,6 +698,10 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
                       << spdylay_strerror(rv);
     DIE();
   }
+  if(get_config()->accesslog) {
+    upstream_response(get_client_handler()->get_ipaddr(),
+                      status_code, downstream);
+  }
   return 0;
 }
 
@@ -794,6 +798,11 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   if(rv != 0) {
     ULOG(FATAL, this) << "spdylay_submit_response() failed";
     return -1;
+  }
+  if(get_config()->accesslog) {
+    upstream_response(get_client_handler()->get_ipaddr(),
+                      downstream->get_response_http_status(),
+                      downstream);
   }
   return 0;
 }

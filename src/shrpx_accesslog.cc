@@ -31,6 +31,7 @@
 #include <cstring>
 
 #include "shrpx_config.h"
+#include "shrpx_downstream.h"
 
 namespace shrpx {
 
@@ -55,10 +56,10 @@ void upstream_connect(const std::string& client_ip)
 {
   char datestr[64];
   get_datestr(datestr);
-  fprintf(stderr, "[%s] Accepted %s\n", datestr, client_ip.c_str());
+  fprintf(stderr, "%s [%s] ACCEPT\n", client_ip.c_str(), datestr);
   fflush(stderr);
   if(get_config()->use_syslog) {
-    syslog(LOG_INFO, "Accepted %s\n", client_ip.c_str());
+    syslog(LOG_INFO, "%s ACCEPT\n", client_ip.c_str());
   }
 }
 
@@ -66,11 +67,11 @@ void upstream_spdy_stream(const std::string& client_ip, int32_t stream_id)
 {
   char datestr[64];
   get_datestr(datestr);
-  fprintf(stderr, "[%s] %s SPDY stream_id=%d\n", datestr, client_ip.c_str(),
+  fprintf(stderr, "%s [%s] SYN_STREAM %d\n", client_ip.c_str(), datestr,
           stream_id);
   fflush(stderr);
   if(get_config()->use_syslog) {
-    syslog(LOG_INFO, "%s SPDY stream_id=%d\n", client_ip.c_str(), stream_id);
+    syslog(LOG_INFO, "%s SYN_STREAM %d\n", client_ip.c_str(), stream_id);
   }
 }
 
@@ -79,12 +80,70 @@ void upstream_spdy_stream_close(const std::string& client_ip,
 {
   char datestr[64];
   get_datestr(datestr);
-  fprintf(stderr, "[%s] %s SPDY stream_id=%d closed\n",
-          datestr, client_ip.c_str(), stream_id);
+  fprintf(stderr, "%s [%s] STREAM_CLOSE %d\n",
+          client_ip.c_str(), datestr, stream_id);
   fflush(stderr);
   if(get_config()->use_syslog) {
-    syslog(LOG_INFO, "%s SPDY stream_id=%d closed\n",
-           client_ip.c_str(), stream_id);
+    syslog(LOG_INFO, "%s STREAM_CLOSE %d\n", client_ip.c_str(), stream_id);
+  }
+}
+
+namespace {
+const char* status_code_color(int status_code)
+{
+  if(status_code <= 199) {
+    return "\033[1;36m";
+  } else if(status_code <= 299) {
+    return "\033[1;32m";
+  } else if(status_code <= 399) {
+    return "\033[1;34m";
+  } else if(status_code <= 499) {
+    return "\033[1;31m";
+  } else if(status_code <= 599) {
+    return "\033[1;35m";
+  } else {
+    return "";
+  }
+}
+} // namespace
+
+void upstream_response(const std::string& client_ip, int status_code,
+                       Downstream *downstream)
+{
+  char datestr[64];
+  get_datestr(datestr);
+  if(downstream) {
+    fprintf(stderr, "%s%s [%s] %d%s %d \"%s %s HTTP/%u.%u\"\n",
+            get_config()->tty ? status_code_color(status_code) : "",
+            client_ip.c_str(), datestr,
+            status_code,
+            get_config()->tty ? "\033[0m" : "",
+            downstream->get_stream_id(),
+            downstream->get_request_method().c_str(),
+            downstream->get_request_path().c_str(),
+            downstream->get_request_major(),
+            downstream->get_request_minor());
+    fflush(stderr);
+    if(get_config()->use_syslog) {
+      syslog(LOG_INFO, "%s %d %d \"%s %s HTTP/%u.%u\"\n",
+            client_ip.c_str(),
+            status_code,
+            downstream->get_stream_id(),
+            downstream->get_request_method().c_str(),
+            downstream->get_request_path().c_str(),
+            downstream->get_request_major(),
+            downstream->get_request_minor());
+    }
+  } else {
+    fprintf(stderr, "%s%s [%s] %d%s 0 \"-\"\n",
+            get_config()->tty ? status_code_color(status_code) : "",
+            client_ip.c_str(), datestr,
+            status_code,
+            get_config()->tty ? "\033[0m" : "");
+    if(get_config()->use_syslog) {
+      syslog(LOG_INFO, "%s %d 0 \"-\"\n", client_ip.c_str(), status_code);
+    }
+    fflush(stderr);
   }
 }
 

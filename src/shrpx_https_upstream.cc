@@ -35,6 +35,7 @@
 #include "shrpx_http.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
+#include "shrpx_accesslog.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -544,6 +545,10 @@ int HttpsUpstream::error_reply(int status_code)
   if(downstream) {
     downstream->set_response_state(Downstream::MSG_COMPLETE);
   }
+  if(get_config()->accesslog) {
+    upstream_response(this->get_client_handler()->get_ipaddr(), status_code,
+                      downstream);
+  }
   return 0;
 }
 
@@ -646,6 +651,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   if(evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
+  }
+  if(get_config()->accesslog) {
+    upstream_response(this->get_client_handler()->get_ipaddr(),
+                      downstream->get_response_http_status(), downstream);
   }
   return 0;
 }
