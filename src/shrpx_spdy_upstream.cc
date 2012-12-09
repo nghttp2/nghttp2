@@ -198,7 +198,7 @@ void on_ctrl_recv_callback
     if(ENABLE_LOG) {
       std::stringstream ss;
       for(size_t i = 0; nv[i]; i += 2) {
-        ss << nv[i] << ": " << nv[i+1] << "\n";
+        ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
       }
       ULOG(INFO, upstream) << "HTTP request headers. stream_id="
                            << downstream->get_stream_id()
@@ -777,7 +777,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   if(ENABLE_LOG) {
     std::stringstream ss;
     for(size_t i = 0; nv[i]; i += 2) {
-      ss << nv[i] << ": " << nv[i+1] << "\n";
+      ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
     }
     ULOG(INFO, this) << "HTTP response headers. stream_id="
                      << downstream->get_stream_id() << "\n"

@@ -149,7 +149,8 @@ int htp_hdrs_completecb(http_parser *htp)
        << downstream->get_request_minor() << "\n";
     const Headers& headers = downstream->get_request_headers();
     for(size_t i = 0; i < headers.size(); ++i) {
-      ss << headers[i].first << ": " << headers[i].second << "\n";
+      ss << TTY_HTTP_HD << headers[i].first << TTY_RST << ": "
+         << headers[i].second << "\n";
     }
     ULOG(INFO, upstream) << "HTTP request headers\n" << ss.str();
   }
@@ -631,7 +632,15 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   hdrs += "\r\n";
   hdrs += "\r\n";
   if(ENABLE_LOG) {
-    ULOG(INFO, this) << "HTTP response headers\n" << hdrs;
+    const char *hdrp;
+    std::string nhdrs;
+    if(get_config()->tty) {
+      nhdrs = http::colorizeHeaders(hdrs.c_str());
+      hdrp = nhdrs.c_str();
+    } else {
+      hdrp = hdrs.c_str();
+    }
+    ULOG(INFO, this) << "HTTP response headers\n" << hdrp;
   }
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
   if(evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {

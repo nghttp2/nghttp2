@@ -89,6 +89,9 @@ private:
   static int severity_thres_;
 };
 
+#define TTY_HTTP_HD (get_config()->tty ? "\033[1;34m" : "")
+#define TTY_RST (get_config()->tty ? "\033[0m" : "")
+
 } // namespace shrpx
 
 #endif // SHRPX_LOG_H

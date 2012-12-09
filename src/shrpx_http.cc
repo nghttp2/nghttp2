@@ -27,6 +27,7 @@
 #include <sstream>
 
 #include "shrpx_config.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "uri.h"
 
@@ -139,6 +140,37 @@ void capitalize(std::string& s, size_t offset)
       s[i] = util::lowcase(s[i]);
     }
   }
+}
+
+std::string colorizeHeaders(const char *hdrs)
+{
+  std::string nhdrs;
+  const char *p = strchr(hdrs, '\n');
+  if(!p) {
+    // Not valid HTTP header
+    return hdrs;
+  }
+  nhdrs.append(hdrs, p+1);
+  ++p;
+  while(1) {
+    const char* np = strchr(p, ':');
+    if(!np) {
+      nhdrs.append(p);
+      break;
+    }
+    nhdrs += TTY_HTTP_HD;
+    nhdrs.append(p, np);
+    nhdrs += TTY_RST;
+    p = np;
+    np = strchr(p, '\n');
+    if(!np) {
+      nhdrs.append(p);
+      break;
+    }
+    nhdrs.append(p, np+1);
+    p = np+1;
+  }
+  return nhdrs;
 }
 
 } // namespace http

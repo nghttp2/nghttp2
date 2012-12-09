@@ -592,7 +592,7 @@ void on_ctrl_recv_callback
     if(ENABLE_LOG) {
       std::stringstream ss;
       for(size_t i = 0; nv[i]; i += 2) {
-        ss << nv[i] << ": " << nv[i+1] << "\n";
+        ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
       }
       SSLOG(INFO, spdy) << "HTTP response headers. stream_id="
                         << frame->syn_reply.stream_id

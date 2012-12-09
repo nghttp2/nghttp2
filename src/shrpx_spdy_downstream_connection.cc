@@ -294,7 +294,7 @@ int SpdyDownstreamConnection::push_request_headers()
   if(ENABLE_LOG) {
     std::stringstream ss;
     for(size_t i = 0; nv[i]; i += 2) {
-      ss << nv[i] << ": " << nv[i+1] << "\n";
+      ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
     }
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }

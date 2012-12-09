@@ -182,8 +182,16 @@ int HttpDownstreamConnection::push_request_headers()
 
   hdrs += "\r\n";
   if(ENABLE_LOG) {
+    const char *hdrp;
+    std::string nhdrs;
+    if(get_config()->tty) {
+      nhdrs = http::colorizeHeaders(hdrs.c_str());
+      hdrp = nhdrs.c_str();
+    } else {
+      hdrp = hdrs.c_str();
+    }
     DCLOG(INFO, this) << "HTTP request headers. stream_id="
-                     << downstream_->get_stream_id() << "\n" << hdrs;
+                      << downstream_->get_stream_id() << "\n" << hdrp;
   }
   evbuffer *output = bufferevent_get_output(bev_);
   int rv;
