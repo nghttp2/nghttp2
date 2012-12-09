@@ -99,10 +99,6 @@ void on_stream_close_callback
                          << " is being closed";
   }
   Downstream *downstream = upstream->find_downstream(stream_id);
-  if(get_config()->accesslog) {
-    upstream_spdy_stream_close(upstream->get_client_handler()->get_ipaddr(),
-                               stream_id);
-  }
   if(downstream) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       upstream->remove_downstream(downstream);
@@ -218,10 +214,6 @@ void on_ctrl_recv_callback
     if(rv != 0) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
-    }
-    if(get_config()->accesslog) {
-      upstream_spdy_stream(upstream->get_client_handler()->get_ipaddr(),
-                           frame->syn_stream.stream_id);
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {

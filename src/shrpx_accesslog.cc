@@ -63,31 +63,6 @@ void upstream_connect(const std::string& client_ip)
   }
 }
 
-void upstream_spdy_stream(const std::string& client_ip, int32_t stream_id)
-{
-  char datestr[64];
-  get_datestr(datestr);
-  fprintf(stderr, "%s [%s] SYN_STREAM %d\n", client_ip.c_str(), datestr,
-          stream_id);
-  fflush(stderr);
-  if(get_config()->use_syslog) {
-    syslog(LOG_INFO, "%s SYN_STREAM %d\n", client_ip.c_str(), stream_id);
-  }
-}
-
-void upstream_spdy_stream_close(const std::string& client_ip,
-                                int32_t stream_id)
-{
-  char datestr[64];
-  get_datestr(datestr);
-  fprintf(stderr, "%s [%s] STREAM_CLOSE %d\n",
-          client_ip.c_str(), datestr, stream_id);
-  fflush(stderr);
-  if(get_config()->use_syslog) {
-    syslog(LOG_INFO, "%s STREAM_CLOSE %d\n", client_ip.c_str(), stream_id);
-  }
-}
-
 namespace {
 const char* status_code_color(int status_code)
 {
