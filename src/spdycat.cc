@@ -507,6 +507,7 @@ int communicate(const std::string& host, uint16_t port,
       reinterpret_cast<const unsigned char*>(next_proto.c_str()),
       next_proto.size());
   if (spdy_version <= 0) {
+    std::cerr << "No supported SPDY version was negotiated." << std::endl;
     return -1;
   }
 
