@@ -843,15 +843,15 @@ int SpdySession::on_read()
     SSLOG(ERROR, this) << "spdylay_session_send() returned error: "
                        << spdylay_strerror(rv);
   }
-  // if(rv == 0) {
-  //   if(spdylay_session_want_read(session_) == 0 &&
-  //      spdylay_session_want_write(session_) == 0) {
-  //     if(ENABLE_LOG) {
-  //       LOG(INFO) << "No more read/write for this SPDY session";
-  //     }
-  //     rv = -1;
-  //   }
-  // }
+  if(rv == 0) {
+    if(spdylay_session_want_read(session_) == 0 &&
+       spdylay_session_want_write(session_) == 0) {
+      if(ENABLE_LOG) {
+        SSLOG(INFO, this) << "No more read/write for this session";
+      }
+      rv = -1;
+    }
+  }
   return rv;
 }
 
@@ -867,15 +867,15 @@ int SpdySession::send()
     SSLOG(ERROR, this) << "spdylay_session_send() returned error: "
                        << spdylay_strerror(rv);
   }
-  // if(rv == 0) {
-  //   if(spdylay_session_want_read(session_) == 0 &&
-  //      spdylay_session_want_write(session_) == 0) {
-  //     if(ENABLE_LOG) {
-  //       LOG(INFO) << "No more read/write for this SPDY session";
-  //     }
-  //     rv = -1;
-  //   }
-  // }
+  if(rv == 0) {
+    if(spdylay_session_want_read(session_) == 0 &&
+       spdylay_session_want_write(session_) == 0) {
+      if(ENABLE_LOG) {
+        SSLOG(INFO, this) << "No more read/write for this session";
+      }
+      rv = -1;
+    }
+  }
   return rv;
 }
 
