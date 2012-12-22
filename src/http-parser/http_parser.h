@@ -30,6 +30,7 @@ extern "C" {
 #include <sys/types.h>
 #if defined(_WIN32) && !defined(__MINGW32__) && (!defined(_MSC_VER) || _MSC_VER<1600)
 #include <BaseTsd.h>
+#include <stddef.h>
 typedef __int8 int8_t;
 typedef unsigned __int8 uint8_t;
 typedef __int16 int16_t;
@@ -38,8 +39,6 @@ typedef __int32 int32_t;
 typedef unsigned __int32 uint32_t;
 typedef __int64 int64_t;
 typedef unsigned __int64 uint64_t;
-typedef SIZE_T size_t;
-typedef SSIZE_T ssize_t;
 #else
 #include <stdint.h>
 #endif
@@ -142,6 +141,7 @@ enum flags
                                                                      \
   /* Callback-related errors */                                      \
   XX(CB_message_begin, "the on_message_begin callback failed")       \
+  XX(CB_status_complete, "the on_status_complete callback failed")   \
   XX(CB_url, "the on_url callback failed")                           \
   XX(CB_header_field, "the on_header_field callback failed")         \
   XX(CB_header_value, "the on_header_value callback failed")         \
@@ -222,6 +222,7 @@ struct http_parser {
 struct http_parser_settings {
   http_cb      on_message_begin;
   http_data_cb on_url;
+  http_cb      on_status_complete;
   http_data_cb on_header_field;
   http_data_cb on_header_value;
   http_cb      on_headers_complete;

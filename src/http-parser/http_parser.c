@@ -866,6 +866,7 @@ size_t http_parser_execute (http_parser *parser,
       case s_res_line_almost_done:
         STRICT_CHECK(ch != LF);
         parser->state = s_header_field_start;
+        CALLBACK_NOTIFY(status_complete);
         break;
 
       case s_start_req:
@@ -1967,7 +1968,7 @@ http_parse_host_char(enum http_host_state s, const char ch) {
 
     /* FALLTHROUGH */
     case s_http_host_v6_start:
-      if (IS_HEX(ch) || ch == ':') {
+      if (IS_HEX(ch) || ch == ':' || ch == '.') {
         return s_http_host_v6;
       }
 

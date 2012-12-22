@@ -417,6 +417,7 @@ namespace {
 http_parser_settings htp_hooks = {
   0, /*http_cb      on_message_begin;*/
   0, /*http_data_cb on_url;*/
+  0, /*http_cb on_status_complete */
   htp_hdr_keycb, /*http_data_cb on_header_field;*/
   htp_hdr_valcb, /*http_data_cb on_header_value;*/
   htp_hdrs_completecb, /*http_cb      on_headers_complete;*/

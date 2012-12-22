@@ -32,7 +32,7 @@
 #define FALSE 0
 
 #define MAX_HEADERS 13
-#define MAX_ELEMENT_SIZE 500
+#define MAX_ELEMENT_SIZE 2048
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
@@ -1413,11 +1413,88 @@ const struct message responses[] =
 , {.name= NULL } /* sentinel */
 };
 
+/* strnlen() is a POSIX.2008 addition. Can't rely on it being available so
+ * define it ourselves.
+ */
+size_t
+strnlen(const char *s, size_t maxlen)
+{
+  const char *p;
+
+  p = memchr(s, '\0', maxlen);
+  if (p == NULL)
+    return maxlen;
+
+  return p - s;
+}
+
+size_t
+strlncat(char *dst, size_t len, const char *src, size_t n)
+{
+  size_t slen;
+  size_t dlen;
+  size_t rlen;
+  size_t ncpy;
+
+  slen = strnlen(src, n);
+  dlen = strnlen(dst, len);
+
+  if (dlen < len) {
+    rlen = len - dlen;
+    ncpy = slen < rlen ? slen : (rlen - 1);
+    memcpy(dst + dlen, src, ncpy);
+    dst[dlen + ncpy] = '\0';
+  }
+
+  assert(len > slen + dlen);
+  return slen + dlen;
+}
+
+size_t
+strlcat(char *dst, const char *src, size_t len)
+{
+  return strlncat(dst, len, src, (size_t) -1);
+}
+
+size_t
+strlncpy(char *dst, size_t len, const char *src, size_t n)
+{
+  size_t slen;
+  size_t ncpy;
+
+  slen = strnlen(src, n);
+
+  if (len > 0) {
+    ncpy = slen < len ? slen : (len - 1);
+    memcpy(dst, src, ncpy);
+    dst[ncpy] = '\0';
+  }
+
+  assert(len > slen);
+  return slen;
+}
+
+size_t
+strlcpy(char *dst, const char *src, size_t len)
+{
+  return strlncpy(dst, len, src, (size_t) -1);
+}
+
 int
 request_url_cb (http_parser *p, const char *buf, size_t len)
 {
   assert(p == parser);
-  strncat(messages[num_messages].request_url, buf, len);
+  strlncat(messages[num_messages].request_url,
+           sizeof(messages[num_messages].request_url),
+           buf,
+           len);
+  return 0;
+}
+
+int
+status_complete_cb (http_parser *p) {
+  assert(p == parser);
+  p->data++;
   return 0;
 }
 
@@ -1430,7 +1507,10 @@ header_field_cb (http_parser *p, const char *buf, size_t len)
   if (m->last_header_element != FIELD)
     m->num_headers++;
 
-  strncat(m->headers[m->num_headers-1][0], buf, len);
+  strlncat(m->headers[m->num_headers-1][0],
+           sizeof(m->headers[m->num_headers-1][0]),
+           buf,
+           len);
 
   m->last_header_element = FIELD;
 
@@ -1443,7 +1523,10 @@ header_value_cb (http_parser *p, const char *buf, size_t len)
   assert(p == parser);
   struct message *m = &messages[num_messages];
 
-  strncat(m->headers[m->num_headers-1][1], buf, len);
+  strlncat(m->headers[m->num_headers-1][1],
+           sizeof(m->headers[m->num_headers-1][1]),
+           buf,
+           len);
 
   m->last_header_element = VALUE;
 
@@ -1467,7 +1550,10 @@ int
 body_cb (http_parser *p, const char *buf, size_t len)
 {
   assert(p == parser);
-  strncat(messages[num_messages].body, buf, len);
+  strlncat(messages[num_messages].body,
+           sizeof(messages[num_messages].body),
+           buf,
+           len);
   messages[num_messages].body_size += len;
   check_body_is_final(p);
  // printf("body_cb: '%s'\n", requests[num_messages].body);
@@ -2135,6 +2221,25 @@ const struct url_test url_tests[] =
   ,.rv=0
   }
 
+, {.name="ipv4 in ipv6 address"
+  ,.url="http://[2001:0000:0000:0000:0000:0000:1.9.1.1]/"
+  ,.is_connect=0
+  ,.u=
+    {.field_set=(1 << UF_SCHEMA) | (1 << UF_HOST) | (1 << UF_PATH)
+    ,.port=0
+    ,.field_data=
+      {{  0,  4 } /* UF_SCHEMA */
+      ,{  8, 37 } /* UF_HOST */
+      ,{  0,  0 } /* UF_PORT */
+      ,{ 46,  1 } /* UF_PATH */
+      ,{  0,  0 } /* UF_QUERY */
+      ,{  0,  0 } /* UF_FRAGMENT */
+      ,{  0,  0 } /* UF_USERINFO */
+      }
+    }
+  ,.rv=0
+  }
+
 , {.name="extra ? in query string"
   ,.url="http://a.tbcdn.cn/p/fp/2010c/??fp-header-min.css,fp-base-min.css,"
   "fp-channel-min.css,fp-product-min.css,fp-mall-min.css,fp-category-min.css,"
@@ -2489,7 +2594,7 @@ dump_url (const char *url, const struct http_parser_url *u)
       continue;
     }
 
-    printf("\tfield_data[%u]: off: %u len: %u part: \"%.*s\n",
+    printf("\tfield_data[%u]: off: %u len: %u part: \"%.*s\n\"",
            i,
            u->field_data[i].off,
            u->field_data[i].len,
@@ -2879,15 +2984,15 @@ test_scan (const struct message *r1, const struct message *r2, const struct mess
         parser_init(type_both ? HTTP_BOTH : r1->type);
 
         buf1_len = i;
-        strncpy(buf1, total, buf1_len);
+        strlncpy(buf1, sizeof(buf1), total, buf1_len);
         buf1[buf1_len] = 0;
 
         buf2_len = j - i;
-        strncpy(buf2, total+i, buf2_len);
+        strlncpy(buf2, sizeof(buf1), total+i, buf2_len);
         buf2[buf2_len] = 0;
 
         buf3_len = total_len - j;
-        strncpy(buf3, total+j, buf3_len);
+        strlncpy(buf3, sizeof(buf1), total+j, buf3_len);
         buf3[buf3_len] = 0;
 
         read = parse(buf1, buf1_len);
@@ -2989,6 +3094,20 @@ create_large_chunked_message (int body_size_in_kb, const char* headers)
   assert(wrote == bufsize);
 
   return buf;
+}
+
+void
+test_status_complete (void)
+{
+  parser_init(HTTP_RESPONSE);
+  parser->data = 0;
+  http_parser_settings settings = settings_null;
+  settings.on_status_complete = status_complete_cb;
+
+  char *response = "don't mind me, just a simple response";
+  http_parser_execute(parser, &settings, response, strlen(response));
+  assert(parser->data == (void*)0); // the status_complete callback was never called
+  assert(parser->http_errno == HPE_INVALID_CONSTANT); // the errno for an invalid status line
 }
 
 /* Verify that we can pause parsing at any of the bytes in the
@@ -3297,6 +3416,8 @@ main (void)
            , &requests[PREFIX_NEWLINE_GET ]
            , &requests[CONNECT_REQUEST]
            );
+
+  test_status_complete();
 
   puts("requests okay");
 
