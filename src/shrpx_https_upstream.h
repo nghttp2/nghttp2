@@ -29,9 +29,7 @@
 
 #include <stdint.h>
 
-extern "C" {
 #include "http-parser/http_parser.h"
-}
 
 #include "shrpx_upstream.h"
 
