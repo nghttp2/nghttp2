@@ -30,7 +30,7 @@
 
 #include <event2/bufferevent_ssl.h>
 
-#include <http-parser/http_parser.h>
+#include "http-parser/http_parser.h"
 
 #include "shrpx_client_handler.h"
 #include "shrpx_upstream.h"
