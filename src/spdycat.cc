@@ -54,8 +54,9 @@
 #include <openssl/err.h>
 #include <spdylay/spdylay.h>
 
+#include "http-parser/http_parser.h"
+
 #include "spdylay_ssl.h"
-#include "uri.h"
 #include "HtmlParser.h"
 #include "util.h"
 
@@ -101,16 +102,112 @@ void record_time(timeval *tv)
   gettimeofday(tv, 0);
 }
 
+bool has_uri_field(const http_parser_url &u, http_parser_url_fields field)
+{
+  return u.field_set & (1 << field);
+}
+
+bool fieldeq(const char *uri1, const http_parser_url &u1,
+             const char *uri2, const http_parser_url &u2,
+             http_parser_url_fields field)
+{
+  if(!has_uri_field(u1, field)) {
+    if(!has_uri_field(u2, field)) {
+      return true;
+    } else {
+      return false;
+    }
+  } else if(!has_uri_field(u2, field)) {
+    return false;
+  }
+  if(u1.field_data[field].len != u2.field_data[field].len) {
+    return false;
+  }
+  return memcmp(uri1+u1.field_data[field].off,
+                uri2+u2.field_data[field].off,
+                u1.field_data[field].len) == 0;
+}
+
+bool fieldeq(const char *uri, const http_parser_url &u,
+             http_parser_url_fields field,
+             const char *t)
+{
+  if(!has_uri_field(u, field)) {
+    if(!t[0]) {
+      return true;
+    } else {
+      return false;
+    }
+  } else if(!t[0]) {
+    return false;
+  }
+  int i, len = u.field_data[field].len;
+  const char *p = uri+u.field_data[field].off;
+  for(i = 0; i < len && t[i] && p[i] == t[i]; ++i);
+  return i == len && !t[i];
+}
+
+uint16_t get_default_port(const char *uri, const http_parser_url &u)
+{
+  if(fieldeq(uri, u, UF_SCHEMA, "https")) {
+    return 443;
+  } else if(fieldeq(uri, u, UF_SCHEMA, "http")) {
+    return 80;
+  } else {
+    return 443;
+  }
+}
+
+std::string get_uri_field(const char *uri, const http_parser_url &u,
+                          http_parser_url_fields field)
+{
+  if(has_uri_field(u, field)) {
+    return std::string(uri+u.field_data[field].off,
+                       u.field_data[field].len);
+  } else {
+    return "";
+  }
+}
+
+bool porteq(const char *uri1, const http_parser_url &u1,
+            const char *uri2, const http_parser_url &u2)
+{
+  uint16_t port1, port2;
+  port1 = has_uri_field(u1, UF_PORT) ? u1.port : get_default_port(uri1, u1);
+  port2 = has_uri_field(u2, UF_PORT) ? u2.port : get_default_port(uri2, u2);
+  return port1 == port2;
+}
+
+void write_uri_field(std::ostream& o,
+                     const char *uri, const http_parser_url &u,
+                     http_parser_url_fields field)
+{
+  if(has_uri_field(u, field)) {
+    o.write(uri+u.field_data[field].off, u.field_data[field].len);
+  }
+}
+
+std::string strip_fragment(const char *raw_uri)
+{
+  const char *end;
+  for(end = raw_uri; *end && *end != '#'; ++end);
+  size_t len = end-raw_uri;
+  return std::string(raw_uri, len);
+}
+
 struct Request {
-  uri::UriStruct us;
+  // URI without fragment
+  std::string uri;
+  http_parser_url u;
   spdylay_gzip *inflater;
   HtmlParser *html_parser;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
   RequestStat stat;
   std::string status;
-  Request(const uri::UriStruct& us, int level = 0)
-    : us(us), inflater(0), html_parser(0), level(level)
+  Request(const std::string& uri, const http_parser_url &u, int level = 0)
+    : uri(uri), u(u),
+      inflater(0), html_parser(0), level(level)
   {}
 
   ~Request()
@@ -128,7 +225,7 @@ struct Request {
 
   void init_html_parser()
   {
-    html_parser = new HtmlParser(uri::construct(us));
+    html_parser = new HtmlParser(uri);
   }
 
   int update_html_parser(const uint8_t *data, size_t len, int fin)
@@ -140,6 +237,28 @@ struct Request {
     rv = html_parser->parse_chunk(reinterpret_cast<const char*>(data), len,
                                   fin);
     return rv;
+  }
+
+  std::string make_reqpath() const
+  {
+    std::string path = has_uri_field(u, UF_PATH) ?
+      get_uri_field(uri.c_str(), u, UF_PATH) : "/";
+    if(has_uri_field(u, UF_QUERY)) {
+      path += "?";
+      path.append(uri.c_str()+u.field_data[UF_QUERY].off,
+                  u.field_data[UF_QUERY].len);
+    }
+    return path;
+  }
+
+  bool is_ipv6_literal_addr() const
+  {
+    if(has_uri_field(u, UF_HOST)) {
+      return memchr(uri.c_str()+u.field_data[UF_HOST].off, ':',
+                    u.field_data[UF_HOST].len);
+    } else {
+      return false;
+    }
   }
 
   void record_syn_stream_time()
@@ -196,24 +315,28 @@ struct SpdySession {
       return;
     }
     std::stringstream ss;
-    if(reqvec[0]->us.ipv6LiteralAddress) {
-      ss << "[" << reqvec[0]->us.host << "]";
+    if(reqvec[0]->is_ipv6_literal_addr()) {
+      ss << "[";
+      write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
+      ss << "]";
     } else {
-      ss << reqvec[0]->us.host;
+      write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
     }
-    if(reqvec[0]->us.port != 443) {
-      ss << ":" << reqvec[0]->us.port;
+    if(has_uri_field(reqvec[0]->u, UF_PORT) &&
+       reqvec[0]->u.port != get_default_port(reqvec[0]->uri.c_str(),
+                                             reqvec[0]->u)) {
+      ss << ":" << reqvec[0]->u.port;
     }
     hostport = ss.str();
   }
-  bool add_request(const uri::UriStruct& us, int level = 0)
+  bool add_request(const std::string& uri, const http_parser_url& u,
+                   int level = 0)
   {
-    std::string key = us.dir+us.file+us.query;
-    if(path_cache.count(key)) {
+    if(path_cache.count(uri)) {
       return false;
     } else {
-      path_cache.insert(key);
-      reqvec.push_back(new Request(us, level));
+      path_cache.insert(uri);
+      reqvec.push_back(new Request(uri, u, level));
       return true;
     }
   }
@@ -230,9 +353,9 @@ void submit_request(Spdylay& sc, const std::string& hostport,
                     const std::map<std::string,std::string> &headers,
                     Request* req)
 {
-  uri::UriStruct& us = req->us;
-  std::string path = us.dir+us.file+us.query;
-  int r = sc.submit_request(us.protocol, hostport, path, headers, 3, req);
+  std::string path = req->make_reqpath();
+  int r = sc.submit_request(get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA),
+                            hostport, path, headers, 3, req);
   assert(r == 0);
 }
 
@@ -245,12 +368,14 @@ void update_html_parser(SpdySession *spdySession, Request *req,
   req->update_html_parser(data, len, fin);
 
   for(size_t i = 0; i < req->html_parser->get_links().size(); ++i) {
-    const std::string& uri = req->html_parser->get_links()[i];
-    uri::UriStruct us;
-    if(uri::parse(us, uri) &&
-       req->us.protocol == us.protocol && req->us.host == us.host &&
-       req->us.port == us.port) {
-      spdySession->add_request(us, req->level+1);
+    const std::string& raw_uri = req->html_parser->get_links()[i];
+    std::string uri = strip_fragment(raw_uri.c_str());
+    http_parser_url u;
+    if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
+       fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
+       fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
+       porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
+      spdySession->add_request(uri, u, req->level+1);
       submit_request(*spdySession->sc, spdySession->hostport, config.headers,
                      spdySession->reqvec.back());
     }
@@ -403,7 +528,7 @@ void print_stats(const SpdySession& spdySession)
   std::cout << "***** Statistics *****" << std::endl;
   for(size_t i = 0; i < spdySession.reqvec.size(); ++i) {
     const Request *req = spdySession.reqvec[i];
-    std::cout << "#" << i+1 << ": " << uri::construct(req->us) << std::endl;
+    std::cout << "#" << i+1 << ": " << req->uri << std::endl;
     std::cout << "    Status: " << req->status << std::endl;
     std::cout << "    Delta (ms) from SSL/TLS handshake(SYN_STREAM):"
               << std::endl;
@@ -439,7 +564,8 @@ int communicate(const std::string& host, uint16_t port,
   int timeout = config.timeout;
   int fd = nonblock_connect_to(host, port, timeout);
   if(fd == -1) {
-    std::cerr << "Could not connect to the host" << std::endl;
+    std::cerr << "Could not connect to the host: " << spdySession.hostport
+              << std::endl;
     return -1;
   } else if(fd == -2) {
     std::cerr << "Request to " << spdySession.hostport << " timed out "
@@ -614,9 +740,14 @@ int run(char **uris, int n)
   int failures = 0;
   SpdySession spdySession;
   for(int i = 0; i < n; ++i) {
-    uri::UriStruct us;
-    if(uri::parse(us, uris[i])) {
-      if(prev_host != us.host || prev_port != us.port) {
+    http_parser_url u;
+    std::string uri = strip_fragment(uris[i]);
+    if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
+       has_uri_field(u, UF_SCHEMA)) {
+      uint16_t port = has_uri_field(u, UF_PORT) ?
+        u.port : get_default_port(uri.c_str(), u);
+      if(!fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
+         u.port != prev_port) {
         if(!spdySession.reqvec.empty()) {
           spdySession.update_hostport();
           if (communicate(prev_host, prev_port, spdySession, &callbacks) != 0) {
@@ -624,10 +755,10 @@ int run(char **uris, int n)
           }
           spdySession = SpdySession();
         }
-        prev_host = us.host;
-        prev_port = us.port;
+        prev_host = get_uri_field(uri.c_str(), u, UF_HOST);
+        prev_port = port;
       }
-      spdySession.add_request(us);
+      spdySession.add_request(uri, u);
     }
   }
   if(!spdySession.reqvec.empty()) {

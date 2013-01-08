@@ -40,7 +40,6 @@
 #include <zlib.h>
 
 #include "spdylay_ssl.h"
-#include "uri.h"
 #include "util.h"
 #include "EventPoll.h"
 

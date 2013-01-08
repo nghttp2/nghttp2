@@ -35,8 +35,8 @@ if HAVE_LIBEVENT_OPENSSL
 bin_PROGRAMS += shrpx
 endif # HAVE_LIBEVENT_OPENSSL
 
-HELPER_OBJECTS = uri.cc util.cc spdylay_ssl.cc
-HELPER_HFILES = uri.h util.h spdylay_ssl.h spdylay_config.h
+HELPER_OBJECTS = util.cc spdylay_ssl.cc
+HELPER_HFILES = util.h spdylay_ssl.h spdylay_config.h
 
 EVENT_OBJECTS =
 EVENT_HFILES = EventPoll.h EventPollEvent.h
@@ -62,7 +62,8 @@ SPDY_SERVER_OBJECTS = SpdyServer.cc
 SPDY_SERVER_HFILES = SpdyServer.h
 
 spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc \
-	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES}
+	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
+	http-parser/http_parser.c http-parser/http_parser.h
 
 spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	${EVENT_OBJECTS} ${EVENT_HFILES} \

@@ -24,8 +24,9 @@
  */
 #include "HtmlParser.h"
 
+#include <libxml/uri.h>
+
 #include "util.h"
-#include "uri.h"
 
 namespace spdylay {
 
@@ -69,14 +70,24 @@ void start_element_func
     if((util::strieq(rel_attr, "shortcut icon") ||
         util::strieq(rel_attr, "stylesheet")) &&
        href_attr) {
-      std::string uri = uri::joinUri(parser_data->base_uri, href_attr);
-      parser_data->links.push_back(uri);
+      xmlChar *u = xmlBuildURI(reinterpret_cast<const xmlChar*>(href_attr),
+                               reinterpret_cast<const xmlChar*>
+                               (parser_data->base_uri.c_str()));
+      if(u) {
+        parser_data->links.push_back(reinterpret_cast<char*>(u));
+        free(u);
+      }
     }
   } else if(util::strieq(reinterpret_cast<const char*>(name), "img")) {
     const char *src_attr = get_attr(attrs, "src");
     if(src_attr) {
-      std::string uri = uri::joinUri(parser_data->base_uri, src_attr);
-      parser_data->links.push_back(uri);
+      xmlChar *u = xmlBuildURI(reinterpret_cast<const xmlChar*>(src_attr),
+                               reinterpret_cast<const xmlChar*>
+                               (parser_data->base_uri.c_str()));
+      if(u) {
+        parser_data->links.push_back(reinterpret_cast<char*>(u));
+        free(u);
+      }
     }
   }
 }
