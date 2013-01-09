@@ -142,6 +142,7 @@ int HttpDownstreamConnection::push_request_headers()
       continue;
     }
     hdrs += (*i).first;
+    http::capitalize(hdrs, hdrs.size()-(*i).first.size());
     hdrs += ": ";
     hdrs += (*i).second;
     hdrs += "\r\n";
