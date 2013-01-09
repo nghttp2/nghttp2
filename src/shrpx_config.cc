@@ -57,6 +57,7 @@ const char SHRPX_OPT_DAEMON[] = "daemon";
 const char SHRPX_OPT_SPDY_PROXY[] = "spdy-proxy";
 const char SHRPX_OPT_CLIENT_PROXY[] = "client-proxy";
 const char SHRPX_OPT_ADD_X_FORWARDED_FOR[] = "add-x-forwarded-for";
+const char SHRPX_OPT_NO_VIA[] = "no-via";
 const char
 SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT[] = "frontend-spdy-read-timeout";
 const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[] = "frontend-read-timeout";
@@ -209,6 +210,8 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->client_proxy = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_ADD_X_FORWARDED_FOR)) {
     mod_config()->add_x_forwarded_for = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_NO_VIA)) {
+    mod_config()->no_via = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT)) {
     timeval tv = {strtol(optarg, 0, 10), 0};
     mod_config()->spdy_upstream_read_timeout = tv;

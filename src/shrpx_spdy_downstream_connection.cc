@@ -245,7 +245,8 @@ int SpdyDownstreamConnection::push_request_headers()
               util::strieq((*i).first.c_str(), "connection") ||
               util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
-    } else if(util::strieq((*i).first.c_str(), "via")) {
+    } else if(!get_config()->no_via &&
+              util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
     } else if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
       xff_value = (*i).second;
@@ -282,14 +283,15 @@ int SpdyDownstreamConnection::push_request_headers()
     nv[hdidx++] = "x-forwarded-proto";
     nv[hdidx++] = "http";
   }
-
-  if(!via_value.empty()) {
-    via_value += ", ";
+  if(!get_config()->no_via) {
+    if(!via_value.empty()) {
+      via_value += ", ";
+    }
+    via_value += http::create_via_header_value
+      (downstream_->get_request_major(), downstream_->get_request_minor());
+    nv[hdidx++] = "via";
+    nv[hdidx++] = via_value.c_str();
   }
-  via_value += http::create_via_header_value(downstream_->get_request_major(),
-                                             downstream_->get_request_minor());
-  nv[hdidx++] = "via";
-  nv[hdidx++] = via_value.c_str();
   nv[hdidx++] = 0;
   if(ENABLE_LOG) {
     std::stringstream ss;

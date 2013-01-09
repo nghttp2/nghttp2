@@ -48,6 +48,7 @@ extern const char SHRPX_OPT_DAEMON[];
 extern const char SHRPX_OPT_SPDY_PROXY[];
 extern const char SHRPX_OPT_CLIENT_PROXY[];
 extern const char SHRPX_OPT_ADD_X_FORWARDED_FOR[];
+extern const char SHRPX_OPT_NO_VIA[];
 extern const char SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[];
@@ -102,6 +103,7 @@ struct Config {
   bool spdy_proxy;
   bool client_proxy;
   bool add_x_forwarded_for;
+  bool no_via;
   bool accesslog;
   size_t spdy_upstream_window_bits;
   size_t spdy_downstream_window_bits;

@@ -604,7 +604,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
        util::strieq((*i).first.c_str(), "connection") ||
        util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
-    } else if(util::strieq((*i).first.c_str(), "via")) {
+    } else if(!get_config()->no_via &&
+              util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
     } else {
       hdrs += (*i).first;
@@ -627,15 +628,17 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   } else {
     hdrs += "Connection: close\r\n";
   }
-
-  hdrs += "Via: ";
-  hdrs += via_value;
-  if(!via_value.empty()) {
-    hdrs += ", ";
+  if(!get_config()->no_via) {
+    hdrs += "Via: ";
+    if(!via_value.empty()) {
+      hdrs += via_value;
+      hdrs += ", ";
+    }
+    hdrs += http::create_via_header_value
+      (downstream->get_response_major(), downstream->get_response_minor());
+    hdrs += "\r\n";
   }
-  hdrs += http::create_via_header_value
-    (downstream->get_response_major(), downstream->get_response_minor());
-  hdrs += "\r\n";
+
   hdrs += "\r\n";
   if(ENABLE_LOG) {
     const char *hdrp;

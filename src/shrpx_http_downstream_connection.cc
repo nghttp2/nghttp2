@@ -129,7 +129,7 @@ int HttpDownstreamConnection::push_request_headers()
        util::strieq((*i).first.c_str(), "proxy-connection")) {
       continue;
     }
-    if(util::strieq((*i).first.c_str(), "via")) {
+    if(!get_config()->no_via && util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
       continue;
     }
@@ -171,14 +171,16 @@ int HttpDownstreamConnection::push_request_headers()
     }
     hdrs += "\r\n";
   }
-  hdrs += "Via: ";
-  hdrs += via_value;
-  if(!via_value.empty()) {
-    hdrs += ", ";
+  if(!get_config()->no_via) {
+    hdrs += "Via: ";
+    if(!via_value.empty()) {
+      hdrs += via_value;
+      hdrs += ", ";
+    }
+    hdrs += http::create_via_header_value(downstream_->get_request_major(),
+                                          downstream_->get_request_minor());
+    hdrs += "\r\n";
   }
-  hdrs += http::create_via_header_value(downstream_->get_request_major(),
-                                        downstream_->get_request_minor());
-  hdrs += "\r\n";
 
   hdrs += "\r\n";
   if(ENABLE_LOG) {

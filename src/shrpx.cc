@@ -351,6 +351,7 @@ void fill_default_config()
   mod_config()->spdy_max_concurrent_streams =
     SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
   mod_config()->add_x_forwarded_for = false;
+  mod_config()->no_via = false;
   mod_config()->accesslog = false;
   set_config_str(&mod_config()->conf_path, "/etc/shrpx/shrpx.conf");
   mod_config()->syslog = false;
@@ -518,6 +519,9 @@ void print_help(std::ostream& out)
       << "    --add-x-forwarded-for\n"
       << "                       Append X-Forwarded-For header field to the\n"
       << "                       downstream request.\n"
+      << "    --no-via           Don't append to Via header field. If Via\n"
+      << "                       header field is received, it is left\n"
+      << "                       unaltered.\n"
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
       << "    --pid-file=<PATH>  Set path to save PID of this program.\n"
@@ -575,6 +579,7 @@ int main(int argc, char **argv)
       {"backend-ipv4", no_argument, &flag, 20 },
       {"backend-ipv6", no_argument, &flag, 21 },
       {"private-key-passwd-file", required_argument, &flag, 22},
+      {"no-via", no_argument, &flag, 23},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -716,6 +721,10 @@ int main(int argc, char **argv)
         // --private-key-passwd-file
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE,
                                          optarg));
+        break;
+      case 23:
+        // --no-via
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_NO_VIA, "yes"));
         break;
       default:
         break;

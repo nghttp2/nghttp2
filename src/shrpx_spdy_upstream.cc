@@ -755,20 +755,23 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
        util::strieq((*i).first.c_str(), "connection") ||
        util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
-    } else if(util::strieq((*i).first.c_str(), "via")) {
+    } else if(!get_config()->no_via &&
+              util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
     } else {
       nv[hdidx++] = (*i).first.c_str();
       nv[hdidx++] = (*i).second.c_str();
     }
   }
-  if(!via_value.empty()) {
-    via_value += ", ";
+  if(!get_config()->no_via) {
+    if(!via_value.empty()) {
+      via_value += ", ";
+    }
+    via_value += http::create_via_header_value
+      (downstream->get_response_major(), downstream->get_response_minor());
+    nv[hdidx++] = "via";
+    nv[hdidx++] = via_value.c_str();
   }
-  via_value += http::create_via_header_value(downstream->get_response_major(),
-                                             downstream->get_response_minor());
-  nv[hdidx++] = "via";
-  nv[hdidx++] = via_value.c_str();
   nv[hdidx++] = 0;
   if(ENABLE_LOG) {
     std::stringstream ss;
