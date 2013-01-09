@@ -147,7 +147,8 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   addrinfo *res, *rp;
   r = getaddrinfo(get_config()->host, service, &hints, &res);
   if(r != 0) {
-    LOG(INFO) << "Unable to get address for " << get_config()->host << ": "
+    LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
+              << " address for " << get_config()->host << ": "
                << gai_strerror(r);
     return NULL;
   }
