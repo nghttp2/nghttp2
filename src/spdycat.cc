@@ -25,6 +25,7 @@
 #include "spdylay_config.h"
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -60,6 +61,10 @@
 #include "HtmlParser.h"
 #include "util.h"
 
+#ifndef O_BINARY
+# define O_BINARY (0)
+#endif // O_BINARY
+
 namespace spdylay {
 
 struct Config {
@@ -76,6 +81,7 @@ struct Config {
   std::string keyfile;
   int window_bits;
   std::map<std::string,std::string> headers;
+  std::string datafile;
   Config():null_out(false), remote_name(false), verbose(false),
            get_assets(false), stat(false), no_tls(false),
            spdy_version(-1), timeout(-1), window_bits(-1)
@@ -201,13 +207,20 @@ struct Request {
   http_parser_url u;
   spdylay_gzip *inflater;
   HtmlParser *html_parser;
+  const spdylay_data_provider *data_prd;
+  int64_t data_length;
+  int64_t data_offset;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
   RequestStat stat;
   std::string status;
-  Request(const std::string& uri, const http_parser_url &u, int level = 0)
+  Request(const std::string& uri, const http_parser_url &u,
+          const spdylay_data_provider *data_prd, int64_t data_length,
+          int level = 0)
     : uri(uri), u(u),
-      inflater(0), html_parser(0), level(level)
+      inflater(0), html_parser(0), data_prd(data_prd),
+      data_length(data_length),data_offset(0),
+      level(level)
   {}
 
   ~Request()
@@ -330,13 +343,15 @@ struct SpdySession {
     hostport = ss.str();
   }
   bool add_request(const std::string& uri, const http_parser_url& u,
+                   const spdylay_data_provider *data_prd,
+                   int64_t data_length,
                    int level = 0)
   {
     if(path_cache.count(uri)) {
       return false;
     } else {
       path_cache.insert(uri);
-      reqvec.push_back(new Request(uri, u, level));
+      reqvec.push_back(new Request(uri, u, data_prd, data_length, level));
       return true;
     }
   }
@@ -355,7 +370,8 @@ void submit_request(Spdylay& sc, const std::string& hostport,
 {
   std::string path = req->make_reqpath();
   int r = sc.submit_request(get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA),
-                            hostport, path, headers, 3, req);
+                            hostport, path, headers, 3, req->data_prd,
+                            req->data_length, req);
   assert(r == 0);
 }
 
@@ -375,7 +391,8 @@ void update_html_parser(SpdySession *spdySession, Request *req,
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
        porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
-      spdySession->add_request(uri, u, req->level+1);
+      // No POST data for assets
+      spdySession->add_request(uri, u, 0, 0, req->level+1);
       submit_request(*spdySession->sc, spdySession->hostport, config.headers,
                      spdySession->reqvec.back());
     }
@@ -717,6 +734,29 @@ int communicate(const std::string& host, uint16_t port,
   return ok ? 0 : -1;
 }
 
+ssize_t file_read_callback
+(spdylay_session *session, int32_t stream_id,
+ uint8_t *buf, size_t length, int *eof,
+ spdylay_data_source *source, void *user_data)
+{
+  Request *req = (Request*)spdylay_session_get_stream_user_data
+    (session, stream_id);
+  int fd = source->fd;
+  ssize_t r;
+  while((r = pread(fd, buf, length, req->data_offset)) == -1 &&
+        errno == EINTR);
+  if(r == -1) {
+    return SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE;
+  } else {
+    if(r == 0) {
+      *eof = 1;
+    } else {
+      req->data_offset += r;
+    }
+    return r;
+  }
+}
+
 int run(char **uris, int n)
 {
   spdylay_session_callbacks callbacks;
@@ -739,6 +779,25 @@ int run(char **uris, int n)
   uint16_t prev_port = 0;
   int failures = 0;
   SpdySession spdySession;
+  int data_fd = -1;
+  spdylay_data_provider data_prd;
+  struct stat data_stat;
+
+  if(!config.datafile.empty()) {
+    data_fd = open(config.datafile.c_str(), O_RDONLY | O_BINARY);
+    if(data_fd == -1) {
+      std::cerr << "Could not open file " << config.datafile << std::endl;
+      return 1;
+    }
+    if(fstat(data_fd, &data_stat) == -1) {
+      close(data_fd);
+      std::cerr << "Could not stat file " << config.datafile << std::endl;
+      return 1;
+    }
+    data_prd.source.fd = data_fd;
+    data_prd.read_callback = file_read_callback;
+  }
+
   for(int i = 0; i < n; ++i) {
     http_parser_url u;
     std::string uri = strip_fragment(uris[i]);
@@ -758,7 +817,8 @@ int run(char **uris, int n)
         prev_host = get_uri_field(uri.c_str(), u, UF_HOST);
         prev_port = port;
       }
-      spdySession.add_request(uri, u);
+      spdySession.add_request(uri, u, data_fd == -1 ? 0 : &data_prd,
+                              data_stat.st_size);
     }
   }
   if(!spdySession.reqvec.empty()) {
@@ -772,7 +832,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: spdycat [-Oadnsv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "               [--key=<KEY>] [--no-tls] <URI>..."
       << std::endl;
 }
@@ -807,6 +867,8 @@ void print_help(std::ostream& out)
       << "                       must be in PEM format.\n"
       << "    --no-tls           Disable SSL/TLS. Use -2 or -3 to specify\n"
       << "                       SPDY protocol version to use.\n"
+      << "    -d, --data=<FILE>  Post FILE to server. If - is given, data\n"
+      << "                       will be read from stdin.\n"
       << std::endl;
 }
 
@@ -829,10 +891,11 @@ int main(int argc, char **argv)
       {"help", no_argument, 0, 'h' },
       {"header", required_argument, 0, 'H' },
       {"no-tls", no_argument, &flag, 3 },
+      {"data", required_argument, 0, 'd' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "OanhH:v23st:w:", long_options,
+    int c = getopt_long(argc, argv, "Oad:nhH:v23st:w:", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -905,6 +968,9 @@ int main(int argc, char **argv)
       break;
     case 's':
       config.stat = true;
+      break;
+    case 'd':
+      config.datafile = strcmp("-", optarg) == 0 ? "/dev/stdin" : optarg;
       break;
     case '?':
       exit(EXIT_FAILURE);

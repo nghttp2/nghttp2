@@ -144,6 +144,8 @@ int Spdylay::submit_request(const std::string& scheme,
                             const std::string& path,
                             const std::map<std::string,std::string> &headers,
                             uint8_t pri,
+                            const spdylay_data_provider *data_prd,
+                            int64_t data_length,
                             void *stream_user_data)
 {
   enum eStaticHeaderPosition
@@ -158,7 +160,7 @@ int Spdylay::submit_request(const std::string& scheme,
   };
 
   const char *static_nv[] = {
-    ":method", "GET",
+    ":method", data_prd ? "POST" : "GET",
     ":path", path.c_str(),
     ":version", "HTTP/1.1",
     ":scheme", scheme.c_str(),
@@ -170,6 +172,9 @@ int Spdylay::submit_request(const std::string& scheme,
   int hardcoded_entry_count = sizeof(static_nv) / sizeof(*static_nv);
   int header_count          = headers.size();
   int total_entry_count     = hardcoded_entry_count + header_count * 2;
+  if(data_prd) {
+    ++total_entry_count;
+  }
 
   const char **nv = new const char*[total_entry_count + 1];
 
@@ -180,6 +185,14 @@ int Spdylay::submit_request(const std::string& scheme,
 
   int pos = hardcoded_entry_count;
 
+  std::string content_length_str;
+  if(data_prd) {
+    std::stringstream ss;
+    ss << data_length;
+    content_length_str = ss.str();
+    nv[pos++] = "content-length";
+    nv[pos++] = content_length_str.c_str();
+  }
   while( i != end ) {
     const char *key = (*i).first.c_str();
     const char *value = (*i).second.c_str();
@@ -201,7 +214,8 @@ int Spdylay::submit_request(const std::string& scheme,
   }
   nv[pos] = NULL;
 
-  int r = spdylay_submit_request(session_, pri, nv, NULL, stream_user_data);
+  int r = spdylay_submit_request(session_, pri, nv, data_prd,
+                                 stream_user_data);
 
   delete [] nv;
 
