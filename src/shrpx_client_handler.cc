@@ -43,7 +43,6 @@ void upstream_readcb(bufferevent *bev, void *arg)
   ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
   int rv = handler->on_read();
   if(rv != 0) {
-    CLOG(WARNING, handler) << "Read operation (application level) failure";
     delete handler;
   }
 }
@@ -65,7 +64,6 @@ void upstream_writecb(bufferevent *bev, void *arg)
     Upstream *upstream = handler->get_upstream();
     int rv = upstream->on_write();
     if(rv != 0) {
-      CLOG(WARNING, handler) << "Write operation (application level) failure";
       delete handler;
     }
   }
