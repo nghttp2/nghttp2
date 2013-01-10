@@ -176,6 +176,7 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_CHECK_TYPES([ptrdiff_t])
 AC_C_BIGENDIAN
+AC_SYS_LARGEFILE
 
 # Checks for library functions.
 if test "x$cross_compiling" != "xyes"; then
