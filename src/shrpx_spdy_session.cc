@@ -24,6 +24,7 @@
  */
 #include "shrpx_spdy_session.h"
 
+#include <netinet/tcp.h>
 #include <unistd.h>
 #include <vector>
 
@@ -225,6 +226,10 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       spdy->disconnect();
       return;
     }
+    int fd = bufferevent_getfd(bev);
+    int val = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+               reinterpret_cast<char *>(&val), sizeof(val));
   } else if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
       SSLOG(INFO, spdy) << "EOF";

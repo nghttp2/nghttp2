@@ -24,6 +24,7 @@
  */
 #include "shrpx_spdy_upstream.h"
 
+#include <netinet/tcp.h>
 #include <assert.h>
 #include <cerrno>
 #include <sstream>
@@ -505,6 +506,10 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       DCLOG(INFO, dconn) << "Connection established. stream_id="
                          << downstream->get_stream_id();
     }
+    int fd = bufferevent_getfd(bev);
+    int val = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+               reinterpret_cast<char *>(&val), sizeof(val));
   } else if(events & BEV_EVENT_EOF) {
     if(ENABLE_LOG) {
       DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
