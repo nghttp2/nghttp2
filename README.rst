@@ -118,8 +118,8 @@ like wget/curl. It connects to SPDY server and gets resources given in
 the command-line::
 
     $ src/spdycat -h
-    Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
-                   [--key=<KEY>] <URI>...
+    Usage: spdycat [-Oadnsv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
+                   [--key=<KEY>] [--no-tls] <URI>...
 
     OPTIONS:
         -v, --verbose      Print debug information such as reception/
@@ -140,10 +140,16 @@ the command-line::
                            same with the linking resource will be
                            downloaded.
         -s, --stat         Print statistics.
+        -H, --header       Add a header to the requests.
         --cert=<CERT>      Use the specified client certificate file.
                            The file must be in PEM format.
         --key=<KEY>        Use the client private key file. The file
                            must be in PEM format.
+        --no-tls           Disable SSL/TLS. Use -2 or -3 to specify
+                           SPDY protocol version to use.
+        -d, --data=<FILE>  Post FILE to server. If - is given, data
+                           will be read from stdin.
+
     $ src/spdycat -nv https://www.google.com/
     [  0.025] NPN select next protocol: the remote server offers:
               * spdy/3
@@ -270,6 +276,10 @@ Here is the command-line options::
                            Default: '0.0.0.0,3000'
         --backlog=<NUM>    Set listen backlog size.
                            Default: 256
+        --backend-ipv4     Resolve backend hostname to IPv4 address
+                           only.
+        --backend-ipv6     Resolve backend hostname to IPv6 address
+                           only.
 
       Performance:
         -n, --workers=<CORES>
@@ -309,6 +319,11 @@ Here is the command-line options::
                            linked OpenSSL is configured to load system
                            wide certificates, they are loaded
                            at startup regardless of this option.
+        --private-key-passwd-file=<FILEPATH>
+                           Path to file that contains password for the
+                           server's private key. If none is given and
+                           the private key is password protected it'll
+                           be requested interactively.
 
       SPDY:
         -c, --spdy-max-concurrent-streams=<NUM>
@@ -334,6 +349,7 @@ Here is the command-line options::
                            the request path from frontend must be
                            an absolute URI, suitable for use as a
                            forward proxy.
+
       Logging:
         -L, --log-level=<LEVEL>
                            Set the severity level of log output.
@@ -349,6 +365,9 @@ Here is the command-line options::
         --add-x-forwarded-for
                            Append X-Forwarded-For header field to the
                            downstream request.
+        --no-via           Don't append to Via header field. If Via
+                           header field is received, it is left
+                           unaltered.
         -D, --daemon       Run in a background. If -D is used, the
                            current working directory is changed to '/'.
         --pid-file=<PATH>  Set path to save PID of this program.
