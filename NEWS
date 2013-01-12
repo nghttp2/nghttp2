@@ -1,3 +1,104 @@
+spdylay 0.3.7
+=============
+
+Release Note
+------------
+
+This release updates INTERNAL_ERROR value of GOAWAY frame according to
+SPDY/3 spec change. The spdycat and spdyd now can operate on
+non-SSL/TLS SPDY connections. The shrpx now has --client and
+--client-proxy options to make it accept plain HTTP connection and
+forward to the backend in SPDY. There are many enhancements to these
+programs in this release. Please read Changes below.
+
+Changes
+-------
+
+* spdycat: Add -d option to POST data
+
+* shrpx: Capitalize header field name in HTTP downstream connection
+
+* shrpx: Add --no-via option
+
+  If --no-via option is given, shrpx does not append to Via header
+  field. If Via header field is received, it is left unaltered.
+
+* spdycat: Log error when no supported SPDY version was negotiated
+
+* shrpx: Log status code, method, path and HTTP version in accesslog
+
+* shrpx: Color HTTP headers in console log
+
+* shrpx: Color severity level in terminal
+
+  Color severity level if stderr refers to a terminal.
+
+* shrpx: Read private key's passwd from a file
+
+  This avoids the need to provide the password for your
+  private key interactively.
+
+  It can be used via --private-key-passwd-file or
+  private-key-passwd-file in the given config file. The first line in
+  the file (without \n) will be treated as the passwd. There isn't any
+  validation and all lines after the first one (if any) are ignored.
+
+  The security model behind this is a bit simplistic so I am open to
+  better ideas. Basically your password file should be root:root (700)
+  and you *should* drop root and run as an unprivileged user.
+
+  If the file exists and a line can be read then a callback will be
+  set for the SSL ctxt and it'll feed the passwd when the private key
+  is read (if password is needed).
+
+  If the file exists with the wrong permisions it'll be logged and
+  ignored.
+
+* spdycat, spdyd: Support SPDY without SSL/TLS
+
+  Use --no-tls option to disable SSL/TLS and specify SPDY protocol
+  version using -2 or -3.
+
+* shrpx: Add --backend-ipv4 and --backend-ipv6 options.
+
+* shrpx: Add -v, --version option
+
+* shrpx: Verify backend server's certificate in client mode
+
+  The -k, --insecure option is added to skip this verification.  The
+  system wide trusted CA certificates will be loaded at startup. The
+  --cacert option is added to specify the trusted CA certificate file.
+
+* shrpx: Check the length of output buffer in write callback
+
+  Possibly because of deferred callback, we may get this callback when
+  the output buffer is not empty.
+
+* shrpx: Add --client-proxy and --client option
+
+  With --client, instead of accepting SPDY/HTTPS connection, shrpx
+  accepts plain HTTP connection and communicate with backend server in
+  SPDY (SSL/TLS). To use shrpx as a forward proxy, use -p option
+  instead.
+
+  The --client-proxy option is mostly the same with with --client
+  option, but it also requires the request path from frontend must be
+  an absolute URI, suitable for use as a forward proxy.
+
+* shrpx: Don't send response-body for 304 response
+
+* Update GOAWAY INTERNAL_ERROR value according to SPDY/3 spec change
+
+* shrpx: Fix password handling for certs keys
+
+  We should only call daemon() after ListenHandler is instantiated,
+  where SSL_CTX_use_PrivateKey_file is called, otherwise we have no
+  stdin/stdout to get the password for keyfile.
+
+* spdycat: Handle timeout in connect and SSL/TLS handshake
+
+
+
 spdylay 0.3.6
 =============
 
