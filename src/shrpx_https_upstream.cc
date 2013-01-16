@@ -526,16 +526,19 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 int HttpsUpstream::error_reply(int status_code)
 {
   std::string html = http::create_error_html(status_code);
-  std::stringstream ss;
-  ss << "HTTP/1.1 " << http::get_status_string(status_code) << "\r\n"
-     << "Server: " << get_config()->server_name << "\r\n"
-     << "Content-Length: " << html.size() << "\r\n"
-     << "Content-Type: " << "text/html; charset=UTF-8\r\n";
+  std::string header;
+  header.reserve(512);
+  header += "HTTP/1.1 ";
+  header += http::get_status_string(status_code);
+  header += "\r\nServer: ";
+  header += get_config()->server_name;
+  header += "\r\nContent-Length: ";
+  header += util::utos(html.size());
+  header += "\r\nContent-Type: text/html; charset=UTF-8\r\n";
   if(get_client_handler()->get_should_close_after_write()) {
-    ss << "Connection: close\r\n";
+    header += "Connection: close\r\n";
   }
-  ss << "\r\n";
-  std::string header = ss.str();
+  header += "\r\n";
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
   if(evbuffer_add(output, header.c_str(), header.size()) != 0 ||
      evbuffer_add(output, html.c_str(), html.size()) != 0) {
