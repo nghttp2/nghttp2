@@ -24,8 +24,6 @@
  */
 #include "shrpx_http.h"
 
-#include <sstream>
-
 #include "shrpx_config.h"
 #include "shrpx_log.h"
 #include "util.h"
@@ -86,16 +84,20 @@ const char* get_status_string(int status_code)
 
 std::string create_error_html(int status_code)
 {
-  std::stringstream ss;
+  std::string res;
+  res.reserve(512);
   const char *status = http::get_status_string(status_code);
-  ss << "<html><head><title>" << status << "</title></head><body>"
-     << "<h1>" << status << "</h1>"
-     << "<hr>"
-     << "<address>" << get_config()->server_name << " at port "
-     << get_config()->port
-     << "</address>"
-     << "</body></html>\n";
-  return ss.str();
+  res += "<html><head><title>";
+  res += status;
+  res += "</title></head><body><h1>";
+  res += status;
+  res += "</h1><hr><address>";
+  res += get_config()->server_name;
+  res += " at port ";
+  res += util::utos(get_config()->port);
+  res += "</address>";
+  res += "</body></html>";
+  return res;
 }
 
 std::string create_via_header_value(int major, int minor)

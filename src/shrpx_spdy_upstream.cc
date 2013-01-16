@@ -680,11 +680,14 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
   data_prd.source.ptr = downstream;
   data_prd.read_callback = spdy_data_read_callback;
 
+  std::string content_length = util::utos(html.size());
+
   const char *nv[] = {
     ":status", http::get_status_string(status_code),
     ":version", "http/1.1",
     "content-type", "text/html; charset=UTF-8",
     "server", get_config()->server_name,
+    "content-length", content_length.c_str(),
     0
   };
 

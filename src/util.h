@@ -298,6 +298,25 @@ char upcase(char c);
 
 char lowcase(char c);
 
+template<typename T>
+std::string utos(T n)
+{
+  std::string res;
+  if(n == 0) {
+    res = "0";
+    return res;
+  }
+  int i = 0;
+  T t = n;
+  for(; t; t /= 10, ++i);
+  res.resize(i);
+  --i;
+  for(; n; --i, n /= 10) {
+    res[i] = (n%10) + '0';
+  }
+  return res;
+}
+
 } // namespace util
 
 } // namespace spdylay
