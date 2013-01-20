@@ -304,11 +304,16 @@ static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   uint8_t *buf = NULL, *nvbuf = NULL;
   size_t buflen = 0, nvbuflen = 0;
   ssize_t framelen;
-
+  uint8_t pri;
+  if(version == SPDYLAY_PROTO_SPDY2) {
+    pri = 3;
+  } else {
+    pri = 7;
+  }
   spdylay_zlib_deflate_hd_init(&deflater, 1, version);
   spdylay_zlib_inflate_hd_init(&inflater, version);
   spdylay_frame_syn_stream_init(&frame.syn_stream, version,
-                                SPDYLAY_CTRL_FLAG_FIN, 65536, 1000000007, 3,
+                                SPDYLAY_CTRL_FLAG_FIN, 65536, 1000000007, pri,
                                 spdylay_frame_nv_copy(headers));
   framelen = spdylay_frame_pack_syn_stream(&buf, &buflen,
                                            &nvbuf, &nvbuflen,
@@ -324,6 +329,7 @@ static void test_spdylay_frame_pack_syn_stream_version(uint16_t version)
   CU_ASSERT(version == oframe.syn_stream.hd.version);
   CU_ASSERT(SPDYLAY_SYN_STREAM == oframe.syn_stream.hd.type);
   CU_ASSERT(SPDYLAY_CTRL_FLAG_FIN == oframe.syn_stream.hd.flags);
+  CU_ASSERT(pri == oframe.syn_stream.pri);
   CU_ASSERT(framelen-SPDYLAY_FRAME_HEAD_LENGTH == oframe.syn_stream.hd.length);
   CU_ASSERT(strcmp("method", oframe.syn_stream.nv[0]) == 0);
   CU_ASSERT(strcmp("GET", oframe.syn_stream.nv[1]) == 0);

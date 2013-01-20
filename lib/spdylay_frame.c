@@ -44,11 +44,6 @@ size_t spdylay_frame_get_len_size(uint16_t version)
   }
 }
 
-static uint8_t spdylay_unpack_pri(const uint8_t *data)
-{
-  return (data[0] >> 6) & 0x3;
-}
-
 static uint8_t* spdylay_pack_str(uint8_t *buf, const char *str, size_t len,
                                  size_t len_size)
 {
@@ -669,9 +664,11 @@ ssize_t spdylay_frame_pack_syn_stream(uint8_t **buf_ptr,
   spdylay_frame_pack_ctrl_hd(*buf_ptr, &frame->hd);
   spdylay_put_uint32be(&(*buf_ptr)[8], frame->stream_id);
   spdylay_put_uint32be(&(*buf_ptr)[12], frame->assoc_stream_id);
-  (*buf_ptr)[16] = (frame->pri << 6);
   if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    (*buf_ptr)[16] = (frame->pri << 5);
     (*buf_ptr)[17] = frame->slot;
+  } else {
+    (*buf_ptr)[16] = (frame->pri << 6);
   }
   return framelen;
 }
@@ -708,10 +705,11 @@ int spdylay_frame_unpack_syn_stream_without_nv(spdylay_syn_stream *frame,
   frame->stream_id = spdylay_get_uint32(payload) & SPDYLAY_STREAM_ID_MASK;
   frame->assoc_stream_id =
     spdylay_get_uint32(payload+4) & SPDYLAY_STREAM_ID_MASK;
-  frame->pri = spdylay_unpack_pri(payload+8);
   if(frame->hd.version == SPDYLAY_PROTO_SPDY3) {
+    frame->pri = (*(payload+8) >> 5);
     frame->slot = payload[9];
   } else {
+    frame->pri = (*(payload+8) >> 6);
     frame->slot = 0;
   }
   frame->nv = NULL;
