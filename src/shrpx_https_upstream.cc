@@ -74,7 +74,7 @@ int htp_msg_begin(http_parser *htp)
 {
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request started";
   }
   upstream->reset_current_header_length();
@@ -131,7 +131,7 @@ int htp_hdrs_completecb(http_parser *htp)
   int rv;
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request headers completed";
   }
   Downstream *downstream = upstream->get_downstream();
@@ -142,7 +142,7 @@ int htp_hdrs_completecb(http_parser *htp)
 
   downstream->set_request_connection_close(!http_should_keep_alive(htp));
 
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     ss << downstream->get_request_method() << " "
        << downstream->get_request_path() << " "
@@ -222,7 +222,7 @@ int htp_msg_completecb(http_parser *htp)
   int rv;
   HttpsUpstream *upstream;
   upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request completed";
   }
   Downstream *downstream = upstream->get_downstream();
@@ -306,14 +306,14 @@ int HttpsUpstream::on_read()
           return -1;
         }
       } else if(downstream->get_output_buffer_full()) {
-        if(ENABLE_LOG) {
+        if(LOG_ENABLED(INFO)) {
           ULOG(INFO, this) << "Downstream output buffer is full";
         }
         pause_read(SHRPX_NO_BUFFER);
       }
     }
   } else {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "HTTP parse failure: "
                        << "(" << http_errno_name(htperr) << ") "
                        << http_errno_description(htperr);
@@ -454,16 +454,16 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Connection established";
     }
   } else if(events & BEV_EVENT_EOF) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "EOF";
     }
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
       // Server may indicate the end of the request by EOF
-      if(ENABLE_LOG) {
+      if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, dconn) << "The end of the response body was indicated by "
                            << "EOF";
       }
@@ -483,7 +483,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       // Nothing to do
     } else {
       // error
-      if(ENABLE_LOG) {
+      if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, dconn) << "Treated as error";
       }
       if(upstream->error_reply(502) != 0) {
@@ -496,7 +496,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       upstream->resume_read(SHRPX_MSG_BLOCK);
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
         DCLOG(INFO, dconn) << "Network error";
       } else {
@@ -590,7 +590,7 @@ Downstream* HttpsUpstream::get_downstream() const
 
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
   std::string via_value;
@@ -643,7 +643,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   }
 
   hdrs += "\r\n";
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     const char *hdrp;
     std::string nhdrs;
     if(get_config()->tty) {
@@ -696,7 +696,7 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream)
       return -1;
     }
   }
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
   }
   if(downstream->get_request_connection_close() ||

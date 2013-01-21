@@ -105,10 +105,12 @@ int cache_downstream_host_address()
   rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host),
                   0, 0, NI_NUMERICHOST);
   if(rv == 0) {
-    LOG(INFO) << "Using first returned address for downstream "
-              << host
-              << ", port "
-              << get_config()->downstream_port;
+    if(LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Using first returned address for downstream "
+                << host
+                << ", port "
+                << get_config()->downstream_port;
+    }
   } else {
     LOG(FATAL) << gai_strerror(rv);
     DIE();
@@ -147,9 +149,11 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   addrinfo *res, *rp;
   r = getaddrinfo(get_config()->host, service, &hints, &res);
   if(r != 0) {
-    LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
-              << " address for " << get_config()->host << ": "
-               << gai_strerror(r);
+    if(LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
+                << " address for " << get_config()->host << ": "
+                << gai_strerror(r);
+    }
     return NULL;
   }
   for(rp = res; rp; rp = rp->ai_next) {
@@ -183,7 +187,10 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
     r = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host),
                         0, 0, NI_NUMERICHOST);
     if(r == 0) {
-      LOG(INFO) << "Listening on " << host << ", port " << get_config()->port;
+      if(LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Listening on " << host << ", port "
+                  << get_config()->port;
+      }
     } else {
       LOG(FATAL) << gai_strerror(r);
       DIE();
@@ -191,7 +198,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   }
   freeaddrinfo(res);
   if(rp == 0) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       LOG(INFO) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
                 << " socket failed";
     }
@@ -263,7 +270,7 @@ int event_loop()
     listener_handler->create_spdy_session();
   }
 
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
   }
   event_base_loop(evbase, 0);

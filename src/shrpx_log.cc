@@ -90,7 +90,7 @@ Log::Log(int severity, const char *filename, int linenum)
 
 Log::~Log()
 {
-  if(severity_ >= severity_thres_) {
+  if(log_enabled(severity_)) {
     fprintf(stderr, "[%s%s%s] %s\n       %s(%s:%d)%s\n",
             get_config()->tty ? SEVERITY_COLOR[severity_] : "",
             SEVERITY_STR[severity_],

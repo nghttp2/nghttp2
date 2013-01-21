@@ -95,7 +95,7 @@ void on_stream_close_callback
  void *user_data)
 {
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Stream stream_id=" << stream_id
                          << " is being closed";
   }
@@ -143,7 +143,7 @@ void on_ctrl_recv_callback
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   switch(type) {
   case SPDYLAY_SYN_STREAM: {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Received upstream SYN_STREAM stream_id="
                            << frame->syn_stream.stream_id;
     }
@@ -192,7 +192,7 @@ void on_ctrl_recv_callback
       downstream->add_request_header("X-Forwarded-Spdy", "true");
     }
 
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
       for(size_t i = 0; nv[i]; i += 2) {
         ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
@@ -245,7 +245,7 @@ void on_data_chunk_recv_callback(spdylay_session *session,
       downstream->inc_recv_window_size(len);
       if(downstream->get_recv_window_size() >
          upstream->get_initial_window_size()) {
-        if(ENABLE_LOG) {
+        if(LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream) << "Flow control error: recv_window_size="
                                << downstream->get_recv_window_size()
                                << ", initial_window_size="
@@ -292,7 +292,7 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        void *user_data)
 {
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Failed to parse received control frame. type="
                          << type
                          << ", error_code=" << error_code << ":"
@@ -308,7 +308,7 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
                                    void *user_data)
 {
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Received unknown control frame.";
   }
 }
@@ -388,7 +388,7 @@ int SpdyUpstream::on_read()
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
        spdylay_session_want_write(session_) == 0) {
-      if(ENABLE_LOG) {
+      if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }
       rv = -1;
@@ -413,7 +413,7 @@ int SpdyUpstream::send()
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
        spdylay_session_want_write(session_) == 0) {
-      if(ENABLE_LOG) {
+      if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }
       rv = -1;
@@ -449,7 +449,7 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
   }
   int rv = downstream->on_read();
   if(rv != 0) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "HTTP parser failure";
     }
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
@@ -502,7 +502,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Connection established. stream_id="
                          << downstream->get_stream_id();
     }
@@ -511,7 +511,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                reinterpret_cast<char *>(&val), sizeof(val));
   } else if(events & BEV_EVENT_EOF) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
     }
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
@@ -528,7 +528,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       // downstream wil be deleted in on_stream_close_callback.
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         // Server may indicate the end of the request by EOF
-        if(ENABLE_LOG) {
+        if(LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream) << "Downstream body was ended by EOF";
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
@@ -556,7 +556,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       // At this point, downstream may be deleted.
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
         DCLOG(INFO, dconn) << "Downstream network error: "
                            << evutil_socket_error_to_string
@@ -609,7 +609,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
 int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "RST_STREAM stream_id="
                      << downstream->get_stream_id();
   }
@@ -744,7 +744,7 @@ spdylay_session* SpdyUpstream::get_spdy_session()
 // spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
   size_t nheader = downstream->get_response_headers().size();
@@ -781,7 +781,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     nv[hdidx++] = via_value.c_str();
   }
   nv[hdidx++] = 0;
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(size_t i = 0; nv[i]; i += 2) {
       ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
@@ -835,7 +835,7 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
 // spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
   }
   spdylay_session_resume_data(session_, downstream->get_stream_id());

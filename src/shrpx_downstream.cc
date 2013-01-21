@@ -63,7 +63,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
 
 Downstream::~Downstream()
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleting";
   }
   if(response_body_buf_) {
@@ -73,7 +73,7 @@ Downstream::~Downstream()
   if(dconn_) {
     delete dconn_;
   }
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
   }
 }

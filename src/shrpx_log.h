@@ -33,6 +33,8 @@ namespace shrpx {
 
 #define ENABLE_LOG 1
 
+#define LOG_ENABLED(SEVERITY) (ENABLE_LOG && Log::log_enabled(SEVERITY))
+
 #define LOG(SEVERITY) Log(SEVERITY, __FILE__, __LINE__)
 
 // Listener log
@@ -81,6 +83,10 @@ public:
   }
   static void set_severity_level(int severity);
   static int set_severity_level_by_name(const char *name);
+  static bool log_enabled(int severity)
+  {
+    return severity >= severity_thres_;
+  }
 private:
   int severity_;
   const char *filename_;

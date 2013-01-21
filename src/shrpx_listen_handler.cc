@@ -81,7 +81,7 @@ void ListenHandler::create_worker_thread(size_t num)
     bufferevent *bev = bufferevent_socket_new(evbase_, info->sv[0],
                                               BEV_OPT_DEFER_CALLBACKS);
     info->bev = bev;
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << num_worker_;
     }
     ++num_worker_;
@@ -91,7 +91,7 @@ void ListenHandler::create_worker_thread(size_t num)
 int ListenHandler::accept_connection(evutil_socket_t fd,
                                      sockaddr *addr, int addrlen)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
   if(num_worker_ == 0) {

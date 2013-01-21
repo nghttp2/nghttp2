@@ -65,7 +65,7 @@ SpdySession::~SpdySession()
 
 int SpdySession::disconnect()
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Disconnecting";
   }
   spdylay_session_del(session_);
@@ -217,7 +217,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 {
   SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "Connection established";
     }
     spdy->connected();
@@ -231,12 +231,12 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                reinterpret_cast<char *>(&val), sizeof(val));
   } else if(events & BEV_EVENT_EOF) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "EOF";
     }
     spdy->disconnect();
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
         SSLOG(INFO, spdy) << "Network error";
       } else {
@@ -257,7 +257,7 @@ int SpdySession::initiate_connection()
 {
   int rv;
   assert(state_ == DISCONNECTED);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connecting to downstream server";
   }
 
@@ -461,7 +461,7 @@ void on_stream_close_callback
 {
   int rv;
   SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, spdy) << "Stream stream_id=" << stream_id
                       << " is being closed";
   }
@@ -507,7 +507,7 @@ void on_ctrl_recv_callback
   Downstream *downstream;
   switch(type) {
   case SPDYLAY_SYN_STREAM:
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "Received upstream SYN_STREAM stream_id="
                         << frame->syn_stream.stream_id;
     }
@@ -594,7 +594,7 @@ void on_ctrl_recv_callback
       }
     }
 
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
       for(size_t i = 0; nv[i]; i += 2) {
         ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
@@ -645,7 +645,7 @@ void on_data_chunk_recv_callback(spdylay_session *session,
   if(spdy->get_flow_control()) {
     sd->dconn->inc_recv_window_size(len);
     if(sd->dconn->get_recv_window_size() > spdy->get_initial_window_size()) {
-      if(ENABLE_LOG) {
+      if(LOG_ENABLED(INFO)) {
         SSLOG(INFO, spdy) << "Flow control error: recv_window_size="
                           << sd->dconn->get_recv_window_size()
                           << ", initial_window_size="
@@ -740,7 +740,7 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        void *user_data)
 {
   SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, spdy) << "Failed to parse received control frame. type="
                       << type
                       << ", error_code=" << error_code << ":"
@@ -756,7 +756,7 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
                                    void *user_data)
 {
   SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, spdy) << "Received unknown control frame";
   }
 }
@@ -769,7 +769,7 @@ int SpdySession::on_connect()
   unsigned int next_proto_len;
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
 
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     std::string proto(next_proto, next_proto+next_proto_len);
     SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
   }
@@ -851,7 +851,7 @@ int SpdySession::on_read()
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
        spdylay_session_want_write(session_) == 0) {
-      if(ENABLE_LOG) {
+      if(LOG_ENABLED(INFO)) {
         SSLOG(INFO, this) << "No more read/write for this session";
       }
       rv = -1;
@@ -875,7 +875,7 @@ int SpdySession::send()
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
        spdylay_session_want_write(session_) == 0) {
-      if(ENABLE_LOG) {
+      if(LOG_ENABLED(INFO)) {
         SSLOG(INFO, this) << "No more read/write for this session";
       }
       rv = -1;

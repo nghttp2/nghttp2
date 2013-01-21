@@ -89,7 +89,7 @@ int SpdyDownstreamConnection::init_request_body_buf()
 
 int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
   if(init_request_body_buf() == -1) {
@@ -107,7 +107,7 @@ int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
 
 void SpdyDownstreamConnection::detach_downstream(Downstream *downstream)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream->set_downstream_connection(0);
@@ -293,7 +293,7 @@ int SpdyDownstreamConnection::push_request_headers()
     nv[hdidx++] = via_value.c_str();
   }
   nv[hdidx++] = 0;
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(size_t i = 0; nv[i]; i += 2) {
       ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";

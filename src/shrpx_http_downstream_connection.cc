@@ -66,7 +66,7 @@ HttpDownstreamConnection::~HttpDownstreamConnection()
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
   Upstream *upstream = downstream->get_upstream();
@@ -85,7 +85,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
       bev_ = 0;
       return SHRPX_ERR_NETWORK;
     }
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, this) << "Connecting to downstream server";
     }
   }
@@ -184,7 +184,7 @@ int HttpDownstreamConnection::push_request_headers()
   }
 
   hdrs += "\r\n";
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     const char *hdrp;
     std::string nhdrs;
     if(get_config()->tty) {
@@ -272,21 +272,21 @@ void idle_eventcb(bufferevent *bev, short events, void *arg)
   if(events & BEV_EVENT_CONNECTED) {
     // Downstream was detached before connection established?
     // This may be safe to be left.
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Idle connection connected?";
     }
     return;
   }
   if(events & BEV_EVENT_EOF) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Idle connection EOF";
     }
   } else if(events & BEV_EVENT_TIMEOUT) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Idle connection timeout";
     }
   } else if(events & BEV_EVENT_ERROR) {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Idle connection network error";
     }
   }
@@ -298,7 +298,7 @@ void idle_eventcb(bufferevent *bev, short events, void *arg)
 
 void HttpDownstreamConnection::detach_downstream(Downstream *downstream)
 {
-  if(ENABLE_LOG) {
+  if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream->set_downstream_connection(0);
@@ -443,7 +443,7 @@ int HttpDownstreamConnection::on_read()
   if(htperr == HPE_OK) {
     return 0;
   } else {
-    if(ENABLE_LOG) {
+    if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, this) << "HTTP parser failure: "
                         << "(" << http_errno_name(htperr) << ") "
                         << http_errno_description(htperr);
