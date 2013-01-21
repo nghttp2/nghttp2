@@ -146,12 +146,7 @@ int spdylay_frame_count_unpack_nv_space(size_t *nvlen_ptr, size_t *buflen_ptr,
         spdylay_buffer_reader_advance(&reader, len);
       }
     }
-    for(j = off, off -= len; off != j; ++off) {
-      uint8_t b = spdylay_buffer_reader_uint8(&reader);
-      if(b == '\0') {
-        ++nvlen;
-      }
-    }
+    nvlen += spdylay_buffer_reader_count(&reader, len, '\0');
     ++nvlen;
   }
   if(inlen == off) {

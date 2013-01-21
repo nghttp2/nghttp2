@@ -201,6 +201,31 @@ void spdylay_buffer_reader_data(spdylay_buffer_reader *reader,
   }
 }
 
+int spdylay_buffer_reader_count(spdylay_buffer_reader *reader,
+                                size_t len, uint8_t c)
+{
+  int res = 0;
+  while(len) {
+    size_t remlen, readlen, i;
+    uint8_t *p;
+    remlen = reader->buffer->capacity - reader->offset;
+    readlen = spdylay_min(remlen, len);
+    p = reader->current->data + reader->offset;
+    for(i = 0; i < readlen; ++i) {
+      if(p[i] == c) {
+        ++res;
+      }
+    }
+    len -= readlen;
+    reader->offset += readlen;
+    if(reader->buffer->capacity == reader->offset) {
+      reader->current = reader->current->next;
+      reader->offset = 0;
+    }
+  }
+  return res;
+}
+
 void spdylay_buffer_reader_advance(spdylay_buffer_reader *reader,
                                    size_t amount)
 {

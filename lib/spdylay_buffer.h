@@ -154,6 +154,13 @@ uint32_t spdylay_buffer_reader_uint32(spdylay_buffer_reader *reader);
 void spdylay_buffer_reader_data(spdylay_buffer_reader *reader,
                                 uint8_t *out, size_t len);
 
+/**
+ * Reads |len| bytes and count the occurrence of |c| there and return
+ * it. This function will advance the current position by |len|.
+ */
+int spdylay_buffer_reader_count(spdylay_buffer_reader *reader,
+                                size_t len, uint8_t c);
+
 /*
  * Advances the current position by |amount|.
  */
