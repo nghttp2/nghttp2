@@ -863,7 +863,7 @@ ssize_t spdylay_frame_pack_headers(uint8_t **buf_ptr, size_t *buflen_ptr,
 {
   ssize_t framelen;
   size_t len_size;
-  size_t nv_offset;
+  ssize_t nv_offset;
   len_size = spdylay_frame_get_len_size(frame->hd.version);
   if(len_size == 0) {
     return SPDYLAY_ERR_UNSUPPORTED_VERSION;
