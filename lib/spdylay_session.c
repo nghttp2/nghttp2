@@ -966,8 +966,6 @@ static ssize_t spdylay_session_prep_frame(spdylay_session *session,
           } else {
             return r;
           }
-        } else if(r < 0) {
-          return r;
         }
         frame->syn_stream.slot = slot_index;
       }
