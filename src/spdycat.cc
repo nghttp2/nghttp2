@@ -311,7 +311,7 @@ struct SpdySession {
   std::string hostport;
   Spdylay *sc;
   SessionStat stat;
-  SpdySession():complete(0) {}
+  SpdySession():complete(0), sc(0) {}
   ~SpdySession()
   {
     for(size_t i = 0; i < reqvec.size(); ++i) {
