@@ -1007,6 +1007,9 @@ int SpdyServer::run()
   bool bind_ok = false;
   for(int i = 0; i < 2; ++i) {
     const char* ipv = (families[i] == AF_INET ? "IPv4" : "IPv6");
+    if(sfd_[i] == -1) {
+      continue;
+    }
     ListenEventHandler *listen_hd = new ListenEventHandler(config_,
                                                            sfd_[i],
                                                            &session_id_seed);
@@ -1014,6 +1017,7 @@ int SpdyServer::run()
       std::cerr <<  ipv << ": Adding listening socket to poll failed."
                 << std::endl;
       delete listen_hd;
+      continue;
     }
     sessions.add_handler(listen_hd);
     bind_ok = true;
