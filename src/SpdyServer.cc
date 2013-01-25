@@ -59,7 +59,8 @@ const std::string DEFAULT_HTML = "index.html";
 const std::string SPDYD_SERVER = "spdyd spdylay/" SPDYLAY_VERSION;
 } // namespace
 
-Config::Config(): verbose(false), daemon(false), port(0), data_ptr(0),
+Config::Config(): verbose(false), daemon(false), port(0),
+                  on_request_recv_callback(0), data_ptr(0),
                   version(0), verify_client(false), no_tls(false)
 {}
 
