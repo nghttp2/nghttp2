@@ -179,6 +179,7 @@ int htp_hdrs_completecb(http_parser *htp)
     if(bufferevent_write(upstream->get_client_handler()->get_bev(),
                          reply_100, sizeof(reply_100)-1) != 0) {
       ULOG(FATAL, upstream) << "bufferevent_write() faild";
+      delete dconn;
       return -1;
     }
   }
