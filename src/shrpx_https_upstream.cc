@@ -681,9 +681,15 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
       return -1;
     }
   }
-  evbuffer_add(output, data, len);
+  if(evbuffer_add(output, data, len) != 0) {
+    ULOG(FATAL, this) << "evbuffer_add() failed";
+    return -1;
+  }
   if(downstream->get_chunked_response()) {
-    evbuffer_add(output, "\r\n", 2);
+    if(evbuffer_add(output, "\r\n", 2) != 0) {
+      ULOG(FATAL, this) << "evbuffer_add() failed";
+      return -1;
+    }
   }
   return 0;
 }

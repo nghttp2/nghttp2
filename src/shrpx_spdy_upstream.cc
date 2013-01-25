@@ -508,8 +508,11 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     int fd = bufferevent_getfd(bev);
     int val = 1;
-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-               reinterpret_cast<char *>(&val), sizeof(val));
+    if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+                  reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
+      DCLOG(WARNING, dconn) << "Setting option TCP_NODELAY failed: "
+                            << strerror(errno);
+    }
   } else if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();

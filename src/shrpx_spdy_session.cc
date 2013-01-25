@@ -228,8 +228,11 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     }
     int fd = bufferevent_getfd(bev);
     int val = 1;
-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-               reinterpret_cast<char *>(&val), sizeof(val));
+    if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+                  reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
+      SSLOG(WARNING, spdy) << "Setting option TCP_NODELAY failed: "
+                           << strerror(errno);
+    }
   } else if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "EOF";

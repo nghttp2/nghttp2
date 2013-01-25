@@ -109,7 +109,10 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     memcpy(&wev.client_addr, addr, addrlen);
     wev.client_addrlen = addrlen;
     evbuffer *output = bufferevent_get_output(workers_[idx].bev);
-    evbuffer_add(output, &wev, sizeof(wev));
+    if(evbuffer_add(output, &wev, sizeof(wev)) != 0) {
+      LLOG(FATAL, this) << "evbuffer_add() failed";
+      return -1;
+    }
   }
   return 0;
 }
