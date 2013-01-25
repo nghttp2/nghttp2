@@ -590,7 +590,10 @@ int communicate(const std::string& host, uint16_t port,
               << std::endl;
     return -1;
   }
-  set_tcp_nodelay(fd);
+  if(set_tcp_nodelay(fd) == -1) {
+    std::cerr << "Setting TCP_NODELAY failed: " << strerror(errno)
+              << std::endl;
+  }
 
   std::string next_proto;
   switch(config.spdy_version) {
