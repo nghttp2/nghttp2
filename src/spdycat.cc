@@ -573,90 +573,10 @@ void print_stats(const SpdySession& spdySession)
   }
 }
 
-int communicate(const std::string& host, uint16_t port,
-                SpdySession& spdySession,
-                const spdylay_session_callbacks *callbacks)
+int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
+                const spdylay_session_callbacks *callbacks, int timeout)
 {
-  int rv;
-  int timeout = config.timeout;
-  int fd = nonblock_connect_to(host, port, timeout);
-  if(fd == -1) {
-    std::cerr << "Could not connect to the host: " << spdySession.hostport
-              << std::endl;
-    return -1;
-  } else if(fd == -2) {
-    std::cerr << "Request to " << spdySession.hostport << " timed out "
-              << "during establishing connection."
-              << std::endl;
-    return -1;
-  }
-  if(set_tcp_nodelay(fd) == -1) {
-    std::cerr << "Setting TCP_NODELAY failed: " << strerror(errno)
-              << std::endl;
-  }
-
-  std::string next_proto;
-  switch(config.spdy_version) {
-  case SPDYLAY_PROTO_SPDY2:
-    next_proto = "spdy/2";
-    break;
-  case SPDYLAY_PROTO_SPDY3:
-    next_proto = "spdy/3";
-    break;
-  }
-
-  SSL_CTX *ssl_ctx = 0;
-  SSL *ssl = 0;
-  if(!config.no_tls) {
-    ssl_ctx = SSL_CTX_new(TLSv1_client_method());
-    if(!ssl_ctx) {
-      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-      return -1;
-    }
-    setup_ssl_ctx(ssl_ctx, &next_proto);
-    if(!config.keyfile.empty()) {
-      if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
-                                     SSL_FILETYPE_PEM) != 1) {
-        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-        return -1;
-      }
-    }
-    if(!config.certfile.empty()) {
-      if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
-                                            config.certfile.c_str()) != 1) {
-        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-        return -1;
-      }
-    }
-    ssl = SSL_new(ssl_ctx);
-    if(!ssl) {
-      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-      return -1;
-    }
-    if (!SSL_set_tlsext_host_name(ssl, host.c_str())) {
-      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-      return -1;
-    }
-    rv = ssl_nonblock_handshake(ssl, fd, timeout);
-    if(rv == -1) {
-      return -1;
-    } else if(rv == -2) {
-      std::cerr << "Request to " << spdySession.hostport
-                << " timed out in SSL/TLS handshake."
-                << std::endl;
-      return -1;
-    }
-  }
-
-  spdySession.record_handshake_time();
-  int spdy_version = spdylay_npn_get_version(
-      reinterpret_cast<const unsigned char*>(next_proto.c_str()),
-      next_proto.size());
-  if (spdy_version <= 0) {
-    std::cerr << "No supported SPDY version was negotiated." << std::endl;
-    return -1;
-  }
-
+  int result = 0;
   Spdylay sc(fd, ssl, spdy_version, callbacks, &spdySession);
   spdySession.sc = &sc;
 
@@ -678,7 +598,6 @@ int communicate(const std::string& host, uint16_t port,
   pollfds[0].fd = fd;
   ctl_poll(pollfds, &sc);
 
-  bool ok = true;
   timeval tv1, tv2;
   while(!sc.finish()) {
     if(config.timeout != -1) {
@@ -687,7 +606,8 @@ int communicate(const std::string& host, uint16_t port,
     int nfds = poll(pollfds, npollfds, timeout);
     if(nfds == -1) {
       perror("poll");
-      return -1;
+      result = -1;
+      break;
     }
     if(pollfds[0].revents & (POLLIN | POLLOUT)) {
       int rv;
@@ -697,13 +617,13 @@ int communicate(const std::string& host, uint16_t port,
           std::cout << "reqnum=" << spdySession.reqvec.size()
                     << ", completed=" << spdySession.complete << std::endl;
         }
-        ok = false;
+        result = -1;
         break;
       }
     }
     if((pollfds[0].revents & POLLHUP) || (pollfds[0].revents & POLLERR)) {
       std::cout << "HUP" << std::endl;
-      ok = false;
+      result = -1;
       break;
     }
     if(config.timeout != -1) {
@@ -712,11 +632,10 @@ int communicate(const std::string& host, uint16_t port,
       if (timeout <= 0) {
         std::cerr << "Requests to " << spdySession.hostport << " timed out."
                   << std::endl;
-        ok = false;
+        result = -1;
         break;
       }
     }
-    assert(ok);
     ctl_poll(pollfds, &sc);
   }
   if(!spdySession.all_requests_processed()) {
@@ -724,17 +643,120 @@ int communicate(const std::string& host, uint16_t port,
               << spdySession.reqvec.size()
               << ", processed=" << spdySession.complete << std::endl;
   }
+  if(config.stat) {
+    print_stats(spdySession);
+  }
+  return result;
+}
+
+int communicate(const std::string& host, uint16_t port,
+                SpdySession& spdySession,
+                const spdylay_session_callbacks *callbacks)
+{
+  int result = 0;
+  int rv;
+  int spdy_version;
+  std::string next_proto;
+  int timeout = config.timeout;
+  SSL_CTX *ssl_ctx = 0;
+  SSL *ssl = 0;
+  int fd = nonblock_connect_to(host, port, timeout);
+  if(fd == -1) {
+    std::cerr << "Could not connect to the host: " << spdySession.hostport
+              << std::endl;
+    result = -1;
+    goto fin;
+  } else if(fd == -2) {
+    std::cerr << "Request to " << spdySession.hostport << " timed out "
+              << "during establishing connection."
+              << std::endl;
+    result = -1;
+    goto fin;
+  }
+  if(set_tcp_nodelay(fd) == -1) {
+    std::cerr << "Setting TCP_NODELAY failed: " << strerror(errno)
+              << std::endl;
+  }
+
+  switch(config.spdy_version) {
+  case SPDYLAY_PROTO_SPDY2:
+    next_proto = "spdy/2";
+    break;
+  case SPDYLAY_PROTO_SPDY3:
+    next_proto = "spdy/3";
+    break;
+  }
+
+  if(!config.no_tls) {
+    ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+    if(!ssl_ctx) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      result = -1;
+      goto fin;
+    }
+    setup_ssl_ctx(ssl_ctx, &next_proto);
+    if(!config.keyfile.empty()) {
+      if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
+                                     SSL_FILETYPE_PEM) != 1) {
+        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        result = -1;
+        goto fin;
+      }
+    }
+    if(!config.certfile.empty()) {
+      if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
+                                            config.certfile.c_str()) != 1) {
+        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        result = -1;
+        goto fin;
+      }
+    }
+    ssl = SSL_new(ssl_ctx);
+    if(!ssl) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      result = -1;
+      goto fin;
+    }
+    if (!SSL_set_tlsext_host_name(ssl, host.c_str())) {
+      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      result = -1;
+      goto fin;
+    }
+    rv = ssl_nonblock_handshake(ssl, fd, timeout);
+    if(rv == -1) {
+      result = -1;
+      goto fin;
+    } else if(rv == -2) {
+      std::cerr << "Request to " << spdySession.hostport
+                << " timed out in SSL/TLS handshake."
+                << std::endl;
+      result = -1;
+      goto fin;
+    }
+  }
+
+  spdySession.record_handshake_time();
+  spdy_version = spdylay_npn_get_version(
+      reinterpret_cast<const unsigned char*>(next_proto.c_str()),
+      next_proto.size());
+  if (spdy_version <= 0) {
+    std::cerr << "No supported SPDY version was negotiated." << std::endl;
+    result = -1;
+    goto fin;
+  }
+
+  result = spdy_evloop(fd, ssl, spdy_version, spdySession, callbacks, timeout);
+ fin:
   if(ssl) {
     SSL_shutdown(ssl);
     SSL_free(ssl);
     SSL_CTX_free(ssl_ctx);
   }
-  shutdown(fd, SHUT_WR);
-  close(fd);
-  if(config.stat) {
-    print_stats(spdySession);
+  if(fd != -1) {
+    shutdown(fd, SHUT_WR);
+    close(fd);
   }
-  return ok ? 0 : -1;
+  return result;
 }
 
 ssize_t file_read_callback
