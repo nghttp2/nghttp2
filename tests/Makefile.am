@@ -41,7 +41,7 @@ HFILES = spdylay_pq_test.h spdylay_map_test.h spdylay_queue_test.h \
 main_SOURCES = $(HFILES) $(OBJECTS)
 
 main_LDADD = ${top_builddir}/lib/libspdylay.la
-main_LDFLAGS = -static @CUNIT_LIBS@
+main_LDFLAGS = -static @CUNIT_LIBS@ @TESTS_LIBS@
 
 failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
 	malloc_wrapper.c malloc_wrapper.h \

@@ -69,9 +69,15 @@ AM_CONDITIONAL([HAVE_STDCXX_11],
 
 # Checks for libraries.
 
+# Additional libraries required for tests.
+TESTS_LIBS=
+
+LIBS_OLD=$LIBS
 # Search for dlsym function, which is used in tests. Linux needs -ldl,
 # but netbsd does not need it.
 AC_SEARCH_LIBS([dlsym], [dl])
+TESTS_LIBS=$LIBS $TESTS_LIBS
+LIBS=$LIBS_OLD
 
 # zlib
 PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
@@ -234,6 +240,8 @@ if test "x$maintainer_mode" != "xno"; then
     CFLAGS="$CFLAGS -Wcast-align -Wclobbered -Wvla"
     CFLAGS="$CFLAGS -Wno-unused-parameter"
 fi
+
+AC_SUBST([TESTS_LIBS])
 
 AC_CONFIG_FILES([
   Makefile
