@@ -591,9 +591,18 @@ void on_ctrl_recv_callback
       status = downstream->get_response_http_status();
       if(!((100 <= status && status <= 199) || status == 204 ||
            status == 304)) {
-        // In SPDY, we are supporsed not to receive
-        // transfer-encoding.
-        downstream->add_response_header("transfer-encoding", "chunked");
+        // Here we have response body but Content-Length is not known
+        // in advance.
+        if(downstream->get_request_major() <= 0 ||
+           downstream->get_request_minor() <= 0) {
+          // We simply close connection for pre-HTTP/1.1 in this case.
+          downstream->set_response_connection_close(true);
+        } else {
+          // Otherwise, use chunked encoding to keep upstream
+          // connection open.  In SPDY, we are supporsed not to
+          // receive transfer-encoding.
+          downstream->add_response_header("transfer-encoding", "chunked");
+        }
       }
     }
 
