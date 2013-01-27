@@ -299,7 +299,7 @@ int nonblock_connect_to(const std::string& host, uint16_t port, int timeout)
       struct timeval tv1, tv2;
       struct pollfd pfd = {fd, POLLOUT, 0};
       if(timeout != -1) {
-        gettimeofday(&tv1, 0);
+        get_time(&tv1);
       }
       r = poll(&pfd, 1, timeout);
       if(r == 0) {
@@ -308,7 +308,7 @@ int nonblock_connect_to(const std::string& host, uint16_t port, int timeout)
         return -1;
       } else {
         if(timeout != -1) {
-          gettimeofday(&tv2, 0);
+          get_time(&tv2);
           timeout -= time_delta(tv2, tv1);
           if(timeout <= 0) {
             return -2;
@@ -828,7 +828,7 @@ int ssl_nonblock_handshake(SSL *ssl, int fd, int& timeout)
   timeval tv1, tv2;
   while(1) {
     if(timeout != -1) {
-      gettimeofday(&tv1, 0);
+      get_time(&tv1);
     }
     int rv = poll(&pfd, 1, timeout);
     if(rv == 0) {
@@ -843,7 +843,7 @@ int ssl_nonblock_handshake(SSL *ssl, int fd, int& timeout)
       return -1;
     } else if(rv < 0) {
       if(timeout != -1) {
-        gettimeofday(&tv2, 0);
+        get_time(&tv2);
         timeout -= time_delta(tv2, tv1);
         if(timeout <= 0) {
           return -2;
@@ -892,18 +892,32 @@ timeval base_tv;
 
 void reset_timer()
 {
-  gettimeofday(&base_tv, 0);
+  get_time(&base_tv);
 }
 
 void get_timer(timeval* tv)
 {
-  gettimeofday(tv, 0);
+  get_time(tv);
   tv->tv_usec -= base_tv.tv_usec;
   tv->tv_sec -= base_tv.tv_sec;
   if(tv->tv_usec < 0) {
     tv->tv_usec += 1000000;
     --tv->tv_sec;
   }
+}
+
+int get_time(timeval *tv)
+{
+  int rv;
+#ifdef HAVE_CLOCK_GETTIME
+  timespec ts;
+  rv = clock_gettime(CLOCK_MONOTONIC, &ts);
+  tv->tv_sec = ts.tv_sec;
+  tv->tv_usec = ts.tv_nsec/1000;
+#else // !HAVE_CLOCK_GETTIME
+  rv = gettimeofday(&base_tv, 0);
+#endif // !HAVE_CLOCK_GETTIME
+  return rv;
 }
 
 } // namespace spdylay

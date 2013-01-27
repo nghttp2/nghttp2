@@ -105,7 +105,7 @@ struct RequestStat {
 
 void record_time(timeval *tv)
 {
-  gettimeofday(tv, 0);
+  get_time(tv);
 }
 
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field)
@@ -601,7 +601,7 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
   timeval tv1, tv2;
   while(!sc.finish()) {
     if(config.timeout != -1) {
-      gettimeofday(&tv1, 0);
+      get_time(&tv1);
     }
     int nfds = poll(pollfds, npollfds, timeout);
     if(nfds == -1) {
@@ -627,7 +627,7 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
       break;
     }
     if(config.timeout != -1) {
-      gettimeofday(&tv2, 0);
+      get_time(&tv2);
       timeout -= time_delta(tv2, tv1);
       if (timeout <= 0) {
         std::cerr << "Requests to " << spdySession.hostport << " timed out."

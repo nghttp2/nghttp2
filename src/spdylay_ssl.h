@@ -150,6 +150,8 @@ void reset_timer();
 
 void get_timer(timeval *tv);
 
+int get_time(timeval *tv);
+
 void print_timer();
 
 enum {

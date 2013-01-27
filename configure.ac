@@ -72,11 +72,21 @@ AM_CONDITIONAL([HAVE_STDCXX_11],
 # Additional libraries required for tests.
 TESTS_LIBS=
 
+# Additional libraries required for programs under src directory.
+SRC_LIBS=
+
 LIBS_OLD=$LIBS
 # Search for dlsym function, which is used in tests. Linux needs -ldl,
 # but netbsd does not need it.
 AC_SEARCH_LIBS([dlsym], [dl])
 TESTS_LIBS=$LIBS $TESTS_LIBS
+LIBS=$LIBS_OLD
+
+LIBS_OLD=$LIBS
+AC_SEARCH_LIBS([clock_gettime], [rt],
+               [AC_DEFINE([HAVE_CLOCK_GETTIME], [1],
+                          [Define to 1 if you have the `clock_gettime`.])])
+SRC_LIBS=$LIBS $SRC_LIBS
 LIBS=$LIBS_OLD
 
 # zlib
@@ -242,6 +252,7 @@ if test "x$maintainer_mode" != "xno"; then
 fi
 
 AC_SUBST([TESTS_LIBS])
+AC_SUBST([SRC_LIBS])
 
 AC_CONFIG_FILES([
   Makefile
