@@ -475,12 +475,37 @@ void print_frame_attr_indent()
 }
 } // namespace
 
+namespace {
+bool color_output = false;
+} // namespace
+
+void set_color_output(bool f)
+{
+  color_output = f;
+}
+
+namespace {
+const char* ansi_esc(const char *code)
+{
+  return color_output ? code : "";
+}
+} // namespace
+
+namespace {
+const char* ansi_escend()
+{
+  return color_output ? "\033[0m" : "";
+}
+} // namespace
+
 void print_nv(char **nv)
 {
   int i;
   for(i = 0; nv[i]; i += 2) {
     print_frame_attr_indent();
-    printf("%s: %s\n", nv[i], nv[i+1]);
+    printf("%s%s%s: %s\n",
+           ansi_esc("\033[1;34m"), nv[i],
+           ansi_escend(), nv[i+1]);
   }
 }
 
@@ -488,7 +513,10 @@ void print_timer()
 {
   timeval tv;
   get_timer(&tv);
-  printf("[%3ld.%03ld]", tv.tv_sec, tv.tv_usec/1000);
+  printf("%s[%3ld.%03ld]%s",
+         ansi_esc("\033[33m"),
+         tv.tv_sec, tv.tv_usec/1000,
+         ansi_escend());
 }
 
 namespace {
@@ -499,10 +527,26 @@ void print_ctrl_hd(const spdylay_ctrl_hd& hd)
 }
 } // namespace
 
+enum print_type {
+  PRINT_SEND,
+  PRINT_RECV
+};
+
 namespace {
-void print_frame(spdylay_frame_type type, spdylay_frame *frame)
+const char* frame_name_ansi_esc(print_type ptype)
 {
-  printf("%s frame ", ctrl_names[type-1]);
+  return ansi_esc(ptype == PRINT_SEND ? "\033[1;35m" : "\033[1;36m");
+}
+} // namespace
+
+namespace {
+void print_frame(print_type ptype, spdylay_frame_type type,
+                 spdylay_frame *frame)
+{
+  printf("%s%s%s frame ",
+         frame_name_ansi_esc(ptype),
+         ctrl_names[type-1],
+         ansi_escend());
   print_ctrl_hd(frame->syn_stream.hd);
   switch(type) {
   case SPDYLAY_SYN_STREAM:
@@ -564,7 +608,7 @@ void on_ctrl_recv_callback
 {
   print_timer();
   printf(" recv ");
-  print_frame(type, frame);
+  print_frame(PRINT_RECV, type, frame);
   fflush(stdout);
 }
 
@@ -608,7 +652,7 @@ void on_invalid_ctrl_recv_callback
 {
   print_timer();
   printf(" [INVALID; status=%s] recv ", strstatus(status_code));
-  print_frame(type, frame);
+  print_frame(PRINT_RECV, type, frame);
   fflush(stdout);
 }
 
@@ -634,7 +678,10 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        int error_code, void *user_data)
 {
   print_timer();
-  printf(" [PARSE_ERROR] recv %s frame\n", ctrl_names[type-1]);
+  printf(" [PARSE_ERROR] recv %s%s%s frame\n",
+         frame_name_ansi_esc(PRINT_RECV),
+         ctrl_names[type-1],
+         ansi_escend());
   print_frame_attr_indent();
   printf("Error: %s\n", spdylay_strerror(error_code));
   dump_header(head, headlen);
@@ -660,14 +707,16 @@ void on_ctrl_send_callback
 {
   print_timer();
   printf(" send ");
-  print_frame(type, frame);
+  print_frame(PRINT_SEND, type, frame);
   fflush(stdout);
 }
 
 namespace {
-void print_data_frame(uint8_t flags, int32_t stream_id, int32_t length)
+void print_data_frame(print_type ptype, uint8_t flags, int32_t stream_id,
+                      int32_t length)
 {
-  printf("DATA frame (stream_id=%d, flags=%d, length=%d)\n",
+  printf("%sDATA%s frame (stream_id=%d, flags=%d, length=%d)\n",
+         frame_name_ansi_esc(ptype), ansi_escend(),
          stream_id, flags, length);
 }
 } // namespace
@@ -678,7 +727,7 @@ void on_data_recv_callback
 {
   print_timer();
   printf(" recv ");
-  print_data_frame(flags, stream_id, length);
+  print_data_frame(PRINT_RECV, flags, stream_id, length);
   fflush(stdout);
 }
 
@@ -688,7 +737,7 @@ void on_data_send_callback
 {
   print_timer();
   printf(" send ");
-  print_data_frame(flags, stream_id, length);
+  print_data_frame(PRINT_SEND, flags, stream_id, length);
   fflush(stdout);
 }
 

@@ -159,6 +159,10 @@ enum {
 
 uint8_t get_ssl_io_demand(SSL *ssl, ssize_t r);
 
+// Setting true will print characters with ANSI color escape codes
+// when printing SPDY frames. This function changes a static variable.
+void set_color_output(bool f);
+
 } // namespace spdylay
 
 #endif // SPDYLAY_SSL_H

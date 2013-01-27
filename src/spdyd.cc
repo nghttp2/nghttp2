@@ -173,6 +173,9 @@ int main(int argc, char **argv)
   if(config.htdocs.empty()) {
     config.htdocs = "./";
   }
+
+  set_color_output(isatty(fileno(stdout)));
+
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
