@@ -613,8 +613,8 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
       int rv;
       if((rv = sc.recv()) != 0 || (rv = sc.send()) != 0) {
         if(rv != SPDYLAY_ERR_EOF || !spdySession.all_requests_processed()) {
-          std::cout << "Fatal: " << spdylay_strerror(rv) << std::endl;
-          std::cout << "reqnum=" << spdySession.reqvec.size()
+          std::cerr << "Fatal: " << spdylay_strerror(rv) << "\n"
+                    << "reqnum=" << spdySession.reqvec.size()
                     << ", completed=" << spdySession.complete << std::endl;
         }
         result = -1;
@@ -622,7 +622,7 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
       }
     }
     if((pollfds[0].revents & POLLHUP) || (pollfds[0].revents & POLLERR)) {
-      std::cout << "HUP" << std::endl;
+      std::cerr << "HUP" << std::endl;
       result = -1;
       break;
     }
@@ -639,7 +639,7 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
     ctl_poll(pollfds, &sc);
   }
   if(!spdySession.all_requests_processed()) {
-    std::cout << "Some requests were not processed. total="
+    std::cerr << "Some requests were not processed. total="
               << spdySession.reqvec.size()
               << ", processed=" << spdySession.complete << std::endl;
   }
