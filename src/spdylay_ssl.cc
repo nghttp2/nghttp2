@@ -166,6 +166,7 @@ int Spdylay::submit_request(const std::string& scheme,
     ":scheme", scheme.c_str(),
     ":host", hostport.c_str(),
     "accept", "*/*",
+    "accept-encoding", "gzip, deflate",
     "user-agent", "spdylay/" SPDYLAY_VERSION
   };
 
