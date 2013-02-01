@@ -118,14 +118,18 @@ int HttpDownstreamConnection::push_request_headers()
   hdrs += downstream_->get_request_path();
   hdrs += " ";
   hdrs += "HTTP/1.1\r\n";
+  bool connection_upgrade = false;
   std::string via_value;
   std::string xff_value;
   const Headers& request_headers = downstream_->get_request_headers();
   for(Headers::const_iterator i = request_headers.begin();
       i != request_headers.end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto") ||
+    if(util::strieq((*i).first.c_str(), "connection")) {
+      if(util::strifind((*i).second.c_str(), "upgrade")) {
+        connection_upgrade = true;
+      }
+    } else if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto") ||
        util::strieq((*i).first.c_str(), "keep-alive") ||
-       util::strieq((*i).first.c_str(), "connection") ||
        util::strieq((*i).first.c_str(), "proxy-connection")) {
       continue;
     }
@@ -149,6 +153,8 @@ int HttpDownstreamConnection::push_request_headers()
   }
   if(downstream_->get_request_connection_close()) {
     hdrs += "Connection: close\r\n";
+  } else if(connection_upgrade) {
+    hdrs += "Connection: upgrade\r\n";
   }
   if(get_config()->add_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";

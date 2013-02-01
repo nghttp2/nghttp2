@@ -594,6 +594,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
+  bool connection_upgrade = false;
   std::string via_value;
   char temp[16];
   snprintf(temp, sizeof(temp), "HTTP/%d.%d ",
@@ -604,8 +605,11 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   hdrs += "\r\n";
   for(Headers::const_iterator i = downstream->get_response_headers().begin();
       i != downstream->get_response_headers().end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "keep-alive") || // HTTP/1.0?
-       util::strieq((*i).first.c_str(), "connection") ||
+    if(util::strieq((*i).first.c_str(), "connection")) {
+      if(util::strifind((*i).second.c_str(), "upgrade")) {
+        connection_upgrade = true;
+      }
+    } else if(util::strieq((*i).first.c_str(), "keep-alive") || // HTTP/1.0?
        util:: strieq((*i).first.c_str(), "proxy-connection")) {
       // These are ignored
     } else if(!get_config()->no_via &&
@@ -628,6 +632,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
        downstream->get_request_minor() <= 0) {
       // We add this header for HTTP/1.0 or HTTP/0.9 clients
       hdrs += "Connection: Keep-Alive\r\n";
+    } else if(connection_upgrade) {
+      hdrs += "Connection: upgrade\r\n";
     }
   } else {
     hdrs += "Connection: close\r\n";
