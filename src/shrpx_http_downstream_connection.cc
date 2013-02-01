@@ -128,7 +128,7 @@ int HttpDownstreamConnection::push_request_headers()
       if(util::strifind((*i).second.c_str(), "upgrade")) {
         connection_upgrade = true;
       }
-    } else if(util::strieq((*i).first.c_str(), "X-Forwarded-Proto") ||
+    } else if(util::strieq((*i).first.c_str(), "x-forwarded-proto") ||
        util::strieq((*i).first.c_str(), "keep-alive") ||
        util::strieq((*i).first.c_str(), "proxy-connection")) {
       continue;
