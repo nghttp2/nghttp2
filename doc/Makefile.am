@@ -22,13 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py python.rst \
-	package_README.rst
-
-doc_staticdir = $(docdir)/_static
-dist_doc_static_DATA = _static/default2.css
-
-doc_templatesdir = $(docdir)/_templates
-dist_doc_templates_DATA = _templates/menu.html
+	package_README.rst _static/default2.css _templates/menu.html
 
 # Makefile for Sphinx documentation
 #
