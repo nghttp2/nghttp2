@@ -1,7 +1,7 @@
 /*
  * Spdylay - SPDY Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,49 +22,14 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_LISTEN_HANDLER_H
-#define SHRPX_LISTEN_HANDLER_H
-
-#include "shrpx.h"
-
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#include <openssl/ssl.h>
-
-#include <event.h>
+#ifndef SHRPX_SSL_TEST_H
+#define SHRPX_SSL_TEST_H
 
 namespace shrpx {
 
-struct WorkerInfo {
-  int sv[2];
-  SSL_CTX *ssl_ctx;
-  bufferevent *bev;
-};
-
-class SpdySession;
-
-class ListenHandler {
-public:
-  ListenHandler(event_base *evbase, SSL_CTX *ssl_ctx);
-  ~ListenHandler();
-  int accept_connection(evutil_socket_t fd, sockaddr *addr, int addrlen);
-  void create_worker_thread(size_t num);
-  event_base* get_evbase() const;
-  int create_spdy_session();
-private:
-  event_base *evbase_;
-  // In client-mode, this is for backend SPDY connection. Otherwise,
-  // for frontend.
-  SSL_CTX *ssl_ctx_;
-  unsigned int worker_round_robin_cnt_;
-  WorkerInfo *workers_;
-  size_t num_worker_;
-  // Shared SPDY session. NULL if not client mode or
-  // multi-threaded. In multi-threaded case, see shrpx_worker.cc.
-  SpdySession *spdy_;
-};
+void test_shrpx_ssl_create_lookup_tree(void);
+void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void);
 
 } // namespace shrpx
 
-#endif // SHRPX_LISTEN_HANDLER_H
+#endif /* SHRPX_SSL_TEST_H */

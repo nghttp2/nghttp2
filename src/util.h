@@ -298,6 +298,15 @@ char upcase(char c);
 
 char lowcase(char c);
 
+inline char lowcase(char c)
+{
+  if('A' <= c && c <= 'Z') {
+    return c-'A'+'a';
+  } else {
+    return c;
+  }
+}
+
 template<typename T>
 std::string utos(T n)
 {

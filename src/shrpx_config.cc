@@ -37,6 +37,7 @@
 #include <fstream>
 
 #include "shrpx_log.h"
+#include "shrpx_ssl.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -46,6 +47,7 @@ namespace shrpx {
 const char SHRPX_OPT_PRIVATE_KEY_FILE[] = "private-key-file";
 const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[] = "private-key-passwd-file";
 const char SHRPX_OPT_CERTIFICATE_FILE[] = "certificate-file";
+const char SHRPX_OPT_SUBCERT[] = "subcert";
 
 const char SHRPX_OPT_BACKEND[] = "backend";
 const char SHRPX_OPT_FRONTEND[] = "frontend";
@@ -274,6 +276,21 @@ int parse_config(const char *opt, const char *optarg)
     set_config_str(&mod_config()->private_key_passwd, passwd.c_str());
   } else if(util::strieq(opt, SHRPX_OPT_CERTIFICATE_FILE)) {
     set_config_str(&mod_config()->cert_file, optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_SUBCERT)) {
+    // Private Key file and certificate file separated by ':'.
+    const char *sp = strchr(optarg, ':');
+    if(sp) {
+      std::string keyfile(optarg, sp);
+      // TODO Do we need private key for subcert?
+      SSL_CTX *ssl_ctx = ssl::create_ssl_context(keyfile.c_str(), sp+1);
+      if(!get_config()->cert_tree) {
+        mod_config()->cert_tree = ssl::cert_lookup_tree_new();
+      }
+      if(ssl::cert_lookup_tree_add_cert_from_file(get_config()->cert_tree,
+                                                  ssl_ctx, sp+1) == -1) {
+        return -1;
+      }
+    }
   } else if(util::strieq(opt, SHRPX_OPT_SYSLOG)) {
     mod_config()->syslog = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_SYSLOG_FACILITY)) {
@@ -302,6 +319,19 @@ int parse_config(const char *opt, const char *optarg)
   } else {
     LOG(ERROR) << "Unknown option: " << opt;
     return -1;
+  }
+  if(get_config()->cert_file && get_config()->private_key_file) {
+    mod_config()->default_ssl_ctx =
+      ssl::create_ssl_context(get_config()->private_key_file,
+                              get_config()->cert_file);
+    if(get_config()->cert_tree) {
+      if(ssl::cert_lookup_tree_add_cert_from_file(get_config()->cert_tree,
+                                                  get_config()->default_ssl_ctx,
+                                                  get_config()->cert_file)
+         == -1) {
+        return -1;
+      }
+    }
   }
   return 0;
 }

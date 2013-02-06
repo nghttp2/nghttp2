@@ -106,7 +106,25 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
 }
 } // namespace
 
-SSL_CTX* create_ssl_context()
+namespace {
+int servername_callback(SSL *ssl, int *al, void *arg)
+{
+  if(get_config()->cert_tree) {
+    const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    if(hostname) {
+      SSL_CTX *ssl_ctx = cert_lookup_tree_lookup(get_config()->cert_tree,
+                                                 hostname, strlen(hostname));
+      if(ssl_ctx) {
+        SSL_set_SSL_CTX(ssl, ssl_ctx);
+      }
+    }
+  }
+  return SSL_TLSEXT_ERR_NOACK;
+}
+} // namespace
+
+SSL_CTX* create_ssl_context(const char *private_key_file,
+                            const char *cert_file)
 {
   SSL_CTX *ssl_ctx;
   ssl_ctx = SSL_CTX_new(SSLv23_server_method());
@@ -137,15 +155,13 @@ SSL_CTX* create_ssl_context()
     SSL_CTX_set_default_passwd_cb(ssl_ctx, ssl_pem_passwd_cb);
     SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *)get_config());
   }
-  if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
-                                 get_config()->private_key_file,
+  if(SSL_CTX_use_PrivateKey_file(ssl_ctx, private_key_file,
                                  SSL_FILETYPE_PEM) != 1) {
     LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed: "
                << ERR_error_string(ERR_get_error(), NULL);
     DIE();
   }
-  if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
-                                        get_config()->cert_file) != 1) {
+  if(SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
     LOG(FATAL) << "SSL_CTX_use_certificate_file failed: "
                << ERR_error_string(ERR_get_error(), NULL);
     DIE();
@@ -161,6 +177,8 @@ SSL_CTX* create_ssl_context()
                        SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                        verify_callback);
   }
+  SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
+
   // We speak "http/1.1", "spdy/2" and "spdy/3".
   const char *protos[] = { "spdy/3", "spdy/2", "http/1.1" };
   set_npn_prefs(proto_list, protos, 3);
@@ -360,23 +378,11 @@ int verify_hostname(const char *hostname,
 }
 } // namespace
 
-int check_cert(SSL *ssl)
+void get_altnames(X509 *cert,
+                  std::vector<std::string>& dns_names,
+                  std::vector<std::string>& ip_addrs,
+                  std::string& common_name)
 {
-  X509 *cert = SSL_get_peer_certificate(ssl);
-  if(!cert) {
-    LOG(ERROR) << "No certificate found";
-    return -1;
-  }
-  util::auto_delete<X509*> cert_deleter(cert, X509_free);
-  long verify_res = SSL_get_verify_result(ssl);
-  if(verify_res != X509_V_OK) {
-    LOG(ERROR) << "Certificate verification failed: "
-               << X509_verify_cert_error_string(verify_res);
-    return -1;
-  }
-  std::string common_name;
-  std::vector<std::string> dns_names;
-  std::vector<std::string> ip_addrs;
   GENERAL_NAMES* altnames;
   altnames = reinterpret_cast<GENERAL_NAMES*>
     (X509_get_ext_d2i(cert, NID_subject_alt_name, 0, 0));
@@ -411,8 +417,8 @@ int check_cert(SSL *ssl)
   }
   X509_NAME *subjectname = X509_get_subject_name(cert);
   if(!subjectname) {
-    LOG(ERROR) << "Could not get X509 name object from the certificate.";
-    return -1;
+    LOG(WARNING) << "Could not get X509 name object from the certificate.";
+    return;
   }
   int lastpos = -1;
   while(1) {
@@ -435,6 +441,26 @@ int check_cert(SSL *ssl)
     OPENSSL_free(out);
     break;
   }
+}
+
+int check_cert(SSL *ssl)
+{
+  X509 *cert = SSL_get_peer_certificate(ssl);
+  if(!cert) {
+    LOG(ERROR) << "No certificate found";
+    return -1;
+  }
+  util::auto_delete<X509*> cert_deleter(cert, X509_free);
+  long verify_res = SSL_get_verify_result(ssl);
+  if(verify_res != X509_V_OK) {
+    LOG(ERROR) << "Certificate verification failed: "
+               << X509_verify_cert_error_string(verify_res);
+    return -1;
+  }
+  std::string common_name;
+  std::vector<std::string> dns_names;
+  std::vector<std::string> ip_addrs;
+  get_altnames(cert, dns_names, ip_addrs, common_name);
   if(verify_hostname(get_config()->downstream_host,
                      &get_config()->downstream_addr,
                      get_config()->downstream_addrlen,
@@ -480,6 +506,172 @@ void teardown_ssl_lock()
     pthread_mutex_destroy(&(ssl_locks[i]));
   }
   delete [] ssl_locks;
+}
+
+CertLookupTree* cert_lookup_tree_new()
+{
+  CertLookupTree *tree = new CertLookupTree();
+  CertNode *root = new CertNode();
+  root->ssl_ctx = 0;
+  root->c = 0;
+  tree->root = root;
+  return tree;
+}
+
+namespace {
+void cert_node_del(CertNode *node)
+{
+  for(std::vector<CertNode*>::iterator i = node->next.begin(),
+        eoi = node->next.end(); i != eoi; ++i) {
+    cert_node_del(*i);
+  }
+  for(std::vector<std::pair<char*, SSL_CTX*> >::iterator i =
+        node->wildcard_certs.begin(), eoi = node->wildcard_certs.end();
+      i != eoi; ++i) {
+    delete [] (*i).first;
+  }
+  delete node;
+}
+} // namespace
+
+void cert_lookup_tree_del(CertLookupTree *lt)
+{
+  cert_node_del(lt->root);
+  delete lt;
+}
+
+namespace {
+// The |offset| is the index in the hostname we are examining.
+void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
+                               SSL_CTX *ssl_ctx,
+                               const char *hostname, size_t len, int offset)
+{
+  if(offset == -1) {
+    if(!node->ssl_ctx) {
+      node->ssl_ctx = ssl_ctx;
+    }
+    return;
+  }
+  int i, next_len = node->next.size();
+  char c = util::lowcase(hostname[offset]);
+  for(i = 0; i < next_len; ++i) {
+    if(node->next[i]->c == c) {
+      break;
+    }
+  }
+  if(i == next_len) {
+    CertNode *parent = node;
+    int j;
+    for(j = offset; j >= 0; --j) {
+      if(hostname[j] == '*') {
+        // We assume hostname as wildcard hostname when first '*' is
+        // encountered. Note that as per RFC 6125 (6.4.3), there are
+        // some restrictions for wildcard hostname. We just ignore
+        // these rules here but do the proper check when we do the
+        // match.
+        char *hostcopy = strdup(hostname);
+        for(int k = 0; hostcopy[k]; ++k) {
+          hostcopy[k] = util::lowcase(hostcopy[k]);
+        }
+        parent->wildcard_certs.push_back(std::make_pair(hostcopy, ssl_ctx));
+        break;
+      }
+      CertNode *new_node = new CertNode();
+      new_node->ssl_ctx = 0;
+      new_node->c = util::lowcase(hostname[j]);
+      parent->next.push_back(new_node);
+      parent = new_node;
+    }
+    if(j == -1) {
+      // non-wildcard hostname, exact match case.
+      parent->ssl_ctx = ssl_ctx;
+    }
+  } else {
+    cert_lookup_tree_add_cert(lt, node->next[i], ssl_ctx,
+                              hostname, len, offset-1);
+  }
+}
+} // namespace
+
+void cert_lookup_tree_add_cert(CertLookupTree *lt, SSL_CTX *ssl_ctx,
+                               const char *hostname, size_t len)
+{
+  if(len == 0) {
+    return;
+  }
+  cert_lookup_tree_add_cert(lt, lt->root, ssl_ctx, hostname, len, len-1);
+}
+
+namespace {
+
+SSL_CTX* cert_lookup_tree_lookup(CertLookupTree *lt, CertNode *node,
+                                 const char *hostname, size_t len, int offset)
+{
+  if(offset == -1) {
+    if(node->ssl_ctx) {
+      return node->ssl_ctx;
+    } else {
+      // Do not perform wildcard-match because '*' must match at least
+      // one character.
+      return 0;
+    }
+  }
+  for(std::vector<std::pair<char*, SSL_CTX*> >::iterator i =
+        node->wildcard_certs.begin(), eoi = node->wildcard_certs.end();
+      i != eoi; ++i) {
+    if(tls_hostname_match((*i).first, hostname)) {
+      return (*i).second;
+    }
+  }
+  char c = util::lowcase(hostname[offset]);
+  for(std::vector<CertNode*>::iterator i = node->next.begin(),
+        eoi = node->next.end(); i != eoi; ++i) {
+    if((*i)->c == c) {
+      return cert_lookup_tree_lookup(lt, *i, hostname, len, offset-1);
+    }
+  }
+  return 0;
+}
+} // namespace
+
+SSL_CTX* cert_lookup_tree_lookup(CertLookupTree *lt,
+                                 const char *hostname, size_t len)
+{
+  return cert_lookup_tree_lookup(lt, lt->root, hostname, len, len-1);
+}
+
+
+int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
+                                        const char *certfile)
+{
+  BIO *bio = BIO_new(BIO_s_file());
+  if(!bio) {
+    LOG(ERROR) << "BIO_new failed";
+    return -1;
+  }
+  util::auto_delete<BIO*> bio_deleter(bio, BIO_vfree);
+  if(!BIO_read_filename(bio, certfile)) {
+    LOG(ERROR) << "Could not read certificate file '" << certfile << "'";
+    return -1;
+  }
+  X509 *cert = PEM_read_bio_X509(bio, 0, 0, 0);
+  if(!cert) {
+    LOG(ERROR) << "Could not read X509 structure from file '"
+               << certfile << "'";
+    return -1;
+  }
+  util::auto_delete<X509*> cert_deleter(cert, X509_free);
+  std::string common_name;
+  std::vector<std::string> dns_names;
+  std::vector<std::string> ip_addrs;
+  get_altnames(cert, dns_names, ip_addrs, common_name);
+  for(std::vector<std::string>::iterator i = dns_names.begin(),
+        eoi = dns_names.end(); i != eoi; ++i) {
+    cert_lookup_tree_add_cert(lt, ssl_ctx, (*i).c_str(), (*i).size());
+  }
+  cert_lookup_tree_add_cert(lt, ssl_ctx, common_name.c_str(),
+                            common_name.size());
+  return 0;
 }
 
 } // namespace ssl

@@ -32,13 +32,22 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <vector>
+
+#include <openssl/ssl.h>
 
 namespace shrpx {
+
+namespace ssl {
+
+struct CertLookupTree;
+
+} // namespace ssl
 
 extern const char SHRPX_OPT_PRIVATE_KEY_FILE[];
 extern const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[];
 extern const char SHRPX_OPT_CERTIFICATE_FILE[];
-
+extern const char SHRPX_OPT_SUBCERT[];
 extern const char SHRPX_OPT_BACKEND[];
 extern const char SHRPX_OPT_FRONTEND[];
 extern const char SHRPX_OPT_WORKERS[];
@@ -85,6 +94,8 @@ struct Config {
   char *private_key_file;
   char *private_key_passwd;
   char *cert_file;
+  SSL_CTX *default_ssl_ctx;
+  ssl::CertLookupTree *cert_tree;
   bool verify_client;
   const char *server_name;
   char *downstream_host;

@@ -31,6 +31,8 @@ AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@ @LIBEVENT_OPENSSL_LIBS@ @SRC_LIBS@ \
 LDADD = $(top_builddir)/lib/libspdylay.la
 
 bin_PROGRAMS = spdycat spdyd
+check_PROGRAMS =
+TESTS =
 
 if HAVE_LIBEVENT_OPENSSL
 bin_PROGRAMS += shrpx
@@ -72,9 +74,8 @@ spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	spdyd.cc
 
 if HAVE_LIBEVENT_OPENSSL
-shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
+SHRPX_SRCS = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	shrpx_config.cc shrpx_config.h \
-	shrpx.cc shrpx.h \
 	shrpx_error.h \
 	shrpx_listen_handler.cc shrpx_listen_handler.h \
 	shrpx_client_handler.cc shrpx_client_handler.h \
@@ -95,6 +96,21 @@ shrpx_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	shrpx_worker.cc shrpx_worker.h \
 	shrpx_accesslog.cc shrpx_accesslog.h\
 	http-parser/http_parser.c http-parser/http_parser.h
+
+shrpx_SOURCES = ${SHRPX_SRCS} shrpx.cc shrpx.h
+
+if HAVE_CUNIT
+check_PROGRAMS += shrpx-unittest
+shrpx_unittest_SOURCES = shrpx-unittest.cc \
+	shrpx_ssl_test.cc shrpx_ssl_test.h\
+	${SHRPX_SRCS}
+shrpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
+	 -DSPDYLAY_TESTS_DIR=\"$(top_srcdir)/tests\"
+shrpx_unittest_LDFLAGS = -static @OPENSSL_LIBS@ @LIBEVENT_OPENSSL_LIBS@\
+	@CUNIT_LIBS@ @TESTS_LIBS@
+TESTS += shrpx-unittest
+endif # HAVE_CUNIT
+
 endif # HAVE_LIBEVENT_OPENSSL
 
 endif # ENABLE_SRC

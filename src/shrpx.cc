@@ -242,7 +242,10 @@ int event_loop()
 {
   event_base *evbase = event_base_new();
 
-  ListenHandler *listener_handler = new ListenHandler(evbase);
+  SSL_CTX *ssl_ctx = get_config()->client_mode ?
+    ssl::create_ssl_client_context() : get_config()->default_ssl_ctx;
+
+  ListenHandler *listener_handler = new ListenHandler(evbase, ssl_ctx);
 
   if(get_config()->daemon) {
     if(daemon(0, 0) == -1) {
@@ -379,6 +382,7 @@ void fill_default_config()
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
   mod_config()->tty = isatty(fileno(stderr));
+  mod_config()->cert_tree = 0;
 }
 } // namespace
 
@@ -481,6 +485,12 @@ void print_help(std::ostream& out)
       << "                       server's private key. If none is given and\n"
       << "                       the private key is password protected it'll\n"
       << "                       be requested interactively.\n"
+      << "    --subcert=<KEYPATH>:<CERTPATH>\n"
+      << "                       Specify additional certificate and private\n"
+      << "                       key file. Shrpx will choose certificates\n"
+      << "                       based on the hostname indicated by client\n"
+      << "                       using TLS SNI extension. This option can be\n"
+      << "                       used multiple times.\n"
       << "\n"
       << "  SPDY:\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
@@ -587,6 +597,7 @@ int main(int argc, char **argv)
       {"backend-ipv6", no_argument, &flag, 21 },
       {"private-key-passwd-file", required_argument, &flag, 22},
       {"no-via", no_argument, &flag, 23},
+      {"subcert", required_argument, &flag, 24},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -733,6 +744,10 @@ int main(int argc, char **argv)
         // --no-via
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_NO_VIA, "yes"));
         break;
+      case 24:
+        // --subcert
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SUBCERT, optarg));
+        break;
       default:
         break;
       }
@@ -741,6 +756,13 @@ int main(int argc, char **argv)
       break;
     }
   }
+
+  // Initialize OpenSSL before parsing options because we create
+  // SSL_CTX there.
+  OpenSSL_add_all_algorithms();
+  SSL_load_error_strings();
+  SSL_library_init();
+  ssl::setup_ssl_lock();
 
   if(conf_exists(get_config()->conf_path)) {
     if(load_config(get_config()->conf_path) == -1) {
@@ -825,11 +847,6 @@ int main(int argc, char **argv)
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, 0);
-
-  OpenSSL_add_all_algorithms();
-  SSL_load_error_strings();
-  SSL_library_init();
-  ssl::setup_ssl_lock();
 
   event_loop();
 

@@ -40,10 +40,9 @@
 
 namespace shrpx {
 
-ListenHandler::ListenHandler(event_base *evbase)
+ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *ssl_ctx)
   : evbase_(evbase),
-    ssl_ctx_(get_config()->client_mode ?
-             ssl::create_ssl_client_context() : ssl::create_ssl_context()),
+    ssl_ctx_(ssl_ctx),
     worker_round_robin_cnt_(0),
     workers_(0),
     num_worker_(0),
