@@ -66,6 +66,8 @@ public:
   void attach_stream_data(StreamData *sd);
   StreamData* detach_stream_data();
 
+  int submit_rst_stream(Downstream *downstream);
+
   int32_t get_recv_window_size() const;
   void inc_recv_window_size(int32_t amount);
 private:

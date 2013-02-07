@@ -59,7 +59,11 @@ SpdyDownstreamConnection::~SpdyDownstreamConnection()
   if(request_body_buf_) {
     evbuffer_free(request_body_buf_);
   }
-  // TODO need RST_STREAM?
+  if(downstream_) {
+    if(submit_rst_stream(downstream_) == 0) {
+      spdy_->notify();
+    }
+  }
   spdy_->remove_downstream_connection(this);
   // Downstream and DownstreamConnection may be deleted
   // asynchronously.
@@ -110,12 +114,35 @@ void SpdyDownstreamConnection::detach_downstream(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
+  if(submit_rst_stream(downstream) == 0) {
+    spdy_->notify();
+  }
   downstream->set_downstream_connection(0);
   downstream_ = 0;
 
-  // TODO do something to SpdySession? RST_STREAM?
-
   client_handler_->pool_downstream_connection(this);
+}
+
+int SpdyDownstreamConnection::submit_rst_stream(Downstream *downstream)
+{
+  int rv = -1;
+  if(spdy_->get_state() == SpdySession::CONNECTED &&
+     downstream->get_downstream_stream_id() != -1) {
+    switch(downstream->get_response_state()) {
+    case Downstream::MSG_RESET:
+    case Downstream::MSG_COMPLETE:
+      break;
+    default:
+      if(LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:"
+                          << downstream;
+      }
+      rv = spdy_->submit_rst_stream(this,
+                                    downstream->get_downstream_stream_id(),
+                                    SPDYLAY_CANCEL);
+    }
+  }
+  return rv;
 }
 
 namespace {
