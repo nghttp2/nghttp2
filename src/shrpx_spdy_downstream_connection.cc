@@ -195,7 +195,11 @@ int SpdyDownstreamConnection::push_request_headers()
   std::string via_value;
   std::string xff_value;
   std::string scheme, path, query;
-  if(downstream_->get_request_method() != "CONNECT") {
+  if(downstream_->get_request_method() == "CONNECT") {
+    // No :scheme header field for CONNECT method.
+    nv[hdidx++] = ":path";
+    nv[hdidx++] = downstream_->get_request_path().c_str();
+  } else {
     http_parser_url u;
     const char *url = downstream_->get_request_path().c_str();
     memset(&u, 0, sizeof(u));
@@ -206,29 +210,33 @@ int SpdyDownstreamConnection::push_request_headers()
       copy_url_component(scheme, &u, UF_SCHEMA, url);
       copy_url_component(path, &u, UF_PATH, url);
       copy_url_component(query, &u, UF_QUERY, url);
+      if(path.empty()) {
+        path = "/";
+      }
       if(!query.empty()) {
         path += "?";
         path += query;
       }
     }
+    nv[hdidx++] = ":scheme";
+    if(scheme.empty()) {
+      // The default scheme is http. For SPDY upstream, the path must
+      // be absolute URI, so scheme should be provided.
+      nv[hdidx++] = "http";
+    } else {
+      nv[hdidx++] = scheme.c_str();
+    }
+    nv[hdidx++] = ":path";
+    if(path.empty()) {
+      nv[hdidx++] = downstream_->get_request_path().c_str();
+    } else {
+      nv[hdidx++] = path.c_str();
+    }
   }
 
   nv[hdidx++] = ":method";
   nv[hdidx++] = downstream_->get_request_method().c_str();
-  nv[hdidx++] = ":scheme";
-  if(scheme.empty()) {
-    // Currently, the user of this downstream connecion is HTTP
-    // only.
-    nv[hdidx++] = "http";
-  } else {
-    nv[hdidx++] = scheme.c_str();
-  }
-  nv[hdidx++] = ":path";
-  if(downstream_->get_request_method() == "CONNECT" || path.empty()) {
-    nv[hdidx++] = downstream_->get_request_path().c_str();
-  } else {
-    nv[hdidx++] = path.c_str();
-  }
+
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
   bool chunked_encoding = false;
