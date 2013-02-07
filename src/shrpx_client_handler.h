@@ -71,8 +71,8 @@ private:
   std::string ipaddr_;
   bool should_close_after_write_;
   std::set<DownstreamConnection*> dconn_pool_;
-  // Shared SPDY session for each thread. NULL if not client mode. Not
-  // deleted by this object.
+  // Shared SPDY session for each thread. NULL if backend is not
+  // SPDY. Not deleted by this object.
   SpdySession *spdy_;
 };
 

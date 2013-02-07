@@ -58,10 +58,10 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
     }
     event_base *evbase = bufferevent_get_base(bev);
     ClientHandler *client_handler;
-    client_handler = ssl::accept_ssl_connection(evbase, ssl_ctx_,
-                                                wev.client_fd,
-                                                &wev.client_addr.sa,
-                                                wev.client_addrlen);
+    client_handler = ssl::accept_connection(evbase, ssl_ctx_,
+                                            wev.client_fd,
+                                            &wev.client_addr.sa,
+                                            wev.client_addrlen);
     if(client_handler) {
       client_handler->set_spdy_session(spdy_);
       if(LOG_ENABLED(INFO)) {

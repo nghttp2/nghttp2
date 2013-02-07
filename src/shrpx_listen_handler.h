@@ -38,7 +38,8 @@ namespace shrpx {
 
 struct WorkerInfo {
   int sv[2];
-  SSL_CTX *ssl_ctx;
+  SSL_CTX *sv_ssl_ctx;
+  SSL_CTX *cl_ssl_ctx;
   bufferevent *bev;
 };
 
@@ -46,7 +47,7 @@ class SpdySession;
 
 class ListenHandler {
 public:
-  ListenHandler(event_base *evbase, SSL_CTX *ssl_ctx);
+  ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx);
   ~ListenHandler();
   int accept_connection(evutil_socket_t fd, sockaddr *addr, int addrlen);
   void create_worker_thread(size_t num);
@@ -54,14 +55,15 @@ public:
   int create_spdy_session();
 private:
   event_base *evbase_;
-  // In client-mode, this is for backend SPDY connection. Otherwise,
-  // for frontend.
-  SSL_CTX *ssl_ctx_;
+  // The frontend server SSL_CTX
+  SSL_CTX *sv_ssl_ctx_;
+  // The backend server SSL_CTX
+  SSL_CTX *cl_ssl_ctx_;
   unsigned int worker_round_robin_cnt_;
   WorkerInfo *workers_;
   size_t num_worker_;
-  // Shared SPDY session. NULL if not client mode or
-  // multi-threaded. In multi-threaded case, see shrpx_worker.cc.
+  // Shared backend SPDY session. NULL if multi-threaded. In
+  // multi-threaded case, see shrpx_worker.cc.
   SpdySession *spdy_;
 };
 

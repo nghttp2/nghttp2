@@ -242,11 +242,12 @@ int event_loop()
 {
   event_base *evbase = event_base_new();
 
-  SSL_CTX *ssl_ctx = get_config()->client_mode ?
-    ssl::create_ssl_client_context() : get_config()->default_ssl_ctx;
+  SSL_CTX *sv_ssl_ctx = get_config()->default_ssl_ctx;
+  SSL_CTX *cl_ssl_ctx = get_config()->client_mode ?
+    ssl::create_ssl_client_context() : 0;
 
-  ListenHandler *listener_handler = new ListenHandler(evbase, ssl_ctx);
-
+  ListenHandler *listener_handler = new ListenHandler(evbase, sv_ssl_ctx,
+                                                      cl_ssl_ctx);
   if(get_config()->daemon) {
     if(daemon(0, 0) == -1) {
       LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
@@ -269,7 +270,7 @@ int event_loop()
 
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
-  } else if(get_config()->client_mode) {
+  } else if(cl_ssl_ctx) {
     listener_handler->create_spdy_session();
   }
 

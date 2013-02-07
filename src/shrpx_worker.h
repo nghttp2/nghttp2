@@ -42,7 +42,8 @@ public:
 private:
   // Channel to the main thread
   int fd_;
-  SSL_CTX *ssl_ctx_;
+  SSL_CTX *sv_ssl_ctx_;
+  SSL_CTX *cl_ssl_ctx_;
 };
 
 void* start_threaded_worker(void *arg);

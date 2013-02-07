@@ -272,7 +272,7 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
       CLOG(INFO, this) << "Downstream connection pool is empty."
                        << " Create new one";
     }
-    if(get_config()->client_mode) {
+    if(spdy_) {
       return new SpdyDownstreamConnection(this);
     } else {
       return new HttpDownstreamConnection(this);

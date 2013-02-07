@@ -39,7 +39,8 @@ namespace shrpx {
 
 Worker::Worker(WorkerInfo *info)
   : fd_(info->sv[1]),
-    ssl_ctx_(info->ssl_ctx)
+    sv_ssl_ctx_(info->sv_ssl_ctx),
+    cl_ssl_ctx_(info->cl_ssl_ctx)
 {}
 
 Worker::~Worker()
@@ -74,13 +75,13 @@ void Worker::run()
   bufferevent *bev = bufferevent_socket_new(evbase, fd_,
                                             BEV_OPT_DEFER_CALLBACKS);
   SpdySession *spdy = 0;
-  if(get_config()->client_mode) {
-    spdy = new SpdySession(evbase, ssl_ctx_);
+  if(cl_ssl_ctx_) {
+    spdy = new SpdySession(evbase, cl_ssl_ctx_);
     if(spdy->init_notification() == -1) {
       DIE();
     }
   }
-  ThreadEventReceiver *receiver = new ThreadEventReceiver(ssl_ctx_, spdy);
+  ThreadEventReceiver *receiver = new ThreadEventReceiver(sv_ssl_ctx_, spdy);
   bufferevent_enable(bev, EV_READ);
   bufferevent_setcb(bev, readcb, 0, eventcb, receiver);
 
