@@ -96,13 +96,20 @@ int SpdySession::disconnect()
 
   // Delete all client handler associated to Downstream. When deleting
   // SpdyDownstreamConnection, it calls this object's
-  // remove_downstream_connection(). So first dump them in vector and
-  // iterate and delete them.
+  // remove_downstream_connection(). The multiple
+  // SpdyDownstreamConnection objects belong to the same ClientHandler
+  // object. So first dump ClientHandler objects and delete them once
+  // and for all.
   std::vector<SpdyDownstreamConnection*> vec(dconns_.begin(), dconns_.end());
+  std::set<ClientHandler*> handlers;
   for(size_t i = 0; i < vec.size(); ++i) {
-    remove_downstream_connection(vec[i]);
-    delete vec[i]->get_client_handler();
+    handlers.insert(vec[i]->get_client_handler());
   }
+  for(std::set<ClientHandler*>::iterator i = handlers.begin(),
+        eoi = handlers.end(); i != eoi; ++i) {
+    delete *i;
+  }
+
   dconns_.clear();
   for(std::set<StreamData*>::iterator i = streams_.begin(),
         eoi = streams_.end(); i != eoi; ++i) {

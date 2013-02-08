@@ -333,8 +333,7 @@ int HttpsUpstream::on_write()
   int rv = 0;
   Downstream *downstream = get_downstream();
   if(downstream) {
-    downstream->resume_read(SHRPX_NO_BUFFER);
-    rv = downstream->on_upstream_write();
+    rv = downstream->resume_read(SHRPX_NO_BUFFER);
   }
   return rv;
 }
@@ -354,7 +353,7 @@ void HttpsUpstream::pause_read(IOCtrlReason reason)
   ioctrl_.pause_read(reason);
 }
 
-int HttpsUpstream::resume_read(IOCtrlReason reason)
+int HttpsUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 {
   if(ioctrl_.resume_read(reason)) {
     // Process remaining data in input buffer here because these bytes
@@ -400,7 +399,7 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
         } else {
           upstream->delete_downstream();
           // Process next HTTP request
-          upstream->resume_read(SHRPX_MSG_BLOCK);
+          upstream->resume_read(SHRPX_MSG_BLOCK, 0);
         }
       }
     } else {
@@ -426,7 +425,7 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         upstream->delete_downstream();
         // Process next HTTP request
-        upstream->resume_read(SHRPX_MSG_BLOCK);
+        upstream->resume_read(SHRPX_MSG_BLOCK, 0);
       }
     }
   }
@@ -443,7 +442,7 @@ void https_downstream_writecb(bufferevent *bev, void *ptr)
   Downstream *downstream = dconn->get_downstream();
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
-  upstream->resume_read(SHRPX_NO_BUFFER);
+  upstream->resume_read(SHRPX_NO_BUFFER, downstream);
 }
 } // namespace
 
@@ -494,7 +493,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       upstream->delete_downstream();
-      upstream->resume_read(SHRPX_MSG_BLOCK);
+      upstream->resume_read(SHRPX_MSG_BLOCK, 0);
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(LOG_ENABLED(INFO)) {
@@ -518,7 +517,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       upstream->delete_downstream();
-      upstream->resume_read(SHRPX_MSG_BLOCK);
+      upstream->resume_read(SHRPX_MSG_BLOCK, 0);
     }
   }
 }

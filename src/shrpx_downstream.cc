@@ -95,12 +95,12 @@ void Downstream::pause_read(IOCtrlReason reason)
   }
 }
 
-bool Downstream::resume_read(IOCtrlReason reason)
+int Downstream::resume_read(IOCtrlReason reason)
 {
   if(dconn_) {
     return dconn_->resume_read(reason);
   } else {
-    return false;
+    return 0;
   }
 }
 
@@ -429,7 +429,9 @@ void body_buf_cb(evbuffer *body, size_t oldlen, size_t newlen, void *arg)
 {
   Downstream *downstream = reinterpret_cast<Downstream*>(arg);
   if(newlen == 0) {
-    downstream->resume_read(SHRPX_NO_BUFFER);
+    if(downstream->resume_read(SHRPX_NO_BUFFER) == -1) {
+      DLOG(WARNING, downstream) << "Sending WINDOW_UPDATE failed";
+    }
   }
 }
 } // namespace
@@ -485,15 +487,6 @@ void Downstream::set_downstream_stream_id(int32_t stream_id)
 int32_t Downstream::get_downstream_stream_id() const
 {
   return downstream_stream_id_;
-}
-
-int Downstream::on_upstream_write()
-{
-  if(dconn_) {
-    return dconn_->on_upstream_write();
-  } else {
-    return 0;
-  }
 }
 
 } // namespace shrpx

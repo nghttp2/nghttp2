@@ -177,7 +177,11 @@ void on_ctrl_recv_callback
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }
-    if(get_config()->spdy_proxy && scheme && path[0] == '/') {
+    // SpdyDownstreamConnection examines request path to find
+    // scheme. We construct abs URI for spdy_bridge mode as well as
+    // spdy_proxy mode.
+    if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
+       scheme && path[0] == '/') {
       std::string reqpath = scheme;
       reqpath += "://";
       reqpath += host;
@@ -485,12 +489,7 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
   Downstream *downstream = dconn->get_downstream();
   SpdyUpstream *upstream;
   upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
-  if(upstream->get_flow_control()) {
-    if(downstream->get_recv_window_size() >=
-       upstream->get_initial_window_size()/2) {
-      upstream->window_update(downstream);
-    }
-  }
+  upstream->resume_read(SHRPX_NO_BUFFER, downstream);
 }
 } // namespace
 
@@ -858,8 +857,13 @@ int32_t SpdyUpstream::get_initial_window_size() const
 void SpdyUpstream::pause_read(IOCtrlReason reason)
 {}
 
-int SpdyUpstream::resume_read(IOCtrlReason reason)
+int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 {
+  if(get_flow_control()) {
+    if(downstream->get_recv_window_size() >= get_initial_window_size()/2) {
+      window_update(downstream);
+    }
+  }
   return 0;
 }
 

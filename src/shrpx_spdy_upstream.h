@@ -59,7 +59,7 @@ public:
   int error_reply(Downstream *downstream, int status_code);
 
   virtual void pause_read(IOCtrlReason reason);
-  virtual int resume_read(IOCtrlReason reason);
+  virtual int resume_read(IOCtrlReason reason, Downstream *downstream);
 
   virtual int on_downstream_header_complete(Downstream *downstream);
   virtual int on_downstream_body(Downstream *downstream,

@@ -49,14 +49,13 @@ public:
   virtual int end_upload_data();
 
   virtual void pause_read(IOCtrlReason reason);
-  virtual bool resume_read(IOCtrlReason reason);
+  virtual int resume_read(IOCtrlReason reason);
   virtual void force_resume_read();
 
   virtual bool get_output_buffer_full();
 
   virtual int on_read();
   virtual int on_write();
-  virtual int on_upstream_write();
 
   bufferevent* get_bev();
 private:

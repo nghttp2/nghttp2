@@ -56,6 +56,9 @@ SpdyDownstreamConnection::SpdyDownstreamConnection
 
 SpdyDownstreamConnection::~SpdyDownstreamConnection()
 {
+  if(LOG_ENABLED(INFO)) {
+    DCLOG(INFO, this) << "Deleting";
+  }
   if(request_body_buf_) {
     evbuffer_free(request_body_buf_);
   }
@@ -69,6 +72,9 @@ SpdyDownstreamConnection::~SpdyDownstreamConnection()
   // asynchronously.
   if(downstream_) {
     downstream_->set_downstream_connection(0);
+  }
+  if(LOG_ENABLED(INFO)) {
+    DCLOG(INFO, this) << "Deleted";
   }
 }
 
@@ -176,7 +182,10 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
         *eof = 1;
         break;
       } else {
-        if(downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER) == -1) {
+        // This is important because it will handle flow control
+        // stuff.
+        if(downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
+                                                   downstream) == -1) {
           // In this case, downstream may be deleted.
           return SPDYLAY_ERR_DEFERRED;
         }
@@ -386,17 +395,7 @@ int SpdyDownstreamConnection::end_upload_data()
   return 0;
 }
 
-int SpdyDownstreamConnection::on_read()
-{
-  return 0;
-}
-
-int SpdyDownstreamConnection::on_write()
-{
-  return 0;
-}
-
-int SpdyDownstreamConnection::on_upstream_write()
+int SpdyDownstreamConnection::resume_read(IOCtrlReason reason)
 {
   int rv;
   if(spdy_->get_state() == SpdySession::CONNECTED &&
@@ -410,6 +409,16 @@ int SpdyDownstreamConnection::on_upstream_write()
     spdy_->notify();
     recv_window_size_ = 0;
   }
+  return 0;
+}
+
+int SpdyDownstreamConnection::on_read()
+{
+  return 0;
+}
+
+int SpdyDownstreamConnection::on_write()
+{
   return 0;
 }
 

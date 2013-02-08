@@ -53,7 +53,7 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream) = 0;
 
   virtual void pause_read(IOCtrlReason reason) = 0;
-  virtual int resume_read(IOCtrlReason reason) = 0;
+  virtual int resume_read(IOCtrlReason reason, Downstream *downstream) = 0;
 };
 
 } // namespace shrpx

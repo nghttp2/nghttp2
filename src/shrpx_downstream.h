@@ -52,7 +52,7 @@ public:
   int32_t get_stream_id() const;
   void set_priority(int pri);
   void pause_read(IOCtrlReason reason);
-  bool resume_read(IOCtrlReason reason);
+  int resume_read(IOCtrlReason reason);
   void force_resume_read();
   // Set stream ID for downstream SPDY connection.
   void set_downstream_stream_id(int32_t stream_id);
@@ -132,7 +132,6 @@ public:
   // Call this method when there is incoming data in downstream
   // connection.
   int on_read();
-  int on_upstream_write();
 
   static const size_t OUTPUT_UPPER_THRES = 64*1024;
 private:

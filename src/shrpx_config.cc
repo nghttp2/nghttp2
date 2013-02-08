@@ -57,6 +57,7 @@ SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS[] = "spdy-max-concurrent-streams";
 const char SHRPX_OPT_LOG_LEVEL[] = "log-level";
 const char SHRPX_OPT_DAEMON[] = "daemon";
 const char SHRPX_OPT_SPDY_PROXY[] = "spdy-proxy";
+const char SHRPX_OPT_SPDY_BRIDGE[] = "spdy-bridge";
 const char SHRPX_OPT_CLIENT_PROXY[] = "client-proxy";
 const char SHRPX_OPT_ADD_X_FORWARDED_FOR[] = "add-x-forwarded-for";
 const char SHRPX_OPT_NO_VIA[] = "no-via";
@@ -208,6 +209,8 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->daemon = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_SPDY_PROXY)) {
     mod_config()->spdy_proxy = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_SPDY_BRIDGE)) {
+    mod_config()->spdy_bridge = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_CLIENT_PROXY)) {
     mod_config()->client_proxy = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_ADD_X_FORWARDED_FOR)) {

@@ -330,9 +330,9 @@ void HttpDownstreamConnection::pause_read(IOCtrlReason reason)
   ioctrl_.pause_read(reason);
 }
 
-bool HttpDownstreamConnection::resume_read(IOCtrlReason reason)
+int HttpDownstreamConnection::resume_read(IOCtrlReason reason)
 {
-  return ioctrl_.resume_read(reason);
+  return ioctrl_.resume_read(reason) ? 0 : -1;
 }
 
 void HttpDownstreamConnection::force_resume_read()
@@ -459,11 +459,6 @@ int HttpDownstreamConnection::on_read()
 }
 
 int HttpDownstreamConnection::on_write()
-{
-  return 0;
-}
-
-int HttpDownstreamConnection::on_upstream_write()
 {
   return 0;
 }

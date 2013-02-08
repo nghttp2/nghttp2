@@ -243,7 +243,8 @@ int event_loop()
   event_base *evbase = event_base_new();
 
   SSL_CTX *sv_ssl_ctx = get_config()->default_ssl_ctx;
-  SSL_CTX *cl_ssl_ctx = get_config()->client_mode ?
+  SSL_CTX *cl_ssl_ctx = (get_config()->client_mode ||
+                         get_config()->spdy_bridge)?
     ssl::create_ssl_client_context() : 0;
 
   ListenHandler *listener_handler = new ListenHandler(evbase, sv_ssl_ctx,
@@ -372,6 +373,7 @@ void fill_default_config()
   mod_config()->backlog = 256;
   mod_config()->ciphers = 0;
   mod_config()->spdy_proxy = false;
+  mod_config()->spdy_bridge = false;
   mod_config()->client_proxy = false;
   mod_config()->client = false;
   mod_config()->client_mode = false;
@@ -599,6 +601,7 @@ int main(int argc, char **argv)
       {"private-key-passwd-file", required_argument, &flag, 22},
       {"no-via", no_argument, &flag, 23},
       {"subcert", required_argument, &flag, 24},
+      {"spdy-bridge", no_argument, &flag, 25},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -749,6 +752,10 @@ int main(int argc, char **argv)
         // --subcert
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SUBCERT, optarg));
         break;
+      case 25:
+        // --spdy-bridge
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_BRIDGE, "yes"));
+        break;
       default:
         break;
       }
@@ -793,11 +800,10 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
-  int mode = get_config()->spdy_proxy |
-    (get_config()->client_proxy << 1) | (get_config()->client << 2);
-  if(mode != 0 && mode != 1 && mode != 2 && mode != 4) {
-    LOG(FATAL) << "--spdy-proxy, --client-proxy and --client cannot be used "
-               << "at the same time.";
+  if(get_config()->spdy_proxy + get_config()->spdy_bridge +
+     get_config()->client_proxy + get_config()->client > 1) {
+    LOG(FATAL) << "--spdy-proxy, --spdy-bridge, --client-proxy and --client "
+               << "cannot be used at the same time.";
     exit(EXIT_FAILURE);
   }
 

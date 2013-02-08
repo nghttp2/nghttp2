@@ -55,6 +55,7 @@ extern const char SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS[];
 extern const char SHRPX_OPT_LOG_LEVEL[];
 extern const char SHRPX_OPT_DAEMON[];
 extern const char SHRPX_OPT_SPDY_PROXY[];
+extern const char SHRPX_OPT_SPDY_BRIDGE[];
 extern const char SHRPX_OPT_CLIENT_PROXY[];
 extern const char SHRPX_OPT_ADD_X_FORWARDED_FOR[];
 extern const char SHRPX_OPT_NO_VIA[];
@@ -112,6 +113,7 @@ struct Config {
   size_t num_worker;
   size_t spdy_max_concurrent_streams;
   bool spdy_proxy;
+  bool spdy_bridge;
   bool client_proxy;
   bool add_x_forwarded_for;
   bool no_via;
