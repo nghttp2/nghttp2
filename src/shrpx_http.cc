@@ -153,6 +153,14 @@ std::string colorizeHeaders(const char *hdrs)
   return nhdrs;
 }
 
+void copy_url_component(std::string& dest, http_parser_url *u, int field,
+                        const char* url)
+{
+  if(u->field_set & (1 << field)) {
+    dest.assign(url+u->field_data[field].off, u->field_data[field].len);
+  }
+}
+
 } // namespace http
 
 } // namespace shrpx

@@ -27,6 +27,8 @@
 
 #include <string>
 
+#include "http-parser/http_parser.h"
+
 namespace shrpx {
 
 namespace http {
@@ -41,6 +43,12 @@ void capitalize(std::string& s, size_t offset);
 
 // Adds ANSI color codes to HTTP headers |hdrs|.
 std::string colorizeHeaders(const char *hdrs);
+
+// Copies the |field| component value from |u| and |url| to the
+// |dest|. If |u| does not have |field|, then this function does
+// nothing.
+void copy_url_component(std::string& dest, http_parser_url *u, int field,
+                        const char* url);
 
 } // namespace http
 

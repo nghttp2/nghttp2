@@ -73,32 +73,28 @@ bool is_ipv6_numeric_addr(const char *host)
 } // namespace
 
 namespace {
-int cache_downstream_host_address()
+int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
+                     const char *hostname, uint16_t port, int family)
 {
   addrinfo hints;
   int rv;
   char service[10];
 
-  snprintf(service, sizeof(service), "%u", get_config()->downstream_port);
+  snprintf(service, sizeof(service), "%u", port);
   memset(&hints, 0, sizeof(addrinfo));
 
-  if(get_config()->backend_ipv4) {
-    hints.ai_family = AF_INET;
-  } else if(get_config()->backend_ipv6) {
-    hints.ai_family = AF_INET6;
-  } else {
-    hints.ai_family = AF_UNSPEC;
-  }
+  hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
   addrinfo *res;
 
-  rv = getaddrinfo(get_config()->downstream_host, service, &hints, &res);
+  rv = getaddrinfo(hostname, service, &hints, &res);
   if(rv != 0) {
-    LOG(FATAL) << "Unable to get downstream address: " << gai_strerror(rv);
-    DIE();
+    LOG(FATAL) << "Unable to resolve address for " << hostname
+               << ": " << gai_strerror(rv);
+    return -1;
   }
 
   char host[NI_MAXHOST];
@@ -106,17 +102,16 @@ int cache_downstream_host_address()
                   0, 0, NI_NUMERICHOST);
   if(rv == 0) {
     if(LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Using first returned address for downstream "
-                << host
-                << ", port "
-                << get_config()->downstream_port;
+      LOG(INFO) << "Address resolution for " << hostname << " succeeded: "
+                << host;
     }
   } else {
-    LOG(FATAL) << gai_strerror(rv);
-    DIE();
+    LOG(FATAL) << "Address resolution for " << hostname << " failed: "
+               << gai_strerror(rv);
+    return -1;
   }
-  memcpy(&mod_config()->downstream_addr, res->ai_addr, res->ai_addrlen);
-  mod_config()->downstream_addrlen = res->ai_addrlen;
+  memcpy(addr, res->ai_addr, res->ai_addrlen);
+  *addrlen = res->ai_addrlen;
   freeaddrinfo(res);
   return 0;
 }
@@ -386,6 +381,10 @@ void fill_default_config()
   mod_config()->backend_ipv6 = false;
   mod_config()->tty = isatty(fileno(stderr));
   mod_config()->cert_tree = 0;
+  mod_config()->downstream_http_proxy_userinfo = 0;
+  mod_config()->downstream_http_proxy_host = 0;
+  mod_config()->downstream_http_proxy_port = 0;
+  mod_config()->downstream_http_proxy_addrlen = 0;
 }
 } // namespace
 
@@ -470,6 +469,20 @@ void print_help(std::ostream& out)
       << "                       Specify keep-alive timeout for backend\n"
       << "                       connection. Default: "
       << get_config()->downstream_idle_read_timeout.tv_sec << "\n"
+      << "    --backend-http-proxy-uri=<URI>\n"
+      << "                       Specify proxy URI in the form\n"
+      << "                       http://[USER:PASS]PROXY:PORT. USER and PASS\n"
+      << "                       are optional and if they exist they must be\n"
+      << "                       properly percent-encoded. This proxy is used\n"
+      << "                       when the backend connection is SPDY. First,\n"
+      << "                       make a CONNECT request to the proxy and\n"
+      << "                       it connects to the backend on behalf of\n"
+      << "                       shrpx. This forms tunnel. After that, shrpx\n"
+      << "                       performs SSL/TLS handshake with the\n"
+      << "                       downstream through the tunnel. The timeouts\n"
+      << "                       when connecting and making CONNECT request\n"
+      << "                       can be specified by --backend-read-timeout\n"
+      << "                       and --backend-write-timeout options.\n"
       << "\n"
       << "  SSL/TLS:\n"
       << "    --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
@@ -602,6 +615,7 @@ int main(int argc, char **argv)
       {"no-via", no_argument, &flag, 23},
       {"subcert", required_argument, &flag, 24},
       {"spdy-bridge", no_argument, &flag, 25},
+      {"backend-http-proxy-uri", required_argument, &flag, 26},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -756,6 +770,11 @@ int main(int argc, char **argv)
         // --spdy-bridge
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_BRIDGE, "yes"));
         break;
+      case 26:
+        // --backend-http-proxy-uri
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_HTTP_PROXY_URI,
+                                         optarg));
+        break;
       default:
         break;
       }
@@ -822,22 +841,37 @@ int main(int argc, char **argv)
   char hostport[NI_MAXHOST+16];
   bool downstream_ipv6_addr =
     is_ipv6_numeric_addr(get_config()->downstream_host);
-  if(get_config()->downstream_port == 80) {
-    snprintf(hostport, sizeof(hostport), "%s%s%s",
-             downstream_ipv6_addr ? "[" : "",
-             get_config()->downstream_host,
-             downstream_ipv6_addr ? "]" : "");
-  } else {
-    snprintf(hostport, sizeof(hostport), "%s%s%s:%u",
-             downstream_ipv6_addr ? "[" : "",
-             get_config()->downstream_host,
-             downstream_ipv6_addr ? "]" : "",
-             get_config()->downstream_port);
-  }
+  snprintf(hostport, sizeof(hostport), "%s%s%s:%u",
+           downstream_ipv6_addr ? "[" : "",
+           get_config()->downstream_host,
+           downstream_ipv6_addr ? "]" : "",
+           get_config()->downstream_port);
   set_config_str(&mod_config()->downstream_hostport, hostport);
 
-  if(cache_downstream_host_address() == -1) {
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Resolving backend address";
+  }
+  if(resolve_hostname(&mod_config()->downstream_addr,
+                      &mod_config()->downstream_addrlen,
+                      get_config()->downstream_host,
+                      get_config()->downstream_port,
+                      get_config()->backend_ipv4 ? AF_INET :
+                      (get_config()->backend_ipv6 ?
+                       AF_INET6 : AF_UNSPEC)) == -1) {
     exit(EXIT_FAILURE);
+  }
+
+  if(get_config()->downstream_http_proxy_host) {
+    if(LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Resolving backend http proxy address";
+    }
+    if(resolve_hostname(&mod_config()->downstream_http_proxy_addr,
+                        &mod_config()->downstream_http_proxy_addrlen,
+                        get_config()->downstream_http_proxy_host,
+                        get_config()->downstream_http_proxy_port,
+                        AF_UNSPEC) == -1) {
+      exit(EXIT_FAILURE);
+    }
   }
 
   if(get_config()->syslog) {

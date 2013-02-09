@@ -201,16 +201,6 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
 }
 } // namespace
 
-namespace {
-void copy_url_component(std::string& dest, http_parser_url *u, int field,
-                        const char* url)
-{
-  if(u->field_set & (1 << field)) {
-    dest.assign(url+u->field_data[field].off, u->field_data[field].len);
-  }
-}
-} // namespace
-
 int SpdyDownstreamConnection::push_request_headers()
 {
   int rv;
@@ -243,9 +233,9 @@ int SpdyDownstreamConnection::push_request_headers()
                                downstream_->get_request_path().size(),
                                0, &u);
     if(rv == 0) {
-      copy_url_component(scheme, &u, UF_SCHEMA, url);
-      copy_url_component(path, &u, UF_PATH, url);
-      copy_url_component(query, &u, UF_QUERY, url);
+      http::copy_url_component(scheme, &u, UF_SCHEMA, url);
+      http::copy_url_component(path, &u, UF_PATH, url);
+      http::copy_url_component(query, &u, UF_QUERY, url);
       if(path.empty()) {
         path = "/";
       }

@@ -38,6 +38,7 @@
 
 #include "shrpx_log.h"
 #include "shrpx_ssl.h"
+#include "shrpx_http.h"
 #include "util.h"
 
 using namespace spdylay;
@@ -83,6 +84,7 @@ const char SHRPX_OPT_INSECURE[] = "insecure";
 const char SHRPX_OPT_CACERT[] = "cacert";
 const char SHRPX_OPT_BACKEND_IPV4[] = "backend-ipv4";
 const char SHRPX_OPT_BACKEND_IPV6[] = "backend-ipv6";
+const char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[] = "backend-http-proxy-uri";
 
 namespace {
 Config *config = 0;
@@ -317,6 +319,36 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->backend_ipv4 = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_IPV6)) {
     mod_config()->backend_ipv6 = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_BACKEND_HTTP_PROXY_URI)) {
+    // parse URI and get hostname, port and optionally userinfo.
+    http_parser_url u;
+    memset(&u, 0, sizeof(u));
+    int rv = http_parser_parse_url(optarg, strlen(optarg), 0, &u);
+    if(rv == 0) {
+      std::string val;
+      if(u.field_set & UF_USERINFO) {
+        http::copy_url_component(val, &u, UF_USERINFO, optarg);
+        val = util::percentDecode(val.begin(), val.end());
+        set_config_str(&mod_config()->downstream_http_proxy_userinfo,
+                       val.c_str());
+      }
+      if(u.field_set & UF_HOST) {
+        http::copy_url_component(val, &u, UF_HOST, optarg);
+        set_config_str(&mod_config()->downstream_http_proxy_host, val.c_str());
+      } else {
+        LOG(ERROR) << "backend-http-proxy-uri does not contain hostname";
+        return -1;
+      }
+      if(u.field_set & UF_PORT) {
+        mod_config()->downstream_http_proxy_port = u.port;
+      } else {
+        LOG(ERROR) << "backend-http-proxy-uri does not contain port";
+        return -1;
+      }
+    } else {
+      LOG(ERROR) << "Could not parse backend-http-proxy-uri";
+        return -1;
+    }
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {

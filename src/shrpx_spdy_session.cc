@@ -40,6 +40,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
 #include "util.h"
+#include "base64.h"
 
 using namespace spdylay;
 
@@ -49,13 +50,15 @@ SpdySession::SpdySession(event_base *evbase, SSL_CTX *ssl_ctx)
   : evbase_(evbase),
     ssl_ctx_(ssl_ctx),
     ssl_(0),
+    fd_(-1),
     session_(0),
     bev_(0),
     state_(DISCONNECTED),
     notified_(false),
     wrbev_(0),
     rdbev_(0),
-    flow_control_(false)
+    flow_control_(false),
+    proxy_htp_(0)
 {}
 
 SpdySession::~SpdySession()
@@ -71,9 +74,7 @@ int SpdySession::disconnect()
   spdylay_session_del(session_);
   session_ = 0;
 
-  int fd = -1;
   if(ssl_) {
-    fd = SSL_get_fd(ssl_);
     SSL_shutdown(ssl_);
   }
   if(bev_) {
@@ -86,9 +87,15 @@ int SpdySession::disconnect()
   }
   ssl_ = 0;
 
-  if(fd != -1) {
-    shutdown(fd, SHUT_WR);
-    close(fd);
+  if(fd_ != -1) {
+    shutdown(fd_, SHUT_WR);
+    close(fd_);
+    fd_ = -1;
+  }
+
+  if(proxy_htp_) {
+    delete proxy_htp_;
+    proxy_htp_ = 0;
   }
 
   notified_ = false;
@@ -227,7 +234,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "Connection established";
     }
-    spdy->connected();
+    spdy->set_state(SpdySession::CONNECTED);
     if((!get_config()->insecure && spdy->check_cert() != 0) ||
        spdy->on_connect() != 0) {
       spdy->disconnect();
@@ -258,6 +265,75 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 }
 } // namespace
 
+namespace {
+void proxy_readcb(bufferevent *bev, void *ptr)
+{
+  SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
+  if(spdy->on_read_proxy() == 0) {
+    switch(spdy->get_state()) {
+    case SpdySession::PROXY_CONNECTED:
+      // The current bufferevent is no longer necessary, so delete it
+      // here.
+      spdy->free_bev();
+      // Initiate SSL/TLS handshake through established tunnel.
+      spdy->initiate_connection();
+      break;
+    case SpdySession::PROXY_FAILED:
+      spdy->disconnect();
+      break;
+    }
+  } else {
+    spdy->disconnect();
+  }
+}
+} // namespace
+
+namespace {
+void proxy_eventcb(bufferevent *bev, short events, void *ptr)
+{
+  SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
+  if(events & BEV_EVENT_CONNECTED) {
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, spdy) << "Connected to the proxy";
+    }
+    std::string req = "CONNECT ";
+    req += get_config()->downstream_hostport;
+    req += " HTTP/1.1\r\nHost: ";
+    req += get_config()->downstream_host;
+    req += "\r\n";
+    if(get_config()->downstream_http_proxy_userinfo) {
+      req += "Proxy-Authorization: Basic ";
+      size_t len = strlen(get_config()->downstream_http_proxy_userinfo);
+      req += base64::encode(get_config()->downstream_http_proxy_userinfo,
+                            get_config()->downstream_http_proxy_userinfo+len);
+      req += "\r\n";
+    }
+    req += "\r\n";
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, spdy) << "HTTP proxy request headers\n" << req;
+    }
+    if(bufferevent_write(bev, req.c_str(), req.size()) != 0) {
+      SSLOG(ERROR, spdy) << "bufferevent_write() failed";
+      spdy->disconnect();
+    }
+  } else if(events & BEV_EVENT_EOF) {
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, spdy) << "Proxy EOF";
+    }
+    spdy->disconnect();
+  } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
+    if(LOG_ENABLED(INFO)) {
+      if(events & BEV_EVENT_ERROR) {
+        SSLOG(INFO, spdy) << "Network error";
+      } else {
+        SSLOG(INFO, spdy) << "Timeout";
+      }
+    }
+    spdy->disconnect();
+  }
+}
+} // namespace
+
 int SpdySession::check_cert()
 {
   return ssl::check_cert(ssl_);
@@ -266,51 +342,138 @@ int SpdySession::check_cert()
 int SpdySession::initiate_connection()
 {
   int rv;
-  assert(state_ == DISCONNECTED);
-  if(LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Connecting to downstream server";
+  if(get_config()->downstream_http_proxy_host && state_ == DISCONNECTED) {
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Connecting to the proxy "
+                        << get_config()->downstream_http_proxy_host << ":"
+                        << get_config()->downstream_http_proxy_port;
+    }
+    bev_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_DEFER_CALLBACKS);
+    bufferevent_enable(bev_, EV_READ);
+    bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
+                             &get_config()->downstream_write_timeout);
+
+    // No need to set writecb because we write the request when
+    // connected at once.
+    bufferevent_setcb(bev_, proxy_readcb, 0, proxy_eventcb, this);
+    rv = bufferevent_socket_connect
+      (bev_,
+       const_cast<sockaddr*>(&get_config()->downstream_http_proxy_addr.sa),
+       get_config()->downstream_http_proxy_addrlen);
+    if(rv != 0) {
+      SSLOG(ERROR, this) << "Failed to connect to the proxy "
+                         << get_config()->downstream_http_proxy_host << ":"
+                         << get_config()->downstream_http_proxy_port;
+      bufferevent_free(bev_);
+      bev_ = 0;
+      return SHRPX_ERR_NETWORK;
+    }
+    proxy_htp_ = new http_parser();
+    http_parser_init(proxy_htp_, HTTP_RESPONSE);
+    proxy_htp_->data = this;
+
+    state_ = PROXY_CONNECTING;
+  } else if(state_ == DISCONNECTED || state_ == PROXY_CONNECTED) {
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Connecting to downstream server";
+    }
+
+    ssl_ = SSL_new(ssl_ctx_);
+    if(!ssl_) {
+      SSLOG(ERROR, this) << "SSL_new() failed: "
+                         << ERR_error_string(ERR_get_error(), NULL);
+      return -1;
+    }
+
+    if(!ssl::numeric_host(get_config()->downstream_host)) {
+      // TLS extensions: SNI. There is no documentation about the return
+      // code for this function (actually this is macro wrapping SSL_ctrl
+      // at the time of this writing).
+      SSL_set_tlsext_host_name(ssl_, get_config()->downstream_host);
+    }
+    // If state_ == PROXY_CONNECTED, we has connected to the proxy
+    // using fd_ and tunnel has been established.
+    bev_ = bufferevent_openssl_socket_new(evbase_, fd_, ssl_,
+                                          BUFFEREVENT_SSL_CONNECTING,
+                                          BEV_OPT_DEFER_CALLBACKS);
+    rv = bufferevent_socket_connect
+      (bev_,
+       // TODO maybe not thread-safe?
+       const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
+       get_config()->downstream_addrlen);
+    if(rv != 0) {
+      bufferevent_free(bev_);
+      bev_ = 0;
+      return SHRPX_ERR_NETWORK;
+    }
+
+    bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
+    bufferevent_enable(bev_, EV_READ);
+    bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
+    // No timeout for SPDY session
+
+    state_ = CONNECTING;
+  } else {
+    // Unreachable
+    DIE();
   }
-
-  ssl_ = SSL_new(ssl_ctx_);
-  if(!ssl_) {
-    SSLOG(ERROR, this) << "SSL_new() failed: "
-                       << ERR_error_string(ERR_get_error(), NULL);
-    return -1;
-  }
-
-  if(!ssl::numeric_host(get_config()->downstream_host)) {
-    // TLS extensions: SNI. There is no documentation about the return
-    // code for this function (actually this is macro wrapping SSL_ctrl
-    // at the time of this writing).
-    SSL_set_tlsext_host_name(ssl_, get_config()->downstream_host);
-  }
-
-  bev_ = bufferevent_openssl_socket_new(evbase_, -1, ssl_,
-                                        BUFFEREVENT_SSL_CONNECTING,
-                                        BEV_OPT_DEFER_CALLBACKS);
-  rv = bufferevent_socket_connect
-    (bev_,
-     // TODO maybe not thread-safe?
-     const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
-     get_config()->downstream_addrlen);
-  if(rv != 0) {
-    bufferevent_free(bev_);
-    bev_ = 0;
-    return SHRPX_ERR_NETWORK;
-  }
-
-  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
-  bufferevent_enable(bev_, EV_READ);
-  bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
-  // No timeout for SPDY session
-
-  state_ = CONNECTING;
   return 0;
 }
 
-void SpdySession::connected()
+void SpdySession::free_bev()
 {
-  state_ = CONNECTED;
+  bufferevent_free(bev_);
+  bev_ = 0;
+}
+
+namespace {
+int htp_hdrs_completecb(http_parser *htp)
+{
+  SpdySession *spdy;
+  spdy = reinterpret_cast<SpdySession*>(htp->data);
+  // We just check status code here
+  if(htp->status_code == 200) {
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, spdy) << "Tunneling success";
+    }
+    spdy->set_state(SpdySession::PROXY_CONNECTED);
+  } else {
+    SSLOG(WARNING, spdy) << "Tunneling failed";
+    spdy->set_state(SpdySession::PROXY_FAILED);
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+http_parser_settings htp_hooks = {
+  0, /*http_cb      on_message_begin;*/
+  0, /*http_data_cb on_url;*/
+  0, /*http_cb on_status_complete */
+  0, /*http_data_cb on_header_field;*/
+  0, /*http_data_cb on_header_value;*/
+  htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
+  0, /*http_data_cb on_body;*/
+  0  /*http_cb      on_message_complete;*/
+};
+} // namespace
+
+int SpdySession::on_read_proxy()
+{
+  evbuffer *input = bufferevent_get_input(bev_);
+  unsigned char *mem = evbuffer_pullup(input, -1);
+
+  size_t nread = http_parser_execute(proxy_htp_, &htp_hooks,
+                                     reinterpret_cast<const char*>(mem),
+                                     evbuffer_get_length(input));
+
+  evbuffer_drain(input, nread);
+  http_errno htperr = HTTP_PARSER_ERRNO(proxy_htp_);
+  if(htperr == HPE_OK) {
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
 void SpdySession::add_downstream_connection(SpdyDownstreamConnection *dconn)
@@ -926,6 +1089,11 @@ bufferevent* SpdySession::get_bev() const
 int SpdySession::get_state() const
 {
   return state_;
+}
+
+void SpdySession::set_state(int state)
+{
+  state_ = state;
 }
 
 } // namespace shrpx

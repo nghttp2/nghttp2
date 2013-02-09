@@ -79,6 +79,7 @@ extern const char SHRPX_OPT_INSECURE[];
 extern const char SHRPX_OPT_CACERT[];
 extern const char SHRPX_OPT_BACKEND_IPV4[];
 extern const char SHRPX_OPT_BACKEND_IPV6[];
+extern const char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -139,6 +140,16 @@ struct Config {
   bool backend_ipv6;
   // true if stderr refers to a terminal.
   bool tty;
+  // userinfo in http proxy URI, not percent-encoded form
+  char *downstream_http_proxy_userinfo;
+  // host in http proxy URI
+  char *downstream_http_proxy_host;
+  // port in http proxy URI
+  uint16_t downstream_http_proxy_port;
+  // binary form of http proxy host and port
+  sockaddr_union downstream_http_proxy_addr;
+  // actual size of downstream_http_proxy_addr
+  size_t downstream_http_proxy_addrlen;
 };
 
 const Config* get_config();
