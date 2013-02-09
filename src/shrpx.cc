@@ -236,11 +236,16 @@ namespace {
 int event_loop()
 {
   event_base *evbase = event_base_new();
+  SSL_CTX *sv_ssl_ctx, *cl_ssl_ctx;
 
-  SSL_CTX *sv_ssl_ctx = get_config()->default_ssl_ctx;
-  SSL_CTX *cl_ssl_ctx = (get_config()->client_mode ||
-                         get_config()->spdy_bridge)?
-    ssl::create_ssl_client_context() : 0;
+  if(get_config()->client_mode) {
+    sv_ssl_ctx = 0;
+    cl_ssl_ctx = ssl::create_ssl_client_context();
+  } else {
+    sv_ssl_ctx = get_config()->default_ssl_ctx;
+    cl_ssl_ctx = get_config()->spdy_bridge ?
+      ssl::create_ssl_client_context() : 0;
+  }
 
   ListenHandler *listener_handler = new ListenHandler(evbase, sv_ssl_ctx,
                                                       cl_ssl_ctx);
