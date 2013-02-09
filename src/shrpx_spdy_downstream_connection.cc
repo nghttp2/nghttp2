@@ -141,7 +141,8 @@ int SpdyDownstreamConnection::submit_rst_stream(Downstream *downstream)
     default:
       if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:"
-                          << downstream;
+                          << downstream << ", stream_id="
+                          << downstream->get_downstream_stream_id();
       }
       rv = spdy_->submit_rst_stream(this,
                                     downstream->get_downstream_stream_id(),
