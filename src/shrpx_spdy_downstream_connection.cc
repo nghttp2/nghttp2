@@ -213,10 +213,10 @@ int SpdyDownstreamConnection::push_request_headers()
     return 0;
   }
   size_t nheader = downstream_->get_request_headers().size();
-  // 14 means :method, :scheme, :path, :version and possible via,
-  // x-forwarded-for and x-forwarded-proto header fields. We rename
-  // host header field as :host.
-  const char **nv = new const char*[nheader * 2 + 14 + 1];
+  // 12 means :method, :scheme, :path, :version and possible via and
+  // x-forwarded-for header fields. We rename host header field as
+  // :host.
+  const char **nv = new const char*[nheader * 2 + 12 + 1];
   size_t hdidx = 0;
   std::string via_value;
   std::string xff_value;
@@ -310,12 +310,6 @@ int SpdyDownstreamConnection::push_request_headers()
   } else if(!xff_value.empty()) {
     nv[hdidx++] = "x-forwarded-for";
     nv[hdidx++] = xff_value.c_str();
-  }
-  if(downstream_->get_request_method() != "CONNECT") {
-    // Currently, HTTP connection is used as upstream, so we just
-    // specify it here.
-    nv[hdidx++] = "x-forwarded-proto";
-    nv[hdidx++] = "http";
   }
   if(!get_config()->no_via) {
     if(!via_value.empty()) {
