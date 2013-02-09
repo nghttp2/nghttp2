@@ -448,6 +448,18 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     delete downstream;
     return;
   }
+
+  if(downstream->get_response_state() == Downstream::MSG_RESET) {
+    // The downstream stream was reset (canceled). In this case,
+    // RST_STREAM to the upstream and delete downstream connection
+    // here. Deleting downstream will be taken place at
+    // on_stream_close_callback.
+    upstream->rst_stream(downstream, SPDYLAY_CANCEL);
+    downstream->set_downstream_connection(0);
+    delete dconn;
+    return;
+  }
+
   int rv = downstream->on_read();
   if(rv != 0) {
     if(LOG_ENABLED(INFO)) {
