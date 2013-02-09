@@ -399,7 +399,9 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
         } else {
           upstream->delete_downstream();
           // Process next HTTP request
-          upstream->resume_read(SHRPX_MSG_BLOCK, 0);
+          if(upstream->resume_read(SHRPX_MSG_BLOCK, 0) == -1) {
+            return;
+          }
         }
       }
     } else {
@@ -425,7 +427,9 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         upstream->delete_downstream();
         // Process next HTTP request
-        upstream->resume_read(SHRPX_MSG_BLOCK, 0);
+        if(upstream->resume_read(SHRPX_MSG_BLOCK, 0) == -1) {
+          return;
+        }
       }
     }
   }
@@ -442,6 +446,7 @@ void https_downstream_writecb(bufferevent *bev, void *ptr)
   Downstream *downstream = dconn->get_downstream();
   HttpsUpstream *upstream;
   upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
+  // May return -1
   upstream->resume_read(SHRPX_NO_BUFFER, downstream);
 }
 } // namespace
@@ -493,7 +498,9 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       upstream->delete_downstream();
-      upstream->resume_read(SHRPX_MSG_BLOCK, 0);
+      if(upstream->resume_read(SHRPX_MSG_BLOCK, 0) == -1) {
+        return;
+      }
     }
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(LOG_ENABLED(INFO)) {
@@ -517,7 +524,9 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       upstream->delete_downstream();
-      upstream->resume_read(SHRPX_MSG_BLOCK, 0);
+      if(upstream->resume_read(SHRPX_MSG_BLOCK, 0) == -1) {
+        return;
+      }
     }
   }
 }
