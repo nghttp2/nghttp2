@@ -543,11 +543,12 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
           ULOG(INFO, upstream) << "Downstream body was ended by EOF";
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
-        if(downstream->tunnel_established()) {
-          upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-        } else {
-          upstream->on_downstream_body_complete(downstream);
-        }
+
+        // For tunneled connection, MSG_COMPLETE signals
+        // spdy_data_read_callback to send RST_STREAM after pending
+        // response body is sent. This is needed to ensure that
+        // RST_STREAM is sent after all pending data are sent.
+        upstream->on_downstream_body_complete(downstream);
       } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
         // For SSL tunneling?
         upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -661,11 +662,20 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
   evbuffer *body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
-  // For tunneling, DATA stream is endless
-  if(!downstream->tunnel_established() &&
-     nread == 0 &&
+  if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    *eof = 1;
+    if(!downstream->tunnel_established()) {
+      *eof = 1;
+    } else {
+      // For tunneling, issue RST_STREAM to finish the stream.
+      SpdyUpstream *upstream;
+      upstream = reinterpret_cast<SpdyUpstream*>(downstream->get_upstream());
+      if(LOG_ENABLED(INFO)) {
+        ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
+                             << stream_id;
+      }
+      upstream->rst_stream(downstream, SPDYLAY_CANCEL);
+    }
   }
   if(nread == 0 && *eof != 1) {
     return SPDYLAY_ERR_DEFERRED;
