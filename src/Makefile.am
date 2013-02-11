@@ -74,7 +74,8 @@ spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 	spdyd.cc
 
 if HAVE_LIBEVENT_OPENSSL
-SHRPX_SRCS = ${HELPER_OBJECTS} ${HELPER_HFILES} \
+SHRPX_SRCS = \
+	util.cc util.h base64.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_listen_handler.cc shrpx_listen_handler.h \
