@@ -707,6 +707,7 @@ void on_ctrl_recv_callback
                               << "stream_id="
                               << frame->rst_stream.stream_id;
           }
+          downstream->get_upstream()->on_downstream_body_complete(downstream);
           downstream->set_response_state(Downstream::MSG_COMPLETE);
         } else {
           // If we got RST_STREAM, just flag MSG_RESET to indicate
@@ -801,6 +802,9 @@ void on_ctrl_recv_callback
 
     Upstream *upstream = downstream->get_upstream();
     downstream->set_response_state(Downstream::HEADER_COMPLETE);
+    if(downstream->tunnel_established()) {
+      downstream->set_response_connection_close(true);
+    }
     rv = upstream->on_downstream_header_complete(downstream);
     if(rv != 0) {
       spdylay_submit_rst_stream(session, frame->syn_reply.stream_id,

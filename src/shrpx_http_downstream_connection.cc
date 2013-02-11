@@ -356,6 +356,9 @@ int htp_hdrs_completecb(http_parser *htp)
   downstream->set_response_minor(htp->http_minor);
   downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
+  if(downstream->tunnel_established()) {
+    downstream->set_response_connection_close(true);
+  }
   if(downstream->get_upstream()->on_downstream_header_complete(downstream)
      != 0) {
     return -1;

@@ -378,20 +378,6 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
     delete upstream->get_client_handler();
   } else if(rv == 0) {
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      if(get_config()->client_mode && downstream->tunnel_established()) {
-        // For tunneled connection, if there is no pending data,
-        // delete handler because on_write will not be called.
-        ClientHandler *handler = upstream->get_client_handler();
-        if(handler->get_pending_write_length() == 0) {
-          delete handler;
-        } else {
-          if(LOG_ENABLED(INFO)) {
-            DLOG(INFO, downstream) << "Tunneled connection has pending data";
-          }
-          handler->set_should_close_after_write(true);
-        }
-        return;
-      }
       if(downstream->get_response_connection_close()) {
         // Connection close
         downstream->set_downstream_connection(0);
@@ -401,8 +387,8 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
         // Keep-alive
         dconn->detach_downstream(downstream);
       }
+      ClientHandler *handler = upstream->get_client_handler();
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-        ClientHandler *handler = upstream->get_client_handler();
         if(handler->get_should_close_after_write() &&
            handler->get_pending_write_length() == 0) {
           // If all upstream response body has already written out to
@@ -415,6 +401,23 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
           // Process next HTTP request
           if(upstream->resume_read(SHRPX_MSG_BLOCK, 0) == -1) {
             return;
+          }
+        }
+      } else if(downstream->tunnel_established()) {
+        // This path is effectively only taken for SPDY downstream
+        // because only SPDY downstream sets response_state to
+        // MSG_COMPLETE and this function. For HTTP downstream, EOF
+        // from tunnel connection is handled on
+        // https_downstream_eventcb.
+        //
+        // Tunneled connection always indicates connection close.
+        if(handler->get_pending_write_length() == 0) {
+          // For tunneled connection, if there is no pending data,
+          // delete handler because on_write will not be called.
+          delete handler;
+        } else {
+          if(LOG_ENABLED(INFO)) {
+            DLOG(INFO, downstream) << "Tunneled connection has pending data";
           }
         }
       }
