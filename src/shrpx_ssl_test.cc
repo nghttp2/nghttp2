@@ -37,12 +37,24 @@ void test_shrpx_ssl_create_lookup_tree(void)
                      SSL_CTX_new(TLSv1_method()),
                      SSL_CTX_new(TLSv1_method()),
                      SSL_CTX_new(TLSv1_method()),
+                     SSL_CTX_new(TLSv1_method()),
+                     SSL_CTX_new(TLSv1_method()),
+                     SSL_CTX_new(TLSv1_method()),
+                     SSL_CTX_new(TLSv1_method()),
+                     SSL_CTX_new(TLSv1_method()),
                      SSL_CTX_new(TLSv1_method())};
+
   const char *hostnames[] = { "example.com",
                               "www.example.org",
                               "*www.example.org",
                               "x*.host.domain",
-                              "*yy.host.domain"};
+                              "*yy.host.domain",
+                              "spdylay.sourceforge.net",
+                              "sourceforge.net",
+                              "sourceforge.net", // duplicate
+                              "*.foo.bar", // oo.bar is suffix of *.foo.bar
+                              "oo.bar"
+  };
   int num = sizeof(ctxs)/sizeof(ctxs[0]);
   for(int i = 0; i < num; ++i) {
     ssl::cert_lookup_tree_add_cert(tree, ctxs[i], hostnames[i],
@@ -61,12 +73,23 @@ void test_shrpx_ssl_create_lookup_tree(void)
   CU_ASSERT(ctxs[3] == ssl::cert_lookup_tree_lookup(tree, h3, strlen(h3)));
   // Does not match *yy.host.domain, because * must match at least 1
   // character.
-  const char h4[] = "yy.host.domain";
+  const char h4[] = "yy.Host.domain";
   CU_ASSERT(0 == ssl::cert_lookup_tree_lookup(tree, h4, strlen(h4)));
   const char h5[] = "zyy.host.domain";
   CU_ASSERT(ctxs[4] == ssl::cert_lookup_tree_lookup(tree, h5, strlen(h5)));
   CU_ASSERT(0 == ssl::cert_lookup_tree_lookup(tree, "", 0));
-
+  CU_ASSERT(ctxs[5] == ssl::cert_lookup_tree_lookup(tree, hostnames[5],
+                                                    strlen(hostnames[5])));
+  CU_ASSERT(ctxs[6] == ssl::cert_lookup_tree_lookup(tree, hostnames[6],
+                                                    strlen(hostnames[6])));
+  const char h6[] = "pdylay.sourceforge.net";
+  for(int i = 0; i < 7; ++i) {
+    CU_ASSERT(0 == ssl::cert_lookup_tree_lookup(tree, h6 + i, strlen(h6) - i));
+  }
+  const char h7[] = "x.foo.bar";
+  CU_ASSERT(ctxs[8] == ssl::cert_lookup_tree_lookup(tree, h7, strlen(h7)));
+  CU_ASSERT(ctxs[9] == ssl::cert_lookup_tree_lookup(tree, hostnames[9],
+                                                    strlen(hostnames[9])));
   ssl::cert_lookup_tree_del(tree);
   for(int i = 0; i < num; ++i) {
     SSL_CTX_free(ctxs[i]);

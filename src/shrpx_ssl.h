@@ -65,14 +65,15 @@ void get_altnames(X509 *cert,
                   std::string& common_name);
 
 // CertLookupTree forms lookup tree to get SSL_CTX whose DNS or
-// commonName matches hostname in query. The tree is trie data
-// structure form from the tail of the hostname pattern. Each CertNode
-// contains one ASCII character in the c member and the next member
-// contains the following CertNode pointers ('following' means
-// character before the current one). The CertNode where a hostname
-// pattern ends contains its SSL_CTX pointer in the ssl_ctx member.
-// For wildcard hostname pattern, we store the its pattern and SSL_CTX
-// in CertNode one before first "*" found from the tail.
+// commonName matches hostname in query. The tree is patricia trie
+// data structure formed from the tail of the hostname pattern. Each
+// CertNode contains part of hostname str member in range [first,
+// last) member and the next member contains the following CertNode
+// pointers ('following' means character before the current one). The
+// CertNode where a hostname pattern ends contains its SSL_CTX pointer
+// in the ssl_ctx member.  For wildcard hostname pattern, we store the
+// its pattern and SSL_CTX in CertNode one before first "*" found from
+// the tail.
 //
 // When querying SSL_CTX with particular hostname, we match from its
 // tail in our lookup tree. If the query goes to the first character
@@ -89,14 +90,17 @@ struct CertNode {
   // list of wildcard domain name and its SSL_CTX pair, the wildcard
   // '*' appears in this position.
   std::vector<std::pair<char*, SSL_CTX*> > wildcard_certs;
-  // ASCII byte in this position
-  char c;
   // Next CertNode index of CertLookupTree::nodes
   std::vector<CertNode*> next;
+  char *str;
+  // [first, last) in the reverse direction in str, first >=
+  // last. This indices only work for str member.
+  int first, last;
 };
 
 struct CertLookupTree {
   std::vector<SSL_CTX*> certs;
+  std::vector<char*> hosts;
   CertNode *root;
 };
 
