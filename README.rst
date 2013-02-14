@@ -118,8 +118,8 @@ like wget/curl. It connects to SPDY server and gets resources given in
 the command-line::
 
     $ src/spdycat -h
-    Usage: spdycat [-Oadnsv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
-                   [--key=<KEY>] [--no-tls] <URI>...
+    Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]
+                   [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>...
 
     OPTIONS:
         -v, --verbose      Print debug information such as reception/
@@ -149,6 +149,9 @@ the command-line::
                            SPDY protocol version to use.
         -d, --data=<FILE>  Post FILE to server. If - is given, data
                            will be read from stdin.
+        -m, --multiply=<N> Request each URI <N> times. By default, same
+                           URI is not requested twice. This option
+                           disables it too.
 
     $ src/spdycat -nv https://www.google.com/
     [  0.025] NPN select next protocol: the remote server offers:
