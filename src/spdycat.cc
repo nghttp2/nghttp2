@@ -863,8 +863,8 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Oadnsv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "               [--key=<KEY>] [--no-tls] [-m <N>] <URI>..."
+  out << "Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+      << "               [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>..."
       << std::endl;
 }
 
