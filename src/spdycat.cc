@@ -422,7 +422,7 @@ void on_data_chunk_recv_callback
         size_t outlen = MAX_OUTLEN;
         size_t tlen = len;
         int rv = spdylay_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
-        if(rv == -1) {
+        if(rv != 0) {
           spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
           break;
         }
