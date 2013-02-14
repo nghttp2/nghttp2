@@ -657,6 +657,7 @@ static int parse_uri(struct URI *res, const char *uri)
 {
   /* We only interested in https */
   size_t len, i, offset;
+  int ipv6addr = 0;
   memset(res, 0, sizeof(struct URI));
   len = strlen(uri);
   if(len < 9 || memcmp("https://", uri, 8) != 0) {
@@ -669,6 +670,7 @@ static int parse_uri(struct URI *res, const char *uri)
     /* IPv6 literal address */
     ++offset;
     ++res->host;
+    ipv6addr = 1;
     for(i = offset; i < len; ++i) {
       if(uri[i] == ']') {
         res->hostlen = i-offset;
@@ -718,7 +720,7 @@ static int parse_uri(struct URI *res, const char *uri)
       res->port = port;
     }
   }
-  res->hostportlen = uri+offset-res->host;
+  res->hostportlen = uri+offset+ipv6addr-res->host;
   for(i = offset; i < len; ++i) {
     if(uri[i] == '#') {
       break;
@@ -739,6 +741,11 @@ int main(int argc, char **argv)
   struct URI uri;
   struct sigaction act;
   int rv;
+
+  if(argc < 2) {
+    die("Specify URI");
+  }
+
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, 0);
