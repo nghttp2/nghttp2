@@ -74,6 +74,7 @@ struct Config {
   bool get_assets;
   bool stat;
   bool no_tls;
+  int multiply;
   int spdy_version;
   // milliseconds
   int timeout;
@@ -83,7 +84,7 @@ struct Config {
   std::map<std::string,std::string> headers;
   std::string datafile;
   Config():null_out(false), remote_name(false), verbose(false),
-           get_assets(false), stat(false), no_tls(false),
+           get_assets(false), stat(false), no_tls(false), multiply(1),
            spdy_version(-1), timeout(-1), window_bits(-1)
   {}
 };
@@ -299,6 +300,8 @@ struct SessionStat {
   }
 };
 
+Config config;
+
 struct SpdySession {
   std::vector<Request*> reqvec;
   // Map from stream ID to Request object.
@@ -350,7 +353,9 @@ struct SpdySession {
     if(path_cache.count(uri)) {
       return false;
     } else {
-      path_cache.insert(uri);
+      if(config.multiply == 1) {
+        path_cache.insert(uri);
+      }
       reqvec.push_back(new Request(uri, u, data_prd, data_length, level));
       return true;
     }
@@ -361,7 +366,6 @@ struct SpdySession {
   }
 };
 
-Config config;
 extern bool ssl_debug;
 
 void submit_request(Spdylay& sc, const std::string& hostport,
@@ -842,8 +846,10 @@ int run(char **uris, int n)
         prev_host = get_uri_field(uri.c_str(), u, UF_HOST);
         prev_port = port;
       }
-      spdySession.add_request(uri, u, data_fd == -1 ? 0 : &data_prd,
-                              data_stat.st_size);
+      for(int j = 0; j < config.multiply; ++j) {
+        spdySession.add_request(uri, u, data_fd == -1 ? 0 : &data_prd,
+                                data_stat.st_size);
+      }
     }
   }
   if(!spdySession.reqvec.empty()) {
@@ -858,7 +864,7 @@ int run(char **uris, int n)
 void print_usage(std::ostream& out)
 {
   out << "Usage: spdycat [-Oadnsv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "               [--key=<KEY>] [--no-tls] <URI>..."
+      << "               [--key=<KEY>] [--no-tls] [-m <N>] <URI>..."
       << std::endl;
 }
 
@@ -894,6 +900,9 @@ void print_help(std::ostream& out)
       << "                       SPDY protocol version to use.\n"
       << "    -d, --data=<FILE>  Post FILE to server. If - is given, data\n"
       << "                       will be read from stdin.\n"
+      << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
+      << "                       URI is not requested twice. This option\n"
+      << "                       disables it too.\n"
       << std::endl;
 }
 
@@ -917,10 +926,11 @@ int main(int argc, char **argv)
       {"header", required_argument, 0, 'H' },
       {"no-tls", no_argument, &flag, 3 },
       {"data", required_argument, 0, 'd' },
+      {"multiply", required_argument, 0, 'm' },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Oad:nhH:v23st:w:", long_options,
+    int c = getopt_long(argc, argv, "Oad:m:nhH:v23st:w:", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -996,6 +1006,9 @@ int main(int argc, char **argv)
       break;
     case 'd':
       config.datafile = strcmp("-", optarg) == 0 ? "/dev/stdin" : optarg;
+      break;
+    case 'm':
+      config.multiply = strtoul(optarg, 0, 10);
       break;
     case '?':
       exit(EXIT_FAILURE);
