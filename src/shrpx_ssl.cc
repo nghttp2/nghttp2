@@ -600,6 +600,8 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
       new_node->first = i;
       new_node->last = cn->last;
       new_node->wildcard_certs.swap(cn->wildcard_certs);
+      new_node->next.swap(cn->next);
+
       cn->next.push_back(new_node);
 
       cn->last = i;

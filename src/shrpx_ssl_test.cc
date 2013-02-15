@@ -94,6 +94,24 @@ void test_shrpx_ssl_create_lookup_tree(void)
   for(int i = 0; i < num; ++i) {
     SSL_CTX_free(ctxs[i]);
   }
+
+  SSL_CTX *ctxs2[] = {SSL_CTX_new(TLSv1_method()),
+                      SSL_CTX_new(TLSv1_method()),
+                      SSL_CTX_new(TLSv1_method())};
+  const char *names[] = { "rab", "zab", "zzub" };
+  num = sizeof(ctxs2)/sizeof(ctxs2[0]);
+  tree = ssl::cert_lookup_tree_new();
+  for(int i = 0; i < num; ++i) {
+    ssl::cert_lookup_tree_add_cert(tree, ctxs2[i], names[i], strlen(names[i]));
+  }
+  for(int i = 0; i < num; ++i) {
+    CU_ASSERT(ctxs2[i] == ssl::cert_lookup_tree_lookup(tree, names[i],
+                                                       strlen(names[i])));
+  }
+  ssl::cert_lookup_tree_del(tree);
+  for(int i = 0; i < num; ++i) {
+    SSL_CTX_free(ctxs2[i]);
+  }
 }
 
 void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void)
