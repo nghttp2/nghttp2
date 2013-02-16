@@ -97,8 +97,9 @@ void test_shrpx_ssl_create_lookup_tree(void)
 
   SSL_CTX *ctxs2[] = {SSL_CTX_new(TLSv1_method()),
                       SSL_CTX_new(TLSv1_method()),
+                      SSL_CTX_new(TLSv1_method()),
                       SSL_CTX_new(TLSv1_method())};
-  const char *names[] = { "rab", "zab", "zzub" };
+  const char *names[] = { "rab", "zab", "zzub", "ab" };
   num = sizeof(ctxs2)/sizeof(ctxs2[0]);
   tree = ssl::cert_lookup_tree_new();
   for(int i = 0; i < num; ++i) {

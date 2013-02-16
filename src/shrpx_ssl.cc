@@ -587,7 +587,11 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
           cn->str[i] == hostname[j]; --i, --j);
     if(i == cn->last) {
       if(j == -1) {
-        // same hostname, we don't overwrite exiting ssl_ctx
+        if(cn->ssl_ctx) {
+          // same hostname, we don't overwrite exiting ssl_ctx
+        } else {
+          cn->ssl_ctx = ssl_ctx;
+        }
       } else {
         // The existing hostname is a suffix of this hostname.
         // Continue matching at potion j.
