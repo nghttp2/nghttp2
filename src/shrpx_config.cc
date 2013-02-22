@@ -328,9 +328,13 @@ int parse_config(const char *opt, const char *optarg)
       std::string val;
       if(u.field_set & UF_USERINFO) {
         http::copy_url_component(val, &u, UF_USERINFO, optarg);
-        val = util::percentDecode(val.begin(), val.end());
-        set_config_str(&mod_config()->downstream_http_proxy_userinfo,
-                       val.c_str());
+        // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
+        // userinfo component is empty string.
+        if(!val.empty()) {
+          val = util::percentDecode(val.begin(), val.end());
+          set_config_str(&mod_config()->downstream_http_proxy_userinfo,
+                         val.c_str());
+        }
       }
       if(u.field_set & UF_HOST) {
         http::copy_url_component(val, &u, UF_HOST, optarg);
