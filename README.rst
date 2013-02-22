@@ -272,154 +272,164 @@ Here is the command-line options::
 
     $ src/shrpx -h
     Usage: shrpx [-Dh] [-s|--client|-p] [-b <HOST,PORT>]
-		 [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]
-		 [OPTIONS...] [<PRIVATE_KEY> <CERT>]
+                 [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]
+                 [OPTIONS...] [<PRIVATE_KEY> <CERT>]
 
     A reverse proxy for SPDY/HTTPS.
 
     Positional arguments:
-	<PRIVATE_KEY>      Set path to server's private key. Required
-			   unless either -p or --client is specified.
-	<CERT>             Set path to server's certificate. Required
-			   unless either -p or --client is specified.
+        <PRIVATE_KEY>      Set path to server's private key. Required
+                           unless either -p or --client is specified.
+        <CERT>             Set path to server's certificate. Required
+                           unless either -p or --client is specified.
 
     OPTIONS:
 
       Connections:
-	-b, --backend=<HOST,PORT>
-			   Set backend host and port.
-			   Default: '127.0.0.1,80'
-	-f, --frontend=<HOST,PORT>
-			   Set frontend host and port.
-			   Default: '0.0.0.0,3000'
-	--backlog=<NUM>    Set listen backlog size.
-			   Default: 256
-	--backend-ipv4     Resolve backend hostname to IPv4 address
-			   only.
-	--backend-ipv6     Resolve backend hostname to IPv6 address
-			   only.
+        -b, --backend=<HOST,PORT>
+                           Set backend host and port.
+                           Default: '127.0.0.1,80'
+        -f, --frontend=<HOST,PORT>
+                           Set frontend host and port.
+                           Default: '0.0.0.0,3000'
+        --backlog=<NUM>    Set listen backlog size.
+                           Default: 256
+        --backend-ipv4     Resolve backend hostname to IPv4 address
+                           only.
+        --backend-ipv6     Resolve backend hostname to IPv6 address
+                           only.
 
       Performance:
-	-n, --workers=<CORES>
-			   Set the number of worker threads.
-			   Default: 1
+        -n, --workers=<CORES>
+                           Set the number of worker threads.
+                           Default: 1
 
       Timeout:
-	--frontend-spdy-read-timeout=<SEC>
-			   Specify read timeout for SPDY frontend
-			   connection. Default: 180
-	--frontend-read-timeout=<SEC>
-			   Specify read timeout for non-SPDY frontend
-			   connection. Default: 180
-	--frontend-write-timeout=<SEC>
-			   Specify write timeout for both SPDY and
-			   non-SPDY frontends.
-			   connection. Default: 60
-	--backend-read-timeout=<SEC>
-			   Specify read timeout for backend connection.
-			   Default: 900
-	--backend-write-timeout=<SEC>
-			   Specify write timeout for backend
-			   connection. Default: 60
-	--backend-keep-alive-timeout=<SEC>
-			   Specify keep-alive timeout for backend
-			   connection. Default: 60
-	--backend-http-proxy-uri=<URI>
-			   Specify proxy URI in the form
-			   http://[<USER>:<PASS>@]<PROXY>:<PORT>. If
-			   a proxy requires authentication, specify
-			   <USER> and <PASS>. Note that they must be
-			   properly percent-encoded. This proxy is used
-			   when the backend connection is SPDY. First,
-			   make a CONNECT request to the proxy and
-			   it connects to the backend on behalf of
-			   shrpx. This forms tunnel. After that, shrpx
-			   performs SSL/TLS handshake with the
-			   downstream through the tunnel. The timeouts
-			   when connecting and making CONNECT request
-			   can be specified by --backend-read-timeout
-			   and --backend-write-timeout options.
+        --frontend-spdy-read-timeout=<SEC>
+                           Specify read timeout for SPDY frontend
+                           connection. Default: 180
+        --frontend-read-timeout=<SEC>
+                           Specify read timeout for non-SPDY frontend
+                           connection. Default: 180
+        --frontend-write-timeout=<SEC>
+                           Specify write timeout for both SPDY and
+                           non-SPDY frontends.
+                           connection. Default: 60
+        --backend-read-timeout=<SEC>
+                           Specify read timeout for backend connection.
+                           Default: 900
+        --backend-write-timeout=<SEC>
+                           Specify write timeout for backend
+                           connection. Default: 60
+        --backend-keep-alive-timeout=<SEC>
+                           Specify keep-alive timeout for backend
+                           connection. Default: 60
+        --backend-http-proxy-uri=<URI>
+                           Specify proxy URI in the form
+                           http://[<USER>:<PASS>@]<PROXY>:<PORT>. If
+                           a proxy requires authentication, specify
+                           <USER> and <PASS>. Note that they must be
+                           properly percent-encoded. This proxy is used
+                           when the backend connection is SPDY. First,
+                           make a CONNECT request to the proxy and
+                           it connects to the backend on behalf of
+                           shrpx. This forms tunnel. After that, shrpx
+                           performs SSL/TLS handshake with the
+                           downstream through the tunnel. The timeouts
+                           when connecting and making CONNECT request
+                           can be specified by --backend-read-timeout
+                           and --backend-write-timeout options.
 
       SSL/TLS:
-	--ciphers=<SUITE>  Set allowed cipher list. The format of the
-			   string is described in OpenSSL ciphers(1).
-	-k, --insecure     When used with -p or --client, don't verify
-			   backend server's certificate.
-	--cacert=<PATH>    When used with -p or --client, set path to
-			   trusted CA certificate file.
-			   The file must be in PEM format. It can
-			   contain multiple certificates. If the
-			   linked OpenSSL is configured to load system
-			   wide certificates, they are loaded
-			   at startup regardless of this option.
-	--private-key-passwd-file=<FILEPATH>
-			   Path to file that contains password for the
-			   server's private key. If none is given and
-			   the private key is password protected it'll
-			   be requested interactively.
-	--subcert=<KEYPATH>:<CERTPATH>
-			   Specify additional certificate and private
-			   key file. Shrpx will choose certificates
-			   used multiple times.
+        --ciphers=<SUITE>  Set allowed cipher list. The format of the
+                           string is described in OpenSSL ciphers(1).
+        -k, --insecure     When used with -p or --client, don't verify
+                           backend server's certificate.
+        --cacert=<PATH>    When used with -p or --client, set path to
+                           trusted CA certificate file.
+                           The file must be in PEM format. It can
+                           contain multiple certificates. If the
+                           linked OpenSSL is configured to load system
+                           wide certificates, they are loaded
+                           at startup regardless of this option.
+        --private-key-passwd-file=<FILEPATH>
+                           Path to file that contains password for the
+                           server's private key. If none is given and
+                           the private key is password protected it'll
+                           be requested interactively.
+        --subcert=<KEYPATH>:<CERTPATH>
+                           Specify additional certificate and private
+                           key file. Shrpx will choose certificates
+                           based on the hostname indicated by client
+                           using TLS SNI extension. This option can be
+                           used multiple times.
 
       SPDY:
-	-c, --spdy-max-concurrent-streams=<NUM>
-			   Set the maximum number of the concurrent
-			   streams in one SPDY session.
-			   Default: 100
-	--frontend-spdy-window-bits=<N>
-			   Sets the initial window size of SPDY
-			   frontend connection to 2**<N>.
-			   Default: 16
-	--backend-spdy-window-bits=<N>
-			   Sets the initial window size of SPDY
-			   backend connection to 2**<N>.
-			   Default: 16
+        -c, --spdy-max-concurrent-streams=<NUM>
+                           Set the maximum number of the concurrent
+                           streams in one SPDY session.
+                           Default: 100
+        --frontend-spdy-window-bits=<N>
+                           Sets the initial window size of SPDY
+                           frontend connection to 2**<N>.
+                           Default: 16
+        --backend-spdy-window-bits=<N>
+                           Sets the initial window size of SPDY
+                           backend connection to 2**<N>.
+                           Default: 16
+        --backend-spdy-no-tls
+                           Disable SSL/TLS on backend SPDY connections.
+                           SPDY protocol must be specified using
+                           --backend-spdy-proto
+        --backend-spdy-proto
+                           Specify SPDY protocol used in backend
+                           connection if --backend-spdy-no-tls is used.
+                           Default: spdy/3
 
       Mode:
-	-s, --spdy-proxy   Enable secure SPDY proxy mode.
-	--spdy-bridge      Communicate with the backend in SPDY. Thus
-			   the incoming SPDY/HTTPS connections are
-			   converted to SPDY connection and relayed to
-			   the backend. See --backend-http-proxy-uri
-			   option if you are behind the proxy and want
-			   to connect to the outside SPDY proxy.
-	--client           Instead of accepting SPDY/HTTPS connection,
-			   accept HTTP connection and communicate with
-			   backend server in SPDY. To use shrpx as
-			   a forward proxy, use -p option instead.
-	-p, --client-proxy Like --client option, but it also requires
-			   the request path from frontend must be
-			   an absolute URI, suitable for use as a
-			   forward proxy.
+        -s, --spdy-proxy   Enable secure SPDY proxy mode.
+        --spdy-bridge      Communicate with the backend in SPDY. Thus
+                           the incoming SPDY/HTTPS connections are
+                           converted to SPDY connection and relayed to
+                           the backend. See --backend-http-proxy-uri
+                           option if you are behind the proxy and want
+                           to connect to the outside SPDY proxy.
+        --client           Instead of accepting SPDY/HTTPS connection,
+                           accept HTTP connection and communicate with
+                           backend server in SPDY. To use shrpx as
+                           a forward proxy, use -p option instead.
+        -p, --client-proxy Like --client option, but it also requires
+                           the request path from frontend must be
+                           an absolute URI, suitable for use as a
+                           forward proxy.
 
       Logging:
-	-L, --log-level=<LEVEL>
-			   Set the severity level of log output.
-			   INFO, WARNING, ERROR and FATAL.
-			   Default: WARNING
-	--accesslog        Print simple accesslog to stderr.
-	--syslog           Send log messages to syslog.
-	--syslog-facility=<FACILITY>
-			   Set syslog facility.
-			   Default: daemon
+        -L, --log-level=<LEVEL>
+                           Set the severity level of log output.
+                           INFO, WARNING, ERROR and FATAL.
+                           Default: WARNING
+        --accesslog        Print simple accesslog to stderr.
+        --syslog           Send log messages to syslog.
+        --syslog-facility=<FACILITY>
+                           Set syslog facility.
+                           Default: daemon
 
       Misc:
-	--add-x-forwarded-for
-			   Append X-Forwarded-For header field to the
-			   downstream request.
-	--no-via           Don't append to Via header field. If Via
-			   header field is received, it is left
-			   unaltered.
-	-D, --daemon       Run in a background. If -D is used, the
-			   current working directory is changed to '/'.
-	--pid-file=<PATH>  Set path to save PID of this program.
-	--user=<USER>      Run this program as USER. This option is
-			   intended to be used to drop root privileges.
-	--conf=<PATH>      Load configuration from PATH.
-			   Default: /etc/shrpx/shrpx.conf
-	-v, --version      Print version and exit.
-	-h, --help         Print this help and exit.
+        --add-x-forwarded-for
+                           Append X-Forwarded-For header field to the
+                           downstream request.
+        --no-via           Don't append to Via header field. If Via
+                           header field is received, it is left
+                           unaltered.
+        -D, --daemon       Run in a background. If -D is used, the
+                           current working directory is changed to '/'.
+        --pid-file=<PATH>  Set path to save PID of this program.
+        --user=<USER>      Run this program as USER. This option is
+                           intended to be used to drop root privileges.
+        --conf=<PATH>      Load configuration from PATH.
+                           Default: /etc/shrpx/shrpx.conf
+        -v, --version      Print version and exit.
+        -h, --help         Print this help and exit.
 
 For those of you who are curious, ``shrpx`` is an abbreviation of
 "Spdy/https to Http Reverse ProXy".
