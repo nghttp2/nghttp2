@@ -78,6 +78,12 @@ int SpdySession::disconnect()
     SSL_shutdown(ssl_);
   }
   if(bev_) {
+    int fd = bufferevent_getfd(bev_);
+    if(fd != -1 && fd_ == -1) {
+      fd_ = fd;
+    } else if(fd != -1 && fd_ != -1) {
+      assert(fd == fd_);
+    }
     bufferevent_disable(bev_, EV_READ | EV_WRITE);
     bufferevent_free(bev_);
     bev_ = 0;
@@ -273,8 +279,8 @@ void proxy_readcb(bufferevent *bev, void *ptr)
     switch(spdy->get_state()) {
     case SpdySession::PROXY_CONNECTED:
       // The current bufferevent is no longer necessary, so delete it
-      // here.
-      spdy->free_bev();
+      // here. But we keep fd_ inside it.
+      spdy->unwrap_free_bev();
       // Initiate SSL/TLS handshake through established tunnel.
       spdy->initiate_connection();
       break;
@@ -420,8 +426,10 @@ int SpdySession::initiate_connection()
   return 0;
 }
 
-void SpdySession::free_bev()
+void SpdySession::unwrap_free_bev()
 {
+  assert(fd_ == -1);
+  fd_ = bufferevent_getfd(bev_);
   bufferevent_free(bev_);
   bev_ = 0;
 }

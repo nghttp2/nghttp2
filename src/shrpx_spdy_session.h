@@ -90,7 +90,7 @@ public:
   void notify();
 
   bufferevent* get_bev() const;
-  void free_bev();
+  void unwrap_free_bev();
 
   int get_state() const;
   void set_state(int state);
