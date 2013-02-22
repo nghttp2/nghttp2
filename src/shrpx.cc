@@ -240,10 +240,12 @@ int event_loop()
 
   if(get_config()->client_mode) {
     sv_ssl_ctx = 0;
-    cl_ssl_ctx = ssl::create_ssl_client_context();
+    cl_ssl_ctx = get_config()->spdy_downstream_no_tls ?
+      0 : ssl::create_ssl_client_context();
   } else {
     sv_ssl_ctx = get_config()->default_ssl_ctx;
-    cl_ssl_ctx = get_config()->spdy_bridge ?
+    cl_ssl_ctx = get_config()->spdy_bridge &&
+      !get_config()->spdy_downstream_no_tls ?
       ssl::create_ssl_client_context() : 0;
   }
 
@@ -271,7 +273,7 @@ int event_loop()
 
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
-  } else if(cl_ssl_ctx) {
+  } else if(get_config()->downstream_proto == PROTO_SPDY) {
     listener_handler->create_spdy_session();
   }
 
@@ -353,6 +355,9 @@ void fill_default_config()
   // 64KiB, which is SPDY/3 default.
   mod_config()->spdy_upstream_window_bits = 16;
   mod_config()->spdy_downstream_window_bits = 16;
+
+  mod_config()->spdy_downstream_no_tls = false;
+  mod_config()->spdy_downstream_version = 3;
 
   set_config_str(&mod_config()->downstream_host, "127.0.0.1");
   mod_config()->downstream_port = 80;
@@ -530,6 +535,15 @@ void print_help(std::ostream& out)
       << "                       backend connection to 2**<N>.\n"
       << "                       Default: "
       << get_config()->spdy_downstream_window_bits << "\n"
+      << "    --backend-spdy-no-tls\n"
+      << "                       Disable SSL/TLS on backend SPDY connections.\n"
+      << "                       SPDY protocol must be specified using\n"
+      << "                       --backend-spdy-proto\n"
+      << "    --backend-spdy-proto\n"
+      << "                       Specify SPDY protocol used in backend\n"
+      << "                       connection if --backend-spdy-no-tls is used.\n"
+      << "                       Default: spdy/"
+      << get_config()->spdy_downstream_version << "\n"
       << "\n"
       << "  Mode:\n"
       << "    -s, --spdy-proxy   Enable secure SPDY proxy mode.\n"
@@ -628,6 +642,8 @@ int main(int argc, char **argv)
       {"subcert", required_argument, &flag, 24},
       {"spdy-bridge", no_argument, &flag, 25},
       {"backend-http-proxy-uri", required_argument, &flag, 26},
+      {"backend-spdy-no-tls", no_argument, &flag, 27},
+      {"backend-spdy-proto", required_argument, &flag, 28},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -787,6 +803,16 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_HTTP_PROXY_URI,
                                          optarg));
         break;
+      case 27:
+        // --backend-spdy-no-tls
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_NO_TLS,
+                                         "yes"));
+        break;
+      case 28:
+        // --backend-spdy-proto
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_PROTO,
+                                         optarg));
+        break;
       default:
         break;
       }
@@ -840,6 +866,20 @@ int main(int argc, char **argv)
 
   if(get_config()->client || get_config()->client_proxy) {
     mod_config()->client_mode = true;
+  }
+
+  if(get_config()->client_mode || get_config()->spdy_bridge) {
+    mod_config()->downstream_proto = PROTO_SPDY;
+  } else {
+    mod_config()->downstream_proto = PROTO_HTTP;
+  }
+
+  if(mod_config()->downstream_proto == PROTO_SPDY &&
+     mod_config()->spdy_downstream_no_tls &&
+     mod_config()->spdy_downstream_version == 0) {
+    LOG(FATAL) << "--backend-spdy-no-tls: Specify backend SPDY protocol using"
+               << " --backend-spdy-proto";
+    exit(EXIT_FAILURE);
   }
 
   if(!get_config()->client_mode) {

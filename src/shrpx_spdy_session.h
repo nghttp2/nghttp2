@@ -111,8 +111,13 @@ public:
   };
 private:
   event_base *evbase_;
+  // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
   SSL *ssl_;
+  // fd_ is used for proxy connection and no TLS connection. For
+  // direct or TLS connection, it may be -1 even after connection is
+  // established. Use bufferevent_getfd(bev_) to get file descriptor
+  // in these cases.
   int fd_;
   spdylay_session *session_;
   bufferevent *bev_;

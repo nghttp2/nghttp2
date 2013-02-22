@@ -79,14 +79,18 @@ int SpdySession::disconnect()
   }
   if(bev_) {
     int fd = bufferevent_getfd(bev_);
-    if(fd != -1 && fd_ == -1) {
-      fd_ = fd;
-    } else if(fd != -1 && fd_ != -1) {
-      assert(fd == fd_);
-    }
     bufferevent_disable(bev_, EV_READ | EV_WRITE);
     bufferevent_free(bev_);
     bev_ = 0;
+    if(fd != -1) {
+      if(fd_ == -1) {
+        fd_ = fd;
+      } else if(fd != fd_) {
+        SSLOG(WARNING, this) << "fd in bev_ != fd_";
+        shutdown(fd, SHUT_WR);
+        close(fd);
+      }
+    }
   }
   if(ssl_) {
     SSL_free(ssl_);
@@ -94,6 +98,9 @@ int SpdySession::disconnect()
   ssl_ = 0;
 
   if(fd_ != -1) {
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Closing fd=" << fd_;
+    }
     shutdown(fd_, SHUT_WR);
     close(fd_);
     fd_ = -1;
@@ -241,7 +248,8 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       SSLOG(INFO, spdy) << "Connection established";
     }
     spdy->set_state(SpdySession::CONNECTED);
-    if((!get_config()->insecure && spdy->check_cert() != 0) ||
+    if((!get_config()->spdy_downstream_no_tls &&
+        !get_config()->insecure && spdy->check_cert() != 0) ||
        spdy->on_connect() != 0) {
       spdy->disconnect();
       return;
@@ -282,7 +290,9 @@ void proxy_readcb(bufferevent *bev, void *ptr)
       // here. But we keep fd_ inside it.
       spdy->unwrap_free_bev();
       // Initiate SSL/TLS handshake through established tunnel.
-      spdy->initiate_connection();
+      if(spdy->initiate_connection() != 0) {
+        spdy->disconnect();
+      }
       break;
     case SpdySession::PROXY_FAILED:
       spdy->disconnect();
@@ -347,7 +357,7 @@ int SpdySession::check_cert()
 
 int SpdySession::initiate_connection()
 {
-  int rv;
+  int rv = 0;
   if(get_config()->downstream_http_proxy_host && state_ == DISCONNECTED) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Connecting to the proxy "
@@ -383,30 +393,50 @@ int SpdySession::initiate_connection()
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Connecting to downstream server";
     }
+    if(ssl_ctx_) {
+      // We are establishing TLS connection.
+      ssl_ = SSL_new(ssl_ctx_);
+      if(!ssl_) {
+        SSLOG(ERROR, this) << "SSL_new() failed: "
+                           << ERR_error_string(ERR_get_error(), NULL);
+        return -1;
+      }
 
-    ssl_ = SSL_new(ssl_ctx_);
-    if(!ssl_) {
-      SSLOG(ERROR, this) << "SSL_new() failed: "
-                         << ERR_error_string(ERR_get_error(), NULL);
-      return -1;
+      if(!ssl::numeric_host(get_config()->downstream_host)) {
+        // TLS extensions: SNI. There is no documentation about the return
+        // code for this function (actually this is macro wrapping SSL_ctrl
+        // at the time of this writing).
+        SSL_set_tlsext_host_name(ssl_, get_config()->downstream_host);
+      }
+      // If state_ == PROXY_CONNECTED, we has connected to the proxy
+      // using fd_ and tunnel has been established.
+      bev_ = bufferevent_openssl_socket_new(evbase_, fd_, ssl_,
+                                            BUFFEREVENT_SSL_CONNECTING,
+                                            BEV_OPT_DEFER_CALLBACKS);
+      rv = bufferevent_socket_connect
+        (bev_,
+         // TODO maybe not thread-safe?
+         const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
+         get_config()->downstream_addrlen);
+    } else if(state_ == DISCONNECTED) {
+      // Without TLS and proxy.
+      bev_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_DEFER_CALLBACKS);
+      rv = bufferevent_socket_connect
+        (bev_,
+         const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
+         get_config()->downstream_addrlen);
+    } else {
+      assert(state_ == PROXY_CONNECTED);
+      // Without TLS but with proxy.
+      bev_ = bufferevent_socket_new(evbase_, fd_, BEV_OPT_DEFER_CALLBACKS);
+      // Connection already established.
+      eventcb(bev_, BEV_EVENT_CONNECTED, this);
+      // eventcb() has no return value. Check state_ to whether it was
+      // failed or not.
+      if(state_ == DISCONNECTED) {
+        return -1;
+      }
     }
-
-    if(!ssl::numeric_host(get_config()->downstream_host)) {
-      // TLS extensions: SNI. There is no documentation about the return
-      // code for this function (actually this is macro wrapping SSL_ctrl
-      // at the time of this writing).
-      SSL_set_tlsext_host_name(ssl_, get_config()->downstream_host);
-    }
-    // If state_ == PROXY_CONNECTED, we has connected to the proxy
-    // using fd_ and tunnel has been established.
-    bev_ = bufferevent_openssl_socket_new(evbase_, fd_, ssl_,
-                                          BUFFEREVENT_SSL_CONNECTING,
-                                          BEV_OPT_DEFER_CALLBACKS);
-    rv = bufferevent_socket_connect
-      (bev_,
-       // TODO maybe not thread-safe?
-       const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
-       get_config()->downstream_addrlen);
     if(rv != 0) {
       bufferevent_free(bev_);
       bev_ = 0;
@@ -418,7 +448,10 @@ int SpdySession::initiate_connection()
     bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
     // No timeout for SPDY session
 
-    state_ = CONNECTING;
+    // We have been already connected when no TLS and proxy is used.
+    if(state_ != CONNECTED) {
+      state_ = CONNECTING;
+    }
   } else {
     // Unreachable
     DIE();
@@ -972,17 +1005,22 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
 int SpdySession::on_connect()
 {
   int rv;
+  uint16_t version;
   const unsigned char *next_proto = 0;
   unsigned int next_proto_len;
-  SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
+  if(ssl_ctx_) {
+    SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
 
-  if(LOG_ENABLED(INFO)) {
-    std::string proto(next_proto, next_proto+next_proto_len);
-    SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
-  }
-  uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
-  if(!version) {
-    return -1;
+    if(LOG_ENABLED(INFO)) {
+      std::string proto(next_proto, next_proto+next_proto_len);
+      SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
+    }
+    version = spdylay_npn_get_version(next_proto, next_proto_len);
+    if(!version) {
+      return -1;
+    }
+  } else {
+    version = get_config()->spdy_downstream_version;
   }
   spdylay_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(callbacks));

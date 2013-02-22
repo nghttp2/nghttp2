@@ -75,7 +75,7 @@ void Worker::run()
   bufferevent *bev = bufferevent_socket_new(evbase, fd_,
                                             BEV_OPT_DEFER_CALLBACKS);
   SpdySession *spdy = 0;
-  if(cl_ssl_ctx_) {
+  if(get_config()->downstream_proto == PROTO_SPDY) {
     spdy = new SpdySession(evbase, cl_ssl_ctx_);
     if(spdy->init_notification() == -1) {
       DIE();

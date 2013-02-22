@@ -36,6 +36,8 @@
 #include <limits>
 #include <fstream>
 
+#include <spdylay/spdylay.h>
+
 #include "shrpx_log.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
@@ -73,6 +75,8 @@ const char
 SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] = "backend-keep-alive-timeout";
 const char SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS[] = "frontend-spdy-window-bits";
 const char SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS[] = "backend-spdy-window-bits";
+const char SHRPX_OPT_BACKEND_SPDY_NO_TLS[] = "backend-spdy-no-tls";
+const char SHRPX_OPT_BACKEND_SPDY_PROTO[] = "backend-spdy-proto";
 const char SHRPX_OPT_PID_FILE[] = "pid-file";
 const char SHRPX_OPT_USER[] = "user";
 const char SHRPX_OPT_SYSLOG[] = "syslog";
@@ -259,6 +263,18 @@ int parse_config(const char *opt, const char *optarg)
                  << " specify the integer in the range [0, 30], inclusive";
       return -1;
     }
+  } else if(util::strieq(opt, SHRPX_OPT_BACKEND_SPDY_NO_TLS)) {
+    mod_config()->spdy_downstream_no_tls = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_BACKEND_SPDY_PROTO)) {
+    size_t len = strlen(optarg);
+    const unsigned char *proto;
+    proto = reinterpret_cast<const unsigned char*>(optarg);
+    uint16_t version = spdylay_npn_get_version(proto, len);
+    if(!version) {
+      LOG(ERROR) << "Unsupported SPDY version: " << optarg;
+      return -1;
+    }
+    mod_config()->spdy_downstream_version = version;
   } else if(util::strieq(opt, SHRPX_OPT_PID_FILE)) {
     set_config_str(&mod_config()->pid_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_USER)) {
