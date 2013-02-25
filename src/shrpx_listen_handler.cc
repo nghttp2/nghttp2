@@ -67,14 +67,14 @@ void ListenHandler::create_worker_thread(size_t num)
     WorkerInfo *info = &workers_[num_worker_];
     rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
     if(rv == -1) {
-      LLOG(ERROR, this) << "socketpair() failed: " << strerror(errno);
+      LLOG(ERROR, this) << "socketpair() failed: errno=" << errno;
       continue;
     }
     info->sv_ssl_ctx = sv_ssl_ctx_;
     info->cl_ssl_ctx = cl_ssl_ctx_;
     rv = pthread_create(&thread, &attr, start_threaded_worker, info);
     if(rv != 0) {
-      LLOG(ERROR, this) << "pthread_create() failed: " << strerror(rv);
+      LLOG(ERROR, this) << "pthread_create() failed: errno=" << rv;
       for(size_t j = 0; j < 2; ++j) {
         close(info->sv[j]);
       }

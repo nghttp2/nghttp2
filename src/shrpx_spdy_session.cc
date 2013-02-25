@@ -186,7 +186,7 @@ int SpdySession::init_notification()
   int sockpair[2];
   rv = socketpair(AF_UNIX, SOCK_STREAM, 0, sockpair);
   if(rv == -1) {
-    SSLOG(FATAL, this) << "socketpair() failed: " << strerror(errno);
+    SSLOG(FATAL, this) << "socketpair() failed: errno=" << errno;
     return -1;
   }
   wrbev_ = bufferevent_socket_new(evbase_, sockpair[0],
@@ -258,8 +258,8 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
-      SSLOG(WARNING, spdy) << "Setting option TCP_NODELAY failed: "
-                           << strerror(errno);
+      SSLOG(WARNING, spdy) << "Setting option TCP_NODELAY failed: errno="
+                           << errno;
     }
   } else if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {

@@ -261,8 +261,8 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
     rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                     reinterpret_cast<char *>(&val), sizeof(val));
     if(rv == -1) {
-      LOG(WARNING) << "Setting option TCP_NODELAY failed: "
-                   << strerror(errno);
+      LOG(WARNING) << "Setting option TCP_NODELAY failed: errno="
+                   << errno;
     }
     SSL *ssl = 0;
     bufferevent *bev;
