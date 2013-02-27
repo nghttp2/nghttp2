@@ -489,4 +489,14 @@ int32_t Downstream::get_downstream_stream_id() const
   return downstream_stream_id_;
 }
 
+uint32_t Downstream::get_response_rst_stream_status_code() const
+{
+  return response_rst_stream_status_code_;
+}
+
+void Downstream::set_response_rst_stream_status_code(uint32_t status_code)
+{
+  response_rst_stream_status_code_ = status_code;
+}
+
 } // namespace shrpx

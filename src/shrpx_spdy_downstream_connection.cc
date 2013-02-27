@@ -146,7 +146,7 @@ int SpdyDownstreamConnection::submit_rst_stream(Downstream *downstream)
       }
       rv = spdy_->submit_rst_stream(this,
                                     downstream->get_downstream_stream_id(),
-                                    SPDYLAY_CANCEL);
+                                    SPDYLAY_INTERNAL_ERROR);
     }
   }
   return rv;

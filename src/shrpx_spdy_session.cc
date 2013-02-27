@@ -755,6 +755,8 @@ void on_ctrl_recv_callback
           // upstream connection must be terminated.
           downstream->set_response_state(Downstream::MSG_RESET);
         }
+        downstream->set_response_rst_stream_status_code
+          (frame->rst_stream.status_code);
         call_downstream_readcb(spdy, downstream);
       }
     }

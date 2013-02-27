@@ -315,6 +315,19 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
 }
 } // namespace
 
+namespace {
+uint32_t infer_upstream_rst_stream_status_code(uint32_t downstream_status_code)
+{
+  // Only propagate SPDYLAY_REFUSED_STREAM so that upstream client
+  // can resend request.
+  if(downstream_status_code != SPDYLAY_REFUSED_STREAM) {
+    return SPDYLAY_INTERNAL_ERROR;
+  } else {
+    return downstream_status_code;
+  }
+}
+} // namespace
+
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   : handler_(handler),
     session_(0)
@@ -454,31 +467,32 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     // RST_STREAM to the upstream and delete downstream connection
     // here. Deleting downstream will be taken place at
     // on_stream_close_callback.
-    upstream->rst_stream(downstream, SPDYLAY_CANCEL);
-    downstream->set_downstream_connection(0);
-    delete dconn;
-    return;
-  }
-
-  int rv = downstream->on_read();
-  if(rv != 0) {
-    if(LOG_ENABLED(INFO)) {
-      DCLOG(INFO, dconn) << "HTTP parser failure";
-    }
-    if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-    } else {
-      if(upstream->error_reply(downstream, 502) != 0) {
-        delete upstream->get_client_handler();
-        return;
-      }
-    }
-    downstream->set_response_state(Downstream::MSG_COMPLETE);
-    // Clearly, we have to close downstream connection on http parser
-    // failure.
+    upstream->rst_stream(downstream, infer_upstream_rst_stream_status_code
+                         (downstream->get_response_rst_stream_status_code()));
     downstream->set_downstream_connection(0);
     delete dconn;
     dconn = 0;
+  } else {
+    int rv = downstream->on_read();
+    if(rv != 0) {
+      if(LOG_ENABLED(INFO)) {
+        DCLOG(INFO, dconn) << "HTTP parser failure";
+      }
+      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      } else {
+        if(upstream->error_reply(downstream, 502) != 0) {
+          delete upstream->get_client_handler();
+          return;
+        }
+      }
+      downstream->set_response_state(Downstream::MSG_COMPLETE);
+      // Clearly, we have to close downstream connection on http parser
+      // failure.
+      downstream->set_downstream_connection(0);
+      delete dconn;
+      dconn = 0;
+    }
   }
   if(upstream->send() != 0) {
     delete upstream->get_client_handler();
@@ -674,7 +688,8 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
         ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
                              << stream_id;
       }
-      upstream->rst_stream(downstream, SPDYLAY_CANCEL);
+      upstream->rst_stream(downstream, infer_upstream_rst_stream_status_code
+                           (downstream->get_response_rst_stream_status_code()));
     }
   }
   if(nread == 0 && *eof != 1) {

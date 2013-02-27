@@ -128,6 +128,8 @@ public:
   int get_response_state() const;
   int init_response_body_buf();
   evbuffer* get_response_body_buf();
+  uint32_t get_response_rst_stream_status_code() const;
+  void set_response_rst_stream_status_code(uint32_t status_code);
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -164,6 +166,8 @@ private:
   // This buffer is used to temporarily store downstream response
   // body. Spdylay reads data from this in the callback.
   evbuffer *response_body_buf_;
+  // RST_STREAM status_code from downstream SPDY connection
+  uint32_t response_rst_stream_status_code_;
   int32_t recv_window_size_;
 };
 
