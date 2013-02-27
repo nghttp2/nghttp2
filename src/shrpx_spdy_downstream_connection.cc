@@ -190,6 +190,11 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
           // In this case, downstream may be deleted.
           return SPDYLAY_ERR_DEFERRED;
         }
+        // Check dconn is still alive because Upstream::resume_read()
+        // may delete downstream which will delete dconn.
+        if(sd->dconn == 0) {
+          return SPDYLAY_ERR_DEFERRED;
+        }
         if(evbuffer_get_length(body) == 0) {
           return SPDYLAY_ERR_DEFERRED;
         }

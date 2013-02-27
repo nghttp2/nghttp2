@@ -898,7 +898,7 @@ int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
       window_update(downstream);
     }
   }
-  return 0;
+  return send();
 }
 
 } // namespace shrpx
