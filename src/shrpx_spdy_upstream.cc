@@ -572,7 +572,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         // If stream was not closed, then we set MSG_COMPLETE and let
         // on_stream_close_callback delete downstream.
         if(upstream->error_reply(downstream, 502) != 0) {
-          upstream->get_client_handler();
+          delete upstream->get_client_handler();
           return;
         }
         downstream->set_response_state(Downstream::MSG_COMPLETE);
