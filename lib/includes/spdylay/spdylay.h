@@ -826,11 +826,11 @@ typedef union {
  *
  * Callback function invoked when |session| wants to send data to the
  * remote peer. The implementation of this function must send at most
- * |length| bytes of data stored in |data|. It must return the number
- * of bytes sent if it succeeds.  If it cannot send any single byte
- * without blocking, it must return
- * :enum:`SPDYLAY_ERR_WOULDBLOCK`. For other errors, it must return
- * :enum:`SPDYLAY_ERR_CALLBACK_FAILURE`.
+ * |length| bytes of data stored in |data|. The |flags| is currently
+ * not used and always 0. It must return the number of bytes sent if
+ * it succeeds.  If it cannot send any single byte without blocking,
+ * it must return :enum:`SPDYLAY_ERR_WOULDBLOCK`. For other errors, it
+ * must return :enum:`SPDYLAY_ERR_CALLBACK_FAILURE`.
  */
 typedef ssize_t (*spdylay_send_callback)
 (spdylay_session *session,
@@ -841,12 +841,13 @@ typedef ssize_t (*spdylay_send_callback)
  *
  * Callback function invoked when |session| wants to receive data from
  * the remote peer. The implementation of this function must read at
- * most |length| bytes of data and store it in |buf|. It must return
- * the number of bytes written in |buf| if it succeeds. If it cannot
- * read any single byte without blocking, it must return
- * :enum:`SPDYLAY_ERR_WOULDBLOCK`. If it gets EOF before it reads any
- * single byte, it must return :enum:`SPDYLAY_ERR_EOF`. For other
- * errors, it must return :enum:`SPDYLAY_ERR_CALLBACK_FAILURE`.
+ * most |length| bytes of data and store it in |buf|. The |flags| is
+ * currently not used and always 0. It must return the number of bytes
+ * written in |buf| if it succeeds. If it cannot read any single byte
+ * without blocking, it must return :enum:`SPDYLAY_ERR_WOULDBLOCK`. If
+ * it gets EOF before it reads any single byte, it must return
+ * :enum:`SPDYLAY_ERR_EOF`. For other errors, it must return
+ * :enum:`SPDYLAY_ERR_CALLBACK_FAILURE`.
  */
 typedef ssize_t (*spdylay_recv_callback)
 (spdylay_session *session,
