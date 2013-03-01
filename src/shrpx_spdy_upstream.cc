@@ -563,12 +563,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         // response body is sent. This is needed to ensure that
         // RST_STREAM is sent after all pending data are sent.
         upstream->on_downstream_body_complete(downstream);
-      } else if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-        if(downstream->tunnel_established()) {
-          // For SSL tunneling
-          upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-        }
-      } else {
+      } else if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
         // If stream was not closed, then we set MSG_COMPLETE and let
         // on_stream_close_callback delete downstream.
         if(upstream->error_reply(downstream, 502) != 0) {
