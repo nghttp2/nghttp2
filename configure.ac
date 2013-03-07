@@ -97,6 +97,7 @@ LIBS=$LIBS_OLD
 
 case "$host" in
   *android*)
+    android_build=yes
     # android does not need -pthread, but needs followng 2 libs for C++
     SRC_LIBS="$SRC_LIBS -lstdc++ -lsupc++"
     ;;
@@ -106,9 +107,14 @@ case "$host" in
 esac
 
 # zlib
-PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
-LIBS="$ZLIB_LIBS $LIBS"
-CFLAGS="$CFLAGS $ZLIB_CFLAGS"
+if test "x$android_build" = "xyes"; then
+  # Use zlib provided by NDK
+  LIBS="-lz $LIBS"
+else
+  PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
+  LIBS="$ZLIB_LIBS $LIBS"
+  CFLAGS="$CFLAGS $ZLIB_CFLAGS"
+fi
 
 # cunit
 PKG_CHECK_MODULES([CUNIT], [cunit >= 2.1], [have_cunit=yes], [have_cunit=no])
