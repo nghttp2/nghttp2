@@ -55,6 +55,11 @@ AC_ARG_ENABLE([examples],
                     [Build example programs])],
     [request_examples=$enableval], [request_examples=yes])
 
+AC_ARG_WITH([libxml2],
+    [AS_HELP_STRING([--without-libxml2],
+                    [disable support for libxml2])],
+    [], [with_libxml2=yes])
+
 dnl Checks for programs
 AC_PROG_CC
 AC_PROG_CXX
@@ -144,9 +149,12 @@ AM_CONDITIONAL([HAVE_LIBEVENT_OPENSSL],
                [ test "x${have_libevent_openssl}" = "xyes" ])
 
 # libxml2 (for examples/spdycat)
-AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
-if test "x${have_libxml2}" = "xyes"; then
-  AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
+have_libxml2=no
+if test "x$with_libxml2" != "xno"; then
+  AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
+  if test "x${have_libxml2}" = "xyes"; then
+    AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
+  fi
 fi
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 
