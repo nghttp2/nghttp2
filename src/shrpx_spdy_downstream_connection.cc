@@ -419,7 +419,12 @@ evbuffer* SpdyDownstreamConnection::get_request_body_buf() const
 
 void SpdyDownstreamConnection::attach_stream_data(StreamData *sd)
 {
-  assert(sd_ == 0 && sd->dconn == 0);
+  // It is possible sd->dconn is not NULL. sd is detached when
+  // on_stream_close_callback. Before that, after MSG_COMPLETE is set
+  // to Downstream::set_response_state(), upstream's readcb is called
+  // and execution path eventually could reach here. Since the
+  // response was already handled, we just detach sd.
+  detach_stream_data();
   sd_ = sd;
   sd_->dconn = this;
 }
