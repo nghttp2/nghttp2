@@ -196,6 +196,11 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
           return SPDYLAY_ERR_DEFERRED;
         }
         if(evbuffer_get_length(body) == 0) {
+          // Check get_request_state() == MSG_COMPLETE just in case
+          if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+            *eof = 1;
+            break;
+          }
           return SPDYLAY_ERR_DEFERRED;
         }
       }
