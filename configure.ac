@@ -85,15 +85,25 @@ LIBS_OLD=$LIBS
 # Search for dlsym function, which is used in tests. Linux needs -ldl,
 # but netbsd does not need it.
 AC_SEARCH_LIBS([dlsym], [dl])
-TESTS_LIBS=$LIBS $TESTS_LIBS
+TESTS_LIBS="$LIBS $TESTS_LIBS"
 LIBS=$LIBS_OLD
 
 LIBS_OLD=$LIBS
 AC_SEARCH_LIBS([clock_gettime], [rt],
                [AC_DEFINE([HAVE_CLOCK_GETTIME], [1],
                           [Define to 1 if you have the `clock_gettime`.])])
-SRC_LIBS=$LIBS $SRC_LIBS
+SRC_LIBS="$LIBS $SRC_LIBS"
 LIBS=$LIBS_OLD
+
+case "$host" in
+  *android*)
+    # android does not need -pthread, but needs followng 2 libs for C++
+    SRC_LIBS="$SRC_LIBS -lstdc++ -lsupc++"
+    ;;
+  *)
+    SRC_LIBS="$SRC_LIBS -pthread"
+    ;;
+esac
 
 # zlib
 PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
@@ -211,6 +221,7 @@ AC_CHECK_FUNCS([ \
   getpwnam \
   memmove \
   memset \
+  timegm \
 ])
 
 AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])

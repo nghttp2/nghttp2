@@ -26,8 +26,8 @@ if ENABLE_SRC
 AM_CFLAGS = -Wall
 AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
 	@OPENSSL_CFLAGS@ @XML_CPPFLAGS@ @LIBEVENT_OPENSSL_CFLAGS@ @DEFS@
-AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@ @LIBEVENT_OPENSSL_LIBS@ @SRC_LIBS@ \
-	-pthread
+AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@ @LIBEVENT_OPENSSL_LIBS@ @SRC_LIBS@
+
 LDADD = $(top_builddir)/lib/libspdylay.la
 
 bin_PROGRAMS = spdycat spdyd
@@ -38,8 +38,8 @@ if HAVE_LIBEVENT_OPENSSL
 bin_PROGRAMS += shrpx
 endif # HAVE_LIBEVENT_OPENSSL
 
-HELPER_OBJECTS = util.cc spdylay_ssl.cc
-HELPER_HFILES = util.h spdylay_ssl.h spdylay_config.h
+HELPER_OBJECTS = util.cc timegm.c spdylay_ssl.cc
+HELPER_HFILES = util.h timegm.h spdylay_ssl.h spdylay_config.h
 
 EVENT_OBJECTS =
 EVENT_HFILES = EventPoll.h EventPollEvent.h
@@ -75,7 +75,7 @@ spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 
 if HAVE_LIBEVENT_OPENSSL
 SHRPX_SRCS = \
-	util.cc util.h base64.h \
+	util.cc util.h timegm.c timegm.h base64.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_listen_handler.cc shrpx_listen_handler.h \

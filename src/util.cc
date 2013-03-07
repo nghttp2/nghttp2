@@ -29,6 +29,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "timegm.h"
+
 namespace spdylay {
 
 namespace util {
