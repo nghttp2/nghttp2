@@ -91,6 +91,44 @@ The documents will be generated under ``doc/manual/html/``.
 
 The generated documents will not be installed with ``make install``.
 
+Building Android binary
+------------------------
+
+In this section, we briefly describe how to build Android binary using
+`Android NDK <http://developer.android.com/tools/sdk/ndk/index.html>`_
+cross-compiler on Debian Linux.
+
+We offer ``android-config`` and ``android-make`` scripts to make the
+build easier. To make these script work, NDK toolchain must be
+installed in the following way. First, let introduce ``ANDROID_HOME``
+environment variable. We need to install toolchain under
+``$ANDROID_HOME/toolchain``. An user can freely choose the path for
+``ANDROID_HOME``.  For example, to install toolchain under
+``$ANDROID_HOME/toolchain``, do this in the the directory where NDK is
+unpacked::
+
+    $ build/tools/make-standalone-toolchain.sh --platform=android-9 --install-dir=$ANDROID_HOME/toolchain
+
+The platform level is not important here because we don't use Android
+specific C/C++ API.
+
+The dependent libraries, such as OpenSSL and libevent should be built
+with the toolchain and installed under ``$ANDROID_HOME/usr/local``.
+We recommend to build these libraries as static library to make the
+deployment easier. libxml2 support is currently disabled.
+
+We use zlib which comes with Android NDK, so we don't have to build it
+by ourselves.
+
+Before running ``android-config`` and ``android-make``,
+``ANDOIRD_HOME`` environment variable must be set to point to the
+correct path.
+
+After ``android-config``, run ``android-make`` to compile sources.
+``android-make`` is just include path to cross compiler in ``PATH``
+and run make. So if you include path to corss compiler by yourself,
+you can just run make to build spdylay and tools as usual.
+
 API
 ---
 
