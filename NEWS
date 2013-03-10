@@ -1,3 +1,115 @@
+spdylay 0.3.8
+=============
+
+Release Note
+------------
+
+This release fixes stability problems in shrpx.  Shrpx gets several
+new options and operation modes in this release. See the changes below
+for details. Spdycat and spdyd get colored verbose output. Build
+script for Android was added.
+
+Changes
+-------
+
+* Add Android build scripts and document
+
+* shrpx: Fix assertion failure in
+  SpdyDownstreamConnection::attach_stream_data
+
+* src: Provide timegm replacement and android build fix
+
+* Add --without-libxml2 configure option
+
+* Document about flags of spdylay_send_callback and spdylay_recv_callback
+
+* shrpx: Fix not send RST_STREAM when downstream gets valid EOF
+
+* shrpx: Fix WINDOW_UPDATE may block until SpdyUpstream::send()
+
+  spdy_data_read_callback in SpdyDownstreamConnection calls
+  SpdyUpstream::resume_read() which submits WINDOW_UPDATE, but after
+  that they are not call SpdyUpstream::send(). This means that if no
+  pending outgoing data in upstream, then WINDOW_UPDATE is blocked
+  until SpdyUpstream::send() from somewhere. This change adds
+  SpdyUpstream::send() to resume_read() so that WINDOW_UPDATE is not
+  blocked.
+
+* shrpx: Fix blocking upstream RST_STREAM and propagate REFUSED_STREAM
+
+  This change fixes upstream RST_STREAM is blocked until
+  SpdyUpstream::send() is called. Now downstream REFUSED_STREAM is
+  propagated to upstream client so that client can reset request.  The
+  RST_STREAM error code when downstream went wrong is changed from
+  CANCEL to INTERNAL_ERROR.
+
+* shrpx: Remove strerror(3) from code which may run in multi-thread
+
+* shrpx: Add non-TLS SPDY backend connection support
+
+  Use --backend-spdy-no-tls to disable TLS on backend SPDY connection.
+  The SPDY protocol used there must be configured by
+  --backend-spdy-proto option.
+
+* spdycat: Add --multiply option
+
+* spdycli: Fix missing last by with IPv6 addr and check argc
+
+* spdycat: Fix error handling of spdylay_gzip_inflate()
+
+* shrpx: More backend EOF handling
+
+  Now we set Downstream::set_response_connection_close(true) for
+  tunneled connections. Also call
+  Upstream::on_downstream_body_complete() callback when setting
+  MSG_COMPLETE in SpdySession when RST_STREAM is caught.  Clean up EOF
+  handling in https_downstream_readcb.
+
+* shrpx: Send pending response data before RST_STREAM in tunnel
+  connection
+
+* shprx: Add --backend-http-proxy-uri option
+
+  Specify proxy URI in the form http://[USER:PASS]PROXY:PORT. USER and
+  PASS are optional and if they exist they must be properly
+  percent-encoded. This proxy is used when the backend connection is
+  SPDY. First, make a CONNECT request to the proxy and it connects to
+  the backend on behalf of shrpx. This forms tunnel. After that, shrpx
+  performs SSL/TLS handshake with the downstream through the
+  tunnel. The timeouts when connecting and making CONNECT request can
+  be specified by --backend-read-timeout and --backend-write-timeout
+  options.
+
+* shrpx: Add --spdy-bridge option
+
+  With --spdy-bridge option, it listens SPDY/HTTPS connections from
+  front end and forwards them to the backend in SPDY. The usage will
+  be written later. This change fixes the crash when more than 2
+  outstanding SpdyDownstreamConnection objects are added to
+  SpdySession and establishing connection to SPDY backend is failed.
+
+* shrpx: Add --subcert option to add additional certificate/private key
+
+  This option specifies additional certificate and private key
+  file. Shrpx will choose certificates based on the hostname indicated
+  by client using TLS SNI extension. This option can be used multiple
+  times.
+
+* shrpx: Relay Connection: upgrade header field for HTTP/1.1
+  connections
+
+* spdycat: Send "accept-encoding: gzip, deflate" header field
+
+* spdycat: Output error messages to std::cerr
+
+* spdycat, spdyd: Color verbose output
+
+* shrpx: Don't return chunked response for pre-HTTP/1.1 request
+
+* Fix SPDY/3 priority pack and unpack handling
+
+
+
 spdylay 0.3.7
 =============
 
