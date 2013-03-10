@@ -26,6 +26,7 @@ Contents:
    package_README
    apiref
    python
+   android-spdy-proxy
 
 Resources
 ---------
