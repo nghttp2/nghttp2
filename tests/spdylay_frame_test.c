@@ -986,3 +986,16 @@ void test_spdylay_frame_nv_set_origin(void)
   CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
             spdylay_frame_nv_set_origin((char**)nv5, &origin));
 }
+
+void test_spdylay_frame_nv_check_null(void)
+{
+  const char *headers1[] = { "path", "/", "host", "a", NULL };
+  const char *headers2[] = { "", "/", "host", "a", NULL };
+  const char *headers3[] = { "path", "/", "host\x01", "a", NULL };
+  const char *headers4[] = { "path", "/", "host", NULL, NULL };
+
+  CU_ASSERT(spdylay_frame_nv_check_null(headers1));
+  CU_ASSERT(0 == spdylay_frame_nv_check_null(headers2));
+  CU_ASSERT(0 == spdylay_frame_nv_check_null(headers3));
+  CU_ASSERT(0 == spdylay_frame_nv_check_null(headers4));
+}

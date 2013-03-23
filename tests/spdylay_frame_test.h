@@ -55,5 +55,6 @@ void test_spdylay_frame_unpack_nv_check_name_spdy3(void);
 void test_spdylay_frame_unpack_nv_last_empty_value_spdy2(void);
 void test_spdylay_frame_unpack_nv_last_empty_value_spdy3(void);
 void test_spdylay_frame_nv_set_origin(void);
+void test_spdylay_frame_nv_check_null(void);
 
 #endif /* SPDYLAY_FRAME_TEST_H */
