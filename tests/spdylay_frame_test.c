@@ -24,11 +24,28 @@
  */
 #include "spdylay_frame_test.h"
 
+#include <assert.h>
+
 #include <CUnit/CUnit.h>
 
 #include "spdylay_frame.h"
 #include "spdylay_helper.h"
 #include "spdylay_test_helper.h"
+
+/* Reads |len_size| byte from |data| as |len_size| byte network byte
+   order integer, and returns it in host byte order. Currently, we
+   only support len_size == 2 or 4 */
+static int get_packed_hd_len(uint8_t *data, size_t len_size)
+{
+  if(len_size == 2) {
+    return spdylay_get_uint16(data);
+  } else if(len_size == 4) {
+    return spdylay_get_uint32(data);
+  } else {
+    /* Not supported */
+    assert(0);
+  }
+}
 
 static const char *headers[] = {
   "method", "GET",
@@ -181,12 +198,99 @@ void test_spdylay_frame_pack_nv_duplicate_keys(void)
   spdylay_frame_nv_del(nv);
 }
 
+static const char *multi_empty_headers1[] = {
+  "a", "",
+  "a", "",
+  NULL
+};
+
+static const char *multi_empty_headers2[] = {
+  "a", "/",
+  "a", "",
+  NULL
+};
+
+static const char *multi_empty_headers3[] = {
+  "a", "",
+  "a", "/",
+  NULL
+};
+
 void test_spdylay_frame_count_nv_space(void)
 {
   size_t len_size = 2;
   CU_ASSERT(85 == spdylay_frame_count_nv_space((char**)headers, len_size));
   len_size = 4;
   CU_ASSERT(111 == spdylay_frame_count_nv_space((char**)headers, len_size));
+  /* only ("a", "") is counted */
+  CU_ASSERT(13 == spdylay_frame_count_nv_space((char**)multi_empty_headers1,
+                                               len_size));
+  /* only ("a", "/") is counted */
+  CU_ASSERT(14 == spdylay_frame_count_nv_space((char**)multi_empty_headers2,
+                                               len_size));
+  /* only ("a", "/") is counted */
+  CU_ASSERT(14 == spdylay_frame_count_nv_space((char**)multi_empty_headers3,
+                                               len_size));
+}
+
+static void frame_pack_nv_empty_value_check(uint8_t *outptr,
+                                            int vallen,
+                                            const char *val,
+                                            size_t len_size)
+{
+  int len;
+  len = get_packed_hd_len(outptr, len_size);
+  CU_ASSERT(1 == len);
+  outptr += len_size;
+  len = get_packed_hd_len(outptr, len_size);
+  CU_ASSERT(1 == len);
+  outptr += len_size;
+  CU_ASSERT(0 == memcmp("a", outptr, len));
+  outptr += len;
+  len = get_packed_hd_len(outptr, len_size);
+  CU_ASSERT(vallen == len);
+  len += len_size;
+  if(vallen == len) {
+    CU_ASSERT(0 == memcmp(val, outptr, vallen));
+  }
+}
+
+static void test_spdylay_frame_pack_nv_empty_value_with(size_t len_size)
+{
+  uint8_t out[256];
+  char **nv;
+  ssize_t rv;
+  int off = (len_size == 2 ? -6 : 0);
+
+  nv = spdylay_frame_nv_copy(multi_empty_headers1);
+  rv = spdylay_frame_pack_nv(out, nv, len_size);
+  CU_ASSERT(13+off == rv);
+  frame_pack_nv_empty_value_check(out, 0, NULL, len_size);
+  spdylay_frame_nv_del(nv);
+
+  nv = spdylay_frame_nv_copy(multi_empty_headers2);
+  rv = spdylay_frame_pack_nv(out, nv, len_size);
+  CU_ASSERT(14+off == rv);
+  frame_pack_nv_empty_value_check(out, 1, "/", len_size);
+  spdylay_frame_nv_del(nv);
+
+  nv = spdylay_frame_nv_copy(multi_empty_headers3);
+  rv = spdylay_frame_pack_nv(out, nv, len_size);
+  CU_ASSERT(14+off == rv);
+  frame_pack_nv_empty_value_check(out, 1, "/", len_size);
+  spdylay_frame_nv_del(nv);
+}
+
+void test_spdylay_frame_pack_nv_empty_value_spdy2(void)
+{
+  test_spdylay_frame_pack_nv_empty_value_with
+    (spdylay_frame_get_len_size(SPDYLAY_PROTO_SPDY2));
+}
+
+void test_spdylay_frame_pack_nv_empty_value_spdy3(void)
+{
+  test_spdylay_frame_pack_nv_empty_value_with
+    (spdylay_frame_get_len_size(SPDYLAY_PROTO_SPDY3));
 }
 
 void test_spdylay_frame_count_unpack_nv_space(void)

@@ -28,6 +28,8 @@
 void test_spdylay_frame_unpack_nv_spdy2(void);
 void test_spdylay_frame_unpack_nv_spdy3(void);
 void test_spdylay_frame_pack_nv_duplicate_keys(void);
+void test_spdylay_frame_pack_nv_empty_value_spdy2(void);
+void test_spdylay_frame_pack_nv_empty_value_spdy3(void);
 void test_spdylay_frame_count_nv_space(void);
 void test_spdylay_frame_count_unpack_nv_space(void);
 void test_spdylay_frame_pack_ping(void);

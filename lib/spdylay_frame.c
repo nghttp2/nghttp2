@@ -250,17 +250,28 @@ size_t spdylay_frame_count_nv_space(char **nv, size_t len_size)
   int i;
   const char *prev = "";
   size_t prevlen = 0;
+  size_t prevvallen = 0;
   for(i = 0; nv[i]; i += 2) {
     const char *key = nv[i];
     const char *val = nv[i+1];
     size_t keylen = strlen(key);
     size_t vallen = strlen(val);
     if(prevlen == keylen && memcmp(prev, key, keylen) == 0) {
-      /* Join previous value, with NULL character */
-      sum += vallen+1;
+      if(vallen) {
+        if(prevvallen) {
+          /* Join previous value, with NULL character */
+          sum += vallen+1;
+          prevvallen = vallen;
+        } else {
+          /* Previous value is empty. In this case, drop the
+             previous. */
+          sum += vallen;
+        }
+      }
     } else {
       prev = key;
       prevlen = keylen;
+      prevvallen = vallen;
       /* SPDY NV header does not include terminating NULL byte */
       sum += keylen+vallen+len_size*2;
     }
@@ -273,28 +284,43 @@ ssize_t spdylay_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size)
   int i;
   uint8_t *bufp = buf+len_size;
   uint32_t num_nv = 0;
-  /* TODO Join values with same keys, using '\0' as a delimiter */
   const char *prev = "";
-  uint8_t *prev_vallen_buf = NULL;
-  uint32_t prev_vallen = 0;
+  uint8_t *cur_vallen_buf = NULL;
+  uint32_t cur_vallen = 0;
+  size_t prevkeylen = 0;
+  size_t prevvallen = 0;
   for(i = 0; nv[i]; i += 2) {
     const char *key = nv[i];
     const char *val = nv[i+1];
     size_t keylen = strlen(key);
     size_t vallen = strlen(val);
-    if(strcmp(prev, key) == 0) {
-      prev_vallen += vallen+1;
-      spdylay_frame_put_nv_len(prev_vallen_buf, prev_vallen, len_size);
-      *bufp = '\0';
-      ++bufp;
-      memcpy(bufp, val, vallen);
-      bufp += vallen;
+    if(prevkeylen == keylen && memcmp(prev, key, keylen) == 0) {
+      if(vallen) {
+        if(prevvallen) {
+          /* Join previous value, with NULL character */
+          cur_vallen += vallen+1;
+          spdylay_frame_put_nv_len(cur_vallen_buf, cur_vallen, len_size);
+          *bufp = '\0';
+          ++bufp;
+          memcpy(bufp, val, vallen);
+          bufp += vallen;
+        } else {
+          /* Previous value is empty. In this case, drop the
+             previous. */
+          cur_vallen += vallen;
+          spdylay_frame_put_nv_len(cur_vallen_buf, cur_vallen, len_size);
+          memcpy(bufp, val, vallen);
+          bufp += vallen;
+        }
+      }
     } else {
       ++num_nv;
       bufp = spdylay_pack_str(bufp, key, keylen, len_size);
       prev = key;
-      prev_vallen_buf = bufp;
-      prev_vallen = vallen;
+      cur_vallen_buf = bufp;
+      cur_vallen = vallen;
+      prevkeylen = keylen;
+      prevvallen = vallen;
       bufp = spdylay_pack_str(bufp, val, vallen, len_size);
     }
   }
