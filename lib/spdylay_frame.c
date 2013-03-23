@@ -185,6 +185,7 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, spdylay_buffer *in,
     uint32_t len;
     char *name, *val;
     char *stop;
+    int multival;
     len = spdylay_frame_get_nv_len(&reader, len_size);
     if(len == 0) {
       invalid_header_block = 1;
@@ -204,6 +205,7 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, spdylay_buffer *in,
     val = data;
     spdylay_buffer_reader_data(&reader, (uint8_t*)data, len);
 
+    multival = 0;
     for(stop = data+len; data != stop; ++data) {
       if(*data == '\0') {
         *idx++ = name;
@@ -212,9 +214,15 @@ int spdylay_frame_unpack_nv(char ***nv_ptr, spdylay_buffer *in,
           invalid_header_block = 1;
         }
         val = data+1;
+        multival = 1;
       }
     }
     *data = '\0';
+    /* Check last header value is empty if NULL separator was
+       found. */
+    if(multival && val == data) {
+      invalid_header_block = 1;
+    }
     ++data;
 
     *idx++ = name;

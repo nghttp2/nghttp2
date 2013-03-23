@@ -707,6 +707,8 @@ void test_spdylay_frame_nv_3to2(void)
   spdylay_frame_nv_del(nv);
 }
 
+/* This function intentionally does not merge same header field into
+   one */
 static size_t spdylay_pack_nv(uint8_t *buf, size_t buflen, const char **nv,
                               size_t len_size)
 {
@@ -787,6 +789,51 @@ void test_spdylay_frame_unpack_nv_check_name_spdy2(void)
 void test_spdylay_frame_unpack_nv_check_name_spdy3(void)
 {
   test_spdylay_frame_unpack_nv_check_name_with
+    (spdylay_frame_get_len_size(SPDYLAY_PROTO_SPDY3));
+}
+
+static void test_spdylay_frame_unpack_nv_last_empty_value_with(size_t len_size)
+{
+  size_t nvbuflen;
+  uint8_t nvbuf[256];
+  uint8_t *nvbufptr;
+  spdylay_buffer buffer;
+  char **outnv = 0;
+  const char hdname[] = "method";
+
+  nvbufptr = nvbuf;
+  spdylay_frame_put_nv_len(nvbufptr, 1, len_size);
+  nvbufptr += len_size;
+  spdylay_frame_put_nv_len(nvbufptr, sizeof(hdname)-1, len_size);
+  nvbufptr += len_size;
+  memcpy(nvbufptr, hdname, sizeof(hdname)-1);
+  nvbufptr += sizeof(hdname)-1;
+  spdylay_frame_put_nv_len(nvbufptr, 4, len_size);
+  nvbufptr += len_size;
+  /* Copy including terminating NULL */
+  memcpy(nvbufptr, "GET", 4);
+  nvbufptr += 4;
+  nvbuflen = nvbufptr - nvbuf;
+
+  spdylay_buffer_init(&buffer, 32);
+
+  spdylay_buffer_write(&buffer, nvbuf, nvbuflen);
+  CU_ASSERT(SPDYLAY_ERR_INVALID_HEADER_BLOCK ==
+            spdylay_frame_unpack_nv(&outnv, &buffer, len_size));
+
+  spdylay_frame_nv_del(outnv);
+  spdylay_buffer_free(&buffer);
+}
+
+void test_spdylay_frame_unpack_nv_last_empty_value_spdy2(void)
+{
+  test_spdylay_frame_unpack_nv_last_empty_value_with
+    (spdylay_frame_get_len_size(SPDYLAY_PROTO_SPDY2));
+}
+
+void test_spdylay_frame_unpack_nv_last_empty_value_spdy3(void)
+{
+  test_spdylay_frame_unpack_nv_last_empty_value_with
     (spdylay_frame_get_len_size(SPDYLAY_PROTO_SPDY3));
 }
 
