@@ -18,8 +18,9 @@ also work. If you don't have VPS, but your home internet connection
 has global IP address which can be accessible from Android device, you
 can use your home PC as SPDY proxy temporarily for the experiment.
 The self-signed certificate is OK because we will run ``shrpx`` with
-``-k`` option on Android. If you think this is insecure, obtain valid
-certificate.
+``-k`` option on Android in this example. Alternatively, you can store
+your certificate in Android device and specify it using ``--cacert``
+option. If you think these are insecure, obtain valid certificate.
 
 Building spdylay library and shrpx
 ----------------------------------
