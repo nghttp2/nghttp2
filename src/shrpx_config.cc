@@ -75,6 +75,8 @@ const char
 SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] = "backend-keep-alive-timeout";
 const char SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS[] = "frontend-spdy-window-bits";
 const char SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS[] = "backend-spdy-window-bits";
+const char SHRPX_OPT_FRONTEND_SPDY_NO_TLS[] = "frontend-spdy-no-tls";
+const char SHRPX_OPT_FRONTEND_SPDY_PROTO[] = "frontend-spdy-proto";
 const char SHRPX_OPT_BACKEND_SPDY_NO_TLS[] = "backend-spdy-no-tls";
 const char SHRPX_OPT_BACKEND_SPDY_PROTO[] = "backend-spdy-proto";
 const char SHRPX_OPT_PID_FILE[] = "pid-file";
@@ -184,6 +186,23 @@ void set_config_str(char **destp, const char *val)
   *destp = strdup(val);
 }
 
+namespace {
+// Parses |optarg| as SPDY NPN protocol string and returns SPDY
+// protocol version number. This function returns -1 on error.
+int parse_spdy_proto(const char *optarg)
+{
+  size_t len = strlen(optarg);
+  const unsigned char *proto;
+  proto = reinterpret_cast<const unsigned char*>(optarg);
+  uint16_t version = spdylay_npn_get_version(proto, len);
+  if(!version) {
+    LOG(ERROR) << "Unsupported SPDY version: " << optarg;
+    return -1;
+  }
+  return version;
+}
+} // namespace
+
 int parse_config(const char *opt, const char *optarg)
 {
   char host[NI_MAXHOST];
@@ -263,18 +282,24 @@ int parse_config(const char *opt, const char *optarg)
                  << " specify the integer in the range [0, 30], inclusive";
       return -1;
     }
+  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_NO_TLS)) {
+    mod_config()->spdy_upstream_no_tls = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_PROTO)) {
+    int version = parse_spdy_proto(optarg);
+    if(version == -1) {
+      return -1;
+    } else {
+      mod_config()->spdy_upstream_version = version;
+    }
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_SPDY_NO_TLS)) {
     mod_config()->spdy_downstream_no_tls = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_SPDY_PROTO)) {
-    size_t len = strlen(optarg);
-    const unsigned char *proto;
-    proto = reinterpret_cast<const unsigned char*>(optarg);
-    uint16_t version = spdylay_npn_get_version(proto, len);
-    if(!version) {
-      LOG(ERROR) << "Unsupported SPDY version: " << optarg;
+    int version = parse_spdy_proto(optarg);
+    if(version == -1) {
       return -1;
+    } else {
+      mod_config()->spdy_downstream_version = version;
     }
-    mod_config()->spdy_downstream_version = version;
   } else if(util::strieq(opt, SHRPX_OPT_PID_FILE)) {
     set_config_str(&mod_config()->pid_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_USER)) {

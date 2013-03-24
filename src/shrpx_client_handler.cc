@@ -135,8 +135,13 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
   if(ssl_) {
     set_bev_cb(0, upstream_writecb, upstream_eventcb);
   } else {
-    // For client-mode
-    upstream_ = new HttpsUpstream(this);
+    if(get_config()->client_mode) {
+      // Client mode
+      upstream_ = new HttpsUpstream(this);
+    } else {
+      // no-TLS SPDY
+      upstream_ = new SpdyUpstream(get_config()->spdy_upstream_version, this);
+    }
     set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
   }
 }

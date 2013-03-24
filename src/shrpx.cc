@@ -243,7 +243,8 @@ int event_loop()
     cl_ssl_ctx = get_config()->spdy_downstream_no_tls ?
       0 : ssl::create_ssl_client_context();
   } else {
-    sv_ssl_ctx = get_config()->default_ssl_ctx;
+    sv_ssl_ctx = get_config()->spdy_upstream_no_tls ?
+      0 : get_config()->default_ssl_ctx;
     cl_ssl_ctx = get_config()->spdy_bridge &&
       !get_config()->spdy_downstream_no_tls ?
       ssl::create_ssl_client_context() : 0;
@@ -356,6 +357,8 @@ void fill_default_config()
   mod_config()->spdy_upstream_window_bits = 16;
   mod_config()->spdy_downstream_window_bits = 16;
 
+  mod_config()->spdy_upstream_no_tls = false;
+  mod_config()->spdy_upstream_version = 3;
   mod_config()->spdy_downstream_no_tls = false;
   mod_config()->spdy_downstream_version = 3;
 
@@ -530,6 +533,16 @@ void print_help(std::ostream& out)
       << "                       frontend connection to 2**<N>.\n"
       << "                       Default: "
       << get_config()->spdy_upstream_window_bits << "\n"
+      << "    --frontend-spdy-no-tls\n"
+      << "                       Disable SSL/TLS on frontend SPDY\n"
+      << "                       connections. SPDY protocol must be specified\n"
+      << "                       using --frontend-spdy-proto. This option\n"
+      << "                       also disables frontend HTTP/1.1.\n"
+      << "    --frontend-spdy-proto\n"
+      << "                       Specify SPDY protocol used in frontend\n"
+      << "                       connection if --frontend-spdy-no-tls is\n"
+      << "                       used. Default: spdy/"
+      << get_config()->spdy_upstream_version << "\n"
       << "    --backend-spdy-window-bits=<N>\n"
       << "                       Sets the initial window size of SPDY\n"
       << "                       backend connection to 2**<N>.\n"
@@ -644,6 +657,8 @@ int main(int argc, char **argv)
       {"backend-http-proxy-uri", required_argument, &flag, 26},
       {"backend-spdy-no-tls", no_argument, &flag, 27},
       {"backend-spdy-proto", required_argument, &flag, 28},
+      {"frontend-spdy-no-tls", no_argument, &flag, 29},
+      {"frontend-spdy-proto", required_argument, &flag, 30},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -813,6 +828,16 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_PROTO,
                                          optarg));
         break;
+      case 29:
+        // --frontend-spdy-no-tls
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_NO_TLS,
+                                         "yes"));
+        break;
+      case 30:
+        // --frontend-spdy-proto
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_PROTO,
+                                         optarg));
+        break;
       default:
         break;
       }
@@ -882,7 +907,7 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
-  if(!get_config()->client_mode) {
+  if(!get_config()->client_mode && !get_config()->spdy_upstream_no_tls) {
     if(!get_config()->private_key_file || !get_config()->cert_file) {
       print_usage(std::cerr);
       LOG(FATAL) << "Too few arguments";
