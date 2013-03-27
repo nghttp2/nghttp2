@@ -205,8 +205,12 @@ AC_CHECK_HEADERS([ \
   unistd.h \
 ])
 
-# For ntohl, ntohs in Windows
-AC_CHECK_HEADERS([winsock2.h])
+case "${host}" in
+  *mingw*)
+    # For ntohl, ntohs in Windows
+    AC_CHECK_HEADERS([winsock2.h])
+    ;;
+esac
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
@@ -237,7 +241,10 @@ fi
 AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
 
 AC_CHECK_FUNCS([kqueue], [have_kqueue=yes])
-AM_CONDITIONAL([HAVE_KQUEUE], [test "x${have_kqueue}" = "xyes"])
+AM_CONDITIONAL([HAVE_KQUEUE], [ test "x${have_kqueue}" = "xyes" ])
+
+AM_CONDITIONAL([ENABLE_SPDYD],
+         [ test "x${have_epoll}" = "xyes" || test "x${have_kqueue}" = "xyes" ])
 
 AC_LANG_PUSH(C++)
 AC_MSG_CHECKING([whether struct kevent.udata is intptr_t])
