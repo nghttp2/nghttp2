@@ -44,6 +44,7 @@ static int get_packed_hd_len(uint8_t *data, size_t len_size)
   } else {
     /* Not supported */
     assert(0);
+    return 0;
   }
 }
 
