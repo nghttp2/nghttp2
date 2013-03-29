@@ -909,14 +909,6 @@ int main(int argc, char **argv)
     mod_config()->downstream_proto = PROTO_HTTP;
   }
 
-  if(mod_config()->downstream_proto == PROTO_SPDY &&
-     mod_config()->spdy_downstream_no_tls &&
-     mod_config()->spdy_downstream_version == 0) {
-    LOG(FATAL) << "--backend-spdy-no-tls: Specify backend SPDY protocol using"
-               << " --backend-spdy-proto";
-    exit(EXIT_FAILURE);
-  }
-
   if(!get_config()->client_mode && !get_config()->spdy_upstream_no_tls) {
     if(!get_config()->private_key_file || !get_config()->cert_file) {
       print_usage(std::cerr);
