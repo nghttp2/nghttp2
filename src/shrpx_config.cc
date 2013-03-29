@@ -79,6 +79,7 @@ const char SHRPX_OPT_FRONTEND_SPDY_NO_TLS[] = "frontend-spdy-no-tls";
 const char SHRPX_OPT_FRONTEND_SPDY_PROTO[] = "frontend-spdy-proto";
 const char SHRPX_OPT_BACKEND_SPDY_NO_TLS[] = "backend-spdy-no-tls";
 const char SHRPX_OPT_BACKEND_SPDY_PROTO[] = "backend-spdy-proto";
+const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[] = "backend-tls-sni-field";
 const char SHRPX_OPT_PID_FILE[] = "pid-file";
 const char SHRPX_OPT_USER[] = "user";
 const char SHRPX_OPT_SYSLOG[] = "syslog";
@@ -300,6 +301,8 @@ int parse_config(const char *opt, const char *optarg)
     } else {
       mod_config()->spdy_downstream_version = version;
     }
+  } else if(util::strieq(opt, SHRPX_OPT_BACKEND_TLS_SNI_FIELD)) {
+    set_config_str(&mod_config()->backend_tls_sni_name, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_PID_FILE)) {
     set_config_str(&mod_config()->pid_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_USER)) {

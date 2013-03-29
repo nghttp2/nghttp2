@@ -520,7 +520,10 @@ void print_help(std::ostream& out)
       << "                       key file. Shrpx will choose certificates\n"
       << "                       based on the hostname indicated by client\n"
       << "                       using TLS SNI extension. This option can be\n"
-      << "                       used multiple times.\n"
+      << "    --backend-tls-sni-field=<HOST>\n"
+      << "                       Explicitly set the content of the TLS SNI\n"
+      << "                       extension.  This will default to the backend\n"
+      << "                       HOST name.\n"
       << "\n"
       << "  SPDY:\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
@@ -659,6 +662,7 @@ int main(int argc, char **argv)
       {"backend-spdy-proto", required_argument, &flag, 28},
       {"frontend-spdy-no-tls", no_argument, &flag, 29},
       {"frontend-spdy-proto", required_argument, &flag, 30},
+      {"backend-tls-sni-field", required_argument, &flag, 31},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -838,6 +842,12 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_PROTO,
                                          optarg));
         break;
+      case 31:
+        // --backend-tls-sni-field
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_TLS_SNI_FIELD,
+                                         optarg));
+        break;
+
       default:
         break;
       }

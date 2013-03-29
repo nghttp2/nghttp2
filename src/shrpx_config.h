@@ -84,6 +84,7 @@ extern const char SHRPX_OPT_CACERT[];
 extern const char SHRPX_OPT_BACKEND_IPV4[];
 extern const char SHRPX_OPT_BACKEND_IPV6[];
 extern const char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[];
+extern const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -134,6 +135,7 @@ struct Config {
   uint16_t spdy_upstream_version;
   bool spdy_downstream_no_tls;
   uint16_t spdy_downstream_version;
+  char *backend_tls_sni_name;
   char *pid_file;
   uid_t uid;
   gid_t gid;

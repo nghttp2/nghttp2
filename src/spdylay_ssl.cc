@@ -916,7 +916,7 @@ int get_time(timeval *tv)
   tv->tv_sec = ts.tv_sec;
   tv->tv_usec = ts.tv_nsec/1000;
 #else // !HAVE_CLOCK_GETTIME
-  rv = gettimeofday(&base_tv, 0);
+  rv = gettimeofday(tv, 0);
 #endif // !HAVE_CLOCK_GETTIME
   return rv;
 }

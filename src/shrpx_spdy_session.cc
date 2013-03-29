@@ -402,11 +402,19 @@ int SpdySession::initiate_connection()
         return -1;
       }
 
-      if(!ssl::numeric_host(get_config()->downstream_host)) {
+      const char *sni_name = 0;
+      if ( get_config()->backend_tls_sni_name ) {
+        sni_name = get_config()->backend_tls_sni_name;
+      }
+      else {
+        sni_name = get_config()->downstream_host;
+      }
+
+      if(!ssl::numeric_host(sni_name)) {
         // TLS extensions: SNI. There is no documentation about the return
         // code for this function (actually this is macro wrapping SSL_ctrl
         // at the time of this writing).
-        SSL_set_tlsext_host_name(ssl_, get_config()->downstream_host);
+        SSL_set_tlsext_host_name(ssl_, sni_name);
       }
       // If state_ == PROXY_CONNECTED, we has connected to the proxy
       // using fd_ and tunnel has been established.

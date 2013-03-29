@@ -396,9 +396,10 @@ void update_html_parser(SpdySession *spdySession, Request *req,
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
        porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
       // No POST data for assets
-      spdySession->add_request(uri, u, 0, 0, req->level+1);
-      submit_request(*spdySession->sc, spdySession->hostport, config.headers,
-                     spdySession->reqvec.back());
+      if ( spdySession->add_request(uri, u, 0, 0, req->level+1) ) {
+        submit_request(*spdySession->sc, spdySession->hostport, config.headers,
+                       spdySession->reqvec.back());
+      }
     }
   }
   req->html_parser->clear_links();
@@ -721,7 +722,20 @@ int communicate(const std::string& host, uint16_t port,
       result = -1;
       goto fin;
     }
-    if (!SSL_set_tlsext_host_name(ssl, host.c_str())) {
+
+    // If the user overrode the host header, use that value for the
+    // SNI extension
+    const char *host_string = 0;
+    std::map<std::string,std::string>::const_iterator i =
+      config.headers.find( "Host" );
+    if ( i != config.headers.end() ) {
+      host_string = (*i).second.c_str();
+    }
+    else {
+      host_string = host.c_str();
+    }
+
+    if (!SSL_set_tlsext_host_name(ssl, host_string)) {
       std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
       result = -1;
       goto fin;
@@ -737,6 +751,11 @@ int communicate(const std::string& host, uint16_t port,
       result = -1;
       goto fin;
     }
+  }
+
+  if ( config.verbose ) {
+    print_timer();
+    std::cout << " Handshake complete" << std::endl;
   }
 
   spdySession.record_handshake_time();
