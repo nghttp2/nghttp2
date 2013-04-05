@@ -48,12 +48,8 @@ static int spdylay_submit_syn_stream_shared
   if(pri > spdylay_session_get_pri_lowest(session)) {
     return SPDYLAY_ERR_INVALID_ARGUMENT;
   }
-  if(assoc_stream_id != 0) {
-    if(session->server == 0) {
-      assoc_stream_id = 0;
-    } else if(spdylay_session_is_my_stream_id(session, assoc_stream_id)) {
-      return SPDYLAY_ERR_INVALID_ARGUMENT;
-    }
+  if(assoc_stream_id != 0 && session->server == 0) {
+    assoc_stream_id = 0;
   }
   if(!spdylay_frame_nv_check_null(nv)) {
     return SPDYLAY_ERR_INVALID_ARGUMENT;

@@ -977,11 +977,6 @@ void test_spdylay_submit_syn_stream(void)
   CU_ASSERT(1 == OB_CTRL(item)->syn_stream.assoc_stream_id);
   CU_ASSERT(3 == OB_CTRL(item)->syn_stream.pri);
 
-  /* Invalid assoc-stream-ID */
-  CU_ASSERT(SPDYLAY_ERR_INVALID_ARGUMENT ==
-            spdylay_submit_syn_stream(session, SPDYLAY_CTRL_FLAG_FIN, 2, 3,
-                                      nv, NULL));
-
   spdylay_session_del(session);
 }
 

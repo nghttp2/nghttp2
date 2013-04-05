@@ -586,8 +586,7 @@ static int spdylay_session_predicate_syn_stream_send
   if(frame->assoc_stream_id != 0) {
     /* Check associated stream is active. */
     /* We assume here that if frame->assoc_stream_id != 0,
-       session->server is always 1 and frame->assoc_stream_id is
-       odd. */
+       session->server is always 1. */
     if(spdylay_session_get_stream(session, frame->assoc_stream_id) ==
        NULL) {
       return SPDYLAY_ERR_STREAM_CLOSED;
@@ -1642,7 +1641,6 @@ static int spdylay_session_validate_syn_stream(spdylay_session *session,
       return SPDYLAY_INVALID_STREAM;
     }
     if((frame->hd.flags & SPDYLAY_CTRL_FLAG_UNIDIRECTIONAL) == 0 ||
-       frame->assoc_stream_id % 2 == 0 ||
        spdylay_session_get_stream(session, frame->assoc_stream_id) == NULL) {
       /* It seems spdy/2 spec does not say which status code should be
          returned in these cases. */
