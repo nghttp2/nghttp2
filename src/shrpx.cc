@@ -324,7 +324,7 @@ void fill_default_config()
   mod_config()->daemon = false;
   mod_config()->verify_client = false;
 
-  mod_config()->server_name = "shrpx spdylay/"SPDYLAY_VERSION;
+  mod_config()->server_name = "shrpx spdylay/" SPDYLAY_VERSION;
   set_config_str(&mod_config()->host, "0.0.0.0");
   mod_config()->port = 3000;
   mod_config()->private_key_file = 0;
