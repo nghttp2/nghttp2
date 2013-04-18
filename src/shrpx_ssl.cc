@@ -146,6 +146,9 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
                  << ERR_error_string(ERR_get_error(), NULL);
       DIE();
     }
+    if(get_config()->honor_cipher_order) {
+      SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+    }
   }
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);

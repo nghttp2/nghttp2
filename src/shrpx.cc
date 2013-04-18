@@ -380,6 +380,7 @@ void fill_default_config()
   // Default accept() backlog
   mod_config()->backlog = 256;
   mod_config()->ciphers = 0;
+  mod_config()->honor_cipher_order = false;
   mod_config()->spdy_proxy = false;
   mod_config()->spdy_bridge = false;
   mod_config()->client_proxy = false;
@@ -501,6 +502,9 @@ void print_help(std::ostream& out)
       << "  SSL/TLS:\n"
       << "    --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
       << "                       string is described in OpenSSL ciphers(1).\n"
+      << "    --honor-cipher-order\n"
+      << "                       Honor server cipher order, giving the\n"
+      << "                       ability to mitigate BEAST attacks.\n"
       << "    -k, --insecure     When used with -p or --client, don't verify\n"
       << "                       backend server's certificate.\n"
       << "    --cacert=<PATH>    When used with -p or --client, set path to\n"
@@ -663,6 +667,7 @@ int main(int argc, char **argv)
       {"frontend-spdy-no-tls", no_argument, &flag, 29},
       {"frontend-spdy-proto", required_argument, &flag, 30},
       {"backend-tls-sni-field", required_argument, &flag, 31},
+      {"honor-cipher-order", no_argument, &flag, 32},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
@@ -846,6 +851,11 @@ int main(int argc, char **argv)
         // --backend-tls-sni-field
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_TLS_SNI_FIELD,
                                          optarg));
+        break;
+      case 32:
+        // --honor-cipher-order
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HONOR_CIPHER_ORDER,
+                                         "yes"));
         break;
 
       default:

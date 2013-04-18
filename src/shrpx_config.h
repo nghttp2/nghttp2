@@ -78,6 +78,7 @@ extern const char SHRPX_OPT_SYSLOG[];
 extern const char SHRPX_OPT_SYSLOG_FACILITY[];
 extern const char SHRPX_OPT_BACKLOG[];
 extern const char SHRPX_OPT_CIPHERS[];
+extern const char SHRPX_OPT_HONOR_CIPHER_ORDER[];
 extern const char SHRPX_OPT_CLIENT[];
 extern const char SHRPX_OPT_INSECURE[];
 extern const char SHRPX_OPT_CACERT[];
@@ -146,6 +147,7 @@ struct Config {
   bool use_syslog;
   int backlog;
   char *ciphers;
+  bool honor_cipher_order;
   bool client;
   // true if --client or --client-proxy are enabled.
   bool client_mode;

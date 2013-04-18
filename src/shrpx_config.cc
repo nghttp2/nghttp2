@@ -86,6 +86,7 @@ const char SHRPX_OPT_SYSLOG[] = "syslog";
 const char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
 const char SHRPX_OPT_BACKLOG[] = "backlog";
 const char SHRPX_OPT_CIPHERS[] = "ciphers";
+const char SHRPX_OPT_HONOR_CIPHER_ORDER[] = "honor-cipher-order";
 const char SHRPX_OPT_CLIENT[] = "client";
 const char SHRPX_OPT_INSECURE[] = "insecure";
 const char SHRPX_OPT_CACERT[] = "cacert";
@@ -353,6 +354,8 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->backlog = strtol(optarg, 0, 10);
   } else if(util::strieq(opt, SHRPX_OPT_CIPHERS)) {
     set_config_str(&mod_config()->ciphers, optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_HONOR_CIPHER_ORDER)) {
+    mod_config()->honor_cipher_order = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_CLIENT)) {
     mod_config()->client = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_INSECURE)) {
