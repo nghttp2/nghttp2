@@ -259,10 +259,6 @@ int event_loop()
     }
   }
 
-  // ListenHandler loads private key. After that, we drop the root
-  // privileges if needed.
-  drop_privileges();
-
   evconnlistener *evlistener6, *evlistener4;
   evlistener6 = create_evlistener(listener_handler, AF_INET6);
   evlistener4 = create_evlistener(listener_handler, AF_INET);
@@ -271,6 +267,10 @@ int event_loop()
                << get_config()->host << ", port " << get_config()->port;
     exit(EXIT_FAILURE);
   }
+
+  // ListenHandler loads private key, and we listen on a priveleged port.
+  // After that, we drop the root privileges if needed.
+  drop_privileges();
 
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
