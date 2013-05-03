@@ -116,7 +116,7 @@ shrpx_unittest_SOURCES = shrpx-unittest.cc \
 shrpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DSPDYLAY_TESTS_DIR=\"$(top_srcdir)/tests\"
 shrpx_unittest_LDFLAGS = -static @OPENSSL_LIBS@ @LIBEVENT_OPENSSL_LIBS@\
-	@CUNIT_LIBS@ @TESTS_LIBS@
+	@SRC_LIBS@ @CUNIT_LIBS@ @TESTS_LIBS@
 TESTS += shrpx-unittest
 endif # HAVE_CUNIT
 
