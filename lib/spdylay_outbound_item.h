@@ -50,6 +50,17 @@ typedef struct {
   spdylay_frame_category frame_cat;
   void *frame;
   void *aux_data;
+  /* Initial priority of this item */
+  int inipri;
+  /* The current priority of this item. Initially, pri equals to
+     inipri. The item is chosen from the queue based on pri and
+     seq. For control frames, they consist of just 1 frame and pri
+     does not change. For DATA frame, they could split up to several
+     frames. After sending a frame, the pri is increased by 1. If it
+     becomes more than lowest priority, then it returns back to inipri
+     and do the same sequence again and again. By doing this, the
+     higher priority long DATA frames don't starve the lower
+     prioritized streams. */
   int pri;
   int64_t seq;
 } spdylay_outbound_item;
