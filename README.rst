@@ -381,6 +381,9 @@ Here is the command-line options::
       SSL/TLS:
         --ciphers=<SUITE>  Set allowed cipher list. The format of the
                            string is described in OpenSSL ciphers(1).
+        --honor-cipher-order
+                           Honor server cipher order, giving the
+                           ability to mitigate BEAST attacks.
         -k, --insecure     When used with -p or --client, don't verify
                            backend server's certificate.
         --cacert=<PATH>    When used with -p or --client, set path to
@@ -401,6 +404,10 @@ Here is the command-line options::
                            based on the hostname indicated by client
                            using TLS SNI extension. This option can be
                            used multiple times.
+        --backend-tls-sni-field=<HOST>
+                           Explicitly set the content of the TLS SNI
+                           extension.  This will default to the backend
+                           HOST name.
 
       SPDY:
         -c, --spdy-max-concurrent-streams=<NUM>
@@ -411,6 +418,15 @@ Here is the command-line options::
                            Sets the initial window size of SPDY
                            frontend connection to 2**<N>.
                            Default: 16
+        --frontend-spdy-no-tls
+                           Disable SSL/TLS on frontend SPDY
+                           connections. SPDY protocol must be specified
+                           using --frontend-spdy-proto. This option
+                           also disables frontend HTTP/1.1.
+        --frontend-spdy-proto
+                           Specify SPDY protocol used in frontend
+                           connection if --frontend-spdy-no-tls is
+                           used. Default: spdy/3
         --backend-spdy-window-bits=<N>
                            Sets the initial window size of SPDY
                            backend connection to 2**<N>.
