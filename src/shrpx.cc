@@ -524,6 +524,7 @@ void print_help(std::ostream& out)
       << "                       key file. Shrpx will choose certificates\n"
       << "                       based on the hostname indicated by client\n"
       << "                       using TLS SNI extension. This option can be\n"
+      << "                       used multiple times.\n"
       << "    --backend-tls-sni-field=<HOST>\n"
       << "                       Explicitly set the content of the TLS SNI\n"
       << "                       extension.  This will default to the backend\n"
