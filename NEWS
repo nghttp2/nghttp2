@@ -1,480 +1,73 @@
-spdylay 0.3.8
+spdylay 1.0.0
 =============
 
 Release Note
 ------------
 
-This release fixes stability problems in shrpx.  Shrpx gets several
-new options and operation modes in this release. See the changes below
-for details. Spdycat and spdyd get colored verbose output. Build
-script for Android was added.
+This release adds several enhancements to the spdyct and shrpx and
+strict checks for name/value pairs.  It fixes the bug that server can
+not push the stream against server initiated stream ID. The internal
+priority management mechanism is updated so that outbound DATA frames
+with variety of SPDY priority can interleave more frequently and don't
+let the low priority streams starve. The development is very stable
+now, so we'll make this release 1.0.0.
 
 Changes
 -------
 
-* Add Android build scripts and document
+* Adjust priority of outbound DATA frames so that it does not starve
+  others
 
-* shrpx: Fix assertion failure in
-  SpdyDownstreamConnection::attach_stream_data
+  This change makes frames with variety of priority interleave more
+  frequently.
 
-* src: Provide timegm replacement and android build fix
+* Drop priveleges only after listening on possibly priveleged port
 
-* Add --without-libxml2 configure option
+  Patch from moparisthebest
 
-* Document about flags of spdylay_send_callback and spdylay_recv_callback
+* Add --honor-cipher-order option to mitigate BEAST attacks
 
-* shrpx: Fix not send RST_STREAM when downstream gets valid EOF
+  Patch from moparisthebest
 
-* shrpx: Fix WINDOW_UPDATE may block until SpdyUpstream::send()
+* Fix building on mac os x. "error: invalid suffix on literal; C++11
+  requires a space between literal and identifier"
 
-  spdy_data_read_callback in SpdyDownstreamConnection calls
-  SpdyUpstream::resume_read() which submits WINDOW_UPDATE, but after
-  that they are not call SpdyUpstream::send(). This means that if no
-  pending outgoing data in upstream, then WINDOW_UPDATE is blocked
-  until SpdyUpstream::send() from somewhere. This change adds
-  SpdyUpstream::send() to resume_read() so that WINDOW_UPDATE is not
-  blocked.
+  Patch from snnn
 
-* shrpx: Fix blocking upstream RST_STREAM and propagate REFUSED_STREAM
+* Allow server initiated stream ID in associated-stream-id
 
-  This change fixes upstream RST_STREAM is blocked until
-  SpdyUpstream::send() is called. Now downstream REFUSED_STREAM is
-  propagated to upstream client so that client can reset request.  The
-  RST_STREAM error code when downstream went wrong is changed from
-  CANCEL to INTERNAL_ERROR.
+* spdycat, shrpx: TLS SNI enhancements
 
-* shrpx: Remove strerror(3) from code which may run in multi-thread
+  shrpx:
+  * Added an option to set the TLS SNI extension between shrpx and the
+    origin on the command line
 
-* shrpx: Add non-TLS SPDY backend connection support
+  spdycat:
+  * If the user set an explicit host header ( using --headers ) use that
+    name for the TLS SNI extension.
+  * Added the handshake completion time to the verbose output
+  * The gettimeofday call in get_time was using the incorrect structure
+    ( I believe )
+  * In update_html_parser it was submitting the request regardless of
+    the return value of add_request.
 
-  Use --backend-spdy-no-tls to disable TLS on backend SPDY connection.
-  The SPDY protocol used there must be configured by
-  --backend-spdy-proto option.
+  Patch from Stephen Ludin
 
-* spdycat: Add --multiply option
+* shrpx: Support non-TLS SPDY in frontend connection
 
-* spdycli: Fix missing last by with IPv6 addr and check argc
+* Don't allow control characters in outgoing name/value pairs
 
-* spdycat: Fix error handling of spdylay_gzip_inflate()
+  This check is done in spdylay_submit_* family functions and they
+  will return error if they found control characters.
 
-* shrpx: More backend EOF handling
+* Don't pack multiple empty header values in one header field
 
-  Now we set Downstream::set_response_connection_close(true) for
-  tunneled connections. Also call
-  Upstream::on_downstream_body_complete() callback when setting
-  MSG_COMPLETE in SpdySession when RST_STREAM is caught.  Clean up EOF
-  handling in https_downstream_readcb.
+  SPDY spec does not allow multiple empty header values in one header
+  field. This change makes out-going framer ignore such empty header
+  value if there is non-empty header value with the same name.
 
-* shrpx: Send pending response data before RST_STREAM in tunnel
-  connection
+* Fix the incoming last empty header value is not checked properly
 
-* shprx: Add --backend-http-proxy-uri option
-
-  Specify proxy URI in the form http://[USER:PASS]PROXY:PORT. USER and
-  PASS are optional and if they exist they must be properly
-  percent-encoded. This proxy is used when the backend connection is
-  SPDY. First, make a CONNECT request to the proxy and it connects to
-  the backend on behalf of shrpx. This forms tunnel. After that, shrpx
-  performs SSL/TLS handshake with the downstream through the
-  tunnel. The timeouts when connecting and making CONNECT request can
-  be specified by --backend-read-timeout and --backend-write-timeout
-  options.
-
-* shrpx: Add --spdy-bridge option
-
-  With --spdy-bridge option, it listens SPDY/HTTPS connections from
-  front end and forwards them to the backend in SPDY. The usage will
-  be written later. This change fixes the crash when more than 2
-  outstanding SpdyDownstreamConnection objects are added to
-  SpdySession and establishing connection to SPDY backend is failed.
-
-* shrpx: Add --subcert option to add additional certificate/private key
-
-  This option specifies additional certificate and private key
-  file. Shrpx will choose certificates based on the hostname indicated
-  by client using TLS SNI extension. This option can be used multiple
-  times.
-
-* shrpx: Relay Connection: upgrade header field for HTTP/1.1
-  connections
-
-* spdycat: Send "accept-encoding: gzip, deflate" header field
-
-* spdycat: Output error messages to std::cerr
-
-* spdycat, spdyd: Color verbose output
-
-* shrpx: Don't return chunked response for pre-HTTP/1.1 request
-
-* Fix SPDY/3 priority pack and unpack handling
-
-
-
-spdylay 0.3.7
-=============
-
-Release Note
-------------
-
-This release updates INTERNAL_ERROR value of GOAWAY frame according to
-SPDY/3 spec change. The spdycat and spdyd now can operate on
-non-SSL/TLS SPDY connections. The shrpx now has --client and
---client-proxy options to make it accept plain HTTP connection and
-forward to the backend in SPDY. There are many enhancements to these
-programs in this release. Please read Changes below.
-
-Changes
--------
-
-* spdycat: Add -d option to POST data
-
-* shrpx: Capitalize header field name in HTTP downstream connection
-
-* shrpx: Add --no-via option
-
-  If --no-via option is given, shrpx does not append to Via header
-  field. If Via header field is received, it is left unaltered.
-
-* spdycat: Log error when no supported SPDY version was negotiated
-
-* shrpx: Log status code, method, path and HTTP version in accesslog
-
-* shrpx: Color HTTP headers in console log
-
-* shrpx: Color severity level in terminal
-
-  Color severity level if stderr refers to a terminal.
-
-* shrpx: Read private key's passwd from a file
-
-  This avoids the need to provide the password for your
-  private key interactively.
-
-  It can be used via --private-key-passwd-file or
-  private-key-passwd-file in the given config file. The first line in
-  the file (without \n) will be treated as the passwd. There isn't any
-  validation and all lines after the first one (if any) are ignored.
-
-  The security model behind this is a bit simplistic so I am open to
-  better ideas. Basically your password file should be root:root (700)
-  and you *should* drop root and run as an unprivileged user.
-
-  If the file exists and a line can be read then a callback will be
-  set for the SSL ctxt and it'll feed the passwd when the private key
-  is read (if password is needed).
-
-  If the file exists with the wrong permisions it'll be logged and
-  ignored.
-
-* spdycat, spdyd: Support SPDY without SSL/TLS
-
-  Use --no-tls option to disable SSL/TLS and specify SPDY protocol
-  version using -2 or -3.
-
-* shrpx: Add --backend-ipv4 and --backend-ipv6 options.
-
-* shrpx: Add -v, --version option
-
-* shrpx: Verify backend server's certificate in client mode
-
-  The -k, --insecure option is added to skip this verification.  The
-  system wide trusted CA certificates will be loaded at startup. The
-  --cacert option is added to specify the trusted CA certificate file.
-
-* shrpx: Check the length of output buffer in write callback
-
-  Possibly because of deferred callback, we may get this callback when
-  the output buffer is not empty.
-
-* shrpx: Add --client-proxy and --client option
-
-  With --client, instead of accepting SPDY/HTTPS connection, shrpx
-  accepts plain HTTP connection and communicate with backend server in
-  SPDY (SSL/TLS). To use shrpx as a forward proxy, use -p option
-  instead.
-
-  The --client-proxy option is mostly the same with with --client
-  option, but it also requires the request path from frontend must be
-  an absolute URI, suitable for use as a forward proxy.
-
-* shrpx: Don't send response-body for 304 response
-
-* Update GOAWAY INTERNAL_ERROR value according to SPDY/3 spec change
-
-* shrpx: Fix password handling for certs keys
-
-  We should only call daemon() after ListenHandler is instantiated,
-  where SSL_CTX_use_PrivateKey_file is called, otherwise we have no
-  stdin/stdout to get the password for keyfile.
-
-* spdycat: Handle timeout in connect and SSL/TLS handshake
-
-
-
-spdylay 0.3.6
-=============
-
-Release Note
-------------
-
-This release fixes bugs in configure command-line options and spdycat.
-The client side header block compression was disabled. The
-on_ctrl_not_send_callback now gets SPDYLAY_ERR_FRAME_TOO_LARGE as
-error code when packed frame is too large to fit in SPDY frame size
-limit. Shrpx SPDY proxy mode now announces SPDY/3 as default protocol.
-
-Changes
--------
-
-* shrpx: Made SPDY/3 default protocol in SPDY proxy mode.  The reason
-  why we choose SPDY/2 as default for SPDY prxy was due to Chrome's
-  window update bug. Now its fix is available in Chrome stable, we
-  make SPDY/3 as default.
-
-* spdycat: Just return in check_response_header if stream_user_data is
-  NULL.
-
-* spdycat: Add missing break after handling -H option
-
-* configure: Fix bug that $withval is used where $enableval should be
-  used
-
-* shrpx: Use request HTTP version in HTTPS upstream response
-
-* shrpx: Log when SPDY stream is closed
-
-* Check provisioned frame length when packing a frame.  If resultant
-  length of a frame exceeds the maximum value (which is 2**24 - 1 for
-  SPDY/2 and 3), SPDYLAY_ERR_FRAME_TOO_LARGE is used to indicate this
-  error. This error will be notified by on_ctrl_not_send_callback.
-
-* Disable client side header block compression.
-
-
-
-spdylay 0.3.5
-=============
-
-Release Note
-------------
-
-This release fixes the bug that shrpx tries to read response body when
-HTTP status code is 304 and nonzero Content-Length is returned.  The
-SPDY client and server programs, spdycat, spdyd and shrpx, were moved
-to src directory. The --enable-src configure option was added to
-enable/disable to build them. In Python API, Session.resume_data() now
-returns boolean value to indicate error instead of raising
-InvalidArgumentError.
-
-This release was made because the previous release, 0.3.4, did not
-update library version. Other than updated library version number,
-anything has not been changed since 0.3.4.
-
-Changes
--------
-
-* shrpx: Check request_connection_close_ when deciding closing
-  connection.  When deciding whether to close the client connection,
-  check request_connection_close_ of Downstream in addition of
-  response_connection_close_. Also we only add "Connection:
-  Keep-Alive" header to the HTTP/1.0 or HTTP/0.9 clients.
-
-* python: Don't raise exception from Session.resume_data().  In
-  practice, Session.resume_data() will be used without checking there
-  is deferred data or not. Actually, there is no API to check this.
-  So it is better not to raise exception. Instead return False to
-  notify error. If the method succeeds, it returns True.
-
-* Add --enable-src configure option.  When --enable-src is given, the
-  programs in src directory will be built. If --disable-src is given,
-  those programs will not be built. If none of them are given,
-  --enable-src is assumed.
-
-* Move spdycat, spdyd and shrpx from examples to src.  To distinguish
-  the to-be-installed programs and non-installable example source
-  code, the former programs, spdycat, spdydyd and shrpx, were moved to
-  src directory. spdynative was removed from Makefile because it does
-  not appeal to any users much.
-
-* shrpx: Ignore response body if HTTP status code is 1xx, 204 or 304.
-
-
-
-spdylay 0.3.4
-=============
-
-Release Note
-------------
-
-This release fixes the bug that shrpx tries to read response body when
-HTTP status code is 304 and nonzero Content-Length is returned.  The
-SPDY client and server programs, spdycat, spdyd and shrpx, were moved
-to src directory. The --enable-src configure option was added to
-enable/disable to build them. In Python API, Session.resume_data() now
-returns boolean value to indicate error instead of raising
-InvalidArgumentError.
-
-Changes
--------
-
-* shrpx: Check request_connection_close_ when deciding closing
-  connection.  When deciding whether to close the client connection,
-  check request_connection_close_ of Downstream in addition of
-  response_connection_close_. Also we only add "Connection:
-  Keep-Alive" header to the HTTP/1.0 or HTTP/0.9 clients.
-
-* python: Don't raise exception from Session.resume_data().  In
-  practice, Session.resume_data() will be used without checking there
-  is deferred data or not. Actually, there is no API to check this.
-  So it is better not to raise exception. Instead return False to
-  notify error. If the method succeeds, it returns True.
-
-* Add --enable-src configure option.  When --enable-src is given, the
-  programs in src directory will be built. If --disable-src is given,
-  those programs will not be built. If none of them are given,
-  --enable-src is assumed.
-
-* Move spdycat, spdyd and shrpx from examples to src.  To distinguish
-  the to-be-installed programs and non-installable example source
-  code, the former programs, spdycat, spdydyd and shrpx, were moved to
-  src directory. spdynative was removed from Makefile because it does
-  not appeal to any users much.
-
-* shrpx: Ignore response body if HTTP status code is 1xx, 204 or 304.
-
-
-
-spdylay 0.3.3
-=============
-
-Release Note
-------------
-
-This release fixes the segmentation fault error if the name/value
-pairs which include empty string name are passed as nv argument to
-spdylay_submit_* functions. Spdycat gets new option to specify
-arbitrary headers from command line. Shrpx gets new option to specify
-allowed cipher list. Python wrapper python-spdylay was added.
-
-Changes
--------
-
-* Add spdylay_npn_get_proto_list() public API function.
-  spdylay_npn_get_proto_list() returns a pointer to the supported SPDY
-  version list. The element of the list is spdylay_npn_proto
-  struct. It contains all SPDY version information this library
-  supports. The application can use this information to configure NPN
-  protocol offerings/selection.
-
-* Add --enable-example configure option. If --disable-example is used,
-  example programs will not be compiled.
-
-* Fix error with w64-mingw32 cross compiler.
-
-* Remove unused zlib.h header file from spdylay.h
-
-* Fix segmentation fault error if the name/value pairs which include
-  empty string name are passed as nv argument to spdylay_submit_*
-  functions.
-
-* spdycat: Adding arbitrary headers form the command line. Patch from
-  Stephen Ludin.
-
-* Fix intptr_t check in configure.ac. Patch from Stephen Ludin.
-
-* shrpx: add --ciphers option to specify allowed cipher list
-
-* python: Add Python wrapper for spdylay. It is released separately as
-  python-spdylay package from PyPI.
-
-
-
-spdylay 0.3.2
-=============
-
-Release Note
-------------
-
-This release adds many features and options to shrpx, HTTPS/SPDY
-reverse proxy. Secure SPDY proxy mode was added to shrpx. Spdycat now
-supports SNI, thanks to the patch contributed by Piotr Sikora.
-
-Changes
--------
-
-* spdycat: Add support for Server Name Indication (SNI). Patch from
-  Piotr Sikora.
-
-* spdycat: Use TLSv1_client_method
-
-* shrpx: Add many new command-line options. It also now supports
-  configuration file. Use http-parser instead of htparse. Add SPDY
-  proxy mode.
-
-* lib: Take into account shut_flags when accepting DATA frame.
-
-
-
-spdylay 0.3.1
-=============
-
-Release Note
-------------
-
-This release fixes the bug that on_ctrl_recv_callback is not called
-when RST_STREAM is received.  It also fixes the bug that
-on_data_recv_callback and on_data_chunk_recv_callback is called after
-the stream was closed. A multi-threaded reverse proxy for SPDY/HTTPS
-is added as an example program.
-
-Changes
--------
-
-* Added --enable-maintainer-mode configure option If it is enabled,
-  turn on extra compiler warnings.
-
-* Don't call on_data_recv_callback and on_data_chunk_recv_callback if
-  stream was closed or being closed.
-
-* Added example program Shrpx: a multi-threaded reverse proxy for
-  SPDY/HTTPS.  It accepts SPDY/HTTPS connections and converts them to
-  normal HTTP and forwards to the downstream servers.
-
-* Fixed bug on_ctrl_recv_callback not called for RST_STREAM
-
-* Return nonzero exit status if test fails. Fixed failmalloc tests.
-
-
-
-spdylay 0.3.0
-=============
-
-Release Note
-------------
-
-This release fixes buffer overrun when a lot of streams are created.
-SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER option was added to control the
-maximum payload size of the incoming control frames.
-
-Changes
--------
-
-* Bump up LT version to 2.0.1.
-
-* Included <functional> from spdy.h
-
-* Made spdylay_strerror(0) return "Success"
-
-* Added SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER option.  This option
-  sets maximum receive buffer size for incoming control frame.
-  Basically the library checks the length field of the incoming
-  control frame. For frames with name/value header block, the library
-  also checks the length of inflated block is also under the
-  limit. This is done while incrementally inflating block. If the
-  length of frames with name/value header block exceeds the limit, the
-  library will issue RST_STREAM with FRAME_TOO_LARGE. For other
-  frames, it will issue GOAWAY.
-
-* Incremental name/value block decompression
-
-* Fixed buffer overrun in spdylay_pq_push
+  This change fixes the bug that spdylay_frame_unpack_nv does not
+  check the size of header value if it is the last value in NULL
+  separated list.
