@@ -897,6 +897,21 @@ int main(int argc, char **argv)
     }
   }
 
+  if(get_config()->cert_file && get_config()->private_key_file) {
+    mod_config()->default_ssl_ctx =
+      ssl::create_ssl_context(get_config()->private_key_file,
+                              get_config()->cert_file);
+    if(get_config()->cert_tree) {
+      if(ssl::cert_lookup_tree_add_cert_from_file(get_config()->cert_tree,
+                                                  get_config()->default_ssl_ctx,
+                                                  get_config()->cert_file)
+         == -1) {
+        LOG(FATAL) << "Failed to parse command-line argument.";
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+
   if(get_config()->backend_ipv4 && get_config()->backend_ipv6) {
     LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
                << "same time.";

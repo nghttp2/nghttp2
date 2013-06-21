@@ -406,19 +406,6 @@ int parse_config(const char *opt, const char *optarg)
     LOG(ERROR) << "Unknown option: " << opt;
     return -1;
   }
-  if(get_config()->cert_file && get_config()->private_key_file) {
-    mod_config()->default_ssl_ctx =
-      ssl::create_ssl_context(get_config()->private_key_file,
-                              get_config()->cert_file);
-    if(get_config()->cert_tree) {
-      if(ssl::cert_lookup_tree_add_cert_from_file(get_config()->cert_tree,
-                                                  get_config()->default_ssl_ctx,
-                                                  get_config()->cert_file)
-         == -1) {
-        return -1;
-      }
-    }
-  }
   return 0;
 }
 
