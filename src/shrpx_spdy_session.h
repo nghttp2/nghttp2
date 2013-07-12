@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -34,7 +34,7 @@
 #include <event.h>
 #include <event2/bufferevent.h>
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include "http-parser/http_parser.h"
 
@@ -65,7 +65,7 @@ public:
 
   int submit_request(SpdyDownstreamConnection *dconn,
                      uint8_t pri, const char **nv,
-                     const spdylay_data_provider *data_prd);
+                     const nghttp2_data_provider *data_prd);
 
   int submit_rst_stream(SpdyDownstreamConnection *dconn,
                         int32_t stream_id, uint32_t status_code);
@@ -119,7 +119,7 @@ private:
   // established. Use bufferevent_getfd(bev_) to get file descriptor
   // in these cases.
   int fd_;
-  spdylay_session *session_;
+  nghttp2_session *session_;
   bufferevent *bev_;
   std::set<SpdyDownstreamConnection*> dconns_;
   std::set<StreamData*> streams_;

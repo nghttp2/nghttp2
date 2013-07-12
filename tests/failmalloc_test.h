@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -25,8 +25,8 @@
 #ifndef FAILMALLOC_TEST_H
 #define FAILMALLOC_TEST_H
 
-void test_spdylay_session_send(void);
-void test_spdylay_session_recv(void);
-void test_spdylay_frame(void);
+void test_nghttp2_session_send(void);
+void test_nghttp2_session_recv(void);
+void test_nghttp2_frame(void);
 
 #endif /* FAILMALLOC_TEST_H */

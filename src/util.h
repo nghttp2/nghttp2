@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -25,7 +25,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include "spdylay_config.h"
+#include "nghttp2_config.h"
 
 #include <cstring>
 #include <vector>
@@ -33,7 +33,7 @@
 #include <algorithm>
 #include <sstream>
 
-namespace spdylay {
+namespace nghttp2 {
 
 namespace util {
 
@@ -358,6 +358,6 @@ std::string utos(T n)
 
 } // namespace util
 
-} // namespace spdylay
+} // namespace nghttp2
 
 #endif // UTIL_H

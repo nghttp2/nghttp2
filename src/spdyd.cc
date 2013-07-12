@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -35,12 +35,12 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
-#include "spdylay_ssl.h"
+#include "nghttp2_ssl.h"
 #include "SpdyServer.h"
 
-namespace spdylay {
+namespace nghttp2 {
 
 extern bool ssl_debug;
 
@@ -121,10 +121,10 @@ int main(int argc, char **argv)
       config.verbose = true;
       break;
     case '2':
-      config.version = SPDYLAY_PROTO_SPDY2;
+      config.version = NGHTTP2_PROTO_SPDY2;
       break;
     case '3':
-      config.version = SPDYLAY_PROTO_SPDY3;
+      config.version = NGHTTP2_PROTO_SPDY3;
       break;
     case '?':
       exit(EXIT_FAILURE);
@@ -194,9 +194,9 @@ int main(int argc, char **argv)
   return 0;
 }
 
-} // namespace spdylay
+} // namespace nghttp2
 
 int main(int argc, char **argv)
 {
-  return spdylay::main(argc, argv);
+  return nghttp2::main(argc, argv);
 }

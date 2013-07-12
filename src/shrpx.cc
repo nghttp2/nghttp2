@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -47,7 +47,7 @@
 
 #include <event2/listener.h>
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include "shrpx_config.h"
 #include "shrpx_listen_handler.h"
@@ -324,7 +324,7 @@ void fill_default_config()
   mod_config()->daemon = false;
   mod_config()->verify_client = false;
 
-  mod_config()->server_name = "shrpx spdylay/" SPDYLAY_VERSION;
+  mod_config()->server_name = "shrpx nghttp2/" NGHTTP2_VERSION;
   set_config_str(&mod_config()->host, "0.0.0.0");
   mod_config()->port = 3000;
   mod_config()->private_key_file = 0;
@@ -369,7 +369,7 @@ void fill_default_config()
 
   mod_config()->num_worker = 1;
   mod_config()->spdy_max_concurrent_streams =
-    SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
+    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
   mod_config()->add_x_forwarded_for = false;
   mod_config()->no_via = false;
   mod_config()->accesslog = false;

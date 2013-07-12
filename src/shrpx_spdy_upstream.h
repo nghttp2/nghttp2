@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -27,7 +27,7 @@
 
 #include "shrpx.h"
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
@@ -52,7 +52,7 @@ public:
   void remove_downstream(Downstream *downstream);
   Downstream* find_downstream(int32_t stream_id);
 
-  spdylay_session* get_spdy_session();
+  nghttp2_session* get_spdy_session();
 
   int rst_stream(Downstream *downstream, int status_code);
   int window_update(Downstream *downstream);
@@ -70,7 +70,7 @@ public:
   int32_t get_initial_window_size() const;
 private:
   ClientHandler *handler_;
-  spdylay_session *session_;
+  nghttp2_session *session_;
   bool flow_control_;
   int32_t initial_window_size_;
   DownstreamQueue downstream_queue_;

@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -25,7 +25,7 @@
 #ifndef SPDY_H
 #define SPDY_H
 
-#include "spdylay_config.h"
+#include "nghttp2_config.h"
 
 #include <signal.h>
 
@@ -33,14 +33,14 @@
 #include <string>
 #include <functional>
 
-#include "spdylay_ssl.h"
+#include "nghttp2_ssl.h"
 #include "uri.h"
 #include "util.h"
 #include "SpdyServer.h"
 
-using namespace spdylay;
+using namespace nghttp2;
 
-namespace spdylay {
+namespace nghttp2 {
 
 class request {
 public:
@@ -141,9 +141,9 @@ private:
 };
 
 ssize_t string_read_callback
-(spdylay_session *session, int32_t stream_id,
+(nghttp2_session *session, int32_t stream_id,
  uint8_t *buf, size_t length, int *eof,
- spdylay_data_source *source, void *user_data)
+ nghttp2_data_source *source, void *user_data)
 {
   std::pair<std::string, size_t>& body_pair =
     *reinterpret_cast<std::pair<std::string, size_t>*>(source->ptr);
@@ -159,7 +159,7 @@ ssize_t string_read_callback
 }
 
 void on_request_recv_callback
-(spdylay_session *session, int32_t stream_id, void *user_data)
+(nghttp2_session *session, int32_t stream_id, void *user_data)
 {
   SpdyEventHandler *hd = reinterpret_cast<SpdyEventHandler*>(user_data);
   Request *req = hd->get_stream(stream_id);
@@ -171,7 +171,7 @@ void on_request_recv_callback
   response_obj.set_header("content-length", util::to_str(body_length));
   req->response_body = std::make_pair(response_obj.get_body(), 0);
 
-  spdylay_data_provider data_prd;
+  nghttp2_data_provider data_prd;
   data_prd.source.ptr = &req->response_body;
   data_prd.read_callback = string_read_callback;
   hd->submit_response(response_obj.get_status_string(), stream_id,
@@ -236,6 +236,6 @@ int run(Server& server)
 
 } // namespace reactor
 
-} // namespace spdylay
+} // namespace nghttp2
 
 #endif // SPDY_H

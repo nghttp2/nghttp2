@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - SPDY Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -23,7 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /*
- * This program is written to show how to use Spdylay API in C and
+ * This program is written to show how to use nghttp2 API in C and
  * intentionally made simple.
  */
 #include <stdint.h>
@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -53,12 +53,12 @@ enum {
 
 struct Connection {
   SSL *ssl;
-  spdylay_session *session;
+  nghttp2_session *session;
   /* WANT_READ if SSL connection needs more input; or WANT_WRITE if it
      needs more output; or IO_NONE. This is necessary because SSL/TLS
-     re-negotiation is possible at any time. Spdylay API offers
-     similar functions like spdylay_session_want_read() and
-     spdylay_session_want_write() but they do not take into account
+     re-negotiation is possible at any time. nghttp2 API offers
+     similar functions like nghttp2_session_want_read() and
+     nghttp2_session_want_write() but they do not take into account
      SSL connection. */
   int want_io;
 };
@@ -74,7 +74,7 @@ struct Request {
   /* Stream ID for this request. */
   int32_t stream_id;
   /* The gzip stream inflater for the compressed response. */
-  spdylay_gzip *inflater;
+  nghttp2_gzip *inflater;
 };
 
 struct URI {
@@ -127,7 +127,7 @@ static void dief(const char *func, const char *msg)
 static void diec(const char *func, int error_code)
 {
   fprintf(stderr, "FATAL: %s: error_code=%d, msg=%s\n", func, error_code,
-          spdylay_strerror(error_code));
+          nghttp2_strerror(error_code));
   exit(EXIT_FAILURE);
 }
 
@@ -150,7 +150,7 @@ static void check_gzip(struct Request *req, char **nv)
     if(req->inflater) {
       return;
     }
-    rv = spdylay_gzip_inflate_new(&req->inflater);
+    rv = nghttp2_gzip_inflate_new(&req->inflater);
     if(rv != 0) {
       die("Can't allocate inflate stream.");
     }
@@ -158,12 +158,12 @@ static void check_gzip(struct Request *req, char **nv)
 }
 
 /*
- * The implementation of spdylay_send_callback type. Here we write
+ * The implementation of nghttp2_send_callback type. Here we write
  * |data| with size |length| to the network and return the number of
  * bytes actually written. See the documentation of
- * spdylay_send_callback for the details.
+ * nghttp2_send_callback for the details.
  */
-static ssize_t send_callback(spdylay_session *session,
+static ssize_t send_callback(nghttp2_session *session,
                              const uint8_t *data, size_t length, int flags,
                              void *user_data)
 {
@@ -178,21 +178,21 @@ static ssize_t send_callback(spdylay_session *session,
     if(err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
       connection->want_io = (err == SSL_ERROR_WANT_READ ?
                              WANT_READ : WANT_WRITE);
-      rv = SPDYLAY_ERR_WOULDBLOCK;
+      rv = NGHTTP2_ERR_WOULDBLOCK;
     } else {
-      rv = SPDYLAY_ERR_CALLBACK_FAILURE;
+      rv = NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
   return rv;
 }
 
 /*
- * The implementation of spdylay_recv_callback type. Here we read data
+ * The implementation of nghttp2_recv_callback type. Here we read data
  * from the network and write them in |buf|. The capacity of |buf| is
  * |length| bytes. Returns the number of bytes stored in |buf|. See
- * the documentation of spdylay_recv_callback for the details.
+ * the documentation of nghttp2_recv_callback for the details.
  */
-static ssize_t recv_callback(spdylay_session *session,
+static ssize_t recv_callback(nghttp2_session *session,
                              uint8_t *buf, size_t length, int flags,
                              void *user_data)
 {
@@ -207,31 +207,31 @@ static ssize_t recv_callback(spdylay_session *session,
     if(err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
       connection->want_io = (err == SSL_ERROR_WANT_READ ?
                              WANT_READ : WANT_WRITE);
-      rv = SPDYLAY_ERR_WOULDBLOCK;
+      rv = NGHTTP2_ERR_WOULDBLOCK;
     } else {
-      rv = SPDYLAY_ERR_CALLBACK_FAILURE;
+      rv = NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   } else if(rv == 0) {
-    rv = SPDYLAY_ERR_EOF;
+    rv = NGHTTP2_ERR_EOF;
   }
   return rv;
 }
 
 /*
- * The implementation of spdylay_before_ctrl_send_callback type.  We
+ * The implementation of nghttp2_before_ctrl_send_callback type.  We
  * use this function to get stream ID of the request. This is because
  * stream ID is not known when we submit the request
- * (spdylay_submit_request).
+ * (nghttp2_submit_request).
  */
-static void before_ctrl_send_callback(spdylay_session *session,
-                                      spdylay_frame_type type,
-                                      spdylay_frame *frame,
+static void before_ctrl_send_callback(nghttp2_session *session,
+                                      nghttp2_frame_type type,
+                                      nghttp2_frame *frame,
                                       void *user_data)
 {
-  if(type == SPDYLAY_SYN_STREAM) {
+  if(type == NGHTTP2_SYN_STREAM) {
     struct Request *req;
     int stream_id = frame->syn_stream.stream_id;
-    req = spdylay_session_get_stream_user_data(session, stream_id);
+    req = nghttp2_session_get_stream_user_data(session, stream_id);
     if(req && req->stream_id == -1) {
       req->stream_id = stream_id;
       printf("[INFO] Stream ID = %d\n", stream_id);
@@ -239,16 +239,16 @@ static void before_ctrl_send_callback(spdylay_session *session,
   }
 }
 
-static void on_ctrl_send_callback(spdylay_session *session,
-                                  spdylay_frame_type type,
-                                  spdylay_frame *frame, void *user_data)
+static void on_ctrl_send_callback(nghttp2_session *session,
+                                  nghttp2_frame_type type,
+                                  nghttp2_frame *frame, void *user_data)
 {
   char **nv;
   const char *name = NULL;
   int32_t stream_id;
   size_t i;
   switch(type) {
-  case SPDYLAY_SYN_STREAM:
+  case NGHTTP2_SYN_STREAM:
     nv = frame->syn_stream.nv;
     name = "SYN_STREAM";
     stream_id = frame->syn_stream.stream_id;
@@ -256,7 +256,7 @@ static void on_ctrl_send_callback(spdylay_session *session,
   default:
     break;
   }
-  if(name && spdylay_session_get_stream_user_data(session, stream_id)) {
+  if(name && nghttp2_session_get_stream_user_data(session, stream_id)) {
     printf("[INFO] C ----------------------------> S (%s)\n", name);
     for(i = 0; nv[i]; i += 2) {
       printf("       %s: %s\n", nv[i], nv[i+1]);
@@ -264,9 +264,9 @@ static void on_ctrl_send_callback(spdylay_session *session,
   }
 }
 
-static void on_ctrl_recv_callback(spdylay_session *session,
-                                  spdylay_frame_type type,
-                                  spdylay_frame *frame, void *user_data)
+static void on_ctrl_recv_callback(nghttp2_session *session,
+                                  nghttp2_frame_type type,
+                                  nghttp2_frame *frame, void *user_data)
 {
   struct Request *req;
   char **nv;
@@ -274,12 +274,12 @@ static void on_ctrl_recv_callback(spdylay_session *session,
   int32_t stream_id;
   size_t i;
   switch(type) {
-  case SPDYLAY_SYN_REPLY:
+  case NGHTTP2_SYN_REPLY:
     nv = frame->syn_reply.nv;
     name = "SYN_REPLY";
     stream_id = frame->syn_reply.stream_id;
     break;
-  case SPDYLAY_HEADERS:
+  case NGHTTP2_HEADERS:
     nv = frame->headers.nv;
     name = "HEADERS";
     stream_id = frame->headers.stream_id;
@@ -290,7 +290,7 @@ static void on_ctrl_recv_callback(spdylay_session *session,
   if(!name) {
     return;
   }
-  req = spdylay_session_get_stream_user_data(session, stream_id);
+  req = nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     check_gzip(req, nv);
     printf("[INFO] C <---------------------------- S (%s)\n", name);
@@ -301,23 +301,23 @@ static void on_ctrl_recv_callback(spdylay_session *session,
 }
 
 /*
- * The implementation of spdylay_on_stream_close_callback type. We use
+ * The implementation of nghttp2_on_stream_close_callback type. We use
  * this function to know the response is fully received. Since we just
  * fetch 1 resource in this program, after reception of the response,
  * we submit GOAWAY and close the session.
  */
-static void on_stream_close_callback(spdylay_session *session,
+static void on_stream_close_callback(nghttp2_session *session,
                                      int32_t stream_id,
-                                     spdylay_status_code status_code,
+                                     nghttp2_status_code status_code,
                                      void *user_data)
 {
   struct Request *req;
-  req = spdylay_session_get_stream_user_data(session, stream_id);
+  req = nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     int rv;
-    rv = spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
+    rv = nghttp2_submit_goaway(session, NGHTTP2_GOAWAY_OK);
     if(rv != 0) {
-      diec("spdylay_submit_goaway", rv);
+      diec("nghttp2_submit_goaway", rv);
     }
   }
 }
@@ -325,16 +325,16 @@ static void on_stream_close_callback(spdylay_session *session,
 #define MAX_OUTLEN 4096
 
 /*
- * The implementation of spdylay_on_data_chunk_recv_callback type. We
+ * The implementation of nghttp2_on_data_chunk_recv_callback type. We
  * use this function to print the received response body.
  */
-static void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
+static void on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
                                         int32_t stream_id,
                                         const uint8_t *data, size_t len,
                                         void *user_data)
 {
   struct Request *req;
-  req = spdylay_session_get_stream_user_data(session, stream_id);
+  req = nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     printf("[INFO] C <---------------------------- S (DATA)\n");
     printf("       %lu bytes\n", (unsigned long int)len);
@@ -344,9 +344,9 @@ static void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
         size_t outlen = MAX_OUTLEN;
         size_t tlen = len;
         int rv;
-        rv = spdylay_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
+        rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
         if(rv == -1) {
-          spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
+          nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
           break;
         }
         fwrite(out, 1, outlen, stdout);
@@ -362,14 +362,14 @@ static void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
 }
 
 /*
- * Setup callback functions. Spdylay API offers many callback
+ * Setup callback functions. nghttp2 API offers many callback
  * functions, but most of them are optional. The send_callback is
- * always required. Since we use spdylay_session_recv(), the
+ * always required. Since we use nghttp2_session_recv(), the
  * recv_callback is also required.
  */
-static void setup_spdylay_callbacks(spdylay_session_callbacks *callbacks)
+static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks)
 {
-  memset(callbacks, 0, sizeof(spdylay_session_callbacks));
+  memset(callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks->send_callback = send_callback;
   callbacks->recv_callback = recv_callback;
   callbacks->before_ctrl_send_callback = before_ctrl_send_callback;
@@ -381,7 +381,7 @@ static void setup_spdylay_callbacks(spdylay_session_callbacks *callbacks)
 
 /*
  * Callback function for SSL/TLS NPN. Since this program only supports
- * SPDY protocol, if server does not offer SPDY protocol the Spdylay
+ * SPDY protocol, if server does not offer SPDY protocol the nghttp2
  * library supports, we terminate program.
  */
 static int select_next_proto_cb(SSL* ssl,
@@ -391,9 +391,9 @@ static int select_next_proto_cb(SSL* ssl,
 {
   int rv;
   uint16_t *spdy_proto_version;
-  /* spdylay_select_next_protocol() selects SPDY protocol version the
-     Spdylay library supports. */
-  rv = spdylay_select_next_protocol(out, outlen, in, inlen);
+  /* nghttp2_select_next_protocol() selects SPDY protocol version the
+     nghttp2 library supports. */
+  rv = nghttp2_select_next_protocol(out, outlen, in, inlen);
   if(rv <= 0) {
     die("Server did not advertise spdy/2 or spdy/3 protocol.");
   }
@@ -498,11 +498,11 @@ static void set_tcp_nodelay(int fd)
 static void ctl_poll(struct pollfd *pollfd, struct Connection *connection)
 {
   pollfd->events = 0;
-  if(spdylay_session_want_read(connection->session) ||
+  if(nghttp2_session_want_read(connection->session) ||
      connection->want_io == WANT_READ) {
     pollfd->events |= POLLIN;
   }
-  if(spdylay_session_want_write(connection->session) ||
+  if(nghttp2_session_want_write(connection->session) ||
      connection->want_io == WANT_WRITE) {
     pollfd->events |= POLLOUT;
   }
@@ -527,11 +527,11 @@ static void submit_request(struct Connection *connection, struct Request *req)
   nv[6] = ":scheme";     nv[7] = "https";
   nv[8] = ":host";       nv[9] = req->hostport;
   nv[10] = "accept";     nv[11] = "*/*";
-  nv[12] = "user-agent"; nv[13] = "spdylay/"SPDYLAY_VERSION;
+  nv[12] = "user-agent"; nv[13] = "nghttp2/"NGHTTP2_VERSION;
   nv[14] = NULL;
-  rv = spdylay_submit_request(connection->session, pri, nv, NULL, req);
+  rv = nghttp2_submit_request(connection->session, pri, nv, NULL, req);
   if(rv != 0) {
-    diec("spdylay_submit_request", rv);
+    diec("nghttp2_submit_request", rv);
   }
 }
 
@@ -541,13 +541,13 @@ static void submit_request(struct Connection *connection, struct Request *req)
 static void exec_io(struct Connection *connection)
 {
   int rv;
-  rv = spdylay_session_recv(connection->session);
+  rv = nghttp2_session_recv(connection->session);
   if(rv != 0) {
-    diec("spdylay_session_recv", rv);
+    diec("nghttp2_session_recv", rv);
   }
-  rv = spdylay_session_send(connection->session);
+  rv = nghttp2_session_send(connection->session);
   if(rv != 0) {
-    diec("spdylay_session_send", rv);
+    diec("nghttp2_session_send", rv);
   }
 }
 
@@ -566,7 +566,7 @@ static void request_free(struct Request *req)
   free(req->host);
   free(req->path);
   free(req->hostport);
-  spdylay_gzip_inflate_del(req->inflater);
+  nghttp2_gzip_inflate_del(req->inflater);
 }
 
 /*
@@ -574,7 +574,7 @@ static void request_free(struct Request *req)
  */
 static void fetch_uri(const struct URI *uri)
 {
-  spdylay_session_callbacks callbacks;
+  nghttp2_session_callbacks callbacks;
   int fd;
   SSL_CTX *ssl_ctx;
   SSL *ssl;
@@ -587,7 +587,7 @@ static void fetch_uri(const struct URI *uri)
 
   request_init(&req, uri);
 
-  setup_spdylay_callbacks(&callbacks);
+  setup_nghttp2_callbacks(&callbacks);
 
   /* Establish connection and setup SSL */
   fd = connect_to(req.host, req.port);
@@ -615,10 +615,10 @@ static void fetch_uri(const struct URI *uri)
   set_tcp_nodelay(fd);
 
   printf("[INFO] SPDY protocol version = %d\n", spdy_proto_version);
-  rv = spdylay_session_client_new(&connection.session, spdy_proto_version,
+  rv = nghttp2_session_client_new(&connection.session, spdy_proto_version,
                                   &callbacks, &connection);
   if(rv != 0) {
-    diec("spdylay_session_client_new", rv);
+    diec("nghttp2_session_client_new", rv);
   }
 
   /* Submit the HTTP request to the outbound queue. */
@@ -628,8 +628,8 @@ static void fetch_uri(const struct URI *uri)
   ctl_poll(pollfds, &connection);
 
   /* Event loop */
-  while(spdylay_session_want_read(connection.session) ||
-        spdylay_session_want_write(connection.session)) {
+  while(nghttp2_session_want_read(connection.session) ||
+        nghttp2_session_want_write(connection.session)) {
     int nfds = poll(pollfds, npollfds, -1);
     if(nfds == -1) {
       dief("poll", strerror(errno));
@@ -644,7 +644,7 @@ static void fetch_uri(const struct URI *uri)
   }
 
   /* Resource cleanup */
-  spdylay_session_del(connection.session);
+  nghttp2_session_del(connection.session);
   SSL_shutdown(ssl);
   SSL_free(ssl);
   SSL_CTX_free(ssl_ctx);

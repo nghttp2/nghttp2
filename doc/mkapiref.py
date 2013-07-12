@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Spdylay - SPDY Library
+# nghttp2 - HTTP/2.0 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
 

@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -25,7 +25,7 @@
 #ifndef EVENT_POLL_H
 #define EVENT_POLL_H
 
-#include "spdylay_config.h"
+#include "nghttp2_config.h"
 
 #ifdef HAVE_EPOLL
 #  include "EventPoll_epoll.h"

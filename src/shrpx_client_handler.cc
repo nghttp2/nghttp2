@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -209,7 +209,7 @@ int ClientHandler::validate_next_proto()
       std::string proto(next_proto, next_proto+next_proto_len);
       CLOG(INFO, this) << "The negotiated next protocol: " << proto;
     }
-    uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
+    uint16_t version = nghttp2_npn_get_version(next_proto, next_proto_len);
     if(version) {
       SpdyUpstream *spdy_upstream = new SpdyUpstream(version, this);
       upstream_ = spdy_upstream;

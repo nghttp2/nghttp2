@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -27,10 +27,10 @@
 #define __USE_GNU
 #include <dlfcn.h>
 
-int spdylay_failmalloc = 0;
-int spdylay_failstart = 0;
-int spdylay_countmalloc = 1;
-int spdylay_nmalloc = 0;
+int nghttp2_failmalloc = 0;
+int nghttp2_failstart = 0;
+int nghttp2_countmalloc = 1;
+int nghttp2_nmalloc = 0;
 
 static void* (*real_malloc)(size_t) = NULL;
 
@@ -44,11 +44,11 @@ void* malloc(size_t size)
   if(real_malloc == NULL) {
     init();
   }
-  if(spdylay_failmalloc && spdylay_nmalloc >= spdylay_failstart) {
+  if(nghttp2_failmalloc && nghttp2_nmalloc >= nghttp2_failstart) {
     return NULL;
   } else {
-    if(spdylay_countmalloc) {
-      ++spdylay_nmalloc;
+    if(nghttp2_countmalloc) {
+      ++nghttp2_nmalloc;
     }
     return real_malloc(size);
   }
@@ -56,16 +56,16 @@ void* malloc(size_t size)
 
 static int failmalloc_bk, countmalloc_bk;
 
-void spdylay_failmalloc_pause(void)
+void nghttp2_failmalloc_pause(void)
 {
-  failmalloc_bk = spdylay_failmalloc;
-  countmalloc_bk = spdylay_countmalloc;
-  spdylay_failmalloc = 0;
-  spdylay_countmalloc = 0;
+  failmalloc_bk = nghttp2_failmalloc;
+  countmalloc_bk = nghttp2_countmalloc;
+  nghttp2_failmalloc = 0;
+  nghttp2_countmalloc = 0;
 }
 
-void spdylay_failmalloc_unpause(void)
+void nghttp2_failmalloc_unpause(void)
 {
-  spdylay_failmalloc = failmalloc_bk;
-  spdylay_countmalloc = countmalloc_bk;
+  nghttp2_failmalloc = failmalloc_bk;
+  nghttp2_countmalloc = countmalloc_bk;
 }

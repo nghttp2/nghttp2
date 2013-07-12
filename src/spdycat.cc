@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "spdylay_config.h"
+#include "nghttp2_config.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -53,11 +53,11 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include "http-parser/http_parser.h"
 
-#include "spdylay_ssl.h"
+#include "nghttp2_ssl.h"
 #include "HtmlParser.h"
 #include "util.h"
 
@@ -65,7 +65,7 @@
 # define O_BINARY (0)
 #endif // O_BINARY
 
-namespace spdylay {
+namespace nghttp2 {
 
 struct Config {
   bool null_out;
@@ -206,9 +206,9 @@ struct Request {
   // URI without fragment
   std::string uri;
   http_parser_url u;
-  spdylay_gzip *inflater;
+  nghttp2_gzip *inflater;
   HtmlParser *html_parser;
-  const spdylay_data_provider *data_prd;
+  const nghttp2_data_provider *data_prd;
   int64_t data_length;
   int64_t data_offset;
   // Recursion level: 0: first entity, 1: entity linked from first entity
@@ -216,7 +216,7 @@ struct Request {
   RequestStat stat;
   std::string status;
   Request(const std::string& uri, const http_parser_url &u,
-          const spdylay_data_provider *data_prd, int64_t data_length,
+          const nghttp2_data_provider *data_prd, int64_t data_length,
           int level = 0)
     : uri(uri), u(u),
       inflater(0), html_parser(0), data_prd(data_prd),
@@ -226,14 +226,14 @@ struct Request {
 
   ~Request()
   {
-    spdylay_gzip_inflate_del(inflater);
+    nghttp2_gzip_inflate_del(inflater);
     delete html_parser;
   }
 
   void init_inflater()
   {
     int rv;
-    rv = spdylay_gzip_inflate_new(&inflater);
+    rv = nghttp2_gzip_inflate_new(&inflater);
     assert(rv == 0);
   }
 
@@ -346,7 +346,7 @@ struct SpdySession {
     hostport = ss.str();
   }
   bool add_request(const std::string& uri, const http_parser_url& u,
-                   const spdylay_data_provider *data_prd,
+                   const nghttp2_data_provider *data_prd,
                    int64_t data_length,
                    int level = 0)
   {
@@ -412,7 +412,7 @@ SpdySession* get_session(void *user_data)
 }
 
 void on_data_chunk_recv_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id,
+(nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
   SpdySession *spdySession = get_session(user_data);
@@ -426,9 +426,9 @@ void on_data_chunk_recv_callback
         uint8_t out[MAX_OUTLEN];
         size_t outlen = MAX_OUTLEN;
         size_t tlen = len;
-        int rv = spdylay_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
+        int rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
         if(rv != 0) {
-          spdylay_submit_rst_stream(session, stream_id, SPDYLAY_INTERNAL_ERROR);
+          nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
           break;
         }
         if(!config.null_out) {
@@ -447,23 +447,23 @@ void on_data_chunk_recv_callback
   }
 }
 
-void check_stream_id(spdylay_session *session,
-                     spdylay_frame_type type, spdylay_frame *frame,
+void check_stream_id(nghttp2_session *session,
+                     nghttp2_frame_type type, nghttp2_frame *frame,
                      void *user_data)
 {
   SpdySession *spdySession = get_session(user_data);
   int32_t stream_id = frame->syn_stream.stream_id;
-  Request *req = (Request*)spdylay_session_get_stream_user_data(session,
+  Request *req = (Request*)nghttp2_session_get_stream_user_data(session,
                                                                 stream_id);
   spdySession->streams[stream_id] = req;
   req->record_syn_stream_time();
 }
 
 void on_ctrl_send_callback2
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
  void *user_data)
 {
-  if(type == SPDYLAY_SYN_STREAM) {
+  if(type == NGHTTP2_SYN_STREAM) {
     check_stream_id(session, type, frame, user_data);
   }
   if(config.verbose) {
@@ -472,21 +472,21 @@ void on_ctrl_send_callback2
 }
 
 void check_response_header
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
  void *user_data)
 {
   char **nv;
   int32_t stream_id;
-  if(type == SPDYLAY_SYN_REPLY) {
+  if(type == NGHTTP2_SYN_REPLY) {
     nv = frame->syn_reply.nv;
     stream_id = frame->syn_reply.stream_id;
-  } else if(type == SPDYLAY_HEADERS) {
+  } else if(type == NGHTTP2_HEADERS) {
     nv = frame->headers.nv;
     stream_id = frame->headers.stream_id;
   } else {
     return;
   }
-  Request *req = (Request*)spdylay_session_get_stream_user_data(session,
+  Request *req = (Request*)nghttp2_session_get_stream_user_data(session,
                                                                 stream_id);
   if(!req) {
     // Server-pushed stream does not have stream user data
@@ -513,11 +513,11 @@ void check_response_header
 }
 
 void on_ctrl_recv_callback2
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
  void *user_data)
 {
-  if(type == SPDYLAY_SYN_REPLY) {
-    Request *req = (Request*)spdylay_session_get_stream_user_data
+  if(type == NGHTTP2_SYN_REPLY) {
+    Request *req = (Request*)nghttp2_session_get_stream_user_data
       (session, frame->syn_reply.stream_id);
     assert(req);
     req->record_syn_reply_time();
@@ -529,7 +529,7 @@ void on_ctrl_recv_callback2
 }
 
 void on_stream_close_callback
-(spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
+(nghttp2_session *session, int32_t stream_id, nghttp2_status_code status_code,
  void *user_data)
 {
   SpdySession *spdySession = get_session(user_data);
@@ -540,7 +540,7 @@ void on_stream_close_callback
     (*itr).second->record_complete_time();
     ++spdySession->complete;
     if(spdySession->all_requests_processed()) {
-      spdylay_submit_goaway(session, SPDYLAY_GOAWAY_OK);
+      nghttp2_submit_goaway(session, NGHTTP2_GOAWAY_OK);
     }
   }
 }
@@ -579,7 +579,7 @@ void print_stats(const SpdySession& spdySession)
 }
 
 int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
-                const spdylay_session_callbacks *callbacks, int timeout)
+                const nghttp2_session_callbacks *callbacks, int timeout)
 {
   int result = 0;
   Spdylay sc(fd, ssl, spdy_version, callbacks, &spdySession);
@@ -588,12 +588,12 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
   nfds_t npollfds = 1;
   pollfd pollfds[1];
 
-  if(spdy_version >= SPDYLAY_PROTO_SPDY3 && config.window_bits != -1) {
-    spdylay_settings_entry iv[1];
-    iv[0].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
-    iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  if(spdy_version >= NGHTTP2_PROTO_SPDY3 && config.window_bits != -1) {
+    nghttp2_settings_entry iv[1];
+    iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+    iv[0].flags = NGHTTP2_ID_FLAG_SETTINGS_NONE;
     iv[0].value = 1 << config.window_bits;
-    int rv = sc.submit_settings(SPDYLAY_FLAG_SETTINGS_NONE, iv, 1);
+    int rv = sc.submit_settings(NGHTTP2_FLAG_SETTINGS_NONE, iv, 1);
     assert(rv == 0);
   }
   for(int i = 0, n = spdySession.reqvec.size(); i < n; ++i) {
@@ -617,8 +617,8 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
     if(pollfds[0].revents & (POLLIN | POLLOUT)) {
       int rv;
       if((rv = sc.recv()) != 0 || (rv = sc.send()) != 0) {
-        if(rv != SPDYLAY_ERR_EOF || !spdySession.all_requests_processed()) {
-          std::cerr << "Fatal: " << spdylay_strerror(rv) << "\n"
+        if(rv != NGHTTP2_ERR_EOF || !spdySession.all_requests_processed()) {
+          std::cerr << "Fatal: " << nghttp2_strerror(rv) << "\n"
                     << "reqnum=" << spdySession.reqvec.size()
                     << ", completed=" << spdySession.complete << std::endl;
         }
@@ -656,7 +656,7 @@ int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
 
 int communicate(const std::string& host, uint16_t port,
                 SpdySession& spdySession,
-                const spdylay_session_callbacks *callbacks)
+                const nghttp2_session_callbacks *callbacks)
 {
   int result = 0;
   int rv;
@@ -684,10 +684,10 @@ int communicate(const std::string& host, uint16_t port,
   }
 
   switch(config.spdy_version) {
-  case SPDYLAY_PROTO_SPDY2:
+  case NGHTTP2_PROTO_SPDY2:
     next_proto = "spdy/2";
     break;
-  case SPDYLAY_PROTO_SPDY3:
+  case NGHTTP2_PROTO_SPDY3:
     next_proto = "spdy/3";
     break;
   }
@@ -759,7 +759,7 @@ int communicate(const std::string& host, uint16_t port,
   }
 
   spdySession.record_handshake_time();
-  spdy_version = spdylay_npn_get_version(
+  spdy_version = nghttp2_npn_get_version(
       reinterpret_cast<const unsigned char*>(next_proto.c_str()),
       next_proto.size());
   if (spdy_version <= 0) {
@@ -783,18 +783,18 @@ int communicate(const std::string& host, uint16_t port,
 }
 
 ssize_t file_read_callback
-(spdylay_session *session, int32_t stream_id,
+(nghttp2_session *session, int32_t stream_id,
  uint8_t *buf, size_t length, int *eof,
- spdylay_data_source *source, void *user_data)
+ nghttp2_data_source *source, void *user_data)
 {
-  Request *req = (Request*)spdylay_session_get_stream_user_data
+  Request *req = (Request*)nghttp2_session_get_stream_user_data
     (session, stream_id);
   int fd = source->fd;
   ssize_t r;
   while((r = pread(fd, buf, length, req->data_offset)) == -1 &&
         errno == EINTR);
   if(r == -1) {
-    return SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE;
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   } else {
     if(r == 0) {
       *eof = 1;
@@ -807,8 +807,8 @@ ssize_t file_read_callback
 
 int run(char **uris, int n)
 {
-  spdylay_session_callbacks callbacks;
-  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  nghttp2_session_callbacks callbacks;
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
@@ -828,7 +828,7 @@ int run(char **uris, int n)
   int failures = 0;
   SpdySession spdySession;
   int data_fd = -1;
-  spdylay_data_provider data_prd;
+  nghttp2_data_provider data_prd;
   struct stat data_stat;
 
   if(!config.datafile.empty()) {
@@ -968,10 +968,10 @@ int main(int argc, char **argv)
       config.verbose = true;
       break;
     case '2':
-      config.spdy_version = SPDYLAY_PROTO_SPDY2;
+      config.spdy_version = NGHTTP2_PROTO_SPDY2;
       break;
     case '3':
-      config.spdy_version = SPDYLAY_PROTO_SPDY3;
+      config.spdy_version = NGHTTP2_PROTO_SPDY3;
       break;
     case 't':
       config.timeout = atoi(optarg) * 1000;
@@ -1072,9 +1072,9 @@ int main(int argc, char **argv)
   return run(argv+optind, argc-optind);
 }
 
-} // namespace spdylay
+} // namespace nghttp2
 
 int main(int argc, char **argv)
 {
-  return spdylay::main(argc, argv);
+  return nghttp2::main(argc, argv);
 }

@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -29,7 +29,7 @@
 
 #include <openssl/ssl.h>
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include "shrpx_downstream_connection.h"
 

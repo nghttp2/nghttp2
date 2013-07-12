@@ -1,4 +1,4 @@
-dnl Spdylay - SPDY Library
+dnl nghttp2 - HTTP/2.0 C Library
 
 dnl Copyright (c) 2012 Tatsuhiro Tsujikawa
 
@@ -21,7 +21,7 @@ dnl LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 dnl OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 dnl WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 AC_PREREQ(2.61)
-AC_INIT([spdylay], [1.0.0], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [1.0.0], [t-tujikawa@users.sourceforge.net])
 LT_PREREQ([2.2.6])
 LT_INIT()
 dnl See versioning rule:
@@ -290,16 +290,15 @@ AC_SUBST([SRC_LIBS])
 AC_CONFIG_FILES([
   Makefile
   lib/Makefile
-  lib/libspdylay.pc
+  lib/libnghttp2.pc
   lib/includes/Makefile
-  lib/includes/spdylay/spdylayver.h
+  lib/includes/nghttp2/nghttp2ver.h
   tests/Makefile
   tests/testdata/Makefile
   src/Makefile
   examples/Makefile
   doc/Makefile
   doc/conf.py
-  python/Makefile
 ])
 AC_OUTPUT
 

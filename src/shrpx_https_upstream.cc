@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -38,7 +38,7 @@
 #include "shrpx_accesslog.h"
 #include "util.h"
 
-using namespace spdylay;
+using namespace nghttp2;
 
 namespace shrpx {
 

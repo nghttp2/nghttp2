@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -39,7 +39,7 @@
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_ssl.h>
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
@@ -47,7 +47,7 @@
 #include "shrpx_accesslog.h"
 #include "util.h"
 
-using namespace spdylay;
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -198,7 +198,7 @@ int select_next_proto_cb(SSL* ssl,
                          const unsigned char *in, unsigned int inlen,
                          void *arg)
 {
-  if(spdylay_select_next_protocol(out, outlen, in, inlen) <= 0) {
+  if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
     *out = (unsigned char*)"spdy/3";
     *outlen = 6;
   }

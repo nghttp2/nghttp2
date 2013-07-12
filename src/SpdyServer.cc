@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -39,7 +39,7 @@
 #include <openssl/err.h>
 #include <zlib.h>
 
-#include "spdylay_ssl.h"
+#include "nghttp2_ssl.h"
 #include "util.h"
 #include "EventPoll.h"
 
@@ -47,7 +47,7 @@
 # define O_BINARY (0)
 #endif // O_BINARY
 
-namespace spdylay {
+namespace nghttp2 {
 
 namespace {
 Config config;
@@ -56,7 +56,7 @@ const std::string STATUS_304 = "304 Not Modified";
 const std::string STATUS_400 = "400 Bad Request";
 const std::string STATUS_404 = "404 Not Found";
 const std::string DEFAULT_HTML = "index.html";
-const std::string SPDYD_SERVER = "spdyd spdylay/" SPDYLAY_VERSION;
+const std::string SPDYD_SERVER = "spdyd nghttp2/" NGHTTP2_VERSION;
 } // namespace
 
 Config::Config(): verbose(false), daemon(false), port(0),
@@ -176,20 +176,20 @@ void on_session_closed(EventHandler *hd, int64_t session_id)
 SpdyEventHandler::SpdyEventHandler(const Config* config,
                                    int fd, SSL *ssl,
                                    uint16_t version,
-                                   const spdylay_session_callbacks *callbacks,
+                                   const nghttp2_session_callbacks *callbacks,
                                    int64_t session_id)
   : EventHandler(config),
     fd_(fd), ssl_(ssl), version_(version), session_id_(session_id),
     io_flags_(0)
 {
   int r;
-  r = spdylay_session_server_new(&session_, version, callbacks, this);
+  r = nghttp2_session_server_new(&session_, version, callbacks, this);
   assert(r == 0);
-  spdylay_settings_entry entry;
-  entry.settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry.value = SPDYLAY_INITIAL_MAX_CONCURRENT_STREAMS;
-  entry.flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
-  r = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE,
+  nghttp2_settings_entry entry;
+  entry.settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  entry.value = NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  entry.flags = NGHTTP2_ID_FLAG_SETTINGS_NONE;
+  r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_SETTINGS_NONE,
                               &entry, 1);
   assert(r == 0);
 }
@@ -197,7 +197,7 @@ SpdyEventHandler::SpdyEventHandler(const Config* config,
 SpdyEventHandler::~SpdyEventHandler()
 {
   on_session_closed(this, session_id_);
-  spdylay_session_del(session_);
+  nghttp2_session_del(session_);
   for(std::map<int32_t, Request*>::iterator i = id2req_.begin(),
         eoi = id2req_.end(); i != eoi; ++i) {
     delete (*i).second;
@@ -218,21 +218,21 @@ uint16_t SpdyEventHandler::version() const
 int SpdyEventHandler::execute(Sessions *sessions)
 {
   int r;
-  r = spdylay_session_recv(session_);
+  r = nghttp2_session_recv(session_);
   if(r == 0) {
-    r = spdylay_session_send(session_);
+    r = nghttp2_session_send(session_);
   }
   return r;
 }
 
 bool SpdyEventHandler::want_read()
 {
-  return spdylay_session_want_read(session_) || (io_flags_ & WANT_READ);
+  return nghttp2_session_want_read(session_) || (io_flags_ & WANT_READ);
 }
 
 bool SpdyEventHandler::want_write()
 {
-  return spdylay_session_want_write(session_) || (io_flags_ & WANT_WRITE);
+  return nghttp2_session_want_write(session_) || (io_flags_ & WANT_WRITE);
 }
 
 int SpdyEventHandler::fd() const
@@ -242,8 +242,8 @@ int SpdyEventHandler::fd() const
 
 bool SpdyEventHandler::finish()
 {
-  return !spdylay_session_want_read(session_) &&
-    !spdylay_session_want_write(session_);
+  return !nghttp2_session_want_read(session_) &&
+    !nghttp2_session_want_write(session_);
 }
 
 ssize_t SpdyEventHandler::send_data(const uint8_t *data, size_t len, int flags)
@@ -293,7 +293,7 @@ int SpdyEventHandler::submit_file_response(const std::string& status,
                                            int32_t stream_id,
                                            time_t last_modified,
                                            off_t file_length,
-                                           spdylay_data_provider *data_prd)
+                                           nghttp2_data_provider *data_prd)
 {
   std::string date_str = util::http_date(time(0));
   std::string content_length = util::to_str(file_length);
@@ -313,14 +313,14 @@ int SpdyEventHandler::submit_file_response(const std::string& status,
     nv[12] = "last-modified";
     nv[13] = last_modified_str.c_str();
   }
-  return spdylay_submit_response(session_, stream_id, nv, data_prd);
+  return nghttp2_submit_response(session_, stream_id, nv, data_prd);
 }
 
 int SpdyEventHandler::submit_response
 (const std::string& status,
  int32_t stream_id,
  const std::vector<std::pair<std::string, std::string> >& headers,
- spdylay_data_provider *data_prd)
+ nghttp2_data_provider *data_prd)
 {
   std::string date_str = util::http_date(time(0));
   const char **nv = new const char*[8+headers.size()*2+1];
@@ -337,14 +337,14 @@ int SpdyEventHandler::submit_response
     nv[8+i*2+1] = headers[i].second.c_str();
   }
   nv[8+headers.size()*2] = 0;
-  int r = spdylay_submit_response(session_, stream_id, nv, data_prd);
+  int r = nghttp2_submit_response(session_, stream_id, nv, data_prd);
   delete [] nv;
   return r;
 }
 
 int SpdyEventHandler::submit_response(const std::string& status,
                                       int32_t stream_id,
-                                      spdylay_data_provider *data_prd)
+                                      nghttp2_data_provider *data_prd)
 {
   const char *nv[] = {
     ":status", status.c_str(),
@@ -352,7 +352,7 @@ int SpdyEventHandler::submit_response(const std::string& status,
     "server", SPDYD_SERVER.c_str(),
     0
   };
-  return spdylay_submit_response(session_, stream_id, nv, data_prd);
+  return nghttp2_submit_response(session_, stream_id, nv, data_prd);
 }
 
 void SpdyEventHandler::add_stream(int32_t stream_id, Request *req)
@@ -378,7 +378,7 @@ int64_t SpdyEventHandler::session_id() const
 }
 
 namespace {
-ssize_t hd_send_callback(spdylay_session *session,
+ssize_t hd_send_callback(nghttp2_session *session,
                          const uint8_t *data, size_t len, int flags,
                          void *user_data)
 {
@@ -386,47 +386,47 @@ ssize_t hd_send_callback(spdylay_session *session,
   ssize_t r = hd->send_data(data, len, flags);
   if(r < 0) {
     if(hd->would_block()) {
-      r = SPDYLAY_ERR_WOULDBLOCK;
+      r = NGHTTP2_ERR_WOULDBLOCK;
     } else {
-      r = SPDYLAY_ERR_CALLBACK_FAILURE;
+      r = NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   } else if(r == 0) {
     // In OpenSSL, r == 0 means EOF because SSL_write may do read.
-    r = SPDYLAY_ERR_CALLBACK_FAILURE;
+    r = NGHTTP2_ERR_CALLBACK_FAILURE;
   }
   return r;
 }
 } // namespace
 
 namespace {
-ssize_t hd_recv_callback(spdylay_session *session,
+ssize_t hd_recv_callback(nghttp2_session *session,
                          uint8_t *data, size_t len, int flags, void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   ssize_t r = hd->recv_data(data, len, flags);
   if(r < 0) {
     if(hd->would_block()) {
-      r = SPDYLAY_ERR_WOULDBLOCK;
+      r = NGHTTP2_ERR_WOULDBLOCK;
     } else {
-      r = SPDYLAY_ERR_CALLBACK_FAILURE;
+      r = NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   } else if(r == 0) {
-    r = SPDYLAY_ERR_EOF;
+    r = NGHTTP2_ERR_EOF;
   }
   return r;
 }
 } // namespace
 
 ssize_t file_read_callback
-(spdylay_session *session, int32_t stream_id,
+(nghttp2_session *session, int32_t stream_id,
  uint8_t *buf, size_t length, int *eof,
- spdylay_data_source *source, void *user_data)
+ nghttp2_data_source *source, void *user_data)
 {
   int fd = source->fd;
   ssize_t r;
   while((r = read(fd, buf, length)) == -1 && errno == EINTR);
   if(r == -1) {
-    return SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE;
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   } else {
     if(r == 0) {
       *eof = 1;
@@ -469,7 +469,7 @@ void prepare_status_response(Request *req, SpdyEventHandler *hd,
     close(pipefd[1]);
 
     req->file = pipefd[0];
-    spdylay_data_provider data_prd;
+    nghttp2_data_provider data_prd;
     data_prd.source.fd = pipefd[0];
     data_prd.read_callback = file_read_callback;
     std::vector<std::pair<std::string, std::string> > headers;
@@ -544,7 +544,7 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
       prepare_status_response(req, hd, STATUS_404);
     } else {
       req->file = file;
-      spdylay_data_provider data_prd;
+      nghttp2_data_provider data_prd;
       data_prd.source.fd = file;
       data_prd.read_callback = file_read_callback;
       if(last_mod_found && buf.st_mtime <= last_mod) {
@@ -569,7 +569,7 @@ void append_nv(Request *req, char **nv)
 
 namespace {
 void hd_on_ctrl_recv_callback
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
  void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
@@ -578,14 +578,14 @@ void hd_on_ctrl_recv_callback
     on_ctrl_recv_callback(session, type, frame, user_data);
   }
   switch(type) {
-  case SPDYLAY_SYN_STREAM: {
+  case NGHTTP2_SYN_STREAM: {
     int32_t stream_id = frame->syn_stream.stream_id;
     Request *req = new Request(stream_id);
     append_nv(req, frame->syn_stream.nv);
     hd->add_stream(stream_id, req);
     break;
   }
-  case SPDYLAY_HEADERS: {
+  case NGHTTP2_HEADERS: {
     int32_t stream_id = frame->headers.stream_id;
     Request *req = hd->get_stream(stream_id);
     append_nv(req, frame->headers.nv);
@@ -598,7 +598,7 @@ void hd_on_ctrl_recv_callback
 } // namespace
 
 void htdocs_on_request_recv_callback
-(spdylay_session *session, int32_t stream_id, void *user_data)
+(nghttp2_session *session, int32_t stream_id, void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   prepare_response(hd->get_stream(stream_id), hd);
@@ -606,7 +606,7 @@ void htdocs_on_request_recv_callback
 
 namespace {
 void hd_on_ctrl_send_callback
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
+(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
  void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
@@ -619,7 +619,7 @@ void hd_on_ctrl_send_callback
 
 namespace {
 void on_data_chunk_recv_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id,
+(nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
   // TODO Handle POST
@@ -628,7 +628,7 @@ void on_data_chunk_recv_callback
 
 namespace {
 void hd_on_data_recv_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data)
 {
   // TODO Handle POST
@@ -642,7 +642,7 @@ void hd_on_data_recv_callback
 
 namespace {
 void hd_on_data_send_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
  void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
@@ -655,7 +655,7 @@ void hd_on_data_send_callback
 
 namespace {
 void on_stream_close_callback
-(spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
+(nghttp2_session *session, int32_t stream_id, nghttp2_status_code status_code,
  void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
@@ -670,9 +670,9 @@ void on_stream_close_callback
 } // namespace
 
 namespace {
-void fill_callback(spdylay_session_callbacks& callbacks, const Config *config)
+void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
 {
-  memset(&callbacks, 0, sizeof(spdylay_session_callbacks));
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = hd_send_callback;
   callbacks.recv_callback = hd_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
@@ -725,7 +725,7 @@ public:
         if(config()->verbose) {
           std::cout << "The negotiated next protocol: " << proto << std::endl;
         }
-        version_ = spdylay_npn_get_version(next_proto, next_proto_len);
+        version_ = nghttp2_npn_get_version(next_proto, next_proto_len);
         if(config()->version != 0) {
           if(config()->version != version_) {
             version_ = 0;
@@ -776,7 +776,7 @@ public:
 private:
   void add_next_handler(Sessions *sessions)
   {
-    spdylay_session_callbacks callbacks;
+    nghttp2_session_callbacks callbacks;
     fill_callback(callbacks, config());
     SpdyEventHandler *hd = new SpdyEventHandler(config(),
                                                 fd_, ssl_, version_, &callbacks,
@@ -840,7 +840,7 @@ private:
   {
     int64_t session_id = ++(*session_id_seed_ptr_);
     if(config()->no_tls) {
-      spdylay_session_callbacks callbacks;
+      nghttp2_session_callbacks callbacks;
       fill_callback(callbacks, config());
       SpdyEventHandler *hd = new SpdyEventHandler(config(),
                                                   cfd, 0,
@@ -985,11 +985,11 @@ int SpdyServer::run()
     memcpy(&proto_list[8], "spdy/2", 6);
 
     switch(config_->version) {
-    case SPDYLAY_PROTO_SPDY3:
+    case NGHTTP2_PROTO_SPDY3:
       next_proto.first = proto_list;
       next_proto.second = 7;
       break;
-    case SPDYLAY_PROTO_SPDY2:
+    case NGHTTP2_PROTO_SPDY2:
       next_proto.first = proto_list+7;
       next_proto.second = 7;
       break;
@@ -1070,4 +1070,4 @@ int SpdyServer::run()
   return 0;
 }
 
-} // namespace spdylay
+} // namespace nghttp2

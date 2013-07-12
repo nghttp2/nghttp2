@@ -1,4 +1,4 @@
-# Spdylay - SPDY Library
+# nghttp2 - HTTP/2.0 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
 
@@ -27,7 +27,7 @@ AM_CFLAGS = -Wall
 AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
 	@OPENSSL_CFLAGS@ @DEFS@
 AM_LDFLAGS = @OPENSSL_LIBS@
-LDADD = $(top_builddir)/lib/libspdylay.la
+LDADD = $(top_builddir)/lib/libnghttp2.la
 
 noinst_PROGRAMS = spdycli
 spdycli_SOURCES = spdycli.c

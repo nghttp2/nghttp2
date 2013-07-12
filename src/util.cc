@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -31,7 +31,7 @@
 
 #include "timegm.h"
 
-namespace spdylay {
+namespace nghttp2 {
 
 namespace util {
 
@@ -186,4 +186,4 @@ char upcase(char c)
 
 } // namespace util
 
-} // namespace spdylay
+} // namespace nghttp2

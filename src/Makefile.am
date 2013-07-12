@@ -1,4 +1,4 @@
-# Spdylay - SPDY Library
+# nghttp2 - HTTP/2.0 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
 
@@ -32,7 +32,7 @@ AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
 	@OPENSSL_CFLAGS@ @XML_CPPFLAGS@ @LIBEVENT_OPENSSL_CFLAGS@ @DEFS@
 AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@ @LIBEVENT_OPENSSL_LIBS@ @SRC_LIBS@
 
-LDADD = $(top_builddir)/lib/libspdylay.la
+LDADD = $(top_builddir)/lib/libnghttp2.la
 
 bin_PROGRAMS += spdycat
 
@@ -44,8 +44,8 @@ if HAVE_LIBEVENT_OPENSSL
 bin_PROGRAMS += shrpx
 endif # HAVE_LIBEVENT_OPENSSL
 
-HELPER_OBJECTS = util.cc timegm.c spdylay_ssl.cc
-HELPER_HFILES = util.h timegm.h spdylay_ssl.h spdylay_config.h
+HELPER_OBJECTS = util.cc timegm.c nghttp2_ssl.cc
+HELPER_HFILES = util.h timegm.h nghttp2_ssl.h nghttp2_config.h
 
 EVENT_OBJECTS =
 EVENT_HFILES = EventPoll.h EventPollEvent.h
@@ -114,7 +114,7 @@ shrpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_ssl_test.cc shrpx_ssl_test.h\
 	${SHRPX_SRCS}
 shrpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
-	 -DSPDYLAY_TESTS_DIR=\"$(top_srcdir)/tests\"
+	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 shrpx_unittest_LDFLAGS = -static @OPENSSL_LIBS@ @LIBEVENT_OPENSSL_LIBS@\
 	@SRC_LIBS@ @CUNIT_LIBS@ @TESTS_LIBS@
 TESTS += shrpx-unittest

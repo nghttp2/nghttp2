@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -27,7 +27,7 @@
 
 #include <string>
 
-namespace spdylay {
+namespace nghttp2 {
 
 namespace base64 {
 
@@ -174,6 +174,6 @@ std::string decode(InputIterator first, InputIterator last)
 
 } // namespace base64
 
-} // namespace spdylay
+} // namespace nghttp2
 
 #endif // BASE64_H

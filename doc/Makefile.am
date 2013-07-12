@@ -1,4 +1,4 @@
-# Spdylay - SPDY Library
+# nghttp2 - HTTP/2.0 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
 
@@ -21,7 +21,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py python.rst \
+EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py \
 	package_README.rst _static/default2.css _templates/menu.html
 
 # Makefile for Sphinx documentation
@@ -59,8 +59,8 @@ help:
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
-apiref.rst: $(top_builddir)/lib/includes/spdylay/spdylayver.h \
-	$(top_builddir)/lib/includes/spdylay/spdylay.h
+apiref.rst: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
+	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
 	$(builddir)/mkapiref.py --header apiref-header.rst $^ > $@
 
 clean:
@@ -103,17 +103,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/Spdylay.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/nghttp2.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/Spdylay.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/nghttp2.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/Spdylay"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/Spdylay"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/nghttp2"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/nghttp2"
 	@echo "# devhelp"
 
 epub:

@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -25,7 +25,7 @@
 #ifndef EVENT_POLL_EPOLL_H
 #define EVENT_POLL_EPOLL_H
 
-#include "spdylay_config.h"
+#include "nghttp2_config.h"
 
 #include <cstdlib>
 
@@ -33,7 +33,7 @@
 
 #include "EventPollEvent.h"
 
-namespace spdylay {
+namespace nghttp2 {
 
 class EventPoll {
 public:
@@ -57,6 +57,6 @@ private:
   size_t num_events_;
 };
 
-} // namespace spdylay
+} // namespace nghttp2
 
 #endif // EVENT_POLL_EPOLL_H

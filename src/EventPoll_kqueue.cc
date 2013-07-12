@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -35,7 +35,7 @@
 # define PTR_TO_UDATA(X) (X)
 #endif // !KEVENT_UDATA_INTPTR_T
 
-namespace spdylay {
+namespace nghttp2 {
 
 EventPoll::EventPoll(size_t max_events)
   : max_events_(max_events), num_events_(0)
@@ -116,4 +116,4 @@ int EventPoll::ctl_event(int op, int fd, int events, void *user_data)
   return update_event(kq_, fd, events, user_data);
 }
 
-} // namespace spdylay
+} // namespace nghttp2

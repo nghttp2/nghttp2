@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
       return CU_get_error();
 
    /* add a suite to the registry */
-   pSuite = CU_add_suite("libspdylay_TestSuite", init_suite1, clean_suite1);
+   pSuite = CU_add_suite("libnghttp2_TestSuite", init_suite1, clean_suite1);
    if (NULL == pSuite) {
       CU_cleanup_registry();
       return CU_get_error();
@@ -56,10 +56,10 @@ int main(int argc, char* argv[])
 
    /* add the tests to the suite */
    if(!CU_add_test(pSuite, "failmalloc_session_send",
-                   test_spdylay_session_send) ||
+                   test_nghttp2_session_send) ||
       !CU_add_test(pSuite, "failmalloc_session_recv",
-                   test_spdylay_session_recv) ||
-      !CU_add_test(pSuite, "failmalloc_frame", test_spdylay_frame)) {
+                   test_nghttp2_session_recv) ||
+      !CU_add_test(pSuite, "failmalloc_frame", test_nghttp2_frame)) {
      CU_cleanup_registry();
      return CU_get_error();
    }

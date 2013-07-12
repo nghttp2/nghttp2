@@ -1,10 +1,10 @@
-Spdylay Documentation
+nghttp2 Documentation
 =====================
 
-The documentation of Spdylay is generated using Sphinx.  This
+The documentation of nghttp2 is generated using Sphinx.  This
 directory contains the source files to be processed by Sphinx.  The
 source file for API reference is generated using a script called
-``mkapiref.py`` from the Spdylay C source code.
+``mkapiref.py`` from the nghttp2 C source code.
 
 Generating API reference
 ------------------------
@@ -49,7 +49,7 @@ The example follows::
      *
      * Submits PING frame to the |session|.
      */
-    int spdylay_submit_ping(spdylay_session *session);
+    int nghttp2_submit_ping(nghttp2_session *session);
 
 
 @functypedef
@@ -68,8 +68,8 @@ The example follows::
      * Callback function invoked when |session| wants to send data to
      * remote peer.
      */
-    typedef ssize_t (*spdylay_send_callback)
-    (spdylay_session *session,
+    typedef ssize_t (*nghttp2_send_callback)
+    (nghttp2_session *session,
      const uint8_t *data, size_t length, int flags, void *user_data);
 
 @enum
@@ -93,18 +93,18 @@ The example follows::
 
     /**
      * @enum
-     * Error codes used in the Spdylay library.
+     * Error codes used in the nghttp2 library.
      */
     typedef enum {
       /**
        * Invalid argument passed.
        */
-      SPDYLAY_ERR_INVALID_ARGUMENT = -501,
+      NGHTTP2_ERR_INVALID_ARGUMENT = -501,
       /**
        * Zlib error.
        */
-      SPDYLAY_ERR_ZLIB = -502,
-    } spdylay_error;
+      NGHTTP2_ERR_ZLIB = -502,
+    } nghttp2_error;
 
 @struct
 #######
@@ -142,7 +142,7 @@ Some examples follow::
        * The length field of this control frame.
        */
       int32_t length;
-    } spdylay_ctrl_hd;
+    } nghttp2_ctrl_hd;
         
     /**
      * @struct
@@ -151,7 +151,7 @@ Some examples follow::
      * session. The details of this structure is hidden from the public
      * API.
      */
-    typedef struct spdylay_session spdylay_session;
+    typedef struct nghttp2_session nghttp2_session;
 
 @union
 ######

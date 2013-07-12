@@ -1,4 +1,4 @@
-# Spdylay - SPDY Library
+# nghttp2 - HTTP/2.0 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
 
@@ -26,26 +26,26 @@ if HAVE_CUNIT
 
 check_PROGRAMS = main failmalloc
 
-OBJECTS = main.c spdylay_pq_test.c spdylay_map_test.c spdylay_queue_test.c \
-	spdylay_buffer_test.c spdylay_zlib_test.c spdylay_session_test.c \
-	spdylay_frame_test.c spdylay_stream_test.c spdylay_npn_test.c \
-	spdylay_client_cert_vector_test.c spdylay_gzip_test.c \
-	spdylay_test_helper.c
+OBJECTS = main.c nghttp2_pq_test.c nghttp2_map_test.c nghttp2_queue_test.c \
+	nghttp2_buffer_test.c nghttp2_zlib_test.c nghttp2_session_test.c \
+	nghttp2_frame_test.c nghttp2_stream_test.c nghttp2_npn_test.c \
+	nghttp2_client_cert_vector_test.c nghttp2_gzip_test.c \
+	nghttp2_test_helper.c
 
-HFILES = spdylay_pq_test.h spdylay_map_test.h spdylay_queue_test.h \
-	spdylay_buffer_test.h spdylay_zlib_test.h spdylay_session_test.h \
-	spdylay_frame_test.h spdylay_stream_test.h spdylay_npn_test.h \
-	spdylay_client_cert_vector_test.h spdylay_gzip_test.h \
-	spdylay_test_helper.h
+HFILES = nghttp2_pq_test.h nghttp2_map_test.h nghttp2_queue_test.h \
+	nghttp2_buffer_test.h nghttp2_zlib_test.h nghttp2_session_test.h \
+	nghttp2_frame_test.h nghttp2_stream_test.h nghttp2_npn_test.h \
+	nghttp2_client_cert_vector_test.h nghttp2_gzip_test.h \
+	nghttp2_test_helper.h
 
 main_SOURCES = $(HFILES) $(OBJECTS)
 
-main_LDADD = ${top_builddir}/lib/libspdylay.la
+main_LDADD = ${top_builddir}/lib/libnghttp2.la
 main_LDFLAGS = -static @CUNIT_LIBS@ @TESTS_LIBS@
 
 failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
 	malloc_wrapper.c malloc_wrapper.h \
-	spdylay_test_helper.c spdylay_test_helper.h
+	nghttp2_test_helper.c nghttp2_test_helper.h
 failmalloc_LDADD = $(main_LDADD)
 failmalloc_LDFLAGS = $(main_LDFLAGS)
 

@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -36,14 +36,14 @@
 #include <limits>
 #include <fstream>
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
 #include "shrpx_log.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
 #include "util.h"
 
-using namespace spdylay;
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -196,7 +196,7 @@ int parse_spdy_proto(const char *optarg)
   size_t len = strlen(optarg);
   const unsigned char *proto;
   proto = reinterpret_cast<const unsigned char*>(optarg);
-  uint16_t version = spdylay_npn_get_version(proto, len);
+  uint16_t version = nghttp2_npn_get_version(proto, len);
   if(!version) {
     LOG(ERROR) << "Unsupported SPDY version: " << optarg;
     return -1;

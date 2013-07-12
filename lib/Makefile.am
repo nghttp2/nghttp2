@@ -1,4 +1,4 @@
-# Spdylay - SPDY Library
+# nghttp2 - HTTP/2.0 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
 
@@ -26,25 +26,25 @@ AM_CFLAGS = -Wall
 AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes @DEFS@
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libspdylay.pc
+pkgconfig_DATA = libnghttp2.pc
 DISTCLEANFILES = $(pkgconfig_DATA)
 
-lib_LTLIBRARIES = libspdylay.la
+lib_LTLIBRARIES = libnghttp2.la
 
-OBJECTS = spdylay_pq.c spdylay_map.c spdylay_queue.c \
-	spdylay_buffer.c spdylay_frame.c spdylay_zlib.c \
-	spdylay_session.c spdylay_helper.c spdylay_stream.c spdylay_npn.c \
-	spdylay_submit.c spdylay_outbound_item.c \
-	spdylay_client_cert_vector.c spdylay_gzip.c
+OBJECTS = nghttp2_pq.c nghttp2_map.c nghttp2_queue.c \
+	nghttp2_buffer.c nghttp2_frame.c nghttp2_zlib.c \
+	nghttp2_session.c nghttp2_helper.c nghttp2_stream.c nghttp2_npn.c \
+	nghttp2_submit.c nghttp2_outbound_item.c \
+	nghttp2_client_cert_vector.c nghttp2_gzip.c
 
-HFILES = spdylay_pq.h spdylay_int.h spdylay_map.h spdylay_queue.h \
-	spdylay_buffer.h spdylay_frame.h spdylay_zlib.h \
-	spdylay_session.h spdylay_helper.h spdylay_stream.h spdylay_int.h \
-	spdylay_npn.h spdylay_gzip.h \
-	spdylay_submit.h spdylay_outbound_item.h \
-	spdylay_client_cert_vector.h \
-	spdylay_net.h
+HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
+	nghttp2_buffer.h nghttp2_frame.h nghttp2_zlib.h \
+	nghttp2_session.h nghttp2_helper.h nghttp2_stream.h nghttp2_int.h \
+	nghttp2_npn.h nghttp2_gzip.h \
+	nghttp2_submit.h nghttp2_outbound_item.h \
+	nghttp2_client_cert_vector.h \
+	nghttp2_net.h
 
-libspdylay_la_SOURCES = $(HFILES) $(OBJECTS)
-libspdylay_la_LDFLAGS = -no-undefined \
+libnghttp2_la_SOURCES = $(HFILES) $(OBJECTS)
+libnghttp2_la_LDFLAGS = -no-undefined \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)

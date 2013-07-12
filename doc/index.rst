@@ -1,22 +1,13 @@
-.. Spdylay documentation master file, created by
+.. nghttp2 documentation master file, created by
    sphinx-quickstart on Sun Mar 11 22:57:49 2012.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Spdylay - SPDY C Library
-========================
+nghttp2 - HTTP/2.0 C Library
+============================
 
-This is an experimental implementation of Google's SPDY protocol in C.
-This library provides SPDY version 2 and 3 framing layer
-implementation.  It does not perform any I/O operations.  When the
-library needs them, it calls the callback functions provided by the
-application. It also does not include any event polling mechanism, so
-the application can freely choose the way of handling events. This
-library code does not depend on any particular SSL library (except for
-example programs which depend on OpenSSL 1.0.1 or later).
-
-This project also develops SPDY client, server and proxy on top of
-Spdylay library.
+This is an experimental implementation of Hypertext Transfer Protocol
+version 2.0.
 
 Contents:
 
@@ -25,10 +16,8 @@ Contents:
 
    package_README
    apiref
-   python
-   android-spdy-proxy
 
 Resources
 ---------
 
-* http://www.chromium.org/spdy
+* http://tools.ietf.org/html/draft-ietf-httpbis-http2-04

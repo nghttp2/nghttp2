@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -41,7 +41,7 @@
 #include "shrpx_spdy_session.h"
 #include "util.h"
 
-using namespace spdylay;
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -146,25 +146,25 @@ int SpdyDownstreamConnection::submit_rst_stream(Downstream *downstream)
       }
       rv = spdy_->submit_rst_stream(this,
                                     downstream->get_downstream_stream_id(),
-                                    SPDYLAY_INTERNAL_ERROR);
+                                    NGHTTP2_INTERNAL_ERROR);
     }
   }
   return rv;
 }
 
 namespace {
-ssize_t spdy_data_read_callback(spdylay_session *session,
+ssize_t spdy_data_read_callback(nghttp2_session *session,
                                 int32_t stream_id,
                                 uint8_t *buf, size_t length,
                                 int *eof,
-                                spdylay_data_source *source,
+                                nghttp2_data_source *source,
                                 void *user_data)
 {
   StreamData *sd;
   sd = reinterpret_cast<StreamData*>
-    (spdylay_session_get_stream_user_data(session, stream_id));
+    (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
-    return SPDYLAY_ERR_DEFERRED;
+    return NGHTTP2_ERR_DEFERRED;
   }
   SpdyDownstreamConnection *dconn;
   dconn = reinterpret_cast<SpdyDownstreamConnection*>(source->ptr);
@@ -172,7 +172,7 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
   if(!downstream) {
     // In this case, RST_STREAM should have been issued. But depending
     // on the priority, DATA frame may come first.
-    return SPDYLAY_ERR_DEFERRED;
+    return NGHTTP2_ERR_DEFERRED;
   }
   evbuffer *body = dconn->get_request_body_buf();
   int nread = 0;
@@ -188,12 +188,12 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
         if(downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
                                                    downstream) == -1) {
           // In this case, downstream may be deleted.
-          return SPDYLAY_ERR_DEFERRED;
+          return NGHTTP2_ERR_DEFERRED;
         }
         // Check dconn is still alive because Upstream::resume_read()
         // may delete downstream which will delete dconn.
         if(sd->dconn == 0) {
-          return SPDYLAY_ERR_DEFERRED;
+          return NGHTTP2_ERR_DEFERRED;
         }
         if(evbuffer_get_length(body) == 0) {
           // Check get_request_state() == MSG_COMPLETE just in case
@@ -201,7 +201,7 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
             *eof = 1;
             break;
           }
-          return SPDYLAY_ERR_DEFERRED;
+          return NGHTTP2_ERR_DEFERRED;
         }
       }
     } else {
@@ -343,7 +343,7 @@ int SpdyDownstreamConnection::push_request_headers()
   if(downstream_->get_request_method() == "CONNECT" ||
      chunked_encoding || content_length) {
     // Request-body is expected.
-    spdylay_data_provider data_prd;
+    nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
     data_prd.read_callback = spdy_data_read_callback;
     rv = spdy_->submit_request(this, 0, nv, &data_prd);
@@ -352,7 +352,7 @@ int SpdyDownstreamConnection::push_request_headers()
   }
   delete [] nv;
   if(rv != 0) {
-    DCLOG(FATAL, this) << "spdylay_submit_request() failed";
+    DCLOG(FATAL, this) << "nghttp2_submit_request() failed";
     return -1;
   }
   spdy_->notify();

@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -25,7 +25,7 @@
 #ifndef SPDY_SERVER_H
 #define SPDY_SERVER_H
 
-#include "spdylay_config.h"
+#include "nghttp2_config.h"
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -38,9 +38,9 @@
 
 #include <openssl/ssl.h>
 
-#include <spdylay/spdylay.h>
+#include <nghttp2/nghttp2.h>
 
-namespace spdylay {
+namespace nghttp2 {
 
 struct Config {
   std::string htdocs;
@@ -50,7 +50,7 @@ struct Config {
   uint16_t port;
   std::string private_key_file;
   std::string cert_file;
-  spdylay_on_request_recv_callback on_request_recv_callback;
+  nghttp2_on_request_recv_callback on_request_recv_callback;
   void *data_ptr;
   uint16_t version;
   bool verify_client;
@@ -99,7 +99,7 @@ class SpdyEventHandler : public EventHandler {
 public:
   SpdyEventHandler(const Config* config,
                    int fd, SSL *ssl, uint16_t version,
-                   const spdylay_session_callbacks *callbacks,
+                   const nghttp2_session_callbacks *callbacks,
                    int64_t session_id);
   virtual ~SpdyEventHandler();
   virtual int execute(Sessions *sessions);
@@ -120,24 +120,24 @@ public:
                            int32_t stream_id,
                            time_t last_modified,
                            off_t file_length,
-                           spdylay_data_provider *data_prd);
+                           nghttp2_data_provider *data_prd);
 
   int submit_response(const std::string& status,
                       int32_t stream_id,
-                      spdylay_data_provider *data_prd);
+                      nghttp2_data_provider *data_prd);
 
   int submit_response
   (const std::string& status,
    int32_t stream_id,
    const std::vector<std::pair<std::string, std::string> >& headers,
-   spdylay_data_provider *data_prd);
+   nghttp2_data_provider *data_prd);
 
   void add_stream(int32_t stream_id, Request *req);
   void remove_stream(int32_t stream_id);
   Request* get_stream(int32_t stream_id);
   int64_t session_id() const;
 private:
-  spdylay_session *session_;
+  nghttp2_session *session_;
   int fd_;
   SSL* ssl_;
   uint16_t version_;
@@ -158,13 +158,13 @@ private:
 };
 
 void htdocs_on_request_recv_callback
-(spdylay_session *session, int32_t stream_id, void *user_data);
+(nghttp2_session *session, int32_t stream_id, void *user_data);
 
 ssize_t file_read_callback
-(spdylay_session *session, int32_t stream_id,
+(nghttp2_session *session, int32_t stream_id,
  uint8_t *buf, size_t length, int *eof,
- spdylay_data_source *source, void *user_data);
+ nghttp2_data_source *source, void *user_data);
 
-} // namespace spdylay
+} // namespace nghttp2
 
 #endif // SPDY_SERVER_H

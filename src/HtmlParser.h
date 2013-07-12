@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -25,7 +25,7 @@
 #ifndef HTML_PARSER_H
 #define HTML_PARSER_H
 
-#include "spdylay_config.h"
+#include "nghttp2_config.h"
 
 #include <vector>
 #include <string>
@@ -34,7 +34,7 @@
 
 #include <libxml/HTMLparser.h>
 
-namespace spdylay {
+namespace nghttp2 {
 
 struct ParserData {
   std::string base_uri;
@@ -57,11 +57,11 @@ private:
   ParserData parser_data_;
 };
 
-} // namespace spdylay
+} // namespace nghttp2
 
 #else // !HAVE_LIBXML2
 
-namespace spdylay {
+namespace nghttp2 {
 
 class HtmlParser {
 public:
@@ -74,7 +74,7 @@ private:
   std::vector<std::string> links_;
 };
 
-} // namespace spdylay
+} // namespace nghttp2
 
 #endif // !HAVE_LIBXML2
 

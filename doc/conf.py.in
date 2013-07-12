@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Spdylay - SPDY Library
+# nghttp2 - HTTP/2.0 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
 
@@ -23,7 +23,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #
-# Spdylay documentation build configuration file, created by
+# nghttp2 documentation build configuration file, created by
 # sphinx-quickstart on Sun Mar 11 22:57:49 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -63,7 +63,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Spdylay'
+project = u'nghttp2'
 copyright = u'2012, 2013, Tatsuhiro Tsujikawa'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -204,7 +204,7 @@ html_sidebars = {
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Spdylaydoc'
+htmlhelp_basename = 'nghttp2doc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -218,7 +218,7 @@ htmlhelp_basename = 'Spdylaydoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Spdylay.tex', u'Spdylay Documentation',
+  ('index', 'nghttp2.tex', u'nghttp2 Documentation',
    u'Tatsuhiro Tsujikawa', 'manual'),
 ]
 
@@ -251,7 +251,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'spdylay', u'Spdylay Documentation',
+    ('index', 'nghttp2', u'nghttp2 Documentation',
      [u'Tatsuhiro Tsujikawa'], 1)
 ]
 

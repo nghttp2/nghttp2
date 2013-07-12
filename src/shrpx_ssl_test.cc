@@ -1,5 +1,5 @@
 /*
- * Spdylay - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -49,7 +49,7 @@ void test_shrpx_ssl_create_lookup_tree(void)
                               "*www.example.org",
                               "x*.host.domain",
                               "*yy.host.domain",
-                              "spdylay.sourceforge.net",
+                              "nghttp2.sourceforge.net",
                               "sourceforge.net",
                               "sourceforge.net", // duplicate
                               "*.foo.bar", // oo.bar is suffix of *.foo.bar
@@ -120,7 +120,7 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void)
   int rv;
   ssl::CertLookupTree* tree = ssl::cert_lookup_tree_new();
   SSL_CTX *ssl_ctx = SSL_CTX_new(TLSv1_method());
-  const char certfile[] = SPDYLAY_TESTS_DIR"/testdata/cacert.pem";
+  const char certfile[] = NGHTTP2_TESTS_DIR"/testdata/cacert.pem";
   rv = ssl::cert_lookup_tree_add_cert_from_file(tree, ssl_ctx, certfile);
   CU_ASSERT(0 == rv);
   const char localhost[] = "localhost";
