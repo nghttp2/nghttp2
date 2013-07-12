@@ -41,7 +41,7 @@ bin_PROGRAMS += spdyd
 endif # ENABLE_SPDYD
 
 if HAVE_LIBEVENT_OPENSSL
-bin_PROGRAMS += shrpx
+# bin_PROGRAMS += shrpx
 endif # HAVE_LIBEVENT_OPENSSL
 
 HELPER_OBJECTS = util.cc timegm.c nghttp2_ssl.cc
@@ -82,43 +82,43 @@ spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
 endif # ENABLE_SPDYD
 
 if HAVE_LIBEVENT_OPENSSL
-SHRPX_SRCS = \
-	util.cc util.h timegm.c timegm.h base64.h \
-	shrpx_config.cc shrpx_config.h \
-	shrpx_error.h \
-	shrpx_listen_handler.cc shrpx_listen_handler.h \
-	shrpx_client_handler.cc shrpx_client_handler.h \
-	shrpx_upstream.h \
-	shrpx_spdy_upstream.cc shrpx_spdy_upstream.h \
-	shrpx_https_upstream.cc shrpx_https_upstream.h \
-	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
-	shrpx_downstream.cc shrpx_downstream.h \
-	shrpx_downstream_connection.cc shrpx_downstream_connection.h \
-	shrpx_http_downstream_connection.cc shrpx_http_downstream_connection.h \
-	shrpx_spdy_downstream_connection.cc shrpx_spdy_downstream_connection.h \
-	shrpx_spdy_session.cc shrpx_spdy_session.h \
-	shrpx_log.cc shrpx_log.h \
-	shrpx_http.cc shrpx_http.h \
-	shrpx_io_control.cc shrpx_io_control.h \
-	shrpx_ssl.cc shrpx_ssl.h \
-	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
-	shrpx_worker.cc shrpx_worker.h \
-	shrpx_accesslog.cc shrpx_accesslog.h\
-	http-parser/http_parser.c http-parser/http_parser.h
+# SHRPX_SRCS = \
+# 	util.cc util.h timegm.c timegm.h base64.h \
+# 	shrpx_config.cc shrpx_config.h \
+# 	shrpx_error.h \
+# 	shrpx_listen_handler.cc shrpx_listen_handler.h \
+# 	shrpx_client_handler.cc shrpx_client_handler.h \
+# 	shrpx_upstream.h \
+# 	shrpx_spdy_upstream.cc shrpx_spdy_upstream.h \
+# 	shrpx_https_upstream.cc shrpx_https_upstream.h \
+# 	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
+# 	shrpx_downstream.cc shrpx_downstream.h \
+# 	shrpx_downstream_connection.cc shrpx_downstream_connection.h \
+# 	shrpx_http_downstream_connection.cc shrpx_http_downstream_connection.h \
+# 	shrpx_spdy_downstream_connection.cc shrpx_spdy_downstream_connection.h \
+# 	shrpx_spdy_session.cc shrpx_spdy_session.h \
+# 	shrpx_log.cc shrpx_log.h \
+# 	shrpx_http.cc shrpx_http.h \
+# 	shrpx_io_control.cc shrpx_io_control.h \
+# 	shrpx_ssl.cc shrpx_ssl.h \
+# 	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
+# 	shrpx_worker.cc shrpx_worker.h \
+# 	shrpx_accesslog.cc shrpx_accesslog.h\
+# 	http-parser/http_parser.c http-parser/http_parser.h
 
-shrpx_SOURCES = ${SHRPX_SRCS} shrpx.cc shrpx.h
+# shrpx_SOURCES = ${SHRPX_SRCS} shrpx.cc shrpx.h
 
-if HAVE_CUNIT
-check_PROGRAMS += shrpx-unittest
-shrpx_unittest_SOURCES = shrpx-unittest.cc \
-	shrpx_ssl_test.cc shrpx_ssl_test.h\
-	${SHRPX_SRCS}
-shrpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
-	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
-shrpx_unittest_LDFLAGS = -static @OPENSSL_LIBS@ @LIBEVENT_OPENSSL_LIBS@\
-	@SRC_LIBS@ @CUNIT_LIBS@ @TESTS_LIBS@
-TESTS += shrpx-unittest
-endif # HAVE_CUNIT
+# if HAVE_CUNIT
+# check_PROGRAMS += shrpx-unittest
+# shrpx_unittest_SOURCES = shrpx-unittest.cc \
+# 	shrpx_ssl_test.cc shrpx_ssl_test.h\
+# 	${SHRPX_SRCS}
+# shrpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
+# 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
+# shrpx_unittest_LDFLAGS = -static @OPENSSL_LIBS@ @LIBEVENT_OPENSSL_LIBS@\
+# 	@SRC_LIBS@ @CUNIT_LIBS@ @TESTS_LIBS@
+# TESTS += shrpx-unittest
+# endif # HAVE_CUNIT
 
 endif # HAVE_LIBEVENT_OPENSSL
 
