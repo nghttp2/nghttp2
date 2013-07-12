@@ -56,8 +56,8 @@ TESTS = main failmalloc
 
 if ENABLE_SRC
 
-EXTRA_DIST = end_to_end.py
-TESTS += end_to_end.py
+# EXTRA_DIST = end_to_end.py
+# TESTS += end_to_end.py
 
 endif # ENABLE_SRC
 
