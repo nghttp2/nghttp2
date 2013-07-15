@@ -25,7 +25,6 @@
 #ifndef NGHTTP2_ZLIB_TEST_H
 #define NGHTTP2_ZLIB_TEST_H
 
-void test_nghttp2_zlib_spdy2(void);
-void test_nghttp2_zlib_spdy3(void);
+void test_nghttp2_zlib(void);
 
 #endif /* NGHTTP2_ZLIB_TEST_H */

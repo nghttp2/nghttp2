@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2.0 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -39,7 +39,7 @@ struct nghttp2_session;
 /**
  * @struct
  *
- * The primary structure to hold the resources needed for a SPDY
+ * The primary structure to hold the resources needed for a HTTP/2.0
  * session. The details of this structure are intentionally hidden
  * from the public API.
  */
@@ -48,24 +48,8 @@ typedef struct nghttp2_session nghttp2_session;
 /**
  * @enum
  *
- * The SPDY protocol version.
- */
-typedef enum {
-  /**
-   * SPDY protocol version 2
-   */
-  NGHTTP2_PROTO_SPDY2 = 2,
-  /**
-   * SPDY protocol version 3
-   */
-  NGHTTP2_PROTO_SPDY3 = 3
-} nghttp2_proto_version;
-
-/**
- * @enum
- *
- * Error codes used in the Spdylay library. The code range is [-999,
- * -500], inclusive. The following values are defined:
+ * Error codes used in this library. The code range is [-999, -500],
+ * inclusive. The following values are defined:
  */
 typedef enum {
   /**
@@ -138,10 +122,10 @@ typedef enum {
    */
   NGHTTP2_ERR_DEFERRED_DATA_EXIST = -515,
   /**
-   * SYN_STREAM is not allowed. (e.g., GOAWAY has been sent and/or
-   * received.
+   * Starting new stream is not allowed. (e.g., GOAWAY has been sent
+   * and/or received.
    */
-  NGHTTP2_ERR_SYN_STREAM_NOT_ALLOWED = -516,
+  NGHTTP2_ERR_START_STREAM_NOT_ALLOWED = -516,
   /**
    * GOAWAY has already been sent.
    */
@@ -193,119 +177,83 @@ typedef enum {
 
 /**
  * @enum
- * The control frame types in SPDY protocol.
+ * The control frame types in HTTP/2.0.
  */
 typedef enum {
   /**
-   * The SYN_STREAM control frame.
+   * The DATA frame.
    */
-  NGHTTP2_SYN_STREAM = 1,
+  NGHTTP2_DATA = 0,
   /**
-   * The SYN_REPLY control frame.
+   * The HEADERS frame.
    */
-  NGHTTP2_SYN_REPLY = 2,
+  NGHTTP2_HEADERS = 1,
   /**
-   * The RST_STREAM control frame.
+   * The PRIORITY frame.
+   */
+  NGHTTP2_PRIORITY = 2,
+  /**
+   * The RST_STREAM frame.
    */
   NGHTTP2_RST_STREAM = 3,
   /**
-   * The SETTINGS control frame.
+   * The SETTINGS frame.
    */
   NGHTTP2_SETTINGS = 4,
   /**
-   * The NOOP control frame. This was deprecated in SPDY/3.
+   * The PUSH_PROMISE frame.
    */
-  NGHTTP2_NOOP = 5,
+  NGHTTP2_PUSH_PROMISE = 5,
   /**
-   * The PING control frame.
+   * The PING frame.
    */
   NGHTTP2_PING = 6,
   /**
-   * The GOAWAY control frame.
+   * The GOAWAY frame.
    */
   NGHTTP2_GOAWAY = 7,
   /**
-   * The HEADERS control frame.
+   * The WINDOW_UPDATE frame.
    */
-  NGHTTP2_HEADERS = 8,
-  /**
-   * The WINDOW_UPDATE control frame. This first appeared in SPDY/3.
-   */
-  NGHTTP2_WINDOW_UPDATE = 9,
-  /**
-   * The CREDENTIAL control frame. This first appeared in SPDY/3.
-   */
-  NGHTTP2_CREDENTIAL = 10
+  NGHTTP2_WINDOW_UPDATE = 8
 } nghttp2_frame_type;
 
 /**
  * @enum
  *
- * The flags for a control frame.
+ * The flags for HTTP/2.0 frames. This enum defines all flags for
+ * frames, assuming that the same flag name has the same mask.
  */
 typedef enum {
   /**
    * No flag set.
    */
-  NGHTTP2_CTRL_FLAG_NONE = 0,
+  NGHTTP2_FLAG_NONE = 0,
   /**
-   * FLAG_FIN flag.
+   * The END_STREAM flag.
    */
-  NGHTTP2_CTRL_FLAG_FIN = 0x1,
+  NGHTTP2_FLAG_END_STREAM = 0x1,
   /**
-   * FLAG_UNIDIRECTIONAL flag.
+   * The END_HEADERS flag.
    */
-  NGHTTP2_CTRL_FLAG_UNIDIRECTIONAL = 0x2
-} nghttp2_ctrl_flag;
-
-/**
- * @enum
- * The flags for a DATA frame.
- */
-typedef enum {
+  NGHTTP2_FLAG_END_HEADERS = 0x4,
   /**
-   * No flag set.
+   * The PRIORITY flag.
    */
-  NGHTTP2_DATA_FLAG_NONE = 0,
+  NGHTTP2_FLAG_PRIORITY = 0x8,
   /**
-   * FLAG_FIN flag.
+   * The END_PUSH_PROMISE flag.
    */
-  NGHTTP2_DATA_FLAG_FIN = 0x1
-} nghttp2_data_flag;
-
-/**
- * @enum
- * The flags for the SETTINGS control frame.
- */
-typedef enum {
+  NGHTTP2_FLAG_END_PUSH_PROMISE = 0x1,
   /**
-   * No flag set.
+   * The PONG flag.
    */
-  NGHTTP2_FLAG_SETTINGS_NONE = 0,
+  NGHTTP2_FLAG_PONG = 0x1,
   /**
-   * SETTINGS_CLEAR_SETTINGS flag.
+   * The END_FLOW_CONTROL flag.
    */
-  NGHTTP2_FLAG_SETTINGS_CLEAR_SETTINGS = 1
-} nghttp2_settings_flag;
-
-/**
- * @enum
- * The flags for SETTINGS ID/value pair.
- */
-typedef enum {
-  /**
-   * No flag set.
-   */
-  NGHTTP2_ID_FLAG_SETTINGS_NONE = 0,
-  /**
-   * FLAG_SETTINGS_PERSIST_VALUE flag.
-   */
-  NGHTTP2_ID_FLAG_SETTINGS_PERSIST_VALUE = 1,
-  /**
-   * FLAG_SETTINGS_PERSISTED flag.
-   */
-  NGHTTP2_ID_FLAG_SETTINGS_PERSISTED = 2
-} nghttp2_settings_id_flag;
+  NGHTTP2_FLAG_END_FLOW_CONTROL = 0x1
+} nghttp2_flag;
 
 /**
  * @enum
@@ -313,42 +261,21 @@ typedef enum {
  */
 typedef enum {
   /**
-   * SETTINGS_UPLOAD_BANDWIDTH
-   */
-  NGHTTP2_SETTINGS_UPLOAD_BANDWIDTH = 1,
-  /**
-   * SETTINGS_DOWNLOAD_BANDWIDTH
-   */
-  NGHTTP2_SETTINGS_DOWNLOAD_BANDWIDTH = 2,
-  /**
-   * SETTINGS_ROUND_TRIP_TIME
-   */
-  NGHTTP2_SETTINGS_ROUND_TRIP_TIME = 3,
-  /**
    * SETTINGS_MAX_CONCURRENT_STREAMS
    */
   NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS = 4,
-  /**
-   * SETTINGS_CURRENT_CWND
-   */
-  NGHTTP2_SETTINGS_CURRENT_CWND = 5,
-  /**
-   * SETTINGS_DOWNLOAD_RETRANS_RATE
-   */
-  NGHTTP2_SETTINGS_DOWNLOAD_RETRANS_RATE = 6,
   /**
    * SETTINGS_INITIAL_WINDOW_SIZE
    */
   NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 7,
   /**
-   * SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE. This first appeared in
-   * SPDY/3.
+   * SETTINGS_FLOW_CONTROL_OPTIONS
    */
-  NGHTTP2_SETTINGS_CLIENT_CERTIFICATE_VECTOR_SIZE = 8,
+  NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS = 10,
   /**
    * Maximum ID of :type:`nghttp2_settings_id`.
    */
-  NGHTTP2_SETTINGS_MAX = 8
+  NGHTTP2_SETTINGS_MAX = 10
 } nghttp2_settings_id;
 
 /**
@@ -359,359 +286,70 @@ typedef enum {
 
 /**
  * @enum
- * The status codes for the RST_STREAM control frame.
+ * The status codes for the RST_STREAM and GOAWAY frames.
  */
 typedef enum {
   /**
-   * NGHTTP2_OK is not valid status code for RST_STREAM. It is defined
-   * just for nghttp2 library use.
+   * No errors.
    */
-  NGHTTP2_OK = 0,
+  NGHTTP2_NO_ERROR = 0,
   /**
    * PROTOCOL_ERROR
    */
   NGHTTP2_PROTOCOL_ERROR = 1,
   /**
-   * INVALID_STREAM
-   */
-  NGHTTP2_INVALID_STREAM = 2,
-  /**
-   * REFUSED_STREAM
-   */
-  NGHTTP2_REFUSED_STREAM = 3,
-  /**
-   * UNSUPPORTED_VERSION
-   */
-  NGHTTP2_UNSUPPORTED_VERSION = 4,
-  /**
-   * CANCEL
-   */
-  NGHTTP2_CANCEL = 5,
-  /**
    * INTERNAL_ERROR
    */
-  NGHTTP2_INTERNAL_ERROR = 6,
+  NGHTTP2_INTERNAL_ERROR = 2,
   /**
    * FLOW_CONTROL_ERROR
    */
-  NGHTTP2_FLOW_CONTROL_ERROR = 7,
-  /* Following status codes were introduced in SPDY/3 */
+  NGHTTP2_FLOW_CONTROL_ERROR = 3,
   /**
-   * STREAM_IN_USE
+   * STREAM_CLOSED
    */
-  NGHTTP2_STREAM_IN_USE = 8,
-  /**
-   * STREAM_ALREADY_CLOSED
-   */
-  NGHTTP2_STREAM_ALREADY_CLOSED = 9,
-  /**
-   * INVALID_CREDENTIALS
-   */
-  NGHTTP2_INVALID_CREDENTIALS = 10,
+  NGHTTP2_STREAM_CLOSED = 5,
   /**
    * FRAME_TOO_LARGE
    */
-  NGHTTP2_FRAME_TOO_LARGE = 11
-} nghttp2_status_code;
-
-/**
- * @enum
- * The status codes for GOAWAY, introduced in SPDY/3.
- */
-typedef enum {
+  NGHTTP2_FRAME_TOO_LARGE = 6,
   /**
-   * OK. This indicates a normal session teardown.
+   * REFUSED_STREAM
    */
-  NGHTTP2_GOAWAY_OK = 0,
+  NGHTTP2_REFUSED_STREAM = 7,
   /**
-   * PROTOCOL_ERROR
+   * CANCEL
    */
-  NGHTTP2_GOAWAY_PROTOCOL_ERROR = 1,
+  NGHTTP2_CANCEL = 8,
   /**
-   * INTERNAL_ERROR
+   * COMPRESSION_ERROR
    */
-  NGHTTP2_GOAWAY_INTERNAL_ERROR = 2
-} nghttp2_goaway_status_code;
+  NGHTTP2_COMPRESSION_ERROR = 9
+} nghttp2_error_code;
 
 /**
  * @struct
- * The control frame header.
+ * The frame header.
  */
 typedef struct {
   /**
-   * SPDY protocol version.
+   * The length field of this frame, excluding frame header.
    */
-  uint16_t version;
+  uint16_t length;
   /**
-   * The type of this control frame.
+   * The type of this frame. See `nghttp2_frame`.
    */
-  uint16_t type;
+  uint8_t type;
   /**
-   * The control frame flags.
+   * The flags.
    */
   uint8_t flags;
   /**
-   * The length field of this control frame.
-   */
-  int32_t length;
-} nghttp2_ctrl_hd;
-
-/**
- * @struct
- * The SYN_STREAM control frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The stream ID.
+   * The stream identifier (aka, stream ID)
    */
   int32_t stream_id;
-  /**
-   * The associated-to-stream ID. 0 if this frame has no
-   * associated-to-stream.
-   */
-  int32_t assoc_stream_id;
-  /**
-   * The priority of this frame. 0 is the highest priority value. Use
-   * `nghttp2_session_get_pri_lowest()` to know the lowest priority
-   * value.
-   */
-  uint8_t pri;
-  /**
-   * The index in server's CREDENTIAL vector of the client certificate.
-   * This was introduced in SPDY/3.
-   */
-  uint8_t slot;
-  /**
-   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
-   * to the name string and ``nv[2*i+1]`` contains a pointer to the
-   * value string. The one beyond last value must be ``NULL``. That
-   * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
-   * ``NULL``. This member may be ``NULL``.
-   */
-  char **nv;
-} nghttp2_syn_stream;
+} nghttp2_frame_hd;
 
-/**
- * @struct
- * The SYN_REPLY control frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The stream ID.
-   */
-  int32_t stream_id;
-  /**
-   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
-   * to the name string and ``nv[2*i+1]`` contains a pointer to the
-   * value string. The one beyond last value must be ``NULL``. That
-   * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
-   * ``NULL``. This member may be ``NULL``.
-   */
-  char **nv;
-} nghttp2_syn_reply;
-
-/**
- * @struct
- * The HEADERS control frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The stream ID.
-   */
-  int32_t stream_id;
-  /**
-   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
-   * to the name string and ``nv[2*i+1]`` contains a pointer to the
-   * value string. The one beyond last value must be ``NULL``. That
-   * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
-   * ``NULL``. This member may be ``NULL``.
-   */
-  char **nv;
-} nghttp2_headers;
-
-/**
- * @struct
- * The RST_STREAM control frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The stream ID.
-   */
-  int32_t stream_id;
-  /**
-   * The status code. See :type:`nghttp2_status_code`.
-   */
-  uint32_t status_code;
-} nghttp2_rst_stream;
-
-/**
- * @struct
- * The SETTINGS ID/Value pair. It has the following members:
- */
-typedef struct {
-  /**
-   * The SETTINGS ID. See :type:`nghttp2_settings_id`.
-   */
-  int32_t settings_id;
-  /**
-   * The flags. See :type:`nghttp2_settings_id_flag`.
-   */
-  uint8_t flags;
-  /**
-   * The value of this entry.
-   */
-  uint32_t value;
-} nghttp2_settings_entry;
-
-/**
- * @struct
- * The SETTINGS control frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The number of SETTINGS ID/Value pairs in |iv|.
-   */
-  size_t niv;
-  /**
-   * The pointer to the array of SETTINGS ID/Value pair.
-   */
-  nghttp2_settings_entry *iv;
-} nghttp2_settings;
-
-/**
- * @struct
- * The PING control frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The unique ID.
-   */
-  uint32_t unique_id;
-} nghttp2_ping;
-
-/**
- * @struct
- * The GOAWAY control frame. It has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The last-good-stream ID.
-   */
-  int32_t last_good_stream_id;
-  /**
-   * The status code. This first appeared in SPDY/3. See
-   * :type:`nghttp2_goaway_status_code`.
-   */
-  uint32_t status_code;
-} nghttp2_goaway;
-
-/**
- * @struct
- *
- * The WINDOW_UPDATE control frame. This first appeared in SPDY/3.  It
- * has the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The stream ID.
-   */
-  int32_t stream_id;
-  /**
-   * The delta-window-size.
-   */
-  int32_t delta_window_size;
-} nghttp2_window_update;
-
-/**
- * @struct
- *
- * The structure to hold chunk of memory.
- */
-typedef struct {
-  /**
-   * The pointer to the data.
-   */
-  uint8_t *data;
-  /**
-   * The length of the data.
-   */
-  size_t length;
-} nghttp2_mem_chunk;
-
-/**
- * @struct
- *
- * The CREDENTIAL control frame. This first appeared in SPDY/3. It has
- * the following members:
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-  /**
-   * The index in the client certificate vector.
-   */
-  uint16_t slot;
-  /**
-   * Cryptographic proof that the client has possession of the private
-   * key associated with the certificate.
-   */
-  nghttp2_mem_chunk proof;
-  /**
-   * The certificate chain. The certs[0] is the leaf certificate.
-   */
-  nghttp2_mem_chunk *certs;
-  /**
-   * The number of certificates in |certs|.
-   */
-  size_t ncerts;
-} nghttp2_credential;
-
-/**
- * @struct
- *
- * Convenient structure to inspect control frame header.  It is useful
- * to get the frame type.
- */
-typedef struct {
-  /**
-   * The control frame header.
-   */
-  nghttp2_ctrl_hd hd;
-} nghttp2_ctrl_frame;
 
 /**
  * @union
@@ -773,52 +411,259 @@ typedef struct {
 } nghttp2_data_provider;
 
 /**
+ * @enum
+ *
+ * The category of HEADERS, which indicates the role of the frame. In
+ * HTTP/2.0 spec, request HEADERS and response HEADERS and other
+ * arbitrary sent HEADERS are all called just HEADERS. In SPDY days,
+ * they are called as SYN_STREAM, SYN_REPLY and HEADERS and which is
+ * self-explanatory and easy to code. To give the application the
+ * particular HEADERS frame is analogous to the SPDY terms, we define
+ * 3 categories for it.
+ */
+typedef enum {
+  /**
+   * The HEADERS frame is opening stream, which is analogous to SPDY
+   * SYN_STREAM.
+   */
+  NGHTTP2_HCAT_START_STREAM,
+  /**
+   * The HEADERS frame is the first response headers, which is
+   * analogous to SPDY SYN_REPLY.
+   */
+  NGHTTP2_HCAT_REPLY,
+  /**
+   * The HEADERS frame which does not apply for the above categories,
+   * which is analogous to SPDY HEADERS.
+   */
+  NGHTTP2_HCAT_HEADERS,
+} nghttp2_headers_category;
+
+/**
+ * @struct
+ * The HEADERS frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The priority.
+   */
+  int32_t pri;
+  /**
+   * TODO Need to support binary header block.
+   *
+   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
+   * to the name string and ``nv[2*i+1]`` contains a pointer to the
+   * value string. The one beyond last value must be ``NULL``. That
+   * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
+   * ``NULL``. This member may be ``NULL``.
+   */
+  char **nv;
+  nghttp2_headers_category cat;
+} nghttp2_headers;
+
+/**
+ * @struct
+ * The PRIORITY frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The priority.
+   */
+  int32_t pri;
+} nghttp2_priority;
+
+/**
+ * @struct
+ * The RST_STREAM frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The error code. See :type:`nghttp2_error_code`.
+   */
+  uint32_t error_code;
+} nghttp2_rst_stream;
+
+/**
+ * @struct
+ * The SETTINGS ID/Value pair. It has the following members:
+ */
+typedef struct {
+  /**
+   * The SETTINGS ID. See :type:`nghttp2_settings_id`.
+   */
+  int32_t settings_id;
+  /**
+   * The value of this entry.
+   */
+  uint32_t value;
+} nghttp2_settings_entry;
+
+/**
+ * @struct
+ * The SETTINGS frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The number of SETTINGS ID/Value pairs in |iv|.
+   */
+  size_t niv;
+  /**
+   * The pointer to the array of SETTINGS ID/Value pair.
+   */
+  nghttp2_settings_entry *iv;
+} nghttp2_settings;
+
+/**
+ * @struct
+ * The PUSH_PROMISE frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The promised stream ID
+   */
+  int32_t promised_stream_id;
+} nghttp2_push_promise;
+
+/**
+ * @struct
+ * The PING frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The opaque data
+   */
+  uint8_t opaque_data[8];
+} nghttp2_ping;
+
+/**
+ * @struct
+ * The GOAWAY frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The last stream stream ID.
+   */
+  int32_t last_stream_id;
+  /**
+   * The error code. See :type:`nghttp2_error_code`.
+   */
+  uint32_t error_code;
+  /**
+   * The additional debug data
+   */
+  uint8_t *opaque_data;
+  /**
+   * The length of |opaque_data| member.
+   */
+  size_t opaque_data_len;
+} nghttp2_goaway;
+
+/**
+ * @struct
+ *
+ * The WINDOW_UPDATE frame. It has the following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * The window size increment.
+   */
+  int32_t window_size_increment;
+} nghttp2_window_update;
+
+/**
+ * @struct
+ *
+ * The structure to hold chunk of memory.
+ *
+ * TODO Drop this if it is not used anymore.
+ */
+typedef struct {
+  /**
+   * The pointer to the data.
+   */
+  uint8_t *data;
+  /**
+   * The length of the data.
+   */
+  size_t length;
+} nghttp2_mem_chunk;
+
+/**
  * @union
  *
- * This union includes all control frames to pass them
- * to various function calls as nghttp2_frame type.
+ * This union includes all frames to pass them to various function
+ * calls as nghttp2_frame type. The DATA frame is intentionally
+ * omitted from here.
  */
 typedef union {
   /**
-   * Convenient structure to inspect control frame header.
+   * The frame header, which is convenient to inspect frame header.
    */
-  nghttp2_ctrl_frame ctrl;
+  nghttp2_frame_hd hd;
   /**
-   * The SYN_STREAM control frame.
-   */
-  nghttp2_syn_stream syn_stream;
-  /**
-   * The SYN_REPLY control frame.
-   */
-  nghttp2_syn_reply syn_reply;
-  /**
-   * The RST_STREAM control frame.
-   */
-  nghttp2_rst_stream rst_stream;
-  /**
-   * The SETTINGS control frame.
-   */
-  nghttp2_settings settings;
-  /**
-   * The PING control frame.
-   */
-  nghttp2_ping ping;
-  /**
-   * The GOAWAY control frame.
-   */
-  nghttp2_goaway goaway;
-  /**
-   * The HEADERS control frame.
+   * The HEADERS frame.
    */
   nghttp2_headers headers;
   /**
-   * The WINDOW_UPDATE control frame.
+   * The PRIORITY frame.
+   */
+  nghttp2_priority priority;
+  /**
+   * The RST_STREAM frame.
+   */
+  nghttp2_rst_stream rst_stream;
+  /**
+   * The SETTINGS frame.
+   */
+  nghttp2_settings settings;
+  /**
+   * The PUSH_PROMISE frame.
+   */
+  nghttp2_push_promise push_promise;
+  /**
+   * The PING frame.
+   */
+  nghttp2_ping ping;
+  /**
+   * The GOAWAY frame.
+   */
+  nghttp2_goaway goaway;
+  /**
+   * The WINDOW_UPDATE frame.
    */
   nghttp2_window_update window_update;
-  /**
-   * The CREDENTIAL control frame.
-   */
-  nghttp2_credential credential;
 } nghttp2_frame;
 
 /**
@@ -857,24 +702,23 @@ typedef ssize_t (*nghttp2_recv_callback)
  * @functypedef
  *
  * Callback function invoked by `nghttp2_session_recv()` when a
- * control frame is received.
+ * non-DATA frame is received.
  */
-typedef void (*nghttp2_on_ctrl_recv_callback)
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data);
+typedef void (*nghttp2_on_frame_recv_callback)
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 /**
  * @functypedef
  *
  * Callback function invoked by `nghttp2_session_recv()` when an
- * invalid control frame is received. The |status_code| is one of the
- * :enum:`nghttp2_status_code` and indicates the error. When this
+ * invalid non-DATA frame is received. The |error_code| is one of the
+ * :enum:`nghttp2_error_code` and indicates the error. When this
  * callback function is invoked, the library automatically submits
  * either RST_STREAM or GOAWAY frame.
  */
-typedef void (*nghttp2_on_invalid_ctrl_recv_callback)
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- uint32_t status_code, void *user_data);
+typedef void (*nghttp2_on_invalid_frame_recv_callback)
+(nghttp2_session *session, nghttp2_frame *frame, nghttp2_error_code error_code,
+ void *user_data);
 
 /**
  * @functypedef
@@ -905,37 +749,34 @@ typedef void (*nghttp2_on_data_recv_callback)
 /**
  * @functypedef
  *
- * Callback function invoked before the control frame |frame| of type
- * |type| is sent. This may be useful, for example, to know the stream
- * ID of SYN_STREAM frame (see also
+ * Callback function invoked before the non-DATA frame |frame| is
+ * sent. This may be useful, for example, to know the stream ID of
+ * HEADERS and PUSH_PROMISE frame (see also
  * `nghttp2_session_get_stream_user_data()`), which is not assigned
  * when it was queued.
  */
-typedef void (*nghttp2_before_ctrl_send_callback)
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data);
+typedef void (*nghttp2_before_frame_send_callback)
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 /**
  * @functypedef
  *
- * Callback function invoked after the control frame |frame| of type
- * |type| is sent.
+ * Callback function invoked after the non-DATA frame |frame| is sent.
  */
-typedef void (*nghttp2_on_ctrl_send_callback)
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data);
+typedef void (*nghttp2_on_frame_send_callback)
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 /**
  * @functypedef
  *
- * Callback function invoked after the control frame |frame| of type
- * |type| is not sent because of the error. The error is indicated by
- * the |error_code|, which is one of the values defined in
+ * Callback function invoked after the non-DATA frame |frame| is not
+ * sent because of the error. The error is indicated by the
+ * |lib_error_code|, which is one of the values defined in
  * :type:`nghttp2_error`.
  */
-typedef void (*nghttp2_on_ctrl_not_send_callback)
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- int error_code, void *user_data);
+typedef void (*nghttp2_on_frame_not_send_callback)
+(nghttp2_session *session, nghttp2_frame *frame, int lib_error_code,
+ void *user_data);
 
 /**
  * @functypedef
@@ -951,21 +792,21 @@ typedef void (*nghttp2_on_data_send_callback)
  *
  * Callback function invoked when the stream |stream_id| is
  * closed. The reason of closure is indicated by the
- * |status_code|. The stream_user_data, which was specified in
- * `nghttp2_submit_request()` or `nghttp2_submit_syn_stream()`, is
+ * |error_code|. The stream_user_data, which was specified in
+ * `nghttp2_submit_request()` or `nghttp2_submit_headers()`, is
  * still available in this function.
  */
 typedef void (*nghttp2_on_stream_close_callback)
-(nghttp2_session *session, int32_t stream_id, nghttp2_status_code status_code,
+(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data);
 
 /**
  * @functypedef
  *
  * Callback function invoked when the request from the remote peer is
- * received.  In other words, the frame with FIN flag set is received.
- * In HTTP, this means HTTP request, including request body, is fully
- * received.
+ * received.  In other words, the frame with END_STREAM flag set is
+ * received.  In HTTP, this means HTTP request, including request
+ * body, is fully received.
  */
 typedef void (*nghttp2_on_request_recv_callback)
 (nghttp2_session *session, int32_t stream_id, void *user_data);
@@ -975,122 +816,37 @@ typedef void (*nghttp2_on_request_recv_callback)
  *
  * Callback function invoked when the received control frame octets
  * could not be parsed correctly. The |type| indicates the type of
- * received control frame. The |head| is the pointer to the header of
+ * received non-DATA frame. The |head| is the pointer to the header of
  * the received frame. The |headlen| is the length of the
- * |head|. According to the SPDY spec, the |headlen| is always 8. In
- * other words, the |head| is the first 8 bytes of the received frame.
- * The |payload| is the pointer to the data portion of the received
- * frame.  The |payloadlen| is the length of the |payload|. This is
- * the data after the length field. The |error_code| is one of the
- * error code defined in :enum:`nghttp2_error` and indicates the
- * error.
+ * |head|. According to the spec, the |headlen| is always 8. In other
+ * words, the |head| is the first 8 bytes of the received frame.  The
+ * |payload| is the pointer to the data portion of the received frame.
+ * The |payloadlen| is the length of the |payload|. This is the data
+ * after the length field. The |lib_error_code| is one of the error code
+ * defined in :enum:`nghttp2_error` and indicates the error.
  */
-typedef void (*nghttp2_on_ctrl_recv_parse_error_callback)
+typedef void (*nghttp2_on_frame_recv_parse_error_callback)
 (nghttp2_session *session, nghttp2_frame_type type,
  const uint8_t *head, size_t headlen,
  const uint8_t *payload, size_t payloadlen,
- int error_code, void *user_data);
+ int lib_error_code, void *user_data);
 
 /**
  * @functypedef
  *
- * Callback function invoked when the received control frame type is
+ * Callback function invoked when the received frame type is
  * unknown. The |head| is the pointer to the header of the received
  * frame. The |headlen| is the length of the |head|. According to the
- * SPDY spec, the |headlen| is always 8. In other words, the |head| is
- * the first 8 bytes of the received frame.  The |payload| is the
- * pointer to the data portion of the received frame.  The
- * |payloadlen| is the length of the |payload|. This is the data after
- * the length field.
+ * spec, the |headlen| is always 8. In other words, the |head| is the
+ * first 8 bytes of the received frame.  The |payload| is the pointer
+ * to the data portion of the received frame.  The |payloadlen| is the
+ * length of the |payload|. This is the data after the length field.
  */
-typedef void (*nghttp2_on_unknown_ctrl_recv_callback)
+typedef void (*nghttp2_on_unknown_frame_recv_callback)
 (nghttp2_session *session,
  const uint8_t *head, size_t headlen,
  const uint8_t *payload, size_t payloadlen,
  void *user_data);
-
-#define NGHTTP2_MAX_SCHEME 255
-#define NGHTTP2_MAX_HOSTNAME 255
-
-struct nghttp2_origin;
-
-/**
- * @struct
- *
- * The Web origin structure. The origin is the tuple (scheme, host,
- * port). The details of this structure is intentionally hidden. To
- * access these members, use accessor functions below.
- */
-typedef struct nghttp2_origin nghttp2_origin;
-
-/**
- * @function
- *
- * Returns the scheme member of the |origin|.
- */
-const char* nghttp2_origin_get_scheme(const nghttp2_origin *origin);
-
-/**
- * @function
- *
- * Returns the host member of the |origin|.
- */
-const char* nghttp2_origin_get_host(const nghttp2_origin *origin);
-
-/**
- * @function
- *
- * Returns the port member of the |origin|.
- */
-uint16_t nghttp2_origin_get_port(const nghttp2_origin *origin);
-
-/**
- * @functypedef
- *
- * Callback function invoked when the library needs the cryptographic
- * proof that the client has possession of the private key associated
- * with the certificate for the given |origin|.  If called with
- * |prooflen| == 0, the implementation of this function must return
- * the length of the proof in bytes. If called with |prooflen| > 0,
- * write proof into |proof| exactly |prooflen| bytes and return 0.
- *
- * Because the client certificate vector has limited number of slots,
- * the application code may be required to pass the same proof more
- * than once.
- */
-typedef ssize_t (*nghttp2_get_credential_proof)
-(nghttp2_session *session, const nghttp2_origin *origin,
- uint8_t *proof, size_t prooflen, void *user_data);
-
-/**
- * @functypedef
- *
- * Callback function invoked when the library needs the length of the
- * client certificate chain for the given |origin|.  The
- * implementation of this function must return the length of the
- * client certificate chain.  If no client certificate is required for
- * the given |origin|, return 0.  If positive integer is returned,
- * :type:`nghttp2_get_credential_proof` and
- * :type:`nghttp2_get_credential_cert` callback functions will be used
- * to get the cryptographic proof and certificate respectively.
- */
-typedef ssize_t (*nghttp2_get_credential_ncerts)
-(nghttp2_session *session, const nghttp2_origin *origin, void *user_data);
-
-/**
- * @functypedef
- *
- * Callback function invoked when the library needs the client
- * certificate for the given |origin|. The |idx| is the index of the
- * certificate chain and 0 means the leaf certificate of the chain.
- * If called with |certlen| == 0, the implementation of this function
- * must return the length of the certificate in bytes. If called with
- * |certlen| > 0, write certificate into |cert| exactly |certlen|
- * bytes and return 0.
- */
-typedef ssize_t (*nghttp2_get_credential_cert)
-(nghttp2_session *session, const nghttp2_origin *origin, size_t idx,
- uint8_t *cert, size_t certlen, void *user_data);
 
 /**
  * @struct
@@ -1110,14 +866,14 @@ typedef struct {
   nghttp2_recv_callback recv_callback;
   /**
    * Callback function invoked by `nghttp2_session_recv()` when a
-   * control frame is received.
+   * non-DATA frame is received.
    */
-  nghttp2_on_ctrl_recv_callback on_ctrl_recv_callback;
+  nghttp2_on_frame_recv_callback on_frame_recv_callback;
   /**
    * Callback function invoked by `nghttp2_session_recv()` when an
-   * invalid control frame is received.
+   * invalid non-DATA frame is received.
    */
-  nghttp2_on_invalid_ctrl_recv_callback on_invalid_ctrl_recv_callback;
+  nghttp2_on_invalid_frame_recv_callback on_invalid_frame_recv_callback;
   /**
    * Callback function invoked when a chunk of data in DATA frame is
    * received.
@@ -1128,18 +884,18 @@ typedef struct {
    */
   nghttp2_on_data_recv_callback on_data_recv_callback;
   /**
-   * Callback function invoked before the control frame is sent.
+   * Callback function invoked before the non-DATA frame is sent.
    */
-  nghttp2_before_ctrl_send_callback before_ctrl_send_callback;
+  nghttp2_before_frame_send_callback before_frame_send_callback;
   /**
-   * Callback function invoked after the control frame is sent.
+   * Callback function invoked after the non-DATA frame is sent.
    */
-  nghttp2_on_ctrl_send_callback on_ctrl_send_callback;
+  nghttp2_on_frame_send_callback on_frame_send_callback;
   /**
-   * The callback function invoked when a control frame is not sent
+   * The callback function invoked when a non-DATA frame is not sent
    * because of an error.
    */
-  nghttp2_on_ctrl_not_send_callback on_ctrl_not_send_callback;
+  nghttp2_on_frame_not_send_callback on_frame_not_send_callback;
   /**
    * Callback function invoked after DATA frame is sent.
    */
@@ -1154,76 +910,25 @@ typedef struct {
    */
   nghttp2_on_request_recv_callback on_request_recv_callback;
   /**
-   * Callback function invoked when the library needs the
-   * cryptographic proof that the client has possession of the private
-   * key associated with the certificate.
-   */
-  nghttp2_get_credential_proof get_credential_proof;
-  /**
-   * Callback function invoked when the library needs the length of the
-   * client certificate chain.
-   */
-  nghttp2_get_credential_ncerts get_credential_ncerts;
-  /**
-   * Callback function invoked when the library needs the client
-   * certificate.
-   */
-  nghttp2_get_credential_cert get_credential_cert;
-  /**
-   * Callback function invoked when the received control frame octets
+   * Callback function invoked when the received non-DATA frame octets
    * could not be parsed correctly.
    */
-  nghttp2_on_ctrl_recv_parse_error_callback on_ctrl_recv_parse_error_callback;
+  nghttp2_on_frame_recv_parse_error_callback
+  on_frame_recv_parse_error_callback;
   /**
-   * Callback function invoked when the received control frame type is
+   * Callback function invoked when the received frame type is
    * unknown.
    */
-  nghttp2_on_unknown_ctrl_recv_callback on_unknown_ctrl_recv_callback;
+  nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback;
 } nghttp2_session_callbacks;
 
 /**
  * @function
  *
- * Initializes |*session_ptr| for client use, using the protocol
- * version |version|. The all members of |callbacks| are copied to
- * |*session_ptr|. Therefore |*session_ptr| does not store
- * |callbacks|. |user_data| is an arbitrary user supplied data, which
- * will be passed to the callback functions.
- *
- * The :member:`nghttp2_session_callbacks.send_callback` must be
- * specified.  If the application code uses `nghttp2_session_recv()`,
- * the :member:`nghttp2_session_callbacks.recv_callback` must be
- * specified. The other members of |callbacks| can be ``NULL``.  To
- * use CREDENTIAL frame, specify :macro:`NGHTTP2_PROTO_SPDY3` in
- * |version| and specify
- * :member:`nghttp2_session_callbacks.get_credential_ncerts`,
- * :member:`nghttp2_session_callbacks.get_credential_cert` and
- * :member:`nghttp2_session_callbacks.get_credential_proof`.  See also
- * `nghttp2_session_set_initial_client_cert_origin()`.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- * :enum:`NGHTTP2_ERR_ZLIB`
- *     The z_stream initialization failed.
- * :enum:`NGHTTP2_ERR_UNSUPPORTED_VERSION`
- *     The version is not supported.
- */
-int nghttp2_session_client_new(nghttp2_session **session_ptr,
-                               uint16_t version,
-                               const nghttp2_session_callbacks *callbacks,
-                               void *user_data);
-
-/**
- * @function
- *
- * Initializes |*session_ptr| for server use, using the protocol
- * version |version|. The all members of |callbacks| are copied to
- * |*session_ptr|. Therefore |*session_ptr| does not store
- * |callbacks|. |user_data| is an arbitrary user supplied data, which
- * will be passed to the callback functions.
+ * Initializes |*session_ptr| for client use. The all members of
+ * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|
+ * does not store |callbacks|. |user_data| is an arbitrary user
+ * supplied data, which will be passed to the callback functions.
  *
  * The :member:`nghttp2_session_callbacks.send_callback` must be
  * specified.  If the application code uses `nghttp2_session_recv()`,
@@ -1237,11 +942,33 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_ZLIB`
  *     The z_stream initialization failed.
- * :enum:`NGHTTP2_ERR_UNSUPPORTED_VERSION`
- *     The version is not supported.
+ */
+int nghttp2_session_client_new(nghttp2_session **session_ptr,
+                               const nghttp2_session_callbacks *callbacks,
+                               void *user_data);
+
+/**
+ * @function
+ *
+ * Initializes |*session_ptr| for server use. The all members of
+ * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|
+ * does not store |callbacks|. |user_data| is an arbitrary user
+ * supplied data, which will be passed to the callback functions.
+ *
+ * The :member:`nghttp2_session_callbacks.send_callback` must be
+ * specified.  If the application code uses `nghttp2_session_recv()`,
+ * the :member:`nghttp2_session_callbacks.recv_callback` must be
+ * specified. The other members of |callbacks| can be ``NULL``.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_ZLIB`
+ *     The z_stream initialization failed.
  */
 int nghttp2_session_server_new(nghttp2_session **session_ptr,
-                               uint16_t version,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data);
 
@@ -1305,49 +1032,6 @@ typedef enum {
  */
 int nghttp2_session_set_option(nghttp2_session *session,
                                int optname, void *optval, size_t optlen);
-
-/**
- * @function
- *
- * Sets the origin tuple (|scheme|, |host| and |port|) that the
- * connection is made to and the client certificate is sent in the
- * first TLS handshake. This function must be called before any call
- * of `nghttp2_session_send()` and `nghttp2_session_recv()` and be
- * called only once per session. This function must not be called if
- * the |session| is initialized for server use. If the client did not
- * provide the client certificate in the first TLS handshake, this
- * function must not be called.
- *
- * This function stores the given origin at the slot 1 in the client
- * certificate vector.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory
- * :enum:`NGHTTP2_ERR_INVALID_STATE`
- *     The |session| is initialized for server use; or the client
- *     certificate vector size is 0.
- */
-int nghttp2_session_set_initial_client_cert_origin(nghttp2_session *session,
-                                                   const char *scheme,
-                                                   const char *host,
-                                                   uint16_t port);
-
-/**
- * @function
- *
- * Returns the origin at the index |slot| in the client certificate
- * vector. If there is no origin at the given |slot|, this function
- * returns ``NULL``.
- *
- * This function must not be called if the |session| is initialized
- * for server use.
- */
-const nghttp2_origin* nghttp2_session_get_client_cert_origin
-(nghttp2_session *session,
- size_t slot);
 
 /**
  * @function
@@ -1558,15 +1242,7 @@ size_t nghttp2_session_get_outbound_queue_size(nghttp2_session *session);
 /**
  * @function
  *
- * Returns lowest priority value for the |session|.
- */
-uint8_t nghttp2_session_get_pri_lowest(nghttp2_session *session);
-
-/**
- * @function
- *
- * Submits GOAWAY frame.  The status code |status_code| is ignored if
- * the protocol version is :macro:`NGHTTP2_PROTO_SPDY2`.
+ * Submits GOAWAY frame with the given |error_code|.
  *
  * This function should be called when the connection should be
  * terminated after sending GOAWAY. If the remaining streams should be
@@ -1579,15 +1255,15 @@ uint8_t nghttp2_session_get_pri_lowest(nghttp2_session *session);
  *     Out of memory.
  */
 int nghttp2_session_fail_session(nghttp2_session *session,
-                                 uint32_t status_code);
+                                 nghttp2_error_code error_code);
 
 /**
  * @function
  *
- * Returns string describing the |error_code|. The |error_code| must
- * be one of the :enum:`nghttp2_error`.
+ * Returns string describing the |lib_error_code|. The
+ * |lib_error_code| must be one of the :enum:`nghttp2_error`.
  */
-const char* nghttp2_strerror(int error_code);
+const char* nghttp2_strerror(int lib_error_code);
 
 /**
  * @function
@@ -1662,7 +1338,7 @@ const char* nghttp2_strerror(int error_code);
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_request(nghttp2_session *session, uint8_t pri,
+int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
                            const char **nv,
                            const nghttp2_data_provider *data_prd,
                            void *stream_user_data);
@@ -1717,19 +1393,19 @@ int nghttp2_submit_response(nghttp2_session *session,
  * Submits SYN_STREAM frame. The |flags| is bitwise OR of the
  * following values:
  *
- * * :enum:`NGHTTP2_CTRL_FLAG_FIN`
- * * :enum:`NGHTTP2_CTRL_FLAG_UNIDIRECTIONAL`
+ * * :enum:`NGHTTP2_FLAG_END_STREAM`
+ * * :enum:`NGHTTP2_FLAG_END_HEADERS`
+ * * :enum:`NGHTTP2_FLAG_PRIORITY`
  *
- * If |flags| includes :enum:`NGHTTP2_CTRL_FLAG_FIN`, this frame has
- * FLAG_FIN flag set.
+ * If |flags| includes :enum:`NGHTTP2_FLAG_END_STREAM`, this frame has
+ * END_STREAM flag set.
  *
- * The |assoc_stream_id| is used for server-push. Specify 0 if this
- * stream is not server-push. If |session| is initialized for client
- * use, |assoc_stream_id| is ignored.
+ * If the |stream_id| is -1, this frame is assumed as request (i.e.,
+ * first HEADERS frame which opens new stream). In this case, the
+ * actual stream ID is assigned just before the frame is sent. For
+ * response, specify stream ID in |stream_id|.
  *
- * The |pri| is priority of this request. 0 is the highest priority
- * value. Use `nghttp2_session_get_pri_lowest()` to know the lowest
- * priority value for this |session|.
+ * The |pri| is priority of this request.
  *
  * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
@@ -1756,85 +1432,17 @@ int nghttp2_submit_response(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_syn_stream(nghttp2_session *session, uint8_t flags,
-                              int32_t assoc_stream_id, uint8_t pri,
-                              const char **nv, void *stream_user_data);
-
-/**
- * @function
- *
- * Submits SYN_REPLY frame. The |flags| is bitwise OR of the following
- * values:
- *
- * * :enum:`NGHTTP2_CTRL_FLAG_FIN`
- *
- * If |flags| includes :enum:`NGHTTP2_CTRL_FLAG_FIN`, this frame has
- * FLAG_FIN flag set.
- *
- * The stream which this frame belongs to is given in the
- * |stream_id|. The |nv| is the name/value pairs in this frame.
- *
- * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
- * contains a pointer to the name string and ``nv[2*i+1]`` contains a
- * pointer to the value string. The one beyond last value must be
- * ``NULL``. That is, if the |nv| contains N name/value pairs,
- * ``nv[2*N]`` must be ``NULL``.
- *
- * This function creates copies of all name/value pairs in |nv|.  It
- * also lower-cases all names in |nv|.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nv| includes empty name or NULL value.
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- */
-int nghttp2_submit_syn_reply(nghttp2_session *session, uint8_t flags,
-                             int32_t stream_id, const char **nv);
-
-/**
- * @function
- *
- * Submits HEADERS frame. The |flags| is bitwise OR of the following
- * values:
- *
- * * :enum:`NGHTTP2_CTRL_FLAG_FIN`
- *
- * If |flags| includes :enum:`NGHTTP2_CTRL_FLAG_FIN`, this frame has
- * FLAG_FIN flag set.
- *
- * The stream which this frame belongs to is given in the
- * |stream_id|. The |nv| is the name/value pairs in this frame.
- *
- * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
- * contains a pointer to the name string and ``nv[2*i+1]`` contains a
- * pointer to the value string. The one beyond last value must be
- * ``NULL``. That is, if the |nv| contains N name/value pairs,
- * ``nv[2*N]`` must be ``NULL``.
- *
- * This function creates copies of all name/value pairs in |nv|.  It
- * also lower-cases all names in |nv|.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nv| includes empty name or NULL value.
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- */
 int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
-                           int32_t stream_id, const char **nv);
+                           int32_t stream_id, int32_t pri, const char **nv,
+                           void *stream_user_data);
 
 /**
  * @function
  *
  * Submits one or more DATA frames to the stream |stream_id|.  The
  * data to be sent are provided by |data_prd|. If |flags| contains
- * :enum:`NGHTTP2_DATA_FLAG_FIN`, the last DATA frame has FLAG_FIN
- * set.
+ * :enum:`NGHTTP2_FLAG_END_STREAM`, the last DATA frame has END_STREAM
+ * flag set.
  *
  * This function does not take ownership of the |data_prd|. The
  * function copies the members of the |data_prd|.
@@ -1845,14 +1453,15 @@ int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_data(nghttp2_session *session, int32_t stream_id,
-                        uint8_t flags, const nghttp2_data_provider *data_prd);
+int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
+                        int32_t stream_id,
+                        const nghttp2_data_provider *data_prd);
 
 /**
  * @function
  *
  * Submits RST_STREAM frame to cancel/reject the stream |stream_id|
- * with the status code |status_code|.
+ * with the error code |error_code|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1861,36 +1470,7 @@ int nghttp2_submit_data(nghttp2_session *session, int32_t stream_id,
  *     Out of memory.
  */
 int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
-                              uint32_t status_code);
-
-/**
- * @function
- *
- * Submits PING frame. You don't have to send PING back when you
- * received PING frame. The library automatically submits PING frame
- * in this case.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- */
-int nghttp2_submit_ping(nghttp2_session *session);
-
-/**
- * @function
- *
- * Submits GOAWAY frame. The status code |status_code| is ignored if
- * the protocol version is :macro:`NGHTTP2_PROTO_SPDY2`.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- */
-int nghttp2_submit_goaway(nghttp2_session *session, uint32_t status_code);
+                              nghttp2_error_code error_code);
 
 /**
  * @function
@@ -1912,14 +1492,56 @@ int nghttp2_submit_goaway(nghttp2_session *session, uint32_t status_code);
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_settings(nghttp2_session *session,
                             const nghttp2_settings_entry *iv, size_t niv);
 
 /**
  * @function
  *
+ * Submits PING frame. You don't have to send PING back when you
+ * received PING frame. The library automatically submits PING frame
+ * in this case.
+ *
+ * If the |opaque_data| is non NULL, then it should point to the 8
+ * bytes array of memory to specify opaque data to send with PING
+ * frame. If the |opaque_data| is NULL, 8 zero bytes will be sent as
+ * opaque data.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_submit_ping(nghttp2_session *session, uint8_t *opaque_data);
+
+/**
+ * @function
+ *
+ * Submits GOAWAY frame with the error code |error_code|.
+ *
+ * If the |opaque_data| is not NULL and opaque_data_len is not zero,
+ * those data will be sent as additional debug data.  The library
+ * makes a copy of the memory region pointed by |opaque_data| with the
+ * length |opaque_data_len|, so the caller does not need to keep this
+ * memory after the return of this function. If the |opaque_data_len|
+ * is 0, the |opaque_data| could be NULL.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_submit_goaway(nghttp2_session *session,
+                          nghttp2_error_code error_code,
+                          uint8_t *opaque_data, size_t opaque_data_len);
+
+/**
+ * @function
+ *
  * Submits WINDOW_UPDATE frame. The effective range of the
- * |delta_window_size| is [1, (1 << 31)-1], inclusive. But the
+ * |window_size_increment| is [1, (1 << 31)-1], inclusive. But the
  * application must be responsible to keep the resulting window size
  * <= (1 << 31)-1.
  *
@@ -1933,8 +1555,9 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_window_update(nghttp2_session *session, int32_t stream_id,
-                                 int32_t delta_window_size);
+int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
+                                 int32_t stream_id,
+                                 int32_t window_size_increment);
 
 /**
  * @function
@@ -1942,22 +1565,18 @@ int nghttp2_submit_window_update(nghttp2_session *session, int32_t stream_id,
  * A helper function for dealing with NPN in client side.  The |in|
  * contains server's protocol in preferable order.  The format of |in|
  * is length-prefixed and not null-terminated.  For example,
- * ``spdy/2`` and ``http/1.1`` stored in |in| like this::
+ * ``HTTP-draft-04/2.0`` and ``http/1.1`` stored in |in| like this::
  *
- *     in[0] = 6
- *     in[1..6] = "spdy/2"
- *     in[7] = 8
- *     in[8..15] = "http/1.1"
- *     inlen = 16
+ *     in[0] = 17
+ *     in[1..17] = "HTTP-draft-04/2.0"
+ *     in[18] = 8
+ *     in[19..26] = "http/1.1"
+ *     inlen = 27
  *
  * The selection algorithm is as follows:
  *
- * 1. If server's list contains SPDY versions the nghttp2 library
- *    supports, this function selects one of them and returns its SPDY
- *    protocol version which can be used directly with
- *    `nghttp2_session_client_new()` and
- *    `nghttp2_session_server_new()` . The following steps are not
- *    taken.
+ * 1. If server's list contains ``HTTP-draft-04/2.0``, it is selected
+ *    and returns 1. The following step is not taken.
  *
  * 2. If server's list contains ``http/1.1``, this function selects
  *    ``http/1.1`` and returns 0. The following step is not taken.
@@ -1966,12 +1585,9 @@ int nghttp2_submit_window_update(nghttp2_session *session, int32_t stream_id,
  *    non-overlap case). In this case, |out| and |outlen| are left
  *    untouched.
  *
- * When nghttp2 supports updated version of SPDY in the future, this
- * function may select updated protocol and application code which
- * relies on nghttp2 for SPDY stuff needs not be modified.
- *
- * Selecting ``spdy/2`` means that ``spdy/2`` is written into |*out|
- * and length of ``spdy/2`` (which is 6) is assigned to |*outlen|.
+ * Selecting ``HTTP-draft-04/2.0`` means that ``HTTP-draft-04/2.0`` is
+ * written into |*out| and its length (which is 17) is
+ * assigned to |*outlen|.
  *
  * See http://technotes.googlecode.com/git/nextprotoneg.html for more
  * details about NPN.
@@ -1985,65 +1601,23 @@ int nghttp2_submit_window_update(nghttp2_session *session, int32_t stream_id,
  *                                     unsigned int inlen,
  *                                     void *arg)
  *     {
- *         int version;
- *         version = nghttp2_select_next_protocol(out, outlen, in, inlen);
- *         if(version > 0) {
- *             ((MyType*)arg)->spdy_version = version;
+ *         int rv;
+ *         rv = nghttp2_select_next_protocol(out, outlen, in, inlen);
+ *         if(rv == 1) {
+ *             ((MyType*)arg)->http2_selected = 1;
  *         }
  *         return SSL_TLSEXT_ERR_OK;
  *     }
  *     ...
  *     SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, my_obj);
+ *
+ * Note that the HTTP/2.0 spec does use ALPN instead of NPN. This
+ * function is provided for transitional period before ALPN is got
+ * implemented in major SSL/TLS libraries.
+ *
  */
 int nghttp2_select_next_protocol(unsigned char **out, unsigned char *outlen,
                                  const unsigned char *in, unsigned int inlen);
-
-/**
- * @struct
- *
- * This struct contains SPDY version information this library
- * supports.
- */
-typedef struct {
-  /**
-   * SPDY protocol version name which can be used as TLS NPN protocol
-   * string.
-   */
-  const unsigned char *proto;
-  /**
-   * The length of proto member.
-   */
-  uint8_t len;
-  /**
-   * The corresponding SPDY version constant which can be passed to
-   * `nghttp2_session_client_new()` and `nghttp2_session_server_new()`
-   * as version argument.
-   */
-  uint16_t version;
-} nghttp2_npn_proto;
-
-/**
- * @function
- *
- * Returns a pointer to the supported SPDY version list. The number of
- * elements in the list will be assigned to the |*len_ptr|. It
- * contains all SPDY version information this library supports. The
- * application can use this information to configure NPN protocol
- * offerings/selection.
- */
-const nghttp2_npn_proto* nghttp2_npn_get_proto_list(size_t *len_ptr);
-
-/**
- * @function
- *
- * Returns spdy version which nghttp2 library supports from the given
- * protocol name. The |proto| is the pointer to the protocol name and
- * |protolen| is its length. Currently, ``spdy/2`` and ``spdy/3`` are
- * supported.
- *
- * This function returns nonzero spdy version if it succeeds, or 0.
- */
-uint16_t nghttp2_npn_get_version(const unsigned char *proto, size_t protolen);
 
 struct nghttp2_gzip;
 

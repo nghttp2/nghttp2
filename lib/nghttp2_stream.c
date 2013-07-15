@@ -27,8 +27,10 @@
 #include <assert.h>
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
-                         uint8_t flags, uint8_t pri,
+                         uint8_t flags, int32_t pri,
                          nghttp2_stream_state initial_state,
+                         uint8_t remote_flow_control,
+                         uint8_t local_flow_control,
                          int32_t initial_window_size,
                          void *stream_user_data)
 {
@@ -44,6 +46,8 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->stream_user_data = stream_user_data;
   stream->deferred_data = NULL;
   stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
+  stream->remote_flow_control = remote_flow_control;
+  stream->local_flow_control = local_flow_control;
   stream->window_size = initial_window_size;
   stream->recv_window_size = 0;
 }

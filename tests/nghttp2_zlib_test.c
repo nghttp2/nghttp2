@@ -30,7 +30,7 @@
 
 #include "nghttp2_zlib.h"
 
-static void test_nghttp2_zlib_with(uint16_t version)
+void test_nghttp2_zlib(void)
 {
   nghttp2_zlib deflater, inflater;
   const char msg[] =
@@ -50,9 +50,8 @@ static void test_nghttp2_zlib_with(uint16_t version)
   ssize_t deflatebuf_len;
   nghttp2_buffer_init(&buf, 4096);
 
-  CU_ASSERT(0 == nghttp2_zlib_deflate_hd_init(&deflater, 1,
-                                              version));
-  CU_ASSERT(0 == nghttp2_zlib_inflate_hd_init(&inflater, version));
+  CU_ASSERT(0 == nghttp2_zlib_deflate_hd_init(&deflater, 1, 0));
+  CU_ASSERT(0 == nghttp2_zlib_inflate_hd_init(&inflater, 0));
 
   deflatebuf_max = nghttp2_zlib_deflate_hd_bound(&deflater, sizeof(msg));
   deflatebuf = malloc(deflatebuf_max);
@@ -69,14 +68,4 @@ static void test_nghttp2_zlib_with(uint16_t version)
   nghttp2_zlib_inflate_free(&inflater);
 
   nghttp2_buffer_free(&buf);
-}
-
-void test_nghttp2_zlib_spdy2(void)
-{
-  test_nghttp2_zlib_with(NGHTTP2_PROTO_SPDY2);
-}
-
-void test_nghttp2_zlib_spdy3(void)
-{
-  test_nghttp2_zlib_with(NGHTTP2_PROTO_SPDY3);
 }

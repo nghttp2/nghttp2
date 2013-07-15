@@ -42,7 +42,7 @@
 typedef struct {
   nghttp2_data_provider *data_prd;
   void *stream_user_data;
-} nghttp2_syn_stream_aux_data;
+} nghttp2_headers_aux_data;
 
 typedef struct {
   /* Type of |frame|. NGHTTP2_CTRL: nghttp2_frame*, NGHTTP2_DATA:
@@ -74,7 +74,7 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item);
 /* Macros to cast nghttp2_outbound_item.frame to the proper type. */
 #define nghttp2_outbound_item_get_ctrl_frame(ITEM) ((nghttp2_frame*)ITEM->frame)
 #define nghttp2_outbound_item_get_ctrl_frame_type(ITEM) \
-  (((nghttp2_frame*)ITEM->frame)->ctrl.hd.type)
+  (((nghttp2_frame*)ITEM->frame)->hd.type)
 #define nghttp2_outbound_item_get_data_frame(ITEM) ((nghttp2_data*)ITEM->frame)
 
 #endif /* NGHTTP2_OUTBOUND_ITEM_H */

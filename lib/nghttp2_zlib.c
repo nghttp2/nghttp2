@@ -230,13 +230,8 @@ static const uint8_t* nghttp2_select_hd_dict(size_t *len_ptr, uint16_t version)
 {
   const uint8_t *hd_dict;
   hd_dict = NULL;
-  if(version == NGHTTP2_PROTO_SPDY2) {
-    hd_dict = (const uint8_t*)spdy2_hd_dict;
-    *len_ptr = sizeof(spdy2_hd_dict);
-  } else if(version == NGHTTP2_PROTO_SPDY3) {
-    hd_dict = spdy3_hd_dict;
-    *len_ptr = sizeof(spdy3_hd_dict);
-  }
+  hd_dict = (const uint8_t*)spdy2_hd_dict;
+  *len_ptr = sizeof(spdy2_hd_dict);
   return hd_dict;
 }
 

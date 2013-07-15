@@ -32,10 +32,11 @@
 #include "nghttp2_frame.h"
 #include "nghttp2_zlib.h"
 
-ssize_t unpack_frame_with_nv_block(nghttp2_frame_type type,
-                                   uint16_t version,
-                                   nghttp2_frame *frame,
+ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
+                                   nghttp2_frame_type type,
                                    nghttp2_zlib *inflater,
                                    const uint8_t *in, size_t len);
+
+char* strcopy(const char* s);
 
 #endif /* NGHTTP2_TEST_HELPER_H */

@@ -28,44 +28,30 @@
 
 #include <CUnit/CUnit.h>
 
-#include "nghttp2_session.h"
+/* #include "nghttp2_session.h" */
 
-ssize_t unpack_frame_with_nv_block(nghttp2_frame_type type,
-                                   uint16_t version,
-                                   nghttp2_frame *frame,
+ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
+                                   nghttp2_frame_type type,
                                    nghttp2_zlib *inflater,
                                    const uint8_t *in, size_t len)
 {
   nghttp2_buffer buffer;
   ssize_t rv;
   ssize_t pnvlen;
-  pnvlen = nghttp2_frame_nv_offset(type, version) - NGHTTP2_HEAD_LEN;
+  pnvlen = nghttp2_frame_nv_offset(in);
   assert(pnvlen > 0);
 
   nghttp2_buffer_init(&buffer, 4096);
-  rv = nghttp2_zlib_inflate_hd(inflater, &buffer,
-                               &in[NGHTTP2_HEAD_LEN + pnvlen],
-                               len - NGHTTP2_HEAD_LEN - pnvlen);
+  rv = nghttp2_zlib_inflate_hd(inflater, &buffer, &in[pnvlen], len - pnvlen);
   if(rv < 0) {
     return rv;
   }
   switch(type) {
-  case NGHTTP2_SYN_STREAM:
-    rv = nghttp2_frame_unpack_syn_stream(&frame->syn_stream,
-                                         &in[0], NGHTTP2_HEAD_LEN,
-                                         &in[NGHTTP2_HEAD_LEN], pnvlen,
-                                         &buffer);
-    break;
-  case NGHTTP2_SYN_REPLY:
-    rv = nghttp2_frame_unpack_syn_reply(&frame->syn_reply,
-                                        &in[0], NGHTTP2_HEAD_LEN,
-                                        &in[NGHTTP2_HEAD_LEN], pnvlen,
-                                        &buffer);
-    break;
   case NGHTTP2_HEADERS:
-    rv = nghttp2_frame_unpack_headers(&frame->headers,
-                                      &in[0], NGHTTP2_HEAD_LEN,
-                                      &in[NGHTTP2_HEAD_LEN], pnvlen,
+    rv = nghttp2_frame_unpack_headers((nghttp2_headers*)frame,
+                                      &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
+                                      &in[NGHTTP2_FRAME_HEAD_LENGTH],
+                                      pnvlen - NGHTTP2_FRAME_HEAD_LENGTH,
                                       &buffer);
     break;
   default:
@@ -74,4 +60,13 @@ ssize_t unpack_frame_with_nv_block(nghttp2_frame_type type,
   }
   nghttp2_buffer_free(&buffer);
   return rv;
+}
+
+char* strcopy(const char* s)
+{
+  size_t len = strlen(s);
+  char *dest = malloc(len+1);
+  memcpy(dest, s, len);
+  dest[len] = '\0';
+  return dest;
 }

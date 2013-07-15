@@ -28,19 +28,19 @@
 #include <nghttp2/nghttp2.h>
 #include <string.h>
 
-static void spdy2(void)
+static void http2(void)
 {
-  const unsigned char spdy[] = {
+  const unsigned char p[] = {
     8, 'h', 't', 't', 'p', '/', '1', '.', '1',
-    6, 's', 'p', 'd', 'y', '/', '2',
+    17, 'H', 'T', 'T', 'P', '-', 'd', 'r', 'a', 'f', 't', '-', '0', '4', '/',
+    '2', '.', '0',
     6, 's', 'p', 'd', 'y', '/', '3'
   };
   unsigned char outlen;
   unsigned char* out;
-  CU_ASSERT(NGHTTP2_PROTO_SPDY2 ==
-            nghttp2_select_next_protocol(&out, &outlen, spdy, sizeof(spdy)));
-  CU_ASSERT(6 == outlen);
-  CU_ASSERT(memcmp("spdy/2", out, outlen) == 0);
+  CU_ASSERT(1 == nghttp2_select_next_protocol(&out, &outlen, p, sizeof(p)));
+  CU_ASSERT(17 == outlen);
+  CU_ASSERT(memcmp("HTTP-draft-04/2.0", out, outlen) == 0);
 }
 
 static void http11(void)
@@ -75,21 +75,7 @@ static void no_overlap(void)
 
 void test_nghttp2_npn(void)
 {
-  spdy2();
+  http2();
   http11();
   no_overlap();
-}
-
-void test_nghttp2_npn_get_proto_list(void)
-{
-  size_t len;
-  const nghttp2_npn_proto *list = nghttp2_npn_get_proto_list(&len);
-  CU_ASSERT_EQUAL(2, len);
-  CU_ASSERT_STRING_EQUAL("spdy/3", list[0].proto);
-  CU_ASSERT_EQUAL(6, list[0].len);
-  CU_ASSERT_EQUAL(NGHTTP2_PROTO_SPDY3, list[0].version);
-
-  CU_ASSERT_STRING_EQUAL("spdy/2", list[1].proto);
-  CU_ASSERT_EQUAL(6, list[1].len);
-  CU_ASSERT_EQUAL(NGHTTP2_PROTO_SPDY2, list[1].version);
 }

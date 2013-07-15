@@ -107,7 +107,7 @@ const char* nghttp2_strerror(int error_code)
     return "Invalid stream state";
   case NGHTTP2_ERR_DEFERRED_DATA_EXIST:
     return "Another DATA frame has already been deferred";
-  case NGHTTP2_ERR_SYN_STREAM_NOT_ALLOWED:
+  case NGHTTP2_ERR_START_STREAM_NOT_ALLOWED:
     return "SYN_STREAM is not allowed";
   case NGHTTP2_ERR_GOAWAY_ALREADY_SENT:
     return "GOAWAY has already been sent";

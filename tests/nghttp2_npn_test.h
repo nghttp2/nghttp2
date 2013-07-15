@@ -26,6 +26,5 @@
 #define NGHTTP2_NPN_TEST_H
 
 void test_nghttp2_npn(void);
-void test_nghttp2_npn_get_proto_list(void);
 
 #endif /* NGHTTP2_NPN_TEST_H */
