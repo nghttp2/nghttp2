@@ -43,7 +43,7 @@ extern bool ssl_debug;
 
 class Spdylay {
 public:
-  Spdylay(int fd, SSL *ssl, uint16_t version,
+  Spdylay(int fd, SSL *ssl,
           const nghttp2_session_callbacks *callbacks,
           void *user_data);
   ~Spdylay();
@@ -62,13 +62,12 @@ public:
                      const nghttp2_data_provider *data_prd,
                      int64_t data_length,
                      void *stream_user_data);
-  int submit_settings(int flags, nghttp2_settings_entry *iv, size_t niv);
+  int submit_settings(nghttp2_settings_entry *iv, size_t niv);
   bool would_block();
   void* user_data();
 private:
   int fd_;
   SSL *ssl_;
-  uint16_t version_;
   nghttp2_session *session_;
   void *user_data_;
   uint8_t io_flags_;
@@ -94,15 +93,14 @@ ssize_t recv_callback(nghttp2_session *session,
 
 void print_nv(char **nv);
 
-void on_ctrl_recv_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data);
+void on_frame_recv_callback
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
-void on_invalid_ctrl_recv_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- uint32_t status_code, void *user_data);
+void on_invalid_frame_recv_callback
+(nghttp2_session *session, nghttp2_frame *frame,
+ nghttp2_error_code error_code, void *user_data);
 
-void on_ctrl_recv_parse_error_callback(nghttp2_session *session,
+void on_frame_recv_parse_error_callback(nghttp2_session *session,
                                        nghttp2_frame_type type,
                                        const uint8_t *head,
                                        size_t headlen,
@@ -110,23 +108,22 @@ void on_ctrl_recv_parse_error_callback(nghttp2_session *session,
                                        size_t payloadlen,
                                        int error_code, void *user_data);
 
-void on_unknown_ctrl_recv_callback(nghttp2_session *session,
+void on_unknown_frame_recv_callback(nghttp2_session *session,
                                    const uint8_t *head,
                                    size_t headlen,
                                    const uint8_t *payload,
                                    size_t payloadlen,
                                    void *user_data);
 
-void on_ctrl_send_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data);
+void on_frame_send_callback
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 void on_data_recv_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 
 void on_data_send_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 
 void ctl_poll(pollfd *pollfd, Spdylay *sc);

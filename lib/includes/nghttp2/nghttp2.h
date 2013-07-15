@@ -492,7 +492,7 @@ typedef struct {
   /**
    * The error code. See :type:`nghttp2_error_code`.
    */
-  uint32_t error_code;
+  nghttp2_error_code error_code;
 } nghttp2_rst_stream;
 
 /**
@@ -575,7 +575,7 @@ typedef struct {
   /**
    * The error code. See :type:`nghttp2_error_code`.
    */
-  uint32_t error_code;
+  nghttp2_error_code error_code;
   /**
    * The additional debug data
    */
@@ -743,7 +743,7 @@ typedef void (*nghttp2_on_data_chunk_recv_callback)
  * :type:`nghttp2_on_data_chunk_recv_callback`.
  */
 typedef void (*nghttp2_on_data_recv_callback)
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 
 /**
@@ -784,7 +784,7 @@ typedef void (*nghttp2_on_frame_not_send_callback)
  * Callback function invoked after DATA frame is sent.
  */
 typedef void (*nghttp2_on_data_send_callback)
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 
 /**

@@ -184,6 +184,26 @@ char upcase(char c)
   }
 }
 
+std::string format_hex(const unsigned char *s, size_t len)
+{
+  std::string res;
+  for(size_t i = 0; i < len; ++i) {
+    unsigned char c = s[i] >> 4;
+    if(c > 9) {
+      res += c - 10 + 'a';
+    } else {
+      res += c + '0';
+    }
+    c = s[i] & 0xf;
+    if(c > 9) {
+      res += c - 10 + 'a';
+    } else {
+      res += c + '0';
+    }
+  }
+  return res;
+}
+
 } // namespace util
 
 } // namespace nghttp2

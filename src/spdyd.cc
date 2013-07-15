@@ -47,7 +47,7 @@ extern bool ssl_debug;
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdyd [-23DVhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
+  out << "Usage: spdyd [-DVhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
       << std::endl;
 }
 } // namespace
@@ -74,10 +74,7 @@ void print_help(std::ostream& out)
       << "                       current working directory.\n"
       << "    -v, --verbose      Print debug information such as reception/\n"
       << "                       transmission of frames and name/value pairs.\n"
-      << "    -2, --spdy2        Only use SPDY/2.\n"
-      << "    -3, --spdy3        Only use SPDY/3.\n"
-      << "    --no-tls           Disable SSL/TLS. Use -2 or -3 to specify\n"
-      << "                       SPDY protocol version to use.\n"
+      << "    --no-tls           Disable SSL/TLS.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -93,14 +90,12 @@ int main(int argc, char **argv)
       {"htdocs", required_argument, 0, 'd' },
       {"help", no_argument, 0, 'h' },
       {"verbose", no_argument, 0, 'v' },
-      {"spdy2", no_argument, 0, '2' },
-      {"spdy3", no_argument, 0, '3' },
       {"verify-client", no_argument, 0, 'V' },
       {"no-tls", no_argument, &flag, 1 },
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVd:hv23", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVd:hv", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -120,12 +115,6 @@ int main(int argc, char **argv)
     case 'v':
       config.verbose = true;
       break;
-    case '2':
-      config.version = NGHTTP2_PROTO_SPDY2;
-      break;
-    case '3':
-      config.version = NGHTTP2_PROTO_SPDY3;
-      break;
     case '?':
       exit(EXIT_FAILURE);
     case 0:
@@ -140,7 +129,7 @@ int main(int argc, char **argv)
       break;
     }
   }
-  if(argc-optind < (config.no_tls ? 1 : 3)) {
+  if(argc - optind < (config.no_tls ? 1 : 3)) {
     print_usage(std::cerr);
     std::cerr << "Too few arguments" << std::endl;
     exit(EXIT_FAILURE);
@@ -148,13 +137,7 @@ int main(int argc, char **argv)
 
   config.port = strtol(argv[optind++], 0, 10);
 
-  if(config.no_tls) {
-    if(config.version == 0) {
-      std::cerr << "Specify SPDY protocol version using either -2 or -3."
-                << std::endl;
-      exit(EXIT_FAILURE);
-    }
-  } else {
+  if(!config.no_tls) {
     config.private_key_file = argv[optind++];
     config.cert_file = argv[optind++];
   }

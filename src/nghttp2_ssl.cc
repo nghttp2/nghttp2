@@ -50,13 +50,12 @@ namespace nghttp2 {
 
 bool ssl_debug = false;
 
-Spdylay::Spdylay(int fd, SSL *ssl, uint16_t version,
+Spdylay::Spdylay(int fd, SSL *ssl,
                  const nghttp2_session_callbacks *callbacks,
                  void *user_data)
-  : fd_(fd), ssl_(ssl), version_(version), user_data_(user_data),
-    io_flags_(0)
+  : fd_(fd), ssl_(ssl), user_data_(user_data), io_flags_(0)
 {
-  int r = nghttp2_session_client_new(&session_, version_, callbacks, this);
+  int r = nghttp2_session_client_new(&session_, callbacks, this);
   assert(r == 0);
 }
 
@@ -152,17 +151,16 @@ int Spdylay::submit_request(const std::string& scheme,
   {
     POS_METHOD = 0,
     POS_PATH,
-    POS_VERSION,
     POS_SCHEME,
     POS_HOST,
     POS_ACCEPT,
+    POS_ACCEPT_ENCODING,
     POS_USERAGENT
   };
 
   const char *static_nv[] = {
     ":method", data_prd ? "POST" : "GET",
     ":path", path.c_str(),
-    ":version", "HTTP/1.1",
     ":scheme", scheme.c_str(),
     ":host", hostport.c_str(),
     "accept", "*/*",
@@ -181,8 +179,8 @@ int Spdylay::submit_request(const std::string& scheme,
 
   memcpy(nv, static_nv, hardcoded_entry_count * sizeof(*static_nv));
 
-  std::map<std::string,std::string>::const_iterator i = headers.begin();
-  std::map<std::string,std::string>::const_iterator end = headers.end();
+  auto i = std::begin(headers);
+  auto end = std::end(headers);
 
   int pos = hardcoded_entry_count;
 
@@ -213,7 +211,7 @@ int Spdylay::submit_request(const std::string& scheme,
     }
     ++i;
   }
-  nv[pos] = NULL;
+  nv[pos] = nullptr;
 
   int r = nghttp2_submit_request(session_, pri, nv, data_prd,
                                  stream_user_data);
@@ -223,9 +221,9 @@ int Spdylay::submit_request(const std::string& scheme,
   return r;
 }
 
-int Spdylay::submit_settings(int flags, nghttp2_settings_entry *iv, size_t niv)
+int Spdylay::submit_settings(nghttp2_settings_entry *iv, size_t niv)
 {
-  return nghttp2_submit_settings(session_, flags, iv, niv);
+  return nghttp2_submit_settings(session_, iv, niv);
 }
 
 bool Spdylay::would_block()
@@ -456,15 +454,41 @@ ssize_t recv_callback(nghttp2_session *session,
 }
 
 namespace {
-const char *ctrl_names[] = {
-  "SYN_STREAM",
-  "SYN_REPLY",
+const char* strstatus(nghttp2_error_code error_code)
+{
+  switch(error_code) {
+  case NGHTTP2_NO_ERROR:
+    return "NO_ERROR";
+  case NGHTTP2_PROTOCOL_ERROR:
+    return "PROTOCOL_ERROR";
+  case NGHTTP2_INTERNAL_ERROR:
+    return "INTERNAL_ERROR";
+  case NGHTTP2_FLOW_CONTROL_ERROR:
+    return "FLOW_CONTROL_ERROR";
+  case NGHTTP2_STREAM_CLOSED:
+    return "STREAM_CLOSED";
+  case NGHTTP2_FRAME_TOO_LARGE:
+    return "FRAME_TOO_LARGE";
+  case NGHTTP2_REFUSED_STREAM:
+    return "REFUSED_STREAM";
+  case NGHTTP2_CANCEL:
+    return "CANCEL";
+  default:
+    return "UNKNOWN";
+  }
+}
+} // namespace
+
+namespace {
+const char *frame_names[] = {
+  "DATA",
+  "HEADERS",
+  "PRIORITY",
   "RST_STREAM",
   "SETTINGS",
-  "NOOP",
+  "PUSH_PROMISE",
   "PING",
   "GOAWAY",
-  "HEADERS",
   "WINDOW_UPDATE"
 };
 } // namespace
@@ -521,10 +545,57 @@ void print_timer()
 }
 
 namespace {
-void print_ctrl_hd(const nghttp2_ctrl_hd& hd)
+void print_frame_hd(const nghttp2_frame_hd& hd)
 {
-  printf("<version=%u, flags=%u, length=%d>\n",
-         hd.version, hd.flags, hd.length);
+  printf("<length=%d, flags=%u, stream_id=%d>\n",
+         hd.length, hd.flags, hd.stream_id);
+}
+} // namespace
+
+namespace {
+void print_flags(const nghttp2_frame_hd& hd)
+{
+  std::string s;
+  switch(hd.type) {
+  case NGHTTP2_DATA:
+    if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      s += "END_STREAM";
+    }
+    break;
+  case NGHTTP2_HEADERS:
+    if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      s += "END_STREAM";
+    }
+    if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "END_HEADERS";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PRIORITY) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PRIORITY";
+    }
+    break;
+  case NGHTTP2_PUSH_PROMISE:
+    if(hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) {
+      s += "END_PUSH_PROMISE";
+    }
+    break;
+  case NGHTTP2_PING:
+    if(hd.flags & NGHTTP2_FLAG_PONG) {
+      s += "PONG";
+    }
+    break;
+  case NGHTTP2_WINDOW_UPDATE:
+    if(hd.flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
+      s += "END_FLOW_CONTROL";
+    }
+    break;
+  }
+  printf("; %s\n", s.c_str());
 }
 } // namespace
 
@@ -541,60 +612,69 @@ const char* frame_name_ansi_esc(print_type ptype)
 } // namespace
 
 namespace {
-void print_frame(print_type ptype, nghttp2_frame_type type,
-                 nghttp2_frame *frame)
+void print_frame(print_type ptype, nghttp2_frame *frame)
 {
   printf("%s%s%s frame ",
          frame_name_ansi_esc(ptype),
-         ctrl_names[type-1],
+         frame_names[frame->hd.type],
          ansi_escend());
-  print_ctrl_hd(frame->syn_stream.hd);
-  switch(type) {
-  case NGHTTP2_SYN_STREAM:
+  print_frame_hd(frame->hd);
+  if(frame->hd.flags) {
     print_frame_attr_indent();
-    printf("(stream_id=%d, assoc_stream_id=%d, pri=%u)\n",
-           frame->syn_stream.stream_id, frame->syn_stream.assoc_stream_id,
-           frame->syn_stream.pri);
-    print_nv(frame->syn_stream.nv);
-    break;
-  case NGHTTP2_SYN_REPLY:
+    print_flags(frame->hd);
+  }
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
     print_frame_attr_indent();
-    printf("(stream_id=%d)\n", frame->syn_reply.stream_id);
-    print_nv(frame->syn_reply.nv);
+    printf("(pri=%d)\n", frame->headers.pri);
+    switch(frame->headers.cat) {
+    case NGHTTP2_HCAT_START_STREAM:
+      print_frame_attr_indent();
+      printf("; Open new stream\n");
+      break;
+    case NGHTTP2_HCAT_REPLY:
+      print_frame_attr_indent();
+      printf("; First response header\n");
+      break;
+    default:
+      break;
+    }
+    print_nv(frame->headers.nv);
     break;
   case NGHTTP2_RST_STREAM:
     print_frame_attr_indent();
-    printf("(stream_id=%d, status_code=%u)\n",
-           frame->rst_stream.stream_id, frame->rst_stream.status_code);
+    printf("(error_code=%s(%u))\n",
+           strstatus(frame->rst_stream.error_code),
+           frame->rst_stream.error_code);
     break;
   case NGHTTP2_SETTINGS:
     print_frame_attr_indent();
     printf("(niv=%lu)\n", static_cast<unsigned long>(frame->settings.niv));
     for(size_t i = 0; i < frame->settings.niv; ++i) {
       print_frame_attr_indent();
-      printf("[%d(%u):%u]\n",
+      printf("[%d:%u]\n",
              frame->settings.iv[i].settings_id,
-             frame->settings.iv[i].flags, frame->settings.iv[i].value);
+             frame->settings.iv[i].value);
     }
     break;
   case NGHTTP2_PING:
     print_frame_attr_indent();
-    printf("(unique_id=%d)\n", frame->ping.unique_id);
+    printf("(opaque_data=%s)\n",
+           util::format_hex(frame->ping.opaque_data, 8).c_str());
     break;
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();
-    printf("(last_good_stream_id=%d)\n", frame->goaway.last_good_stream_id);
-    break;
-  case NGHTTP2_HEADERS:
-    print_frame_attr_indent();
-    printf("(stream_id=%d)\n", frame->headers.stream_id);
-    print_nv(frame->headers.nv);
+    printf("(last_stream_id=%d, error_code=%s(%u), opaque_data=%s)\n",
+           frame->goaway.last_stream_id,
+           strstatus(frame->goaway.error_code),
+           frame->goaway.error_code,
+           util::format_hex(frame->goaway.opaque_data,
+                            frame->goaway.opaque_data_len).c_str());
     break;
   case NGHTTP2_WINDOW_UPDATE:
     print_frame_attr_indent();
-    printf("(stream_id=%d, delta_window_size=%d)\n",
-           frame->window_update.stream_id,
-           frame->window_update.delta_window_size);
+    printf("(window_size_increment=%d)\n",
+           frame->window_update.window_size_increment);
     break;
   default:
     printf("\n");
@@ -603,57 +683,22 @@ void print_frame(print_type ptype, nghttp2_frame_type type,
 }
 } // namespace
 
-void on_ctrl_recv_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data)
+void on_frame_recv_callback
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   print_timer();
   printf(" recv ");
-  print_frame(PRINT_RECV, type, frame);
+  print_frame(PRINT_RECV, frame);
   fflush(stdout);
 }
 
-namespace {
-const char* strstatus(uint32_t status_code)
-{
-  switch(status_code) {
-  case NGHTTP2_OK:
-    return "OK";
-  case NGHTTP2_PROTOCOL_ERROR:
-    return "PROTOCOL_ERROR";
-  case NGHTTP2_INVALID_STREAM:
-    return "INVALID_STREAM";
-  case NGHTTP2_REFUSED_STREAM:
-    return "REFUSED_STREAM";
-  case NGHTTP2_UNSUPPORTED_VERSION:
-    return "UNSUPPORTED_VERSION";
-  case NGHTTP2_CANCEL:
-    return "CANCEL";
-  case NGHTTP2_INTERNAL_ERROR:
-    return "INTERNAL_ERROR";
-  case NGHTTP2_FLOW_CONTROL_ERROR:
-    return "FLOW_CONTROL_ERROR";
-  case NGHTTP2_STREAM_IN_USE:
-    return "STREAM_IN_USE";
-  case NGHTTP2_STREAM_ALREADY_CLOSED:
-    return "STREAM_ALREADY_CLOSED";
-  case NGHTTP2_INVALID_CREDENTIALS:
-    return "INVALID_CREDENTIALS";
-  case NGHTTP2_FRAME_TOO_LARGE:
-    return "FRAME_TOO_LARGE";
-  default:
-    return "Unknown status code";
-  }
-}
-} // namespace
-
-void on_invalid_ctrl_recv_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- uint32_t status_code, void *user_data)
+void on_invalid_frame_recv_callback
+(nghttp2_session *session, nghttp2_frame *frame,
+ nghttp2_error_code error_code, void *user_data)
 {
   print_timer();
-  printf(" [INVALID; status=%s] recv ", strstatus(status_code));
-  print_frame(PRINT_RECV, type, frame);
+  printf(" [INVALID; status=%s] recv ", strstatus(error_code));
+  print_frame(PRINT_RECV, frame);
   fflush(stdout);
 }
 
@@ -670,7 +715,7 @@ void dump_header(const uint8_t *head, size_t headlen)
 }
 } // namespace
 
-void on_ctrl_recv_parse_error_callback(nghttp2_session *session,
+void on_frame_recv_parse_error_callback(nghttp2_session *session,
                                        nghttp2_frame_type type,
                                        const uint8_t *head,
                                        size_t headlen,
@@ -681,7 +726,7 @@ void on_ctrl_recv_parse_error_callback(nghttp2_session *session,
   print_timer();
   printf(" [PARSE_ERROR] recv %s%s%s frame\n",
          frame_name_ansi_esc(PRINT_RECV),
-         ctrl_names[type-1],
+         frame_names[type],
          ansi_escend());
   print_frame_attr_indent();
   printf("Error: %s\n", nghttp2_strerror(error_code));
@@ -689,7 +734,7 @@ void on_ctrl_recv_parse_error_callback(nghttp2_session *session,
   fflush(stdout);
 }
 
-void on_unknown_ctrl_recv_callback(nghttp2_session *session,
+void on_unknown_frame_recv_callback(nghttp2_session *session,
                                    const uint8_t *head,
                                    size_t headlen,
                                    const uint8_t *payload,
@@ -702,43 +747,43 @@ void on_unknown_ctrl_recv_callback(nghttp2_session *session,
   fflush(stdout);
 }
 
-void on_ctrl_send_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data)
+void on_frame_send_callback
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   print_timer();
   printf(" send ");
-  print_frame(PRINT_SEND, type, frame);
+  print_frame(PRINT_SEND, frame);
   fflush(stdout);
 }
 
 namespace {
-void print_data_frame(print_type ptype, uint8_t flags, int32_t stream_id,
-                      int32_t length)
+void print_data_frame(print_type ptype, uint16_t length, uint8_t flags,
+                      int32_t stream_id)
 {
-  printf("%sDATA%s frame (stream_id=%d, flags=%d, length=%d)\n",
+  printf("%sDATA%s frame (length=%d, flags=%d, stream_id=%d)\n",
          frame_name_ansi_esc(ptype), ansi_escend(),
-         stream_id, flags, length);
+         length, flags, stream_id);
+  print_frame_attr_indent();
 }
 } // namespace
 
 void on_data_recv_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data)
 {
   print_timer();
   printf(" recv ");
-  print_data_frame(PRINT_RECV, flags, stream_id, length);
+  print_data_frame(PRINT_RECV, length, flags, stream_id);
   fflush(stdout);
 }
 
 void on_data_send_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data)
 {
   print_timer();
   printf(" send ");
-  print_data_frame(PRINT_SEND, flags, stream_id, length);
+  print_data_frame(PRINT_SEND, length, flags, stream_id);
   fflush(stdout);
 }
 
@@ -770,18 +815,10 @@ int select_next_proto_cb(SSL* ssl,
       std::cout << std::endl;
     }
   }
-  std::string& next_proto = *(std::string*)arg;
-  if(next_proto.empty()) {
-    if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
-      std::cerr << "Server did not advertise spdy/2 or spdy/3 protocol."
-                << std::endl;
-      abort();
-    } else {
-      next_proto.assign(&(*out)[0], &(*out)[*outlen]);
-    }
-  } else {
-    *out = (unsigned char*)(next_proto.c_str());
-    *outlen = next_proto.size();
+  if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
+    std::cerr << "Server did not advertise HTTP/2.0 protocol."
+              << std::endl;
+    abort();
   }
   if(ssl_debug) {
     std::cout << "          NPN selected the protocol: "

@@ -1126,10 +1126,10 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     if(session->callbacks.on_data_send_callback) {
       session->callbacks.on_data_send_callback
         (session,
+         session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH,
          data_frame->eof ? data_frame->hd.flags :
          (data_frame->hd.flags & (~NGHTTP2_FLAG_END_STREAM)),
          data_frame->hd.stream_id,
-         session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH,
          session->user_data);
     }
     if(data_frame->eof && (data_frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
@@ -1650,6 +1650,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
         if(rv != 0) {
           return rv;
         }
+      } else {
+        return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
       }
     }
     session->remote_settings[entry->settings_id] = entry->value;
@@ -1915,7 +1917,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
           valid = 1;
           if(session->callbacks.on_data_recv_callback) {
             session->callbacks.on_data_recv_callback
-              (session, flags, stream_id, length, session->user_data);
+              (session, length, flags, stream_id, session->user_data);
           }
         } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
           error_code = NGHTTP2_PROTOCOL_ERROR;
@@ -1927,7 +1929,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
         valid = 1;
         if(session->callbacks.on_data_recv_callback) {
           session->callbacks.on_data_recv_callback
-            (session, flags, stream_id, length, session->user_data);
+            (session, length, flags, stream_id, session->user_data);
         }
         if(flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_session_call_on_request_recv(session, stream_id);

@@ -174,8 +174,8 @@ static void on_data_chunk_recv_callback(nghttp2_session *session,
 }
 
 static void on_data_recv_callback(nghttp2_session *session,
-                                  uint8_t flags, int32_t stream_id,
-                                  int32_t length, void *user_data)
+                                  uint16_t length, uint8_t flags,
+                                  int32_t stream_id, void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->data_recv_cb_called;

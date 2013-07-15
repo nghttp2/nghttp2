@@ -204,6 +204,8 @@ std::string percentEncode(const std::string& target);
 std::string percentDecode
 (std::string::const_iterator first, std::string::const_iterator last);
 
+std::string format_hex(const unsigned char *s, size_t len);
+
 std::string http_date(time_t t);
 
 time_t parse_http_date(const std::string& s);

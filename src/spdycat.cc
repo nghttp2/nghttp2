@@ -75,7 +75,6 @@ struct Config {
   bool stat;
   bool no_tls;
   int multiply;
-  int spdy_version;
   // milliseconds
   int timeout;
   std::string certfile;
@@ -85,7 +84,7 @@ struct Config {
   std::string datafile;
   Config():null_out(false), remote_name(false), verbose(false),
            get_assets(false), stat(false), no_tls(false), multiply(1),
-           spdy_version(-1), timeout(-1), window_bits(-1)
+           timeout(-1), window_bits(-1)
   {}
 };
 
@@ -447,47 +446,42 @@ void on_data_chunk_recv_callback
   }
 }
 
-void check_stream_id(nghttp2_session *session,
-                     nghttp2_frame_type type, nghttp2_frame *frame,
+void check_stream_id(nghttp2_session *session, nghttp2_frame *frame,
                      void *user_data)
 {
   SpdySession *spdySession = get_session(user_data);
-  int32_t stream_id = frame->syn_stream.stream_id;
+  int32_t stream_id = frame->hd.stream_id;
   Request *req = (Request*)nghttp2_session_get_stream_user_data(session,
                                                                 stream_id);
   spdySession->streams[stream_id] = req;
   req->record_syn_stream_time();
 }
 
-void on_ctrl_send_callback2
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data)
+void on_frame_send_callback2
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
-  if(type == NGHTTP2_SYN_STREAM) {
-    check_stream_id(session, type, frame, user_data);
+  if(frame->hd.type == NGHTTP2_HEADERS &&
+     frame->headers.cat == NGHTTP2_HCAT_START_STREAM) {
+    check_stream_id(session, frame, user_data);
   }
   if(config.verbose) {
-    on_ctrl_send_callback(session, type, frame, user_data);
+    on_frame_send_callback(session, frame, user_data);
   }
 }
 
 void check_response_header
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data)
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   char **nv;
   int32_t stream_id;
-  if(type == NGHTTP2_SYN_REPLY) {
-    nv = frame->syn_reply.nv;
-    stream_id = frame->syn_reply.stream_id;
-  } else if(type == NGHTTP2_HEADERS) {
+  if(frame->hd.type == NGHTTP2_HEADERS) {
     nv = frame->headers.nv;
-    stream_id = frame->headers.stream_id;
+    stream_id = frame->hd.stream_id;
   } else {
     return;
   }
-  Request *req = (Request*)nghttp2_session_get_stream_user_data(session,
-                                                                stream_id);
+  auto req = (Request*)nghttp2_session_get_stream_user_data(session,
+                                                            stream_id);
   if(!req) {
     // Server-pushed stream does not have stream user data
     return;
@@ -512,35 +506,34 @@ void check_response_header
   }
 }
 
-void on_ctrl_recv_callback2
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data)
+void on_frame_recv_callback2
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
-  if(type == NGHTTP2_SYN_REPLY) {
-    Request *req = (Request*)nghttp2_session_get_stream_user_data
-      (session, frame->syn_reply.stream_id);
+  if(frame->hd.type == NGHTTP2_HEADERS &&
+     frame->headers.cat == NGHTTP2_HCAT_REPLY) {
+    auto req = (Request*)nghttp2_session_get_stream_user_data
+      (session, frame->hd.stream_id);
     assert(req);
     req->record_syn_reply_time();
   }
-  check_response_header(session, type, frame, user_data);
+  check_response_header(session, frame, user_data);
   if(config.verbose) {
-    on_ctrl_recv_callback(session, type, frame, user_data);
+    on_frame_recv_callback(session, frame, user_data);
   }
 }
 
 void on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_status_code status_code,
+(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
   SpdySession *spdySession = get_session(user_data);
-  std::map<int32_t, Request*>::iterator itr =
-    spdySession->streams.find(stream_id);
+  auto itr = spdySession->streams.find(stream_id);
   if(itr != spdySession->streams.end()) {
     update_html_parser(spdySession, (*itr).second, 0, 0, 1);
     (*itr).second->record_complete_time();
     ++spdySession->complete;
     if(spdySession->all_requests_processed()) {
-      nghttp2_submit_goaway(session, NGHTTP2_GOAWAY_OK);
+      nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0);
     }
   }
 }
@@ -549,7 +542,7 @@ void print_stats(const SpdySession& spdySession)
 {
   std::cout << "***** Statistics *****" << std::endl;
   for(size_t i = 0; i < spdySession.reqvec.size(); ++i) {
-    const Request *req = spdySession.reqvec[i];
+    auto req = spdySession.reqvec[i];
     std::cout << "#" << i+1 << ": " << req->uri << std::endl;
     std::cout << "    Status: " << req->status << std::endl;
     std::cout << "    Delta (ms) from SSL/TLS handshake(SYN_STREAM):"
@@ -578,22 +571,21 @@ void print_stats(const SpdySession& spdySession)
   }
 }
 
-int spdy_evloop(int fd, SSL *ssl, int spdy_version, SpdySession& spdySession,
+int spdy_evloop(int fd, SSL *ssl, SpdySession& spdySession,
                 const nghttp2_session_callbacks *callbacks, int timeout)
 {
   int result = 0;
-  Spdylay sc(fd, ssl, spdy_version, callbacks, &spdySession);
+  int rv;
+  Spdylay sc(fd, ssl, callbacks, &spdySession);
   spdySession.sc = &sc;
 
   nfds_t npollfds = 1;
   pollfd pollfds[1];
-
-  if(spdy_version >= NGHTTP2_PROTO_SPDY3 && config.window_bits != -1) {
+  if(config.window_bits != -1) {
     nghttp2_settings_entry iv[1];
     iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-    iv[0].flags = NGHTTP2_ID_FLAG_SETTINGS_NONE;
     iv[0].value = 1 << config.window_bits;
-    int rv = sc.submit_settings(NGHTTP2_FLAG_SETTINGS_NONE, iv, 1);
+    rv = sc.submit_settings(iv, 1);
     assert(rv == 0);
   }
   for(int i = 0, n = spdySession.reqvec.size(); i < n; ++i) {
@@ -660,8 +652,6 @@ int communicate(const std::string& host, uint16_t port,
 {
   int result = 0;
   int rv;
-  int spdy_version;
-  std::string next_proto;
   int timeout = config.timeout;
   SSL_CTX *ssl_ctx = 0;
   SSL *ssl = 0;
@@ -683,15 +673,6 @@ int communicate(const std::string& host, uint16_t port,
               << std::endl;
   }
 
-  switch(config.spdy_version) {
-  case NGHTTP2_PROTO_SPDY2:
-    next_proto = "spdy/2";
-    break;
-  case NGHTTP2_PROTO_SPDY3:
-    next_proto = "spdy/3";
-    break;
-  }
-
   if(!config.no_tls) {
     ssl_ctx = SSL_CTX_new(TLSv1_client_method());
     if(!ssl_ctx) {
@@ -699,7 +680,7 @@ int communicate(const std::string& host, uint16_t port,
       result = -1;
       goto fin;
     }
-    setup_ssl_ctx(ssl_ctx, &next_proto);
+    setup_ssl_ctx(ssl_ctx, nullptr);
     if(!config.keyfile.empty()) {
       if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
                                      SSL_FILETYPE_PEM) != 1) {
@@ -722,23 +703,23 @@ int communicate(const std::string& host, uint16_t port,
       result = -1;
       goto fin;
     }
+    {
+      // If the user overrode the host header, use that value for the
+      // SNI extension
+      const char *host_string = 0;
+      auto i = config.headers.find( "Host" );
+      if ( i != config.headers.end() ) {
+        host_string = (*i).second.c_str();
+      }
+      else {
+        host_string = host.c_str();
+      }
 
-    // If the user overrode the host header, use that value for the
-    // SNI extension
-    const char *host_string = 0;
-    std::map<std::string,std::string>::const_iterator i =
-      config.headers.find( "Host" );
-    if ( i != config.headers.end() ) {
-      host_string = (*i).second.c_str();
-    }
-    else {
-      host_string = host.c_str();
-    }
-
-    if (!SSL_set_tlsext_host_name(ssl, host_string)) {
-      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-      result = -1;
-      goto fin;
+      if (!SSL_set_tlsext_host_name(ssl, host_string)) {
+        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        result = -1;
+        goto fin;
+      }
     }
     rv = ssl_nonblock_handshake(ssl, fd, timeout);
     if(rv == -1) {
@@ -759,16 +740,7 @@ int communicate(const std::string& host, uint16_t port,
   }
 
   spdySession.record_handshake_time();
-  spdy_version = nghttp2_npn_get_version(
-      reinterpret_cast<const unsigned char*>(next_proto.c_str()),
-      next_proto.size());
-  if (spdy_version <= 0) {
-    std::cerr << "No supported SPDY version was negotiated." << std::endl;
-    result = -1;
-    goto fin;
-  }
-
-  result = spdy_evloop(fd, ssl, spdy_version, spdySession, callbacks, timeout);
+  result = spdy_evloop(fd, ssl, spdySession, callbacks, timeout);
  fin:
   if(ssl) {
     SSL_shutdown(ssl);
@@ -787,7 +759,7 @@ ssize_t file_read_callback
  uint8_t *buf, size_t length, int *eof,
  nghttp2_data_source *source, void *user_data)
 {
-  Request *req = (Request*)nghttp2_session_get_stream_user_data
+  auto req = (Request*)nghttp2_session_get_stream_user_data
     (session, stream_id);
   int fd = source->fd;
   ssize_t r;
@@ -812,14 +784,14 @@ int run(char **uris, int n)
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback2;
-  callbacks.on_ctrl_send_callback = on_ctrl_send_callback2;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback2;
+  callbacks.on_frame_send_callback = on_frame_send_callback2;
   if(config.verbose) {
     callbacks.on_data_recv_callback = on_data_recv_callback;
-    callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
-    callbacks.on_ctrl_recv_parse_error_callback =
-      on_ctrl_recv_parse_error_callback;
-    callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
+    callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
+    callbacks.on_frame_recv_parse_error_callback =
+      on_frame_recv_parse_error_callback;
+    callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   ssl_debug = config.verbose;
@@ -882,7 +854,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Oansv23] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: spdycat [-Oansv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "               [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>..."
       << std::endl;
 }
@@ -899,8 +871,6 @@ void print_help(std::ostream& out)
       << "                       The filename is dereived from URI. If URI\n"
       << "                       ends with '/', 'index.html' is used as a\n"
       << "                       filename. Not implemented yet.\n"
-      << "    -2, --spdy2        Only use SPDY/2.\n"
-      << "    -3, --spdy3        Only use SPDY/3.\n"
       << "    -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
       << "    -w, --window-bits=<N>\n"
       << "                       Sets the initial window size to 2**<N>.\n"
@@ -915,8 +885,7 @@ void print_help(std::ostream& out)
       << "                       The file must be in PEM format.\n"
       << "    --key=<KEY>        Use the client private key file. The file\n"
       << "                       must be in PEM format.\n"
-      << "    --no-tls           Disable SSL/TLS. Use -2 or -3 to specify\n"
-      << "                       SPDY protocol version to use.\n"
+      << "    --no-tls           Disable SSL/TLS.\n"
       << "    -d, --data=<FILE>  Post FILE to server. If - is given, data\n"
       << "                       will be read from stdin.\n"
       << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
@@ -933,8 +902,6 @@ int main(int argc, char **argv)
       {"verbose", no_argument, 0, 'v' },
       {"null-out", no_argument, 0, 'n' },
       {"remote-name", no_argument, 0, 'O' },
-      {"spdy2", no_argument, 0, '2' },
-      {"spdy3", no_argument, 0, '3' },
       {"timeout", required_argument, 0, 't' },
       {"window-bits", required_argument, 0, 'w' },
       {"get-assets", no_argument, 0, 'a' },
@@ -949,7 +916,7 @@ int main(int argc, char **argv)
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Oad:m:nhH:v23st:w:", long_options,
+    int c = getopt_long(argc, argv, "Oad:m:nhH:vst:w:", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -966,12 +933,6 @@ int main(int argc, char **argv)
       break;
     case 'v':
       config.verbose = true;
-      break;
-    case '2':
-      config.spdy_version = NGHTTP2_PROTO_SPDY2;
-      break;
-    case '3':
-      config.spdy_version = NGHTTP2_PROTO_SPDY3;
       break;
     case 't':
       config.timeout = atoi(optarg) * 1000;
@@ -1049,14 +1010,6 @@ int main(int argc, char **argv)
       break;
     default:
       break;
-    }
-  }
-
-  if(config.no_tls) {
-    if(config.spdy_version == -1) {
-      std::cerr << "Specify SPDY protocol version using either -2 or -3."
-                << std::endl;
-      exit(EXIT_FAILURE);
     }
   }
 

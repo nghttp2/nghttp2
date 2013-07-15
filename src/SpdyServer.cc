@@ -61,7 +61,7 @@ const std::string SPDYD_SERVER = "spdyd nghttp2/" NGHTTP2_VERSION;
 
 Config::Config(): verbose(false), daemon(false), port(0),
                   on_request_recv_callback(0), data_ptr(0),
-                  version(0), verify_client(false), no_tls(false)
+                  verify_client(false), no_tls(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -93,10 +93,9 @@ public:
   {}
   ~Sessions()
   {
-    for(std::set<EventHandler*>::iterator i = handlers_.begin(),
-          eoi = handlers_.end(); i != eoi; ++i) {
-      on_close(*this, *i);
-      delete *i;
+    for(auto handler : handlers_) {
+      on_close(*this, handler);
+      delete handler;
     }
     SSL_CTX_free(ssl_ctx_);
   }
@@ -175,22 +174,19 @@ void on_session_closed(EventHandler *hd, int64_t session_id)
 
 SpdyEventHandler::SpdyEventHandler(const Config* config,
                                    int fd, SSL *ssl,
-                                   uint16_t version,
                                    const nghttp2_session_callbacks *callbacks,
                                    int64_t session_id)
   : EventHandler(config),
-    fd_(fd), ssl_(ssl), version_(version), session_id_(session_id),
+    fd_(fd), ssl_(ssl), session_id_(session_id),
     io_flags_(0)
 {
   int r;
-  r = nghttp2_session_server_new(&session_, version, callbacks, this);
+  r = nghttp2_session_server_new(&session_, callbacks, this);
   assert(r == 0);
   nghttp2_settings_entry entry;
   entry.settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry.value = NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
-  entry.flags = NGHTTP2_ID_FLAG_SETTINGS_NONE;
-  r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_SETTINGS_NONE,
-                              &entry, 1);
+  r = nghttp2_submit_settings(session_, &entry, 1);
   assert(r == 0);
 }
 
@@ -198,9 +194,8 @@ SpdyEventHandler::~SpdyEventHandler()
 {
   on_session_closed(this, session_id_);
   nghttp2_session_del(session_);
-  for(std::map<int32_t, Request*>::iterator i = id2req_.begin(),
-        eoi = id2req_.end(); i != eoi; ++i) {
-    delete (*i).second;
+  for(auto& item : id2req_) {
+    delete item.second;
   }
   if(ssl_) {
     SSL_shutdown(ssl_);
@@ -208,11 +203,6 @@ SpdyEventHandler::~SpdyEventHandler()
   }
   shutdown(fd_, SHUT_WR);
   close(fd_);
-}
-
-uint16_t SpdyEventHandler::version() const
-{
-  return version_;
 }
 
 int SpdyEventHandler::execute(Sessions *sessions)
@@ -300,18 +290,17 @@ int SpdyEventHandler::submit_file_response(const std::string& status,
   std::string last_modified_str;
   const char *nv[] = {
     ":status", status.c_str(),
-    ":version", "HTTP/1.1",
     "server", SPDYD_SERVER.c_str(),
     "content-length", content_length.c_str(),
     "cache-control", "max-age=3600",
     "date", date_str.c_str(),
-    0, 0,
-    0
+    nullptr, nullptr,
+    nullptr
   };
   if(last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
-    nv[12] = "last-modified";
-    nv[13] = last_modified_str.c_str();
+    nv[10] = "last-modified";
+    nv[11] = last_modified_str.c_str();
   }
   return nghttp2_submit_response(session_, stream_id, nv, data_prd);
 }
@@ -323,20 +312,18 @@ int SpdyEventHandler::submit_response
  nghttp2_data_provider *data_prd)
 {
   std::string date_str = util::http_date(time(0));
-  const char **nv = new const char*[8+headers.size()*2+1];
+  const char **nv = new const char*[6+headers.size()*2+1];
   nv[0] = ":status";
   nv[1] = status.c_str();
-  nv[2] = ":version";
-  nv[3] = "HTTP/1.1";
-  nv[4] = "server";
-  nv[5] = SPDYD_SERVER.c_str();
-  nv[6] = "date";
-  nv[7] = date_str.c_str();
+  nv[2] = "server";
+  nv[3] = SPDYD_SERVER.c_str();
+  nv[4] = "date";
+  nv[5] = date_str.c_str();
   for(int i = 0; i < (int)headers.size(); ++i) {
-    nv[8+i*2] = headers[i].first.c_str();
-    nv[8+i*2+1] = headers[i].second.c_str();
+    nv[6+i*2] = headers[i].first.c_str();
+    nv[6+i*2+1] = headers[i].second.c_str();
   }
-  nv[8+headers.size()*2] = 0;
+  nv[6+headers.size()*2] = nullptr;
   int r = nghttp2_submit_response(session_, stream_id, nv, data_prd);
   delete [] nv;
   return r;
@@ -348,9 +335,8 @@ int SpdyEventHandler::submit_response(const std::string& status,
 {
   const char *nv[] = {
     ":status", status.c_str(),
-    ":version", "HTTP/1.1",
     "server", SPDYD_SERVER.c_str(),
-    0
+    nullptr
   };
   return nghttp2_submit_response(session_, stream_id, nv, data_prd);
 }
@@ -568,29 +554,33 @@ void append_nv(Request *req, char **nv)
 } // namespace
 
 namespace {
-void hd_on_ctrl_recv_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data)
+void hd_on_frame_recv_callback
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   if(hd->config()->verbose) {
     print_session_id(hd->session_id());
-    on_ctrl_recv_callback(session, type, frame, user_data);
+    on_frame_recv_callback(session, frame, user_data);
   }
-  switch(type) {
-  case NGHTTP2_SYN_STREAM: {
-    int32_t stream_id = frame->syn_stream.stream_id;
-    Request *req = new Request(stream_id);
-    append_nv(req, frame->syn_stream.nv);
-    hd->add_stream(stream_id, req);
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    switch(frame->headers.cat) {
+    case NGHTTP2_HCAT_START_STREAM: {
+      int32_t stream_id = frame->hd.stream_id;
+      auto req = new Request(stream_id);
+      append_nv(req, frame->headers.nv);
+      hd->add_stream(stream_id, req);
+      break;
+    }
+    case NGHTTP2_HCAT_HEADERS: {
+      Request *req = hd->get_stream(frame->hd.stream_id);
+      append_nv(req, frame->headers.nv);
+      break;
+    }
+    default:
+      break;
+    }
     break;
-  }
-  case NGHTTP2_HEADERS: {
-    int32_t stream_id = frame->headers.stream_id;
-    Request *req = hd->get_stream(stream_id);
-    append_nv(req, frame->headers.nv);
-    break;
-  }
   default:
     break;
   }
@@ -605,14 +595,14 @@ void htdocs_on_request_recv_callback
 }
 
 namespace {
-void hd_on_ctrl_send_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
+void hd_on_frame_send_callback
+(nghttp2_session *session, nghttp2_frame *frame,
  void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   if(hd->config()->verbose) {
     print_session_id(hd->session_id());
-    on_ctrl_send_callback(session, type, frame, user_data);
+    on_frame_send_callback(session, frame, user_data);
   }
 }
 } // namespace
@@ -628,34 +618,34 @@ void on_data_chunk_recv_callback
 
 namespace {
 void hd_on_data_recv_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data)
 {
   // TODO Handle POST
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   if(hd->config()->verbose) {
     print_session_id(hd->session_id());
-    on_data_recv_callback(session, flags, stream_id, length, user_data);
+    on_data_recv_callback(session, length, flags, stream_id, user_data);
   }
 }
 } // namespace
 
 namespace {
 void hd_on_data_send_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t length,
+(nghttp2_session *session, uint16_t length,  uint8_t flags, int32_t stream_id,
  void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
   if(hd->config()->verbose) {
     print_session_id(hd->session_id());
-    on_data_send_callback(session, flags, stream_id, length, user_data);
+    on_data_send_callback(session, length, flags, stream_id, user_data);
   }
 }
 } // namespace
 
 namespace {
 void on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_status_code status_code,
+(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
   SpdyEventHandler *hd = (SpdyEventHandler*)user_data;
@@ -676,15 +666,15 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.send_callback = hd_send_callback;
   callbacks.recv_callback = hd_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_ctrl_recv_callback = hd_on_ctrl_recv_callback;
-  callbacks.on_ctrl_send_callback = hd_on_ctrl_send_callback;
+  callbacks.on_frame_recv_callback = hd_on_frame_recv_callback;
+  callbacks.on_frame_send_callback = hd_on_frame_send_callback;
   callbacks.on_data_recv_callback = hd_on_data_recv_callback;
   callbacks.on_data_send_callback = hd_on_data_send_callback;
   if(config->verbose) {
-    callbacks.on_invalid_ctrl_recv_callback = on_invalid_ctrl_recv_callback;
-    callbacks.on_ctrl_recv_parse_error_callback =
-      on_ctrl_recv_parse_error_callback;
-    callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
+    callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
+    callbacks.on_frame_recv_parse_error_callback =
+      on_frame_recv_parse_error_callback;
+    callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_request_recv_callback = config->on_request_recv_callback;
@@ -696,7 +686,7 @@ public:
   SSLAcceptEventHandler(const Config *config,
                         int fd, SSL *ssl, int64_t session_id)
     : EventHandler(config),
-      fd_(fd), ssl_(ssl), version_(0), fail_(false), finish_(false),
+      fd_(fd), ssl_(ssl), fail_(false), finish_(false),
       io_flags_(WANT_READ),
       session_id_(session_id)
   {}
@@ -725,17 +715,11 @@ public:
         if(config()->verbose) {
           std::cout << "The negotiated next protocol: " << proto << std::endl;
         }
-        version_ = nghttp2_npn_get_version(next_proto, next_proto_len);
-        if(config()->version != 0) {
-          if(config()->version != version_) {
-            version_ = 0;
-            std::cerr << "The negotiated next protocol is not supported."
-                      << std::endl;
-          }
-        }
-        if(version_) {
+        if(proto == "HTTP-draft-04/2.0") {
           add_next_handler(sessions);
         } else {
+          std::cerr << "The negotiated next protocol is not supported."
+                    << std::endl;
           fail_ = true;
         }
       } else {
@@ -779,7 +763,7 @@ private:
     nghttp2_session_callbacks callbacks;
     fill_callback(callbacks, config());
     SpdyEventHandler *hd = new SpdyEventHandler(config(),
-                                                fd_, ssl_, version_, &callbacks,
+                                                fd_, ssl_, &callbacks,
                                                 session_id_);
     if(sessions->mod_poll(hd) == -1) {
       // fd_, ssl_ are freed by ~SpdyEventHandler()
@@ -791,7 +775,6 @@ private:
 
   int fd_;
   SSL *ssl_;
-  uint16_t version_;
   bool fail_, finish_;
   uint8_t io_flags_;
   int64_t session_id_;
@@ -842,10 +825,8 @@ private:
     if(config()->no_tls) {
       nghttp2_session_callbacks callbacks;
       fill_callback(callbacks, config());
-      SpdyEventHandler *hd = new SpdyEventHandler(config(),
-                                                  cfd, 0,
-                                                  config()->version, &callbacks,
-                                                  session_id);
+      auto hd = new SpdyEventHandler(config(), cfd, nullptr, &callbacks,
+                                     session_id);
       if(sessions->add_poll(hd) == -1) {
         delete hd;
       } else {
@@ -857,8 +838,7 @@ private:
         close(cfd);
         return;
       }
-      SSLAcceptEventHandler *hd = new SSLAcceptEventHandler(config(), cfd, ssl,
-                                                            session_id);
+      auto hd = new SSLAcceptEventHandler(config(), cfd, ssl, session_id);
       if(sessions->add_poll(hd) == -1) {
         delete hd;
         SSL_free(ssl);
@@ -946,7 +926,7 @@ int SpdyServer::run()
 {
   SSL_CTX *ssl_ctx = 0;
   std::pair<unsigned char*, size_t> next_proto;
-  unsigned char proto_list[14];
+  unsigned char proto_list[255];
   if(!config_->no_tls) {
     ssl_ctx = SSL_CTX_new(SSLv23_server_method());
     if(!ssl_ctx) {
@@ -978,25 +958,11 @@ int SpdyServer::run()
                          verify_callback);
     }
 
-    // We speaks "spdy/2" and "spdy/3".
-    proto_list[0] = 6;
-    memcpy(&proto_list[1], "spdy/3", 6);
-    proto_list[7] = 6;
-    memcpy(&proto_list[8], "spdy/2", 6);
+    proto_list[0] = 17;
+    memcpy(&proto_list[1], "HTTP-draft-04/2.0", 17);
+    next_proto.first = proto_list;
+    next_proto.second = 18;
 
-    switch(config_->version) {
-    case NGHTTP2_PROTO_SPDY3:
-      next_proto.first = proto_list;
-      next_proto.second = 7;
-      break;
-    case NGHTTP2_PROTO_SPDY2:
-      next_proto.first = proto_list+7;
-      next_proto.second = 7;
-      break;
-    default:
-      next_proto.first = proto_list;
-      next_proto.second = sizeof(proto_list);
-    }
     SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
   }
 
@@ -1011,9 +977,8 @@ int SpdyServer::run()
     if(sfd_[i] == -1) {
       continue;
     }
-    ListenEventHandler *listen_hd = new ListenEventHandler(config_,
-                                                           sfd_[i],
-                                                           &session_id_seed);
+    auto listen_hd = new ListenEventHandler(config_, sfd_[i],
+                                            &session_id_seed);
     if(sessions.add_poll(listen_hd) == -1) {
       std::cerr <<  ipv << ": Adding listening socket to poll failed."
                 << std::endl;
@@ -1034,8 +999,7 @@ int SpdyServer::run()
       perror("EventPoll");
     } else {
       for(int i = 0; i < n; ++i) {
-        EventHandler *hd = reinterpret_cast<EventHandler*>
-          (sessions.get_user_data(i));
+        auto hd = reinterpret_cast<EventHandler*>(sessions.get_user_data(i));
         int events = sessions.get_events(i);
         int r = 0;
         if(hd->mark_del()) {
@@ -1059,10 +1023,9 @@ int SpdyServer::run()
           del_list.push_back(hd);
         }
       }
-      for(std::vector<EventHandler*>::iterator i = del_list.begin(),
-            eoi = del_list.end(); i != eoi; ++i) {
-        on_close(sessions, *i);
-        sessions.remove_handler(*i);
+      for(auto handler : del_list) {
+        on_close(sessions, handler);
+        sessions.remove_handler(handler);
       }
       del_list.clear();
     }

@@ -52,7 +52,6 @@ struct Config {
   std::string cert_file;
   nghttp2_on_request_recv_callback on_request_recv_callback;
   void *data_ptr;
-  uint16_t version;
   bool verify_client;
   bool no_tls;
   Config();
@@ -88,7 +87,7 @@ private:
 
 struct Request {
   int32_t stream_id;
-  std::vector<std::pair<std::string, std::string> > headers;
+  std::vector<std::pair<std::string, std::string>> headers;
   int file;
   std::pair<std::string, size_t> response_body;
   Request(int32_t stream_id);
@@ -98,7 +97,7 @@ struct Request {
 class SpdyEventHandler : public EventHandler {
 public:
   SpdyEventHandler(const Config* config,
-                   int fd, SSL *ssl, uint16_t version,
+                   int fd, SSL *ssl,
                    const nghttp2_session_callbacks *callbacks,
                    int64_t session_id);
   virtual ~SpdyEventHandler();
@@ -107,8 +106,6 @@ public:
   virtual bool want_write();
   virtual int fd() const;
   virtual bool finish();
-
-  uint16_t version() const;
 
   ssize_t send_data(const uint8_t *data, size_t len, int flags);
 
@@ -129,7 +126,7 @@ public:
   int submit_response
   (const std::string& status,
    int32_t stream_id,
-   const std::vector<std::pair<std::string, std::string> >& headers,
+   const std::vector<std::pair<std::string, std::string>>& headers,
    nghttp2_data_provider *data_prd);
 
   void add_stream(int32_t stream_id, Request *req);
@@ -140,7 +137,6 @@ private:
   nghttp2_session *session_;
   int fd_;
   SSL* ssl_;
-  uint16_t version_;
   int64_t session_id_;
   uint8_t io_flags_;
   std::map<int32_t, Request*> id2req_;
