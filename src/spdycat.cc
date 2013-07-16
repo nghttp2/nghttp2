@@ -788,6 +788,7 @@ int run(char **uris, int n)
   callbacks.on_frame_send_callback = on_frame_send_callback2;
   if(config.verbose) {
     callbacks.on_data_recv_callback = on_data_recv_callback;
+    callbacks.on_data_send_callback = on_data_send_callback;
     callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
     callbacks.on_frame_recv_parse_error_callback =
       on_frame_recv_parse_error_callback;
