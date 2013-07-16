@@ -474,7 +474,6 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
   bool url_found = false;
   bool method_found = false;
   bool scheme_found = false;
-  bool version_found = false;
   bool host_found = false;
   time_t last_mod = 0;
   bool last_mod_found = false;
@@ -488,8 +487,6 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
       method_found = true;
     } else if(field == ":scheme") {
       scheme_found = true;
-    } else if(field == ":version") {
-      version_found = true;
     } else if(field == ":host") {
       host_found = true;
     } else if(!last_mod_found && field == "if-modified-since") {
@@ -497,8 +494,7 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
       last_mod = util::parse_http_date(value);
     }
   }
-  if(!url_found || !method_found || !scheme_found || !version_found ||
-     !host_found) {
+  if(!url_found || !method_found || !scheme_found || !host_found) {
     prepare_status_response(req, hd, STATUS_400);
     return;
   }
