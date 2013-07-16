@@ -625,8 +625,10 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
   }
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
-    print_frame_attr_indent();
-    printf("(pri=%d)\n", frame->headers.pri);
+    if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+      print_frame_attr_indent();
+      printf("(pri=%d)\n", frame->headers.pri);
+    }
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_START_STREAM:
       print_frame_attr_indent();
