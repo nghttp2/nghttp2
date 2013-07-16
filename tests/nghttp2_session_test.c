@@ -1894,9 +1894,17 @@ void test_nghttp2_session_flow_control(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(64*1024 == ud.data_source_length);
 
-  /* Back 32KiB */
+  /* Back 32KiB in stream window */
   nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE,
                                    1, 32*1024);
+  nghttp2_session_on_window_update_received(session, &frame);
+
+  /* Send nothing because of connection-level window */
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(64*1024 == ud.data_source_length);
+
+  /* Back 32KiB in connection-level window */
+  frame.hd.stream_id = 0;
   nghttp2_session_on_window_update_received(session, &frame);
 
   /* Sends another 32KiB data */
@@ -1914,16 +1922,24 @@ void test_nghttp2_session_flow_control(void)
     new_initial_window_size;
   CU_ASSERT(-48*1024 == stream->window_size);
 
-  /* Back 48KiB */
+  /* Back 48KiB to stream window */
+  frame.hd.stream_id = 1;
   frame.window_update.window_size_increment = 48*1024;
   nghttp2_session_on_window_update_received(session, &frame);
 
-  /* Nothing is sent because window_size is less than 0 */
+  /* Nothing is sent because window_size is 0 */
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(32*1024 == ud.data_source_length);
 
-  /* Back 16KiB */
+  /* Back 16KiB in stream window */
+  frame.hd.stream_id = 1;
   frame.window_update.window_size_increment = 16*1024;
+  nghttp2_session_on_window_update_received(session, &frame);
+
+
+  /* Back 24KiB in connection-level window */
+  frame.hd.stream_id = 0;
+  frame.window_update.window_size_increment = 24*1024;
   nghttp2_session_on_window_update_received(session, &frame);
 
   /* Sends another 16KiB data */
@@ -1938,7 +1954,16 @@ void test_nghttp2_session_flow_control(void)
   nghttp2_session_on_settings_received(session, &settings_frame);
   nghttp2_frame_settings_free(&settings_frame.settings);
 
-  /* Sends another 16KiB data */
+  /* Sends another 8KiB data */
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(8*1024 == ud.data_source_length);
+
+  /* Back 8KiB in connection-level window */
+  frame.hd.stream_id = 0;
+  frame.window_update.window_size_increment = 8*1024;
+  nghttp2_session_on_window_update_received(session, &frame);
+
+  /* Sends last 8KiB data */
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(0 == ud.data_source_length);
   CU_ASSERT(nghttp2_session_get_stream(session, 1)->shut_flags &
@@ -1981,9 +2006,11 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   data_frame->data_prd.read_callback =
     temporal_failure_data_source_read_callback;
 
-  /* Back 64KiB */
+  /* Back 64KiB to both connection-level and stream-wise window */
   nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE,
                                    1, 64*1024);
+  nghttp2_session_on_window_update_received(session, &frame);
+  frame.hd.stream_id = 0;
   nghttp2_session_on_window_update_received(session, &frame);
   nghttp2_frame_window_update_free(&frame.window_update);
 
