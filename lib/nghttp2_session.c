@@ -1614,6 +1614,42 @@ static int nghttp2_session_update_initial_window_size
                           &arg);
 }
 
+static int nghttp2_disable_flow_control_func(nghttp2_map_entry *entry,
+                                             void *ptr)
+{
+  nghttp2_session *session;
+  nghttp2_stream *stream;
+  session = (nghttp2_session*)ptr;
+  stream = (nghttp2_stream*)entry;
+  stream->remote_flow_control = 0;
+  /* If DATA frame is deferred due to flow control, push it back to
+     outbound queue. */
+  if(stream->deferred_data &&
+     (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
+    int rv;
+    rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
+    if(rv == 0) {
+      nghttp2_stream_detach_deferred_data(stream);
+    } else {
+      /* FATAL */
+      assert(rv < NGHTTP2_ERR_FATAL);
+      return rv;
+    }
+  }
+  return 0;
+}
+
+/*
+ * Disable connection-level flow control and stream-level flow control
+ * of existing streams.
+ */
+static int nghttp2_session_disable_flow_control(nghttp2_session *session)
+{
+  session->remote_flow_control = 0;
+  return nghttp2_map_each(&session->streams,
+                          nghttp2_disable_flow_control_func, session);
+}
+
 void nghttp2_session_update_local_settings(nghttp2_session *session,
                                            nghttp2_settings_entry *iv,
                                            size_t niv)
@@ -1642,7 +1678,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       continue;
     }
     check[entry->settings_id] = 1;
-    if(entry->settings_id == NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE) {
+    switch(entry->settings_id) {
+    case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
       if(entry->value < (1u << 31)) {
@@ -1653,6 +1690,15 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       } else {
         return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
       }
+      break;
+    case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
+      if(entry->value == 1) {
+        rv = nghttp2_session_disable_flow_control(session);
+        if(rv != 0) {
+          return rv;
+        }
+      }
+      break;
     }
     session->remote_settings[entry->settings_id] = entry->value;
   }

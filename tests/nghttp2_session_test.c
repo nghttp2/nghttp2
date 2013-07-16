@@ -927,6 +927,10 @@ void test_nghttp2_session_on_settings_received(void)
   CU_ASSERT(16*1024 == stream1->window_size);
   CU_ASSERT(-48*1024 == stream2->window_size);
 
+  CU_ASSERT(0 == stream1->remote_flow_control);
+  CU_ASSERT(0 == stream2->remote_flow_control);
+  CU_ASSERT(0 == session->remote_flow_control);
+
   nghttp2_frame_settings_free(&frame.settings);
 
   nghttp2_session_del(session);
