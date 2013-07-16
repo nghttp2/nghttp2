@@ -1429,10 +1429,8 @@ int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
        stream ID, it MUST issue connection error with error code
        PROTOCOL_ERROR */
     if(session->callbacks.on_invalid_frame_recv_callback) {
-      session->callbacks.on_invalid_frame_recv_callback(session,
-                                                        frame,
-                                                        NGHTTP2_PROTOCOL_ERROR,
-                                                        session->user_data);
+      session->callbacks.on_invalid_frame_recv_callback
+        (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
     }
     return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
   } else {
@@ -1499,10 +1497,7 @@ int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
            with multiple response headers? */
         if(session->callbacks.on_invalid_frame_recv_callback) {
           session->callbacks.on_invalid_frame_recv_callback
-            (session,
-             frame,
-             NGHTTP2_PROTOCOL_ERROR,
-             session->user_data);
+            (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
         }
         return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
       }
@@ -1713,6 +1708,10 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
           return rv;
         }
       } else {
+        if(session->callbacks.on_invalid_frame_recv_callback) {
+          session->callbacks.on_invalid_frame_recv_callback
+            (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
+        }
         return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
       }
       break;
@@ -1727,6 +1726,10 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       } else if(session->remote_settings[entry->settings_id] == 1) {
         /* Re-enabling flow control is subject to connection-level
            error(?) */
+        if(session->callbacks.on_invalid_frame_recv_callback) {
+          session->callbacks.on_invalid_frame_recv_callback
+            (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
+        }
         return nghttp2_session_fail_session(session,
                                             NGHTTP2_FLOW_CONTROL_ERROR);
       }
@@ -1821,6 +1824,10 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
     }
     if(INT32_MAX - frame->window_update.window_size_increment <
        session->window_size) {
+      if(session->callbacks.on_invalid_frame_recv_callback) {
+        session->callbacks.on_invalid_frame_recv_callback
+          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR, session->user_data);
+      }
       return nghttp2_session_fail_session
         (session, NGHTTP2_FLOW_CONTROL_ERROR);
     }
