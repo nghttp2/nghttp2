@@ -7,21 +7,24 @@ version 2.0.
 Development Status
 ------------------
 
-We started work based on spdylay codebase and just replaced spdylay
-keyword with nghttp2. So just now it is just a relabled SPDY
-implementation and is not HTTP/2.0 implementation at all. To take
-advantage of the existing code, we will perform the following steps to
-implement HTTP/2.0 based on implementation draft
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-04):
+We started to implement HTTP-defat-04/2.0
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-04) based on
+spdylay code base.
 
-1. Implement HTTP/2.0 frames and semantics, except for header
-   compression. Server push may be omitted because I am not so
-   interested in it.
-2. Modify spdycat and spdyd to work with new library code and perform
-   internal testing. We use NPN for TLS for now.
-3. Implement header compression, which may be based on draft-x (x >=
-   1).
-4. Add new client and server which can perform HTTP upgrade mechanism.
-5. At this step, the library and demo client/server should be
-   interoperable to the other implementation. Do some interoperable
-   testing with the other ones (e.g., node-http2)
+The following features are not implemented:
+
+* Header compression: currently, the library still uses SPDY/2 style
+  header compression.
+* Header continuation: the library does not handle header continuation
+  and END_HEADERS flag has no meaning.
+* Client connection header: spdycat and spdyd do not send/handle
+  client connection header.
+* ALPN: spdycat and spdyd use openssl without ALPN support and still
+  uses NPN to negotiate HTTP-draft-04/2.0.
+
+With those missing parts, the library is still not inter-operable
+right now.
+
+The spdycat and spdyd are (the names are now odd for HTTP/2.0) working
+now assuming the above limitation. You can see the HTTP/2.0 frames
+back and forth and connection-level and stream level flow controls.
