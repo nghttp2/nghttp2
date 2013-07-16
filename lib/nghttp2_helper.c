@@ -60,11 +60,10 @@ int nghttp2_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
   if(min_length > *buflen_ptr) {
     uint8_t *temp;
     min_length = (min_length+4095)/4096*4096;
-    temp = malloc(min_length);
+    temp = realloc(*buf_ptr, min_length);
     if(temp == NULL) {
       return NGHTTP2_ERR_NOMEM;
     } else {
-      free(*buf_ptr);
       *buf_ptr = temp;
       *buflen_ptr = min_length;
     }
