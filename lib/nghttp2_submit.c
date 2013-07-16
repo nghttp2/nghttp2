@@ -168,7 +168,10 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
                                  int32_t window_size_increment)
 {
   nghttp2_stream *stream;
-  if(window_size_increment <= 0) {
+  flags &= NGHTTP2_FLAG_END_FLOW_CONTROL;
+  if(flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
+    window_size_increment = 0;
+  } else if(window_size_increment <= 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   if(stream_id == 0) {

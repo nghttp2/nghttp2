@@ -1036,6 +1036,26 @@ void test_nghttp2_session_on_window_update_received(void)
   CU_ASSERT(NULL == stream->deferred_data);
 
   nghttp2_frame_window_update_free(&frame.window_update);
+
+  /* Check END_FLOW_CONTROL flag */
+  user_data.frame_recv_cb_called = 0;
+  nghttp2_frame_window_update_init(&frame.window_update,
+                                   NGHTTP2_FLAG_END_FLOW_CONTROL, 1, 0);
+  CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
+  CU_ASSERT(1 == user_data.frame_recv_cb_called);
+  CU_ASSERT(0 == stream->remote_flow_control);
+
+  nghttp2_frame_window_update_free(&frame.window_update);
+
+  user_data.frame_recv_cb_called = 0;
+  nghttp2_frame_window_update_init(&frame.window_update,
+                                   NGHTTP2_FLAG_END_FLOW_CONTROL, 0, 0);
+  CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
+  CU_ASSERT(1 == user_data.frame_recv_cb_called);
+  CU_ASSERT(0 == session->remote_flow_control);
+
+  nghttp2_frame_window_update_free(&frame.window_update);
+
   nghttp2_session_del(session);
 }
 
@@ -1521,6 +1541,21 @@ void test_nghttp2_submit_window_update(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(0 == stream->recv_window_size);
 
+  /* Disable stream-level flow control */
+  CU_ASSERT(0 == nghttp2_submit_window_update(session,
+                                              NGHTTP2_FLAG_END_FLOW_CONTROL,
+                                              2, 0));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == stream->local_flow_control);
+
+  /* Disable connection-level flow control */
+  CU_ASSERT(0 == nghttp2_submit_window_update(session,
+                                              NGHTTP2_FLAG_END_FLOW_CONTROL,
+                                              0, 0));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == session->local_flow_control);
+
+
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 2, 0));
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
@@ -1968,6 +2003,58 @@ void test_nghttp2_session_flow_control(void)
   CU_ASSERT(0 == ud.data_source_length);
   CU_ASSERT(nghttp2_session_get_stream(session, 1)->shut_flags &
             NGHTTP2_SHUT_WR);
+
+  nghttp2_frame_window_update_free(&frame.window_update);
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_flow_control_disable(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  const char *nv[] = { NULL };
+  my_user_data ud;
+  nghttp2_data_provider data_prd;
+  nghttp2_frame frame;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+  data_prd.read_callback = fixed_length_data_source_read_callback;
+
+  ud.frame_send_cb_called = 0;
+  ud.data_source_length = 128*1024;
+
+  /* Initial window size is 64KiB */
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+  nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT, nv, &data_prd, NULL);
+
+  /* Sends 64KiB data */
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(64*1024 == ud.data_source_length);
+
+  /* Disable stream flow control */
+  nghttp2_frame_window_update_init(&frame.window_update,
+                                   NGHTTP2_FLAG_END_FLOW_CONTROL, 1, 0);
+  nghttp2_session_on_window_update_received(session, &frame);
+
+  /* Check stream-level remote_flow_control is disabled */
+  CU_ASSERT(0 == nghttp2_session_get_stream(session, 1)->remote_flow_control);
+
+  /* Still nothing is sent because of connection-level flow control */
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(64*1024 == ud.data_source_length);
+
+  /* Disable connection-level flow control */
+  frame.hd.stream_id = 0;
+  nghttp2_session_on_window_update_received(session, &frame);
+
+  /* Check connection-level remote_flow_control is disabled */
+  CU_ASSERT(0 == session->remote_flow_control);
+
+  /* Sends remaining data */
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == ud.data_source_length);
 
   nghttp2_frame_window_update_free(&frame.window_update);
   nghttp2_session_del(session);

@@ -1124,6 +1124,17 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       session->goaway_flags |= NGHTTP2_GOAWAY_SEND;
       break;
     case NGHTTP2_WINDOW_UPDATE:
+      if(frame->hd.flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
+        if(frame->hd.stream_id == 0) {
+          session->local_flow_control = 0;
+        } else {
+          nghttp2_stream *stream;
+          stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+          if(stream) {
+            stream->local_flow_control = 0;
+          }
+        }
+      }
       break;
     }
     nghttp2_active_outbound_item_reset(&session->aob);
@@ -1795,6 +1806,17 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
          receiving WINDOW_UPDATE are asynchronous, so it is hard to
          determine that the peer is misbehaving or not without
          measuring RTT. For now, we just ignore such frames. */
+      nghttp2_session_call_on_frame_received(session, frame);
+      return 0;
+    }
+    if(frame->hd.flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
+      if(session->remote_flow_control) {
+        /* Disable connection-level flow control and push back
+           deferred DATA frame if any */
+        session->remote_flow_control = 0;
+        nghttp2_session_call_on_frame_received(session, frame);
+        return nghttp2_session_push_back_deferred_data(session);
+      }
       return 0;
     }
     if(INT32_MAX - frame->window_update.window_size_increment <
@@ -1817,6 +1839,25 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
     if(stream) {
       if(stream->remote_flow_control == 0) {
         /* Same reason with connection-level flow control */
+        nghttp2_session_call_on_frame_received(session, frame);
+        return 0;
+      }
+      if(frame->hd.flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
+        stream->remote_flow_control = 0;
+        if(stream->remote_flow_control &&
+           stream->deferred_data != NULL &&
+           (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
+          int r;
+          r = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
+          if(r == 0) {
+            nghttp2_stream_detach_deferred_data(stream);
+          } else if(r < 0) {
+            /* FATAL */
+            assert(r < NGHTTP2_ERR_FATAL);
+            return r;
+          }
+        }
+        nghttp2_session_call_on_frame_received(session, frame);
         return 0;
       }
       if(INT32_MAX - frame->window_update.window_size_increment <

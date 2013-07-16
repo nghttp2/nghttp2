@@ -1543,13 +1543,17 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  * Submits WINDOW_UPDATE frame. The effective range of the
  * |window_size_increment| is [1, (1 << 31)-1], inclusive. But the
  * application must be responsible to keep the resulting window size
- * <= (1 << 31)-1.
+ * <= (1 << 31)-1. If NGHTTP2_FLAG_END_FLOW_CONTROL bit set in the
+ * |flags|, 0 can be specified in the |window_size_increment|. In
+ * fact, if this flag is set, the value specified in the
+ * |window_size_increment| is ignored.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |delta_window_size| is 0 or negative.
+ *     The |delta_window_size| is 0 or negative if
+ *     NGHTTP2_FLAG_END_FLOW_CONTROL bit is not set in |flags|.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream is already closed or does not exist.
  * :enum:`NGHTTP2_ERR_NOMEM`
