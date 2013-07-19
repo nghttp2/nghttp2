@@ -176,7 +176,6 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   nghttp2_frame_headers_init(&frame, NGHTTP2_FLAG_END_STREAM, 1000000007,
                              0, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&buf, &buflen, &frame, &deflater);
-  printf("framelen=%ld\n", framelen);
   CU_ASSERT_EQUAL(NGHTTP2_ERR_HEADER_COMP, framelen);
 
   nghttp2_frame_headers_free(&frame);
