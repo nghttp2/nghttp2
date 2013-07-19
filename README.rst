@@ -27,3 +27,55 @@ right now.
 The spdycat and spdyd are (the names are now odd for HTTP/2.0) working
 now assuming the above limitation. You can see the HTTP/2.0 frames
 back and forth and connection-level and stream level flow controls.
+
+Here is sample output from spdycat::
+
+    $ src/spdycat https://localhost:3000/COPYING http://localhost:3000/AUTHORS  -nv --no-tls
+    [  0.000] Handshake complete
+    [  0.000] recv SETTINGS frame <length=8, flags=0, stream_id=0>
+              (niv=1)
+              [4:100]
+    [  0.000] send HEADERS frame <length=72, flags=5, stream_id=1>
+              ; END_STREAM | END_HEADERS
+              ; Open new stream
+              :host: localhost:3000
+              :method: GET
+              :path: /COPYING
+              :scheme: https
+              accept: */*
+              accept-encoding: gzip, deflate
+              user-agent: nghttp2/0.1.0-DEV
+    [  0.000] send HEADERS frame <length=14, flags=5, stream_id=3>
+              ; END_STREAM | END_HEADERS
+              ; Open new stream
+              :host: localhost:3000
+              :method: GET
+              :path: /AUTHORS
+              :scheme: http
+              accept: */*
+              accept-encoding: gzip, deflate
+              user-agent: nghttp2/0.1.0-DEV
+    [  0.001] recv HEADERS frame <length=121, flags=4, stream_id=1>
+              ; END_HEADERS
+              ; First response header
+              :status: 200 OK
+              cache-control: max-age=3600
+              content-length: 1080
+              date: Fri, 19 Jul 2013 17:02:21 GMT
+              last-modified: Fri, 12 Jul 2013 14:55:22 GMT
+              server: spdyd nghttp2/0.1.0-DEV
+    [  0.001] recv DATA frame (length=1080, flags=0, stream_id=1)
+    [  0.001] recv DATA frame (length=0, flags=1, stream_id=1)
+    [  0.001] recv HEADERS frame <length=6, flags=4, stream_id=3>
+              ; END_HEADERS
+              ; First response header
+              :status: 200 OK
+              cache-control: max-age=3600
+              content-length: 66
+              date: Fri, 19 Jul 2013 17:02:21 GMT
+              last-modified: Fri, 12 Jul 2013 14:55:22 GMT
+              server: spdyd nghttp2/0.1.0-DEV
+    [  0.001] recv DATA frame (length=66, flags=0, stream_id=3)
+    [  0.001] recv DATA frame (length=0, flags=1, stream_id=3)
+    [  0.001] send GOAWAY frame <length=8, flags=0, stream_id=0>
+              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data=)
