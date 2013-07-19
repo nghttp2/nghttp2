@@ -385,6 +385,7 @@ static int add_workingset(nghttp2_hd_context *context, nghttp2_hd_entry *ent)
   ws_ent = &context->ws[context->wslen++];
   ws_ent->cat = NGHTTP2_HD_CAT_INDEXED;
   ws_ent->indexed.entry = ent;
+  ws_ent->indexed.index = ent->index;
   ws_ent->indexed.checked = 1;
   ++ent->ref;
   return 0;
