@@ -1214,6 +1214,8 @@ int nghttp2_session_send(nghttp2_session *session)
          framebuflen == NGHTTP2_ERR_CREDENTIAL_PENDING) {
         continue;
       } else if(framebuflen < 0) {
+        /* TODO If the error comes from compressor, the connection
+           must be closed. */
         if(item->frame_cat == NGHTTP2_CAT_CTRL &&
            session->callbacks.on_frame_not_send_callback &&
            nghttp2_is_non_fatal(framebuflen)) {
