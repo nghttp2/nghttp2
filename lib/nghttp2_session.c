@@ -388,6 +388,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
     return r;
   }
   item->inipri = item->pri;
+  item->pridecay = 1;
   return 0;
 }
 
@@ -979,12 +980,19 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
 static void nghttp2_outbound_item_adjust_pri(nghttp2_session *session,
                                              nghttp2_outbound_item *item)
 {
+  assert(item->pri > 0);
   if(item->pri == NGHTTP2_PRI_LOWEST) {
-    item->pri = item->inipri;
-  } else if(item->pri > (int32_t)NGHTTP2_PRI_LOWEST/2) {
+    nghttp2_stream *stream;
+    stream = nghttp2_session_get_stream
+      (session, nghttp2_outbound_item_get_data_frame(item)->hd.stream_id);
+    assert(stream);
+    item->pri = item->inipri = stream->pri;
+    item->pridecay = 1;
+  } else if(item->pri + item->pridecay > NGHTTP2_PRI_LOWEST) {
     item->pri = NGHTTP2_PRI_LOWEST;
   } else {
-    item->pri *= 2;
+    item->pri = item->inipri + item->pridecay;
+    item->pridecay *= 2;
   }
 }
 

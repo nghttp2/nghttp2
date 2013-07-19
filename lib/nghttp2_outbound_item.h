@@ -56,12 +56,13 @@ typedef struct {
      inipri. The item is chosen from the queue based on pri and
      seq. For control frames, they consist of just 1 frame and pri
      does not change. For DATA frame, they could split up to several
-     frames. After sending a frame, the pri is increased by 1. If it
-     becomes more than lowest priority, then it returns back to inipri
-     and do the same sequence again and again. By doing this, the
-     higher priority long DATA frames don't starve the lower
-     prioritized streams. */
+     frames. After sending a frame, the pri becomes |inipri| +
+     |pridecay| and |pridecay| is multiplied by 2. If it becomes more
+     than lowest priority, then it returns back to |inipri| and do the
+     same sequence again and again. By doing this, the higher priority
+     long DATA frames don't starve the lower prioritized streams. */
   int pri;
+  uint32_t pridecay;
   int64_t seq;
 } nghttp2_outbound_item;
 
