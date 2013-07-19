@@ -274,12 +274,12 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
   nghttp2_hd_entry *new_ent;
   size_t room = entry_room(nv->namelen, nv->valuelen);
   if(context->hd_tablelen == context->hd_table_capacity ||
-     room > NGHTTP2_MAX_HD_TABLE_CAPACITY) {
+     room > NGHTTP2_HD_MAX_BUFFER_SIZE) {
     return NULL;
   }
   context->hd_table_bufsize += room;
   for(i = 0; i < context->hd_tablelen &&
-        context->hd_table_bufsize > NGHTTP2_MAX_HD_TABLE_CAPACITY; ++i) {
+        context->hd_table_bufsize > NGHTTP2_HD_MAX_BUFFER_SIZE; ++i) {
     nghttp2_hd_entry *ent = context->hd_table[i];
     --ent->ref;
     context->hd_table_bufsize -= entry_room(ent->nv.namelen, ent->nv.valuelen);
@@ -319,7 +319,7 @@ static nghttp2_hd_entry* add_hd_table_subst(nghttp2_hd_context *context,
   int k;
   nghttp2_hd_entry *new_ent;
   size_t room = entry_room(nv->namelen, nv->valuelen);
-  if(room > NGHTTP2_MAX_HD_TABLE_CAPACITY ||
+  if(room > NGHTTP2_HD_MAX_BUFFER_SIZE ||
      context->hd_tablelen <= subindex) {
     return NULL;
   }
@@ -329,7 +329,7 @@ static nghttp2_hd_entry* add_hd_table_subst(nghttp2_hd_context *context,
   context->hd_table_bufsize += room;
   k = subindex;
   for(i = 0; i < context->hd_tablelen &&
-        context->hd_table_bufsize > NGHTTP2_MAX_HD_TABLE_CAPACITY; ++i, --k) {
+        context->hd_table_bufsize > NGHTTP2_HD_MAX_BUFFER_SIZE; ++i, --k) {
     nghttp2_hd_entry *ent = context->hd_table[i];
     --ent->ref;
     if(i != subindex) {
@@ -730,7 +730,7 @@ static int require_eviction_on_subst(nghttp2_hd_context *context,
 {
   return context->hd_table_bufsize - entry_room(ent->nv.namelen,
                                                 ent->nv.valuelen) +
-    entry_room(nv->namelen, nv->valuelen) > NGHTTP2_MAX_HD_TABLE_CAPACITY;
+    entry_room(nv->namelen, nv->valuelen) > NGHTTP2_HD_MAX_BUFFER_SIZE;
 }
 
 ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
