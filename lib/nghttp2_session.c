@@ -142,8 +142,6 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
   (*session_ptr)->last_stream_id = 0;
 
-  (*session_ptr)->max_recv_ctrl_frame_buf = NGHTTP2_MAX_FRAME_SIZE;
-
   r = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater, side);
   if(r != 0) {
     goto fail_hd_deflater;
@@ -2549,18 +2547,6 @@ int nghttp2_session_set_option(nghttp2_session *session,
         session->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE;
       } else {
         session->opt_flags &= ~NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE;
-      }
-    } else {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-    break;
-  case NGHTTP2_OPT_MAX_RECV_CTRL_FRAME_BUFFER:
-    if(optlen == sizeof(uint32_t)) {
-      uint32_t intval = *(uint32_t*)optval;
-      if((1 << 13) <= intval && intval < (1 << 24)) {
-        session->max_recv_ctrl_frame_buf = intval;
-      } else {
-        return NGHTTP2_ERR_INVALID_ARGUMENT;
       }
     } else {
       return NGHTTP2_ERR_INVALID_ARGUMENT;

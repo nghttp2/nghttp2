@@ -347,8 +347,6 @@ void test_nghttp2_session_recv(void)
 
   /* Some tests for frame too large */
   nghttp2_session_server_new(&session, &callbacks, &user_data);
-  /* made max buffer small to cause error intentionally */
-  session->max_recv_ctrl_frame_buf = 8;
 
   /* Receive PING with too large payload */
   nghttp2_frame_ping_init(&frame.ping, NGHTTP2_FLAG_NONE, NULL);

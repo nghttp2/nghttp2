@@ -186,8 +186,6 @@ struct nghttp2_session {
 
   /* Option flags. This is bitwise-OR of 0 or more of nghttp2_optmask. */
   uint32_t opt_flags;
-  /* Maxmum size of buffer to use when receving control frame. */
-  uint32_t max_recv_ctrl_frame_buf;
 
   nghttp2_session_callbacks callbacks;
   void *user_data;

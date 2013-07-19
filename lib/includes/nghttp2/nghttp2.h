@@ -1012,11 +1012,6 @@ typedef enum {
    * `nghttp2_submit_window_update`.
    */
   NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE = 1,
-  /**
-   * This option sets maximum receive buffer size for incoming control
-   * frame.
-   */
-  NGHTTP2_OPT_MAX_RECV_CTRL_FRAME_BUFFER = 2
 } nghttp2_opt;
 
 /**
@@ -1036,11 +1031,6 @@ typedef enum {
  *     Therefore, the application is responsible for sending
  *     WINDOW_UPDATE using `nghttp2_submit_window_update`. This option
  *     defaults to 0.
- *
- * :enum:`NGHTTP2_OPT_MAX_RECV_CTRL_FRAME_BUFFER`
- *     The |optval| must be a pointer to ``uint32_t``. The |*optval|
- *     must be in the range [(1 << 13), (1 << 24)-1], inclusive. This
- *     option defaults to (1 << 24)-1.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
