@@ -58,7 +58,7 @@ public:
   int submit_request(const std::string& scheme,
                      const std::string& hostport, const std::string& path,
                      const std::map<std::string,std::string>& headers,
-                     uint8_t pri,
+                     int32_t pri,
                      const nghttp2_data_provider *data_prd,
                      int64_t data_length,
                      void *stream_user_data);

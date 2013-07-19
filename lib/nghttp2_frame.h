@@ -33,13 +33,6 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_buffer.h"
 
-/**
- * @macro
- * default priority value
- */
-#define NGHTTP2_PRI_DEFAULT (1 << 30)
-#define NGHTTP2_PRI_LOWEST ((1U << 31) - 1)
-
 #define NGHTTP2_MAX_FRAME_SIZE ((1 << 16) - 1)
 
 #define NGHTTP2_STREAM_ID_MASK 0x7fffffff

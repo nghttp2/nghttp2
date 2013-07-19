@@ -46,6 +46,13 @@ struct nghttp2_session;
 typedef struct nghttp2_session nghttp2_session;
 
 /**
+ * @macro
+ * default priority value
+ */
+#define NGHTTP2_PRI_DEFAULT (1 << 30)
+#define NGHTTP2_PRI_LOWEST ((1U << 31) - 1)
+
+/**
  * @enum
  *
  * Error codes used in this library. The code range is [-999, -500],

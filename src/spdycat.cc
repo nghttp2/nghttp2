@@ -373,7 +373,8 @@ void submit_request(Spdylay& sc, const std::string& hostport,
 {
   std::string path = req->make_reqpath();
   int r = sc.submit_request(get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA),
-                            hostport, path, headers, 3, req->data_prd,
+                            hostport, path, headers,
+                            NGHTTP2_PRI_DEFAULT, req->data_prd,
                             req->data_length, req);
   assert(r == 0);
 }
