@@ -32,7 +32,7 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 lib_LTLIBRARIES = libnghttp2.la
 
 OBJECTS = nghttp2_pq.c nghttp2_map.c nghttp2_queue.c \
-	nghttp2_buffer.c nghttp2_frame.c nghttp2_zlib.c \
+	nghttp2_buffer.c nghttp2_frame.c \
 	nghttp2_stream.c nghttp2_outbound_item.c \
 	nghttp2_session.c nghttp2_submit.c \
 	nghttp2_helper.c \
@@ -40,7 +40,7 @@ OBJECTS = nghttp2_pq.c nghttp2_map.c nghttp2_queue.c \
 	nghttp2_hd.c
 
 HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
-	nghttp2_buffer.h nghttp2_frame.h nghttp2_zlib.h \
+	nghttp2_buffer.h nghttp2_frame.h \
 	nghttp2_session.h nghttp2_helper.h nghttp2_stream.h nghttp2_int.h \
 	nghttp2_npn.h nghttp2_gzip.h \
 	nghttp2_submit.h nghttp2_outbound_item.h \

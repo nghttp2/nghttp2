@@ -98,8 +98,6 @@ const char* nghttp2_strerror(int error_code)
     return "Success";
   case NGHTTP2_ERR_INVALID_ARGUMENT:
     return "Invalid argument";
-  case NGHTTP2_ERR_ZLIB:
-    return "Zlib error";
   case NGHTTP2_ERR_UNSUPPORTED_VERSION:
     return "Unsupported SPDY version";
   case NGHTTP2_ERR_WOULDBLOCK:

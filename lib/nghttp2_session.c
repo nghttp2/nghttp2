@@ -1933,12 +1933,14 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       }
       nghttp2_frame_headers_free(&frame.headers);
       nghttp2_hd_end_headers(&session->hd_inflater);
-    } else if(r == NGHTTP2_ERR_INVALID_HEADER_BLOCK ||
-              r == NGHTTP2_ERR_FRAME_TOO_LARGE) {
+    } else if(r == NGHTTP2_ERR_INVALID_HEADER_BLOCK) {
       r = nghttp2_session_handle_invalid_stream
         (session, frame.hd.stream_id, &frame,
          nghttp2_get_status_code_from_error_code(r));
+      /* TODO test this. It seems NGHTTP2_ERR_INVALID_HEADER_BLOCK is
+         not used in framing anymore. */
       nghttp2_frame_headers_free(&frame.headers);
+      nghttp2_hd_end_headers(&session->hd_inflater);
     } else if(nghttp2_is_non_fatal(r)) {
       nghttp2_session_handle_parse_error(session, type, r);
       r = nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);

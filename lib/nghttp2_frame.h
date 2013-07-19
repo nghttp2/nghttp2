@@ -352,35 +352,6 @@ size_t nghttp2_frame_count_nv_space(char **nv, size_t len_size);
 ssize_t nghttp2_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size);
 
 /*
- * Unpacks name/value header block in wire format |in| and stores them
- * in |*nv_ptr|.  Thif function allocates enough memory to store
- * name/value pairs in |*nv_ptr|.  |len_size| is the number of bytes
- * in length of name/value pair and it must be 2 or 4.
- *
- * This function also validates the name/value pairs. If unpacking
- * succeeds but validation fails, it is indicated by returning
- * NGHTTP2_ERR_INVALID_HEADER_BLOCK.
- *
- * If error other than NGHTTP2_ERR_INVALID_HEADER_BLOCK is returned,
- * the |nv_ptr| is not assigned. In other words,
- * NGHTTP2_ERR_INVALID_HEADER_BLOCK means unpacking succeeded, but
- * header block validation failed.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_INVALID_HEADER_BLOCK
- *     Unpacking succeeds but the header block is invalid. The
- *     possible reasons are: There are duplicate header names; or the
- *     header names are not encoded in US-ASCII character set and not
- *     lower cased; or the header name is zero-length string.
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_frame_unpack_nv(char ***nv_ptr, nghttp2_buffer *in,
-                            size_t len_size);
-
-/*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
  * ownership of |nva|, so caller must not free it. If |stream_id| is
  * not assigned yet, it must be -1.

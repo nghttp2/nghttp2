@@ -57,10 +57,6 @@ typedef enum {
    */
   NGHTTP2_ERR_INVALID_ARGUMENT = -501,
   /**
-   * Zlib error.
-   */
-  NGHTTP2_ERR_ZLIB = -502,
-  /**
    * The specified protocol version is not supported.
    */
   NGHTTP2_ERR_UNSUPPORTED_VERSION = -503,
@@ -967,8 +963,6 @@ typedef struct {
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
- * :enum:`NGHTTP2_ERR_ZLIB`
- *     The z_stream initialization failed.
  */
 int nghttp2_session_client_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
@@ -992,8 +986,6 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
- * :enum:`NGHTTP2_ERR_ZLIB`
- *     The z_stream initialization failed.
  */
 int nghttp2_session_server_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
