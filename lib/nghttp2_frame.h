@@ -40,6 +40,8 @@
 #define NGHTTP2_PRI_DEFAULT (1 << 30)
 #define NGHTTP2_PRI_LOWEST ((1U << 31) - 1)
 
+#define NGHTTP2_MAX_FRAME_SIZE ((1 << 16) - 1)
+
 #define NGHTTP2_STREAM_ID_MASK 0x7fffffff
 #define NGHTTP2_PRIORITY_MASK 0x7fffffff
 #define NGHTTP2_WINDOW_SIZE_INCREMENT_MASK 0x7fffffff
@@ -570,5 +572,14 @@ ssize_t nghttp2_frame_nv_offset(const uint8_t *head);
  * This function returns nonzero if it succeeds, or 0.
  */
 int nghttp2_frame_nv_check_null(const char **nv);
+
+/*
+ * Returns nonzero if the name/value pair |a| equals to |b|. The name
+ * is compared in case-sensitive, because we ensure that this function
+ * is called after the name is lower-cased.
+ */
+int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b);
+
+void nghttp2_nv_array_free(nghttp2_nv *nva);
 
 #endif /* NGHTTP2_FRAME_H */

@@ -156,6 +156,10 @@ typedef enum {
    */
   NGHTTP2_ERR_FRAME_TOO_LARGE = -522,
   /**
+   * Header block inflate/deflate error.
+   */
+  NGHTTP2_ERR_HEADER_COMP = -523,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -174,6 +178,31 @@ typedef enum {
 typedef enum {
   NGHTTP2_MSG_MORE
 } nghttp2_io_flag;
+
+/**
+ * @struct
+ *
+ * The name/value pair, which mainly used to represent header fields.
+ */
+typedef struct {
+  /**
+   * The |name| byte string, which is not necessarily NULL terminated.
+   */
+  uint8_t *name;
+  /**
+   * The |value| byte string, which is not necessarily NULL
+   * terminated.
+   */
+  uint8_t *value;
+  /**
+   * The length of the |name|.
+   */
+  uint16_t namelen;
+  /**
+   * The length of the |value|.
+   */
+  uint16_t valuelen;
+} nghttp2_nv;
 
 /**
  * @enum

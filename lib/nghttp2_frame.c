@@ -839,3 +839,15 @@ int nghttp2_frame_nv_check_null(const char **nv)
   }
   return 1;
 }
+
+int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b)
+{
+  return a->namelen == b->namelen && a->valuelen == b->valuelen &&
+    memcmp(a->name, b->name, a->namelen) == 0 &&
+    memcmp(a->value, b->value, a->valuelen) == 0;
+}
+
+void nghttp2_nv_array_free(nghttp2_nv *nva)
+{
+  free(nva);
+}

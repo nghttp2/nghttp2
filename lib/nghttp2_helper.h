@@ -77,4 +77,16 @@ uint32_t nghttp2_get_uint32(const uint8_t *data);
 int nghttp2_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
                            size_t min_length);
 
+/*
+ * Allocates |n| bytes of memory and copy the meory region pointed by
+ * |src| with the length |n| bytes into it. Returns the allocated memory.
+ *
+ * This function returns pointer to allocated memory, or one of the
+ * following negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+void* nghttp2_memdup(const void* src, size_t n);
+
 #endif /* NGHTTP2_HELPER_H */
