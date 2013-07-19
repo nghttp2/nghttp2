@@ -159,7 +159,7 @@ void test_nghttp2_hd_inflate_newname_inc(void)
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_literal_block(&buf, &buflen, &offset,
+  CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                &nv, 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
@@ -267,7 +267,7 @@ void test_nghttp2_hd_inflate_newname_subst(void)
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_subst_literal_block(&buf, &buflen, &offset,
+  CU_ASSERT(0 == nghttp2_hd_emit_subst_newname_block(&buf, &buflen, &offset,
                                                      &nv, 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);

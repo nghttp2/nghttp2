@@ -225,7 +225,7 @@ int nghttp2_hd_emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                   int inc_indexing);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_literal_block(uint8_t **buf_ptr, size_t *buflen_ptr,
+int nghttp2_hd_emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                   size_t *offset_ptr, nghttp2_nv *nv,
                                   int inc_indexing);
 
@@ -237,7 +237,7 @@ int nghttp2_hd_emit_subst_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                         size_t index);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_subst_literal_block(uint8_t **buf_ptr, size_t *buflen_ptr,
+int nghttp2_hd_emit_subst_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                         size_t *offset_ptr, nghttp2_nv *nv,
                                         size_t index);
 
