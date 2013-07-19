@@ -89,4 +89,6 @@ int nghttp2_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
  */
 void* nghttp2_memdup(const void* src, size_t n);
 
+void nghttp2_downcase(uint8_t *s, size_t len);
+
 #endif /* NGHTTP2_HELPER_H */

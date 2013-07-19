@@ -541,10 +541,13 @@ void prepare_response(Request *req, SpdyEventHandler *hd)
 } // namespace
 
 namespace {
-void append_nv(Request *req, char **nv)
+void append_nv(Request *req, nghttp2_nv *nva, size_t nvlen)
 {
-  for(int i = 0; nv[i]; i += 2) {
-    req->headers.push_back(std::make_pair(nv[i], nv[i+1]));
+  for(size_t i = 0; i < nvlen; ++i) {
+    req->headers.push_back({
+        std::string(nva[i].name, nva[i].name + nva[i].namelen),
+        std::string(nva[i].value, nva[i].value + nva[i].valuelen)
+    });
   }
 }
 } // namespace
@@ -564,13 +567,13 @@ void hd_on_frame_recv_callback
     case NGHTTP2_HCAT_START_STREAM: {
       int32_t stream_id = frame->hd.stream_id;
       auto req = new Request(stream_id);
-      append_nv(req, frame->headers.nv);
+      append_nv(req, frame->headers.nva, frame->headers.nvlen);
       hd->add_stream(stream_id, req);
       break;
     }
     case NGHTTP2_HCAT_HEADERS: {
       Request *req = hd->get_stream(frame->hd.stream_id);
-      append_nv(req, frame->headers.nv);
+      append_nv(req, frame->headers.nva, frame->headers.nvlen);
       break;
     }
     default:

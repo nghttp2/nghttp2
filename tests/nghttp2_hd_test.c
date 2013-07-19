@@ -51,7 +51,6 @@ void test_nghttp2_hd_deflate(void)
                        MAKE_NV("hello", "world")};
   nghttp2_nv nva2[] = {MAKE_NV(":path", "/script.js"),
                        MAKE_NV(":scheme", "https")};
-  nghttp2_nv nvtemp;
   size_t nv_offset = 12;
   uint8_t *buf = NULL;
   size_t buflen = 0;
@@ -71,7 +70,7 @@ void test_nghttp2_hd_deflate(void)
 
   assert_nv_equal(nva1, resnva, 3);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
   CU_ASSERT(1 == inflater.refsetlen);
@@ -85,13 +84,9 @@ void test_nghttp2_hd_deflate(void)
   CU_ASSERT(2 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf + nv_offset,
                                        blocklen));
 
-  /* First and second header fields are interchanged their positions. */
-  nvtemp = nva2[0];
-  nva2[0] = nva2[1];
-  nva2[1] = nvtemp;
   assert_nv_equal(nva2, resnva, 2);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
   free(buf);
@@ -118,7 +113,7 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   CU_ASSERT(39 == inflater.hd_tablelen);
   assert_nv_equal(&nv, &inflater.hd_table[inflater.hd_tablelen-1]->nv, 1);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
 }
@@ -144,7 +139,7 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   CU_ASSERT(0 == memcmp(":host", resnva[0].name, resnva[0].namelen));
   CU_ASSERT(sizeof(value) == resnva[0].valuelen);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
   CU_ASSERT(38 == inflater.hd_tablelen);
@@ -171,7 +166,7 @@ void test_nghttp2_hd_inflate_newname_inc(void)
   CU_ASSERT(39 == inflater.hd_tablelen);
   assert_nv_equal(&nv, &inflater.hd_table[inflater.hd_tablelen-1]->nv, 1);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
 }
@@ -195,7 +190,7 @@ void test_nghttp2_hd_inflate_indname_subst(void)
   CU_ASSERT(38 == inflater.hd_tablelen);
   assert_nv_equal(&nv, &inflater.hd_table[12]->nv, 1);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
 }
@@ -221,7 +216,7 @@ void test_nghttp2_hd_inflate_indname_subst_eviction(void)
   CU_ASSERT(0 == memcmp(":host", resnva[0].name, resnva[0].namelen));
   CU_ASSERT(sizeof(value) == resnva[0].valuelen);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
   CU_ASSERT(37 == inflater.hd_tablelen);
@@ -252,7 +247,7 @@ void test_nghttp2_hd_inflate_indname_subst_eviction_neg(void)
   CU_ASSERT(0 == memcmp(":host", resnva[0].name, resnva[0].namelen));
   CU_ASSERT(sizeof(value) == resnva[0].valuelen);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
   CU_ASSERT(37 == inflater.hd_tablelen);
@@ -279,7 +274,7 @@ void test_nghttp2_hd_inflate_newname_subst(void)
   CU_ASSERT(38 == inflater.hd_tablelen);
   assert_nv_equal(&nv, &inflater.hd_table[1]->nv, 1);
 
-  nghttp2_nv_array_free(resnva);
+  nghttp2_nv_array_del(resnva);
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
 }

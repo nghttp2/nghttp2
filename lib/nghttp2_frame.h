@@ -30,7 +30,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
-#include "nghttp2_zlib.h"
+#include "nghttp2_hd.h"
 #include "nghttp2_buffer.h"
 
 /**
@@ -91,13 +91,9 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
 /*
  * Packs HEADERS frame |frame| in wire format and store it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
- * The |*nvbuf_ptr| is used to store inflated name/value pairs in wire
- * format temporarily. Its length is |*nvbuflen_ptr| bytes.  This
- * function expands |*buf_ptr| and |*nvbuf_ptr| as necessary to store
- * frame and name/value pairs. When expansion occurred, memory
- * previously pointed by |*buf_ptr| and |*nvbuf_ptr| is freed.
- * |*buf_ptr|, |*buflen_ptr|, |*nvbuf_ptr| and |*nvbuflen_ptr| are
- * updated accordingly.
+ * This function expands |*buf_ptr| as necessary to store frame. When
+ * expansion occurred, memory previously pointed by |*buf_ptr| may be
+ * freed.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
  * frame->hd.length is assigned after length is determined during
  * packing process.
@@ -105,7 +101,7 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
  *
- * NGHTTP2_ERR_ZLIB
+ * NGHTTP2_ERR_HEADER_COMP
  *     The deflate operation failed.
  * NGHTTP2_ERR_FRAME_TOO_LARGE
  *     The length of the frame is too large.
@@ -114,10 +110,8 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
  */
 ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *buflen_ptr,
-                                   uint8_t **nvbuf_ptr,
-                                   size_t *nvbuflen_ptr,
                                    nghttp2_headers *frame,
-                                   nghttp2_zlib *deflater);
+                                   nghttp2_hd_context *deflater);
 
 /*
  * Unpacks HEADERS frame byte sequence into |frame|.  The control
@@ -125,8 +119,7 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
  * headlen is 8 bytes. |payload| is the data after frame header and
  * just before name/value header block.
  *
- * The |inflatebuf| contains inflated name/value header block in wire
- * foramt.
+ * The |inflater| inflates name/value header block.
  *
  * This function also validates the name/value pairs. If unpacking
  * succeeds but validation fails, it is indicated by returning
@@ -135,6 +128,8 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
+ * NGHTTP2_ERR_HEADER_COMP
+ *     The inflate operation failed.
  * NGHTTP2_ERR_INVALID_HEADER_BLOCK
  *     Unpacking succeeds but the header block is invalid.
  * NGHTTP2_ERR_INVALID_FRAME
@@ -145,7 +140,7 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
 int nghttp2_frame_unpack_headers(nghttp2_headers *frame,
                                  const uint8_t *head, size_t headlen,
                                  const uint8_t *payload, size_t payloadlen,
-                                 nghttp2_buffer *inflatebuf);
+                                 nghttp2_hd_context *inflater);
 
 /*
  * Unpacks HEADERS frame byte sequence into |frame|. This function
@@ -357,63 +352,6 @@ size_t nghttp2_frame_count_nv_space(char **nv, size_t len_size);
 ssize_t nghttp2_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size);
 
 /*
- * Packs name/value pairs in |nv| in |*buf_ptr| with offset
- * |nv_offset|.  It means first byte of packed name/value pairs is
- * stored in |*buf_ptr|+|nv_offset|.  |*buf_ptr| and |*nvbuf_ptr| are
- * expanded as necessary.
- *
- * This function returns the number of the bytes for the frame
- * containing this name/value pairs if it succeeds, or one of the
- * following negative error codes:
- *
- * NGHTTP2_ERR_ZLIB
- *     The deflate operation failed.
- * NGHTTP2_ERR_FRAME_TOO_LARGE
- *     The length of the frame is too large.
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-ssize_t nghttp2_frame_alloc_pack_nv(uint8_t **buf_ptr,
-                                    size_t *buflen_ptr,
-                                    uint8_t **nvbuf_ptr,
-                                    size_t *nvbuflen_ptr,
-                                    char **nv, size_t nv_offset,
-                                    size_t len_size,
-                                    nghttp2_zlib *deflater);
-
-/*
- * Counts number of name/value pair in |in| and computes length of
- * buffers to store unpacked name/value pair and store them in
- * |*nvlen_ptr| and |*buflen_ptr| respectively. |len_size| is the
- * number of bytes in length of name/value pair and it must be 2 or
- * 4. We use folloing data structure in |*buflen_ptr| size.  First
- * part of the data is array of pointer to name/value pair.  Supporse
- * the buf pointer points to the data region and N is the number of
- * name/value pair.  First (N*2+1)*sizeof(char*) bytes contain array
- * of pointer to name/value pair and terminating NULL.  Each pointer
- * to name/value pair points to the string in remaining data.  For
- * each name/value pair, the name is copied to the remaining data with
- * terminating NULL character. The value is also copied to the
- * position after the data with terminating NULL character. The
- * corresponding index is assigned to these pointers. If the value
- * contains multiple values (delimited by single NULL), for each such
- * data, corresponding index is assigned to name/value pointers. In
- * this case, the name string is reused.
- *
- * With the above stragety, |*buflen_ptr| is calculated as
- * (N*2+1)*sizeof(char*)+sum(strlen(name)+1+strlen(value)+1){for each
- * name/value pair}.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
- */
-int nghttp2_frame_count_unpack_nv_space(size_t *nvlen_ptr, size_t *buflen_ptr,
-                                        nghttp2_buffer *in, size_t len_size);
-
-/*
  * Unpacks name/value header block in wire format |in| and stores them
  * in |*nv_ptr|.  Thif function allocates enough memory to store
  * name/value pairs in |*nv_ptr|.  |len_size| is the number of bytes
@@ -443,13 +381,13 @@ int nghttp2_frame_unpack_nv(char ***nv_ptr, nghttp2_buffer *in,
                             size_t len_size);
 
 /*
- * Initializes HEADERS frame |frame| with given values.  |frame|
- * takes ownership of |nv|, so caller must not free it. If |stream_id|
- * is not assigned yet, it must be -1.
+ * Initializes HEADERS frame |frame| with given values.  |frame| takes
+ * ownership of |nva|, so caller must not free it. If |stream_id| is
+ * not assigned yet, it must be -1.
  */
 void nghttp2_frame_headers_init(nghttp2_headers *frame,
                                 uint8_t flags, int32_t stream_id, int32_t pri,
-                                char **nv);
+                                nghttp2_nv *nva, size_t nvlen);
 
 void nghttp2_frame_headers_free(nghttp2_headers *frame);
 
@@ -574,12 +512,45 @@ ssize_t nghttp2_frame_nv_offset(const uint8_t *head);
 int nghttp2_frame_nv_check_null(const char **nv);
 
 /*
+ * Sorts the |nva| in ascending order of name. The relative order of
+ * the same name pair is undefined.
+ */
+void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
+
+/*
+ * Copies name/value pairs from |nv| to |*nva_ptr|, which is
+ * dynamically allocated so that all items can be stored.
+ *
+ * This function returns the number of name/value pairs in |*nva_ptr|,
+ * or one of the following negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     The length of name or value in |nv| is strictly larger than (1
+ *     << 16) - 1.
+ */
+ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv);
+
+/*
  * Returns nonzero if the name/value pair |a| equals to |b|. The name
  * is compared in case-sensitive, because we ensure that this function
  * is called after the name is lower-cased.
  */
 int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b);
 
-void nghttp2_nv_array_free(nghttp2_nv *nva);
+/*
+ * Frees |nva|.
+ */
+void nghttp2_nv_array_del(nghttp2_nv *nva);
+
+/*
+ * Checks names are not empty string and do not contain control
+ * characters and values are not NULL.
+ *
+ * This function returns nonzero if it succeeds, or 0.
+ */
+int nghttp2_nv_array_check_null(nghttp2_nv *nva, size_t nvlen);
+
 
 #endif /* NGHTTP2_FRAME_H */

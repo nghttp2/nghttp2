@@ -30,13 +30,19 @@
 #endif /* HAVE_CONFIG_H */
 
 #include "nghttp2_frame.h"
-#include "nghttp2_zlib.h"
+#include "nghttp2_hd.h"
 
 ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
                                    nghttp2_frame_type type,
-                                   nghttp2_zlib *inflater,
+                                   nghttp2_hd_context *inflater,
                                    const uint8_t *in, size_t len);
 
 char* strcopy(const char* s);
+
+int strmemeq(const char *a, const uint8_t *b, size_t bn);
+
+int nvnameeq(const char *a, nghttp2_nv *nv);
+
+int nvvalueeq(const char *a, nghttp2_nv *nv);
 
 #endif /* NGHTTP2_TEST_HELPER_H */

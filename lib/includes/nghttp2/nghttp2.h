@@ -482,15 +482,13 @@ typedef struct {
    */
   int32_t pri;
   /**
-   * TODO Need to support binary header block.
-   *
-   * The name/value pairs. For i >= 0, ``nv[2*i]`` contains a pointer
-   * to the name string and ``nv[2*i+1]`` contains a pointer to the
-   * value string. The one beyond last value must be ``NULL``. That
-   * is, if the |nv| contains N name/value pairs, ``nv[2*N]`` must be
-   * ``NULL``. This member may be ``NULL``.
+   * The name/value pairs.
    */
-  char **nv;
+  nghttp2_nv *nva;
+  /**
+   * The number of name/value pairs in |nva|.
+   */
+  size_t nvlen;
   nghttp2_headers_category cat;
 } nghttp2_headers;
 
@@ -1319,8 +1317,6 @@ const char* nghttp2_strerror(int lib_error_code);
  * ``:path``
  *     Absolute path and parameters of this request (e.g., ``/foo``,
  *     ``/foo;bar;haz?h=j&y=123``)
- * ``:version``
- *     HTTP version (e.g., ``HTTP/1.1``)
  * ``:host``
  *     The hostport portion of the URI for this request (e.g.,
  *     ``example.org:443``). This is the same as the HTTP "Host" header
@@ -1388,8 +1384,6 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  *
  * ``:status``
  *     HTTP status code (e.g., ``200`` or ``200 OK``)
- * ``:version``
- *     HTTP response version (e.g., ``HTTP/1.1``)
  *
  * If the |session| is initialized with the version
  * :macro:`NGHTTP2_PROTO_SPDY2`, the above names are translated to

@@ -33,7 +33,7 @@
 #include "nghttp2_pq.h"
 #include "nghttp2_map.h"
 #include "nghttp2_frame.h"
-#include "nghttp2_zlib.h"
+#include "nghttp2_hd.h"
 #include "nghttp2_stream.h"
 #include "nghttp2_buffer.h"
 #include "nghttp2_outbound_item.h"
@@ -78,13 +78,7 @@ typedef enum {
   /* Receiving frame payload (comes after length field) */
   NGHTTP2_RECV_PAYLOAD,
   /* Receiving frame payload, but the received bytes are discarded. */
-  NGHTTP2_RECV_PAYLOAD_IGN,
-  /* Receiving frame payload that comes before name/value header
-     block. Applied only for HEADERS and PUSH_PROMISE. */
-  NGHTTP2_RECV_PAYLOAD_PRE_NV,
-  /* Receiving name/value header block in frame payload. Applied only
-     for HEADERS and PUSH_PROMISE. */
-  NGHTTP2_RECV_PAYLOAD_NV
+  NGHTTP2_RECV_PAYLOAD_IGN
 } nghttp2_inbound_state;
 
 typedef struct {
@@ -92,7 +86,7 @@ typedef struct {
   uint8_t headbuf[NGHTTP2_FRAME_HEAD_LENGTH];
   /* How many bytes are filled in headbuf */
   size_t headbufoff;
-  /* Payload for control frames. It is not used for DATA frames */
+  /* Payload for non-DATA frames. */
   uint8_t *buf;
   /* Capacity of buf */
   size_t bufmax;
@@ -107,9 +101,6 @@ typedef struct {
   /* How many bytes are received for this frame. off <= payloadlen
      must be fulfilled. */
   size_t off;
-  /* Buffer used to store name/value pairs while inflating them using
-     zlib on unpack */
-  nghttp2_buffer inflatebuf;
   /* Error code */
   int error_code;
 } nghttp2_inbound_frame;
@@ -163,8 +154,8 @@ struct nghttp2_session {
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
 
-  nghttp2_zlib hd_deflater;
-  nghttp2_zlib hd_inflater;
+  nghttp2_hd_context hd_deflater;
+  nghttp2_hd_context hd_inflater;
 
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
      composed by bitwise OR-ing nghttp2_goaway_flag. */

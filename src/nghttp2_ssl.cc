@@ -523,14 +523,17 @@ const char* ansi_escend()
 }
 } // namespace
 
-void print_nv(char **nv)
+
+void print_nv(nghttp2_nv *nva, size_t nvlen)
 {
-  int i;
-  for(i = 0; nv[i]; i += 2) {
+  size_t i;
+  for(i = 0; i < nvlen; ++i) {
     print_frame_attr_indent();
-    printf("%s%s%s: %s\n",
-           ansi_esc("\033[1;34m"), nv[i],
-           ansi_escend(), nv[i+1]);
+    printf("%s", ansi_esc("\033[1;34m"));
+    fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+    printf("%s: ", ansi_escend());
+    fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+    printf("\n");
   }
 }
 
@@ -641,7 +644,7 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
     default:
       break;
     }
-    print_nv(frame->headers.nv);
+    print_nv(frame->headers.nva, frame->headers.nvlen);
     break;
   case NGHTTP2_RST_STREAM:
     print_frame_attr_indent();

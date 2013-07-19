@@ -25,13 +25,6 @@
 #ifndef NGHTTP2_FRAME_TEST_H
 #define NGHTTP2_FRAME_TEST_H
 
-void test_nghttp2_frame_unpack_nv(void);
-void test_nghttp2_frame_unpack_nv_check_name(void);
-void test_nghttp2_frame_unpack_nv_last_empty_value(void);
-void test_nghttp2_frame_pack_nv_duplicate_keys(void);
-void test_nghttp2_frame_count_nv_space(void);
-void test_nghttp2_frame_pack_nv_empty_value(void);
-void test_nghttp2_frame_count_unpack_nv_space(void);
 void test_nghttp2_frame_nv_sort(void);
 void test_nghttp2_frame_nv_downcase(void);
 void test_nghttp2_frame_nv_check_null(void);

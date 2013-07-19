@@ -472,26 +472,24 @@ void on_frame_send_callback2
 void check_response_header
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
-  char **nv;
-  int32_t stream_id;
-  if(frame->hd.type == NGHTTP2_HEADERS) {
-    nv = frame->headers.nv;
-    stream_id = frame->hd.stream_id;
-  } else {
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_REPLY) {
     return;
   }
-  auto req = (Request*)nghttp2_session_get_stream_user_data(session,
-                                                            stream_id);
+  auto req = (Request*)nghttp2_session_get_stream_user_data
+    (session, frame->hd.stream_id);
   if(!req) {
     // Server-pushed stream does not have stream user data
     return;
   }
   bool gzip = false;
-  for(size_t i = 0; nv[i]; i += 2) {
-    if(strcmp("content-encoding", nv[i]) == 0) {
-      gzip = util::strieq("gzip", nv[i+1]) || util::strieq("deflate", nv[i+1]);
-    } else if(strcmp(":status", nv[i]) == 0) {
-      req->status = nv[i+1];
+  for(size_t i = 0; i < frame->headers.nvlen; ++i) {
+    auto nv = &frame->headers.nva[i];
+    if(util::strieq("content-encoding", nv->name, nv->namelen) == 0) {
+      gzip = util::strieq("gzip", nv->value, nv->valuelen) ||
+        util::strieq("deflate", nv->value, nv->valuelen);
+    } else if(util::strieq(":status", nv->name, nv->namelen) == 0) {
+      req->status.assign(nv->value, nv->value + nv->valuelen);
     }
   }
   if(gzip) {

@@ -113,30 +113,13 @@ static void nghttp2_inbound_frame_reset(nghttp2_inbound_frame *iframe)
   iframe->state = NGHTTP2_RECV_HEAD;
   iframe->payloadlen = iframe->buflen = iframe->off = 0;
   iframe->headbufoff = 0;
-  nghttp2_buffer_reset(&iframe->inflatebuf);
   iframe->error_code = 0;
-}
-
-/*
- * Returns the number of bytes before name/value header block for the
- * incoming frame. If the incoming frame does not have name/value
- * block, this function returns -1.
- */
-static size_t nghttp2_inbound_frame_payload_nv_offset
-(nghttp2_inbound_frame *iframe)
-{
-  ssize_t offset;
-  offset = nghttp2_frame_nv_offset(iframe->headbuf);
-  if(offset != -1) {
-    offset -= NGHTTP2_FRAME_HEAD_LENGTH;
-  }
-  return offset;
 }
 
 static int nghttp2_session_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data,
-                               int hd_comp)
+                               nghttp2_hd_side side)
 {
   int r;
   *session_ptr = malloc(sizeof(nghttp2_session));
@@ -159,16 +142,13 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
   (*session_ptr)->last_stream_id = 0;
 
-  (*session_ptr)->max_recv_ctrl_frame_buf = (1 << 24)-1;
+  (*session_ptr)->max_recv_ctrl_frame_buf = NGHTTP2_MAX_FRAME_SIZE;
 
-  r = nghttp2_zlib_deflate_hd_init(&(*session_ptr)->hd_deflater,
-                                   hd_comp,
-                                   (*session_ptr)->version);
+  r = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater, side);
   if(r != 0) {
     goto fail_hd_deflater;
   }
-  r = nghttp2_zlib_inflate_hd_init(&(*session_ptr)->hd_inflater,
-                                   (*session_ptr)->version);
+  r = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater, side);
   if(r != 0) {
     goto fail_hd_inflater;
   }
@@ -220,7 +200,6 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
     goto fail_iframe_buf;
   }
   (*session_ptr)->iframe.bufmax = NGHTTP2_INITIAL_INBOUND_FRAMEBUF_LENGTH;
-  nghttp2_buffer_init(&(*session_ptr)->iframe.inflatebuf, 4096);
 
   nghttp2_inbound_frame_reset(&(*session_ptr)->iframe);
 
@@ -236,9 +215,9 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   nghttp2_pq_free(&(*session_ptr)->ob_pq);
  fail_ob_pq:
   /* No need to free (*session_ptr)->streams) here. */
-  nghttp2_zlib_inflate_free(&(*session_ptr)->hd_inflater);
+  nghttp2_hd_inflate_free(&(*session_ptr)->hd_inflater);
  fail_hd_inflater:
-  nghttp2_zlib_deflate_free(&(*session_ptr)->hd_deflater);
+  nghttp2_hd_deflate_free(&(*session_ptr)->hd_deflater);
  fail_hd_deflater:
   free(*session_ptr);
  fail_session:
@@ -251,7 +230,8 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
 {
   int r;
   /* For client side session, header compression is disabled. */
-  r = nghttp2_session_new(session_ptr, callbacks, user_data, 0);
+  r = nghttp2_session_new(session_ptr, callbacks, user_data,
+                          NGHTTP2_HD_SIDE_CLIENT);
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 1;
@@ -266,7 +246,8 @@ int nghttp2_session_server_new(nghttp2_session **session_ptr,
 {
   int r;
   /* Enable header compression on server side. */
-  r = nghttp2_session_new(session_ptr, callbacks, user_data, 1 /* hd_comp */);
+  r = nghttp2_session_new(session_ptr, callbacks, user_data,
+                          NGHTTP2_HD_SIDE_SERVER);
   if(r == 0) {
     (*session_ptr)->server = 1;
     /* IDs for use in client */
@@ -311,12 +292,11 @@ void nghttp2_session_del(nghttp2_session *session)
   nghttp2_map_each_free(&session->streams, nghttp2_free_streams, NULL);
   nghttp2_session_ob_pq_free(&session->ob_pq);
   nghttp2_session_ob_pq_free(&session->ob_ss_pq);
-  nghttp2_zlib_deflate_free(&session->hd_deflater);
-  nghttp2_zlib_inflate_free(&session->hd_inflater);
+  nghttp2_hd_deflate_free(&session->hd_deflater);
+  nghttp2_hd_inflate_free(&session->hd_inflater);
   nghttp2_active_outbound_item_reset(&session->aob);
   free(session->aob.framebuf);
   free(session->nvbuf);
-  nghttp2_buffer_free(&session->iframe.inflatebuf);
   free(session->iframe.buf);
    free(session);
 }
@@ -768,8 +748,6 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
     case NGHTTP2_HEADERS:
       if(frame->hd.stream_id == -1) {
         /* initial HEADERS, which opens stream */
-        int32_t stream_id;
-        nghttp2_headers_aux_data *aux_data;
         int r;
         frame->headers.cat = NGHTTP2_HCAT_START_STREAM;
         r = nghttp2_session_predicate_syn_stream_send(session,
@@ -777,41 +755,12 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         if(r != 0) {
           return r;
         }
-        stream_id = session->next_stream_id;
-        frame->hd.stream_id = stream_id;
+        frame->hd.stream_id = session->next_stream_id;
         session->next_stream_id += 2;
-        framebuflen = nghttp2_frame_pack_headers(&session->aob.framebuf,
-                                                 &session->aob.framebufmax,
-                                                 &session->nvbuf,
-                                                 &session->nvbuflen,
-                                                 &frame->headers,
-                                                 &session->hd_deflater);
-        if(framebuflen < 0) {
-          return framebuflen;
-        }
-        aux_data = (nghttp2_headers_aux_data*)item->aux_data;
-        if(nghttp2_session_open_stream
-           (session, stream_id,
-            frame->hd.flags,
-            frame->headers.pri,
-            NGHTTP2_STREAM_INITIAL,
-            aux_data ? aux_data->stream_user_data : NULL) == NULL) {
-          return NGHTTP2_ERR_NOMEM;
-        }
       } else if(nghttp2_session_predicate_syn_reply_send
                 (session, frame->hd.stream_id) == 0) {
-        frame->headers.cat = NGHTTP2_HCAT_REPLY;
         /* first response HEADERS */
-        framebuflen = nghttp2_frame_pack_headers(&session->aob.framebuf,
-                                                 &session->aob.framebufmax,
-                                                 &session->nvbuf,
-                                                 &session->nvbuflen,
-                                                 &frame->headers,
-                                                 &session->hd_deflater);
-        if(framebuflen < 0) {
-          return framebuflen;
-        }
-
+        frame->headers.cat = NGHTTP2_HCAT_REPLY;
       } else {
         int r;
         frame->headers.cat = NGHTTP2_HCAT_HEADERS;
@@ -820,14 +769,25 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         if(r != 0) {
           return r;
         }
-        framebuflen = nghttp2_frame_pack_headers(&session->aob.framebuf,
-                                                 &session->aob.framebufmax,
-                                                 &session->nvbuf,
-                                                 &session->nvbuflen,
-                                                 &frame->headers,
-                                                 &session->hd_deflater);
-        if(framebuflen < 0) {
-          return framebuflen;
+      }
+      framebuflen = nghttp2_frame_pack_headers(&session->aob.framebuf,
+                                               &session->aob.framebufmax,
+                                               &frame->headers,
+                                               &session->hd_deflater);
+      nghttp2_hd_end_headers(&session->hd_deflater);
+      if(framebuflen < 0) {
+        return framebuflen;
+      }
+      if(frame->headers.cat == NGHTTP2_HCAT_START_STREAM) {
+        nghttp2_headers_aux_data *aux_data;
+        aux_data = (nghttp2_headers_aux_data*)item->aux_data;
+        if(nghttp2_session_open_stream
+           (session, frame->hd.stream_id,
+            frame->hd.flags,
+            frame->headers.pri,
+            NGHTTP2_STREAM_INITIAL,
+            aux_data ? aux_data->stream_user_data : NULL) == NULL) {
+          return NGHTTP2_ERR_NOMEM;
         }
       }
       break;
@@ -1939,7 +1899,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
                                        sizeof(session->iframe.headbuf),
                                        session->iframe.buf,
                                        session->iframe.buflen,
-                                       &session->iframe.inflatebuf);
+                                       &session->hd_inflater);
     } else if(session->iframe.error_code == NGHTTP2_ERR_FRAME_TOO_LARGE) {
       r = nghttp2_frame_unpack_headers_without_nv
         (&frame.headers,
@@ -1972,6 +1932,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
         r = nghttp2_session_on_syn_stream_received(session, &frame);
       }
       nghttp2_frame_headers_free(&frame.headers);
+      nghttp2_hd_end_headers(&session->hd_inflater);
     } else if(r == NGHTTP2_ERR_INVALID_HEADER_BLOCK ||
               r == NGHTTP2_ERR_FRAME_TOO_LARGE) {
       r = nghttp2_session_handle_invalid_stream
@@ -2280,30 +2241,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           nghttp2_get_uint16(&session->iframe.headbuf[0]);
         if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
           /* control frame */
-          ssize_t buflen;
-          buflen = nghttp2_inbound_frame_payload_nv_offset(&session->iframe);
-          if(buflen == -1) {
-            /* Check if payloadlen is small enough for buffering */
-            if(session->iframe.payloadlen > session->max_recv_ctrl_frame_buf) {
-              session->iframe.error_code = NGHTTP2_ERR_FRAME_TOO_LARGE;
-              session->iframe.state = NGHTTP2_RECV_PAYLOAD_IGN;
-              buflen = 0;
-            } else {
-              buflen = session->iframe.payloadlen;
-            }
-          } else if(buflen < (ssize_t)session->iframe.payloadlen) {
-            if(session->iframe.payloadlen > session->max_recv_ctrl_frame_buf) {
-              session->iframe.error_code = NGHTTP2_ERR_FRAME_TOO_LARGE;
-            }
-            /* We are going to receive payload even if the receiving
-               frame is too large to synchronize zlib context. For
-               name/value header block, we will just burn zlib cycle
-               and discard outputs. */
-            session->iframe.state = NGHTTP2_RECV_PAYLOAD_PRE_NV;
-          }
-          /* buflen >= session->iframe.payloadlen means frame is
-             malformed. In this case, we just buffer these bytes and
-             handle error later. */
+          ssize_t buflen = session->iframe.payloadlen;
           session->iframe.buflen = buflen;
           r = nghttp2_reserve_buffer(&session->iframe.buf,
                                      &session->iframe.bufmax,
@@ -2328,8 +2266,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
     }
     if(session->iframe.state == NGHTTP2_RECV_PAYLOAD ||
-       session->iframe.state == NGHTTP2_RECV_PAYLOAD_PRE_NV ||
-       session->iframe.state == NGHTTP2_RECV_PAYLOAD_NV ||
        session->iframe.state == NGHTTP2_RECV_PAYLOAD_IGN) {
       size_t rempayloadlen;
       size_t bufavail, readlen;
@@ -2342,49 +2278,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
       readlen =  nghttp2_min(bufavail, rempayloadlen);
-      if(session->iframe.state == NGHTTP2_RECV_PAYLOAD_PRE_NV) {
-        size_t pnvlen, rpnvlen, readpnvlen;
-        pnvlen = nghttp2_inbound_frame_payload_nv_offset(&session->iframe);
-        rpnvlen = pnvlen - session->iframe.off;
-        readpnvlen = nghttp2_min(rpnvlen, readlen);
-
-        memcpy(session->iframe.buf+session->iframe.off, inmark, readpnvlen);
-        readlen -= readpnvlen;
-        session->iframe.off += readpnvlen;
-        inmark += readpnvlen;
-
-        if(session->iframe.off == pnvlen) {
-          session->iframe.state = NGHTTP2_RECV_PAYLOAD_NV;
-        }
-      }
-      if(session->iframe.state == NGHTTP2_RECV_PAYLOAD_NV) {
-        /* For frame with name/value header block, the compressed
-           portion of the block is incrementally decompressed. The
-           result is stored in inflatebuf. */
-        if(session->iframe.error_code == 0 ||
-           session->iframe.error_code == NGHTTP2_ERR_FRAME_TOO_LARGE) {
-          ssize_t decomplen;
-          if(session->iframe.error_code == NGHTTP2_ERR_FRAME_TOO_LARGE) {
-            nghttp2_buffer_reset(&session->iframe.inflatebuf);
-          }
-          decomplen = nghttp2_zlib_inflate_hd(&session->hd_inflater,
-                                              &session->iframe.inflatebuf,
-                                              inmark, readlen);
-          if(decomplen < 0) {
-            /* We are going to overwrite error_code here if it is
-               already set. But it is fine because the only possible
-               nonzero error code here is NGHTTP2_ERR_FRAME_TOO_LARGE
-               and zlib/fatal error can override it. */
-            session->iframe.error_code = decomplen;
-          } else if(nghttp2_buffer_length(&session->iframe.inflatebuf)
-                    > session->max_recv_ctrl_frame_buf) {
-            /* If total length in inflatebuf exceeds certain limit,
-               set TOO_LARGE_FRAME to error_code and issue RST_STREAM
-               later. */
-            session->iframe.error_code = NGHTTP2_ERR_FRAME_TOO_LARGE;
-          }
-        }
-      } else if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
+      if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
         if(session->iframe.state != NGHTTP2_RECV_PAYLOAD_IGN) {
           memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
         }

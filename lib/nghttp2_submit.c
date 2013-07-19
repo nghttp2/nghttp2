@@ -41,7 +41,8 @@ static int nghttp2_submit_headers_shared
 {
   int r;
   nghttp2_frame *frame;
-  char **nv_copy;
+  nghttp2_nv *nva_copy;
+  ssize_t nvlen;
   uint8_t flags_copy;
   nghttp2_data_provider *data_prd_copy = NULL;
   nghttp2_headers_aux_data *aux_data = NULL;
@@ -73,19 +74,19 @@ static int nghttp2_submit_headers_shared
     free(data_prd_copy);
     return NGHTTP2_ERR_NOMEM;
   }
-  nv_copy = nghttp2_frame_nv_norm_copy(nv);
-  if(nv_copy == NULL) {
+  nvlen = nghttp2_nv_array_from_cstr(&nva_copy, nv);
+  if(nvlen < 0) {
     free(frame);
     free(aux_data);
     free(data_prd_copy);
-    return NGHTTP2_ERR_NOMEM;
+    return nvlen;
   }
   /* TODO Implement header continuation */
   flags_copy = (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY)) |
     NGHTTP2_FLAG_END_HEADERS;
 
   nghttp2_frame_headers_init(&frame->headers, flags_copy, stream_id, pri,
-                             nv_copy);
+                             nva_copy, nvlen);
   r = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame,
                                 aux_data);
   if(r != 0) {

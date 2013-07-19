@@ -818,6 +818,7 @@ static ssize_t build_nv_array(nghttp2_hd_context *inflater,
       break;
     }
   }
+  nghttp2_nv_array_sort(*nva_ptr, nvlen);
   return nvlen;
 }
 
@@ -880,6 +881,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       nv.value = in;
       nv.valuelen = valuelen;
       in += valuelen;
+      nghttp2_downcase(nv.name, nv.namelen);
       if(c == 0x60u) {
         rv = add_workingset_literal(inflater, &nv);
       } else {
@@ -965,6 +967,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       nv.namelen = namelen;
       nv.valuelen = valuelen;
       in += valuelen;
+      nghttp2_downcase(nv.name, nv.namelen);
       new_ent = add_hd_table_subst(inflater, &nv, subindex);
       if(new_ent) {
         rv = add_workingset(inflater, new_ent);

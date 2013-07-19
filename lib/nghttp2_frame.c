@@ -68,214 +68,6 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf)
   hd->stream_id = nghttp2_get_uint32(&buf[4]) & NGHTTP2_STREAM_ID_MASK;
 }
 
-ssize_t nghttp2_frame_alloc_pack_nv(uint8_t **buf_ptr,
-                                    size_t *buflen_ptr,
-                                    uint8_t **nvbuf_ptr,
-                                    size_t *nvbuflen_ptr,
-                                    char **nv, size_t nv_offset,
-                                    size_t len_size,
-                                    nghttp2_zlib *deflater)
-{
-  size_t nvspace;
-  size_t maxframelen;
-  ssize_t framelen;
-  int r;
-  nvspace = nghttp2_frame_count_nv_space(nv, len_size);
-  r = nghttp2_reserve_buffer(nvbuf_ptr, nvbuflen_ptr, nvspace);
-  if(r != 0) {
-    return NGHTTP2_ERR_NOMEM;
-  }
-  maxframelen = nv_offset+nghttp2_zlib_deflate_hd_bound(deflater, nvspace);
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, maxframelen);
-  if(r != 0) {
-    return NGHTTP2_ERR_NOMEM;
-  }
-  nghttp2_frame_pack_nv(*nvbuf_ptr, nv, len_size);
-  framelen = nghttp2_zlib_deflate_hd(deflater,
-                                     (*buf_ptr)+nv_offset,
-                                     maxframelen-nv_offset,
-                                     *nvbuf_ptr, nvspace);
-  if(framelen < 0) {
-    return framelen;
-  }
-  framelen += nv_offset;
-
-  if(framelen - NGHTTP2_FRAME_HEAD_LENGTH >= 1 << 16) {
-    /* Max frame size is 2**16 - 1 */
-    return NGHTTP2_ERR_FRAME_TOO_LARGE;
-  }
-  return framelen;
-}
-
-int nghttp2_frame_count_unpack_nv_space(size_t *nvlen_ptr, size_t *buflen_ptr,
-                                        nghttp2_buffer *in, size_t len_size)
-{
-  uint32_t n;
-  size_t buflen = 0;
-  size_t nvlen = 0;
-  size_t off = 0;
-  size_t inlen = nghttp2_buffer_length(in);
-  size_t i;
-  nghttp2_buffer_reader reader;
-  if(inlen < len_size) {
-    return NGHTTP2_ERR_INVALID_FRAME;
-  }
-  nghttp2_buffer_reader_init(&reader, in);
-
-  /* TODO limit n in a reasonable number */
-  n = nghttp2_frame_get_nv_len(&reader);
-  off += len_size;
-  for(i = 0; i < n; ++i) {
-    uint32_t len;
-    size_t j;
-    for(j = 0; j < 2; ++j) {
-      if(inlen-off < len_size) {
-        return NGHTTP2_ERR_INVALID_FRAME;
-      }
-      len = nghttp2_frame_get_nv_len(&reader);
-      off += len_size;
-      if(inlen-off < len) {
-        return NGHTTP2_ERR_INVALID_FRAME;
-      }
-      buflen += len+1;
-      off += len;
-      if(j == 0) {
-        nghttp2_buffer_reader_advance(&reader, len);
-      }
-    }
-    nvlen += nghttp2_buffer_reader_count(&reader, len, '\0');
-    ++nvlen;
-  }
-  if(inlen == off) {
-    *nvlen_ptr = nvlen;
-    *buflen_ptr = buflen+(nvlen*2+1)*sizeof(char*);
-    return 0;
-  } else {
-    return NGHTTP2_ERR_INVALID_FRAME;
-  }
-}
-
-int nghttp2_frame_unpack_nv(char ***nv_ptr, nghttp2_buffer *in,
-                            size_t len_size)
-{
-  size_t nvlen, buflen;
-  int r;
-  size_t i;
-  char *buf, **idx, *data;
-  uint32_t n;
-  int invalid_header_block = 0;
-  nghttp2_buffer_reader reader;
-  r = nghttp2_frame_count_unpack_nv_space(&nvlen, &buflen, in, len_size);
-  if(r != 0) {
-    return r;
-  }
-
-  buf = malloc(buflen);
-  if(buf == NULL) {
-    return NGHTTP2_ERR_NOMEM;
-  }
-  nghttp2_buffer_reader_init(&reader, in);
-  idx = (char**)buf;
-  data = buf+(nvlen*2+1)*sizeof(char*);
-  n = nghttp2_frame_get_nv_len(&reader);
-  for(i = 0; i < n; ++i) {
-    uint32_t len;
-    char *name, *val;
-    char *stop;
-    int multival;
-    len = nghttp2_frame_get_nv_len(&reader);
-    if(len == 0) {
-      invalid_header_block = 1;
-    }
-    name = data;
-    nghttp2_buffer_reader_data(&reader, (uint8_t*)data, len);
-    for(stop = data+len; data != stop; ++data) {
-      unsigned char c = *data;
-      if(c < 0x20 || c > 0x7e || ('A' <= c && c <= 'Z')) {
-        invalid_header_block = 1;
-      }
-    }
-    *data = '\0';
-    ++data;
-
-    len = nghttp2_frame_get_nv_len(&reader);
-    val = data;
-    nghttp2_buffer_reader_data(&reader, (uint8_t*)data, len);
-
-    multival = 0;
-    for(stop = data+len; data != stop; ++data) {
-      if(*data == '\0') {
-        *idx++ = name;
-        *idx++ = val;
-        if(val == data) {
-          invalid_header_block = 1;
-        }
-        val = data+1;
-        multival = 1;
-      }
-    }
-    *data = '\0';
-    /* Check last header value is empty if NULL separator was
-       found. */
-    if(multival && val == data) {
-      invalid_header_block = 1;
-    }
-    ++data;
-
-    *idx++ = name;
-    *idx++ = val;
-  }
-  *idx = NULL;
-  assert((size_t)((char*)idx - buf) == (nvlen*2)*sizeof(char*));
-  *nv_ptr = (char**)buf;
-  if(!invalid_header_block) {
-    nghttp2_frame_nv_sort(*nv_ptr);
-    for(i = 2; i < nvlen*2; i += 2) {
-      if(strcmp((*nv_ptr)[i-2], (*nv_ptr)[i]) == 0 &&
-         (*nv_ptr)[i-2] != (*nv_ptr)[i]) {
-        invalid_header_block = 1;
-        break;
-      }
-    }
-  }
-  return invalid_header_block ? NGHTTP2_ERR_INVALID_HEADER_BLOCK : 0;
-}
-
-size_t nghttp2_frame_count_nv_space(char **nv, size_t len_size)
-{
-  size_t sum = len_size;
-  int i;
-  const char *prev = "";
-  size_t prevlen = 0;
-  size_t prevvallen = 0;
-  for(i = 0; nv[i]; i += 2) {
-    const char *key = nv[i];
-    const char *val = nv[i+1];
-    size_t keylen = strlen(key);
-    size_t vallen = strlen(val);
-    if(prevlen == keylen && memcmp(prev, key, keylen) == 0) {
-      if(vallen) {
-        if(prevvallen) {
-          /* Join previous value, with NULL character */
-          sum += vallen+1;
-          prevvallen = vallen;
-        } else {
-          /* Previous value is empty. In this case, drop the
-             previous. */
-          sum += vallen;
-        }
-      }
-    } else {
-      prev = key;
-      prevlen = keylen;
-      prevvallen = vallen;
-      /* SPDY NV header does not include terminating NULL byte */
-      sum += keylen+vallen+len_size*2;
-    }
-  }
-  return sum;
-}
-
 ssize_t nghttp2_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size)
 {
   int i;
@@ -404,18 +196,19 @@ static void nghttp2_frame_set_hd(nghttp2_frame_hd *hd, uint16_t length,
 
 void nghttp2_frame_headers_init(nghttp2_headers *frame,
                                 uint8_t flags, int32_t stream_id, int32_t pri,
-                                char **nv)
+                                nghttp2_nv *nva, size_t nvlen)
 {
   memset(frame, 0, sizeof(nghttp2_headers));
   nghttp2_frame_set_hd(&frame->hd, 0, NGHTTP2_HEADERS, flags, stream_id);
   frame->pri = pri;
-  frame->nv = nv;
+  frame->nva = nva;
+  frame->nvlen = nvlen;
   frame->cat = NGHTTP2_HCAT_START_STREAM;
 }
 
 void nghttp2_frame_headers_free(nghttp2_headers *frame)
 {
-  nghttp2_frame_nv_del(frame->nv);
+  nghttp2_nv_array_del(frame->nva);
 }
 
 void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
@@ -517,31 +310,36 @@ void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
 void nghttp2_frame_data_free(nghttp2_data *frame)
 {}
 
+static size_t headers_nv_offset(nghttp2_headers *frame)
+{
+  if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+    return NGHTTP2_FRAME_HEAD_LENGTH + 4;
+  } else {
+    return NGHTTP2_FRAME_HEAD_LENGTH;
+  }
+}
+
 ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *buflen_ptr,
-                                   uint8_t **nvbuf_ptr,
-                                   size_t *nvbuflen_ptr,
                                    nghttp2_headers *frame,
-                                   nghttp2_zlib *deflater)
+                                   nghttp2_hd_context *deflater)
 {
   ssize_t framelen;
-  size_t len_size = nghttp2_frame_get_len_size();
-  ssize_t nv_offset;
-  if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
-    nv_offset = NGHTTP2_FRAME_HEAD_LENGTH + 4;
-  } else {
-    nv_offset = NGHTTP2_FRAME_HEAD_LENGTH;
+  size_t nv_offset = headers_nv_offset(frame);
+  ssize_t rv;
+  rv = nghttp2_hd_deflate_hd(deflater, buf_ptr, buflen_ptr, nv_offset,
+                             frame->nva, frame->nvlen);
+  if(rv < 0) {
+    return rv;
   }
-  framelen = nghttp2_frame_alloc_pack_nv(buf_ptr, buflen_ptr,
-                                         nvbuf_ptr, nvbuflen_ptr,
-                                         frame->nv,
-                                         nv_offset,
-                                         len_size,
-                                         deflater);
-  if(framelen < 0) {
-    return framelen;
-  }
+  framelen = rv + nv_offset;
   frame->hd.length = framelen - NGHTTP2_FRAME_HEAD_LENGTH;
+  /* If frame->nvlen == 0, *buflen_ptr may be smaller than
+     nv_offset */
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, nv_offset);
+  if(rv < 0) {
+    return rv;
+  }
   memset(*buf_ptr, 0, nv_offset);
   /* pack ctrl header after length is determined */
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
@@ -554,16 +352,24 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
 int nghttp2_frame_unpack_headers(nghttp2_headers *frame,
                                  const uint8_t *head, size_t headlen,
                                  const uint8_t *payload, size_t payloadlen,
-                                 nghttp2_buffer *inflatebuf)
+                                 nghttp2_hd_context *inflater)
 {
-  int r;
-  size_t len_size = nghttp2_frame_get_len_size();
+  ssize_t r;
+  size_t pnv_offset;
   r = nghttp2_frame_unpack_headers_without_nv(frame, head, headlen,
                                               payload, payloadlen);
-  if(r == 0) {
-    r = nghttp2_frame_unpack_nv(&frame->nv, inflatebuf, len_size);
+  if(r < 0) {
+    return r;
   }
-  return r;
+  pnv_offset = headers_nv_offset(frame) - NGHTTP2_FRAME_HEAD_LENGTH;
+  r = nghttp2_hd_inflate_hd(inflater, &frame->nva,
+                            (uint8_t*)payload + pnv_offset,
+                            payloadlen - pnv_offset);
+  if(r < 0) {
+    return r;
+  }
+  frame->nvlen = r;
+  return 0;
 }
 
 int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
@@ -574,17 +380,15 @@ int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
 {
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
   if(head[3] & NGHTTP2_FLAG_PRIORITY) {
-    if(payloadlen != 4) {
+    if(payloadlen < 4) {
       return NGHTTP2_ERR_INVALID_FRAME;
     }
     frame->pri = nghttp2_get_uint32(payload) & NGHTTP2_PRIORITY_MASK;
   } else {
-    if(payloadlen != 0) {
-      return NGHTTP2_ERR_INVALID_FRAME;
-    }
     frame->pri = NGHTTP2_PRI_DEFAULT;
   }
-  frame->nv = NULL;
+  frame->nva = NULL;
+  frame->nvlen = 0;
   return 0;
 }
 
@@ -847,7 +651,78 @@ int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b)
     memcmp(a->value, b->value, a->valuelen) == 0;
 }
 
-void nghttp2_nv_array_free(nghttp2_nv *nva)
+void nghttp2_nv_array_del(nghttp2_nv *nva)
 {
   free(nva);
+}
+
+static int nghttp2_nv_name_compar(const void *lhs, const void *rhs)
+{
+  nghttp2_nv *a = (nghttp2_nv*)lhs, *b = (nghttp2_nv*)rhs;
+  if(a->namelen == b->namelen) {
+    return memcmp(a->name, b->name, a->namelen);
+  } else if(a->namelen < b->namelen) {
+    int rv = memcmp(a->name, b->name, a->namelen);
+    if(rv == 0) {
+      return -1;
+    } else {
+      return rv;
+    }
+  } else {
+    int rv = memcmp(a->name, b->name, b->namelen);
+    if(rv == 0) {
+      return 1;
+    } else {
+      return rv;
+    }
+  }
+}
+
+void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen)
+{
+  qsort(nva, nvlen, sizeof(nghttp2_nv), nghttp2_nv_name_compar);
+}
+
+ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
+{
+  int i;
+  uint8_t *data;
+  size_t buflen = 0, nvlen = 0;
+  nghttp2_nv *p;
+  for(i = 0; nv[i]; ++i) {
+    size_t len = strlen(nv[i]);
+    if(len > (1 << 16) - 1) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+    buflen += len;
+  }
+  nvlen = i/2;
+  if(nvlen == 0) {
+    *nva_ptr = NULL;
+    return 0;
+  }
+  buflen += sizeof(nghttp2_nv)*nvlen;
+  *nva_ptr = malloc(buflen);
+  if(*nva_ptr == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  p = *nva_ptr;
+  data = (uint8_t*)(*nva_ptr) + sizeof(nghttp2_nv)*nvlen;
+
+  for(i = 0; nv[i]; i += 2) {
+    size_t len = strlen(nv[i]);
+    memcpy(data, nv[i], len);
+    p->name = data;
+    p->namelen = len;
+    nghttp2_downcase(p->name, p->namelen);
+    data += len;
+    len = strlen(nv[i+1]);
+    memcpy(data, nv[i+1], len);
+    p->value = data;
+    p->valuelen = len;
+    data += len;
+    ++p;
+  }
+  nghttp2_nv_array_sort(*nva_ptr, nvlen);
+  return nvlen;
 }

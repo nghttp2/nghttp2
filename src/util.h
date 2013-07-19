@@ -294,6 +294,8 @@ bool strieq(const std::string& a, const std::string& b);
 
 bool strieq(const char *a, const char *b);
 
+bool strieq(const char *a, const uint8_t *b, size_t n);
+
 bool strifind(const char *a, const char *b);
 
 char upcase(char c);

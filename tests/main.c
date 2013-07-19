@@ -162,20 +162,6 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_set_option) ||
       !CU_add_test(pSuite, "session_data_backoff_by_high_pri_frame",
                    test_nghttp2_session_data_backoff_by_high_pri_frame) ||
-      !CU_add_test(pSuite, "frame_unpack_nv",
-                   test_nghttp2_frame_unpack_nv) ||
-      !CU_add_test(pSuite, "frame_unpack_nv_check_name",
-                   test_nghttp2_frame_unpack_nv_check_name) ||
-      !CU_add_test(pSuite, "frame_unpack_nv_last_empty_value",
-                   test_nghttp2_frame_unpack_nv_last_empty_value) ||
-      !CU_add_test(pSuite, "frame_pack_nv_duplicate_keys",
-                   test_nghttp2_frame_pack_nv_duplicate_keys) ||
-      !CU_add_test(pSuite, "frame_count_nv_space",
-                   test_nghttp2_frame_count_nv_space) ||
-      !CU_add_test(pSuite, "frame_pack_nv_empty_value",
-                   test_nghttp2_frame_pack_nv_empty_value) ||
-      !CU_add_test(pSuite, "frame_count_unpack_nv_space",
-                   test_nghttp2_frame_count_unpack_nv_space) ||
       !CU_add_test(pSuite, "frame_nv_sort", test_nghttp2_frame_nv_sort) ||
       !CU_add_test(pSuite, "frame_nv_downcase",
                    test_nghttp2_frame_nv_downcase) ||

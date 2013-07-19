@@ -81,6 +81,16 @@ void* nghttp2_memdup(const void* src, size_t n)
   return dest;
 }
 
+void nghttp2_downcase(uint8_t *s, size_t len)
+{
+  size_t i;
+  for(i = 0; i < len; ++i) {
+    if('A' <= s[i] && s[i] <= 'Z') {
+      s[i] += 'a'-'A';
+    }
+  }
+}
+
 const char* nghttp2_strerror(int error_code)
 {
   switch(error_code) {
@@ -130,6 +140,8 @@ const char* nghttp2_strerror(int error_code)
     return "The user callback function failed due to the temporal error";
   case NGHTTP2_ERR_FRAME_TOO_LARGE:
     return "The length of the frame is too large";
+  case NGHTTP2_ERR_HEADER_COMP:
+    return "Header compression/decompression error";
   case NGHTTP2_ERR_NOMEM:
     return "Out of memory";
   case NGHTTP2_ERR_CALLBACK_FAILURE:

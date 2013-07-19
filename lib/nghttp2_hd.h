@@ -53,8 +53,9 @@ typedef enum {
 
 typedef struct {
   nghttp2_nv nv;
-  /* Reference count in workingset */
+  /* Reference count */
   uint8_t ref;
+  /* Index in the header table */
   uint8_t index;
   uint8_t flags;
 } nghttp2_hd_entry;
@@ -186,9 +187,9 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
 
 /*
  * Inflates name/value block stored in |in| with length |inlen|. This
- * function performs decompression. The |*nv_ptr| points to the final
- * result on succesful decompression. The caller must free |*nv_ptr|
- * using nghttp2_nv_free().
+ * function performs decompression. The |*nva_ptr| points to the final
+ * result on succesful decompression. The caller must free |*nva_ptr|
+ * using nghttp2_nv_array_del().
  *
  * This function returns the number of bytes outputted if it succeeds,
  * or one of the following negative error codes:
@@ -199,7 +200,6 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
 ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
                               nghttp2_nv **nva_ptr,
                               uint8_t *in, size_t inlen);
-
 
 /*
  * Signals the end of processing one header block. This function

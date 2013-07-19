@@ -32,33 +32,22 @@
 
 ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
                                    nghttp2_frame_type type,
-                                   nghttp2_zlib *inflater,
+                                   nghttp2_hd_context *inflater,
                                    const uint8_t *in, size_t len)
 {
-  nghttp2_buffer buffer;
   ssize_t rv;
-  ssize_t pnvlen;
-  pnvlen = nghttp2_frame_nv_offset(in);
-  assert(pnvlen > 0);
-
-  nghttp2_buffer_init(&buffer, 4096);
-  rv = nghttp2_zlib_inflate_hd(inflater, &buffer, &in[pnvlen], len - pnvlen);
-  if(rv < 0) {
-    return rv;
-  }
   switch(type) {
   case NGHTTP2_HEADERS:
     rv = nghttp2_frame_unpack_headers((nghttp2_headers*)frame,
                                       &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
                                       &in[NGHTTP2_FRAME_HEAD_LENGTH],
-                                      pnvlen - NGHTTP2_FRAME_HEAD_LENGTH,
-                                      &buffer);
+                                      len - NGHTTP2_FRAME_HEAD_LENGTH,
+                                      inflater);
     break;
   default:
     /* Must not be reachable */
     assert(0);
   }
-  nghttp2_buffer_free(&buffer);
   return rv;
 }
 
@@ -69,4 +58,25 @@ char* strcopy(const char* s)
   memcpy(dest, s, len);
   dest[len] = '\0';
   return dest;
+}
+
+int strmemeq(const char *a, const uint8_t *b, size_t bn)
+{
+  const uint8_t *c;
+  if(!a || !b) {
+    return 0;
+  }
+  c = b + bn;
+  for(; *a && b != c && *a == *b; ++a, ++b);
+  return !*a && b == c;
+}
+
+int nvnameeq(const char *a, nghttp2_nv *nv)
+{
+  return strmemeq(a, nv->name, nv->namelen);
+}
+
+int nvvalueeq(const char *a, nghttp2_nv *nv)
+{
+  return strmemeq(a, nv->value, nv->valuelen);
 }
