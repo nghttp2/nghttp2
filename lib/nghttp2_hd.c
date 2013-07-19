@@ -722,6 +722,14 @@ static void create_workingset(nghttp2_hd_context *context)
   context->refsetlen = 0;
 }
 
+static int require_eviction_on_subst(nghttp2_hd_context *context,
+                                     nghttp2_nv *nv,
+                                     nghttp2_hd_entry *ent)
+{
+  return context->capacity - entry_room(ent->nv.namelen, ent->nv.valuelen) +
+    entry_room(nv->namelen, nv->valuelen) > NGHTTP2_MAX_HD_TABLE_CAPACITY;
+}
+
 ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
                               uint8_t **buf_ptr, size_t *buflen_ptr,
                               size_t nv_offset,
@@ -755,10 +763,28 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
         /* Check name exists in hd_table */
         ent = find_name_in_hd_table(deflater, &nv[i]);
         if(ent) {
-          rv = emit_literal_indname_block(buf_ptr, buflen_ptr, &offset, ent,
-                                          nv[i].value, nv[i].valuelen, 0);
-          if(rv < 0) {
-            return rv;
+          /* As long as no eviction kicked in, perform substitution */
+          if(require_eviction_on_subst(deflater, &nv[i], ent)) {
+            rv = emit_literal_indname_block(buf_ptr, buflen_ptr, &offset, ent,
+                                            nv[i].value, nv[i].valuelen, 0);
+          } else {
+            nghttp2_hd_entry *new_ent;
+            /* No need to increment ent->ref here */
+            new_ent = add_hd_table_subst(deflater, &nv[i], ent->index);
+            if(!new_ent) {
+              return NGHTTP2_ERR_HEADER_COMP;
+            }
+            rv = add_workingset(deflater, new_ent);
+            if(rv < 0) {
+              return rv;
+            }
+            rv = emit_subst_indname_block(buf_ptr, buflen_ptr, &offset,
+                                          new_ent,
+                                          nv[i].value, nv[i].valuelen,
+                                          new_ent->index);
+            if(rv < 0) {
+              return rv;
+            }
           }
         } else {
           rv = emit_literal_block(buf_ptr, buflen_ptr, &offset, &nv[i], 0);
