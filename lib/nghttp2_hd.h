@@ -109,10 +109,10 @@ typedef struct {
   uint16_t ws_capacity;
   /* The number of entry the |ws| contains */
   uint16_t wslen;
-  /* Abstract capacity of hd_table as described in the spec. This is
-     the sum of length of name/value in hd_table +
+  /* Abstract buffer size of hd_table as described in the spec. This
+     is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
-  uint16_t capacity;
+  uint16_t hd_table_bufsize;
 } nghttp2_hd_context;
 
 /*
