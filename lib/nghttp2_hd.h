@@ -166,8 +166,9 @@ void nghttp2_hd_deflate_free(nghttp2_hd_context *deflater);
 void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
 
 /*
- * Deflates the |nv|, which has the |nvlen| name/value pairs, into the
- * buffer pointed by the |*buf_ptr| with the length |*buflen_ptr|.
+ * Deflates the |nva|, which has the |nvlen| name/value pairs, into
+ * the buffer pointed by the |*buf_ptr| with the length |*buflen_ptr|.
+ * The output starts after |nv_offset| bytes from |*buf_ptr|.
  *
  * This function expands |*buf_ptr| as necessary to store the
  * result. When expansion occurred, memory previously pointed by
@@ -179,11 +180,13 @@ void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_HEADER_COMP
+ *     Deflation process has failed.
  */
 ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
                               uint8_t **buf_ptr, size_t *buflen_ptr,
                               size_t nv_offset,
-                              nghttp2_nv *nv, size_t nvlen);
+                              nghttp2_nv *nva, size_t nvlen);
 
 /*
  * Inflates name/value block stored in |in| with length |inlen|. This
@@ -191,11 +194,13 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
  * result on succesful decompression. The caller must free |*nva_ptr|
  * using nghttp2_nv_array_del().
  *
- * This function returns the number of bytes outputted if it succeeds,
- * or one of the following negative error codes:
+ * This function returns the number of name/value pairs in |*nva_ptr|
+ * if it succeeds, or one of the following negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_HEADER_COMP
+ *     Inflation process has failed.
  */
 ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
                               nghttp2_nv **nva_ptr,
