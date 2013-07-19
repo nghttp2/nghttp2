@@ -63,28 +63,31 @@ typedef struct {
 typedef enum {
   NGHTTP2_HD_CAT_NONE,
   NGHTTP2_HD_CAT_INDEXED,
-  NGHTTP2_HD_CAT_LITERAL_IDXNAME,
-  NGHTTP2_HD_CAT_LITERAL
+  NGHTTP2_HD_CAT_INDNAME,
+  NGHTTP2_HD_CAT_NEWNAME
 } nghttp2_hd_entry_cat;
 
 typedef struct nghttp2_hd_ws_entry {
   nghttp2_hd_entry_cat cat;
   union {
     /* For NGHTTP2_HD_CAT_INDEXED */
-    nghttp2_hd_entry *entry;
-    /* For NGHTTP2_HD_CAT_LITERAL */
-    nghttp2_nv nv;
-    /* For NGHTTP2_HD_CAT_LITERAL_IDXNAME */
+    struct {
+      nghttp2_hd_entry *entry;
+      uint8_t index;
+      uint8_t checked;
+    } indexed;
+    /* For NGHTTP2_HD_CAT_NEWNAME */
+    struct {
+      nghttp2_nv nv;
+    } newname;
+    /* For NGHTTP2_HD_CAT_LITERAL_INDNAME */
     struct {
       /* The entry in header table the name stored */
       nghttp2_hd_entry *entry;
       uint8_t *value;
       uint16_t valuelen;
-    } entv;
+    } indname;
   };
-  /* TODO Only usable with NGHTTP2_HD_CAT_INDEXED */
-  uint8_t index;
-  uint8_t checked;
 } nghttp2_hd_ws_entry;
 
 typedef struct {

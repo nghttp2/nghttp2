@@ -218,15 +218,15 @@ static void nghttp2_hd_context_free(nghttp2_hd_context *context)
     nghttp2_hd_ws_entry *ent = &context->ws[i];
     switch(ent->cat) {
     case NGHTTP2_HD_CAT_INDEXED:
-      --ent->entry->ref;
-      if(ent->entry->ref == 0) {
-        nghttp2_hd_entry_free(ent->entry);
+      --ent->indexed.entry->ref;
+      if(ent->indexed.entry->ref == 0) {
+        nghttp2_hd_entry_free(ent->indexed.entry);
       }
       break;
-    case NGHTTP2_HD_CAT_LITERAL_IDXNAME:
-      --ent->entv.entry->ref;
-      if(ent->entv.entry->ref == 0) {
-        nghttp2_hd_entry_free(ent->entv.entry);
+    case NGHTTP2_HD_CAT_INDNAME:
+      --ent->indname.entry->ref;
+      if(ent->indname.entry->ref == 0) {
+        nghttp2_hd_entry_free(ent->indname.entry);
       }
       break;
     default:
@@ -384,13 +384,13 @@ static int add_workingset(nghttp2_hd_context *context, nghttp2_hd_entry *ent)
   }
   ws_ent = &context->ws[context->wslen++];
   ws_ent->cat = NGHTTP2_HD_CAT_INDEXED;
-  ws_ent->entry = ent;
-  ws_ent->checked = 1;
+  ws_ent->indexed.entry = ent;
+  ws_ent->indexed.checked = 1;
   ++ent->ref;
   return 0;
 }
 
-static int add_workingset_literal(nghttp2_hd_context *context,
+static int add_workingset_newname(nghttp2_hd_context *context,
                                   nghttp2_nv *nv)
 {
   nghttp2_hd_ws_entry *ws_ent;
@@ -398,12 +398,12 @@ static int add_workingset_literal(nghttp2_hd_context *context,
     return NGHTTP2_ERR_HEADER_COMP;
   }
   ws_ent = &context->ws[context->wslen++];
-  ws_ent->cat = NGHTTP2_HD_CAT_LITERAL;
-  ws_ent->nv = *nv;
+  ws_ent->cat = NGHTTP2_HD_CAT_NEWNAME;
+  ws_ent->newname.nv = *nv;
   return 0;
 }
 
-static int add_workingset_literal_indname(nghttp2_hd_context *context,
+static int add_workingset_indname(nghttp2_hd_context *context,
                                           nghttp2_hd_entry *ent,
                                           uint8_t *value, size_t valuelen)
 {
@@ -412,11 +412,11 @@ static int add_workingset_literal_indname(nghttp2_hd_context *context,
     return NGHTTP2_ERR_HEADER_COMP;
   }
   ws_ent = &context->ws[context->wslen++];
-  ws_ent->cat = NGHTTP2_HD_CAT_LITERAL_IDXNAME;
-  ws_ent->entv.entry = ent;
+  ws_ent->cat = NGHTTP2_HD_CAT_INDNAME;
+  ws_ent->indname.entry = ent;
   ++ent->ref;
-  ws_ent->entv.value = value;
-  ws_ent->entv.valuelen = valuelen;
+  ws_ent->indname.value = value;
+  ws_ent->indname.valuelen = valuelen;
   return 0;
 }
 
@@ -428,20 +428,20 @@ static nghttp2_hd_ws_entry* find_in_workingset(nghttp2_hd_context *context,
     nghttp2_hd_ws_entry *ent = &context->ws[i];
     switch(ent->cat) {
     case NGHTTP2_HD_CAT_INDEXED:
-      if(nghttp2_nv_equal(&ent->entry->nv, nv)) {
+      if(nghttp2_nv_equal(&ent->indexed.entry->nv, nv)) {
         return ent;
       }
       break;
-    case NGHTTP2_HD_CAT_LITERAL_IDXNAME:
-      if(ent->entv.entry->nv.namelen == nv->namelen &&
-         ent->entv.valuelen == nv->valuelen &&
-         memcmp(ent->entv.entry->nv.name, nv->name, nv->namelen) == 0 &&
-         memcmp(ent->entv.value, nv->value, nv->valuelen) == 0) {
+    case NGHTTP2_HD_CAT_INDNAME:
+      if(ent->indname.entry->nv.namelen == nv->namelen &&
+         ent->indname.valuelen == nv->valuelen &&
+         memcmp(ent->indname.entry->nv.name, nv->name, nv->namelen) == 0 &&
+         memcmp(ent->indname.value, nv->value, nv->valuelen) == 0) {
         return ent;
       }
       break;
-    case NGHTTP2_HD_CAT_LITERAL:
-      if(nghttp2_nv_equal(&ent->nv, nv)) {
+    case NGHTTP2_HD_CAT_NEWNAME:
+      if(nghttp2_nv_equal(&ent->newname.nv, nv)) {
         return ent;
       }
     default:
@@ -459,7 +459,7 @@ static nghttp2_hd_ws_entry* find_in_workingset_by_index
     nghttp2_hd_ws_entry *ent = &context->ws[i];
     /* Compare against *frozen* index, not the current header table
        index. */
-    if(ent->cat == NGHTTP2_HD_CAT_INDEXED && ent->index == index) {
+    if(ent->cat == NGHTTP2_HD_CAT_INDEXED && ent->indexed.index == index) {
       return ent;
     }
   }
@@ -712,9 +712,9 @@ static void create_workingset(nghttp2_hd_context *context)
   for(i = 0; i < context->refsetlen; ++i) {
     nghttp2_hd_ws_entry *ent = &context->ws[i];
     ent->cat = NGHTTP2_HD_CAT_INDEXED;
-    ent->entry = context->refset[i];
-    ent->index = ent->entry->index;
-    ent->checked = 0;
+    ent->indexed.entry = context->refset[i];
+    ent->indexed.index = ent->indexed.entry->index;
+    ent->indexed.checked = 0;
     context->refset[i] = NULL;
   }
   context->wslen = context->refsetlen;
@@ -734,7 +734,9 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
     nghttp2_hd_ws_entry *ws_ent;
     ws_ent = find_in_workingset(deflater, &nv[i]);
     if(ws_ent) {
-      ws_ent->checked = 1;
+      if(ws_ent->cat == NGHTTP2_HD_CAT_INDEXED) {
+        ws_ent->indexed.checked = 1;
+      }
     } else {
       nghttp2_hd_entry *ent;
       ent = find_in_hd_table(deflater, &nv[i]);
@@ -768,9 +770,10 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
   }
   for(i = 0; i < deflater->wslen; ++i) {
     nghttp2_hd_ws_entry *ws_ent = &deflater->ws[i];
-    if(!ws_ent->checked) {
-      assert(ws_ent->cat == NGHTTP2_HD_CAT_INDEXED);
-      rv = emit_index_block(buf_ptr, buflen_ptr, &offset, ws_ent->entry);
+    if(ws_ent->cat == NGHTTP2_HD_CAT_INDEXED &&
+       !ws_ent->indexed.checked) {
+      rv = emit_index_block(buf_ptr, buflen_ptr, &offset,
+                            ws_ent->indexed.entry);
       if(rv < 0) {
         return rv;
       }
@@ -799,19 +802,19 @@ static ssize_t build_nv_array(nghttp2_hd_context *inflater,
     nghttp2_hd_ws_entry *ent = &inflater->ws[i];
     switch(ent->cat) {
     case NGHTTP2_HD_CAT_INDEXED:
-      *nv = ent->entry->nv;
-      ent->checked = 1;
+      *nv = ent->indexed.entry->nv;
+      ent->indexed.checked = 1;
       ++nv;
       break;
-    case NGHTTP2_HD_CAT_LITERAL_IDXNAME:
-      nv->name = ent->entv.entry->nv.name;
-      nv->namelen = ent->entv.entry->nv.namelen;
-      nv->value = ent->entv.value;
-      nv->valuelen = ent->entv.valuelen;
+    case NGHTTP2_HD_CAT_INDNAME:
+      nv->name = ent->indname.entry->nv.name;
+      nv->namelen = ent->indname.entry->nv.namelen;
+      nv->value = ent->indname.value;
+      nv->valuelen = ent->indname.valuelen;
       ++nv;
       break;
-    case NGHTTP2_HD_CAT_LITERAL:
-      *nv = ent->nv;
+    case NGHTTP2_HD_CAT_NEWNAME:
+      *nv = ent->newname.nv;
       ++nv;
       break;
     default:
@@ -842,10 +845,10 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       ws_ent = find_in_workingset_by_index(inflater, index);
       if(ws_ent) {
         assert(ws_ent->cat == NGHTTP2_HD_CAT_INDEXED);
-        --ws_ent->entry->ref;
-        if(ws_ent->entry->ref == 0) {
-          nghttp2_hd_entry_free(ws_ent->entry);
-          free(ws_ent->entry);
+        --ws_ent->indexed.entry->ref;
+        if(ws_ent->indexed.entry->ref == 0) {
+          nghttp2_hd_entry_free(ws_ent->indexed.entry);
+          free(ws_ent->indexed.entry);
         }
         ws_ent->cat = NGHTTP2_HD_CAT_NONE;
       } else {
@@ -883,7 +886,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       in += valuelen;
       nghttp2_downcase(nv.name, nv.namelen);
       if(c == 0x60u) {
-        rv = add_workingset_literal(inflater, &nv);
+        rv = add_workingset_newname(inflater, &nv);
       } else {
         nghttp2_hd_entry *ent = add_hd_table_incremental(inflater, &nv);
         if(ent) {
@@ -918,7 +921,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       value = in;
       in += valuelen;
       if((c & 0x60u) == 0x60u) {
-        rv = add_workingset_literal_indname(inflater, ent, value, valuelen);
+        rv = add_workingset_indname(inflater, ent, value, valuelen);
       } else {
         nghttp2_nv nv;
         nghttp2_hd_entry *new_ent;
@@ -1032,21 +1035,21 @@ int nghttp2_hd_end_headers(nghttp2_hd_context *context)
     nghttp2_hd_ws_entry *ws_ent = &context->ws[i];
     switch(ws_ent->cat) {
     case NGHTTP2_HD_CAT_INDEXED:
-      if(ws_ent->checked == 0 || ws_ent->entry->ref == 1) {
-        --ws_ent->entry->ref;
-        if(ws_ent->entry->ref == 0) {
-          nghttp2_hd_entry_free(ws_ent->entry);
-          free(ws_ent->entry);
+      if(ws_ent->indexed.checked == 0 || ws_ent->indexed.entry->ref == 1) {
+        --ws_ent->indexed.entry->ref;
+        if(ws_ent->indexed.entry->ref == 0) {
+          nghttp2_hd_entry_free(ws_ent->indexed.entry);
+          free(ws_ent->indexed.entry);
         }
       } else {
-        context->refset[context->refsetlen++] = ws_ent->entry;
+        context->refset[context->refsetlen++] = ws_ent->indexed.entry;
       }
       break;
-    case NGHTTP2_HD_CAT_LITERAL_IDXNAME:
-      --ws_ent->entv.entry->ref;
-      if(ws_ent->entv.entry->ref == 0) {
-        nghttp2_hd_entry_free(ws_ent->entv.entry);
-        free(ws_ent->entv.entry);
+    case NGHTTP2_HD_CAT_INDNAME:
+      --ws_ent->indname.entry->ref;
+      if(ws_ent->indname.entry->ref == 0) {
+        nghttp2_hd_entry_free(ws_ent->indname.entry);
+        free(ws_ent->indname.entry);
       }
       break;
     default:
