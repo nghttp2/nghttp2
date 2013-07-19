@@ -1210,8 +1210,7 @@ int nghttp2_session_send(nghttp2_session *session)
         break;
       }
       framebuflen = nghttp2_session_prep_frame(session, item);
-      if(framebuflen == NGHTTP2_ERR_DEFERRED ||
-         framebuflen == NGHTTP2_ERR_CREDENTIAL_PENDING) {
+      if(framebuflen == NGHTTP2_ERR_DEFERRED) {
         continue;
       } else if(framebuflen < 0) {
         /* TODO If the error comes from compressor, the connection
