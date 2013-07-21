@@ -1381,6 +1381,21 @@ static int nghttp2_session_handle_invalid_stream
   return 0;
 }
 
+/*
+ * Handles invalid frame which causes connection error.
+ */
+static int nghttp2_session_handle_invalid_connection
+(nghttp2_session *session,
+ nghttp2_frame *frame,
+ nghttp2_error_code error_code)
+{
+  if(session->callbacks.on_invalid_frame_recv_callback) {
+    session->callbacks.on_invalid_frame_recv_callback
+      (session, frame, error_code, session->user_data);
+  }
+  return nghttp2_session_fail_session(session, error_code);
+}
+
 int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame)
 {
@@ -1390,16 +1405,12 @@ int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
     /* We don't accept new stream after GOAWAY is sent or received. */
     return 0;
   }
-  if(!nghttp2_session_is_new_peer_stream_id
-     (session, frame->hd.stream_id)) {
+  if(!nghttp2_session_is_new_peer_stream_id(session, frame->hd.stream_id)) {
     /* The spec says if an endpoint receives a HEADERS with invalid
        stream ID, it MUST issue connection error with error code
        PROTOCOL_ERROR */
-    if(session->callbacks.on_invalid_frame_recv_callback) {
-      session->callbacks.on_invalid_frame_recv_callback
-        (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
-    }
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR);
   } else {
     session->last_recv_stream_id = frame->hd.stream_id;
     error_code = nghttp2_session_validate_syn_stream(session, &frame->headers);
@@ -1439,34 +1450,18 @@ int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
   nghttp2_error_code error_code = NGHTTP2_PROTOCOL_ERROR;
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-      if(stream->state == NGHTTP2_STREAM_OPENING) {
-        valid = 1;
-        stream->state = NGHTTP2_STREAM_OPENED;
-        nghttp2_session_call_on_frame_received(session, frame);
-        if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-          /* This is the last frame of this stream, so disallow
-             further receptions. */
-          nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-          nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-        }
-      } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-        /* This is race condition. NGHTTP2_STREAM_CLOSING indicates
-           that we queued RST_STREAM but it has not been sent. It will
-           eventually sent, so we just ignore this frame. */
-        valid = 1;
-      } else {
-        /* It seems that the spec does not say what to do if multiple
-           HEADERS for the same active stream ID are receives. The
-           SPDY/3 spec says it should be treated as stream error with
-           error code STREAM_IN_USE. The spec does not such code
-           anymore. It would be safer to reject those broken client at
-           the moment. Do you accept the web server which responds
-           with multiple response headers? */
-        if(session->callbacks.on_invalid_frame_recv_callback) {
-          session->callbacks.on_invalid_frame_recv_callback
-            (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
-        }
-        return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      /* This function is only called if stream->state ==
+         NGHTTP2_STREAM_OPENING. If server push is implemented, it may
+         be called on reserved state. */
+      assert(stream->state == NGHTTP2_STREAM_OPENING);
+      valid = 1;
+      stream->state = NGHTTP2_STREAM_OPENED;
+      nghttp2_session_call_on_frame_received(session, frame);
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        /* This is the last frame of this stream, so disallow
+           further receptions. */
+        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+        nghttp2_session_close_stream_if_shut_rdwr(session, stream);
       }
     }
   } else {
@@ -1675,11 +1670,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
           return rv;
         }
       } else {
-        if(session->callbacks.on_invalid_frame_recv_callback) {
-          session->callbacks.on_invalid_frame_recv_callback
-            (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
-        }
-        return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_PROTOCOL_ERROR);
       }
       break;
     case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
@@ -1693,12 +1685,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       } else if(session->remote_settings[entry->settings_id] == 1) {
         /* Re-enabling flow control is subject to connection-level
            error(?) */
-        if(session->callbacks.on_invalid_frame_recv_callback) {
-          session->callbacks.on_invalid_frame_recv_callback
-            (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
-        }
-        return nghttp2_session_fail_session(session,
-                                            NGHTTP2_FLOW_CONTROL_ERROR);
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
       }
       break;
     }
@@ -1791,12 +1779,8 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
     }
     if(INT32_MAX - frame->window_update.window_size_increment <
        session->window_size) {
-      if(session->callbacks.on_invalid_frame_recv_callback) {
-        session->callbacks.on_invalid_frame_recv_callback
-          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR, session->user_data);
-      }
-      return nghttp2_session_fail_session
-        (session, NGHTTP2_FLOW_CONTROL_ERROR);
+      return nghttp2_session_handle_invalid_connection
+        (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
     }
     session->window_size += frame->window_update.window_size_increment;
     nghttp2_session_call_on_frame_received(session, frame);
