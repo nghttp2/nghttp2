@@ -1418,6 +1418,9 @@ int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
 {
   int r = 0;
   nghttp2_error_code error_code = NGHTTP2_NO_ERROR;
+  if(frame->hd.stream_id == 0) {
+    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+  }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
     return 0;
@@ -1464,6 +1467,9 @@ int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
   int r = 0;
   int valid = 0;
   nghttp2_error_code error_code = NGHTTP2_PROTOCOL_ERROR;
+  if(frame->hd.stream_id == 0) {
+    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+  }
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
       /* This function is only called if stream->state ==
@@ -1502,6 +1508,9 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
   int r = 0;
   int valid = 0;
   nghttp2_error_code error_code = NGHTTP2_PROTOCOL_ERROR;
+  if(frame->hd.stream_id == 0) {
+    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+  }
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
       if(stream->state == NGHTTP2_STREAM_OPENED) {
@@ -1550,6 +1559,9 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame)
 {
+  if(frame->hd.stream_id == 0) {
+    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+  }
   nghttp2_session_call_on_frame_received(session, frame);
   nghttp2_session_close_stream(session, frame->hd.stream_id,
                                frame->rst_stream.error_code);
@@ -1663,6 +1675,9 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
   int rv;
   size_t i;
   int check[NGHTTP2_SETTINGS_MAX+1];
+  if(frame->hd.stream_id != 0) {
+    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+  }
   /* Check ID/value pairs and persist them if necessary. */
   memset(check, 0, sizeof(check));
   for(i = 0; i < frame->settings.niv; ++i) {
@@ -1714,6 +1729,9 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
                                      nghttp2_frame *frame)
 {
   int r = 0;
+  if(frame->hd.stream_id != 0) {
+    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+  }
   if((frame->hd.flags & NGHTTP2_FLAG_PONG) == 0) {
     /* Peer sent ping, so ping it back */
     r = nghttp2_session_add_ping(session, NGHTTP2_FLAG_PONG,
