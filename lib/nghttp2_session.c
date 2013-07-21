@@ -1383,12 +1383,11 @@ static int nghttp2_session_handle_parse_error(nghttp2_session *session,
 
 static int nghttp2_session_handle_invalid_stream
 (nghttp2_session *session,
- int32_t stream_id,
  nghttp2_frame *frame,
  nghttp2_error_code error_code)
 {
   int r;
-  r = nghttp2_session_add_rst_stream(session, stream_id, error_code);
+  r = nghttp2_session_add_rst_stream(session, frame->hd.stream_id, error_code);
   if(r != 0) {
     return r;
   }
@@ -1453,8 +1452,7 @@ int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
       nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
     }
   } else {
-    r = nghttp2_session_handle_invalid_stream
-      (session, frame->hd.stream_id, frame, error_code);
+    r = nghttp2_session_handle_invalid_stream(session, frame, error_code);
   }
   return r;
 }
@@ -1492,8 +1490,7 @@ int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
     error_code = NGHTTP2_STREAM_CLOSED;
   }
   if(!valid) {
-    r = nghttp2_session_handle_invalid_stream
-      (session, frame->hd.stream_id, frame, error_code);
+    r = nghttp2_session_handle_invalid_stream(session, frame, error_code);
   }
   return r;
 }
@@ -1545,8 +1542,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
     error_code = NGHTTP2_STREAM_CLOSED;
   }
   if(!valid) {
-    r = nghttp2_session_handle_invalid_stream
-      (session, frame->hd.stream_id, frame, error_code);
+    r = nghttp2_session_handle_invalid_stream(session, frame, error_code);
   }
   return r;
 }
@@ -1840,7 +1836,7 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
          stream->window_size) {
         int r;
         r = nghttp2_session_handle_invalid_stream
-          (session, frame->hd.stream_id, frame, NGHTTP2_FLOW_CONTROL_ERROR);
+          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
         return r;
       } else {
         stream->window_size += frame->window_update.window_size_increment;
@@ -1917,7 +1913,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
           }
         } else {
           r = nghttp2_session_handle_invalid_stream
-            (session, frame.hd.stream_id, &frame, NGHTTP2_PROTOCOL_ERROR);
+            (session, &frame, NGHTTP2_PROTOCOL_ERROR);
         }
       } else {
         frame.headers.cat = NGHTTP2_HCAT_START_STREAM;
@@ -1927,8 +1923,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       nghttp2_hd_end_headers(&session->hd_inflater);
     } else if(r == NGHTTP2_ERR_INVALID_HEADER_BLOCK) {
       r = nghttp2_session_handle_invalid_stream
-        (session, frame.hd.stream_id, &frame,
-         nghttp2_get_status_code_from_error_code(r));
+        (session, &frame, nghttp2_get_status_code_from_error_code(r));
       /* TODO test this. It seems NGHTTP2_ERR_INVALID_HEADER_BLOCK is
          not used in framing anymore. */
       nghttp2_frame_headers_free(&frame.headers);
