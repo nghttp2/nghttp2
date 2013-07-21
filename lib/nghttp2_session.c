@@ -1362,6 +1362,24 @@ static int nghttp2_session_validate_syn_stream(nghttp2_session *session,
   return 0;
 }
 
+static int nghttp2_session_handle_parse_error(nghttp2_session *session,
+                                              nghttp2_frame_type type,
+                                              int lib_error_code,
+                                              nghttp2_error_code error_code)
+{
+  if(session->callbacks.on_frame_recv_parse_error_callback) {
+    session->callbacks.on_frame_recv_parse_error_callback
+      (session,
+       type,
+       session->iframe.headbuf,
+       sizeof(session->iframe.headbuf),
+       session->iframe.buf,
+       session->iframe.buflen,
+       lib_error_code,
+       session->user_data);
+  }
+  return nghttp2_session_fail_session(session, error_code);
+}
 
 static int nghttp2_session_handle_invalid_stream
 (nghttp2_session *session,
@@ -1848,23 +1866,6 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
   return 0;
 }
 
-static void nghttp2_session_handle_parse_error(nghttp2_session *session,
-                                               nghttp2_frame_type type,
-                                               int lib_error_code)
-{
-  if(session->callbacks.on_frame_recv_parse_error_callback) {
-    session->callbacks.on_frame_recv_parse_error_callback
-      (session,
-       type,
-       session->iframe.headbuf,
-       sizeof(session->iframe.headbuf),
-       session->iframe.buf,
-       session->iframe.buflen,
-       lib_error_code,
-       session->user_data);
-  }
-}
-
 static int nghttp2_get_status_code_from_error_code(int lib_error_code)
 {
   switch(lib_error_code) {
@@ -1933,8 +1934,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       nghttp2_frame_headers_free(&frame.headers);
       nghttp2_hd_end_headers(&session->hd_inflater);
     } else if(nghttp2_is_non_fatal(r)) {
-      nghttp2_session_handle_parse_error(session, type, r);
-      r = nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error(session, type, r,
+                                             NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_RST_STREAM:
@@ -1947,8 +1948,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       r = nghttp2_session_on_rst_stream_received(session, &frame);
       nghttp2_frame_rst_stream_free(&frame.rst_stream);
     } else if(nghttp2_is_non_fatal(r)) {
-      nghttp2_session_handle_parse_error(session, type, r);
-      r = nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error(session, type, r,
+                                             NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_SETTINGS:
@@ -1961,8 +1962,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       r = nghttp2_session_on_settings_received(session, &frame);
       nghttp2_frame_settings_free(&frame.settings);
     } else if(nghttp2_is_non_fatal(r)) {
-      nghttp2_session_handle_parse_error(session, type, r);
-      r = nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error(session, type, r,
+                                             NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_PING:
@@ -1975,8 +1976,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       r = nghttp2_session_on_ping_received(session, &frame);
       nghttp2_frame_ping_free(&frame.ping);
     } else if(nghttp2_is_non_fatal(r)) {
-      nghttp2_session_handle_parse_error(session, type, r);
-      r = nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error(session, type, r,
+                                             NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_GOAWAY:
@@ -1989,8 +1990,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       r = nghttp2_session_on_goaway_received(session, &frame);
       nghttp2_frame_goaway_free(&frame.goaway);
     } else if(nghttp2_is_non_fatal(r)) {
-      nghttp2_session_handle_parse_error(session, type, r);
-      r = nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error(session, type, r,
+                                             NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_WINDOW_UPDATE:
@@ -2003,8 +2004,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       r = nghttp2_session_on_window_update_received(session, &frame);
       nghttp2_frame_window_update_free(&frame.window_update);
     } else if(nghttp2_is_non_fatal(r)) {
-      nghttp2_session_handle_parse_error(session, type, r);
-      r = nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error(session, type, r,
+                                             NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   default:
