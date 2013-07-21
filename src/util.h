@@ -32,6 +32,7 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include <memory>
 
 namespace nghttp2 {
 
@@ -358,6 +359,20 @@ std::string utos(T n)
     res[i] = (n%10) + '0';
   }
   return res;
+}
+
+template<typename T, typename... U>
+typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
+make_unique(U&&... u)
+{
+  return std::unique_ptr<T>(new T(std::forward<U>(u)...));
+}
+
+template<typename T>
+typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
+make_unique(size_t size)
+{
+  return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
 }
 
 } // namespace util

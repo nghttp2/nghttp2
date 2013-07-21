@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2.0 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -34,7 +34,6 @@
 #include <netinet/tcp.h>
 #include <signal.h>
 #include <getopt.h>
-#include <poll.h>
 
 #include <cassert>
 #include <cstdio>
@@ -50,9 +49,15 @@
 #include <map>
 #include <vector>
 #include <sstream>
+#include <tuple>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+
+#include <event.h>
+#include <event2/bufferevent_ssl.h>
+#include <event2/dns.h>
+
 #include <nghttp2/nghttp2.h>
 
 #include "http-parser/http_parser.h"
@@ -80,11 +85,12 @@ struct Config {
   std::string certfile;
   std::string keyfile;
   int window_bits;
-  std::map<std::string,std::string> headers;
+  std::map<std::string, std::string> headers;
   std::string datafile;
+  size_t output_upper_thres;
   Config():null_out(false), remote_name(false), verbose(false),
            get_assets(false), stat(false), no_tls(false), multiply(1),
-           timeout(-1), window_bits(-1)
+           timeout(-1), window_bits(-1), output_upper_thres(1024*1024)
   {}
 };
 
@@ -301,8 +307,41 @@ struct SessionStat {
 
 Config config;
 
-struct SpdySession {
-  std::vector<Request*> reqvec;
+namespace {
+void eventcb(bufferevent *bev, short events, void *ptr);
+} // namespace
+
+namespace {
+void readcb(bufferevent *bev, void *ptr);
+} // namespace
+
+namespace {
+void writecb(bufferevent *bev, void *ptr);
+} // namespace
+
+struct HttpClient;
+
+namespace {
+void submit_request(HttpClient *client,
+                    const std::map<std::string, std::string>& headers,
+                    Request *req);
+} // namespace
+
+enum client_state {
+  STATE_IDLE,
+  STATE_CONNECTED
+};
+
+struct HttpClient {
+  nghttp2_session *session;
+  const nghttp2_session_callbacks *callbacks;
+  event_base *evbase;
+  evdns_base *dnsbase;
+  SSL_CTX *ssl_ctx;
+  SSL *ssl;
+  bufferevent *bev;
+  client_state state;
+  std::vector<std::unique_ptr<Request>> reqvec;
   // Map from stream ID to Request object.
   std::map<int32_t, Request*> streams;
   // Insert path already added in reqvec to prevent multiple request
@@ -311,15 +350,191 @@ struct SpdySession {
   // The number of completed requests, including failed ones.
   size_t complete;
   std::string hostport;
-  Spdylay *sc;
   SessionStat stat;
-  SpdySession():complete(0), sc(0) {}
-  ~SpdySession()
+  HttpClient(const nghttp2_session_callbacks* callbacks,
+             event_base *evbase, SSL_CTX *ssl_ctx)
+    : session(nullptr),
+      callbacks(callbacks),
+      evbase(evbase),
+      dnsbase(evdns_base_new(evbase, 1)),
+      ssl_ctx(ssl_ctx),
+      ssl(nullptr),
+      bev(nullptr),
+      state(STATE_IDLE),
+      complete(0)
+  {}
+
+  ~HttpClient()
   {
-    for(size_t i = 0; i < reqvec.size(); ++i) {
-      delete reqvec[i];
+    disconnect();
+  }
+
+  int initiate_connection(const std::string& host, uint16_t port)
+  {
+    int rv;
+    if(ssl_ctx) {
+      // We are establishing TLS connection.
+      ssl = SSL_new(ssl_ctx);
+      if(!ssl) {
+        std::cerr << "SSL_new() failed: "
+                  << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+        return -1;
+      }
+
+      // If the user overrode the host header, use that value for the
+      // SNI extension
+      const char *host_string = nullptr;
+      auto i = config.headers.find( "Host" );
+      if ( i != config.headers.end() ) {
+        host_string = (*i).second.c_str();
+      } else {
+        host_string = host.c_str();
+      }
+      if (!SSL_set_tlsext_host_name(ssl, host_string)) {
+        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        return -1;
+      }
+      // If state_ == PROXY_CONNECTED, we has connected to the proxy
+      // using fd_ and tunnel has been established.
+      bev = bufferevent_openssl_socket_new(evbase, -1, ssl,
+                                           BUFFEREVENT_SSL_CONNECTING,
+                                           BEV_OPT_DEFER_CALLBACKS);
+      rv = bufferevent_socket_connect_hostname
+        (bev, dnsbase, AF_UNSPEC, host_string, port);
+    } else {
+      bev = bufferevent_socket_new(evbase, -1, BEV_OPT_DEFER_CALLBACKS);
+      rv = bufferevent_socket_connect_hostname
+        (bev, dnsbase, AF_UNSPEC, host.c_str(), port);
+    }
+    if(rv != 0) {
+      return -1;
+    }
+    bufferevent_enable(bev, EV_READ);
+    bufferevent_setcb(bev, readcb, writecb, eventcb, this);
+    if(config.timeout != -1) {
+      timeval tv = { config.timeout, 0 };
+      bufferevent_set_timeouts(bev, &tv, &tv);
+    }
+    return 0;
+  }
+
+  void disconnect()
+  {
+    state = STATE_IDLE;
+    nghttp2_session_del(session);
+    session = nullptr;
+    if(ssl) {
+      SSL_shutdown(ssl);
+    }
+    if(bev) {
+      bufferevent_disable(bev, EV_READ | EV_WRITE);
+      bufferevent_free(bev);
+      bev = nullptr;
+    }
+    if(dnsbase) {
+      evdns_base_free(dnsbase, 1);
+      dnsbase = nullptr;
+    }
+    if(ssl) {
+      SSL_free(ssl);
+      ssl = nullptr;
     }
   }
+
+  int on_connect()
+  {
+    int rv;
+    record_handshake_time();
+    rv = nghttp2_session_client_new(&session, callbacks, this);
+    if(rv != 0) {
+      return -1;
+    }
+    // TODO Send connection header here
+    nghttp2_settings_entry iv[1];
+    size_t niv = 0;
+    if(config.window_bits != -1) {
+      iv[niv].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+      iv[niv].value = 1 << config.window_bits;
+      ++niv;
+    }
+    rv = nghttp2_submit_settings(session, iv, niv);
+    if(rv != 0) {
+      return -1;
+    }
+    for(auto& req : reqvec) {
+      submit_request(this, config.headers, req.get());
+    }
+    return 0;
+  }
+
+  int on_read()
+  {
+    int rv = 0;
+    if((rv = nghttp2_session_recv(session)) < 0) {
+      if(rv != NGHTTP2_ERR_EOF) {
+        std::cerr << "nghttp2_session_recv() returned error: "
+                  << nghttp2_strerror(rv) << std::endl;
+      }
+    } else if((rv = nghttp2_session_send(session)) < 0) {
+      std::cerr << "nghttp2_session_send() returned error: "
+                << nghttp2_strerror(rv) << std::endl;
+    }
+    if(rv == 0) {
+      if(nghttp2_session_want_read(session) == 0 &&
+         nghttp2_session_want_write(session) == 0) {
+        rv = -1;
+      }
+    }
+    return rv;
+  }
+
+  int on_write()
+  {
+    int rv = 0;
+    if((rv = nghttp2_session_send(session)) < 0) {
+      std::cerr << "nghttp2_session_send() returned error: "
+                << nghttp2_strerror(rv) << std::endl;
+    }
+    if(rv == 0) {
+      if(nghttp2_session_want_read(session) == 0 &&
+         nghttp2_session_want_write(session) == 0) {
+        rv = -1;
+      }
+    }
+    return rv;
+  }
+
+  int sendcb(const uint8_t *data, size_t len)
+  {
+    int rv;
+    evbuffer *output = bufferevent_get_output(bev);
+    // Check buffer length and return WOULDBLOCK if it is large enough.
+    if(evbuffer_get_length(output) > config.output_upper_thres) {
+      return NGHTTP2_ERR_WOULDBLOCK;
+    }
+
+    rv = evbuffer_add(output, data, len);
+    if(rv == -1) {
+      std::cerr << "evbuffer_add() failed" << std::endl;
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    } else {
+      return len;
+    }
+  }
+
+  int recvcb(uint8_t *buf, size_t len)
+  {
+    evbuffer *input = bufferevent_get_input(bev);
+    int nread = evbuffer_remove(input, buf, len);
+    if(nread == -1) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    } else if(nread == 0) {
+      return NGHTTP2_ERR_WOULDBLOCK;
+    } else {
+      return nread;
+    }
+  }
+
   bool all_requests_processed() const
   {
     return complete == reqvec.size();
@@ -344,18 +559,21 @@ struct SpdySession {
     }
     hostport = ss.str();
   }
-  bool add_request(const std::string& uri, const http_parser_url& u,
+  bool add_request(const std::string& uri,
                    const nghttp2_data_provider *data_prd,
                    int64_t data_length,
                    int level = 0)
   {
+    http_parser_url u;
+    http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
     if(path_cache.count(uri)) {
       return false;
     } else {
       if(config.multiply == 1) {
         path_cache.insert(uri);
       }
-      reqvec.push_back(new Request(uri, u, data_prd, data_length, level));
+      reqvec.push_back(util::make_unique<Request>(uri, u, data_prd,
+                                                  data_length, level));
       return true;
     }
   }
@@ -367,19 +585,85 @@ struct SpdySession {
 
 extern bool ssl_debug;
 
-void submit_request(Spdylay& sc, const std::string& hostport,
-                    const std::map<std::string,std::string> &headers,
-                    Request* req)
+namespace {
+void submit_request(HttpClient *client,
+                    const std::map<std::string, std::string>& headers,
+                    Request *req)
 {
-  std::string path = req->make_reqpath();
-  int r = sc.submit_request(get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA),
-                            hostport, path, headers,
-                            NGHTTP2_PRI_DEFAULT, req->data_prd,
-                            req->data_length, req);
+  enum eStaticHeaderPosition
+  {
+    POS_METHOD = 0,
+    POS_PATH,
+    POS_SCHEME,
+    POS_HOST,
+    POS_ACCEPT,
+    POS_ACCEPT_ENCODING,
+    POS_USERAGENT
+  };
+  auto path = req->make_reqpath();
+  auto scheme = get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
+  const char *static_nv[] = {
+    ":method", req->data_prd ? "POST" : "GET",
+    ":path", path.c_str(),
+    ":scheme", scheme.c_str(),
+    ":host", client->hostport.c_str(),
+    "accept", "*/*",
+    "accept-encoding", "gzip, deflate",
+    "user-agent", "nghttp2/" NGHTTP2_VERSION
+  };
+
+  int hardcoded_entry_count = sizeof(static_nv) / sizeof(*static_nv);
+  int header_count          = headers.size();
+  int total_entry_count     = hardcoded_entry_count + header_count * 2;
+  if(req->data_prd) {
+    ++total_entry_count;
+  }
+
+  auto nv = util::make_unique<const char*[]>(total_entry_count + 1);
+
+  memcpy(nv.get(), static_nv, hardcoded_entry_count * sizeof(*static_nv));
+
+  auto i = std::begin(headers);
+  auto end = std::end(headers);
+
+  int pos = hardcoded_entry_count;
+
+  std::string content_length_str;
+  if(req->data_prd) {
+    std::stringstream ss;
+    ss << req->data_length;
+    content_length_str = ss.str();
+    nv[pos++] = "content-length";
+    nv[pos++] = content_length_str.c_str();
+  }
+  while( i != end ) {
+    const char *key = (*i).first.c_str();
+    const char *value = (*i).second.c_str();
+    if ( util::strieq( key, "accept" ) ) {
+      nv[POS_ACCEPT*2+1] = value;
+    }
+    else if ( util::strieq( key, "user-agent" ) ) {
+      nv[POS_USERAGENT*2+1] = value;
+    }
+    else if ( util::strieq( key, "host" ) ) {
+      nv[POS_HOST*2+1] = value;
+    }
+    else {
+      nv[pos] = key;
+      nv[pos+1] = value;
+      pos += 2;
+    }
+    ++i;
+  }
+  nv[pos] = nullptr;
+
+  int r = nghttp2_submit_request(client->session, NGHTTP2_PRI_DEFAULT,
+                                 nv.get(), req->data_prd, req);
   assert(r == 0);
 }
+} // namespace
 
-void update_html_parser(SpdySession *spdySession, Request *req,
+void update_html_parser(HttpClient *client, Request *req,
                         const uint8_t *data, size_t len, int fin)
 {
   if(!req->html_parser) {
@@ -396,29 +680,27 @@ void update_html_parser(SpdySession *spdySession, Request *req,
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
        porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
       // No POST data for assets
-      if ( spdySession->add_request(uri, u, 0, 0, req->level+1) ) {
-        submit_request(*spdySession->sc, spdySession->hostport, config.headers,
-                       spdySession->reqvec.back());
+      if ( client->add_request(uri, nullptr, 0, req->level+1) ) {
+        submit_request(client, config.headers,
+                       client->reqvec.back().get());
       }
     }
   }
   req->html_parser->clear_links();
 }
 
-SpdySession* get_session(void *user_data)
+HttpClient* get_session(void *user_data)
 {
-  return reinterpret_cast<SpdySession*>
-    (reinterpret_cast<Spdylay*>(user_data)->user_data());
+  return reinterpret_cast<HttpClient*>(user_data);
 }
 
 void on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
-  SpdySession *spdySession = get_session(user_data);
-  std::map<int32_t, Request*>::iterator itr =
-    spdySession->streams.find(stream_id);
-  if(itr != spdySession->streams.end()) {
+  HttpClient *client = get_session(user_data);
+  auto itr = client->streams.find(stream_id);
+  if(itr != client->streams.end()) {
     Request *req = (*itr).second;
     if(req->inflater) {
       while(len > 0) {
@@ -434,7 +716,7 @@ void on_data_chunk_recv_callback
         if(!config.null_out) {
           std::cout.write(reinterpret_cast<const char*>(out), outlen);
         }
-        update_html_parser(spdySession, req, out, outlen, 0);
+        update_html_parser(client, req, out, outlen, 0);
         data += tlen;
         len -= tlen;
       }
@@ -442,7 +724,7 @@ void on_data_chunk_recv_callback
       if(!config.null_out) {
         std::cout.write(reinterpret_cast<const char*>(data), len);
       }
-      update_html_parser(spdySession, req, data, len, 0);
+      update_html_parser(client, req, data, len, 0);
     }
   }
 }
@@ -450,11 +732,11 @@ void on_data_chunk_recv_callback
 void check_stream_id(nghttp2_session *session, nghttp2_frame *frame,
                      void *user_data)
 {
-  SpdySession *spdySession = get_session(user_data);
+  HttpClient *client = get_session(user_data);
   int32_t stream_id = frame->hd.stream_id;
   Request *req = (Request*)nghttp2_session_get_stream_user_data(session,
                                                                 stream_id);
-  spdySession->streams[stream_id] = req;
+  client->streams[stream_id] = req;
   req->record_syn_stream_time();
 }
 
@@ -525,31 +807,31 @@ void on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
-  SpdySession *spdySession = get_session(user_data);
-  auto itr = spdySession->streams.find(stream_id);
-  if(itr != spdySession->streams.end()) {
-    update_html_parser(spdySession, (*itr).second, 0, 0, 1);
+  HttpClient *client = get_session(user_data);
+  auto itr = client->streams.find(stream_id);
+  if(itr != client->streams.end()) {
+    update_html_parser(client, (*itr).second, 0, 0, 1);
     (*itr).second->record_complete_time();
-    ++spdySession->complete;
-    if(spdySession->all_requests_processed()) {
+    ++client->complete;
+    if(client->all_requests_processed()) {
       nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0);
     }
   }
 }
 
-void print_stats(const SpdySession& spdySession)
+void print_stats(const HttpClient& client)
 {
   std::cout << "***** Statistics *****" << std::endl;
-  for(size_t i = 0; i < spdySession.reqvec.size(); ++i) {
-    auto req = spdySession.reqvec[i];
-    std::cout << "#" << i+1 << ": " << req->uri << std::endl;
+  int i = 0;
+  for(auto& req : client.reqvec) {
+    std::cout << "#" << ++i << ": " << req->uri << std::endl;
     std::cout << "    Status: " << req->status << std::endl;
-    std::cout << "    Delta (ms) from SSL/TLS handshake(SYN_STREAM):"
+    std::cout << "    Delta (ms) from handshake(HEADERS):"
               << std::endl;
     if(req->stat.on_syn_reply_time.tv_sec >= 0) {
       std::cout << "        SYN_REPLY: "
                 << time_delta(req->stat.on_syn_reply_time,
-                              spdySession.stat.on_handshake_time)
+                              client.stat.on_handshake_time)
                 << "("
                 << time_delta(req->stat.on_syn_reply_time,
                               req->stat.on_syn_stream_time)
@@ -559,7 +841,7 @@ void print_stats(const SpdySession& spdySession)
     if(req->stat.on_complete_time.tv_sec >= 0) {
       std::cout << "        Completed: "
                 << time_delta(req->stat.on_complete_time,
-                              spdySession.stat.on_handshake_time)
+                              client.stat.on_handshake_time)
                 << "("
                 << time_delta(req->stat.on_complete_time,
                               req->stat.on_syn_stream_time)
@@ -570,116 +852,146 @@ void print_stats(const SpdySession& spdySession)
   }
 }
 
-int spdy_evloop(int fd, SSL *ssl, SpdySession& spdySession,
-                const nghttp2_session_callbacks *callbacks, int timeout)
+namespace {
+int client_select_next_proto_cb(SSL* ssl,
+                                unsigned char **out, unsigned char *outlen,
+                                const unsigned char *in, unsigned int inlen,
+                                void *arg)
 {
-  int result = 0;
-  int rv;
-  Spdylay sc(fd, ssl, callbacks, &spdySession);
-  spdySession.sc = &sc;
-
-  nfds_t npollfds = 1;
-  pollfd pollfds[1];
-  if(config.window_bits != -1) {
-    nghttp2_settings_entry iv[1];
-    iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-    iv[0].value = 1 << config.window_bits;
-    rv = sc.submit_settings(iv, 1);
-    assert(rv == 0);
+  if(ssl_debug) {
+    print_timer();
+    std::cout << " NPN select next protocol: the remote server offers:"
+              << std::endl;
   }
-  for(int i = 0, n = spdySession.reqvec.size(); i < n; ++i) {
-    submit_request(sc, spdySession.hostport, config.headers,
-                   spdySession.reqvec[i]);
+  for(unsigned int i = 0; i < inlen; i += in[i]+1) {
+    if(ssl_debug) {
+      std::cout << "          * ";
+      std::cout.write(reinterpret_cast<const char*>(&in[i+1]), in[i]);
+      std::cout << std::endl;
+    }
   }
-  pollfds[0].fd = fd;
-  ctl_poll(pollfds, &sc);
-
-  timeval tv1, tv2;
-  while(!sc.finish()) {
-    if(config.timeout != -1) {
-      get_time(&tv1);
+  if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
+    std::cerr << "Server did not advertise HTTP/2.0 protocol."
+              << std::endl;
+  } else {
+    if(ssl_debug) {
+      std::cout << "          NPN selected the protocol: "
+                << std::string((const char*)*out, (size_t)*outlen)
+                << std::endl;
     }
-    int nfds = poll(pollfds, npollfds, timeout);
-    if(nfds == -1) {
-      perror("poll");
-      result = -1;
-      break;
-    }
-    if(pollfds[0].revents & (POLLIN | POLLOUT)) {
-      int rv;
-      if((rv = sc.recv()) != 0 || (rv = sc.send()) != 0) {
-        if(rv != NGHTTP2_ERR_EOF || !spdySession.all_requests_processed()) {
-          std::cerr << "Fatal: " << nghttp2_strerror(rv) << "\n"
-                    << "reqnum=" << spdySession.reqvec.size()
-                    << ", completed=" << spdySession.complete << std::endl;
-        }
-        result = -1;
-        break;
-      }
-    }
-    if((pollfds[0].revents & POLLHUP) || (pollfds[0].revents & POLLERR)) {
-      std::cerr << "HUP" << std::endl;
-      result = -1;
-      break;
-    }
-    if(config.timeout != -1) {
-      get_time(&tv2);
-      timeout -= time_delta(tv2, tv1);
-      if (timeout <= 0) {
-        std::cerr << "Requests to " << spdySession.hostport << " timed out."
-                  << std::endl;
-        result = -1;
-        break;
-      }
-    }
-    ctl_poll(pollfds, &sc);
   }
-  if(!spdySession.all_requests_processed()) {
-    std::cerr << "Some requests were not processed. total="
-              << spdySession.reqvec.size()
-              << ", processed=" << spdySession.complete << std::endl;
-  }
-  if(config.stat) {
-    print_stats(spdySession);
-  }
-  return result;
+  return SSL_TLSEXT_ERR_OK;
 }
+} // namespace
+
+namespace {
+void readcb(bufferevent *bev, void *ptr)
+{
+  int rv;
+  auto client = reinterpret_cast<HttpClient*>(ptr);
+  rv = client->on_read();
+  if(rv != 0) {
+    client->disconnect();
+  }
+}
+} // namespace
+
+namespace {
+void writecb(bufferevent *bev, void *ptr)
+{
+  if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
+    return;
+  }
+  int rv;
+  auto client = reinterpret_cast<HttpClient*>(ptr);
+  rv = client->on_write();
+  if(rv != 0) {
+    client->disconnect();
+  }
+}
+} // namespace
+
+namespace {
+void eventcb(bufferevent *bev, short events, void *ptr)
+{
+  HttpClient *client = reinterpret_cast<HttpClient*>(ptr);
+  if(events & BEV_EVENT_CONNECTED) {
+    client->state = STATE_CONNECTED;
+    // TODO Check NPN result and fail fast?
+    client->on_connect();
+    /* Send connection header here */
+    int fd = bufferevent_getfd(bev);
+    int val = 1;
+    if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+                  reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
+      std::cerr << "Setting option TCP_NODELAY failed: errno="
+                << errno << std::endl;
+    }
+  } else if(events & BEV_EVENT_EOF) {
+    std::cerr << "EOF" << std::endl;
+    client->disconnect();
+    return;
+  } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
+    if(events & BEV_EVENT_ERROR) {
+      if(client->state == STATE_IDLE) {
+        std::cerr << "Could not connect to the host" << std::endl;
+      } else {
+        std::cerr << "Network error" << std::endl;
+      }
+    } else {
+      std::cerr << "Timeout" << std::endl;
+    }
+    // TODO Needs disconnect()?
+    client->disconnect();
+    return;
+  }
+}
+} // namespace
+
+
+namespace {
+ssize_t client_send_callback(nghttp2_session *session,
+                             const uint8_t *data, size_t len, int flags,
+                             void *user_data)
+{
+  auto client = reinterpret_cast<HttpClient*>(user_data);
+  return client->sendcb(data, len);
+}
+} // namespace
+
+namespace {
+ssize_t client_recv_callback(nghttp2_session *session,
+                             uint8_t *buf, size_t len, int flags,
+                             void *user_data)
+{
+  auto client = reinterpret_cast<HttpClient*>(user_data);
+  return client->recvcb(buf, len);
+}
+} // namespace
 
 int communicate(const std::string& host, uint16_t port,
-                SpdySession& spdySession,
+                std::vector<std::tuple<std::string,
+                                       nghttp2_data_provider*,
+                                       int64_t>> requests,
                 const nghttp2_session_callbacks *callbacks)
 {
   int result = 0;
-  int rv;
-  int timeout = config.timeout;
-  SSL_CTX *ssl_ctx = 0;
-  SSL *ssl = 0;
-  int fd = nonblock_connect_to(host, port, timeout);
-  if(fd == -1) {
-    std::cerr << "Could not connect to the host: " << spdySession.hostport
-              << std::endl;
-    result = -1;
-    goto fin;
-  } else if(fd == -2) {
-    std::cerr << "Request to " << spdySession.hostport << " timed out "
-              << "during establishing connection."
-              << std::endl;
-    result = -1;
-    goto fin;
-  }
-  if(set_tcp_nodelay(fd) == -1) {
-    std::cerr << "Setting TCP_NODELAY failed: " << strerror(errno)
-              << std::endl;
-  }
-
+  auto evbase = event_base_new();
+  SSL_CTX *ssl_ctx = nullptr;
   if(!config.no_tls) {
-    ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+    ssl_ctx = SSL_CTX_new(SSLv23_client_method());
     if(!ssl_ctx) {
-      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+      std::cerr << "Failed to create SSL_CTX: "
+                << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       result = -1;
       goto fin;
     }
-    setup_ssl_ctx(ssl_ctx, nullptr);
+    SSL_CTX_set_options(ssl_ctx,
+                        SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                        SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
+    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
     if(!config.keyfile.empty()) {
       if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
                                      SSL_FILETYPE_PEM) != 1) {
@@ -696,59 +1008,38 @@ int communicate(const std::string& host, uint16_t port,
         goto fin;
       }
     }
-    ssl = SSL_new(ssl_ctx);
-    if(!ssl) {
-      std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-      result = -1;
+    SSL_CTX_set_next_proto_select_cb(ssl_ctx,
+                                     client_select_next_proto_cb, nullptr);
+  }
+  {
+    HttpClient client{callbacks, evbase, ssl_ctx};
+    for(auto req : requests) {
+      for(int i = 0; i < config.multiply; ++i) {
+        client.add_request(std::get<0>(req), std::get<1>(req),
+                            std::get<2>(req));
+      }
+    }
+    client.update_hostport();
+    if(client.initiate_connection(host, port) != 0) {
       goto fin;
     }
-    {
-      // If the user overrode the host header, use that value for the
-      // SNI extension
-      const char *host_string = 0;
-      auto i = config.headers.find( "Host" );
-      if ( i != config.headers.end() ) {
-        host_string = (*i).second.c_str();
-      }
-      else {
-        host_string = host.c_str();
-      }
+    event_base_loop(evbase, 0);
 
-      if (!SSL_set_tlsext_host_name(ssl, host_string)) {
-        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
-        result = -1;
-        goto fin;
-      }
+    if(!client.all_requests_processed()) {
+      std::cerr << "Some requests were not processed. total="
+                << client.reqvec.size()
+                << ", processed=" << client.complete << std::endl;
     }
-    rv = ssl_nonblock_handshake(ssl, fd, timeout);
-    if(rv == -1) {
-      result = -1;
-      goto fin;
-    } else if(rv == -2) {
-      std::cerr << "Request to " << spdySession.hostport
-                << " timed out in SSL/TLS handshake."
-                << std::endl;
-      result = -1;
-      goto fin;
+    if(config.stat) {
+      print_stats(client);
     }
   }
-
-  if ( config.verbose ) {
-    print_timer();
-    std::cout << " Handshake complete" << std::endl;
-  }
-
-  spdySession.record_handshake_time();
-  result = spdy_evloop(fd, ssl, spdySession, callbacks, timeout);
  fin:
-  if(ssl) {
-    SSL_shutdown(ssl);
-    SSL_free(ssl);
+  if(ssl_ctx) {
     SSL_CTX_free(ssl_ctx);
   }
-  if(fd != -1) {
-    shutdown(fd, SHUT_WR);
-    close(fd);
+  if(evbase) {
+    event_base_free(evbase);
   }
   return result;
 }
@@ -780,8 +1071,8 @@ int run(char **uris, int n)
 {
   nghttp2_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.send_callback = send_callback;
-  callbacks.recv_callback = recv_callback;
+  callbacks.send_callback = client_send_callback;
+  callbacks.recv_callback = client_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback2;
   callbacks.on_frame_send_callback = on_frame_send_callback2;
@@ -798,7 +1089,6 @@ int run(char **uris, int n)
   std::string prev_host;
   uint16_t prev_port = 0;
   int failures = 0;
-  SpdySession spdySession;
   int data_fd = -1;
   nghttp2_data_provider data_prd;
   struct stat data_stat;
@@ -817,7 +1107,8 @@ int run(char **uris, int n)
     data_prd.source.fd = data_fd;
     data_prd.read_callback = file_read_callback;
   }
-
+  std::vector<std::tuple<std::string, nghttp2_data_provider*, int64_t>>
+    requests;
   for(int i = 0; i < n; ++i) {
     http_parser_url u;
     std::string uri = strip_fragment(uris[i]);
@@ -827,25 +1118,23 @@ int run(char **uris, int n)
         u.port : get_default_port(uri.c_str(), u);
       if(!fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
          u.port != prev_port) {
-        if(!spdySession.reqvec.empty()) {
-          spdySession.update_hostport();
-          if (communicate(prev_host, prev_port, spdySession, &callbacks) != 0) {
+        if(!requests.empty()) {
+          if (communicate(prev_host, prev_port, std::move(requests),
+                          &callbacks) != 0) {
             ++failures;
           }
-          spdySession = SpdySession();
+          requests.clear();
         }
         prev_host = get_uri_field(uri.c_str(), u, UF_HOST);
         prev_port = port;
       }
-      for(int j = 0; j < config.multiply; ++j) {
-        spdySession.add_request(uri, u, data_fd == -1 ? 0 : &data_prd,
-                                data_stat.st_size);
-      }
+      requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
+                            data_stat.st_size);
     }
   }
-  if(!spdySession.reqvec.empty()) {
-    spdySession.update_hostport();
-    if (communicate(prev_host, prev_port, spdySession, &callbacks) != 0) {
+  if(!requests.empty()) {
+    if (communicate(prev_host, prev_port, std::move(requests),
+                    &callbacks) != 0) {
       ++failures;
     }
   }
@@ -854,8 +1143,8 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: spdycat [-Oansv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "               [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>..."
+  out << "Usage: nghttp [-Oansv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+      << "              [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>..."
       << std::endl;
 }
 

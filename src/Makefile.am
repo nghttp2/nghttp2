@@ -35,7 +35,7 @@ AM_CXXFLAGS = -std=c++11
 
 LDADD = $(top_builddir)/lib/libnghttp2.la
 
-bin_PROGRAMS += spdycat
+bin_PROGRAMS += spdycat nghttp
 
 if ENABLE_SPDYD
 bin_PROGRAMS += spdyd
@@ -69,6 +69,10 @@ HTML_PARSER_OBJECTS += HtmlParser.cc
 endif # HAVE_LIBXML2
 
 spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc \
+	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
+	http-parser/http_parser.c http-parser/http_parser.h
+
+nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
 	http-parser/http_parser.c http-parser/http_parser.h
 

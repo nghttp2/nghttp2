@@ -165,9 +165,9 @@ bool strieq(const char *a, const uint8_t *b, size_t bn)
   if(!a || !b) {
     return false;
   }
-  size_t i;
-  for(i = 0; i < bn && *a && lowcase(*a) == lowcase(*b); ++a, ++b);
-  return !*a && i == bn;
+  const uint8_t *blast = b + bn;
+  for(; *a && lowcase(*a) == lowcase(*b); ++a, ++b);
+  return !*a && b == blast;
 }
 
 bool strifind(const char *a, const char *b)
