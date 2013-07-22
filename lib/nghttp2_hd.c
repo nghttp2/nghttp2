@@ -766,10 +766,17 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
         /* Check name exists in hd_table */
         ent = find_name_in_hd_table(deflater, &nv[i]);
         if(ent) {
-          /* As long as no eviction kicked in, perform substitution */
-          if(require_eviction_on_subst(deflater, &nv[i], ent)) {
+          /* As long as no eviction kicked in and the same header
+             field name is not indexed and added, perform
+             substitution. Since we never evict anything, searching
+             ent->index in working set is safe. */
+          if(require_eviction_on_subst(deflater, &nv[i], ent) ||
+             find_in_workingset_by_index(deflater, ent->index)) {
             rv = emit_indname_block(buf_ptr, buflen_ptr, &offset, ent,
                                     nv[i].value, nv[i].valuelen, 0);
+            if(rv < 0) {
+              return rv;
+            }
           } else {
             nghttp2_hd_entry *new_ent;
             /* No need to increment ent->ref here */
