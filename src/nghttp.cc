@@ -449,7 +449,10 @@ struct HttpClient {
     if(rv != 0) {
       return -1;
     }
-    // TODO Send connection header here
+    // Send connection header here
+    bufferevent_write(bev, NGHTTP2_CLIENT_CONNECTION_HEADER,
+                      NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+
     nghttp2_settings_entry iv[1];
     size_t niv = 0;
     if(config.window_bits != -1) {
@@ -464,7 +467,7 @@ struct HttpClient {
     for(auto& req : reqvec) {
       submit_request(this, config.headers, req.get());
     }
-    return 0;
+    return on_write();
   }
 
   int on_read()

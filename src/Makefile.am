@@ -35,7 +35,7 @@ AM_CXXFLAGS = -std=c++11
 
 LDADD = $(top_builddir)/lib/libnghttp2.la
 
-bin_PROGRAMS += spdycat nghttp
+bin_PROGRAMS += spdycat nghttp nghttpd
 
 if ENABLE_SPDYD
 bin_PROGRAMS += spdyd
@@ -75,6 +75,9 @@ spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc \
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
 	http-parser/http_parser.c http-parser/http_parser.h
+
+nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
+	HttpServer.cc HttpServer.h
 
 if ENABLE_SPDYD
 SPDY_SERVER_OBJECTS = SpdyServer.cc
