@@ -84,6 +84,7 @@ const char *frame_names[] = {
   "PUSH_PROMISE",
   "PING",
   "GOAWAY",
+  "UNKNOWN",
   "WINDOW_UPDATE"
 };
 } // namespace

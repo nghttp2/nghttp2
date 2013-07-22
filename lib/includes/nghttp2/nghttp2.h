@@ -250,7 +250,7 @@ typedef enum {
   /**
    * The WINDOW_UPDATE frame.
    */
-  NGHTTP2_WINDOW_UPDATE = 8
+  NGHTTP2_WINDOW_UPDATE = 9
 } nghttp2_frame_type;
 
 /**
