@@ -1480,7 +1480,8 @@ int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
   int r = 0;
   nghttp2_error_code error_code = NGHTTP2_NO_ERROR;
   if(frame->hd.stream_id == 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
@@ -1529,7 +1530,8 @@ int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
   int valid = 0;
   nghttp2_error_code error_code = NGHTTP2_PROTOCOL_ERROR;
   if(frame->hd.stream_id == 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
@@ -1570,7 +1572,8 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
   int valid = 0;
   nghttp2_error_code error_code = NGHTTP2_PROTOCOL_ERROR;
   if(frame->hd.stream_id == 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
@@ -1643,7 +1646,8 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame)
 {
   if(frame->hd.stream_id == 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   nghttp2_session_call_on_frame_received(session, frame);
   nghttp2_session_close_stream(session, frame->hd.stream_id,
@@ -1759,7 +1763,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
   size_t i;
   int check[NGHTTP2_SETTINGS_MAX+1];
   if(frame->hd.stream_id != 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   /* Check ID/value pairs and persist them if necessary. */
   memset(check, 0, sizeof(check));
@@ -1813,7 +1818,8 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
 {
   int r = 0;
   if(frame->hd.stream_id != 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   if((frame->hd.flags & NGHTTP2_FLAG_PONG) == 0) {
     /* Peer sent ping, so ping it back */
