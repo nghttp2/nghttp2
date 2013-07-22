@@ -48,37 +48,6 @@
 
 namespace nghttp2 {
 
-bool ssl_debug = false;
-
-int select_next_proto_cb(SSL* ssl,
-                         unsigned char **out, unsigned char *outlen,
-                         const unsigned char *in, unsigned int inlen,
-                         void *arg)
-{
-  if(ssl_debug) {
-    print_timer();
-    std::cout << " NPN select next protocol: the remote server offers:"
-              << std::endl;
-  }
-  for(unsigned int i = 0; i < inlen; i += in[i]+1) {
-    if(ssl_debug) {
-      std::cout << "          * ";
-      std::cout.write(reinterpret_cast<const char*>(&in[i+1]), in[i]);
-      std::cout << std::endl;
-    }
-  }
-  if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
-    std::cerr << "Server did not advertise HTTP/2.0 protocol."
-              << std::endl;
-    abort();
-  }
-  if(ssl_debug) {
-    std::cout << "          NPN selected the protocol: "
-              << std::string((const char*)*out, (size_t)*outlen) << std::endl;
-  }
-  return SSL_TLSEXT_ERR_OK;
-}
-
 namespace {
 const char* strstatus(nghttp2_error_code error_code)
 {

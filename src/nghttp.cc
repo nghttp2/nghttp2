@@ -586,8 +586,6 @@ struct HttpClient {
   }
 };
 
-extern bool ssl_debug;
-
 namespace {
 void submit_request(HttpClient *client,
                     const std::map<std::string, std::string>& headers,
@@ -861,13 +859,13 @@ int client_select_next_proto_cb(SSL* ssl,
                                 const unsigned char *in, unsigned int inlen,
                                 void *arg)
 {
-  if(ssl_debug) {
+  if(config.verbose) {
     print_timer();
     std::cout << " NPN select next protocol: the remote server offers:"
               << std::endl;
   }
   for(unsigned int i = 0; i < inlen; i += in[i]+1) {
-    if(ssl_debug) {
+    if(config.verbose) {
       std::cout << "          * ";
       std::cout.write(reinterpret_cast<const char*>(&in[i+1]), in[i]);
       std::cout << std::endl;
@@ -877,7 +875,7 @@ int client_select_next_proto_cb(SSL* ssl,
     std::cerr << "Server did not advertise HTTP/2.0 protocol."
               << std::endl;
   } else {
-    if(ssl_debug) {
+    if(config.verbose) {
       std::cout << "          NPN selected the protocol: "
                 << std::string((const char*)*out, (size_t)*outlen)
                 << std::endl;
@@ -1088,7 +1086,6 @@ int run(char **uris, int n)
     callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  ssl_debug = config.verbose;
   std::string prev_host;
   uint16_t prev_port = 0;
   int failures = 0;

@@ -42,8 +42,6 @@
 
 namespace nghttp2 {
 
-extern bool ssl_debug;
-
 namespace {
 void print_usage(std::ostream& out)
 {
@@ -168,7 +166,6 @@ int main(int argc, char **argv)
   SSL_library_init();
   reset_timer();
   config.on_request_recv_callback = htdocs_on_request_recv_callback;
-  ssl_debug = config.verbose;
 
   HttpServer server(&config);
   server.run();

@@ -39,13 +39,6 @@
 
 namespace nghttp2 {
 
-extern bool ssl_debug;
-
-int select_next_proto_cb(SSL* ssl,
-                         unsigned char **out, unsigned char *outlen,
-                         const unsigned char *in, unsigned int inlen,
-                         void *arg);
-
 void print_nv(char **nv);
 
 void on_frame_recv_callback
