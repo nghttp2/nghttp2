@@ -979,6 +979,7 @@ int HttpServer::run()
     SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
     if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
                                    config_->private_key_file.c_str(),
                                    SSL_FILETYPE_PEM) != 1) {

@@ -35,11 +35,7 @@ AM_CXXFLAGS = -std=c++11
 
 LDADD = $(top_builddir)/lib/libnghttp2.la
 
-bin_PROGRAMS += spdycat nghttp nghttpd
-
-if ENABLE_SPDYD
-bin_PROGRAMS += spdyd
-endif # ENABLE_SPDYD
+bin_PROGRAMS += nghttp nghttpd
 
 if HAVE_LIBEVENT_OPENSSL
 # bin_PROGRAMS += shrpx
@@ -68,26 +64,12 @@ if HAVE_LIBXML2
 HTML_PARSER_OBJECTS += HtmlParser.cc
 endif # HAVE_LIBXML2
 
-spdycat_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} spdycat.cc \
-	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
-	http-parser/http_parser.c http-parser/http_parser.h
-
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
 	http-parser/http_parser.c http-parser/http_parser.h
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	HttpServer.cc HttpServer.h
-
-if ENABLE_SPDYD
-SPDY_SERVER_OBJECTS = SpdyServer.cc
-SPDY_SERVER_HFILES = SpdyServer.h
-
-spdyd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} \
-	${EVENT_OBJECTS} ${EVENT_HFILES} \
-	${SPDY_SERVER_OBJECTS} ${SPDY_SERVER_HFILES} \
-	spdyd.cc
-endif # ENABLE_SPDYD
 
 if HAVE_LIBEVENT_OPENSSL
 # SHRPX_SRCS = \
