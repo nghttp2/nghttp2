@@ -16,21 +16,24 @@ The following features are not implemented:
 * Header continuation
 * PRIORITY frame handling
 * PUSH_PROMISE and server-push in general
-* Client connection header: spdycat and spdyd do not send/handle
-  client connection header.
-* ALPN: spdycat and spdyd use openssl without ALPN support and still
-  uses NPN to negotiate HTTP-draft-04/2.0.
+* ALPN: ``nghttp`` client and ``nghttpd`` server use OpenSSL without ALPN
+  support and still use NPN to negotiate ``HTTP-draft-04/2.0``.
+* HTTP Upgrade dance
 
 With those missing parts, the library is not still inter-operable
 right now.
 
-The spdycat and spdyd are (the names are now odd for HTTP/2.0) working
-now assuming the above limitation. You can see the HTTP/2.0 frames
-back and forth and connection-level and stream level flow controls.
+The ``nghttp`` client and ``nghttpd`` server are working now assuming
+the above limitation.  Both programs start HTTP/2.0 with `prior
+knowledge
+<http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-3.4>`_
+or TLS NPN negotiation. No HTTP upgrade dance is supported yet.  You
+can see the HTTP/2.0 frames back and forth and connection-level and
+stream level flow controls.
 
-Here is sample output from spdycat::
+Here is sample output from ``nghttp`` client::
 
-    $ src/spdycat https://localhost:3000/COPYING http://localhost:3000/AUTHORS  -nv --no-tls
+    $ src/nghttp https://localhost:3000/COPYING http://localhost:3000/AUTHORS  -nv --no-tls
     [  0.000] Handshake complete
     [  0.000] recv SETTINGS frame <length=8, flags=0, stream_id=0>
               (niv=1)
@@ -63,7 +66,7 @@ Here is sample output from spdycat::
               content-length: 1080
               date: Fri, 19 Jul 2013 17:02:21 GMT
               last-modified: Fri, 12 Jul 2013 14:55:22 GMT
-              server: spdyd nghttp2/0.1.0-DEV
+              server: nghttpd nghttp2/0.1.0-DEV
     [  0.001] recv DATA frame (length=1080, flags=0, stream_id=1)
     [  0.001] recv DATA frame (length=0, flags=1, stream_id=1)
     [  0.001] recv HEADERS frame <length=6, flags=4, stream_id=3>
@@ -74,7 +77,7 @@ Here is sample output from spdycat::
               content-length: 66
               date: Fri, 19 Jul 2013 17:02:21 GMT
               last-modified: Fri, 12 Jul 2013 14:55:22 GMT
-              server: spdyd nghttp2/0.1.0-DEV
+              server: nghttpd nghttp2/0.1.0-DEV
     [  0.001] recv DATA frame (length=66, flags=0, stream_id=3)
     [  0.001] recv DATA frame (length=0, flags=1, stream_id=3)
     [  0.001] send GOAWAY frame <length=8, flags=0, stream_id=0>
