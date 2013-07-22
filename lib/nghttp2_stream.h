@@ -88,14 +88,6 @@ typedef struct {
   int32_t pri;
   /* Bitwise OR of zero or more nghttp2_shut_flag values */
   uint8_t shut_flags;
-  /* The array of server-pushed stream IDs which associate them to
-     this stream. */
-  int32_t *pushed_streams;
-  /* The number of stored pushed stream ID in |pushed_streams| */
-  size_t pushed_streams_length;
-  /* The maximum number of stream ID the |pushed_streams| can
-     store. */
-  size_t pushed_streams_capacity;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
   /* Deferred DATA frame */
@@ -138,19 +130,6 @@ void nghttp2_stream_free(nghttp2_stream *stream);
  * |flag| is bitwise OR of one or more of nghttp2_shut_flag.
  */
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
-
-/*
- * Add server-pushed |stream_id| to this stream. This happens when
- * server-pushed stream is associated to this stream. This function
- * returns 0 if it succeeds, or negative error code.
- *
- * RETURN VALUE
- * ------------
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_stream_add_pushed_stream(nghttp2_stream *stream, int32_t stream_id);
 
 /*
  * Defer DATA frame |data|. We won't call this function in the

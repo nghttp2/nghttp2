@@ -40,9 +40,6 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->pri = pri;
   stream->state = initial_state;
   stream->shut_flags = NGHTTP2_SHUT_NONE;
-  stream->pushed_streams = NULL;
-  stream->pushed_streams_length = 0;
-  stream->pushed_streams_capacity = 0;
   stream->stream_user_data = stream_user_data;
   stream->deferred_data = NULL;
   stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
@@ -54,7 +51,6 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
 
 void nghttp2_stream_free(nghttp2_stream *stream)
 {
-  free(stream->pushed_streams);
   nghttp2_outbound_item_free(stream->deferred_data);
   free(stream->deferred_data);
 }
@@ -62,23 +58,6 @@ void nghttp2_stream_free(nghttp2_stream *stream)
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag)
 {
   stream->shut_flags |= flag;
-}
-
-int nghttp2_stream_add_pushed_stream(nghttp2_stream *stream, int32_t stream_id)
-{
-  if(stream->pushed_streams_capacity == stream->pushed_streams_length) {
-    int32_t *streams;
-    size_t capacity = stream->pushed_streams_capacity == 0 ?
-      5 : stream->pushed_streams_capacity*2;
-    streams = realloc(stream->pushed_streams, capacity*sizeof(uint32_t));
-    if(streams == NULL) {
-      return NGHTTP2_ERR_NOMEM;
-    }
-    stream->pushed_streams = streams;
-    stream->pushed_streams_capacity = capacity;
-  }
-  stream->pushed_streams[stream->pushed_streams_length++] = stream_id;
-  return 0;
 }
 
 void nghttp2_stream_defer_data(nghttp2_stream *stream,

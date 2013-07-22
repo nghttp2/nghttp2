@@ -27,21 +27,3 @@
 #include <CUnit/CUnit.h>
 
 #include "nghttp2_stream.h"
-
-void test_nghttp2_stream_add_pushed_stream(void)
-{
-  nghttp2_stream stream;
-  int i, n;
-  nghttp2_stream_init(&stream, 1, NGHTTP2_FLAG_NONE, 1 << 30,
-                      NGHTTP2_STREAM_OPENING, 1, 1, 65536, NULL);
-  n = 26;
-  for(i = 2; i < n; i += 2) {
-    CU_ASSERT(0 == nghttp2_stream_add_pushed_stream(&stream, i));
-    CU_ASSERT((size_t)i/2 == stream.pushed_streams_length);
-  }
-  for(i = 2; i < n; i += 2) {
-    CU_ASSERT(i == stream.pushed_streams[i/2-1]);
-  }
-  CU_ASSERT(1 << 30 == stream.pri);
-  nghttp2_stream_free(&stream);
-}

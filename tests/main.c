@@ -185,10 +185,6 @@ int main(int argc, char* argv[])
                    test_nghttp2_frame_pack_goaway) ||
       !CU_add_test(pSuite, "frame_pack_window_update",
                    test_nghttp2_frame_pack_window_update) ||
-
-      /* !CU_add_test(pSuite, "stream_add_pushed_stream", */
-      /*              test_nghttp2_stream_add_pushed_stream) || */
-
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc",
                    test_nghttp2_hd_inflate_indname_inc) ||

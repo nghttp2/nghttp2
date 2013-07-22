@@ -25,6 +25,4 @@
 #ifndef NGHTTP2_STREAM_TEST_H
 #define NGHTTP2_STREAM_TEST_H
 
-void test_nghttp2_stream_add_pushed_stream(void);
-
 #endif /* NGHTTP2_STREAM_TEST_H */
