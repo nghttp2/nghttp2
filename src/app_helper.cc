@@ -241,6 +241,10 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
     }
     print_nv(frame->headers.nva, frame->headers.nvlen);
     break;
+  case NGHTTP2_PRIORITY:
+    print_frame_attr_indent();
+    printf("(pri=%d)\n", frame->priority.pri);
+    break;
   case NGHTTP2_RST_STREAM:
     print_frame_attr_indent();
     printf("(error_code=%s(%u))\n",
