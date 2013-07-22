@@ -333,9 +333,14 @@ int nghttp2_session_add_frame(nghttp2_session *session,
         }
       }
       break;
-    case NGHTTP2_PRIORITY:
-      item->pri = -1;
+    case NGHTTP2_PRIORITY: {
+      nghttp2_stream *stream;
+      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+      if(stream) {
+        item->pri = stream->pri;
+      }
       break;
+    }
     case NGHTTP2_RST_STREAM: {
       nghttp2_stream *stream;
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
