@@ -1475,6 +1475,23 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
 /**
  * @function
  *
+ * Submits PRIORITY frame to change the priority of stream |stream_id|
+ * to the priority value |pri|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |pri| is negative.
+ */
+int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
+                            int32_t pri);
+
+/**
+ * @function
+ *
  * Submits RST_STREAM frame to cancel/reject the stream |stream_id|
  * with the error code |error_code|.
  *

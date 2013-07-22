@@ -333,6 +333,9 @@ int nghttp2_session_add_frame(nghttp2_session *session,
         }
       }
       break;
+    case NGHTTP2_PRIORITY:
+      item->pri = -1;
+      break;
     case NGHTTP2_RST_STREAM: {
       nghttp2_stream *stream;
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -618,6 +621,40 @@ static int nghttp2_session_predicate_headers_send(nghttp2_session *session,
 }
 
 /*
+ * This function checks PRIORITY frame with stream ID |stream_id| can
+ * be sent at this time.
+ *
+ * This function returns 0 if it is succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_STREAM_CLOSED
+ *     The stream is already closed or does not exist.
+ * NGHTTP2_ERR_STREAM_SHUT_WR
+ *     The transmission is not allowed for this stream (e.g., a frame
+ *     with END_STREAM flag set has already sent)
+ * NGHTTP2_ERR_STREAM_CLOSING
+ *     RST_STREAM was queued for this stream.
+ */
+static int nghttp2_session_predicate_priority_send
+(nghttp2_session *session, int32_t stream_id)
+{
+  nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
+  int r;
+  r = nghttp2_predicate_stream_for_send(stream);
+  if(r != 0) {
+    return r;
+  }
+  /* The spec is not clear if the receiving side can issue PRIORITY
+     and the other side should do when receiving it. We just send
+     PRIORITY if requested. */
+  if(stream->state != NGHTTP2_STREAM_CLOSING) {
+    return 0;
+  } else {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
+}
+
+/*
  * This function checks WINDOW_UPDATE with the stream ID |stream_id|
  * can be sent at this time. Note that FIN flag of the previous frame
  * does not affect the transmission of the WINDOW_UPDATE frame.
@@ -790,6 +827,21 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         }
       }
       break;
+    case NGHTTP2_PRIORITY: {
+      int r;
+      r = nghttp2_session_predicate_priority_send
+        (session, frame->hd.stream_id);
+      if(r != 0) {
+        return r;
+      }
+      framebuflen = nghttp2_frame_pack_priority(&session->aob.framebuf,
+                                                &session->aob.framebufmax,
+                                                &frame->priority);
+      if(framebuflen < 0) {
+        return framebuflen;
+      }
+      break;
+    }
     case NGHTTP2_RST_STREAM:
       framebuflen = nghttp2_frame_pack_rst_stream(&session->aob.framebuf,
                                                   &session->aob.framebufmax,
@@ -1073,6 +1125,15 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           nghttp2_session_close_stream_if_shut_rdwr(session, stream);
           break;
         }
+      }
+      break;
+    }
+    case NGHTTP2_PRIORITY: {
+      nghttp2_stream *stream = nghttp2_session_get_stream(session,
+                                                          frame->hd.stream_id);
+      if(stream) {
+        // Just update priority for the stream for now.
+        stream->pri = frame->priority.pri;
       }
       break;
     }
@@ -1556,6 +1617,28 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
   return r;
 }
 
+int nghttp2_session_on_priority_received(nghttp2_session *session,
+                                         nghttp2_frame *frame)
+{
+  nghttp2_stream *stream;
+  if(frame->hd.stream_id == 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
+  }
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  if(stream) {
+    if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
+      // Just update priority anyway for now
+      stream->pri = frame->priority.pri;
+      nghttp2_session_call_on_frame_received(session, frame);
+    } else {
+      return nghttp2_session_handle_invalid_stream(session, frame,
+                                                   NGHTTP2_PROTOCOL_ERROR);
+    }
+  }
+  return 0;
+}
+
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame)
 {
@@ -1946,6 +2029,20 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
          not used in framing anymore. */
       nghttp2_frame_headers_free(&frame.headers);
       nghttp2_hd_end_headers(&session->hd_inflater);
+    } else if(nghttp2_is_non_fatal(r)) {
+      r = nghttp2_session_handle_parse_error(session, type, r,
+                                             NGHTTP2_PROTOCOL_ERROR);
+    }
+    break;
+  case NGHTTP2_PRIORITY:
+    r = nghttp2_frame_unpack_priority(&frame.priority,
+                                      session->iframe.headbuf,
+                                      sizeof(session->iframe.headbuf),
+                                      session->iframe.buf,
+                                      session->iframe.buflen);
+    if(r == 0) {
+      r = nghttp2_session_on_priority_received(session, &frame);
+      nghttp2_frame_priority_free(&frame.priority);
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error(session, type, r,
                                              NGHTTP2_PROTOCOL_ERROR);

@@ -112,6 +112,28 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t *opaque_data)
   return nghttp2_session_add_ping(session, NGHTTP2_FLAG_NONE, opaque_data);
 }
 
+int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
+                            int32_t pri)
+{
+  int r;
+  nghttp2_frame *frame;
+  if(pri < 0) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  frame = malloc(sizeof(nghttp2_frame));
+  if(frame == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  nghttp2_frame_priority_init(&frame->priority, stream_id, pri);
+  r = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+  if(r != 0) {
+    nghttp2_frame_priority_free(&frame->priority);
+    free(frame);
+    return r;
+  }
+  return 0;
+}
+
 int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
                               nghttp2_error_code error_code)
 {

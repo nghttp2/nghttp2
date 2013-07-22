@@ -360,6 +360,20 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
                                         nghttp2_frame *frame,
                                         nghttp2_stream *stream);
 
+
+/*
+ * Called when PRIORITY is received, assuming |frame| is properly
+ * initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int nghttp2_session_on_priority_received(nghttp2_session *session,
+                                         nghttp2_frame *frame);
+
 /*
  * Called when RST_STREAM is received, assuming |frame| is properly
  * initialized.
