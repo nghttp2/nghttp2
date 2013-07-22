@@ -37,7 +37,7 @@
 #include <openssl/err.h>
 #include <nghttp2/nghttp2.h>
 
-#include "nghttp2_ssl.h"
+#include "app_helper.h"
 #include "HttpServer.h"
 
 namespace nghttp2 {

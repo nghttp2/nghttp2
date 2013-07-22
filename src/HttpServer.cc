@@ -44,7 +44,7 @@
 #include <event2/bufferevent_ssl.h>
 #include <event2/listener.h>
 
-#include "nghttp2_ssl.h"
+#include "app_helper.h"
 #include "util.h"
 #include "EventPoll.h"
 

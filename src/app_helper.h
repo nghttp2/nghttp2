@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef NGHTTP2_SSL_H
-#define NGHTTP2_SSL_H
+#ifndef APP_HELPER_H
+#define APP_HELPER_H
 
 #include "nghttp2_config.h"
 
@@ -33,8 +33,6 @@
 #include <poll.h>
 #include <map>
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 #include <nghttp2/nghttp2.h>
 
 namespace nghttp2 {
@@ -92,4 +90,4 @@ void set_color_output(bool f);
 
 } // namespace nghttp2
 
-#endif // NGHTTP2_SSL_H
+#endif // APP_HELPER_H

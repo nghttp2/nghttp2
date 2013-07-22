@@ -41,8 +41,8 @@ if HAVE_LIBEVENT_OPENSSL
 # bin_PROGRAMS += shrpx
 endif # HAVE_LIBEVENT_OPENSSL
 
-HELPER_OBJECTS = util.cc timegm.c nghttp2_ssl.cc
-HELPER_HFILES = util.h timegm.h nghttp2_ssl.h nghttp2_config.h
+HELPER_OBJECTS = util.cc timegm.c app_helper.cc
+HELPER_HFILES = util.h timegm.h app_helper.h nghttp2_config.h
 
 EVENT_OBJECTS =
 EVENT_HFILES = EventPoll.h EventPollEvent.h
