@@ -57,6 +57,8 @@ void test_nghttp2_hd_deflate(void)
   nghttp2_nv nva4[] = {MAKE_NV(":path", "/style.css"),
                        MAKE_NV("cookie", "k1=v1"),
                        MAKE_NV("cookie", "k1=v1")};
+  nghttp2_nv nva5[] = {MAKE_NV(":path", "/style.css"),
+                       MAKE_NV("x-nghttp2", "")};
   size_t nv_offset = 12;
   uint8_t *buf = NULL;
   size_t buflen = 0;
@@ -125,6 +127,21 @@ void test_nghttp2_hd_deflate(void)
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
+  /* Fifth headers includes empty value */
+  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, nv_offset, nva5,
+                                   sizeof(nva5)/sizeof(nghttp2_nv));
+  CU_ASSERT(blocklen > 0);
+  nghttp2_hd_end_headers(&deflater);
+
+  CU_ASSERT(2 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf + nv_offset,
+                                       blocklen));
+
+  assert_nv_equal(nva5, resnva, 2);
+
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+
+  /* Cleanup */
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
   nghttp2_hd_deflate_free(&deflater);

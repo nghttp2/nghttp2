@@ -118,19 +118,28 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t index, uint8_t flags,
 {
   int rv = 0;
   if(flags & NGHTTP2_HD_FLAG_NAME_ALLOC) {
-    ent->nv.name = nghttp2_memdup(name, namelen);
-    if(ent->nv.name == NULL) {
-      rv = NGHTTP2_ERR_NOMEM;
-      goto fail;
+    if(namelen == 0) {
+      /* We should not allow empty header field name */
+      ent->nv.name = NULL;
+    } else {
+      ent->nv.name = nghttp2_memdup(name, namelen);
+      if(ent->nv.name == NULL) {
+        rv = NGHTTP2_ERR_NOMEM;
+        goto fail;
+      }
     }
   } else {
     ent->nv.name = name;
   }
   if(flags & NGHTTP2_HD_FLAG_VALUE_ALLOC) {
-    ent->nv.value = nghttp2_memdup(value, valuelen);
-    if(ent->nv.value == NULL) {
-      rv = NGHTTP2_ERR_NOMEM;
-      goto fail2;
+    if(valuelen == 0) {
+      ent->nv.value = NULL;
+    } else {
+      ent->nv.value = nghttp2_memdup(value, valuelen);
+      if(ent->nv.value == NULL) {
+        rv = NGHTTP2_ERR_NOMEM;
+        goto fail2;
+      }
     }
   } else {
     ent->nv.value = value;
