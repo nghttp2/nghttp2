@@ -334,3 +334,45 @@ void test_nghttp2_frame_pack_window_update(void)
   nghttp2_frame_window_update_free(&oframe);
   nghttp2_frame_window_update_free(&frame);
 }
+
+void test_nghttp2_nv_array_from_cstr(void)
+{
+  const char *empty[] = {NULL};
+  const char *emptynv[] = {"", "", "", "", NULL};
+  const char *nv[] = {"alpha", "bravo", "charlie", "delta", NULL};
+  const char *bignv[] = {"echo", NULL, NULL};
+  size_t bigvallen = 64*1024;
+  char *bigval = malloc(bigvallen+1);
+  nghttp2_nv *nva;
+  ssize_t rv;
+
+  memset(bigval, '0', bigvallen);
+  bigval[bigvallen] = '\0';
+  bignv[1] = bigval;
+
+  rv = nghttp2_nv_array_from_cstr(&nva, empty);
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NULL == nva);
+
+  rv = nghttp2_nv_array_from_cstr(&nva, emptynv);
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NULL == nva);
+
+  rv = nghttp2_nv_array_from_cstr(&nva, nv);
+  CU_ASSERT(2 == rv);
+  CU_ASSERT(nva[0].namelen == 5);
+  CU_ASSERT(0 == memcmp("alpha", nva[0].name, 5));
+  CU_ASSERT(nva[0].valuelen = 5);
+  CU_ASSERT(0 == memcmp("bravo", nva[0].value, 5));
+  CU_ASSERT(nva[1].namelen == 7);
+  CU_ASSERT(0 == memcmp("charlie", nva[1].name, 7));
+  CU_ASSERT(nva[1].valuelen == 5);
+  CU_ASSERT(0 == memcmp("delta", nva[1].value, 5));
+
+  nghttp2_nv_array_del(nva);
+
+  rv = nghttp2_nv_array_from_cstr(&nva, bignv);
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  free(bigval);
+}

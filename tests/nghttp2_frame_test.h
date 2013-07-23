@@ -36,5 +36,6 @@ void test_nghttp2_frame_pack_settings(void);
 void test_nghttp2_frame_pack_ping(void);
 void test_nghttp2_frame_pack_goaway(void);
 void test_nghttp2_frame_pack_window_update(void);
+void test_nghttp2_nv_array_from_cstr(void);
 
 #endif /* NGHTTP2_FRAME_TEST_H */

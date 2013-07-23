@@ -697,7 +697,8 @@ ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
     buflen += len;
   }
   nvlen = i/2;
-  if(nvlen == 0) {
+  /* If all name/value pair is 0-length, remove them */
+  if(nvlen == 0 || buflen == 0) {
     *nva_ptr = NULL;
     return 0;
   }
