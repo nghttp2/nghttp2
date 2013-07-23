@@ -581,9 +581,8 @@ static int nghttp2_session_predicate_syn_reply_send(nghttp2_session *session,
 }
 
 /*
- * This function checks HEADERS, which is neither stream-opening nor
- * first response header, with the stream ID |stream_id| can be sent
- * at this time.
+ * This function checks frames belongs to the stream |stream_id| can
+ * be sent.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -599,8 +598,8 @@ static int nghttp2_session_predicate_syn_reply_send(nghttp2_session *session,
  *     The state of the stream is not valid (e.g., if the local peer
  *     is receiving side and SYN_REPLY has not been sent).
  */
-static int nghttp2_session_predicate_headers_send(nghttp2_session *session,
-                                                  int32_t stream_id)
+static int nghttp2_session_predicate_stream_frame_send
+(nghttp2_session* session, int32_t stream_id)
 {
   nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
   int r;
@@ -626,37 +625,24 @@ static int nghttp2_session_predicate_headers_send(nghttp2_session *session,
 }
 
 /*
+ * This function checks HEADERS, which is neither stream-opening nor
+ * first response header, with the stream ID |stream_id| can be sent
+ * at this time.
+ */
+static int nghttp2_session_predicate_headers_send(nghttp2_session *session,
+                                                  int32_t stream_id)
+{
+  return nghttp2_session_predicate_stream_frame_send(session, stream_id);
+}
+
+/*
  * This function checks PRIORITY frame with stream ID |stream_id| can
  * be sent at this time.
- *
- * This function returns 0 if it is succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_STREAM_CLOSED
- *     The stream is already closed or does not exist.
- * NGHTTP2_ERR_STREAM_SHUT_WR
- *     The transmission is not allowed for this stream (e.g., a frame
- *     with END_STREAM flag set has already sent)
- * NGHTTP2_ERR_STREAM_CLOSING
- *     RST_STREAM was queued for this stream.
  */
 static int nghttp2_session_predicate_priority_send
 (nghttp2_session *session, int32_t stream_id)
 {
-  nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
-  int r;
-  r = nghttp2_predicate_stream_for_send(stream);
-  if(r != 0) {
-    return r;
-  }
-  /* The spec is not clear if the receiving side can issue PRIORITY
-     and the other side should do when receiving it. We just send
-     PRIORITY if requested. */
-  if(stream->state != NGHTTP2_STREAM_CLOSING) {
-    return 0;
-  } else {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  }
+  return nghttp2_session_predicate_stream_frame_send(session, stream_id);
 }
 
 /*
@@ -1133,15 +1119,17 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       }
       break;
     }
-    case NGHTTP2_PRIORITY: {
-      nghttp2_stream *stream = nghttp2_session_get_stream(session,
-                                                          frame->hd.stream_id);
-      if(stream) {
-        // Just update priority for the stream for now.
-        stream->pri = frame->priority.pri;
+    case NGHTTP2_PRIORITY:
+      // TODO Update priority of the stream if the stream is initiated
+      // by the local endpoint. The spec is not detailed about this.
+      if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+        nghttp2_stream *stream;
+        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+        if(stream) {
+          stream->pri = frame->priority.pri;
+        }
       }
       break;
-    }
     case NGHTTP2_RST_STREAM:
       nghttp2_session_close_stream(session, frame->hd.stream_id,
                                    frame->rst_stream.error_code);
@@ -1636,8 +1624,11 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(stream) {
     if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
-      // Just update priority anyway for now
-      stream->pri = frame->priority.pri;
+      // Update the priority of the stream if the stream is initiated
+      // by the remote endpoint.
+      if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+        stream->pri = frame->priority.pri;
+      }
       nghttp2_session_call_on_frame_received(session, frame);
     } else {
       return nghttp2_session_handle_invalid_stream(session, frame,
