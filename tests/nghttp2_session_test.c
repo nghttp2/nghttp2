@@ -1115,6 +1115,41 @@ void test_nghttp2_session_send_headers_reply(void)
   nghttp2_session_del(session);
 }
 
+/* TODO Rewrite this test when header continuation is supported */
+void test_nghttp2_session_send_headers_header_comp_error(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  const char *nv[] = { ":path", NULL, NULL };
+  size_t valuelen = 64*1024-1;
+  char *value = malloc(valuelen+1);
+  nghttp2_frame *frame = malloc(sizeof(nghttp2_frame));
+  nghttp2_nv *nva;
+  ssize_t nvlen;
+
+  memset(value, '0', valuelen);
+  value[valuelen] = '\0';
+  nv[1] = value;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
+
+  nghttp2_frame_headers_init(&frame->headers, NGHTTP2_FLAG_END_HEADERS, -1,
+                             NGHTTP2_PRI_DEFAULT, nva, nvlen);
+
+  nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(session->goaway_flags &
+            (NGHTTP2_GOAWAY_SEND | NGHTTP2_GOAWAY_FAIL_ON_SEND));
+
+  free(value);
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_send_priority(void)
 {
   nghttp2_session *session;

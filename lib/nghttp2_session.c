@@ -1290,6 +1290,12 @@ int nghttp2_session_send(nghttp2_session *session)
         nghttp2_outbound_item_free(item);
         free(item);
 
+        if(framebuflen == NGHTTP2_ERR_HEADER_COMP) {
+          // If header compression error occurred, should terminiate
+          // connection.
+          framebuflen = nghttp2_session_fail_session(session,
+                                                     NGHTTP2_INTERNAL_ERROR);
+        }
         if(nghttp2_is_fatal(framebuflen)) {
           return framebuflen;
         } else {
