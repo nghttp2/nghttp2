@@ -56,7 +56,9 @@ typedef enum {
   NGHTTP2_STREAM_OPENED,
   /* RST_STREAM is received, but somehow we need to keep stream in
      memory. */
-  NGHTTP2_STREAM_CLOSING
+  NGHTTP2_STREAM_CLOSING,
+  /* PUSH_PROMISE is received or sent */
+  NGHTTP2_STREAM_RESERVED
 } nghttp2_stream_state;
 
 typedef enum {
@@ -154,5 +156,12 @@ void nghttp2_stream_detach_deferred_data(nghttp2_stream *stream);
 void nghttp2_stream_update_initial_window_size(nghttp2_stream *stream,
                                                int32_t new_initial_window_size,
                                                int32_t old_initial_window_size);
+
+/*
+ * Call this function if promised stream |stream| is replied with
+ * HEADERS.  This function makes the state of the |stream| to
+ * NGHTTP2_STREAM_OPENED.
+ */
+void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream);
 
 #endif /* NGHTTP2_STREAM */

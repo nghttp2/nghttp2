@@ -33,6 +33,7 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void);
 void test_nghttp2_frame_pack_priority(void);
 void test_nghttp2_frame_pack_rst_stream(void);
 void test_nghttp2_frame_pack_settings(void);
+void test_nghttp2_frame_pack_push_promise(void);
 void test_nghttp2_frame_pack_ping(void);
 void test_nghttp2_frame_pack_goaway(void);
 void test_nghttp2_frame_pack_window_update(void);

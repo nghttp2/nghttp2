@@ -90,12 +90,16 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_on_syn_reply_received) ||
       !CU_add_test(pSuite, "session_on_headers_received",
                    test_nghttp2_session_on_headers_received) ||
+      !CU_add_test(pSuite, "session_on_push_reply_received",
+                   test_nghttp2_session_on_push_reply_received) ||
       !CU_add_test(pSuite, "session_on_priority_received",
                    test_nghttp2_session_on_priority_received) ||
       !CU_add_test(pSuite, "session_on_rst_stream_received",
                    test_nghttp2_session_on_rst_stream_received) ||
       !CU_add_test(pSuite, "session_on_settings_received",
                    test_nghttp2_session_on_settings_received) ||
+      !CU_add_test(pSuite, "session_on_push_promise_received",
+                   test_nghttp2_session_on_push_promise_received) ||
       !CU_add_test(pSuite, "session_on_ping_received",
                    test_nghttp2_session_on_ping_received) ||
       !CU_add_test(pSuite, "session_on_goaway_received",
@@ -110,10 +114,14 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_send_headers_reply) ||
       !CU_add_test(pSuite, "session_send_headers_header_comp_error",
                    test_nghttp2_session_send_headers_header_comp_error) ||
+      !CU_add_test(pSuite, "session_send_headers_push_reply",
+                   test_nghttp2_session_send_headers_push_reply) ||
       !CU_add_test(pSuite, "session_send_priority",
                    test_nghttp2_session_send_priority) ||
       !CU_add_test(pSuite, "session_send_rst_stream",
                    test_nghttp2_session_send_rst_stream) ||
+      !CU_add_test(pSuite, "session_send_push_promise",
+                   test_nghttp2_session_send_push_promise) ||
       !CU_add_test(pSuite, "session_is_my_stream_id",
                    test_nghttp2_session_is_my_stream_id) ||
       !CU_add_test(pSuite, "submit_response", test_nghttp2_submit_response) ||
@@ -127,14 +135,20 @@ int main(int argc, char* argv[])
                    test_nghttp2_submit_headers_start_stream) ||
       !CU_add_test(pSuite, "submit_headers_reply",
                    test_nghttp2_submit_headers_reply) ||
+      !CU_add_test(pSuite, "submit_headers_push_reply",
+                   test_nghttp2_submit_headers_push_reply) ||
       !CU_add_test(pSuite, "submit_headers", test_nghttp2_submit_headers) ||
       !CU_add_test(pSuite, "submit_priority", test_nghttp2_submit_priority) ||
       !CU_add_test(pSuite, "session_submit_settings",
                    test_nghttp2_submit_settings) ||
+      !CU_add_test(pSuite, "session_submit_push_promise",
+                   test_nghttp2_submit_push_promise) ||
       !CU_add_test(pSuite, "submit_window_update",
                    test_nghttp2_submit_window_update) ||
       !CU_add_test(pSuite, "submit_invalid_nv",
                    test_nghttp2_submit_invalid_nv) ||
+      !CU_add_test(pSuite, "session_open_stream",
+                   test_nghttp2_session_open_stream) ||
       !CU_add_test(pSuite, "session_get_next_ob_item",
                    test_nghttp2_session_get_next_ob_item) ||
       !CU_add_test(pSuite, "session_pop_next_ob_item",
@@ -182,6 +196,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_frame_pack_rst_stream) ||
       !CU_add_test(pSuite, "frame_pack_settings",
                    test_nghttp2_frame_pack_settings) ||
+      !CU_add_test(pSuite, "frame_pack_push_promise",
+                   test_nghttp2_frame_pack_push_promise) ||
       !CU_add_test(pSuite, "frame_pack_ping", test_nghttp2_frame_pack_ping) ||
       !CU_add_test(pSuite, "frame_pack_goaway",
                    test_nghttp2_frame_pack_goaway) ||

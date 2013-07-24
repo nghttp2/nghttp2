@@ -252,6 +252,22 @@ void nghttp2_frame_settings_free(nghttp2_settings *frame)
   free(frame->iv);
 }
 
+void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame,
+                                     uint8_t flags, int32_t stream_id,
+                                     int32_t promised_stream_id,
+                                     nghttp2_nv *nva, size_t nvlen)
+{
+  memset(frame, 0, sizeof(nghttp2_push_promise));
+  nghttp2_frame_set_hd(&frame->hd, 0, NGHTTP2_PUSH_PROMISE, flags, stream_id);
+  frame->promised_stream_id = promised_stream_id;
+  frame->nva = nva;
+  frame->nvlen = nvlen;
+}
+
+void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame)
+{
+  nghttp2_nv_array_del(frame->nva);
+}
 
 void nghttp2_frame_ping_init(nghttp2_ping *frame, uint8_t flags,
                              const uint8_t *opaque_data)
@@ -487,6 +503,72 @@ int nghttp2_frame_unpack_settings(nghttp2_settings *frame,
       NGHTTP2_SETTINGS_ID_MASK;
     frame->iv[i].value = nghttp2_get_uint32(&payload[4+off]);
   }
+  return 0;
+}
+
+ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
+                                        size_t *buflen_ptr,
+                                        nghttp2_push_promise *frame,
+                                        nghttp2_hd_context *deflater)
+{
+  ssize_t framelen;
+  size_t nv_offset = NGHTTP2_FRAME_HEAD_LENGTH + 4;
+  ssize_t rv;
+  rv = nghttp2_hd_deflate_hd(deflater, buf_ptr, buflen_ptr, nv_offset,
+                             frame->nva, frame->nvlen);
+  if(rv < 0) {
+    return rv;
+  }
+  framelen = rv + nv_offset;
+  frame->hd.length = framelen - NGHTTP2_FRAME_HEAD_LENGTH;
+  /* If frame->nvlen == 0, *buflen_ptr may be smaller than
+     nv_offset */
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, nv_offset);
+  if(rv < 0) {
+    return rv;
+  }
+  memset(*buf_ptr, 0, nv_offset);
+  /* pack ctrl header after length is determined */
+  nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
+  nghttp2_put_uint32be(&(*buf_ptr)[8], frame->promised_stream_id);
+  return framelen;
+}
+
+int nghttp2_frame_unpack_push_promise(nghttp2_push_promise *frame,
+                                      const uint8_t *head, size_t headlen,
+                                      const uint8_t *payload,
+                                      size_t payloadlen,
+                                      nghttp2_hd_context *inflater)
+{
+  ssize_t r;
+  r = nghttp2_frame_unpack_push_promise_without_nv(frame, head, headlen,
+                                                   payload, payloadlen);
+  if(r < 0) {
+    return r;
+  }
+  r = nghttp2_hd_inflate_hd(inflater, &frame->nva,
+                            (uint8_t*)payload + 4, payloadlen - 4);
+  if(r < 0) {
+    return r;
+  }
+  frame->nvlen = r;
+  return 0;
+}
+
+int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
+                                                 const uint8_t *head,
+                                                 size_t headlen,
+                                                 const uint8_t *payload,
+                                                 size_t payloadlen)
+{
+  nghttp2_frame_unpack_frame_hd(&frame->hd, head);
+  if(payloadlen < 4) {
+    return NGHTTP2_ERR_INVALID_FRAME;
+  }
+  frame->promised_stream_id = nghttp2_get_uint32(payload) &
+    NGHTTP2_STREAM_ID_MASK;
+  frame->nva = NULL;
+  frame->nvlen = 0;
   return 0;
 }
 

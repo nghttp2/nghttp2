@@ -50,6 +50,9 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item)
     case NGHTTP2_SETTINGS:
       nghttp2_frame_settings_free(&frame->settings);
       break;
+    case NGHTTP2_PUSH_PROMISE:
+      nghttp2_frame_push_promise_free(&frame->push_promise);
+      break;
     case NGHTTP2_PING:
       nghttp2_frame_ping_free(&frame->ping);
       break;

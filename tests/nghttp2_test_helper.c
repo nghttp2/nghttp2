@@ -44,6 +44,14 @@ ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
                                       len - NGHTTP2_FRAME_HEAD_LENGTH,
                                       inflater);
     break;
+  case NGHTTP2_PUSH_PROMISE:
+    rv = nghttp2_frame_unpack_push_promise
+      ((nghttp2_push_promise*)frame,
+       &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
+       &in[NGHTTP2_FRAME_HEAD_LENGTH],
+       len - NGHTTP2_FRAME_HEAD_LENGTH,
+       inflater);
+    break;
   default:
     /* Must not be reachable */
     assert(0);

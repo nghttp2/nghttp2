@@ -129,7 +129,6 @@ void test_nghttp2_frame_pack_headers()
   /* We didn't include PRIORITY flag so priority is not packed */
   CU_ASSERT(1 << 30 == oframe.pri);
   CU_ASSERT(7 == oframe.nvlen);
-  CU_ASSERT(memcmp("method", oframe.nva[0].name, oframe.nva[0].namelen) == 0);
   CU_ASSERT(nvnameeq("method", &oframe.nva[0]));
   CU_ASSERT(nvvalueeq("GET", &oframe.nva[0]));
 
@@ -261,6 +260,43 @@ void test_nghttp2_frame_pack_settings()
   free(buf);
   nghttp2_frame_settings_free(&frame);
   nghttp2_frame_settings_free(&oframe);
+}
+
+void test_nghttp2_frame_pack_push_promise()
+{
+  nghttp2_hd_context deflater, inflater;
+  nghttp2_push_promise frame, oframe;
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  ssize_t framelen;
+  nghttp2_nv *nva;
+  ssize_t nvlen;
+
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+
+  nvlen = nghttp2_nv_array_from_cstr(&nva, headers);
+  nghttp2_frame_push_promise_init(&frame, NGHTTP2_FLAG_END_PUSH_PROMISE,
+                                  1000000007, (1U << 31) - 1, nva, nvlen);
+  framelen = nghttp2_frame_pack_push_promise(&buf, &buflen, &frame, &deflater);
+
+  CU_ASSERT(0 == unpack_frame_with_nv_block((nghttp2_frame*)&oframe,
+                                            NGHTTP2_PUSH_PROMISE,
+                                            &inflater,
+                                            buf, framelen));
+  check_frame_header(framelen - NGHTTP2_FRAME_HEAD_LENGTH,
+                     NGHTTP2_PUSH_PROMISE,
+                     NGHTTP2_FLAG_END_PUSH_PROMISE, 1000000007, &oframe.hd);
+  CU_ASSERT((1U << 31) - 1 == oframe.promised_stream_id);
+  CU_ASSERT(7 == oframe.nvlen);
+  CU_ASSERT(nvnameeq("method", &oframe.nva[0]));
+  CU_ASSERT(nvvalueeq("GET", &oframe.nva[0]));
+
+  free(buf);
+  nghttp2_frame_push_promise_free(&oframe);
+  nghttp2_frame_push_promise_free(&frame);
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
 }
 
 void test_nghttp2_frame_pack_ping(void)

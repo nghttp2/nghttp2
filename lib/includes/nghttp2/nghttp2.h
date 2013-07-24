@@ -575,6 +575,14 @@ typedef struct {
    * The promised stream ID
    */
   int32_t promised_stream_id;
+  /**
+   * The name/value pairs.
+   */
+  nghttp2_nv *nva;
+  /**
+   * The number of name/value pairs in |nva|.
+   */
+  size_t nvlen;
 } nghttp2_push_promise;
 
 /**
@@ -1405,11 +1413,10 @@ int nghttp2_submit_response(nghttp2_session *session,
 /**
  * @function
  *
- * Submits SYN_STREAM frame. The |flags| is bitwise OR of the
+ * Submits HEADERS frame. The |flags| is bitwise OR of the
  * following values:
  *
  * * :enum:`NGHTTP2_FLAG_END_STREAM`
- * * :enum:`NGHTTP2_FLAG_END_HEADERS`
  * * :enum:`NGHTTP2_FLAG_PRIORITY`
  *
  * If |flags| includes :enum:`NGHTTP2_FLAG_END_STREAM`, this frame has
@@ -1431,8 +1438,10 @@ int nghttp2_submit_response(nghttp2_session *session,
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
  *
- * The |stream_user_data| is a pointer to an arbitrary
- * data which is associated to the stream this frame will open.
+ * The |stream_user_data| is a pointer to an arbitrary data which is
+ * associated to the stream this frame will open. Therefore it is only
+ * used if this frame opens streams, in other words, it changes stream
+ * state from idle or reserved to open.
  *
  * This function is low-level in a sense that the application code can
  * specify flags and the Associated-To-Stream-ID directly. For usual
@@ -1526,6 +1535,34 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
  */
 int nghttp2_submit_settings(nghttp2_session *session,
                             const nghttp2_settings_entry *iv, size_t niv);
+
+
+/**
+ * @function
+ *
+ * Submits PUSH_PROMISE frame. The |flags| is currently ignored.
+ *
+ * The |stream_id| must be client initiated stream ID.
+ *
+ * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
+ * contains a pointer to the name string and ``nv[2*i+1]`` contains a
+ * pointer to the value string. The one beyond last value must be
+ * ``NULL``. That is, if the |nv| contains N name/value pairs,
+ * ``nv[2*N]`` must be ``NULL``.
+ *
+ * This function creates copies of all name/value pairs in |nv|.  It
+ * also lower-cases all names in |nv|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |nv| includes empty name or NULL value.
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
+                                int32_t stream_id, const char **nv);
 
 /**
  * @function

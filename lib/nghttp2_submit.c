@@ -186,6 +186,39 @@ int nghttp2_submit_settings(nghttp2_session *session,
   return r;
 }
 
+int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
+                                int32_t stream_id, const char **nv)
+{
+  nghttp2_frame *frame;
+  nghttp2_nv *nva;
+  ssize_t nvlen;
+  uint8_t flags_copy;
+  int r;
+
+  if(!nghttp2_frame_nv_check_null(nv)) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  frame = malloc(sizeof(nghttp2_frame));
+  if(frame == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
+  if(nvlen < 0) {
+    free(frame);
+    return nvlen;
+  }
+  /* TODO Implement header continuation */
+  flags_copy = NGHTTP2_FLAG_END_PUSH_PROMISE;
+  nghttp2_frame_push_promise_init(&frame->push_promise, flags_copy,
+                                  stream_id, -1, nva, nvlen);
+  r = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+  if(r != 0) {
+    nghttp2_frame_push_promise_free(&frame->push_promise);
+    free(frame);
+  }
+  return 0;
+}
+
 int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
                                  int32_t stream_id,
                                  int32_t window_size_increment)

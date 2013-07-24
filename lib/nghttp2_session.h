@@ -345,6 +345,10 @@ int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
                                           nghttp2_frame *frame,
                                           nghttp2_stream *stream);
 
+int nghttp2_session_on_push_reply_received(nghttp2_session *session,
+                                           nghttp2_frame *frame,
+                                           nghttp2_stream *stream);
+
 /*
  * Called when HEADERS is received, assuming |frame| is properly
  * initialized.  This function does first validate received frame and
@@ -391,6 +395,19 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
  */
 int nghttp2_session_on_settings_received(nghttp2_session *session,
                                          nghttp2_frame *frame);
+
+/*
+ * Called when PUSH_PROMISE is received, assuming |frame| is properly
+ * initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int nghttp2_session_on_push_promise_received(nghttp2_session *session,
+                                             nghttp2_frame *frame);
 
 /*
  * Called when PING is received, assuming |frame| is properly

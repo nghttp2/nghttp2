@@ -82,3 +82,8 @@ void nghttp2_stream_update_initial_window_size(nghttp2_stream *stream,
   stream->window_size =
     new_initial_window_size-(old_initial_window_size-stream->window_size);
 }
+
+void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream)
+{
+  stream->state = NGHTTP2_STREAM_OPENED;
+}

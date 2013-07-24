@@ -238,6 +238,78 @@ int nghttp2_frame_unpack_settings(nghttp2_settings *frame,
                                   const uint8_t *head, size_t headlen,
                                   const uint8_t *payload, size_t payloadlen);
 
+
+/*
+ * Packs PUSH_PROMISE frame |frame| in wire format and store it in
+ * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
+ * This function expands |*buf_ptr| as necessary to store frame. When
+ * expansion occurred, memory previously pointed by |*buf_ptr| may be
+ * freed.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
+ *
+ * frame->hd.length is assigned after length is determined during
+ * packing process.
+ *
+ * This function returns the size of packed frame if it succeeds, or
+ * returns one of the following negative error codes:
+ *
+ * NGHTTP2_ERR_HEADER_COMP
+ *     The deflate operation failed.
+ * NGHTTP2_ERR_FRAME_TOO_LARGE
+ *     The length of the frame is too large.
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
+                                        size_t *buflen_ptr,
+                                        nghttp2_push_promise *frame,
+                                        nghttp2_hd_context *deflater);
+
+/*
+ * Unpacks PUSH_PROMISE frame byte sequence into |frame|.  The control
+ * frame header is given in |head| with |headlen| length. In the spec,
+ * headlen is 8 bytes. |payload| is the data after frame header and
+ * just before name/value header block.
+ *
+ * The |inflater| inflates name/value header block.
+ *
+ * This function also validates the name/value pairs. If unpacking
+ * succeeds but validation fails, it is indicated by returning
+ * NGHTTP2_ERR_INVALID_HEADER_BLOCK.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_HEADER_COMP
+ *     The inflate operation failed.
+ * NGHTTP2_ERR_INVALID_HEADER_BLOCK
+ *     Unpacking succeeds but the header block is invalid.
+ * NGHTTP2_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int nghttp2_frame_unpack_push_promise(nghttp2_push_promise *frame,
+                                      const uint8_t *head, size_t headlen,
+                                      const uint8_t *payload,
+                                      size_t payloadlen,
+                                      nghttp2_hd_context *inflater);
+
+/*
+ * Unpacks PUSH_PROMISE frame byte sequence into |frame|. This function
+ * only unapcks bytes that come before name/value header block.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_INVALID_FRAME
+ *     The input data are invalid.
+ */
+int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
+                                                 const uint8_t *head,
+                                                 size_t headlen,
+                                                 const uint8_t *payload,
+                                                 size_t payloadlen);
+
 /*
  * Packs PING frame |frame| in wire format and store it in
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
@@ -366,6 +438,17 @@ void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
                                    nghttp2_error_code error_code);
 
 void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame);
+
+/*
+ * Initializes PUSH_PROMISE frame |frame| with given values.  |frame|
+ * takes ownership of |nva|, so caller must not free it.
+ */
+void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame,
+                                     uint8_t flags, int32_t stream_id,
+                                     int32_t promised_stream_id,
+                                     nghttp2_nv *nva, size_t nvlen);
+
+void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame);
 
 /*
  * Initializes SETTINGS frame |frame| with given values. |frame| takes
