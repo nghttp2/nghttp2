@@ -111,7 +111,7 @@ typedef enum {
   NGHTTP2_ERR_STREAM_CLOSING = -511,
   /**
    * The transmission is not allowed for this stream (e.g., a frame
-   * with FLAG_FIN flag set has already sent).
+   * with END_STREAM flag set has already sent).
    */
   NGHTTP2_ERR_STREAM_SHUT_WR = -512,
   /**
@@ -119,8 +119,8 @@ typedef enum {
    */
   NGHTTP2_ERR_INVALID_STREAM_ID = -513,
   /**
-   * The state of the stream is not valid (e.g., SYN_REPLY cannot be
-   * sent to the stream if SYN_REPLY has already been sent).
+   * The state of the stream is not valid (e.g., DATA cannot be sent
+   * to the stream if response HEADERS has not been sent).
    */
   NGHTTP2_ERR_INVALID_STREAM_STATE = -514,
   /**
@@ -767,7 +767,7 @@ typedef void (*nghttp2_on_invalid_frame_recv_callback)
  * Callback function invoked when a chunk of data in DATA frame is
  * received. The |stream_id| is the stream ID this DATA frame belongs
  * to. The |flags| is the flags of DATA frame which this data chunk is
- * contained. ``(flags & NGHTTP2_DATA_FLAG_FIN) != 0`` does not
+ * contained. ``(flags & NGHTTP2_FLAG_END_STREAM) != 0`` does not
  * necessarily mean this chunk of data is the last one in the
  * stream. You should use :type:`nghttp2_on_data_recv_callback` to
  * know all data frames are received.
@@ -1077,13 +1077,14 @@ int nghttp2_session_set_option(nghttp2_session *session,
  * 1. Get the next frame to send from outbound queue.
  * 2. Prepare transmission of the frame.
  * 3. If the control frame cannot be sent because some preconditions
- *    are not met (e.g., SYN_STREAM cannot be sent after GOAWAY),
+ *    are not met (e.g., request HEADERS cannot be sent after
+ *    GOAWAY),
  *    :member:`nghttp2_session_callbacks.on_ctrl_not_send_callback` is
  *    invoked. Abort the following steps.
- * 4. If the frame is SYN_STREAM, the stream is opened here.
- *    If the |session| is initialized for client use and the protocol
- *    version is :macro:`NGHTTP2_PROTO_SPDY3` and the library needs
- *    the client certificate for the origin,
+ * 4. If the frame is request HEADERS, the stream is opened
+ *    here.  If the |session| is initialized for client use and the
+ *    protocol version is :macro:`NGHTTP2_PROTO_SPDY3` and the library
+ *    needs the client certificate for the origin,
  *    :member:`nghttp2_session_callbacks.get_credential_ncerts` is
  *    invoked. If the result is more than zero,
  *    :member:`nghttp2_session_callbacks.get_credential_proof` and
@@ -1295,8 +1296,7 @@ const char* nghttp2_strerror(int lib_error_code);
 /**
  * @function
  *
- * Submits SYN_STREAM frame and optionally one or more DATA
- * frames.
+ * Submits HEADERS frame and optionally one or more DATA frames.
  *
  * The |pri| is priority of this request. 0 is the highest priority
  * value. Use `nghttp2_session_get_pri_lowest()` to know the lowest
@@ -1337,22 +1337,22 @@ const char* nghttp2_strerror(int lib_error_code);
  * be specified with ``:method`` key in |nv| (e.g. ``POST``). This
  * function does not take ownership of the |data_prd|. The function
  * copies the members of the |data_prd|. If |data_prd| is ``NULL``,
- * SYN_STREAM have FLAG_FIN set. The |stream_user_data| is data
+ * HEADERS have END_STREAM set. The |stream_user_data| is data
  * associated to the stream opened by this request and can be an
  * arbitrary pointer, which can be retrieved later by
  * `nghttp2_session_get_stream_user_data()`.
  *
  * Since the library reorders the frames and tries to send the highest
- * prioritized one first and the SPDY specification requires the
+ * prioritized one first and the HTTP/2.0 specification requires the
  * stream ID must be strictly increasing, the stream ID of this
  * request cannot be known until it is about to sent.  To know the
  * stream ID of the request, the application can use
  * :member:`nghttp2_session_callbacks.before_ctrl_send_callback`. This
- * callback is called just before the frame is sent. For SYN_STREAM
+ * callback is called just before the frame is sent. For HEADERS
  * frame, the argument frame has the stream ID assigned. Also since
  * the stream is already opened,
  * `nghttp2_session_get_stream_user_data()` can be used to get
- * |stream_user_data| to identify which SYN_STREAM we are processing.
+ * |stream_user_data| to identify which HEADERS we are processing.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1371,8 +1371,8 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
 /**
  * @function
  *
- * Submits SYN_REPLY frame and optionally one or more DATA frames
- * against the stream |stream_id|.
+ * Submits response HEADERS frame and optionally one or more DATA
+ * frames against the stream |stream_id|.
  *
  * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
@@ -1395,8 +1395,8 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  * If |data_prd| is not ``NULL``, it provides data which will be sent
  * in subsequent DATA frames.  This function does not take ownership
  * of the |data_prd|. The function copies the members of the
- * |data_prd|.  If |data_prd| is ``NULL``, SYN_REPLY will have
- * FLAG_FIN set.
+ * |data_prd|.  If |data_prd| is ``NULL``, HEADERS will have
+ * END_STREAM flag set.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1552,6 +1552,15 @@ int nghttp2_submit_settings(nghttp2_session *session,
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
+ *
+ * Since the library reorders the frames and tries to send the highest
+ * prioritized one first and the HTTP/2.0 specification requires the
+ * stream ID must be strictly increasing, the promised stream ID
+ * cannot be known until it is about to sent.  To know the promised
+ * stream ID, the application can use
+ * :member:`nghttp2_session_callbacks.before_ctrl_send_callback`. This
+ * callback is called just before the frame is sent. For PUSH_PROMISE
+ * frame, the argument frame has the promised stream ID assigned.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
