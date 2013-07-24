@@ -14,7 +14,6 @@ spdylay code base.
 The following features are not implemented:
 
 * Header continuation
-* PUSH_PROMISE and server-push in general
 * ALPN: ``nghttp`` client and ``nghttpd`` server use OpenSSL without ALPN
   support and still use NPN to negotiate ``HTTP-draft-04/2.0``.
 * HTTP Upgrade dance
