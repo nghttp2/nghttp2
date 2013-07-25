@@ -51,9 +51,9 @@ void test_nghttp2_hd_deflate(void)
                        MAKE_NV("hello", "world")};
   nghttp2_nv nva2[] = {MAKE_NV(":path", "/script.js"),
                        MAKE_NV(":scheme", "https")};
-  nghttp2_nv nva3[] = {MAKE_NV(":path", "/style.css"),
-                       MAKE_NV("cookie", "k1=v1"),
-                       MAKE_NV("cookie", "k2=v2")};
+  nghttp2_nv nva3[] = {MAKE_NV("cookie", "k1=v1"),
+                       MAKE_NV("cookie", "k2=v2"),
+                       MAKE_NV("via", "proxy")};
   nghttp2_nv nva4[] = {MAKE_NV(":path", "/style.css"),
                        MAKE_NV("cookie", "k1=v1"),
                        MAKE_NV("cookie", "k1=v1")};
@@ -116,7 +116,7 @@ void test_nghttp2_hd_deflate(void)
      encode duplicates. Only first one is encoded. */
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, nv_offset, nva4,
                                    sizeof(nva4)/sizeof(nghttp2_nv));
-  CU_ASSERT(blocklen == 0);
+  CU_ASSERT(blocklen > 0);
   nghttp2_hd_end_headers(&deflater);
 
   CU_ASSERT(2 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf + nv_offset,

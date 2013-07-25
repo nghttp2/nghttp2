@@ -113,6 +113,10 @@ typedef struct {
      is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
   uint16_t hd_table_bufsize;
+  /* If inflate/deflate error occurred, this value is set to 1 and
+     further invocation of inflate/deflate will fail with
+     NGHTTP2_ERR_HEADER_COMP. */
+  uint8_t bad;
 } nghttp2_hd_context;
 
 /*
