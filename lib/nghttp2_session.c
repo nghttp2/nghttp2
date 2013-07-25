@@ -563,8 +563,8 @@ static int nghttp2_session_predicate_request_headers_send
 (nghttp2_session *session, nghttp2_headers *frame)
 {
   if(session->goaway_flags) {
-    /* When GOAWAY is sent or received, peer must not send new
-       SYN_STREAM. */
+    /* When GOAWAY is sent or received, peer must not send new request
+       HEADERS. */
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   /* All 32bit signed stream IDs are spent. */
@@ -585,14 +585,13 @@ static int nghttp2_session_predicate_request_headers_send
  *     The stream is already closed or does not exist.
  * NGHTTP2_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
- *     with FIN flag set has already sent)
+ *     with END_STREAM flag set has already sent)
  * NGHTTP2_ERR_INVALID_STREAM_ID
  *     The stream ID is invalid.
  * NGHTTP2_ERR_STREAM_CLOSING
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
- *     The state of the stream is not valid (e.g., SYN_REPLY has
- *     already sent).
+ *     The state of the stream is not valid.
  */
 static int nghttp2_session_predicate_response_headers_send
 (nghttp2_session *session, int32_t stream_id)
@@ -664,12 +663,11 @@ static int nghttp2_session_predicate_push_response_headers_send
  *     The stream is already closed or does not exist.
  * NGHTTP2_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
- *     with FIN flag set has already sent)
+ *     with END_STREAM flag set has already sent)
  * NGHTTP2_ERR_STREAM_CLOSING
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
- *     The state of the stream is not valid (e.g., if the local peer
- *     is receiving side and SYN_REPLY has not been sent).
+ *     The state of the stream is not valid.
  */
 static int nghttp2_session_predicate_stream_frame_send
 (nghttp2_session* session, int32_t stream_id)
@@ -774,8 +772,8 @@ static int nghttp2_session_predicate_push_promise_send
 
 /*
  * This function checks WINDOW_UPDATE with the stream ID |stream_id|
- * can be sent at this time. Note that FIN flag of the previous frame
- * does not affect the transmission of the WINDOW_UPDATE frame.
+ * can be sent at this time. Note that END_STREAM flag of the previous
+ * frame does not affect the transmission of the WINDOW_UPDATE frame.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -843,14 +841,13 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
  *     The stream is already closed or does not exist.
  * NGHTTP2_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
- *     with FIN flag set has already sent)
+ *     with END_STREAM flag set has already sent)
  * NGHTTP2_ERR_DEFERRED_DATA_EXIST
  *     Another DATA frame has already been deferred.
  * NGHTTP2_ERR_STREAM_CLOSING
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
- *     The state of the stream is not valid (e.g., if the local peer
- *     is receiving side and SYN_REPLY has not been sent).
+ *     The state of the stream is not valid.
  */
 static int nghttp2_session_predicate_data_send(nghttp2_session *session,
                                                int32_t stream_id)
@@ -1136,16 +1133,16 @@ nghttp2_outbound_item* nghttp2_session_get_next_ob_item
     if(nghttp2_pq_empty(&session->ob_ss_pq)) {
       return nghttp2_pq_top(&session->ob_pq);
     } else {
-      nghttp2_outbound_item *item, *syn_stream_item;
+      nghttp2_outbound_item *item, *headers_item;
       item = nghttp2_pq_top(&session->ob_pq);
-      syn_stream_item = nghttp2_pq_top(&session->ob_ss_pq);
+      headers_item = nghttp2_pq_top(&session->ob_ss_pq);
       if(nghttp2_session_is_outgoing_concurrent_streams_max(session) ||
-         item->pri < syn_stream_item->pri ||
-         (item->pri == syn_stream_item->pri &&
-          item->seq < syn_stream_item->seq)) {
+         item->pri < headers_item->pri ||
+         (item->pri == headers_item->pri &&
+          item->seq < headers_item->seq)) {
         return item;
       } else {
-        return syn_stream_item;
+        return headers_item;
       }
     }
   }
@@ -1176,18 +1173,18 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
       nghttp2_pq_pop(&session->ob_pq);
       return item;
     } else {
-      nghttp2_outbound_item *item, *syn_stream_item;
+      nghttp2_outbound_item *item, *headers_item;
       item = nghttp2_pq_top(&session->ob_pq);
-      syn_stream_item = nghttp2_pq_top(&session->ob_ss_pq);
+      headers_item = nghttp2_pq_top(&session->ob_ss_pq);
       if(nghttp2_session_is_outgoing_concurrent_streams_max(session) ||
-         item->pri < syn_stream_item->pri ||
-         (item->pri == syn_stream_item->pri &&
-          item->seq < syn_stream_item->seq)) {
+         item->pri < headers_item->pri ||
+         (item->pri == headers_item->pri &&
+          item->seq < headers_item->seq)) {
         nghttp2_pq_pop(&session->ob_pq);
         return item;
       } else {
         nghttp2_pq_pop(&session->ob_ss_pq);
-        return syn_stream_item;
+        return headers_item;
       }
     }
   }
@@ -1586,12 +1583,15 @@ static int nghttp2_session_is_new_peer_stream_id(nghttp2_session *session,
 }
 
 /*
- * Validates received HEADERS frame |frame| with
- * NGHTTP2_HCAT_REQUEST category_. This function returns 0 if it
- * succeeds, or non-zero nghttp2_error_code.
+ * Validates received HEADERS frame |frame| with NGHTTP2_HCAT_REQUEST
+ * or NGHTTP2_HCAT_PUSH_RESPONSE category, which both opens new
+ * stream.
+ *
+ * This function returns 0 if it succeeds, or non-zero
+ * nghttp2_error_code.
  */
-static int nghttp2_session_validate_syn_stream(nghttp2_session *session,
-                                               nghttp2_headers *frame)
+static int nghttp2_session_validate_request_headers(nghttp2_session *session,
+                                                    nghttp2_headers *frame)
 {
   if(nghttp2_session_is_incoming_concurrent_streams_max(session)) {
     /* The spec does not clearly say what to do when max concurrent
@@ -1675,7 +1675,8 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   } else {
     session->last_recv_stream_id = frame->hd.stream_id;
-    error_code = nghttp2_session_validate_syn_stream(session, &frame->headers);
+    error_code = nghttp2_session_validate_request_headers
+      (session, &frame->headers);
   }
   if(error_code == 0) {
     uint8_t flags = frame->hd.flags;
@@ -1750,7 +1751,7 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
     /* We don't accept new stream after GOAWAY is sent or received. */
     return 0;
   }
-  rv = nghttp2_session_validate_syn_stream(session, &frame->headers);
+  rv = nghttp2_session_validate_request_headers(session, &frame->headers);
   if(rv != 0) {
     return nghttp2_session_handle_invalid_stream(session, frame, rv);
   }
@@ -1788,7 +1789,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
       }
     } else {
       /* If this is remote peer initiated stream, it is OK unless it
-         have sent FIN frame already. But if stream is in
+         has sent END_STREAM frame already. But if stream is in
          NGHTTP2_STREAM_CLOSING, we discard the frame. This is a race
          condition. */
       valid = 1;
@@ -2460,8 +2461,8 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
         }
       } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
         /* It is OK if this is remote peer initiated stream and we did
-           not receive FIN unless stream is in NGHTTP2_STREAM_CLOSING
-           state. This is a race condition. */
+           not receive END_STREAM unless stream is in
+           NGHTTP2_STREAM_CLOSING state. This is a race condition. */
         valid = 1;
         if(session->callbacks.on_data_recv_callback) {
           session->callbacks.on_data_recv_callback
@@ -2603,8 +2604,8 @@ static int nghttp2_session_check_data_recv_allowed(nghttp2_session *session,
         }
       } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
         /* It is OK if this is remote peer initiated stream and we did
-           not receive FIN unless stream is in NGHTTP2_STREAM_CLOSING
-           state. This is a race condition. */
+           not receive END_STREAM unless stream is in
+           NGHTTP2_STREAM_CLOSING state. This is a race condition. */
         return 1;
       }
     }
@@ -2782,9 +2783,9 @@ int nghttp2_session_want_write(nghttp2_session *session)
   }
   /*
    * Unless GOAWAY is sent or received, we want to write frames if
-   * there is pending ones. If pending frame is SYN_STREAM and
-   * concurrent stream limit is reached, we don't want to write
-   * SYN_STREAM.  After GOAWAY is sent or received, we want to write
+   * there is pending ones. If pending frame is request/push response
+   * HEADERS and concurrent stream limit is reached, we don't want to
+   * write them.  After GOAWAY is sent or received, we want to write
    * frames if there is pending ones AND there are active frames.
    */
   return (session->aob.item != NULL || !nghttp2_pq_empty(&session->ob_pq) ||
