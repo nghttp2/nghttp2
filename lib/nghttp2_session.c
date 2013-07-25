@@ -1197,7 +1197,6 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
 static void nghttp2_outbound_item_adjust_pri(nghttp2_session *session,
                                              nghttp2_outbound_item *item)
 {
-  assert(item->pri > 0);
   if(item->pri == NGHTTP2_PRI_LOWEST) {
     nghttp2_stream *stream;
     stream = nghttp2_session_get_stream
