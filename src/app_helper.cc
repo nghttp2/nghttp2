@@ -229,13 +229,17 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
       printf("(pri=%d)\n", frame->headers.pri);
     }
     switch(frame->headers.cat) {
-    case NGHTTP2_HCAT_START_STREAM:
+    case NGHTTP2_HCAT_REQUEST:
       print_frame_attr_indent();
       printf("; Open new stream\n");
       break;
-    case NGHTTP2_HCAT_REPLY:
+    case NGHTTP2_HCAT_RESPONSE:
       print_frame_attr_indent();
       printf("; First response header\n");
+      break;
+    case NGHTTP2_HCAT_PUSH_RESPONSE:
+      print_frame_attr_indent();
+      printf("; First push response header\n");
       break;
     default:
       break;

@@ -687,7 +687,7 @@ void hd_on_frame_recv_callback
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
     switch(frame->headers.cat) {
-    case NGHTTP2_HCAT_START_STREAM: {
+    case NGHTTP2_HCAT_REQUEST: {
       int32_t stream_id = frame->hd.stream_id;
       auto req = util::make_unique<Request>(stream_id);
       append_nv(req.get(), frame->headers.nva, frame->headers.nvlen);

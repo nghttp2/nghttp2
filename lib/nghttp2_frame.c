@@ -203,7 +203,7 @@ void nghttp2_frame_headers_init(nghttp2_headers *frame,
   frame->pri = pri;
   frame->nva = nva;
   frame->nvlen = nvlen;
-  frame->cat = NGHTTP2_HCAT_START_STREAM;
+  frame->cat = NGHTTP2_HCAT_REQUEST;
 }
 
 void nghttp2_frame_headers_free(nghttp2_headers *frame)

@@ -745,7 +745,7 @@ void on_frame_send_callback2
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_START_STREAM) {
+     frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     check_stream_id(session, frame, user_data);
   }
   if(config.verbose) {
@@ -757,7 +757,7 @@ void check_response_header
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_REPLY) {
+     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
     return;
   }
   auto req = (Request*)nghttp2_session_get_stream_user_data
@@ -792,7 +792,7 @@ void on_frame_recv_callback2
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_REPLY) {
+     frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
     auto req = (Request*)nghttp2_session_get_stream_user_data
       (session, frame->hd.stream_id);
     assert(req);

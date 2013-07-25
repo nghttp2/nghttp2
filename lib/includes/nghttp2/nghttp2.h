@@ -449,27 +449,30 @@ typedef struct {
  * @enum
  *
  * The category of HEADERS, which indicates the role of the frame. In
- * HTTP/2.0 spec, request HEADERS and response HEADERS and other
- * arbitrary sent HEADERS are all called just HEADERS. In SPDY days,
- * they are called as SYN_STREAM, SYN_REPLY and HEADERS and which is
- * self-explanatory and easy to code. To give the application the
- * particular HEADERS frame is analogous to the SPDY terms, we define
- * 3 categories for it.
+ * HTTP/2.0 spec, request, response, push response and other arbitrary
+ * headers (e.g., trailers) are all called just HEADERS. To give the
+ * application the role of incoming HEADERS frame, we define several
+ * categories.
  */
 typedef enum {
   /**
-   * The HEADERS frame is opening stream, which is analogous to SPDY
-   * SYN_STREAM.
+   * The HEADERS frame is opening new stream, which is analogous to
+   * SYN_STREAM in SPDY.
    */
-  NGHTTP2_HCAT_START_STREAM,
+  NGHTTP2_HCAT_REQUEST,
   /**
    * The HEADERS frame is the first response headers, which is
-   * analogous to SPDY SYN_REPLY.
+   * analogous to SYN_REPLY in SPDY.
    */
-  NGHTTP2_HCAT_REPLY,
+  NGHTTP2_HCAT_RESPONSE,
+  /**
+   * The HEADERS frame is the first headers sent against reserved
+   * stream.
+   */
+  NGHTTP2_HCAT_PUSH_RESPONSE,
   /**
    * The HEADERS frame which does not apply for the above categories,
-   * which is analogous to SPDY HEADERS.
+   * which is analogous to HEADERS in SPDY.
    */
   NGHTTP2_HCAT_HEADERS,
 } nghttp2_headers_category;

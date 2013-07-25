@@ -902,11 +902,10 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
     frame = nghttp2_outbound_item_get_ctrl_frame(item);
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS: {
-      int push_reply = 0;
       if(frame->hd.stream_id == -1) {
         /* initial HEADERS, which opens stream */
         int r;
-        frame->headers.cat = NGHTTP2_HCAT_START_STREAM;
+        frame->headers.cat = NGHTTP2_HCAT_REQUEST;
         r = nghttp2_session_predicate_syn_stream_send(session,
                                                       &frame->headers);
         if(r != 0) {
@@ -916,13 +915,10 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         session->next_stream_id += 2;
       } else if(nghttp2_session_predicate_push_reply_send
                 (session, frame->hd.stream_id) == 0) {
-        /* HEADERS against promised stream */
-        push_reply = 1;
-        frame->headers.cat = NGHTTP2_HCAT_REPLY;
+        frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
       } else if(nghttp2_session_predicate_syn_reply_send
                 (session, frame->hd.stream_id) == 0) {
-        /* first response HEADERS */
-        frame->headers.cat = NGHTTP2_HCAT_REPLY;
+        frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
       } else {
         int r;
         frame->headers.cat = NGHTTP2_HCAT_HEADERS;
@@ -940,7 +936,8 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
       if(framebuflen < 0) {
         return framebuflen;
       }
-      if(frame->headers.cat == NGHTTP2_HCAT_START_STREAM) {
+      switch(frame->headers.cat) {
+      case NGHTTP2_HCAT_REQUEST: {
         nghttp2_headers_aux_data *aux_data;
         aux_data = (nghttp2_headers_aux_data*)item->aux_data;
         if(nghttp2_session_open_stream
@@ -951,7 +948,9 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
             aux_data ? aux_data->stream_user_data : NULL) == NULL) {
           return NGHTTP2_ERR_NOMEM;
         }
-      } else if(push_reply) {
+        break;
+      }
+      case NGHTTP2_HCAT_PUSH_RESPONSE: {
         nghttp2_headers_aux_data *aux_data;
         aux_data = (nghttp2_headers_aux_data*)item->aux_data;
         if(aux_data) {
@@ -959,6 +958,10 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
           stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
           stream->stream_user_data = aux_data->stream_user_data;
         }
+        break;
+      }
+      default:
+        break;
       }
       break;
     }
@@ -1241,7 +1244,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       nghttp2_headers_aux_data *aux_data;
       if(stream) {
         switch(frame->headers.cat) {
-        case NGHTTP2_HCAT_START_STREAM: {
+        case NGHTTP2_HCAT_REQUEST: {
           stream->state = NGHTTP2_STREAM_OPENING;
           if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
             nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
@@ -1263,7 +1266,8 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           }
           break;
         }
-        case NGHTTP2_HCAT_REPLY:
+        case NGHTTP2_HCAT_RESPONSE:
+        case NGHTTP2_HCAT_PUSH_RESPONSE:
           stream->state = NGHTTP2_STREAM_OPENED;
           if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
             nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
@@ -1583,7 +1587,7 @@ static int nghttp2_session_is_new_peer_stream_id(nghttp2_session *session,
 
 /*
  * Validates received HEADERS frame |frame| with
- * NGHTTP2_HCAT_START_STREAM category_. This function returns 0 if it
+ * NGHTTP2_HCAT_REQUEST category_. This function returns 0 if it
  * succeeds, or non-zero nghttp2_error_code.
  */
 static int nghttp2_session_validate_syn_stream(nghttp2_session *session,
@@ -2270,7 +2274,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       if(stream) {
         if(nghttp2_session_is_my_stream_id(session, frame.hd.stream_id)) {
           if(stream->state == NGHTTP2_STREAM_OPENING) {
-            frame.headers.cat = NGHTTP2_HCAT_REPLY;
+            frame.headers.cat = NGHTTP2_HCAT_RESPONSE;
             r = nghttp2_session_on_syn_reply_received(session, &frame, stream);
           } else {
             frame.headers.cat = NGHTTP2_HCAT_HEADERS;
@@ -2278,14 +2282,14 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
           }
         } else if(!session->server &&
                   stream->state == NGHTTP2_STREAM_RESERVED) {
-          frame.headers.cat = NGHTTP2_HCAT_REPLY;
+          frame.headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
           r = nghttp2_session_on_push_reply_received(session, &frame, stream);
         } else {
           frame.headers.cat = NGHTTP2_HCAT_HEADERS;
           r = nghttp2_session_on_headers_received(session, &frame, stream);
         }
       } else {
-        frame.headers.cat = NGHTTP2_HCAT_START_STREAM;
+        frame.headers.cat = NGHTTP2_HCAT_REQUEST;
         r = nghttp2_session_on_syn_stream_received(session, &frame);
       }
       nghttp2_frame_headers_free(&frame.headers);
