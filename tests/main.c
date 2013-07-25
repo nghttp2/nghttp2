@@ -84,14 +84,14 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_recv_data) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
-      !CU_add_test(pSuite, "session_on_syn_stream_received",
-                   test_nghttp2_session_on_syn_stream_received) ||
-      !CU_add_test(pSuite, "session_on_syn_reply_received",
-                   test_nghttp2_session_on_syn_reply_received) ||
+      !CU_add_test(pSuite, "session_on_request_headers_received",
+                   test_nghttp2_session_on_request_headers_received) ||
+      !CU_add_test(pSuite, "session_on_response_headers_received",
+                   test_nghttp2_session_on_response_headers_received) ||
       !CU_add_test(pSuite, "session_on_headers_received",
                    test_nghttp2_session_on_headers_received) ||
-      !CU_add_test(pSuite, "session_on_push_reply_received",
-                   test_nghttp2_session_on_push_reply_received) ||
+      !CU_add_test(pSuite, "session_on_push_response_headers_received",
+                   test_nghttp2_session_on_push_response_headers_received) ||
       !CU_add_test(pSuite, "session_on_priority_received",
                    test_nghttp2_session_on_priority_received) ||
       !CU_add_test(pSuite, "session_on_rst_stream_received",

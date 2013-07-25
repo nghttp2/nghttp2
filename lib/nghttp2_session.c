@@ -559,7 +559,7 @@ static int nghttp2_predicate_stream_for_send(nghttp2_stream *stream)
  *     Stream ID has reached the maximum value. Therefore no stream ID
  *     is available.
  */
-static int nghttp2_session_predicate_syn_stream_send
+static int nghttp2_session_predicate_request_headers_send
 (nghttp2_session *session, nghttp2_headers *frame)
 {
   if(session->goaway_flags) {
@@ -594,8 +594,8 @@ static int nghttp2_session_predicate_syn_stream_send
  *     The state of the stream is not valid (e.g., SYN_REPLY has
  *     already sent).
  */
-static int nghttp2_session_predicate_syn_reply_send(nghttp2_session *session,
-                                                    int32_t stream_id)
+static int nghttp2_session_predicate_response_headers_send
+(nghttp2_session *session, int32_t stream_id)
 {
   nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
   int r;
@@ -633,8 +633,8 @@ static int nghttp2_session_predicate_syn_reply_send(nghttp2_session *session,
  * NGHTTP2_ERR_STREAM_CLOSED
  *   RST_STREAM was queued for this stream.
  */
-static int nghttp2_session_predicate_push_reply_send(nghttp2_session *session,
-                                                     int32_t stream_id)
+static int nghttp2_session_predicate_push_response_headers_send
+(nghttp2_session *session, int32_t stream_id)
 {
   nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
   int r;
@@ -906,17 +906,17 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         /* initial HEADERS, which opens stream */
         int r;
         frame->headers.cat = NGHTTP2_HCAT_REQUEST;
-        r = nghttp2_session_predicate_syn_stream_send(session,
-                                                      &frame->headers);
+        r = nghttp2_session_predicate_request_headers_send(session,
+                                                           &frame->headers);
         if(r != 0) {
           return r;
         }
         frame->hd.stream_id = session->next_stream_id;
         session->next_stream_id += 2;
-      } else if(nghttp2_session_predicate_push_reply_send
+      } else if(nghttp2_session_predicate_push_response_headers_send
                 (session, frame->hd.stream_id) == 0) {
         frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
-      } else if(nghttp2_session_predicate_syn_reply_send
+      } else if(nghttp2_session_predicate_response_headers_send
                 (session, frame->hd.stream_id) == 0) {
         frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
       } else {
@@ -1654,8 +1654,8 @@ static int nghttp2_session_handle_invalid_connection
   return nghttp2_session_fail_session(session, error_code);
 }
 
-int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
-                                           nghttp2_frame *frame)
+int nghttp2_session_on_request_headers_received(nghttp2_session *session,
+                                                nghttp2_frame *frame)
 {
   int r = 0;
   nghttp2_error_code error_code = NGHTTP2_NO_ERROR;
@@ -1702,9 +1702,9 @@ int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
   return r;
 }
 
-int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
-                                          nghttp2_frame *frame,
-                                          nghttp2_stream *stream)
+int nghttp2_session_on_response_headers_received(nghttp2_session *session,
+                                                 nghttp2_frame *frame,
+                                                 nghttp2_stream *stream)
 {
   /* This function is only called if stream->state ==
      NGHTTP2_STREAM_OPENING and stream_id is local side initiated. */
@@ -1736,9 +1736,9 @@ int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
   return 0;
 }
 
-int nghttp2_session_on_push_reply_received(nghttp2_session *session,
-                                           nghttp2_frame *frame,
-                                           nghttp2_stream *stream)
+int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
+                                                      nghttp2_frame *frame,
+                                                      nghttp2_stream *stream)
 {
   int rv = 0;
   assert(!session->server && stream->state == NGHTTP2_STREAM_RESERVED);
@@ -2275,7 +2275,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
         if(nghttp2_session_is_my_stream_id(session, frame.hd.stream_id)) {
           if(stream->state == NGHTTP2_STREAM_OPENING) {
             frame.headers.cat = NGHTTP2_HCAT_RESPONSE;
-            r = nghttp2_session_on_syn_reply_received(session, &frame, stream);
+            r = nghttp2_session_on_response_headers_received
+              (session, &frame, stream);
           } else {
             frame.headers.cat = NGHTTP2_HCAT_HEADERS;
             r = nghttp2_session_on_headers_received(session, &frame, stream);
@@ -2283,14 +2284,15 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
         } else if(!session->server &&
                   stream->state == NGHTTP2_STREAM_RESERVED) {
           frame.headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
-          r = nghttp2_session_on_push_reply_received(session, &frame, stream);
+          r = nghttp2_session_on_push_response_headers_received
+            (session, &frame, stream);
         } else {
           frame.headers.cat = NGHTTP2_HCAT_HEADERS;
           r = nghttp2_session_on_headers_received(session, &frame, stream);
         }
       } else {
         frame.headers.cat = NGHTTP2_HCAT_REQUEST;
-        r = nghttp2_session_on_syn_stream_received(session, &frame);
+        r = nghttp2_session_on_request_headers_received(session, &frame);
       }
       nghttp2_frame_headers_free(&frame.headers);
       nghttp2_hd_end_headers(&session->hd_inflater);

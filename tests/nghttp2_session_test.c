@@ -602,7 +602,7 @@ void test_nghttp2_session_add_frame(void)
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_on_syn_stream_received(void)
+void test_nghttp2_session_on_request_headers_received(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
@@ -626,7 +626,7 @@ void test_nghttp2_session_on_syn_stream_received(void)
                              NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
                              stream_id, 1 << 20, nva, nvlen);
 
-  CU_ASSERT(0 == nghttp2_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
   stream = nghttp2_session_get_stream(session, stream_id);
   CU_ASSERT(NGHTTP2_STREAM_OPENING == stream->state);
@@ -640,7 +640,7 @@ void test_nghttp2_session_on_syn_stream_received(void)
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
                              3, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   user_data.invalid_frame_recv_cb_called = 0;
-  CU_ASSERT(0 == nghttp2_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
   CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
 
@@ -654,7 +654,7 @@ void test_nghttp2_session_on_syn_stream_received(void)
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
                              3, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   user_data.invalid_frame_recv_cb_called = 0;
-  CU_ASSERT(0 == nghttp2_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
   CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
 
@@ -663,7 +663,7 @@ void test_nghttp2_session_on_syn_stream_received(void)
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_on_syn_reply_received(void)
+void test_nghttp2_session_on_response_headers_received(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
@@ -688,8 +688,8 @@ void test_nghttp2_session_on_syn_reply_received(void)
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
 
-  CU_ASSERT(0 == nghttp2_session_on_syn_reply_received(session, &frame,
-                                                       stream));
+  CU_ASSERT(0 == nghttp2_session_on_response_headers_received
+            (session, &frame, stream));
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
   CU_ASSERT(NGHTTP2_STREAM_OPENED == stream->state);
 
@@ -768,7 +768,7 @@ void test_nghttp2_session_on_headers_received(void)
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_on_push_reply_received(void)
+void test_nghttp2_session_on_push_response_headers_received(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
@@ -793,10 +793,11 @@ void test_nghttp2_session_on_push_reply_received(void)
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 2,
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
-  /* nghttp2_session_on_push_reply_received assumes stream's state is
-     NGHTTP2_STREAM_RESERVED and session->server is 0. */
-  CU_ASSERT(0 == nghttp2_session_on_push_reply_received(session, &frame,
-                                                        stream));
+  /* nghttp2_session_on_push_response_headers_received assumes
+     stream's state is NGHTTP2_STREAM_RESERVED and session->server is
+     0. */
+  CU_ASSERT(0 == nghttp2_session_on_push_response_headers_received
+            (session, &frame, stream));
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
   CU_ASSERT(NGHTTP2_STREAM_OPENED == stream->state);
   CU_ASSERT(1 == session->num_incoming_streams);
@@ -807,8 +808,8 @@ void test_nghttp2_session_on_push_reply_received(void)
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_RESERVED, NULL);
   frame.hd.stream_id = 4;
-  CU_ASSERT(0 == nghttp2_session_on_push_reply_received(session, &frame,
-                                                        stream));
+  CU_ASSERT(0 == nghttp2_session_on_push_response_headers_received
+            (session, &frame, stream));
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
   CU_ASSERT(NGHTTP2_REFUSED_STREAM == OB_CTRL(item)->rst_stream.error_code);
@@ -2155,7 +2156,7 @@ void test_nghttp2_session_max_concurrent_streams(void)
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
   session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
 
-  CU_ASSERT(0 == nghttp2_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
 
   item = nghttp2_session_get_ob_pq_top(session);
   CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
@@ -2190,7 +2191,7 @@ void test_nghttp2_session_stream_close_on_headers_push(void)
   /*                               NGHTTP2_CTRL_FLAG_UNIDIRECTIONAL, */
   /*                               2, 1, 3, dup_nv(nv)); */
 
-  /* CU_ASSERT(0 == nghttp2_session_on_syn_stream_received(session, &frame)); */
+  /* CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame)); */
 
   /* nghttp2_frame_syn_stream_free(&frame.syn_stream); */
   /* nghttp2_session_del(session); */
@@ -2547,13 +2548,13 @@ void test_nghttp2_session_on_request_recv_callback(void)
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
                              1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
-  CU_ASSERT(0 == nghttp2_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(0 == user_data.stream_id);
 
   frame.hd.stream_id = 3;
   frame.hd.flags |= NGHTTP2_FLAG_END_STREAM;
 
-  CU_ASSERT(0 == nghttp2_session_on_syn_stream_received(session, &frame));
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(3 == user_data.stream_id);
 
   nghttp2_frame_headers_free(&frame.headers);

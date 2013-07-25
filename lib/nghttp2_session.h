@@ -338,16 +338,16 @@ int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
                                               nghttp2_stream *stream);
 
 
-int nghttp2_session_on_syn_stream_received(nghttp2_session *session,
-                                           nghttp2_frame *frame);
+int nghttp2_session_on_request_headers_received(nghttp2_session *session,
+                                                nghttp2_frame *frame);
 
-int nghttp2_session_on_syn_reply_received(nghttp2_session *session,
-                                          nghttp2_frame *frame,
-                                          nghttp2_stream *stream);
+int nghttp2_session_on_response_headers_received(nghttp2_session *session,
+                                                 nghttp2_frame *frame,
+                                                 nghttp2_stream *stream);
 
-int nghttp2_session_on_push_reply_received(nghttp2_session *session,
-                                           nghttp2_frame *frame,
-                                           nghttp2_stream *stream);
+int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
+                                                      nghttp2_frame *frame,
+                                                      nghttp2_stream *stream);
 
 /*
  * Called when HEADERS is received, assuming |frame| is properly
