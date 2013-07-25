@@ -35,6 +35,9 @@ extern "C" {
 
 #include <nghttp2/nghttp2ver.h>
 
+#define NGHTTP2_PROTO_VERSION_ID "HTTP-draft-04/2.0"
+#define NGHTTP2_PROTO_VERSION_ID_LEN 17
+
 struct nghttp2_session;
 /**
  * @struct

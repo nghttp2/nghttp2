@@ -365,7 +365,7 @@ int Http2Handler::verify_npn_result()
     if(sessions_->get_config()->verbose) {
       std::cout << "The negotiated next protocol: " << proto << std::endl;
     }
-    if(proto == "HTTP-draft-04/2.0") {
+    if(proto == NGHTTP2_PROTO_VERSION_ID) {
       return 0;
     }
   }
@@ -1003,7 +1003,8 @@ int HttpServer::run()
     }
 
     proto_list[0] = 17;
-    memcpy(&proto_list[1], "HTTP-draft-04/2.0", 17);
+    memcpy(&proto_list[1], NGHTTP2_PROTO_VERSION_ID,
+           NGHTTP2_PROTO_VERSION_ID_LEN);
     next_proto.first = proto_list;
     next_proto.second = 18;
 
