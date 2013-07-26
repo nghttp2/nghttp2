@@ -29,8 +29,10 @@ if ENABLE_SRC
 
 AM_CFLAGS = -Wall
 AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
-	@OPENSSL_CFLAGS@ @XML_CPPFLAGS@ @LIBEVENT_OPENSSL_CFLAGS@ @DEFS@
-AM_LDFLAGS = @OPENSSL_LIBS@ @XML_LIBS@ @LIBEVENT_OPENSSL_LIBS@ @SRC_LIBS@
+	@LIBSPDYLAY_CFLAGS@ @OPENSSL_CFLAGS@ @XML_CPPFLAGS@ \
+	@LIBEVENT_OPENSSL_CFLAGS@ @DEFS@
+AM_LDFLAGS = @LIBSPDYLAY_LIBS@ @OPENSSL_LIBS@ @XML_LIBS@ \
+	@LIBEVENT_OPENSSL_LIBS@ @SRC_LIBS@
 AM_CXXFLAGS = -std=c++11
 
 LDADD = $(top_builddir)/lib/libnghttp2.la
@@ -91,6 +93,10 @@ SHRPX_SRCS = \
 	shrpx_worker.cc shrpx_worker.h \
 	shrpx_accesslog.cc shrpx_accesslog.h\
 	http-parser/http_parser.c http-parser/http_parser.h
+
+if HAVE_SPDYLAY
+SHRPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
+endif # HAVE_SPDYLAY
 
 shrpx_SOURCES = ${SHRPX_SRCS} shrpx.cc shrpx.h
 

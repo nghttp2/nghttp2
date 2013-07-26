@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * Spdylay - SPDY Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -22,12 +22,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_HTTP2_UPSTREAM_H
-#define SHRPX_HTTP2_UPSTREAM_H
+#ifndef SHRPX_SPDY_UPSTREAM_H
+#define SHRPX_SPDY_UPSTREAM_H
 
 #include "shrpx.h"
 
-#include <nghttp2/nghttp2.h>
+#include <spdylay/spdylay.h>
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
@@ -36,10 +36,10 @@ namespace shrpx {
 
 class ClientHandler;
 
-class Http2Upstream : public Upstream {
+class SpdyUpstream : public Upstream {
 public:
-  Http2Upstream(ClientHandler *handler);
-  virtual ~Http2Upstream();
+  SpdyUpstream(uint16_t version, ClientHandler *handler);
+  virtual ~SpdyUpstream();
   virtual int on_read();
   virtual int on_write();
   virtual int on_event();
@@ -52,9 +52,9 @@ public:
   void remove_downstream(Downstream *downstream);
   Downstream* find_downstream(int32_t stream_id);
 
-  nghttp2_session* get_spdy_session();
+  spdylay_session* get_spdy_session();
 
-  int rst_stream(Downstream *downstream, nghttp2_error_code error_code);
+  int rst_stream(Downstream *downstream, int status_code);
   int window_update(Downstream *downstream);
   int error_reply(Downstream *downstream, int status_code);
 
@@ -70,7 +70,7 @@ public:
   int32_t get_initial_window_size() const;
 private:
   ClientHandler *handler_;
-  nghttp2_session *session_;
+  spdylay_session *session_;
   bool flow_control_;
   int32_t initial_window_size_;
   DownstreamQueue downstream_queue_;
@@ -78,4 +78,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP2_UPSTREAM_H
+#endif // SHRPX_SPDY_UPSTREAM_H

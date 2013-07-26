@@ -174,6 +174,17 @@ if test "x$with_libxml2" != "xno"; then
 fi
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 
+# spdylay (for shrpx)
+PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.0.0],
+                  [have_spdylay=yes], [have_spdylay=no])
+if test "x${have_spdylay}" = "xyes"; then
+  AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])
+else
+  AC_MSG_NOTICE($LIBSPDYLAY_PKG_ERRORS)
+  AC_MSG_NOTICE([The SPDY support in shrpx will be disabled.])
+fi
+AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
+
 # The src programs depend on OpenSSL
 enable_src=no
 if test "x${request_src}" = "xyes" &&

@@ -35,6 +35,10 @@
 #include "shrpx_spdy_downstream_connection.h"
 #include "shrpx_accesslog.h"
 
+#ifdef HAVE_SPDYLAY
+#include "shrpx_spdy_upstream.h"
+#endif // HAVE_SPDYLAY
+
 namespace shrpx {
 
 namespace {
@@ -212,6 +216,14 @@ int ClientHandler::validate_next_proto()
     if(proto == NGHTTP2_PROTO_VERSION_ID) {
       upstream_ = new Http2Upstream(this);
       return 0;
+    } else {
+#ifdef HAVE_SPDYLAY
+      uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
+      if(version) {
+        upstream_ = new SpdyUpstream(version, this);
+        return 0;
+      }
+#endif // HAVE_SPDYLAY
     }
   } else {
     if(LOG_ENABLED(INFO)) {
