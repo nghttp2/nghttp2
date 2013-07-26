@@ -111,6 +111,7 @@ public:
   Sessions* get_sessions() const;
   const Config* get_config() const;
   size_t get_left_connhd_len() const;
+  void set_left_connhd_len(size_t left);
 private:
   nghttp2_session *session_;
   Sessions *sessions_;

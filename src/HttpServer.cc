@@ -271,6 +271,7 @@ void connhd_readcb(bufferevent *bev, void *ptr)
     return;
   }
   leftlen -= readlen;
+  handler->set_left_connhd_len(leftlen);
   if(leftlen == 0) {
     bufferevent_setcb(bev, readcb, writecb, eventcb, ptr);
     // Run on_read to process data left in buffer since they are not
@@ -505,6 +506,11 @@ const Config* Http2Handler::get_config() const
 size_t Http2Handler::get_left_connhd_len() const
 {
   return left_connhd_len_;
+}
+
+void Http2Handler::set_left_connhd_len(size_t left)
+{
+  left_connhd_len_ = left;
 }
 
 namespace {
