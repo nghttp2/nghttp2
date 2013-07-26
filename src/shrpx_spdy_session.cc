@@ -1077,6 +1077,9 @@ int SpdySession::on_connect()
     return -1;
   }
 
+  bufferevent_write(bev_, NGHTTP2_CLIENT_CONNECTION_HEADER,
+                    NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+
   rv = send();
   if(rv != 0) {
     return -1;

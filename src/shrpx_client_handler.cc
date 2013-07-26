@@ -106,7 +106,6 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
       if(LOG_ENABLED(INFO)) {
         CLOG(INFO, handler) << "SSL/TLS handleshake completed";
       }
-      handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
       handler->validate_next_proto();
       if(LOG_ENABLED(INFO)) {
         if(SSL_session_reused(handler->get_ssl())) {
@@ -122,6 +121,38 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
 }
 } // namespace
 
+namespace {
+void upstream_connhd_readcb(bufferevent *bev, void *arg)
+{
+  uint8_t data[NGHTTP2_CLIENT_CONNECTION_HEADER_LEN];
+  auto handler = reinterpret_cast<ClientHandler*>(arg);
+  size_t leftlen = handler->get_left_connhd_len();
+  auto input = bufferevent_get_input(bev);
+  int readlen = evbuffer_remove(input, data, leftlen);
+  if(readlen == -1) {
+    delete handler;
+    return;
+  }
+  if(memcmp(NGHTTP2_CLIENT_CONNECTION_HEADER +
+            NGHTTP2_CLIENT_CONNECTION_HEADER_LEN - leftlen,
+            data, readlen) != 0) {
+    delete handler;
+    return;
+  }
+  leftlen -= readlen;
+  handler->set_left_connhd_len(leftlen);
+  if(leftlen == 0) {
+    handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+    // Run on_read to process data left in buffer since they are not
+    // notified further
+    if(handler->on_read() != 0) {
+      delete handler;
+      return;
+    }
+  }
+}
+} // namespace
+
 ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
                              const char *ipaddr)
   : bev_(bev),
@@ -130,7 +161,8 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     upstream_(nullptr),
     ipaddr_(ipaddr),
     should_close_after_write_(false),
-    spdy_(nullptr)
+    spdy_(nullptr),
+    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN)
 {
   bufferevent_enable(bev_, EV_READ | EV_WRITE);
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
@@ -142,11 +174,12 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     if(get_config()->client_mode) {
       // Client mode
       upstream_ = new HttpsUpstream(this);
+      set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
     } else {
       // no-TLS SPDY
       upstream_ = new Http2Upstream(this);
+      set_bev_cb(upstream_connhd_readcb, upstream_writecb, upstream_eventcb);
     }
-    set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
   }
 }
 
@@ -207,6 +240,8 @@ int ClientHandler::validate_next_proto()
 {
   const unsigned char *next_proto = nullptr;
   unsigned int next_proto_len;
+  // First set callback for catch all cases
+  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
   if(next_proto) {
     std::string proto(next_proto, next_proto+next_proto_len);
@@ -214,6 +249,7 @@ int ClientHandler::validate_next_proto()
       CLOG(INFO, this) << "The negotiated next protocol: " << proto;
     }
     if(proto == NGHTTP2_PROTO_VERSION_ID) {
+      set_bev_cb(upstream_connhd_readcb, upstream_writecb, upstream_eventcb);
       upstream_ = new Http2Upstream(this);
       return 0;
     } else {
@@ -321,6 +357,16 @@ void ClientHandler::set_spdy_session(SpdySession *spdy)
 SpdySession* ClientHandler::get_spdy_session() const
 {
   return spdy_;
+}
+
+size_t ClientHandler::get_left_connhd_len() const
+{
+  return left_connhd_len_;
+}
+
+void ClientHandler::set_left_connhd_len(size_t left)
+{
+  left_connhd_len_ = left;
 }
 
 } // namespace shrpx

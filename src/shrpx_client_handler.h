@@ -63,6 +63,8 @@ public:
   SSL* get_ssl() const;
   void set_spdy_session(SpdySession *spdy);
   SpdySession* get_spdy_session() const;
+  size_t get_left_connhd_len() const;
+  void set_left_connhd_len(size_t left);
 private:
   bufferevent *bev_;
   int fd_;
@@ -74,6 +76,8 @@ private:
   // Shared SPDY session for each thread. NULL if backend is not
   // SPDY. Not deleted by this object.
   SpdySession *spdy_;
+  // The number of bytes of HTTP/2.0 client connection header to read
+  size_t left_connhd_len_;
 };
 
 } // namespace shrpx
