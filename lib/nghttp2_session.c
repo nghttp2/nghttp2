@@ -1991,7 +1991,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       }
       break;
     case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
-      if(entry->value == 1) {
+      if(entry->value & 0x1) {
         if(session->remote_settings[entry->settings_id] == 0) {
           rv = nghttp2_session_disable_flow_control(session);
           if(rv != 0) {
