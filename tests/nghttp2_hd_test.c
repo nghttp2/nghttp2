@@ -81,8 +81,6 @@ void test_nghttp2_hd_deflate(void)
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
-  CU_ASSERT(2 == inflater.refsetlen);
-
   /* Second headers */
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, nv_offset, nva2,
                                    sizeof(nva2)/sizeof(nghttp2_nv));
@@ -157,10 +155,8 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset,
-                                               inflater.hd_table[12],
-                                               nv.value, nv.valuelen,
-                                               1));
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 12,
+                                               nv.value, nv.valuelen, 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
   CU_ASSERT(39 == inflater.hd_tablelen);
@@ -184,8 +180,7 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset,
-                                               inflater.hd_table[2],
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 2,
                                                value, sizeof(value), 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   CU_ASSERT(5 == resnva[0].namelen);
@@ -235,7 +230,7 @@ void test_nghttp2_hd_inflate_indname_subst(void)
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
   CU_ASSERT(0 == nghttp2_hd_emit_subst_indname_block(&buf, &buflen, &offset,
-                                                     inflater.hd_table[12],
+                                                     12,
                                                      nv.value, nv.valuelen,
                                                      12));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
@@ -262,7 +257,7 @@ void test_nghttp2_hd_inflate_indname_subst_eviction(void)
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
   CU_ASSERT(0 == nghttp2_hd_emit_subst_indname_block(&buf, &buflen, &offset,
-                                                     inflater.hd_table[2],
+                                                     2,
                                                      value, sizeof(value), 2));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   CU_ASSERT(5 == resnva[0].namelen);
@@ -293,7 +288,7 @@ void test_nghttp2_hd_inflate_indname_subst_eviction_neg(void)
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
   /* Try to substitute index 0, but it will be evicted */
   CU_ASSERT(0 == nghttp2_hd_emit_subst_indname_block(&buf, &buflen, &offset,
-                                                     inflater.hd_table[2],
+                                                     2,
                                                      value, sizeof(value), 0));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   CU_ASSERT(5 == resnva[0].namelen);

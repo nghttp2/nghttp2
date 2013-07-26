@@ -224,7 +224,7 @@ int nghttp2_hd_end_headers(nghttp2_hd_context *deflater_or_inflater);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
-                                  size_t *offset_ptr, nghttp2_hd_entry *ent,
+                                  size_t *offset_ptr, size_t index,
                                   const uint8_t *value, size_t valuelen,
                                   int inc_indexing);
 
@@ -235,14 +235,13 @@ int nghttp2_hd_emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_subst_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
-                                        size_t *offset_ptr,
-                                        nghttp2_hd_entry *ent,
+                                        size_t *offset_ptr, size_t index,
                                         const uint8_t *value, size_t valuelen,
-                                        size_t index);
+                                        size_t subindex);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_subst_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                         size_t *offset_ptr, nghttp2_nv *nv,
-                                        size_t index);
+                                        size_t subindex);
 
 #endif /* NGHTTP2_HD_COMP_H */

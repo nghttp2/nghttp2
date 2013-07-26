@@ -316,6 +316,8 @@ void test_nghttp2_session_recv(void)
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
                                         &session->hd_deflater);
+  nghttp2_hd_end_headers(&session->hd_deflater);
+
   scripted_data_feed_init(&df, framedata, framelen);
   /* Send 1 byte per each read */
   for(i = 0; i < framelen; ++i) {
@@ -336,6 +338,8 @@ void test_nghttp2_session_recv(void)
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
                                         &session->hd_deflater);
+  nghttp2_hd_end_headers(&session->hd_deflater);
+
   nghttp2_frame_headers_free(&frame.headers);
 
   scripted_data_feed_init(&df, framedata, framelen);
@@ -395,6 +399,8 @@ void test_nghttp2_session_recv_invalid_stream_id(void)
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
                                         &session->hd_deflater);
+  nghttp2_hd_end_headers(&session->hd_deflater);
+
   scripted_data_feed_init(&df, framedata, framelen);
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -435,6 +441,8 @@ void test_nghttp2_session_recv_invalid_frame(void)
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
                                         &session->hd_deflater);
+  nghttp2_hd_end_headers(&session->hd_deflater);
+
   scripted_data_feed_init(&df, framedata, framelen);
 
   CU_ASSERT(0 == nghttp2_session_recv(session));
