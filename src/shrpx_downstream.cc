@@ -39,7 +39,7 @@ namespace shrpx {
 
 Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
   : upstream_(upstream),
-    dconn_(0),
+    dconn_(nullptr),
     stream_id_(stream_id),
     priority_(priority),
     downstream_stream_id_(-1),
@@ -57,7 +57,8 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     chunked_response_(false),
     response_connection_close_(false),
     response_header_key_prev_(false),
-    response_body_buf_(0),
+    response_body_buf_(nullptr),
+    response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
     recv_window_size_(0)
 {}
 
@@ -489,14 +490,15 @@ int32_t Downstream::get_downstream_stream_id() const
   return downstream_stream_id_;
 }
 
-uint32_t Downstream::get_response_rst_stream_status_code() const
+nghttp2_error_code Downstream::get_response_rst_stream_error_code() const
 {
-  return response_rst_stream_status_code_;
+  return response_rst_stream_error_code_;
 }
 
-void Downstream::set_response_rst_stream_status_code(uint32_t status_code)
+void Downstream::set_response_rst_stream_error_code
+(nghttp2_error_code error_code)
 {
-  response_rst_stream_status_code_ = status_code;
+  response_rst_stream_error_code_ = error_code;
 }
 
 } // namespace shrpx

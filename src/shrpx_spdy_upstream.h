@@ -38,7 +38,7 @@ class ClientHandler;
 
 class SpdyUpstream : public Upstream {
 public:
-  SpdyUpstream(uint16_t version, ClientHandler *handler);
+  SpdyUpstream(ClientHandler *handler);
   virtual ~SpdyUpstream();
   virtual int on_read();
   virtual int on_write();
@@ -54,7 +54,7 @@ public:
 
   nghttp2_session* get_spdy_session();
 
-  int rst_stream(Downstream *downstream, int status_code);
+  int rst_stream(Downstream *downstream, nghttp2_error_code error_code);
   int window_update(Downstream *downstream);
   int error_reply(Downstream *downstream, int status_code);
 

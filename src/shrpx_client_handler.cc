@@ -123,24 +123,24 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
   : bev_(bev),
     fd_(fd),
     ssl_(ssl),
-    upstream_(0),
+    upstream_(nullptr),
     ipaddr_(ipaddr),
     should_close_after_write_(false),
-    spdy_(0)
+    spdy_(nullptr)
 {
   bufferevent_enable(bev_, EV_READ | EV_WRITE);
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
                         &get_config()->upstream_write_timeout);
   if(ssl_) {
-    set_bev_cb(0, upstream_writecb, upstream_eventcb);
+    set_bev_cb(nullptr, upstream_writecb, upstream_eventcb);
   } else {
     if(get_config()->client_mode) {
       // Client mode
       upstream_ = new HttpsUpstream(this);
     } else {
       // no-TLS SPDY
-      upstream_ = new SpdyUpstream(get_config()->spdy_upstream_version, this);
+      upstream_ = new SpdyUpstream(this);
     }
     set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
   }
@@ -201,18 +201,16 @@ void ClientHandler::set_upstream_timeouts(const timeval *read_timeout,
 
 int ClientHandler::validate_next_proto()
 {
-  const unsigned char *next_proto = 0;
+  const unsigned char *next_proto = nullptr;
   unsigned int next_proto_len;
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
   if(next_proto) {
+    std::string proto(next_proto, next_proto+next_proto_len);
     if(LOG_ENABLED(INFO)) {
-      std::string proto(next_proto, next_proto+next_proto_len);
       CLOG(INFO, this) << "The negotiated next protocol: " << proto;
     }
-    uint16_t version = nghttp2_npn_get_version(next_proto, next_proto_len);
-    if(version) {
-      SpdyUpstream *spdy_upstream = new SpdyUpstream(version, this);
-      upstream_ = spdy_upstream;
+    if(proto == NGHTTP2_PROTO_VERSION_ID) {
+      upstream_ = new SpdyUpstream(this);
       return 0;
     }
   } else {
@@ -223,8 +221,7 @@ int ClientHandler::validate_next_proto()
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Use HTTP/1.1";
   }
-  HttpsUpstream *https_upstream = new HttpsUpstream(this);
-  upstream_ = https_upstream;
+  upstream_ = new HttpsUpstream(this);
   return 0;
 }
 

@@ -91,7 +91,7 @@ ssize_t recv_callback(nghttp2_session *session,
 
 namespace {
 void on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_status_code status_code,
+(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
   SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
@@ -136,52 +136,52 @@ void on_stream_close_callback
 } // namespace
 
 namespace {
-void on_ctrl_recv_callback
-(nghttp2_session *session, nghttp2_frame_type type, nghttp2_frame *frame,
- void *user_data)
+void on_frame_recv_callback
+(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  switch(type) {
-  case NGHTTP2_SYN_STREAM: {
-    if(LOG_ENABLED(INFO)) {
-      ULOG(INFO, upstream) << "Received upstream SYN_STREAM stream_id="
-                           << frame->syn_stream.stream_id;
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS: {
+    if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+      break;
     }
-    Downstream *downstream;
-    downstream = new Downstream(upstream,
-                                frame->syn_stream.stream_id,
-                                frame->syn_stream.pri);
+    if(LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Received upstream request HEADERS stream_id="
+                           << frame->hd.stream_id;
+    }
+    auto downstream = new Downstream(upstream,
+                                     frame->hd.stream_id,
+                                     frame->headers.pri);
     upstream->add_downstream(downstream);
     downstream->init_response_body_buf();
 
-    char **nv = frame->syn_stream.nv;
-    const char *path = 0;
-    const char *scheme = 0;
-    const char *host = 0;
-    const char *method = 0;
-    for(size_t i = 0; nv[i]; i += 2) {
-      if(strcmp(nv[i], ":path") == 0) {
-        path = nv[i+1];
-      } else if(strcmp(nv[i], ":scheme") == 0) {
-        scheme = nv[i+1];
-      } else if(strcmp(nv[i], ":method") == 0) {
-        method = nv[i+1];
-        downstream->set_request_method(nv[i+1]);
-      } else if(strcmp(nv[i], ":host") == 0) {
-        host = nv[i+1];
-      } else if(nv[i][0] != ':') {
-        downstream->add_request_header(nv[i], nv[i+1]);
+    auto nva = frame->headers.nva;
+    std::string path, scheme, host, method;
+    for(size_t i = 0; i < frame->headers.nvlen; ++i) {
+      if(util::strieq(":path", nva[i].name, nva[i].namelen)) {
+        path.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
+      } else if(util::strieq(":scheme", nva[i].name, nva[i].namelen)) {
+        scheme.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
+      } else if(util::strieq(":method", nva[i].name, nva[i].namelen)) {
+        method.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
+        downstream->set_request_method(method);
+      } else if(util::strieq(":host", nva[i].name, nva[i].namelen)) {
+        host.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
+      } else if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
+        downstream->add_request_header
+          (std::string(reinterpret_cast<char*>(nva[i].name), nva[i].namelen),
+           std::string(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen));
       }
     }
-    if(!path || !host || !method) {
-      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if(path.empty() || host.empty() || method.empty()) {
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return;
     }
     // SpdyDownstreamConnection examines request path to find
     // scheme. We construct abs URI for spdy_bridge mode as well as
     // spdy_proxy mode.
     if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
-       scheme && path[0] == '/') {
+       !scheme.empty() && path[0] == '/') {
       std::string reqpath = scheme;
       reqpath += "://";
       reqpath += host;
@@ -195,16 +195,19 @@ void on_ctrl_recv_callback
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
-      for(size_t i = 0; nv[i]; i += 2) {
-        ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
+      for(size_t i = 0; i < frame->headers.nvlen; ++i) {
+        ss << TTY_HTTP_HD;
+        ss.write(reinterpret_cast<char*>(nva[i].name), nva[i].namelen);
+        ss << TTY_RST << ": ";
+        ss.write(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
+        ss << "\n";
       }
       ULOG(INFO, upstream) << "HTTP request headers. stream_id="
                            << downstream->get_stream_id()
                            << "\n" << ss.str();
     }
 
-    DownstreamConnection *dconn;
-    dconn = upstream->get_client_handler()->get_downstream_connection();
+    auto dconn = upstream->get_client_handler()->get_downstream_connection();
     int rv = dconn->attach_downstream(downstream);
     if(rv != 0) {
       // If downstream connection fails, issue RST_STREAM.
@@ -218,7 +221,7 @@ void on_ctrl_recv_callback
       return;
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
-    if(frame->syn_stream.hd.flags & NGHTTP2_CTRL_FLAG_FIN) {
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
     break;
@@ -256,7 +259,7 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
         return;
       }
     }
-    if(flags & NGHTTP2_DATA_FLAG_FIN) {
+    if(flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
   }
@@ -264,19 +267,19 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_ctrl_not_send_callback(nghttp2_session *session,
-                               nghttp2_frame_type type,
-                               nghttp2_frame *frame,
-                               int error_code, void *user_data)
+void on_frame_not_send_callback(nghttp2_session *session,
+                                nghttp2_frame *frame,
+                                int lib_error_code, void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  ULOG(WARNING, upstream) << "Failed to send control frame type=" << type
-                          << ", error_code=" << error_code << ":"
-                          << nghttp2_strerror(error_code);
-  if(type == NGHTTP2_SYN_REPLY) {
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  ULOG(WARNING, upstream) << "Failed to send control frame type="
+                          << frame->hd.type
+                          << ", lib_error_code=" << lib_error_code << ":"
+                          << nghttp2_strerror(lib_error_code);
+  if(frame->hd.type == NGHTTP2_HEADERS &&
+     frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
     // To avoid stream hanging around, issue RST_STREAM.
-    int32_t stream_id = frame->syn_reply.stream_id;
-    Downstream *downstream = upstream->find_downstream(stream_id);
+    auto downstream = upstream->find_downstream(frame->hd.stream_id);
     if(downstream) {
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }
@@ -285,30 +288,30 @@ void on_ctrl_not_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_ctrl_recv_parse_error_callback(nghttp2_session *session,
-                                       nghttp2_frame_type type,
-                                       const uint8_t *head, size_t headlen,
-                                       const uint8_t *payload,
-                                       size_t payloadlen, int error_code,
-                                       void *user_data)
+void on_frame_recv_parse_error_callback(nghttp2_session *session,
+                                        nghttp2_frame_type type,
+                                        const uint8_t *head, size_t headlen,
+                                        const uint8_t *payload,
+                                        size_t payloadlen, int lib_error_code,
+                                        void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Failed to parse received control frame. type="
                          << type
-                         << ", error_code=" << error_code << ":"
-                         << nghttp2_strerror(error_code);
+                         << ", error_code=" << lib_error_code << ":"
+                         << nghttp2_strerror(lib_error_code);
   }
 }
 } // namespace
 
 namespace {
-void on_unknown_ctrl_recv_callback(nghttp2_session *session,
-                                   const uint8_t *head, size_t headlen,
-                                   const uint8_t *payload, size_t payloadlen,
-                                   void *user_data)
+void on_unknown_frame_recv_callback(nghttp2_session *session,
+                                    const uint8_t *head, size_t headlen,
+                                    const uint8_t *payload, size_t payloadlen,
+                                    void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Received unknown control frame.";
   }
@@ -316,21 +319,22 @@ void on_unknown_ctrl_recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-uint32_t infer_upstream_rst_stream_status_code(uint32_t downstream_status_code)
+nghttp2_error_code infer_upstream_rst_stream_error_code
+(nghttp2_error_code downstream_error_code)
 {
   // Only propagate NGHTTP2_REFUSED_STREAM so that upstream client
   // can resend request.
-  if(downstream_status_code != NGHTTP2_REFUSED_STREAM) {
+  if(downstream_error_code != NGHTTP2_REFUSED_STREAM) {
     return NGHTTP2_INTERNAL_ERROR;
   } else {
-    return downstream_status_code;
+    return downstream_error_code;
   }
 }
 } // namespace
 
-SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
+SpdyUpstream::SpdyUpstream(ClientHandler *handler)
   : handler_(handler),
-    session_(0)
+    session_(nullptr)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
@@ -341,44 +345,41 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_ctrl_not_send_callback = on_ctrl_not_send_callback;
-  callbacks.on_ctrl_recv_parse_error_callback =
-    on_ctrl_recv_parse_error_callback;
-  callbacks.on_unknown_ctrl_recv_callback = on_unknown_ctrl_recv_callback;
+  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
+  callbacks.on_frame_recv_parse_error_callback =
+    on_frame_recv_parse_error_callback;
+  callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
 
   int rv;
-  rv = nghttp2_session_server_new(&session_, version, &callbacks, this);
+  rv = nghttp2_session_server_new(&session_, &callbacks, this);
   assert(rv == 0);
 
-  if(version == NGHTTP2_PROTO_SPDY3) {
-    int val = 1;
-    flow_control_ = true;
-    initial_window_size_ = 1 << get_config()->spdy_upstream_window_bits;
-    rv = nghttp2_session_set_option(session_,
-                                    NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE, &val,
-                                    sizeof(val));
-    assert(rv == 0);
-  } else {
-    flow_control_ = false;
-    initial_window_size_ = 0;
-  }
+  int val = 1;
+  flow_control_ = true;
+  initial_window_size_ = 1 << get_config()->spdy_upstream_window_bits;
+  rv = nghttp2_session_set_option(session_,
+                                  NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE, &val,
+                                  sizeof(val));
+  assert(rv == 0);
+
   // TODO Maybe call from outside?
   nghttp2_settings_entry entry[2];
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = get_config()->spdy_max_concurrent_streams;
-  entry[0].flags = NGHTTP2_ID_FLAG_SETTINGS_NONE;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = initial_window_size_;
-  entry[1].flags = NGHTTP2_ID_FLAG_SETTINGS_NONE;
 
   rv = nghttp2_submit_settings
-    (session_, NGHTTP2_FLAG_SETTINGS_NONE,
-     entry, sizeof(entry)/sizeof(nghttp2_settings_entry));
+    (session_, entry, sizeof(entry)/sizeof(nghttp2_settings_entry));
   assert(rv == 0);
-  // TODO Maybe call from outside?
+  // Disable connection-level flow control
+  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_END_FLOW_CONTROL,
+                                    0, 0);
+  assert(rv == 0);
+
   send();
 }
 
@@ -467,8 +468,8 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     // RST_STREAM to the upstream and delete downstream connection
     // here. Deleting downstream will be taken place at
     // on_stream_close_callback.
-    upstream->rst_stream(downstream, infer_upstream_rst_stream_status_code
-                         (downstream->get_response_rst_stream_status_code()));
+    upstream->rst_stream(downstream, infer_upstream_rst_stream_error_code
+                         (downstream->get_response_rst_stream_error_code()));
     downstream->set_downstream_connection(0);
     delete dconn;
     dconn = 0;
@@ -630,7 +631,8 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 }
 } // namespace
 
-int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
+int SpdyUpstream::rst_stream(Downstream *downstream,
+                             nghttp2_error_code error_code)
 {
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "RST_STREAM stream_id="
@@ -638,7 +640,7 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
   }
   int rv;
   rv = nghttp2_submit_rst_stream(session_, downstream->get_stream_id(),
-                                 status_code);
+                                 error_code);
   if(rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "
                       << nghttp2_strerror(rv);
@@ -650,7 +652,8 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
 int SpdyUpstream::window_update(Downstream *downstream)
 {
   int rv;
-  rv = nghttp2_submit_window_update(session_, downstream->get_stream_id(),
+  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
+                                    downstream->get_stream_id(),
                                     downstream->get_recv_window_size());
   downstream->set_recv_window_size(0);
   if(rv < NGHTTP2_ERR_FATAL) {
@@ -685,8 +688,8 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
         ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
                              << stream_id;
       }
-      upstream->rst_stream(downstream, infer_upstream_rst_stream_status_code
-                           (downstream->get_response_rst_stream_status_code()));
+      upstream->rst_stream(downstream, infer_upstream_rst_stream_error_code
+                           (downstream->get_response_rst_stream_error_code()));
     }
   }
   if(nread == 0 && *eof != 1) {

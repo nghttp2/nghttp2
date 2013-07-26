@@ -68,7 +68,7 @@ public:
                      const nghttp2_data_provider *data_prd);
 
   int submit_rst_stream(SpdyDownstreamConnection *dconn,
-                        int32_t stream_id, uint32_t status_code);
+                        int32_t stream_id, nghttp2_error_code error_code);
 
   int submit_window_update(SpdyDownstreamConnection *dconn, int32_t amount);
 

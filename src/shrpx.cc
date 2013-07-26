@@ -358,9 +358,7 @@ void fill_default_config()
   mod_config()->spdy_downstream_window_bits = 16;
 
   mod_config()->spdy_upstream_no_tls = false;
-  mod_config()->spdy_upstream_version = 3;
   mod_config()->spdy_downstream_no_tls = false;
-  mod_config()->spdy_downstream_version = 3;
 
   set_config_str(&mod_config()->downstream_host, "127.0.0.1");
   mod_config()->downstream_port = 80;
@@ -543,14 +541,8 @@ void print_help(std::ostream& out)
       << get_config()->spdy_upstream_window_bits << "\n"
       << "    --frontend-spdy-no-tls\n"
       << "                       Disable SSL/TLS on frontend SPDY\n"
-      << "                       connections. SPDY protocol must be specified\n"
-      << "                       using --frontend-spdy-proto. This option\n"
-      << "                       also disables frontend HTTP/1.1.\n"
-      << "    --frontend-spdy-proto\n"
-      << "                       Specify SPDY protocol used in frontend\n"
-      << "                       connection if --frontend-spdy-no-tls is\n"
-      << "                       used. Default: spdy/"
-      << get_config()->spdy_upstream_version << "\n"
+      << "                       connections.This option also disables\n"
+      << "                       frontend HTTP/1.1.\n"
       << "    --backend-spdy-window-bits=<N>\n"
       << "                       Sets the initial window size of SPDY\n"
       << "                       backend connection to 2**<N>.\n"
@@ -558,13 +550,6 @@ void print_help(std::ostream& out)
       << get_config()->spdy_downstream_window_bits << "\n"
       << "    --backend-spdy-no-tls\n"
       << "                       Disable SSL/TLS on backend SPDY connections.\n"
-      << "                       SPDY protocol must be specified using\n"
-      << "                       --backend-spdy-proto\n"
-      << "    --backend-spdy-proto\n"
-      << "                       Specify SPDY protocol used in backend\n"
-      << "                       connection if --backend-spdy-no-tls is used.\n"
-      << "                       Default: spdy/"
-      << get_config()->spdy_downstream_version << "\n"
       << "\n"
       << "  Mode:\n"
       << "    -s, --spdy-proxy   Enable secure SPDY proxy mode.\n"
@@ -664,9 +649,7 @@ int main(int argc, char **argv)
       {"spdy-bridge", no_argument, &flag, 25},
       {"backend-http-proxy-uri", required_argument, &flag, 26},
       {"backend-spdy-no-tls", no_argument, &flag, 27},
-      {"backend-spdy-proto", required_argument, &flag, 28},
       {"frontend-spdy-no-tls", no_argument, &flag, 29},
-      {"frontend-spdy-proto", required_argument, &flag, 30},
       {"backend-tls-sni-field", required_argument, &flag, 31},
       {"honor-cipher-order", no_argument, &flag, 32},
       {0, 0, 0, 0 }
@@ -833,20 +816,10 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_NO_TLS,
                                          "yes"));
         break;
-      case 28:
-        // --backend-spdy-proto
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_PROTO,
-                                         optarg));
-        break;
       case 29:
         // --frontend-spdy-no-tls
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_NO_TLS,
                                          "yes"));
-        break;
-      case 30:
-        // --frontend-spdy-proto
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_PROTO,
-                                         optarg));
         break;
       case 31:
         // --backend-tls-sni-field
