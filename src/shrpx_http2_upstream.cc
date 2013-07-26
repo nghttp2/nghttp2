@@ -720,7 +720,6 @@ int Http2Upstream::error_reply(Downstream *downstream, int status_code)
 
   const char *nv[] = {
     ":status", http::get_status_string(status_code),
-    ":version", "http/1.1",
     "content-type", "text/html; charset=UTF-8",
     "server", get_config()->server_name,
     "content-length", content_length.c_str(),
@@ -784,14 +783,12 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
   size_t nheader = downstream->get_response_headers().size();
-  // 6 means :status, :version and possible via header field.
-  const char **nv = new const char*[nheader * 2 + 6 + 1];
+  // 4 means :status and possible via header field.
+  const char **nv = new const char*[nheader * 2 + 4 + 1];
   size_t hdidx = 0;
   std::string via_value;
   nv[hdidx++] = ":status";
   nv[hdidx++] = http::get_status_string(downstream->get_response_http_status());
-  nv[hdidx++] = ":version";
-  nv[hdidx++] = "HTTP/1.1";
   for(Headers::const_iterator i = downstream->get_response_headers().begin();
       i != downstream->get_response_headers().end(); ++i) {
     if(util::strieq((*i).first.c_str(), "transfer-encoding") ||

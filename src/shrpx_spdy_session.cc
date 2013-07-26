@@ -745,24 +745,13 @@ void on_frame_recv_callback
       break;
     }
     auto nva = frame->headers.nva;
-    std::string status, version, content_length;
+    std::string status, content_length;
     for(size_t i = 0; i < frame->headers.nvlen; ++i) {
       if(util::strieq(":status", nva[i].name, nva[i].namelen)) {
         status.assign(reinterpret_cast<char*>(nva[i].value),
                       nva[i].valuelen);
         auto code = strtoul(status.c_str(), nullptr, 10);
         downstream->set_response_http_status(code);
-      } else if(util::strieq(":version", nva[i].name, nva[i].namelen)) {
-        // We assume for now that most version is HTTP/1.1 from
-        // SPDY. So just check if it is HTTP/1.0 and then set response
-        // minor as so.
-        downstream->set_response_major(1);
-        version.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
-        if(util::strieq("HTTP/1.0", version.c_str())) {
-          downstream->set_response_minor(0);
-        } else {
-          downstream->set_response_minor(1);
-        }
       } else if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
         if(util::strieq("content-length", nva[i].name, nva[i].namelen)) {
           content_length.assign(reinterpret_cast<char*>(nva[i].value),
@@ -775,11 +764,11 @@ void on_frame_recv_callback
                        nva[i].valuelen));
       }
     }
-    if(version.empty()) {
-      // If no version, just assume it is HTTP/1.1
-      downstream->set_response_major(1);
-      downstream->set_response_minor(1);
-    }
+    // Just assume it is HTTP/1.1. But we really consider to say 2.0
+    // here.
+    downstream->set_response_major(1);
+    downstream->set_response_minor(1);
+
     if(status.empty()) {
       nghttp2_submit_rst_stream(session, frame->hd.stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
