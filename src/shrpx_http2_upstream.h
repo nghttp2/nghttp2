@@ -36,10 +36,10 @@ namespace shrpx {
 
 class ClientHandler;
 
-class SpdyUpstream : public Upstream {
+class Http2Upstream : public Upstream {
 public:
-  SpdyUpstream(ClientHandler *handler);
-  virtual ~SpdyUpstream();
+  Http2Upstream(ClientHandler *handler);
+  virtual ~Http2Upstream();
   virtual int on_read();
   virtual int on_write();
   virtual int on_event();

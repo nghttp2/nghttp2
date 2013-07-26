@@ -75,7 +75,7 @@ SHRPX_SRCS = \
 	shrpx_listen_handler.cc shrpx_listen_handler.h \
 	shrpx_client_handler.cc shrpx_client_handler.h \
 	shrpx_upstream.h \
-	shrpx_spdy_upstream.cc shrpx_spdy_upstream.h \
+	shrpx_http2_upstream.cc shrpx_http2_upstream.h \
 	shrpx_https_upstream.cc shrpx_https_upstream.h \
 	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
 	shrpx_downstream.cc shrpx_downstream.h \

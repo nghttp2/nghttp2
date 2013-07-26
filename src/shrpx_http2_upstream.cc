@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_spdy_upstream.h"
+#include "shrpx_http2_upstream.h"
 
 #include <netinet/tcp.h>
 #include <assert.h>
@@ -51,7 +51,7 @@ ssize_t send_callback(nghttp2_session *session,
                       void *user_data)
 {
   int rv;
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
   ClientHandler *handler = upstream->get_client_handler();
   bufferevent *bev = handler->get_bev();
   evbuffer *output = bufferevent_get_output(bev);
@@ -74,7 +74,7 @@ namespace {
 ssize_t recv_callback(nghttp2_session *session,
                       uint8_t *data, size_t len, int flags, void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
   ClientHandler *handler = upstream->get_client_handler();
   bufferevent *bev = handler->get_bev();
   evbuffer *input = bufferevent_get_input(bev);
@@ -94,7 +94,7 @@ void on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Stream stream_id=" << stream_id
                          << " is being closed";
@@ -139,7 +139,7 @@ namespace {
 void on_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
-  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
     if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
@@ -238,7 +238,7 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
                                  const uint8_t *data, size_t len,
                                  void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
   Downstream *downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->push_upload_data_chunk(data, len) != 0) {
@@ -271,7 +271,7 @@ void on_frame_not_send_callback(nghttp2_session *session,
                                 nghttp2_frame *frame,
                                 int lib_error_code, void *user_data)
 {
-  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   ULOG(WARNING, upstream) << "Failed to send control frame type="
                           << frame->hd.type
                           << ", lib_error_code=" << lib_error_code << ":"
@@ -295,7 +295,7 @@ void on_frame_recv_parse_error_callback(nghttp2_session *session,
                                         size_t payloadlen, int lib_error_code,
                                         void *user_data)
 {
-  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Failed to parse received control frame. type="
                          << type
@@ -311,7 +311,7 @@ void on_unknown_frame_recv_callback(nghttp2_session *session,
                                     const uint8_t *payload, size_t payloadlen,
                                     void *user_data)
 {
-  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Received unknown control frame.";
   }
@@ -332,7 +332,7 @@ nghttp2_error_code infer_upstream_rst_stream_error_code
 }
 } // namespace
 
-SpdyUpstream::SpdyUpstream(ClientHandler *handler)
+Http2Upstream::Http2Upstream(ClientHandler *handler)
   : handler_(handler),
     session_(nullptr)
 {
@@ -383,12 +383,12 @@ SpdyUpstream::SpdyUpstream(ClientHandler *handler)
   send();
 }
 
-SpdyUpstream::~SpdyUpstream()
+Http2Upstream::~Http2Upstream()
 {
   nghttp2_session_del(session_);
 }
 
-int SpdyUpstream::on_read()
+int Http2Upstream::on_read()
 {
   int rv = 0;
   if((rv = nghttp2_session_recv(session_)) < 0) {
@@ -412,13 +412,13 @@ int SpdyUpstream::on_read()
   return rv;
 }
 
-int SpdyUpstream::on_write()
+int Http2Upstream::on_write()
 {
   return send();
 }
 
 // After this function call, downstream may be deleted.
-int SpdyUpstream::send()
+int Http2Upstream::send()
 {
   int rv = 0;
   if((rv = nghttp2_session_send(session_)) < 0) {
@@ -437,12 +437,12 @@ int SpdyUpstream::send()
   return rv;
 }
 
-int SpdyUpstream::on_event()
+int Http2Upstream::on_event()
 {
   return 0;
 }
 
-ClientHandler* SpdyUpstream::get_client_handler() const
+ClientHandler* Http2Upstream::get_client_handler() const
 {
   return handler_;
 }
@@ -452,8 +452,8 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
 {
   DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
   Downstream *downstream = dconn->get_downstream();
-  SpdyUpstream *upstream;
-  upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  Http2Upstream *upstream;
+  upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
     // If upstream SPDY stream was closed, we just close downstream,
     // because there is no consumer now. Downstream connection is also
@@ -511,8 +511,8 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
   }
   DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
   Downstream *downstream = dconn->get_downstream();
-  SpdyUpstream *upstream;
-  upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  Http2Upstream *upstream;
+  upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   upstream->resume_read(SHRPX_NO_BUFFER, downstream);
 }
 } // namespace
@@ -522,8 +522,8 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
   DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
   Downstream *downstream = dconn->get_downstream();
-  SpdyUpstream *upstream;
-  upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  Http2Upstream *upstream;
+  upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Connection established. stream_id="
@@ -631,7 +631,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 }
 } // namespace
 
-int SpdyUpstream::rst_stream(Downstream *downstream,
+int Http2Upstream::rst_stream(Downstream *downstream,
                              nghttp2_error_code error_code)
 {
   if(LOG_ENABLED(INFO)) {
@@ -649,7 +649,7 @@ int SpdyUpstream::rst_stream(Downstream *downstream,
   return 0;
 }
 
-int SpdyUpstream::window_update(Downstream *downstream)
+int Http2Upstream::window_update(Downstream *downstream)
 {
   int rv;
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
@@ -682,8 +682,8 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
       *eof = 1;
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
-      SpdyUpstream *upstream;
-      upstream = reinterpret_cast<SpdyUpstream*>(downstream->get_upstream());
+      Http2Upstream *upstream;
+      upstream = reinterpret_cast<Http2Upstream*>(downstream->get_upstream());
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
                              << stream_id;
@@ -699,7 +699,7 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
 }
 } // namespace
 
-int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
+int Http2Upstream::error_reply(Downstream *downstream, int status_code)
 {
   int rv;
   std::string html = http::create_error_html(status_code);
@@ -741,44 +741,44 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
   return 0;
 }
 
-bufferevent_data_cb SpdyUpstream::get_downstream_readcb()
+bufferevent_data_cb Http2Upstream::get_downstream_readcb()
 {
   return spdy_downstream_readcb;
 }
 
-bufferevent_data_cb SpdyUpstream::get_downstream_writecb()
+bufferevent_data_cb Http2Upstream::get_downstream_writecb()
 {
   return spdy_downstream_writecb;
 }
 
-bufferevent_event_cb SpdyUpstream::get_downstream_eventcb()
+bufferevent_event_cb Http2Upstream::get_downstream_eventcb()
 {
   return spdy_downstream_eventcb;
 }
 
-void SpdyUpstream::add_downstream(Downstream *downstream)
+void Http2Upstream::add_downstream(Downstream *downstream)
 {
   downstream_queue_.add(downstream);
 }
 
-void SpdyUpstream::remove_downstream(Downstream *downstream)
+void Http2Upstream::remove_downstream(Downstream *downstream)
 {
   downstream_queue_.remove(downstream);
 }
 
-Downstream* SpdyUpstream::find_downstream(int32_t stream_id)
+Downstream* Http2Upstream::find_downstream(int32_t stream_id)
 {
   return downstream_queue_.find(stream_id);
 }
 
-nghttp2_session* SpdyUpstream::get_spdy_session()
+nghttp2_session* Http2Upstream::get_spdy_session()
 {
   return session_;
 }
 
 // WARNING: Never call directly or indirectly nghttp2_session_send or
 // nghttp2_session_recv. These calls may delete downstream.
-int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
+int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
 {
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
@@ -848,7 +848,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 
 // WARNING: Never call directly or indirectly nghttp2_session_send or
 // nghttp2_session_recv. These calls may delete downstream.
-int SpdyUpstream::on_downstream_body(Downstream *downstream,
+int Http2Upstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len)
 {
   evbuffer *body = downstream->get_response_body_buf();
@@ -869,7 +869,7 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
 
 // WARNING: Never call directly or indirectly nghttp2_session_send or
 // nghttp2_session_recv. These calls may delete downstream.
-int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
+int Http2Upstream::on_downstream_body_complete(Downstream *downstream)
 {
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
@@ -878,20 +878,20 @@ int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
   return 0;
 }
 
-bool SpdyUpstream::get_flow_control() const
+bool Http2Upstream::get_flow_control() const
 {
   return flow_control_;
 }
 
-int32_t SpdyUpstream::get_initial_window_size() const
+int32_t Http2Upstream::get_initial_window_size() const
 {
   return initial_window_size_;
 }
 
-void SpdyUpstream::pause_read(IOCtrlReason reason)
+void Http2Upstream::pause_read(IOCtrlReason reason)
 {}
 
-int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
+int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 {
   if(get_flow_control()) {
     if(downstream->get_recv_window_size() >= get_initial_window_size()/2) {

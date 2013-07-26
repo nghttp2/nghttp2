@@ -28,7 +28,7 @@
 #include <cerrno>
 
 #include "shrpx_upstream.h"
-#include "shrpx_spdy_upstream.h"
+#include "shrpx_http2_upstream.h"
 #include "shrpx_https_upstream.h"
 #include "shrpx_config.h"
 #include "shrpx_http_downstream_connection.h"
@@ -140,7 +140,7 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
       upstream_ = new HttpsUpstream(this);
     } else {
       // no-TLS SPDY
-      upstream_ = new SpdyUpstream(this);
+      upstream_ = new Http2Upstream(this);
     }
     set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
   }
@@ -210,7 +210,7 @@ int ClientHandler::validate_next_proto()
       CLOG(INFO, this) << "The negotiated next protocol: " << proto;
     }
     if(proto == NGHTTP2_PROTO_VERSION_ID) {
-      upstream_ = new SpdyUpstream(this);
+      upstream_ = new Http2Upstream(this);
       return 0;
     }
   } else {
