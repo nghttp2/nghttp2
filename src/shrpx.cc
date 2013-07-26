@@ -324,7 +324,7 @@ void fill_default_config()
   mod_config()->daemon = false;
   mod_config()->verify_client = false;
 
-  mod_config()->server_name = "shrpx nghttp2/" NGHTTP2_VERSION;
+  mod_config()->server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
   set_config_str(&mod_config()->host, "0.0.0.0");
   mod_config()->port = 3000;
   mod_config()->private_key_file = 0;
@@ -371,7 +371,7 @@ void fill_default_config()
   mod_config()->add_x_forwarded_for = false;
   mod_config()->no_via = false;
   mod_config()->accesslog = false;
-  set_config_str(&mod_config()->conf_path, "/etc/shrpx/shrpx.conf");
+  set_config_str(&mod_config()->conf_path, "/etc/nghttpx/nghttpx.conf");
   mod_config()->syslog = false;
   mod_config()->syslog_facility = LOG_DAEMON;
   mod_config()->use_syslog = false;
@@ -410,9 +410,9 @@ void print_version(std::ostream& out)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: shrpx [-Dh] [-s|--client|-p] [-b <HOST,PORT>]\n"
-      << "             [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]\n"
-      << "             [OPTIONS...] [<PRIVATE_KEY> <CERT>]\n"
+  out << "Usage: nghttpx [-Dh] [-s|--client|-p] [-b <HOST,PORT>]\n"
+      << "               [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]\n"
+      << "               [OPTIONS...] [<PRIVATE_KEY> <CERT>]\n"
       << "\n"
       << "A reverse proxy for SPDY/HTTPS.\n"
       << std::endl;
@@ -490,7 +490,7 @@ void print_help(std::ostream& out)
       << "                       when the backend connection is SPDY. First,\n"
       << "                       make a CONNECT request to the proxy and\n"
       << "                       it connects to the backend on behalf of\n"
-      << "                       shrpx. This forms tunnel. After that, shrpx\n"
+      << "                       nghttpx. This forms tunnel. After that, nghttpx\n"
       << "                       performs SSL/TLS handshake with the\n"
       << "                       downstream through the tunnel. The timeouts\n"
       << "                       when connecting and making CONNECT request\n"
@@ -519,7 +519,7 @@ void print_help(std::ostream& out)
       << "                       be requested interactively.\n"
       << "    --subcert=<KEYPATH>:<CERTPATH>\n"
       << "                       Specify additional certificate and private\n"
-      << "                       key file. Shrpx will choose certificates\n"
+      << "                       key file. nghttpx will choose certificates\n"
       << "                       based on the hostname indicated by client\n"
       << "                       using TLS SNI extension. This option can be\n"
       << "                       used multiple times.\n"
@@ -561,7 +561,7 @@ void print_help(std::ostream& out)
       << "                       to connect to the outside SPDY proxy.\n"
       << "    --client           Instead of accepting SPDY/HTTPS connection,\n"
       << "                       accept HTTP connection and communicate with\n"
-      << "                       backend server in SPDY. To use shrpx as\n"
+      << "                       backend server in SPDY. To use nghttpx as\n"
       << "                       a forward proxy, use -p option instead.\n"
       << "    -p, --client-proxy Like --client option, but it also requires\n"
       << "                       the request path from frontend must be\n"
@@ -953,7 +953,7 @@ int main(int argc, char **argv)
   }
 
   if(get_config()->syslog) {
-    openlog("shrpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
+    openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
             get_config()->syslog_facility);
     mod_config()->use_syslog = true;
   }

@@ -37,7 +37,7 @@ AM_CXXFLAGS = -std=c++11
 
 LDADD = $(top_builddir)/lib/libnghttp2.la
 
-bin_PROGRAMS += nghttp nghttpd shrpx
+bin_PROGRAMS += nghttp nghttpd nghttpx
 
 HELPER_OBJECTS = util.cc timegm.c app_helper.cc
 HELPER_HFILES = util.h timegm.h app_helper.h nghttp2_config.h
@@ -70,7 +70,7 @@ nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	HttpServer.cc HttpServer.h
 
 if HAVE_LIBEVENT_OPENSSL
-SHRPX_SRCS = \
+NGHTTPX_SRCS = \
 	util.cc util.h timegm.c timegm.h base64.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
@@ -95,10 +95,10 @@ SHRPX_SRCS = \
 	http-parser/http_parser.c http-parser/http_parser.h
 
 if HAVE_SPDYLAY
-SHRPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
+NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
 endif # HAVE_SPDYLAY
 
-shrpx_SOURCES = ${SHRPX_SRCS} shrpx.cc shrpx.h
+nghttpx_SOURCES = ${NGHTTPX_SRCS} shrpx.cc shrpx.h
 
 # if HAVE_CUNIT
 # check_PROGRAMS += shrpx-unittest

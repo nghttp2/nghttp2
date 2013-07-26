@@ -106,7 +106,7 @@ std::string create_via_header_value(int major, int minor)
   hdrs += static_cast<char>(major+'0');
   hdrs += ".";
   hdrs += static_cast<char>(minor+'0');
-  hdrs += " shrpx";
+  hdrs += " nghttpx";
   return hdrs;
 }
 
