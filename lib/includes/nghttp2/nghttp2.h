@@ -55,6 +55,9 @@ typedef struct nghttp2_session nghttp2_session;
 #define NGHTTP2_PRI_DEFAULT (1 << 30)
 #define NGHTTP2_PRI_LOWEST ((1U << 31) - 1)
 
+#define NGHTTP2_INITIAL_WINDOW_SIZE ((1 << 16) - 1)
+#define NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE ((1 << 16) - 1)
+
 #define NGHTTP2_CLIENT_CONNECTION_HEADER "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 #define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN 24
 

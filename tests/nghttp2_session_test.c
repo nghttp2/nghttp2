@@ -1132,6 +1132,7 @@ void test_nghttp2_session_on_window_update_received(void)
   user_data.invalid_frame_recv_cb_called = 0;
 
   nghttp2_session_client_new(&session, &callbacks, &user_data);
+
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENED, NULL);
@@ -1140,7 +1141,7 @@ void test_nghttp2_session_on_window_update_received(void)
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
-  CU_ASSERT(64*1024+16*1024 == stream->window_size);
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024 == stream->window_size);
 
   data_item = malloc(sizeof(nghttp2_outbound_item));
   memset(data_item, 0, sizeof(nghttp2_outbound_item));
@@ -1149,7 +1150,7 @@ void test_nghttp2_session_on_window_update_received(void)
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(2 == user_data.frame_recv_cb_called);
-  CU_ASSERT(64*1024+16*1024*2 == stream->window_size);
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024*2 == stream->window_size);
   CU_ASSERT(NULL == stream->deferred_data);
 
   nghttp2_frame_window_update_free(&frame.window_update);
@@ -1522,7 +1523,7 @@ void test_nghttp2_submit_request_with_data(void)
   callbacks.send_callback = null_send_callback;
 
   data_prd.read_callback = fixed_length_data_source_read_callback;
-  ud.data_source_length = 64*1024;
+  ud.data_source_length = 64*1024 - 1;
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
   CU_ASSERT(0 == nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT, nv,
                                         &data_prd, NULL));
@@ -2341,11 +2342,15 @@ void test_nghttp2_session_flow_control(void)
   ud.frame_send_cb_called = 0;
   ud.data_source_length = 128*1024;
 
-  /* Initial window size is 64KiB */
+  /* Initial window size to 64KiB - 1*/
   nghttp2_session_client_new(&session, &callbacks, &ud);
+  /* Change it to 64KiB for easy calculation */
+  session->window_size = 64*1024;
+  session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] = 64*1024;
+
   nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT, nv, &data_prd, NULL);
 
-  /* Sends 64KiB data */
+  /* Sends 64KiB - 1 data */
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(64*1024 == ud.data_source_length);
 
@@ -2436,6 +2441,7 @@ void test_nghttp2_session_flow_control_disable(void)
   my_user_data ud;
   nghttp2_data_provider data_prd;
   nghttp2_frame frame;
+  size_t data_size = 128*1024;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -2443,7 +2449,7 @@ void test_nghttp2_session_flow_control_disable(void)
   data_prd.read_callback = fixed_length_data_source_read_callback;
 
   ud.frame_send_cb_called = 0;
-  ud.data_source_length = 128*1024;
+  ud.data_source_length = data_size;
 
   /* Initial window size is 64KiB */
   nghttp2_session_client_new(&session, &callbacks, &ud);
@@ -2451,7 +2457,7 @@ void test_nghttp2_session_flow_control_disable(void)
 
   /* Sends 64KiB data */
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(64*1024 == ud.data_source_length);
+  CU_ASSERT(data_size - NGHTTP2_INITIAL_WINDOW_SIZE == ud.data_source_length);
 
   /* Disable stream flow control */
   nghttp2_frame_window_update_init(&frame.window_update,
@@ -2463,7 +2469,8 @@ void test_nghttp2_session_flow_control_disable(void)
 
   /* Still nothing is sent because of connection-level flow control */
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(64*1024 == ud.data_source_length);
+  CU_ASSERT(data_size - NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE ==
+            ud.data_source_length);
 
   /* Disable connection-level flow control */
   frame.hd.stream_id = 0;
@@ -2490,21 +2497,23 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   nghttp2_frame frame;
   nghttp2_data *data_frame;
   nghttp2_stream *stream;
+  size_t data_size = 128*1024;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
   data_prd.read_callback = fixed_length_data_source_read_callback;
 
-  ud.data_source_length = 128*1024;
+  ud.data_source_length = data_size;
 
-  /* Initial window size is 64KiB */
+  /* Initial window size is 64KiB - 1 */
   nghttp2_session_client_new(&session, &callbacks, &ud);
   nghttp2_submit_request(session, 3, nv, &data_prd, NULL);
 
-  /* Sends 64KiB data */
+  /* Sends NGHTTP2_INITIAL_WINDOW_SIZE data, assuming, it is equal to
+     or smaller than NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE */
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(64*1024 == ud.data_source_length);
+  CU_ASSERT(data_size - NGHTTP2_INITIAL_WINDOW_SIZE == ud.data_source_length);
 
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(NULL != stream->deferred_data);
@@ -2513,9 +2522,10 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   data_frame->data_prd.read_callback =
     temporal_failure_data_source_read_callback;
 
-  /* Back 64KiB to both connection-level and stream-wise window */
+  /* Back NGHTTP2_INITIAL_WINDOW_SIZE to both connection-level and
+     stream-wise window */
   nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE,
-                                   1, 64*1024);
+                                   1, NGHTTP2_INITIAL_WINDOW_SIZE);
   nghttp2_session_on_window_update_received(session, &frame);
   frame.hd.stream_id = 0;
   nghttp2_session_on_window_update_received(session, &frame);
@@ -2524,7 +2534,7 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   /* Sending data will fail (soft fail) and treated as stream error */
   ud.frame_send_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(64*1024 == ud.data_source_length);
+  CU_ASSERT(data_size - NGHTTP2_INITIAL_WINDOW_SIZE == ud.data_source_length);
 
   CU_ASSERT(1 == ud.frame_send_cb_called);
   CU_ASSERT(NGHTTP2_RST_STREAM == ud.sent_frame_type);

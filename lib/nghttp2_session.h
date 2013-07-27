@@ -68,9 +68,6 @@ typedef struct {
   NGHTTP2_INITIAL_OUTBOUND_FRAMEBUF_LENGTH
 #define NGHTTP2_INITIAL_NV_BUFFER_LENGTH 4096
 
-#define NGHTTP2_INITIAL_WINDOW_SIZE 65536
-#define NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE 65536
-
 /* Internal state when receiving incoming frame */
 typedef enum {
   /* Receiving frame header */
