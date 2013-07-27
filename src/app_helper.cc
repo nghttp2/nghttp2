@@ -266,6 +266,11 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
              frame->settings.iv[i].value);
     }
     break;
+  case NGHTTP2_PUSH_PROMISE:
+    print_frame_attr_indent();
+    printf("(promised_stream_id=%d)\n",
+           frame->push_promise.promised_stream_id);
+    break;
   case NGHTTP2_PING:
     print_frame_attr_indent();
     printf("(opaque_data=%s)\n",
