@@ -92,6 +92,9 @@ nghttp - client
 HTTP/2.0 server with prior knowledge (without HTTP Upgrade) and NPN in
 TLS extension.
 
+By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
+disable it.
+
 It has verbose output mode for framing information. Here is sample
 output from ``nghttp`` client::
 
@@ -145,6 +148,9 @@ nghttpd - server
 
 ``nghttpd`` is static web server. It is single threaded and
 multiplexes connections using non-blocking socket.
+
+By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
+disable it.
 
 Just like ``nghttp``, it has verbose output mode for framing
 information. Here is sample output from ``nghttpd`` server::
@@ -203,6 +209,11 @@ default            HTTP/2.0, SPDY, HTTPS    HTTP/1.1 Reverse proxy
 The interesting mode at the moment is the default mode. It works like
 a reverse proxy and listens HTTP-draft-04/2.0 as well as SPDY and
 HTTPS and can be deployed SSL/TLS terminator for existing web server.
+
+By default, it uses SSL/TLS connection for HTTP/2.0 and SPDY. Use
+``--frontend-spdy--no-tls`` to disable it in frontend
+connection. Likewise, use ``--backend-spdy-no-tls`` option to disable
+it in backend connection.
 
 The ``nghttpx`` supports configuration file. See ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
