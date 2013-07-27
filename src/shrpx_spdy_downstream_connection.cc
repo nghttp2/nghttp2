@@ -224,10 +224,10 @@ int SpdyDownstreamConnection::push_request_headers()
     return 0;
   }
   size_t nheader = downstream_->get_request_headers().size();
-  // 12 means :method, :scheme, :path, :version and possible via and
+  // 10 means :method, :scheme, :path and possible via and
   // x-forwarded-for header fields. We rename host header field as
   // :host.
-  const char **nv = new const char*[nheader * 2 + 12 + 1];
+  const char **nv = new const char*[nheader * 2 + 10 + 1];
   size_t hdidx = 0;
   std::string via_value;
   std::string xff_value;
@@ -274,8 +274,6 @@ int SpdyDownstreamConnection::push_request_headers()
   nv[hdidx++] = ":method";
   nv[hdidx++] = downstream_->get_request_method().c_str();
 
-  nv[hdidx++] = ":version";
-  nv[hdidx++] = "HTTP/1.1";
   bool chunked_encoding = false;
   bool content_length = false;
   for(Headers::const_iterator i = downstream_->get_request_headers().begin();
