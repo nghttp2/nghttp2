@@ -812,34 +812,56 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
         /* Check name exists in hd_table */
         ent = find_name_in_hd_table(deflater, &nv[i]);
         if(ent) {
-          nghttp2_hd_entry *new_ent;
           uint8_t index = ent->index;
-          new_ent = add_hd_table_incremental(deflater, &nv[i]);
-          if(!new_ent) {
-            rv = NGHTTP2_ERR_HEADER_COMP;
-            goto fail;
-          }
-          rv = add_workingset(deflater, new_ent);
-          if(rv < 0) {
-            goto fail;
+          int incidx = 0;
+          if(entry_room(nv[i].namelen, nv[i].valuelen)
+             < NGHTTP2_HD_MAX_ENTRY_SIZE) {
+            nghttp2_hd_entry *new_ent;
+            new_ent = add_hd_table_incremental(deflater, &nv[i]);
+            if(!new_ent) {
+              rv = NGHTTP2_ERR_HEADER_COMP;
+              goto fail;
+            }
+            rv = add_workingset(deflater, new_ent);
+            if(rv < 0) {
+              goto fail;
+            }
+            incidx = 1;
+          } else {
+            rv = add_workingset_indname(deflater, ent, nv[i].value,
+                                        nv[i].valuelen);
+            if(rv < 0) {
+              goto fail;
+            }
           }
           rv = emit_indname_block(buf_ptr, buflen_ptr, &offset, index,
-                                  nv[i].value, nv[i].valuelen, 1);
+                                  nv[i].value, nv[i].valuelen, incidx);
           if(rv < 0) {
             goto fail;
           }
         } else {
-          nghttp2_hd_entry *new_ent;
-          new_ent = add_hd_table_incremental(deflater, &nv[i]);
-          if(!new_ent) {
-            rv = NGHTTP2_ERR_HEADER_COMP;
-            goto fail;
+          int incidx = 0;
+          if(entry_room(nv[i].namelen, nv[i].valuelen)
+             < NGHTTP2_HD_MAX_ENTRY_SIZE) {
+            nghttp2_hd_entry *new_ent;
+            new_ent = add_hd_table_incremental(deflater, &nv[i]);
+            if(!new_ent) {
+              rv = NGHTTP2_ERR_HEADER_COMP;
+              goto fail;
+            }
+            rv = add_workingset(deflater, new_ent);
+            if(rv < 0) {
+              goto fail;
+            }
+            incidx = 1;
+          } else {
+            rv = add_workingset_newname(deflater, &nv[i]);
+            if(rv < 0) {
+              goto fail;
+            }
           }
-          rv = add_workingset(deflater, new_ent);
-          if(rv < 0) {
-            goto fail;
-          }
-          rv = emit_newname_block(buf_ptr, buflen_ptr, &offset, &nv[i], 1);
+          rv = emit_newname_block(buf_ptr, buflen_ptr, &offset, &nv[i],
+                                  incidx);
           if(rv < 0) {
             goto fail;
           }
