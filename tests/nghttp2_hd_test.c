@@ -34,6 +34,7 @@
 
 #define MAKE_NV(NAME, VALUE)                    \
   { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
+#define ARRLEN(ARR) (sizeof(ARR)/sizeof(ARR[0]))
 
 static void assert_nv_equal(nghttp2_nv *a, nghttp2_nv *b, size_t len)
 {
@@ -325,4 +326,176 @@ void test_nghttp2_hd_inflate_newname_subst(void)
   nghttp2_nv_array_del(resnva);
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
+}
+
+static void check_deflate_inflate(nghttp2_hd_context *deflater,
+                                  nghttp2_hd_context *inflater,
+                                  nghttp2_nv *nva, size_t nvlen)
+{
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  ssize_t blocklen;
+  nghttp2_nv *resnva;
+  ssize_t resnvlen;
+
+  blocklen = nghttp2_hd_deflate_hd(deflater, &buf, &buflen, 0, nva, nvlen);
+  assert(blocklen >= 0);
+  nghttp2_hd_end_headers(deflater);
+  resnvlen = nghttp2_hd_inflate_hd(inflater, &resnva, buf, blocklen);
+  CU_ASSERT(resnvlen == (ssize_t)nvlen);
+  assert_nv_equal(nva, resnva, nvlen);
+  nghttp2_hd_end_headers(inflater);
+}
+
+void test_nghttp2_hd_deflate_inflate(void)
+{
+  nghttp2_hd_context inflater, deflater;
+  nghttp2_nv nv1[] = {
+    MAKE_NV(":status", "200 OK"),
+    MAKE_NV("access-control-allow-origin", "*"),
+    MAKE_NV("cache-control", "private, max-age=0, must-revalidate"),
+    MAKE_NV("content-length", "76073"),
+    MAKE_NV("content-type", "text/html"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("server", "Apache"),
+    MAKE_NV("vary", "foobar"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "MISS from alphabravo"),
+    MAKE_NV("x-cache-action", "MISS"),
+    MAKE_NV("x-cache-age", "0"),
+    MAKE_NV("x-cache-lookup", "MISS from alphabravo:3128"),
+    MAKE_NV("x-lb-nocache", "true"),
+  };
+  nghttp2_nv nv2[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682045"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:22:57 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:15 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128")
+  };
+  nghttp2_nv nv3[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682072"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:23:24 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:13 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+  nghttp2_nv nv4[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682022"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:22:34 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:14 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+  nghttp2_nv nv5[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=4461139"),
+    MAKE_NV("content-type", "application/x-javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Mon, 16 Sep 2013 21:34:31 GMT"),
+    MAKE_NV("last-modified", "Thu, 05 May 2011 09:15:59 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+  nghttp2_nv nv6[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=18645951"),
+    MAKE_NV("content-type", "application/x-javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Fri, 28 Feb 2014 01:48:03 GMT"),
+    MAKE_NV("last-modified", "Tue, 12 Jul 2011 16:02:59 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+  nghttp2_nv nv7[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=31536000"),
+    MAKE_NV("content-type", "application/javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("etag", "\"6807-4dc5b54e0dcc0\""),
+    MAKE_NV("expires", "Wed, 21 May 2014 08:32:17 GMT"),
+    MAKE_NV("last-modified", "Fri, 10 May 2013 11:18:51 GMT"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+  nghttp2_nv nv8[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=31536000"),
+    MAKE_NV("content-type", "application/javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("etag", "\"41c6-4de7d28585b00\""),
+    MAKE_NV("expires", "Thu, 12 Jun 2014 10:00:58 GMT"),
+    MAKE_NV("last-modified", "Thu, 06 Jun 2013 14:30:36 GMT"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+  nghttp2_nv nv9[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=31536000"),
+    MAKE_NV("content-type", "application/javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("etag", "\"19d6e-4dc5b35a541c0\""),
+    MAKE_NV("expires", "Wed, 21 May 2014 08:32:18 GMT"),
+    MAKE_NV("last-modified", "Fri, 10 May 2013 11:10:07 GMT"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+  nghttp2_nv nv10[] = {
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682045"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:22:57 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:21:53 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+  };
+
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_SERVER);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_CLIENT);
+
+  check_deflate_inflate(&deflater, &inflater, nv1, ARRLEN(nv1));
+  check_deflate_inflate(&deflater, &inflater, nv2, ARRLEN(nv2));
+  check_deflate_inflate(&deflater, &inflater, nv3, ARRLEN(nv3));
+  check_deflate_inflate(&deflater, &inflater, nv4, ARRLEN(nv4));
+  check_deflate_inflate(&deflater, &inflater, nv5, ARRLEN(nv5));
+  check_deflate_inflate(&deflater, &inflater, nv6, ARRLEN(nv6));
+  check_deflate_inflate(&deflater, &inflater, nv7, ARRLEN(nv7));
+  check_deflate_inflate(&deflater, &inflater, nv8, ARRLEN(nv8));
+  check_deflate_inflate(&deflater, &inflater, nv9, ARRLEN(nv9));
+  check_deflate_inflate(&deflater, &inflater, nv10, ARRLEN(nv10));
 }

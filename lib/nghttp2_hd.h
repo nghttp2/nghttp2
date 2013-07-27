@@ -38,6 +38,10 @@
 #define NGHTTP2_HD_MAX_BUFFER_SIZE 4096
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
 
+/* This value is sensible to NGHTTP2_HD_MAX_BUFFER_SIZE. Currently,
+   the index is at most 128, so 255 is good choice */
+#define NGHTTP2_HD_INVALID_INDEX 255
+
 typedef enum {
   NGHTTP2_HD_SIDE_CLIENT = 0,
   NGHTTP2_HD_SIDE_SERVER = 1
@@ -74,7 +78,6 @@ typedef struct nghttp2_hd_ws_entry {
     struct {
       nghttp2_hd_entry *entry;
       uint8_t index;
-      uint8_t checked;
     } indexed;
     /* For NGHTTP2_HD_CAT_NEWNAME */
     struct {

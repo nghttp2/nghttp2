@@ -220,6 +220,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_inflate_indname_subst_eviction_neg) ||
       !CU_add_test(pSuite, "hd_inflate_newname_subst",
                    test_nghttp2_hd_inflate_newname_subst) ||
+      !CU_add_test(pSuite, "hd_deflate_inflate",
+                   test_nghttp2_hd_deflate_inflate) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate)
       ) {
      CU_cleanup_registry();
