@@ -65,6 +65,18 @@ installed:
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://spdylay.sourceforge.net/
 
+Build from git
+--------------
+
+Building from git is easy, but please be sure that at least autoconf 2.68 is
+used::
+
+    $ autoreconf -i
+    $ automake
+    $ autoconf
+    $ ./configure
+    $ make
+
 Building documentation
 ----------------------
 
