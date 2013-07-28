@@ -9,9 +9,10 @@ Development Status
 
 We started to implement HTTP-defat-04/2.0
 (http://tools.ietf.org/html/draft-ietf-httpbis-http2-04) based on
-spdylay code base.
+spdylay code base. The header compression is based on
+http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01
 
-The following features are not implemented:
+Currently, the library lacks the following features:
 
 * Header continuation
 * ALPN: instead, NPN is used
@@ -91,6 +92,9 @@ To build documentation, run::
 The documents will be generated under ``doc/manual/html/``.
 
 The generated documents will not be installed with ``make install``.
+
+The online documentation is available at
+http://tatsuhiro-t.github.io/nghttp2/
 
 Client, Server and Proxy programs
 ---------------------------------
