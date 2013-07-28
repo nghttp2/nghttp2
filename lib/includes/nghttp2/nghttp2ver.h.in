@@ -27,7 +27,7 @@
 
 /**
  * @macro
- * Version number of the Spdylay library release
+ * Version number of the nghttp2 library release
  */
 #define NGHTTP2_VERSION "@PACKAGE_VERSION@"
 

@@ -35,7 +35,17 @@ extern "C" {
 
 #include <nghttp2/nghttp2ver.h>
 
+/**
+ * @macro
+ *
+ * The protocol version identification of this library supports.
+ */
 #define NGHTTP2_PROTO_VERSION_ID "HTTP-draft-04/2.0"
+/**
+ * @macro
+ *
+ * The length of NGHTTP2_PROTO_VERSION_ID.
+ */
 #define NGHTTP2_PROTO_VERSION_ID_LEN 17
 
 struct nghttp2_session;
@@ -50,15 +60,41 @@ typedef struct nghttp2_session nghttp2_session;
 
 /**
  * @macro
- * default priority value
+ *
+ * The default priority value
  */
 #define NGHTTP2_PRI_DEFAULT (1 << 30)
+/**
+ * @macro
+ *
+ * The lowest priority value
+ */
 #define NGHTTP2_PRI_LOWEST ((1U << 31) - 1)
 
+/**
+ * @macro
+ *
+ * The initial window size for stream level flow control.
+ */
 #define NGHTTP2_INITIAL_WINDOW_SIZE ((1 << 16) - 1)
+/**
+ * @macro
+ *
+ * The initial window size for connection level flow control.
+ */
 #define NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE ((1 << 16) - 1)
 
+/**
+ * @macro
+ *
+ * The client connection header.
+ */
 #define NGHTTP2_CLIENT_CONNECTION_HEADER "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+/**
+ * @macro
+ *
+ * The length of NGHTTP2_CLIENT_CONNECTION_HEADER.
+ */
 #define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN 24
 
 /**
@@ -465,22 +501,22 @@ typedef enum {
    * The HEADERS frame is opening new stream, which is analogous to
    * SYN_STREAM in SPDY.
    */
-  NGHTTP2_HCAT_REQUEST,
+  NGHTTP2_HCAT_REQUEST = 0,
   /**
    * The HEADERS frame is the first response headers, which is
    * analogous to SYN_REPLY in SPDY.
    */
-  NGHTTP2_HCAT_RESPONSE,
+  NGHTTP2_HCAT_RESPONSE = 1,
   /**
    * The HEADERS frame is the first headers sent against reserved
    * stream.
    */
-  NGHTTP2_HCAT_PUSH_RESPONSE,
+  NGHTTP2_HCAT_PUSH_RESPONSE = 2,
   /**
    * The HEADERS frame which does not apply for the above categories,
    * which is analogous to HEADERS in SPDY.
    */
-  NGHTTP2_HCAT_HEADERS,
+  NGHTTP2_HCAT_HEADERS = 3,
 } nghttp2_headers_category;
 
 /**
@@ -1091,14 +1127,7 @@ int nghttp2_session_set_option(nghttp2_session *session,
  *    :member:`nghttp2_session_callbacks.on_ctrl_not_send_callback` is
  *    invoked. Abort the following steps.
  * 4. If the frame is request HEADERS, the stream is opened
- *    here.  If the |session| is initialized for client use and the
- *    protocol version is :macro:`NGHTTP2_PROTO_SPDY3` and the library
- *    needs the client certificate for the origin,
- *    :member:`nghttp2_session_callbacks.get_credential_ncerts` is
- *    invoked. If the result is more than zero,
- *    :member:`nghttp2_session_callbacks.get_credential_proof` and
- *    :member:`nghttp2_session_callbacks.get_credential_cert` are also
- *    invoked.
+ *    here.
  * 5. :member:`nghttp2_session_callbacks.before_ctrl_send_callback` is
  *    invoked.
  * 6. :member:`nghttp2_session_callbacks.send_callback` is invoked one
@@ -1331,11 +1360,6 @@ const char* nghttp2_strerror(int lib_error_code);
  *     ``example.org:443``). This is the same as the HTTP "Host" header
  *     field.
  *
- * If the |session| is initialized with the version
- * :macro:`NGHTTP2_PROTO_SPDY2`, the above names are translated to
- * ``method``, ``scheme``, ``url``, ``version`` and ``host``
- * respectively.
- *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
  *
@@ -1393,10 +1417,6 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  *
  * ``:status``
  *     HTTP status code (e.g., ``200`` or ``200 OK``)
- *
- * If the |session| is initialized with the version
- * :macro:`NGHTTP2_PROTO_SPDY2`, the above names are translated to
- * ``status`` and ``version`` respectively.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
