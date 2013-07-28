@@ -42,19 +42,6 @@ bin_PROGRAMS += nghttp nghttpd nghttpx
 HELPER_OBJECTS = util.cc timegm.c app_helper.cc
 HELPER_HFILES = util.h timegm.h app_helper.h nghttp2_config.h
 
-EVENT_OBJECTS =
-EVENT_HFILES = EventPoll.h EventPollEvent.h
-
-if HAVE_EPOLL
-EVENT_OBJECTS += EventPoll_epoll.cc
-EVENT_HFILES += EventPoll_epoll.h
-endif # HAVE_EPOLL
-
-if HAVE_KQUEUE
-EVENT_OBJECTS += EventPoll_kqueue.cc
-EVENT_HFILES += EventPoll_kqueue.h
-endif # HAVE_KQUEUE
-
 HTML_PARSER_OBJECTS =
 HTML_PARSER_HFILES = HtmlParser.h
 
@@ -69,7 +56,6 @@ nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	HttpServer.cc HttpServer.h
 
-if HAVE_LIBEVENT_OPENSSL
 NGHTTPX_SRCS = \
 	util.cc util.h timegm.c timegm.h base64.h \
 	shrpx_config.cc shrpx_config.h \
@@ -111,7 +97,5 @@ nghttpx_SOURCES = ${NGHTTPX_SRCS} shrpx.cc shrpx.h
 # 	@SRC_LIBS@ @CUNIT_LIBS@ @TESTS_LIBS@
 # TESTS += shrpx-unittest
 # endif # HAVE_CUNIT
-
-endif # HAVE_LIBEVENT_OPENSSL
 
 endif # ENABLE_SRC

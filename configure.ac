@@ -69,10 +69,6 @@ AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG([0.20])
 
-AC_COMPILE_STDCXX_11
-AM_CONDITIONAL([HAVE_STDCXX_11],
-               [ test "x$ac_cv_cxx_compile_cxx11_cxx" = "xyes" ])
-
 # Checks for libraries.
 
 # Additional libraries required for tests.
@@ -145,26 +141,22 @@ fi
 
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
-# openssl (for examples)
+# openssl (for src)
 PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1],
                   [have_openssl=yes], [have_openssl=no])
 if test "x${have_openssl}" = "xno"; then
   AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
-  AC_MSG_NOTICE([The example programs will not be built.])
 fi
 
-# libevent_openssl
+# libevent_openssl (for src)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
 PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
                   [have_libevent_openssl=yes], [have_libevent_openssl=no])
 if test "x${have_libevent_openssl}" = "xno"; then
   AC_MSG_NOTICE($LIBEVENT_OPENSSL_PKG_ERRORS)
-  AC_MSG_NOTICE([Shrpx example program will not be built.])
 fi
-AM_CONDITIONAL([HAVE_LIBEVENT_OPENSSL],
-               [ test "x${have_libevent_openssl}" = "xyes" ])
 
-# libxml2 (for examples/spdycat)
+# libxml2 (for src/nghttp)
 have_libxml2=no
 if test "x$with_libxml2" != "xno"; then
   AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
@@ -174,21 +166,22 @@ if test "x$with_libxml2" != "xno"; then
 fi
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 
-# spdylay (for shrpx)
+# spdylay (for src/nghttpx)
 PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.0.0],
                   [have_spdylay=yes], [have_spdylay=no])
 if test "x${have_spdylay}" = "xyes"; then
   AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])
 else
   AC_MSG_NOTICE($LIBSPDYLAY_PKG_ERRORS)
-  AC_MSG_NOTICE([The SPDY support in shrpx will be disabled.])
+  AC_MSG_NOTICE([The SPDY support in nghttpd will be disabled.])
 fi
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
-# The src programs depend on OpenSSL
+# The programs under src depend on OpenSSL and libevent_openssl
 enable_src=no
 if test "x${request_src}" = "xyes" &&
-   test "x${have_openssl}" = "xyes"; then
+   test "x${have_openssl}" = "xyes" &&
+   test "x${have_libevent_openssl}" = "xyes"; then
     enable_src=yes
 fi
 
@@ -244,37 +237,6 @@ AC_CHECK_FUNCS([ \
   memset \
   timegm \
 ])
-
-AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
-if test "x${have_epoll}" = "xyes"; then
-  AC_DEFINE([HAVE_EPOLL], [1], [Define to 1 if you have the `epoll`.])
-fi
-AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
-
-AC_CHECK_FUNCS([kqueue], [have_kqueue=yes])
-AM_CONDITIONAL([HAVE_KQUEUE], [ test "x${have_kqueue}" = "xyes" ])
-
-AM_CONDITIONAL([ENABLE_SPDYD],
-         [ test "x${have_epoll}" = "xyes" || test "x${have_kqueue}" = "xyes" ])
-
-AC_LANG_PUSH(C++)
-AC_MSG_CHECKING([whether struct kevent.udata is intptr_t])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <sys/event.h>
-#include <sys/time.h>
-]],
-[[
-struct kevent event;
-event.udata = (intptr_t)(&event);
-]])],
-[kevent_udata_intptr_t=yes], [kevent_udata_intptr_t=no])
-AC_MSG_RESULT([$kevent_udata_intptr_t])
-if test "x$kevent_udata_intptr_t" = "xyes"; then
-  AC_DEFINE([KEVENT_UDATA_INTPTR_T], [1],
-            [Define to 1 if struct kevent.udata is intptr_t])
-fi
-AC_LANG_POP()
 
 dnl Windows library for winsock2
 case "${host}" in

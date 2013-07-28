@@ -46,7 +46,6 @@
 
 #include "app_helper.h"
 #include "util.h"
-#include "EventPoll.h"
 
 #ifndef O_BINARY
 # define O_BINARY (0)
