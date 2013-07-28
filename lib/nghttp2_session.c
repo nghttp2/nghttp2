@@ -1908,8 +1908,8 @@ static int nghttp2_session_update_initial_window_size
                           &arg);
 }
 
-static int nghttp2_disable_flow_control_func(nghttp2_map_entry *entry,
-                                             void *ptr)
+static int nghttp2_disable_remote_flow_control_func(nghttp2_map_entry *entry,
+                                                    void *ptr)
 {
   nghttp2_session *session;
   nghttp2_stream *stream;
@@ -1934,14 +1934,38 @@ static int nghttp2_disable_flow_control_func(nghttp2_map_entry *entry,
 }
 
 /*
- * Disable connection-level flow control and stream-level flow control
- * of existing streams.
+ * Disable remote side connection-level flow control and stream-level
+ * flow control of existing streams.
  */
-static int nghttp2_session_disable_flow_control(nghttp2_session *session)
+static int nghttp2_session_disable_remote_flow_control
+(nghttp2_session *session)
 {
   session->remote_flow_control = 0;
   return nghttp2_map_each(&session->streams,
-                          nghttp2_disable_flow_control_func, session);
+                          nghttp2_disable_remote_flow_control_func, session);
+}
+
+static int nghttp2_disable_local_flow_control_func(nghttp2_map_entry *entry,
+                                                   void *ptr)
+{
+  nghttp2_stream *stream;
+  stream = (nghttp2_stream*)entry;
+  stream->local_flow_control = 0;
+  return 0;
+}
+
+/*
+ * Disable stream-level flow control in local side of existing
+ * streams.
+ */
+static void nghttp2_session_disable_local_flow_control
+(nghttp2_session *session)
+{
+  int rv;
+  session->local_flow_control = 0;
+  rv = nghttp2_map_each(&session->streams,
+                        nghttp2_disable_local_flow_control_func, NULL);
+  assert(rv == 0);
 }
 
 void nghttp2_session_update_local_settings(nghttp2_session *session,
@@ -1949,9 +1973,16 @@ void nghttp2_session_update_local_settings(nghttp2_session *session,
                                            size_t niv)
 {
   size_t i;
+  uint8_t old_flow_control =
+    session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS];
+
   for(i = 0; i < niv; ++i) {
     assert(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX);
     session->local_settings[iv[i].settings_id] = iv[i].value;
+  }
+  if(old_flow_control == 0 &&
+     session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]) {
+    nghttp2_session_disable_local_flow_control(session);
   }
 }
 
@@ -1993,7 +2024,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
       if(entry->value & 0x1) {
         if(session->remote_settings[entry->settings_id] == 0) {
-          rv = nghttp2_session_disable_flow_control(session);
+          rv = nghttp2_session_disable_remote_flow_control(session);
           if(rv != 0) {
             return rv;
           }
