@@ -45,7 +45,7 @@ namespace nghttp2 {
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttpd [-DVhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
+  out << "Usage: nghttpd [-FDVfhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
       << std::endl;
 }
 } // namespace
@@ -73,6 +73,10 @@ void print_help(std::ostream& out)
       << "    -v, --verbose      Print debug information such as reception/\n"
       << "                       transmission of frames and name/value pairs.\n"
       << "    --no-tls           Disable SSL/TLS.\n"
+      << "    -F, --no-connection-flow-control\n"
+      << "                       Disables connection level flow control.\n"
+      << "    -f, --no-stream-flow-control\n"
+      << "                       Disables stream level flow control.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -90,14 +94,19 @@ int main(int argc, char **argv)
       {"verbose", no_argument, 0, 'v' },
       {"verify-client", no_argument, 0, 'V' },
       {"no-tls", no_argument, &flag, 1 },
+      {"no-connection-flow-control", no_argument, 0, 'F'},
+      {"no-stream-flow-control", no_argument, 0, 'f'},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVd:hv", long_options, &option_index);
+    int c = getopt_long(argc, argv, "FDVd:fhv", long_options, &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
+    case 'F':
+      config.no_connection_flow_control = true;
+      break;
     case 'D':
       config.daemon = true;
       break;
@@ -106,6 +115,9 @@ int main(int argc, char **argv)
       break;
     case 'd':
       config.htdocs = optarg;
+      break;
+    case 'f':
+      config.no_stream_flow_control = true;
       break;
     case 'h':
       print_help(std::cout);
