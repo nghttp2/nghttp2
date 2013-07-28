@@ -79,6 +79,8 @@ struct Config {
   bool get_assets;
   bool stat;
   bool no_tls;
+  bool no_connection_flow_control;
+  bool no_stream_flow_control;
   int multiply;
   // milliseconds
   int timeout;
@@ -88,9 +90,19 @@ struct Config {
   std::map<std::string, std::string> headers;
   std::string datafile;
   size_t output_upper_thres;
-  Config():null_out(false), remote_name(false), verbose(false),
-           get_assets(false), stat(false), no_tls(false), multiply(1),
-           timeout(-1), window_bits(-1), output_upper_thres(1024*1024)
+  Config()
+    : null_out(false),
+      remote_name(false),
+      verbose(false),
+      get_assets(false),
+      stat(false),
+      no_tls(false),
+      no_connection_flow_control(false),
+      no_stream_flow_control(false),
+      multiply(1),
+      timeout(-1),
+      window_bits(-1),
+      output_upper_thres(1024*1024)
   {}
 };
 
@@ -453,16 +465,28 @@ struct HttpClient {
     bufferevent_write(bev, NGHTTP2_CLIENT_CONNECTION_HEADER,
                       NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
 
-    nghttp2_settings_entry iv[1];
+    nghttp2_settings_entry iv[2];
     size_t niv = 0;
     if(config.window_bits != -1) {
       iv[niv].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
       iv[niv].value = 1 << config.window_bits;
       ++niv;
     }
+    if(config.no_connection_flow_control && config.no_stream_flow_control) {
+      iv[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
+      iv[niv].value = 1;
+      ++niv;
+    }
     rv = nghttp2_submit_settings(session, iv, niv);
     if(rv != 0) {
       return -1;
+    }
+    if(config.no_connection_flow_control && !config.no_stream_flow_control) {
+      rv = nghttp2_submit_window_update(session, NGHTTP2_FLAG_END_FLOW_CONTROL,
+                                        0, 0);
+      if(rv != 0) {
+        return -1;
+      }
     }
     for(auto& req : reqvec) {
       submit_request(this, config.headers, req.get());
@@ -747,6 +771,11 @@ void on_frame_send_callback2
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     check_stream_id(session, frame, user_data);
+    if(!config.no_connection_flow_control && config.no_stream_flow_control) {
+      nghttp2_submit_window_update(session,
+                                   NGHTTP2_FLAG_END_FLOW_CONTROL,
+                                   frame->hd.stream_id, 0);
+    }
   }
   if(config.verbose) {
     on_frame_send_callback(session, frame, user_data);
@@ -1143,7 +1172,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [-Oansv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: nghttp [-FOafnsv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "              [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>..."
       << std::endl;
 }
@@ -1180,6 +1209,10 @@ void print_help(std::ostream& out)
       << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
       << "                       URI is not requested twice. This option\n"
       << "                       disables it too.\n"
+      << "    -F, --no-connection-flow-control\n"
+      << "                       Disables connection level flow control.\n"
+      << "    -f, --no-stream-flow-control\n"
+      << "                       Disables stream level flow control.\n"
       << std::endl;
 }
 
@@ -1202,17 +1235,25 @@ int main(int argc, char **argv)
       {"no-tls", no_argument, &flag, 3 },
       {"data", required_argument, 0, 'd' },
       {"multiply", required_argument, 0, 'm' },
+      {"no-connection-flow-control", no_argument, 0, 'F'},
+      {"no-stream-flow-control", no_argument, 0, 'f'},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Oad:m:nhH:vst:w:", long_options,
+    int c = getopt_long(argc, argv, "FOad:fm:nhH:vst:w:", long_options,
                         &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
+    case 'F':
+      config.no_connection_flow_control = true;
+      break;
     case 'O':
       config.remote_name = true;
+      break;
+    case 'f':
+      config.no_stream_flow_control = true;
       break;
     case 'h':
       print_help(std::cout);
