@@ -345,6 +345,9 @@ static void check_deflate_inflate(nghttp2_hd_context *deflater,
   CU_ASSERT(resnvlen == (ssize_t)nvlen);
   assert_nv_equal(nva, resnva, nvlen);
   nghttp2_hd_end_headers(inflater);
+
+  free(resnva);
+  free(buf);
 }
 
 void test_nghttp2_hd_deflate_inflate(void)
@@ -498,4 +501,7 @@ void test_nghttp2_hd_deflate_inflate(void)
   check_deflate_inflate(&deflater, &inflater, nv8, ARRLEN(nv8));
   check_deflate_inflate(&deflater, &inflater, nv9, ARRLEN(nv9));
   check_deflate_inflate(&deflater, &inflater, nv10, ARRLEN(nv10));
+
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
 }
