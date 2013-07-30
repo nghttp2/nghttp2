@@ -702,6 +702,9 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
                                       const uint8_t *data, size_t len)
 {
   int rv;
+  if(len == 0) {
+    return 0;
+  }
   evbuffer *output = bufferevent_get_output(handler_->get_bev());
   if(downstream->get_chunked_response()) {
     char chunk_size_hex[16];
