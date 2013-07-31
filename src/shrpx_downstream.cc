@@ -43,6 +43,8 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     stream_id_(stream_id),
     priority_(priority),
     downstream_stream_id_(-1),
+    upgrade_request_(false),
+    upgraded_(false),
     request_state_(INITIAL),
     request_major_(1),
     request_minor_(1),
@@ -474,10 +476,44 @@ void Downstream::set_recv_window_size(int32_t new_size)
   recv_window_size_ = new_size;
 }
 
-bool Downstream::tunnel_established() const
+void Downstream::check_upgrade_fulfilled()
 {
-  return request_method_ == "CONNECT" &&
-    200 <= response_http_status_ && response_http_status_ < 300;
+  if(request_method_ == "CONNECT") {
+    upgraded_ = 200 <= response_http_status_ && response_http_status_ < 300;
+  } else {
+    // TODO Do more strict checking for upgrade headers
+    for(auto& hd : request_headers_) {
+      if(util::strieq("upgrade", hd.first.c_str())) {
+        upgraded_ = true;
+        break;
+      }
+    }
+  }
+}
+
+bool Downstream::get_upgraded() const
+{
+  return upgraded_;
+}
+
+void Downstream::check_upgrade_request()
+{
+  if(request_method_ == "CONNECT") {
+    upgrade_request_ = true;
+  } else {
+    // TODO Do more strict checking for upgrade headers
+    for(auto& hd : request_headers_) {
+      if(util::strieq("upgrade", hd.first.c_str())) {
+        upgrade_request_ = true;
+        break;
+      }
+    }
+  }
+}
+
+bool Downstream::get_upgrade_request() const
+{
+  return upgrade_request_;
 }
 
 void Downstream::set_downstream_stream_id(int32_t stream_id)

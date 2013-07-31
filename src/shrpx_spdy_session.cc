@@ -814,8 +814,16 @@ void on_frame_recv_callback
 
     auto upstream = downstream->get_upstream();
     downstream->set_response_state(Downstream::HEADER_COMPLETE);
-    if(downstream->tunnel_established()) {
+    downstream->check_upgrade_fulfilled();
+    if(downstream->get_upgraded()) {
       downstream->set_response_connection_close(true);
+      // On upgrade sucess, both ends can send data
+      upstream->resume_read(SHRPX_MSG_BLOCK, downstream);
+      downstream->set_request_state(Downstream::HEADER_COMPLETE);
+      if(LOG_ENABLED(INFO)) {
+        SSLOG(INFO, spdy) << "HTTP upgrade success. stream_id="
+                          << frame->hd.stream_id;
+      }
     }
     rv = upstream->on_downstream_header_complete(downstream);
     if(rv != 0) {
@@ -833,7 +841,7 @@ void on_frame_recv_callback
       auto downstream = sd->dconn->get_downstream();
       if(downstream &&
          downstream->get_downstream_stream_id() == frame->hd.stream_id) {
-        if(downstream->tunnel_established() &&
+        if(downstream->get_upgraded() &&
            downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
           // For tunneled connection, we has to submit RST_STREAM to
           // upstream *after* whole response body is sent. We just set

@@ -142,6 +142,7 @@ int htp_hdrs_completecb(http_parser *htp)
 
   downstream->set_request_connection_close(!http_should_keep_alive(htp));
 
+  downstream->check_upgrade_request();
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     ss << downstream->get_request_method() << " "
@@ -258,20 +259,40 @@ int HttpsUpstream::on_read()
 {
   bufferevent *bev = handler_->get_bev();
   evbuffer *input = bufferevent_get_input(bev);
-
+  size_t inputlen = evbuffer_get_length(input);
   unsigned char *mem = evbuffer_pullup(input, -1);
 
-  if(evbuffer_get_length(input) == 0) {
+  if(inputlen == 0) {
+    return 0;
+  }
+  auto downstream = get_downstream();
+  // downstream can be nullptr here, because it is initialized in the
+  // callback chain called by http_parser_execute()
+  if(downstream && downstream->get_upgraded()) {
+    int rv = downstream->push_upload_data_chunk
+      (reinterpret_cast<const uint8_t*>(mem), inputlen);
+    evbuffer_drain(input, inputlen);
+    if(rv != 0) {
+      return -1;
+    }
+    if(downstream->get_output_buffer_full()) {
+      if(LOG_ENABLED(INFO)) {
+        ULOG(INFO, this) << "Downstream output buffer is full";
+      }
+      pause_read(SHRPX_NO_BUFFER);
+    }
     return 0;
   }
 
   size_t nread = http_parser_execute(htp_, &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
-                                     evbuffer_get_length(input));
+                                     inputlen);
   evbuffer_drain(input, nread);
   // Well, actually header length + some body bytes
   current_header_length_ += nread;
-  Downstream *downstream = get_downstream();
+  // Get downstream again because it may be initialized in http parser
+  // execution
+  downstream = get_downstream();
 
   http_errno htperr = HTTP_PARSER_ERRNO(htp_);
   if(htperr == HPE_PAUSED) {
@@ -403,7 +424,7 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
             return;
           }
         }
-      } else if(downstream->tunnel_established()) {
+      } else if(downstream->get_upgraded()) {
         // This path is effectively only taken for SPDY downstream
         // because only SPDY downstream sets response_state to
         // MSG_COMPLETE and this function. For HTTP downstream, EOF
@@ -660,7 +681,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     } else if(connection_upgrade) {
       hdrs += "Connection: upgrade\r\n";
     }
-  } else {
+  } else if(!downstream->get_upgraded()) {
     hdrs += "Connection: close\r\n";
   }
   if(!get_config()->no_via) {

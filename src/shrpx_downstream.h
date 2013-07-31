@@ -68,8 +68,16 @@ public:
   int32_t get_recv_window_size() const;
   void inc_recv_window_size(int32_t amount);
   void set_recv_window_size(int32_t new_size);
-  // Returns true if tunnel connection has been established.
-  bool tunnel_established() const;
+  // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
+  void check_upgrade_fulfilled();
+  // Checks request headers whether the request is upgrade request or
+  // not.
+  void check_upgrade_request();
+  // Returns true if the request is upgrade.
+  bool get_upgrade_request() const;
+  // Returns true if the upgrade is succeded as a result of the call
+  // check_upgrade_fulfilled().
+  bool get_upgraded() const;
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
@@ -145,6 +153,11 @@ private:
   int priority_;
   // stream ID in backend connection
   int32_t downstream_stream_id_;
+  // true if the request contains upgrade token (HTTP Upgrade or
+  // CONNECT)
+  bool upgrade_request_;
+  // true if the connection is upgraded (HTTP Upgrade or CONNECT)
+  bool upgraded_;
 
   int request_state_;
   std::string request_method_;

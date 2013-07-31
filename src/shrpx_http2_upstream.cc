@@ -108,7 +108,7 @@ void on_stream_close_callback
       downstream->set_request_state(Downstream::STREAM_CLOSED);
       if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
         // At this point, downstream response was read
-        if(!downstream->tunnel_established() &&
+        if(!downstream->get_upgraded() &&
            !downstream->get_response_connection_close()) {
           // Keep-alive
           DownstreamConnection *dconn;
@@ -192,6 +192,7 @@ void on_frame_recv_callback
     }
 
     downstream->add_request_header("host", host);
+    downstream->check_upgrade_request();
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
@@ -588,7 +589,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       } else {
         DCLOG(INFO, dconn) << "Timeout";
       }
-      if(downstream->tunnel_established()) {
+      if(downstream->get_upgraded()) {
         DCLOG(INFO, dconn) << "Note: this is tunnel connection";
       }
     }
@@ -678,7 +679,7 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
   int nread = evbuffer_remove(body, buf, length);
   if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    if(!downstream->tunnel_established()) {
+    if(!downstream->get_upgraded()) {
       *eof = 1;
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.

@@ -356,13 +356,26 @@ int htp_hdrs_completecb(http_parser *htp)
   downstream->set_response_minor(htp->http_minor);
   downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
-  if(downstream->tunnel_established()) {
+  downstream->check_upgrade_fulfilled();
+  if(downstream->get_upgraded()) {
     downstream->set_response_connection_close(true);
   }
   if(downstream->get_upstream()->on_downstream_header_complete(downstream)
      != 0) {
     return -1;
   }
+
+  if(downstream->get_upgraded()) {
+    // Upgrade complete, read until EOF in both ends
+    downstream->get_upstream()->resume_read(SHRPX_MSG_BLOCK, downstream);
+    downstream->set_request_state(Downstream::HEADER_COMPLETE);
+    if(LOG_ENABLED(INFO)) {
+      LOG(INFO) << "HTTP upgrade success. stream_id="
+                << downstream->get_stream_id();
+    }
+  }
+
+
   unsigned int status = downstream->get_response_http_status();
   // Ignore the response body. HEAD response may contain
   // Content-Length or Transfer-Encoding: chunked.  Some server send
@@ -441,11 +454,19 @@ http_parser_settings htp_hooks = {
 int HttpDownstreamConnection::on_read()
 {
   evbuffer *input = bufferevent_get_input(bev_);
+  size_t inputlen = evbuffer_get_length(input);
   unsigned char *mem = evbuffer_pullup(input, -1);
-
+  if(downstream_->get_upgraded()) {
+    // For upgraded connection, just pass data to the upstream.
+    int rv;
+    rv = downstream_->get_upstream()->on_downstream_body
+      (downstream_, reinterpret_cast<const uint8_t*>(mem), inputlen);
+    evbuffer_drain(input, inputlen);
+    return rv;
+  }
   size_t nread = http_parser_execute(response_htp_, &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
-                                     evbuffer_get_length(input));
+                                     inputlen);
 
   evbuffer_drain(input, nread);
   http_errno htperr = HTTP_PARSER_ERRNO(response_htp_);

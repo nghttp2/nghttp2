@@ -1606,14 +1606,9 @@ size_t http_parser_execute (http_parser *parser,
 
         /* Exit, the rest of the connect is in a different protocol. */
         if (parser->upgrade) {
-          /* We want to use http_parser for tunneling connection
-             transparently */
-          /* Read body until EOF */
-          parser->state = s_body_identity_eof;
-          break;
-          /* parser->state = NEW_MESSAGE(); */
-          /* CALLBACK_NOTIFY(message_complete); */
-          /* return (p - data) + 1; */
+          parser->state = NEW_MESSAGE();
+          CALLBACK_NOTIFY(message_complete);
+          return (p - data) + 1;
         }
 
         if (parser->flags & F_SKIPBODY) {

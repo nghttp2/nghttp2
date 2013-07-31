@@ -180,7 +180,9 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
     nread = evbuffer_remove(body, buf, length);
     if(nread == 0) {
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-        *eof = 1;
+        if(!downstream->get_upgrade_request()) {
+          *eof = 1;
+        }
         break;
       } else {
         // This is important because it will handle flow control
