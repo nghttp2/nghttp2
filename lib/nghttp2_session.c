@@ -2738,7 +2738,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           (data_flags & NGHTTP2_FLAG_END_STREAM) == 0)) {
         nghttp2_stream *stream;
         stream = nghttp2_session_get_stream(session, data_stream_id);
-        if(session->local_flow_control || stream->local_flow_control) {
+        if(session->local_flow_control ||
+           (stream && stream->local_flow_control)) {
           r = nghttp2_session_update_recv_window_size(session,
                                                       stream,
                                                       readlen);
