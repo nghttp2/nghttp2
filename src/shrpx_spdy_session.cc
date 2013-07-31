@@ -818,7 +818,11 @@ void on_frame_recv_callback
     if(downstream->get_upgraded()) {
       downstream->set_response_connection_close(true);
       // On upgrade sucess, both ends can send data
-      upstream->resume_read(SHRPX_MSG_BLOCK, downstream);
+      if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream) != 0) {
+        // If resume_read fails, just drop connection. Not ideal.
+        delete upstream->get_client_handler();
+        return;
+      }
       downstream->set_request_state(Downstream::HEADER_COMPLETE);
       if(LOG_ENABLED(INFO)) {
         SSLOG(INFO, spdy) << "HTTP upgrade success. stream_id="

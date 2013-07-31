@@ -367,7 +367,10 @@ int htp_hdrs_completecb(http_parser *htp)
 
   if(downstream->get_upgraded()) {
     // Upgrade complete, read until EOF in both ends
-    downstream->get_upstream()->resume_read(SHRPX_MSG_BLOCK, downstream);
+    if(downstream->get_upstream()->resume_read(SHRPX_MSG_BLOCK,
+                                               downstream) != 0) {
+      return -1;
+    }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(LOG_ENABLED(INFO)) {
       LOG(INFO) << "HTTP upgrade success. stream_id="
