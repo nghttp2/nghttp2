@@ -315,7 +315,8 @@ int Http2Handler::on_read()
   }
   if(rv == 0) {
     if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0) {
+       nghttp2_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
       rv = -1;
     }
   }
@@ -331,7 +332,8 @@ int Http2Handler::on_write()
   }
   if(rv == 0) {
     if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0) {
+       nghttp2_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
       rv = -1;
     }
   }

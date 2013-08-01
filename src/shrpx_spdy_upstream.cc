@@ -407,7 +407,8 @@ int SpdyUpstream::on_read()
   }
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
-       spdylay_session_want_write(session_) == 0) {
+       spdylay_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(handler_->get_bev())) == 0) {
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }
@@ -432,7 +433,8 @@ int SpdyUpstream::send()
   }
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
-       spdylay_session_want_write(session_) == 0) {
+       spdylay_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(handler_->get_bev())) == 0) {
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }

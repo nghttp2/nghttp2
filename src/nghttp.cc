@@ -508,7 +508,8 @@ struct HttpClient {
     }
     if(rv == 0) {
       if(nghttp2_session_want_read(session) == 0 &&
-         nghttp2_session_want_write(session) == 0) {
+         nghttp2_session_want_write(session) == 0 &&
+         evbuffer_get_length(bufferevent_get_output(bev)) == 0) {
         rv = -1;
       }
     }
@@ -524,7 +525,8 @@ struct HttpClient {
     }
     if(rv == 0) {
       if(nghttp2_session_want_read(session) == 0 &&
-         nghttp2_session_want_write(session) == 0) {
+         nghttp2_session_want_write(session) == 0 &&
+         evbuffer_get_length(bufferevent_get_output(bev)) == 0) {
         rv = -1;
       }
     }

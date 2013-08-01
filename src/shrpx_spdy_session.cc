@@ -1109,7 +1109,8 @@ int SpdySession::on_read()
   }
   if(rv == 0) {
     if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0) {
+       nghttp2_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
       if(LOG_ENABLED(INFO)) {
         SSLOG(INFO, this) << "No more read/write for this session";
       }
@@ -1133,7 +1134,8 @@ int SpdySession::send()
   }
   if(rv == 0) {
     if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0) {
+       nghttp2_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
       if(LOG_ENABLED(INFO)) {
         SSLOG(INFO, this) << "No more read/write for this session";
       }

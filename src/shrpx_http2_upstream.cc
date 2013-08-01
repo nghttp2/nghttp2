@@ -403,7 +403,8 @@ int Http2Upstream::on_read()
   }
   if(rv == 0) {
     if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0) {
+       nghttp2_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(handler_->get_bev())) == 0) {
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }
@@ -428,7 +429,8 @@ int Http2Upstream::send()
   }
   if(rv == 0) {
     if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0) {
+       nghttp2_session_want_write(session_) == 0 &&
+       evbuffer_get_length(bufferevent_get_output(handler_->get_bev())) == 0) {
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }
