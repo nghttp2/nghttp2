@@ -274,7 +274,7 @@ void on_frame_not_send_callback(nghttp2_session *session,
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   ULOG(WARNING, upstream) << "Failed to send control frame type="
-                          << frame->hd.type
+                          << static_cast<uint32_t>(frame->hd.type)
                           << ", lib_error_code=" << lib_error_code << ":"
                           << nghttp2_strerror(lib_error_code);
   if(frame->hd.type == NGHTTP2_HEADERS &&
