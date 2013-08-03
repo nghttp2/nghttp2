@@ -1585,6 +1585,12 @@ int main(int argc, char **argv)
 
   set_color_output(isatty(fileno(stdout)));
 
+  if(!config.no_tls && config.upgrade) {
+    std::cerr << "Warning: -u is ignored because --no-tls is not given."
+              << std::endl;
+    config.upgrade = false;
+  }
+
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
