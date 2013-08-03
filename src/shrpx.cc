@@ -240,13 +240,13 @@ int event_loop()
 
   if(get_config()->client_mode) {
     sv_ssl_ctx = 0;
-    cl_ssl_ctx = get_config()->spdy_downstream_no_tls ?
+    cl_ssl_ctx = get_config()->downstream_no_tls ?
       0 : ssl::create_ssl_client_context();
   } else {
-    sv_ssl_ctx = get_config()->spdy_upstream_no_tls ?
+    sv_ssl_ctx = get_config()->upstream_no_tls ?
       0 : get_config()->default_ssl_ctx;
     cl_ssl_ctx = get_config()->spdy_bridge &&
-      !get_config()->spdy_downstream_no_tls ?
+      !get_config()->downstream_no_tls ?
       ssl::create_ssl_client_context() : 0;
   }
 
@@ -357,8 +357,8 @@ void fill_default_config()
   mod_config()->spdy_upstream_window_bits = 16;
   mod_config()->spdy_downstream_window_bits = 16;
 
-  mod_config()->spdy_upstream_no_tls = false;
-  mod_config()->spdy_downstream_no_tls = false;
+  mod_config()->upstream_no_tls = false;
+  mod_config()->downstream_no_tls = false;
 
   set_config_str(&mod_config()->downstream_host, "127.0.0.1");
   mod_config()->downstream_port = 80;
@@ -902,7 +902,7 @@ int main(int argc, char **argv)
     mod_config()->downstream_proto = PROTO_HTTP;
   }
 
-  if(!get_config()->client_mode && !get_config()->spdy_upstream_no_tls) {
+  if(!get_config()->client_mode && !get_config()->upstream_no_tls) {
     if(!get_config()->private_key_file || !get_config()->cert_file) {
       print_usage(std::cerr);
       LOG(FATAL) << "Too few arguments";

@@ -248,7 +248,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       SSLOG(INFO, spdy) << "Connection established";
     }
     spdy->set_state(SpdySession::CONNECTED);
-    if((!get_config()->spdy_downstream_no_tls &&
+    if((!get_config()->downstream_no_tls &&
         !get_config()->insecure && spdy->check_cert() != 0) ||
        spdy->on_connect() != 0) {
       spdy->disconnect();

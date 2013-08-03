@@ -130,8 +130,8 @@ struct Config {
   bool accesslog;
   size_t spdy_upstream_window_bits;
   size_t spdy_downstream_window_bits;
-  bool spdy_upstream_no_tls;
-  bool spdy_downstream_no_tls;
+  bool upstream_no_tls;
+  bool downstream_no_tls;
   char *backend_tls_sni_name;
   char *pid_file;
   uid_t uid;

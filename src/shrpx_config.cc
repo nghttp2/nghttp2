@@ -266,9 +266,9 @@ int parse_config(const char *opt, const char *optarg)
       return -1;
     }
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_NO_TLS)) {
-    mod_config()->spdy_upstream_no_tls = util::strieq(optarg, "yes");
+    mod_config()->upstream_no_tls = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_NO_TLS)) {
-    mod_config()->spdy_downstream_no_tls = util::strieq(optarg, "yes");
+    mod_config()->downstream_no_tls = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_TLS_SNI_FIELD)) {
     set_config_str(&mod_config()->backend_tls_sni_name, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_PID_FILE)) {
