@@ -125,7 +125,7 @@ const char* nghttp2_strerror(int error_code)
   case NGHTTP2_ERR_DEFERRED_DATA_EXIST:
     return "Another DATA frame has already been deferred";
   case NGHTTP2_ERR_START_STREAM_NOT_ALLOWED:
-    return "SYN_STREAM is not allowed";
+    return "request HEADERS is not allowed";
   case NGHTTP2_ERR_GOAWAY_ALREADY_SENT:
     return "GOAWAY has already been sent";
   case NGHTTP2_ERR_INVALID_HEADER_BLOCK:
