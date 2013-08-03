@@ -235,23 +235,22 @@ void drop_privileges()
 namespace {
 int event_loop()
 {
-  event_base *evbase = event_base_new();
+  auto evbase = event_base_new();
   SSL_CTX *sv_ssl_ctx, *cl_ssl_ctx;
 
   if(get_config()->client_mode) {
-    sv_ssl_ctx = 0;
+    sv_ssl_ctx = nullptr;
     cl_ssl_ctx = get_config()->downstream_no_tls ?
-      0 : ssl::create_ssl_client_context();
+      nullptr : ssl::create_ssl_client_context();
   } else {
     sv_ssl_ctx = get_config()->upstream_no_tls ?
-      0 : get_config()->default_ssl_ctx;
+      nullptr : get_config()->default_ssl_ctx;
     cl_ssl_ctx = get_config()->spdy_bridge &&
       !get_config()->downstream_no_tls ?
-      ssl::create_ssl_client_context() : 0;
+      ssl::create_ssl_client_context() : nullptr;
   }
 
-  ListenHandler *listener_handler = new ListenHandler(evbase, sv_ssl_ctx,
-                                                      cl_ssl_ctx);
+  auto listener_handler = new ListenHandler(evbase, sv_ssl_ctx, cl_ssl_ctx);
   if(get_config()->daemon) {
     if(daemon(0, 0) == -1) {
       LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
