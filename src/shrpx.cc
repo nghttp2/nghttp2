@@ -537,17 +537,13 @@ void print_help(std::ostream& out)
       << "                       frontend connection to 2**<N>.\n"
       << "                       Default: "
       << get_config()->spdy_upstream_window_bits << "\n"
-      << "    --frontend-spdy-no-tls\n"
-      << "                       Disable SSL/TLS on frontend HTTP/2.0\n"
-      << "                       connections.This option also disables\n"
-      << "                       frontend SPDY and HTTP/1.1.\n"
+      << "    --frontend-no-tls  Disable SSL/TLS on frontend connections.\n"
       << "    --backend-spdy-window-bits=<N>\n"
       << "                       Sets the initial window size of HTTP/2.0 and SPDY\n"
       << "                       backend connection to 2**<N>.\n"
       << "                       Default: "
       << get_config()->spdy_downstream_window_bits << "\n"
-      << "    --backend-spdy-no-tls\n"
-      << "                       Disable SSL/TLS on backend HTTP/2.0 connections.\n"
+      << "    --backend-no-tls   Disable SSL/TLS on backend connections.\n"
       << "\n"
       << "  Mode:\n"
       << "    -s, --spdy-proxy   Enable secure HTTP/2.0 and SPDY proxy mode.\n"
@@ -646,8 +642,8 @@ int main(int argc, char **argv)
       {"subcert", required_argument, &flag, 24},
       {"spdy-bridge", no_argument, &flag, 25},
       {"backend-http-proxy-uri", required_argument, &flag, 26},
-      {"backend-spdy-no-tls", no_argument, &flag, 27},
-      {"frontend-spdy-no-tls", no_argument, &flag, 29},
+      {"backend-no-tls", no_argument, &flag, 27},
+      {"frontend-no-tls", no_argument, &flag, 29},
       {"backend-tls-sni-field", required_argument, &flag, 31},
       {"honor-cipher-order", no_argument, &flag, 32},
       {0, 0, 0, 0 }
@@ -810,13 +806,13 @@ int main(int argc, char **argv)
                                          optarg));
         break;
       case 27:
-        // --backend-spdy-no-tls
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_NO_TLS,
+        // --backend-no-tls
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_NO_TLS,
                                          "yes"));
         break;
       case 29:
-        // --frontend-spdy-no-tls
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_NO_TLS,
+        // --frontend-no-tls
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_NO_TLS,
                                          "yes"));
         break;
       case 31:
