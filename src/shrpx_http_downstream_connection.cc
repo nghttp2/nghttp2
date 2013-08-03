@@ -125,26 +125,36 @@ int HttpDownstreamConnection::push_request_headers()
   for(Headers::const_iterator i = request_headers.begin();
       i != request_headers.end(); ++i) {
     if(util::strieq((*i).first.c_str(), "connection")) {
-      if(util::strifind((*i).second.c_str(), "upgrade")) {
+      // nghttpx handles HTTP/2.0 upgrade and does not relay it to the
+      // downstream.
+      if(util::strifind((*i).second.c_str(), "upgrade") &&
+         !util::strifind((*i).second.c_str(), "http2-settings")) {
         connection_upgrade = (*i).second;
       }
       continue;
+    } else if(util::strieq((*i).first.c_str(), "upgrade")) {
+      // nghttpx handles HTTP/2.0 upgrade and does not relay it to the
+      // downstream.
+      if(util::strieq((*i).second.c_str(), NGHTTP2_PROTO_VERSION_ID)) {
+        continue;
+      }
     } else if(util::strieq((*i).first.c_str(), "x-forwarded-proto") ||
-       util::strieq((*i).first.c_str(), "keep-alive") ||
-       util::strieq((*i).first.c_str(), "proxy-connection")) {
+              util::strieq((*i).first.c_str(), "keep-alive") ||
+              util::strieq((*i).first.c_str(), "proxy-connection") ||
+              util::strieq((*i).first.c_str(), "http2-settings")) {
       continue;
-    }
-    if(!get_config()->no_via && util::strieq((*i).first.c_str(), "via")) {
-      via_value = (*i).second;
-      continue;
-    }
-    if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
+    } else if(util::strieq((*i).first.c_str(), "via")) {
+      if(!get_config()->no_via) {
+        via_value = (*i).second;
+        continue;
+      }
+    } else if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
       xff_value = (*i).second;
       continue;
-    }
-    if(util::strieq((*i).first.c_str(), "expect") &&
-       util::strifind((*i).second.c_str(), "100-continue")) {
-      continue;
+    } else if(util::strieq((*i).first.c_str(), "expect")) {
+      if(util::strifind((*i).second.c_str(), "100-continue")) {
+        continue;
+      }
     }
     hdrs += (*i).first;
     http::capitalize(hdrs, hdrs.size()-(*i).first.size());
@@ -491,6 +501,14 @@ int HttpDownstreamConnection::on_read()
 int HttpDownstreamConnection::on_write()
 {
   return 0;
+}
+
+void HttpDownstreamConnection::on_upstream_change(Upstream *upstream)
+{
+  bufferevent_setcb(bev_,
+                    upstream->get_downstream_readcb(),
+                    upstream->get_downstream_writecb(),
+                    upstream->get_downstream_eventcb(), this);
 }
 
 } // namespace shrpx

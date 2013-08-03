@@ -32,6 +32,7 @@
 namespace shrpx {
 
 class ClientHandler;
+class Upstream;
 class Downstream;
 
 class DownstreamConnection {
@@ -53,6 +54,8 @@ public:
 
   virtual int on_read() = 0;
   virtual int on_write() = 0;
+
+  virtual void on_upstream_change(Upstream *uptream) = 0;
 
   ClientHandler* get_client_handler();
   Downstream* get_downstream();

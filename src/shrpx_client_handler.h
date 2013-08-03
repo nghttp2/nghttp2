@@ -37,6 +37,7 @@ namespace shrpx {
 class Upstream;
 class DownstreamConnection;
 class SpdySession;
+class HttpsUpstream;
 
 class ClientHandler {
 public:
@@ -65,6 +66,14 @@ public:
   SpdySession* get_spdy_session() const;
   size_t get_left_connhd_len() const;
   void set_left_connhd_len(size_t left);
+  // Call this function when HTTP/2.0 connection header is received at
+  // the start of the connection.
+  void direct_http2_upgrade();
+  // Performs HTTP/2.0 Upgrade from the connection managed by
+  // |http|. If this function fails, the connection must be
+  // terminated. This function returns 0 if it succeeds, or -1.
+  int perform_http2_upgrade(HttpsUpstream *http);
+  bool get_http2_upgrade_allowed() const;
 private:
   bufferevent *bev_;
   int fd_;

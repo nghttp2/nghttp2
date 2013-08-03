@@ -366,8 +366,7 @@ void fill_default_config()
   mod_config()->downstream_addrlen = 0;
 
   mod_config()->num_worker = 1;
-  mod_config()->spdy_max_concurrent_streams =
-    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  mod_config()->spdy_max_concurrent_streams = 100;
   mod_config()->add_x_forwarded_for = false;
   mod_config()->no_via = false;
   mod_config()->accesslog = false;

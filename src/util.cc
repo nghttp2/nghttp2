@@ -214,6 +214,40 @@ std::string format_hex(const unsigned char *s, size_t len)
   return res;
 }
 
+void to_token68(std::string& base64str)
+{
+  for(auto i = std::begin(base64str); i != std::end(base64str); ++i) {
+    switch(*i) {
+    case '+':
+      *i = '-';
+      break;
+    case '/':
+      *i = '_';
+      break;
+    case '=':
+      base64str.erase(i, std::end(base64str));
+      return;
+    }
+  }
+  return;
+}
+
+void to_base64(std::string& token68str)
+{
+  for(auto i = std::begin(token68str); i != std::end(token68str); ++i) {
+    switch(*i) {
+    case '-':
+      *i = '+';
+      break;
+    case '_':
+      *i = '/';
+      break;
+    }
+  }
+  token68str += std::string(4 - token68str.size() % 4, '=');
+  return;
+}
+
 } // namespace util
 
 } // namespace nghttp2

@@ -52,6 +52,7 @@ public:
   void attach_downstream(Downstream *downstream);
   void delete_downstream();
   Downstream* get_downstream() const;
+  Downstream* pop_downstream();
   int error_reply(int status_code);
 
   virtual void pause_read(IOCtrlReason reason);

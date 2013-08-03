@@ -52,6 +52,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     request_connection_close_(false),
     request_expect_100_continue_(false),
     request_header_key_prev_(false),
+    request_bodylen_(0),
     response_state_(INITIAL),
     response_http_status_(0),
     response_major_(1),
@@ -242,9 +243,22 @@ int Downstream::get_request_minor() const
   return request_minor_;
 }
 
+void Downstream::reset_upstream(Upstream* upstream)
+{
+  upstream_ = upstream;
+  if(dconn_) {
+    dconn_->on_upstream_change(upstream);
+  }
+}
+
 Upstream* Downstream::get_upstream() const
 {
   return upstream_;
+}
+
+void Downstream::set_stream_id(int32_t stream_id)
+{
+  stream_id_ = stream_id;
 }
 
 int32_t Downstream::get_stream_id() const
@@ -306,6 +320,7 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
     DLOG(WARNING, this) << "dconn_ is NULL";
     return 0;
   }
+  request_bodylen_ += datalen;
   return dconn_->push_upload_data_chunk(data, datalen);
 }
 
@@ -482,10 +497,12 @@ void Downstream::check_upgrade_fulfilled()
     upgraded_ = 200 <= response_http_status_ && response_http_status_ < 300;
   } else {
     // TODO Do more strict checking for upgrade headers
-    for(auto& hd : request_headers_) {
-      if(util::strieq("upgrade", hd.first.c_str())) {
-        upgraded_ = true;
-        break;
+    if(response_http_status_ == 101) {
+      for(auto& hd : request_headers_) {
+        if(util::strieq("upgrade", hd.first.c_str())) {
+          upgraded_ = true;
+          break;
+        }
       }
     }
   }
@@ -514,6 +531,27 @@ void Downstream::check_upgrade_request()
 bool Downstream::get_upgrade_request() const
 {
   return upgrade_request_;
+}
+
+bool Downstream::http2_upgrade_request() const
+{
+  if(request_bodylen_ != 0) {
+    return false;
+  }
+  bool upgrade_seen = false;
+  bool http2_settings_seen = false;
+  for(auto& hd : request_headers_) {
+    // For now just check NGHTTP2_PROTO_VERSION_ID in Upgrade header
+    // field and existence of HTTP2-Settings header field.
+    if(util::strieq(hd.first.c_str(), "upgrade")) {
+       if(util::strieq(hd.second.c_str(), NGHTTP2_PROTO_VERSION_ID)) {
+        upgrade_seen = true;
+      }
+    } else if(util::strieq(hd.first.c_str(), "http2-settings")) {
+      http2_settings_seen = true;
+    }
+  }
+  return upgrade_seen && http2_settings_seen;
 }
 
 void Downstream::set_downstream_stream_id(int32_t stream_id)

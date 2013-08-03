@@ -375,6 +375,9 @@ make_unique(size_t size)
   return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
 }
 
+void to_token68(std::string& base64str);
+void to_base64(std::string& token68str);
+
 } // namespace util
 
 } // namespace nghttp2

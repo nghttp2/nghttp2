@@ -65,6 +65,7 @@
 #include "app_helper.h"
 #include "HtmlParser.h"
 #include "util.h"
+#include "base64.h"
 
 #ifndef O_BINARY
 # define O_BINARY (0)
@@ -81,6 +82,7 @@ struct Config {
   bool no_tls;
   bool no_connection_flow_control;
   bool no_stream_flow_control;
+  bool upgrade;
   int multiply;
   // milliseconds
   int timeout;
@@ -99,6 +101,7 @@ struct Config {
       no_tls(false),
       no_connection_flow_control(false),
       no_stream_flow_control(false),
+      upgrade(false),
       multiply(1),
       timeout(-1),
       window_bits(-1),
@@ -320,7 +323,36 @@ struct SessionStat {
 Config config;
 
 namespace {
+size_t populate_settings(nghttp2_settings_entry *iv)
+{
+  size_t niv = 2;
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 100;
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  if(config.window_bits != -1) {
+    iv[1].value = 1 << config.window_bits;
+  } else {
+    iv[1].value = NGHTTP2_INITIAL_WINDOW_SIZE;
+  }
+  if(config.no_connection_flow_control && config.no_stream_flow_control) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
+    iv[niv].value = 1;
+    ++niv;
+  }
+  return niv;
+}
+} // namespace
+
+namespace {
 void eventcb(bufferevent *bev, short events, void *ptr);
+} // namespace
+
+namespace {
+extern http_parser_settings htp_hooks;
+} // namespace
+
+namespace {
+void upgrade_readcb(bufferevent *bev, void *ptr);
 } // namespace
 
 namespace {
@@ -337,6 +369,11 @@ namespace {
 void submit_request(HttpClient *client,
                     const std::map<std::string, std::string>& headers,
                     Request *req);
+} // namespace
+
+namespace {
+void check_stream_id(nghttp2_session *session, int32_t stream_id,
+                     void *user_data);
 } // namespace
 
 enum client_state {
@@ -363,6 +400,18 @@ struct HttpClient {
   size_t complete;
   std::string hostport;
   SessionStat stat;
+  // Used for parse the HTTP upgrade response from server
+  http_parser *htp;
+  // true if the response message of HTTP Upgrade request is fully
+  // received. It is not relevant the upgrade succeeds, or not.
+  bool upgrade_response_complete;
+  // The HTTP status code of the response message of HTTP Upgrade.
+  unsigned int upgrade_response_status_code;
+  // SETTINGS payload sent as token68 in HTTP Upgrade
+  uint8_t settings_payload[16];
+  // The length of settings_payload
+  size_t settings_payloadlen;
+
   HttpClient(const nghttp2_session_callbacks* callbacks,
              event_base *evbase, SSL_CTX *ssl_ctx)
     : session(nullptr),
@@ -373,12 +422,16 @@ struct HttpClient {
       ssl(nullptr),
       bev(nullptr),
       state(STATE_IDLE),
-      complete(0)
+      complete(0),
+      htp(nullptr),
+      upgrade_response_complete(false),
+      upgrade_response_status_code(0)
   {}
 
   ~HttpClient()
   {
     disconnect();
+    delete htp;
   }
 
   int initiate_connection(const std::string& host, uint16_t port)
@@ -406,8 +459,6 @@ struct HttpClient {
         std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
         return -1;
       }
-      // If state_ == PROXY_CONNECTED, we has connected to the proxy
-      // using fd_ and tunnel has been established.
       bev = bufferevent_openssl_socket_new(evbase, -1, ssl,
                                            BUFFEREVENT_SSL_CONNECTING,
                                            BEV_OPT_DEFER_CALLBACKS);
@@ -422,7 +473,14 @@ struct HttpClient {
       return -1;
     }
     bufferevent_enable(bev, EV_READ);
-    bufferevent_setcb(bev, readcb, writecb, eventcb, this);
+    if(config.upgrade) {
+      htp = new http_parser();
+      http_parser_init(htp, HTTP_RESPONSE);
+      htp->data = this;
+      bufferevent_setcb(bev, upgrade_readcb, nullptr, eventcb, this);
+    } else {
+      bufferevent_setcb(bev, readcb, writecb, eventcb, this);
+    }
     if(config.timeout != -1) {
       timeval tv = { config.timeout, 0 };
       bufferevent_set_timeouts(bev, &tv, &tv);
@@ -453,33 +511,135 @@ struct HttpClient {
     }
   }
 
+  int on_upgrade_connect()
+  {
+    record_handshake_time();
+    assert(!reqvec.empty());
+    nghttp2_settings_entry iv[16];
+    size_t niv = populate_settings(iv);
+    assert(sizeof(settings_payload) >= 8*niv);
+    settings_payloadlen =
+      nghttp2_pack_settings_payload(settings_payload, iv, niv);
+    auto token68 = base64::encode(&settings_payload[0],
+                                  &settings_payload[settings_payloadlen]);
+    util::to_token68(token68);
+    std::string req;
+    if(reqvec[0]->data_prd) {
+      // If the request contains upload data, use OPTIONS * to upgrade
+      req = "OPTIONS *";
+    } else {
+      req = "GET ";
+      req += reqvec[0]->make_reqpath();
+    }
+    req += " HTTP/1.1\r\n"
+      "Host: ";
+    req += hostport;
+    req += "\r\n";
+    req += "Connection: Upgrade, HTTP2-Settings\r\n"
+      "Upgrade: " NGHTTP2_PROTO_VERSION_ID "\r\n"
+      "HTTP2-Settings: ";
+    req += token68;
+    req += "\r\n";
+    req += "Accept: */*\r\n"
+      "User-Agent: nghttp2/" NGHTTP2_VERSION "\r\n"
+      "\r\n";
+    bufferevent_write(bev, req.c_str(), req.size());
+    if(config.verbose) {
+      print_timer();
+      std::cout << " HTTP Upgrade request\n"
+                << req << std::endl;
+    }
+    return 0;
+  }
+
+  int on_upgrade_read()
+  {
+    int rv;
+    auto input = bufferevent_get_input(bev);
+    auto inputlen = evbuffer_get_length(input);
+    if(inputlen == 0) {
+      return 0;
+    }
+    auto mem = evbuffer_pullup(input, -1);
+    auto nread = http_parser_execute(htp, &htp_hooks,
+                                     reinterpret_cast<const char*>(mem),
+                                     inputlen);
+    if(config.verbose) {
+      std::cout.write(reinterpret_cast<const char*>(mem), nread);
+    }
+    evbuffer_drain(input, nread);
+
+    auto htperr = HTTP_PARSER_ERRNO(htp);
+    if(htperr == HPE_OK) {
+      if(upgrade_response_complete) {
+        if(config.verbose) {
+          std::cout << std::endl;
+        }
+        if(upgrade_response_status_code == 101) {
+          if(config.verbose) {
+            print_timer();
+            std::cout << " HTTP Upgrade success" << std::endl;
+          }
+          bufferevent_setcb(bev, readcb, writecb, eventcb, this);
+          rv = on_connect();
+          if(rv != 0) {
+            return rv;
+          }
+        } else {
+          std::cerr << "HTTP Upgrade failed" << std::endl;
+          return -1;
+        }
+      }
+    } else {
+      std::cerr << "Failed to parse HTTP Upgrade response header: "
+                << "(" << http_errno_name(htperr) << ") "
+                << http_errno_description(htperr) << std::endl;
+      return -1;
+    }
+    return 0;
+  }
+
   int on_connect()
   {
     int rv;
-    record_handshake_time();
+    if(!config.upgrade) {
+      record_handshake_time();
+    }
     rv = nghttp2_session_client_new(&session, callbacks, this);
     if(rv != 0) {
       return -1;
     }
+    if(config.upgrade) {
+      // Adjust stream user-data depending on the existence of upload
+      // data
+      Request *stream_user_data = nullptr;
+      if(!reqvec[0]->data_prd) {
+        stream_user_data = reqvec[0].get();
+      }
+      rv = nghttp2_session_upgrade(session, settings_payload,
+                                   settings_payloadlen, stream_user_data);
+      if(rv != 0) {
+        std::cerr << "nghttp2_session_upgrade() returned error: "
+                  << nghttp2_strerror(rv) << std::endl;
+        return -1;
+      }
+      if(stream_user_data) {
+        check_stream_id(session, 1, this);
+      }
+    }
     // Send connection header here
     bufferevent_write(bev, NGHTTP2_CLIENT_CONNECTION_HEADER,
                       NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
-
-    nghttp2_settings_entry iv[2];
-    size_t niv = 0;
-    if(config.window_bits != -1) {
-      iv[niv].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-      iv[niv].value = 1 << config.window_bits;
-      ++niv;
-    }
-    if(config.no_connection_flow_control && config.no_stream_flow_control) {
-      iv[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-      iv[niv].value = 1;
-      ++niv;
-    }
-    rv = nghttp2_submit_settings(session, iv, niv);
-    if(rv != 0) {
-      return -1;
+    // If upgrade succeeds, the SETTINGS value sent with
+    // HTTP2-Settings header field has already been submitted to
+    // session object.
+    if(!config.upgrade) {
+      nghttp2_settings_entry iv[16];
+      auto niv = populate_settings(iv);
+      rv = nghttp2_submit_settings(session, iv, niv);
+      if(rv != 0) {
+        return -1;
+      }
     }
     if(config.no_connection_flow_control && !config.no_stream_flow_control) {
       rv = nghttp2_submit_window_update(session, NGHTTP2_FLAG_END_FLOW_CONTROL,
@@ -488,8 +648,11 @@ struct HttpClient {
         return -1;
       }
     }
-    for(auto& req : reqvec) {
-      submit_request(this, config.headers, req.get());
+    // Adjust first request depending on the existence of the upload
+    // data
+    for(auto i = std::begin(reqvec)+(config.upgrade && !reqvec[0]->data_prd);
+        i != std::end(reqvec); ++i) {
+      submit_request(this, config.headers, (*i).get());
     }
     return on_write();
   }
@@ -611,6 +774,48 @@ struct HttpClient {
     record_time(&stat.on_handshake_time);
   }
 };
+
+namespace {
+int htp_msg_begincb(http_parser *htp)
+{
+  if(config.verbose) {
+    print_timer();
+    std::cout << " HTTP Upgrade response" << std::endl;
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+int htp_status_completecb(http_parser *htp)
+{
+  auto client = reinterpret_cast<HttpClient*>(htp->data);
+  client->upgrade_response_status_code = htp->status_code;
+  return 0;
+}
+} // namespace
+
+namespace {
+int htp_msg_completecb(http_parser *htp)
+{
+  auto client = reinterpret_cast<HttpClient*>(htp->data);
+  client->upgrade_response_complete = true;
+  return 0;
+}
+} // namespace
+
+namespace {
+http_parser_settings htp_hooks = {
+  htp_msg_begincb, /*http_cb      on_message_begin;*/
+  nullptr, /*http_data_cb on_url;*/
+  htp_status_completecb, /*http_cb on_status_complete */
+  nullptr, /*http_data_cb on_header_field;*/
+  nullptr, /*http_data_cb on_header_value;*/
+  nullptr, /*http_cb      on_headers_complete;*/
+  nullptr, /*http_data_cb on_body;*/
+  htp_msg_completecb /*http_cb      on_message_complete;*/
+};
+} // namespace
 
 namespace {
 void submit_request(HttpClient *client,
@@ -756,28 +961,30 @@ void on_data_chunk_recv_callback
   }
 }
 
-void check_stream_id(nghttp2_session *session, nghttp2_frame *frame,
+namespace {
+void check_stream_id(nghttp2_session *session, int32_t stream_id,
                      void *user_data)
 {
   HttpClient *client = get_session(user_data);
-  int32_t stream_id = frame->hd.stream_id;
   Request *req = (Request*)nghttp2_session_get_stream_user_data(session,
                                                                 stream_id);
   client->streams[stream_id] = req;
   req->record_syn_stream_time();
+
+  if(!config.no_connection_flow_control && config.no_stream_flow_control) {
+    nghttp2_submit_window_update(session,
+                                 NGHTTP2_FLAG_END_FLOW_CONTROL,
+                                 stream_id, 0);
+  }
 }
+} // namespace
 
 void on_frame_send_callback2
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    check_stream_id(session, frame, user_data);
-    if(!config.no_connection_flow_control && config.no_stream_flow_control) {
-      nghttp2_submit_window_update(session,
-                                   NGHTTP2_FLAG_END_FLOW_CONTROL,
-                                   frame->hd.stream_id, 0);
-    }
+    check_stream_id(session, frame->hd.stream_id, user_data);
   }
   if(config.verbose) {
     on_frame_send_callback(session, frame, user_data);
@@ -826,8 +1033,11 @@ void on_frame_recv_callback2
      frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
     auto req = (Request*)nghttp2_session_get_stream_user_data
       (session, frame->hd.stream_id);
-    assert(req);
-    req->record_syn_reply_time();
+    // If this is the HTTP Upgrade with OPTIONS method to avoid POST,
+    // req is nullptr.
+    if(req) {
+      req->record_syn_reply_time();
+    }
   }
   check_response_header(session, frame, user_data);
   if(config.verbose) {
@@ -917,6 +1127,18 @@ int client_select_next_proto_cb(SSL* ssl,
 } // namespace
 
 namespace {
+void upgrade_readcb(bufferevent *bev, void *ptr)
+{
+  int rv;
+  auto client = reinterpret_cast<HttpClient*>(ptr);
+  rv = client->on_upgrade_read();
+  if(rv != 0) {
+    client->disconnect();
+  }
+}
+} // namespace
+
+namespace {
 void readcb(bufferevent *bev, void *ptr)
 {
   int rv;
@@ -946,18 +1168,26 @@ void writecb(bufferevent *bev, void *ptr)
 namespace {
 void eventcb(bufferevent *bev, short events, void *ptr)
 {
+  int rv;
   HttpClient *client = reinterpret_cast<HttpClient*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     client->state = STATE_CONNECTED;
-    // TODO Check NPN result and fail fast?
-    client->on_connect();
-    /* Send connection header here */
     int fd = bufferevent_getfd(bev);
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
       std::cerr << "Setting option TCP_NODELAY failed: errno="
                 << errno << std::endl;
+    }
+    if(config.upgrade) {
+      rv = client->on_upgrade_connect();
+    } else {
+      // TODO Check NPN result and fail fast?
+      rv = client->on_connect();
+    }
+    if(rv != 0) {
+      client->disconnect();
+      return;
     }
   } else if(events & BEV_EVENT_EOF) {
     std::cerr << "EOF" << std::endl;
@@ -1174,7 +1404,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [-FOafnsv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: nghttp [-FOafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "              [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>..."
       << std::endl;
 }
@@ -1215,6 +1445,10 @@ void print_help(std::ostream& out)
       << "                       Disables connection level flow control.\n"
       << "    -f, --no-stream-flow-control\n"
       << "                       Disables stream level flow control.\n"
+      << "    -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
+      << "                       option is ignored if --no-tls is not given.\n"
+      << "                       If -d is used, the HTTP upgrade request is\n"
+      << "                       performed with OPTIONS method.\n"
       << std::endl;
 }
 
@@ -1239,10 +1473,11 @@ int main(int argc, char **argv)
       {"multiply", required_argument, 0, 'm' },
       {"no-connection-flow-control", no_argument, 0, 'F'},
       {"no-stream-flow-control", no_argument, 0, 'f'},
+      {"upgrade", no_argument, 0, 'u'},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "FOad:fm:nhH:vst:w:", long_options,
+    int c = getopt_long(argc, argv, "FOad:fm:nhH:vst:uw:", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -1268,6 +1503,9 @@ int main(int argc, char **argv)
       break;
     case 't':
       config.timeout = atoi(optarg) * 1000;
+      break;
+    case 'u':
+      config.upgrade = true;
       break;
     case 'w': {
       errno = 0;

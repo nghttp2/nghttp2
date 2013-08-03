@@ -58,6 +58,8 @@ public:
   virtual int on_read();
   virtual int on_write();
 
+  virtual void on_upstream_change(Upstream *upstream) {}
+
   int send();
 
   int init_request_body_buf();

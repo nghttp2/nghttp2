@@ -122,13 +122,14 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
 } // namespace
 
 namespace {
-void upstream_connhd_readcb(bufferevent *bev, void *arg)
+void upstream_http2_connhd_readcb(bufferevent *bev, void *arg)
 {
+  // This callback assumes upstream is Http2Upstream.
   uint8_t data[NGHTTP2_CLIENT_CONNECTION_HEADER_LEN];
   auto handler = reinterpret_cast<ClientHandler*>(arg);
-  size_t leftlen = handler->get_left_connhd_len();
+  auto leftlen = handler->get_left_connhd_len();
   auto input = bufferevent_get_input(bev);
-  int readlen = evbuffer_remove(input, data, leftlen);
+  auto readlen = evbuffer_remove(input, data, leftlen);
   if(readlen == -1) {
     delete handler;
     return;
@@ -136,12 +137,66 @@ void upstream_connhd_readcb(bufferevent *bev, void *arg)
   if(memcmp(NGHTTP2_CLIENT_CONNECTION_HEADER +
             NGHTTP2_CLIENT_CONNECTION_HEADER_LEN - leftlen,
             data, readlen) != 0) {
+    // There is no downgrade path here. Just drop the connection.
+    if(LOG_ENABLED(INFO)) {
+      CLOG(INFO, handler) << "invalid client connection header";
+    }
     delete handler;
     return;
   }
   leftlen -= readlen;
   handler->set_left_connhd_len(leftlen);
   if(leftlen == 0) {
+    handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+    // Run on_read to process data left in buffer since they are not
+    // notified further
+    if(handler->on_read() != 0) {
+      delete handler;
+      return;
+    }
+  }
+}
+} // namespace
+
+namespace {
+void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
+{
+  // This callback assumes upstream is HttpsUpstream.
+  uint8_t data[NGHTTP2_CLIENT_CONNECTION_HEADER_LEN];
+  auto handler = reinterpret_cast<ClientHandler*>(arg);
+  auto leftlen = handler->get_left_connhd_len();
+  auto input = bufferevent_get_input(bev);
+  auto readlen = evbuffer_copyout(input, data, leftlen);
+  if(readlen == -1) {
+    delete handler;
+    return;
+  }
+  if(memcmp(NGHTTP2_CLIENT_CONNECTION_HEADER +
+            NGHTTP2_CLIENT_CONNECTION_HEADER_LEN - leftlen,
+            data, readlen) != 0) {
+    if(LOG_ENABLED(INFO)) {
+      CLOG(INFO, handler) << "This is HTTP/1.1 connection, "
+                          << "but may be upgraded to HTTP/2.0 later.";
+    }
+    // Reset header length for later HTTP/2.0 upgrade
+    handler->set_left_connhd_len(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+    if(handler->on_read() != 0) {
+      delete handler;
+      return;
+    }
+    return;
+  }
+  if(evbuffer_drain(input, readlen) == -1) {
+    delete handler;
+    return;
+  }
+  leftlen -= readlen;
+  handler->set_left_connhd_len(leftlen);
+  if(leftlen == 0) {
+    if(LOG_ENABLED(INFO)) {
+      CLOG(INFO, handler) << "direct HTTP/2.0 connection";
+    }
+    handler->direct_http2_upgrade();
     handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
     // Run on_read to process data left in buffer since they are not
     // notified further
@@ -171,15 +226,11 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
   if(ssl_) {
     set_bev_cb(nullptr, upstream_writecb, upstream_eventcb);
   } else {
-    if(get_config()->client_mode) {
-      // Client mode
-      upstream_ = new HttpsUpstream(this);
-      set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
-    } else {
-      // no-TLS SPDY
-      upstream_ = new Http2Upstream(this);
-      set_bev_cb(upstream_connhd_readcb, upstream_writecb, upstream_eventcb);
-    }
+    // For non-TLS version, first create HttpsUpstream. It may be
+    // upgraded to HTTP/2.0 through HTTP Upgrade or direct HTTP/2.0
+    // connection.
+    upstream_ = new HttpsUpstream(this);
+    set_bev_cb(upstream_http1_connhd_readcb, nullptr, upstream_eventcb);
   }
 }
 
@@ -249,7 +300,8 @@ int ClientHandler::validate_next_proto()
       CLOG(INFO, this) << "The negotiated next protocol: " << proto;
     }
     if(proto == NGHTTP2_PROTO_VERSION_ID) {
-      set_bev_cb(upstream_connhd_readcb, upstream_writecb, upstream_eventcb);
+      set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
+                 upstream_eventcb);
       upstream_ = new Http2Upstream(this);
       return 0;
     } else {
@@ -367,6 +419,40 @@ size_t ClientHandler::get_left_connhd_len() const
 void ClientHandler::set_left_connhd_len(size_t left)
 {
   left_connhd_len_ = left;
+}
+
+void ClientHandler::direct_http2_upgrade()
+{
+  delete upstream_;
+  upstream_= new Http2Upstream(this);
+  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+}
+
+int ClientHandler::perform_http2_upgrade(HttpsUpstream *http)
+{
+  int rv;
+  auto upstream = new Http2Upstream(this);
+  if(upstream->upgrade_upstream(http) != 0) {
+    delete upstream;
+    return -1;
+  }
+  upstream_ = upstream;
+  set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb, upstream_eventcb);
+  static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
+    "Connection: Upgrade\r\n"
+    "Upgrade: HTTP/2.0\r\n"
+    "\r\n";
+  rv = bufferevent_write(bev_, res, sizeof(res) - 1);
+  if(rv != 0) {
+    CLOG(FATAL, this) << "bufferevent_write() faild";
+    return -1;
+  }
+  return 0;
+}
+
+bool ClientHandler::get_http2_upgrade_allowed() const
+{
+  return !ssl_;
 }
 
 } // namespace shrpx

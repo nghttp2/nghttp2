@@ -285,29 +285,40 @@ int SpdyDownstreamConnection::push_request_headers()
         chunked_encoding = true;
       }
       // Ignore transfer-encoding
+      continue;
+    } else if(util::strieq((*i).first.c_str(), "upgrade")) {
+      // nghttpx handles HTTP/2.0 upgrade and does not relay it to the
+      // downstream.
+      if(util::strieq((*i).second.c_str(), NGHTTP2_PROTO_VERSION_ID)) {
+        continue;
+      }
     } else if(util::strieq((*i).first.c_str(), "x-forwarded-proto") ||
               util::strieq((*i).first.c_str(), "keep-alive") ||
               util::strieq((*i).first.c_str(), "connection") ||
-              util:: strieq((*i).first.c_str(), "proxy-connection")) {
+              util::strieq((*i).first.c_str(), "proxy-connection") ||
+              util::strieq((*i).first.c_str(), "http2-settings")) {
       // These are ignored
+      continue;
     } else if(!get_config()->no_via &&
               util::strieq((*i).first.c_str(), "via")) {
       via_value = (*i).second;
+      continue;
     } else if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
       xff_value = (*i).second;
+      continue;
     } else if(util::strieq((*i).first.c_str(), "expect") &&
        util::strifind((*i).second.c_str(), "100-continue")) {
       // Ignore
+      continue;
     } else if(util::strieq((*i).first.c_str(), "host")) {
       nv[hdidx++] = ":host";
       nv[hdidx++] = (*i).second.c_str();
-    } else {
-      if(util::strieq((*i).first.c_str(), "content-length")) {
-        content_length = true;
-      }
-      nv[hdidx++] = (*i).first.c_str();
-      nv[hdidx++] = (*i).second.c_str();
+      continue;
+    } else if(util::strieq((*i).first.c_str(), "content-length")) {
+      content_length = true;
     }
+    nv[hdidx++] = (*i).first.c_str();
+    nv[hdidx++] = (*i).second.c_str();
   }
 
   if(get_config()->add_x_forwarded_for) {

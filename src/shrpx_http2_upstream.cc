@@ -30,12 +30,14 @@
 #include <sstream>
 
 #include "shrpx_client_handler.h"
+#include "shrpx_https_upstream.h"
 #include "shrpx_downstream.h"
 #include "shrpx_downstream_connection.h"
 #include "shrpx_config.h"
 #include "shrpx_http.h"
 #include "shrpx_accesslog.h"
 #include "util.h"
+#include "base64.h"
 
 using namespace nghttp2;
 
@@ -134,6 +136,40 @@ void on_stream_close_callback
   }
 }
 } // namespace
+
+int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
+{
+  int rv;
+  std::string settings_payload;
+  auto downstream = http->get_downstream();
+  for(auto& hd : downstream->get_request_headers()) {
+    if(util::strieq(hd.first.c_str(), "http2-settings")) {
+      auto val = hd.second;
+      util::to_base64(val);
+      settings_payload = base64::decode(std::begin(val), std::end(val));
+      break;
+    }
+  }
+  rv = nghttp2_session_upgrade
+    (session_,
+     reinterpret_cast<const uint8_t*>(settings_payload.c_str()),
+     settings_payload.size(),
+     nullptr);
+  if(rv != 0) {
+    ULOG(WARNING, this) << "nghttp2_session_upgrade() returned error: "
+                        << nghttp2_strerror(rv);
+    return -1;
+  }
+  pre_upstream_ = http;
+  http->pop_downstream();
+  downstream->reset_upstream(this);
+  add_downstream(downstream);
+  downstream->init_response_body_buf();
+  downstream->set_stream_id(1);
+  downstream->set_priority(0);
+
+  return 0;
+}
 
 namespace {
 void on_frame_recv_callback
@@ -335,7 +371,8 @@ nghttp2_error_code infer_upstream_rst_stream_error_code
 
 Http2Upstream::Http2Upstream(ClientHandler *handler)
   : handler_(handler),
-    session_(nullptr)
+    session_(nullptr),
+    pre_upstream_(nullptr)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
@@ -380,13 +417,12 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_END_FLOW_CONTROL,
                                     0, 0);
   assert(rv == 0);
-
-  send();
 }
 
 Http2Upstream::~Http2Upstream()
 {
   nghttp2_session_del(session_);
+  delete pre_upstream_;
 }
 
 int Http2Upstream::on_read()

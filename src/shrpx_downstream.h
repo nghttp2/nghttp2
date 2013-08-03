@@ -50,7 +50,9 @@ class Downstream {
 public:
   Downstream(Upstream *upstream, int stream_id, int priority);
   ~Downstream();
+  void reset_upstream(Upstream *upstream);
   Upstream* get_upstream() const;
+  void set_stream_id(int32_t stream_id);
   int32_t get_stream_id() const;
   void set_priority(int pri);
   void pause_read(IOCtrlReason reason);
@@ -78,6 +80,8 @@ public:
   // Returns true if the upgrade is succeded as a result of the call
   // check_upgrade_fulfilled().
   bool get_upgraded() const;
+  // Returns true if the request is HTTP Upgrade for HTTP/2.0
+  bool http2_upgrade_request() const;
   // downstream request API
   const Headers& get_request_headers() const;
   void add_request_header(const std::string& name, const std::string& value);
@@ -169,6 +173,8 @@ private:
   bool request_expect_100_continue_;
   Headers request_headers_;
   bool request_header_key_prev_;
+  // the length of request body
+  int64_t request_bodylen_;
 
   int response_state_;
   unsigned int response_http_status_;

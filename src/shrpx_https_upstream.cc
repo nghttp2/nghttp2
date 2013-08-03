@@ -293,11 +293,11 @@ int HttpsUpstream::on_read()
   // Get downstream again because it may be initialized in http parser
   // execution
   downstream = get_downstream();
-
+  auto handler = get_client_handler();
   http_errno htperr = HTTP_PARSER_ERRNO(htp_);
   if(htperr == HPE_PAUSED) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      get_client_handler()->set_should_close_after_write(true);
+      handler->set_should_close_after_write(true);
       // Following paues_read is needed to avoid reading next data.
       pause_read(SHRPX_MSG_BLOCK);
       if(error_reply(503) != 0) {
@@ -311,6 +311,13 @@ int HttpsUpstream::on_read()
         assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
         delete_downstream();
       } else {
+        if(handler->get_http2_upgrade_allowed() &&
+           downstream->http2_upgrade_request()) {
+          if(handler->perform_http2_upgrade(this) != 0) {
+            return -1;
+          }
+          return 0;
+        }
         pause_read(SHRPX_MSG_BLOCK);
       }
     }
@@ -322,7 +329,7 @@ int HttpsUpstream::on_read()
         ULOG(WARNING, this) << "Request Header too long:"
                             << current_header_length_
                             << " bytes";
-        get_client_handler()->set_should_close_after_write(true);
+        handler->set_should_close_after_write(true);
         pause_read(SHRPX_MSG_BLOCK);
         if(error_reply(400) != 0) {
           return -1;
@@ -340,7 +347,7 @@ int HttpsUpstream::on_read()
                        << "(" << http_errno_name(htperr) << ") "
                        << http_errno_description(htperr);
     }
-    get_client_handler()->set_should_close_after_write(true);
+    handler->set_should_close_after_write(true);
     pause_read(SHRPX_MSG_BLOCK);
     if(error_reply(400) != 0) {
       return -1;
@@ -633,6 +640,13 @@ void HttpsUpstream::delete_downstream()
 Downstream* HttpsUpstream::get_downstream() const
 {
   return downstream_;
+}
+
+Downstream* HttpsUpstream::pop_downstream()
+{
+  auto downstream = downstream_;
+  downstream_ = nullptr;
+  return downstream;
 }
 
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
