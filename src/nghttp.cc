@@ -330,7 +330,7 @@ size_t populate_settings(nghttp2_settings_entry *iv)
   iv[0].value = 100;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   if(config.window_bits != -1) {
-    iv[1].value = 1 << config.window_bits;
+    iv[1].value = (1 << config.window_bits) - 1;
   } else {
     iv[1].value = NGHTTP2_INITIAL_WINDOW_SIZE;
   }
@@ -1423,7 +1423,7 @@ void print_help(std::ostream& out)
       << "                       filename. Not implemented yet.\n"
       << "    -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
       << "    -w, --window-bits=<N>\n"
-      << "                       Sets the initial window size to 2**<N>.\n"
+      << "                       Sets the initial window size to 2**<N>-1.\n"
       << "    -a, --get-assets   Download assets such as stylesheets, images\n"
       << "                       and script files linked from the downloaded\n"
       << "                       resource. Only links whose origins are the\n"

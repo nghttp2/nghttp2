@@ -351,8 +351,9 @@ void fill_default_config()
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout.tv_sec = 60;
 
-  // window bits for SPDY upstream/downstream connection. 2**16 =
-  // 64KiB, which is SPDY/3 default.
+  // window bits for HTTP/2.0 and SPDY upstream/downstream
+  // connection. 2**16-1 = 64KiB-1, which is HTTP/2.0 default. Please
+  // note that SPDY/3 default is 64KiB.
   mod_config()->spdy_upstream_window_bits = 16;
   mod_config()->spdy_downstream_window_bits = 16;
 
@@ -533,13 +534,13 @@ void print_help(std::ostream& out)
       << get_config()->spdy_max_concurrent_streams << "\n"
       << "    --frontend-spdy-window-bits=<N>\n"
       << "                       Sets the initial window size of HTTP/2.0 and SPDY\n"
-      << "                       frontend connection to 2**<N>.\n"
+      << "                       frontend connection to 2**<N>-1.\n"
       << "                       Default: "
       << get_config()->spdy_upstream_window_bits << "\n"
       << "    --frontend-no-tls  Disable SSL/TLS on frontend connections.\n"
       << "    --backend-spdy-window-bits=<N>\n"
       << "                       Sets the initial window size of HTTP/2.0 and SPDY\n"
-      << "                       backend connection to 2**<N>.\n"
+      << "                       backend connection to 2**<N>-1.\n"
       << "                       Default: "
       << get_config()->spdy_downstream_window_bits << "\n"
       << "    --backend-no-tls   Disable SSL/TLS on backend connections.\n"

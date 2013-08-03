@@ -361,7 +361,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   if(version == SPDYLAY_PROTO_SPDY3) {
     int val = 1;
     flow_control_ = true;
-    initial_window_size_ = 1 << get_config()->spdy_upstream_window_bits;
+    initial_window_size_ = (1 << get_config()->spdy_upstream_window_bits) - 1;
     rv = spdylay_session_set_option(session_,
                                     SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
                                     sizeof(val));

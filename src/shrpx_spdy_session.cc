@@ -597,7 +597,7 @@ int SpdySession::submit_window_update(SpdyDownstreamConnection *dconn,
 
 int32_t SpdySession::get_initial_window_size() const
 {
-  return 1 << get_config()->spdy_downstream_window_bits;
+  return (1 << get_config()->spdy_downstream_window_bits) - 1;
 }
 
 bool SpdySession::get_flow_control() const
