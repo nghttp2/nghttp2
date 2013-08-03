@@ -1567,6 +1567,64 @@ negative error codes:</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="nghttp2_session_upgrade">
+int <tt class="descname">nghttp2_session_upgrade</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const uint8_t<em>&nbsp;*settings_payload</em>, size_t<em>&nbsp;settings_payloadlen</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_session_upgrade" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs post-process of HTTP Upgrade request. This function can be
+called from both client and server, but the behavior is very
+different in each other.</p>
+<p>If called from client side, the <em>settings_payload</em> must be the
+value sent in HTTP2-Settings header field and must be decoded by
+base64url decoder. The <em>settings_payloadlen</em> is the length of
+<em>settings_payload</em>. The <em>settings_payload</em> is unpacked and its
+setting values will be submitted using
+nghttp2_submit_settings(). This means that the client application
+code does not need to submit SETTINGS by itself. The stream with
+stream ID=1 is opened and the <em>stream_user_data</em> is used for its
+stream_user_data. The opened stream becomes half-closed (local)
+state.</p>
+<p>If called from server side, the <em>settings_payload</em> must be the
+value received in HTTP2-Settings header field and must be decoded
+by base64url decoder. The <em>settings_payloadlen</em> is the length of
+<em>settings_payload</em>. It is treated as if the SETTINGS frame with
+that payload is received. Thus, callback functions for the
+reception of SETTINGS frame will be invoked. The stream with stream
+ID=1 is opened. The <em>stream_user_data</em> is ignored. The opened
+stream becomes half-closed (remote).</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
+<dd>The <em>settings_payload</em> is badly formed.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_PROTO" title="NGHTTP2_ERR_PROTO"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PROTO</span></tt></a></dt>
+<dd>The stream ID 1 is already used or closed; or is not available;
+or the <em>settings_payload</em> does not include both
+NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS and
+NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_pack_settings_payload">
+ssize_t <tt class="descname">nghttp2_pack_settings_payload</tt><big>(</big>uint8_t<em>&nbsp;*buf</em>, <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry">nghttp2_settings_entry</a><em>&nbsp;*iv</em>, size_t<em>&nbsp;niv</em><big>)</big><a class="headerlink" href="#nghttp2_pack_settings_payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Serializes the SETTINGS values <em>iv</em> in the <em>buf</em>. The number of
+entry pointed by <em>iv</em> array is given by the <em>niv</em>. This function
+may reorder the pointers in <em>iv</em>. The <em>buf</em> must have enough region
+to hold serialized data. The required space for the <em>niv</em> entries
+are 8**niv* bytes. This function is used mainly for creating
+SETTINGS payload to be sent with HTTP2-Settings header field in
+HTTP Upgrade request. The data written in <em>buf</em> is not still
+base64url encoded and the application is responsible to do that.</p>
+<p>This function returns the number of bytes written in <em>buf</em>, or one
+of the following negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
+<dd>The <em>iv</em> contains duplicate settings ID or invalid value.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="nghttp2_strerror">
 const char* <tt class="descname">nghttp2_strerror</tt><big>(</big>int<em>&nbsp;lib_error_code</em><big>)</big><a class="headerlink" href="#nghttp2_strerror" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns string describing the <em>lib_error_code</em>. The
