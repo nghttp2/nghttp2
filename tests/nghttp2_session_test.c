@@ -1451,6 +1451,91 @@ void test_nghttp2_session_is_my_stream_id(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_upgrade(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  uint8_t settings_payload[128];
+  size_t settings_payloadlen;
+  nghttp2_settings_entry iv[16];
+  nghttp2_stream *stream;
+  nghttp2_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 1;
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 4095;
+  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload, iv, 2);
+
+  /* Check client side */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  CU_ASSERT(0 == nghttp2_session_upgrade(session, settings_payload,
+                                         settings_payloadlen, &callbacks));
+  stream = nghttp2_session_get_stream(session, 1);
+  CU_ASSERT(stream != NULL);
+  CU_ASSERT(&callbacks == stream->stream_user_data);
+  CU_ASSERT(NGHTTP2_SHUT_WR == stream->shut_flags);
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_SETTINGS == OB_CTRL_TYPE(item));
+  CU_ASSERT(2 == OB_CTRL(item)->settings.niv);
+  CU_ASSERT(NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS ==
+            OB_CTRL(item)->settings.iv[0].settings_id);
+  CU_ASSERT(1 == OB_CTRL(item)->settings.iv[0].value);
+  CU_ASSERT(NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE ==
+            OB_CTRL(item)->settings.iv[1].settings_id);
+  CU_ASSERT(4095 == OB_CTRL(item)->settings.iv[1].value);
+
+  /* Call nghttp2_session_upgrade() again is error */
+  CU_ASSERT(NGHTTP2_ERR_PROTO == nghttp2_session_upgrade(session,
+                                                         settings_payload,
+                                                         settings_payloadlen,
+                                                         &callbacks));
+  nghttp2_session_del(session);
+
+  /* Check server side */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  CU_ASSERT(0 == nghttp2_session_upgrade(session, settings_payload,
+                                         settings_payloadlen, &callbacks));
+  stream = nghttp2_session_get_stream(session, 1);
+  CU_ASSERT(stream != NULL);
+  CU_ASSERT(NULL == stream->stream_user_data);
+  CU_ASSERT(NGHTTP2_SHUT_RD == stream->shut_flags);
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+  CU_ASSERT(1 ==
+            session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(4095 ==
+            session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
+  /* Call nghttp2_session_upgrade() again is error */
+  CU_ASSERT(NGHTTP2_ERR_PROTO == nghttp2_session_upgrade(session,
+                                                         settings_payload,
+                                                         settings_payloadlen,
+                                                         &callbacks));
+  nghttp2_session_del(session);
+
+  /* Check required settings */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 1;
+  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload, iv, 1);
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  CU_ASSERT(NGHTTP2_ERR_PROTO ==
+            nghttp2_session_upgrade(session, settings_payload,
+                                    settings_payloadlen, NULL));
+  nghttp2_session_del(session);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[0].value = 4095;
+  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload, iv, 1);
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  CU_ASSERT(NGHTTP2_ERR_PROTO ==
+            nghttp2_session_upgrade(session, settings_payload,
+                                    settings_payloadlen, NULL));
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_submit_response(void)
 {
   nghttp2_session *session;
@@ -2856,4 +2941,30 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void)
   CU_ASSERT(stream->shut_flags & NGHTTP2_SHUT_WR);
 
   nghttp2_session_del(session);
+}
+
+void test_nghttp2_pack_settings_payload(void)
+{
+  nghttp2_settings_entry iv[2];
+  uint8_t buf[64];
+  size_t len;
+  nghttp2_settings_entry *resiv;
+  size_t resniv;
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
+  iv[0].value = 1;
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 4095;
+
+  len = nghttp2_pack_settings_payload(buf, iv, 2);
+  CU_ASSERT(16 == len);
+  CU_ASSERT(0 == nghttp2_frame_unpack_settings_payload(&resiv, &resniv,
+                                                       buf, len));
+  CU_ASSERT(2 == resniv);
+  CU_ASSERT(NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE == resiv[0].settings_id);
+  CU_ASSERT(4095 == resiv[0].value);
+  CU_ASSERT(NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS == resiv[1].settings_id);
+  CU_ASSERT(1 == resiv[1].value);
+
+  free(resiv);
 }

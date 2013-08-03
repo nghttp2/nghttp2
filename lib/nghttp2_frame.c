@@ -467,7 +467,6 @@ ssize_t nghttp2_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
                                     nghttp2_settings *frame)
 {
   ssize_t framelen = NGHTTP2_FRAME_HEAD_LENGTH + frame->hd.length;
-  size_t i;
   int r;
   r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
   if(r != 0) {
@@ -475,33 +474,55 @@ ssize_t nghttp2_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
   }
   memset(*buf_ptr, 0, framelen);
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
-  for(i = 0; i < frame->niv; ++i) {
-    int off = i*8;
-    nghttp2_put_uint32be(&(*buf_ptr)[8+off], frame->iv[i].settings_id);
-    nghttp2_put_uint32be(&(*buf_ptr)[12+off], frame->iv[i].value);
-  }
+  nghttp2_frame_pack_settings_payload(*buf_ptr + 8, frame->iv, frame->niv);
   return framelen;
+}
+
+size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
+                                           nghttp2_settings_entry *iv,
+                                           size_t niv)
+{
+  size_t i;
+  for(i = 0; i < niv; ++i, buf += 8) {
+    nghttp2_put_uint32be(buf, iv[i].settings_id);
+    nghttp2_put_uint32be(buf + 4, iv[i].value);
+  }
+  return 8 * niv;
 }
 
 int nghttp2_frame_unpack_settings(nghttp2_settings *frame,
                                   const uint8_t *head, size_t headlen,
                                   const uint8_t *payload, size_t payloadlen)
 {
-  size_t i;
+  int rv;
   if(payloadlen % 8) {
     return NGHTTP2_ERR_INVALID_FRAME;
   }
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
-  frame->niv = payloadlen / 8;
-  frame->iv = malloc(frame->niv*sizeof(nghttp2_settings_entry));
-  if(frame->iv == NULL) {
+  rv = nghttp2_frame_unpack_settings_payload(&frame->iv, &frame->niv,
+                                             payload, payloadlen);
+  if(rv != 0) {
+    return rv;
+  }
+  return 0;
+}
+
+int nghttp2_frame_unpack_settings_payload(nghttp2_settings_entry **iv_ptr,
+                                          size_t *niv_ptr,
+                                          const uint8_t *payload,
+                                          size_t payloadlen)
+{
+  size_t i;
+  *niv_ptr = payloadlen / 8;
+  *iv_ptr = malloc((*niv_ptr)*sizeof(nghttp2_settings_entry));
+  if(*iv_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
-  for(i = 0; i < frame->niv; ++i) {
+  for(i = 0; i < *niv_ptr; ++i) {
     size_t off = i*8;
-    frame->iv[i].settings_id = nghttp2_get_uint32(&payload[off]) &
+    (*iv_ptr)[i].settings_id = nghttp2_get_uint32(&payload[off]) &
       NGHTTP2_SETTINGS_ID_MASK;
-    frame->iv[i].value = nghttp2_get_uint32(&payload[4+off]);
+    (*iv_ptr)[i].value = nghttp2_get_uint32(&payload[4+off]);
   }
   return 0;
 }
@@ -808,4 +829,21 @@ ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
   }
   nghttp2_nv_array_sort(*nva_ptr, nvlen);
   return nvlen;
+}
+
+int nghttp2_settings_check_duplicate(const nghttp2_settings_entry *iv,
+                                     size_t niv)
+{
+  int check[NGHTTP2_SETTINGS_MAX+1];
+  size_t i;
+  memset(check, 0, sizeof(check));
+  for(i = 0; i < niv; ++i) {
+    if(iv[i].settings_id > NGHTTP2_SETTINGS_MAX || iv[i].settings_id == 0 ||
+       check[iv[i].settings_id] == 1) {
+      return 0;
+    } else {
+      check[iv[i].settings_id] = 1;
+    }
+  }
+  return 1;
 }

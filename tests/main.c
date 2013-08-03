@@ -124,6 +124,7 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_send_push_promise) ||
       !CU_add_test(pSuite, "session_is_my_stream_id",
                    test_nghttp2_session_is_my_stream_id) ||
+      !CU_add_test(pSuite, "session_upgrade", test_nghttp2_session_upgrade) ||
       !CU_add_test(pSuite, "submit_response", test_nghttp2_submit_response) ||
       !CU_add_test(pSuite, "submit_response_without_data",
                    test_nghttp2_submit_response_without_data) ||
@@ -183,6 +184,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_set_option) ||
       !CU_add_test(pSuite, "session_data_backoff_by_high_pri_frame",
                    test_nghttp2_session_data_backoff_by_high_pri_frame) ||
+      !CU_add_test(pSuite, "pack_settings_payload",
+                   test_nghttp2_pack_settings_payload) ||
       !CU_add_test(pSuite, "frame_nv_sort", test_nghttp2_frame_nv_sort) ||
       !CU_add_test(pSuite, "frame_nv_downcase",
                    test_nghttp2_frame_nv_downcase) ||
@@ -207,6 +210,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_frame_pack_window_update) ||
       !CU_add_test(pSuite, "nv_array_from_cstr",
                    test_nghttp2_nv_array_from_cstr) ||
+      !CU_add_test(pSuite, "settings_check_duplicate",
+                   test_nghttp2_settings_check_duplicate) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc",
                    test_nghttp2_hd_inflate_indname_inc) ||

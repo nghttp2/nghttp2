@@ -153,17 +153,9 @@ int nghttp2_submit_settings(nghttp2_session *session,
 {
   nghttp2_frame *frame;
   nghttp2_settings_entry *iv_copy;
-  int check[NGHTTP2_SETTINGS_MAX+1];
-  size_t i;
   int r;
-  memset(check, 0, sizeof(check));
-  for(i = 0; i < niv; ++i) {
-    if(iv[i].settings_id > NGHTTP2_SETTINGS_MAX || iv[i].settings_id == 0 ||
-       check[iv[i].settings_id] == 1) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    } else {
-      check[iv[i].settings_id] = 1;
-    }
+  if(!nghttp2_settings_check_duplicate(iv, niv)) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   frame = malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
@@ -296,4 +288,14 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
     free(data_frame);
   }
   return r;
+}
+
+ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
+                                      nghttp2_settings_entry *iv, size_t niv)
+{
+  if(!nghttp2_settings_check_duplicate(iv, niv)) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  nghttp2_frame_iv_sort(iv, niv);
+  return nghttp2_frame_pack_settings_payload(buf, iv, niv);
 }

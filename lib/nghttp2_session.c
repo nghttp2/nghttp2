@@ -357,7 +357,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_SETTINGS:
-      /* Should NGHTTP2_SETTINGS have higher priority? */
+      /* Should NGHTTP2_SETTINGS have higher priority? Yes */
       item->pri = -1;
       break;
     case NGHTTP2_PUSH_PROMISE: {
@@ -2983,6 +2983,72 @@ int nghttp2_session_set_option(nghttp2_session *session,
     break;
   default:
     return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  return 0;
+}
+
+int nghttp2_session_upgrade(nghttp2_session *session,
+                            const uint8_t *settings_payload,
+                            size_t settings_payloadlen,
+                            void *stream_user_data)
+{
+  nghttp2_stream *stream;
+  nghttp2_frame frame;
+  nghttp2_settings_entry *iv;
+  size_t niv;
+  int rv;
+  int max_conn_val_seen = 0;
+  int ini_win_size_seen = 0;
+  size_t i;
+
+  if((!session->server && session->next_stream_id != 1) ||
+     (session->server && session->last_recv_stream_id >= 1)) {
+    return NGHTTP2_ERR_PROTO;
+  }
+  if(settings_payloadlen % 8) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  rv = nghttp2_frame_unpack_settings_payload(&iv, &niv, settings_payload,
+                                             settings_payloadlen);
+  if(rv != 0) {
+    return rv;
+  }
+  for(i = 0; i < niv; ++i) {
+    if(iv[i].settings_id == NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
+      max_conn_val_seen = 1;
+    } else if(iv[i].settings_id == NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE) {
+      ini_win_size_seen = 1;
+    }
+  }
+  if(!max_conn_val_seen || !ini_win_size_seen) {
+    free(iv);
+    return NGHTTP2_ERR_PROTO;
+  }
+  if(session->server) {
+    memset(&frame.hd, 0, sizeof(frame.hd));
+    frame.settings.iv = iv;
+    frame.settings.niv = niv;
+    rv = nghttp2_session_on_settings_received(session, &frame);
+  } else {
+    rv = nghttp2_submit_settings(session, iv, niv);
+  }
+  free(iv);
+  if(rv != 0) {
+    return rv;
+  }
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_END_STREAM,
+                                       0, NGHTTP2_STREAM_OPENING,
+                                       session->server ?
+                                       NULL : stream_user_data);
+  if(stream == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  if(session->server) {
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+    session->last_recv_stream_id = 1;
+  } else {
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
+    session->next_stream_id += 2;
   }
   return 0;
 }

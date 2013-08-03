@@ -51,6 +51,7 @@ void test_nghttp2_session_send_priority(void);
 void test_nghttp2_session_send_rst_stream(void);
 void test_nghttp2_session_send_push_promise(void);
 void test_nghttp2_session_is_my_stream_id(void);
+void test_nghttp2_session_upgrade(void);
 void test_nghttp2_submit_response(void);
 void test_nghttp2_submit_response_without_data(void);
 void test_nghttp2_submit_request_with_data(void);
@@ -82,5 +83,6 @@ void test_nghttp2_session_on_ctrl_not_send(void);
 void test_nghttp2_session_get_outbound_queue_size(void);
 void test_nghttp2_session_set_option(void);
 void test_nghttp2_session_data_backoff_by_high_pri_frame(void);
+void test_nghttp2_pack_settings_payload(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

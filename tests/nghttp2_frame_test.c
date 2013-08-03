@@ -417,3 +417,27 @@ void test_nghttp2_nv_array_from_cstr(void)
 
   free(bigval);
 }
+
+void test_nghttp2_settings_check_duplicate(void)
+{
+  nghttp2_settings_entry set[3];
+
+  set[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  set[0].value = 1;
+  set[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  set[1].value = 1023;
+
+  CU_ASSERT(nghttp2_settings_check_duplicate(set, 2));
+
+  set[1] = set[0];
+  CU_ASSERT(0 == nghttp2_settings_check_duplicate(set, 2));
+
+  /* Out-of-bound data is error */
+  set[0].settings_id = NGHTTP2_SETTINGS_MAX + 1;
+  CU_ASSERT(0 == nghttp2_settings_check_duplicate(set, 1));
+
+  /* settings_id == 0 is error */
+  set[0].settings_id = 0;
+  CU_ASSERT(0 == nghttp2_settings_check_duplicate(set, 1));
+}
+

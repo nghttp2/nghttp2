@@ -224,6 +224,16 @@ ssize_t nghttp2_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
                                     nghttp2_settings *frame);
 
 /*
+ * Packs the |iv|, which includes |niv| entries, in the |buf|,
+ * assuming the |buf| has at least 8 * |niv| bytes.
+ *
+ * Returns the number of bytes written into the |buf|.
+ */
+size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
+                                           nghttp2_settings_entry *iv,
+                                           size_t niv);
+
+/*
  * Unpacks SETTINGS wire format into |frame|.
  *
  * This function returns 0 if it succeeds or one of the following
@@ -238,6 +248,23 @@ int nghttp2_frame_unpack_settings(nghttp2_settings *frame,
                                   const uint8_t *head, size_t headlen,
                                   const uint8_t *payload, size_t payloadlen);
 
+
+/*
+ * Unpacks SETTINGS payload into |*iv_ptr|. The number of entries are
+ * assigned to the |*niv_ptr|. This function allocates enough memory
+ * to store the result in |*iv_ptr|. The caller is responsible to free
+ * |*iv_ptr| after its use.
+ *
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int nghttp2_frame_unpack_settings_payload(nghttp2_settings_entry **iv_ptr,
+                                          size_t *niv_ptr,
+                                          const uint8_t *payload,
+                                          size_t payloadlen);
 
 /*
  * Packs PUSH_PROMISE frame |frame| in wire format and store it in
@@ -599,5 +626,14 @@ void nghttp2_nv_array_del(nghttp2_nv *nva);
  */
 int nghttp2_nv_array_check_null(nghttp2_nv *nva, size_t nvlen);
 
+
+/*
+ * Checks that the |iv|, which includes |niv| entries, does not have
+ * duplicate IDs.
+ *
+ * This function returns nonzero if it succeeds, or 0.
+ */
+int nghttp2_settings_check_duplicate(const nghttp2_settings_entry *iv,
+                                     size_t niv);
 
 #endif /* NGHTTP2_FRAME_H */
