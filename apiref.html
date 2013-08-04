@@ -634,13 +634,14 @@ from the public API.</p>
 <dl class="member">
 <dt id="nghttp2_nv.name">
 uint8_t *<tt class="descname">name</tt><a class="headerlink" href="#nghttp2_nv.name" title="Permalink to this definition">¶</a></dt>
-<dd><p>The <em>name</em> byte string, which is not necessarily NULL terminated.</p>
+<dd><p>The <em>name</em> byte string, which is not necessarily <tt class="docutils literal"><span class="pre">NULL</span></tt>
+terminated.</p>
 </dd></dl>
 
 <dl class="member">
 <dt id="nghttp2_nv.value">
 uint8_t *<tt class="descname">value</tt><a class="headerlink" href="#nghttp2_nv.value" title="Permalink to this definition">¶</a></dt>
-<dd><p>The <em>value</em> byte string, which is not necessarily NULL
+<dd><p>The <em>value</em> byte string, which is not necessarily <tt class="docutils literal"><span class="pre">NULL</span></tt>
 terminated.</p>
 </dd></dl>
 
@@ -953,25 +954,6 @@ size_t <tt class="descname">opaque_data_len</tt><a class="headerlink" href="#ngh
 <dt id="nghttp2_window_update.window_size_increment">
 int32_t <tt class="descname">window_size_increment</tt><a class="headerlink" href="#nghttp2_window_update.window_size_increment" title="Permalink to this definition">¶</a></dt>
 <dd><p>The window size increment.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="type">
-<dt id="nghttp2_mem_chunk">
-<tt class="descname">nghttp2_mem_chunk</tt><a class="headerlink" href="#nghttp2_mem_chunk" title="Permalink to this definition">¶</a></dt>
-<dd><p>The structure to hold chunk of memory.</p>
-<p>TODO Drop this if it is not used anymore.</p>
-<dl class="member">
-<dt id="nghttp2_mem_chunk.data">
-uint8_t *<tt class="descname">data</tt><a class="headerlink" href="#nghttp2_mem_chunk.data" title="Permalink to this definition">¶</a></dt>
-<dd><p>The pointer to the data.</p>
-</dd></dl>
-
-<dl class="member">
-<dt id="nghttp2_mem_chunk.length">
-size_t <tt class="descname">length</tt><a class="headerlink" href="#nghttp2_mem_chunk.length" title="Permalink to this definition">¶</a></dt>
-<dd><p>The length of the data.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1573,23 +1555,23 @@ int <tt class="descname">nghttp2_session_upgrade</tt><big>(</big><a class="refer
 called from both client and server, but the behavior is very
 different in each other.</p>
 <p>If called from client side, the <em>settings_payload</em> must be the
-value sent in HTTP2-Settings header field and must be decoded by
-base64url decoder. The <em>settings_payloadlen</em> is the length of
+value sent in <tt class="docutils literal"><span class="pre">HTTP2-Settings</span></tt> header field and must be decoded
+by base64url decoder. The <em>settings_payloadlen</em> is the length of
 <em>settings_payload</em>. The <em>settings_payload</em> is unpacked and its
 setting values will be submitted using
-nghttp2_submit_settings(). This means that the client application
+<a class="reference internal" href="#nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a>. This means that the client application
 code does not need to submit SETTINGS by itself. The stream with
 stream ID=1 is opened and the <em>stream_user_data</em> is used for its
 stream_user_data. The opened stream becomes half-closed (local)
 state.</p>
 <p>If called from server side, the <em>settings_payload</em> must be the
-value received in HTTP2-Settings header field and must be decoded
-by base64url decoder. The <em>settings_payloadlen</em> is the length of
-<em>settings_payload</em>. It is treated as if the SETTINGS frame with
-that payload is received. Thus, callback functions for the
-reception of SETTINGS frame will be invoked. The stream with stream
-ID=1 is opened. The <em>stream_user_data</em> is ignored. The opened
-stream becomes half-closed (remote).</p>
+value received in <tt class="docutils literal"><span class="pre">HTTP2-Settings</span></tt> header field and must be
+decoded by base64url decoder. The <em>settings_payloadlen</em> is the
+length of <em>settings_payload</em>. It is treated as if the SETTINGS
+frame with that payload is received. Thus, callback functions for
+the reception of SETTINGS frame will be invoked. The stream with
+stream ID=1 is opened. The <em>stream_user_data</em> is ignored. The
+opened stream becomes half-closed (remote).</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -1600,8 +1582,8 @@ negative error codes:</p>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_PROTO" title="NGHTTP2_ERR_PROTO"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PROTO</span></tt></a></dt>
 <dd>The stream ID 1 is already used or closed; or is not available;
 or the <em>settings_payload</em> does not include both
-NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS and
-NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE.</dd>
+<a class="reference internal" href="#NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS" title="NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</span></tt></a> and
+<a class="reference internal" href="#NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE" title="NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span></tt></a>.</dd>
 </dl>
 </dd></dl>
 
@@ -1612,10 +1594,10 @@ ssize_t <tt class="descname">nghttp2_pack_settings_payload</tt><big>(</big>uint8
 entry pointed by <em>iv</em> array is given by the <em>niv</em>. This function
 may reorder the pointers in <em>iv</em>. The <em>buf</em> must have enough region
 to hold serialized data. The required space for the <em>niv</em> entries
-are 8**niv* bytes. This function is used mainly for creating
-SETTINGS payload to be sent with HTTP2-Settings header field in
+are <tt class="docutils literal"><span class="pre">8*niv</span></tt> bytes. This function is used mainly for creating
+SETTINGS payload to be sent with <tt class="docutils literal"><span class="pre">HTTP2-Settings</span></tt> header field in
 HTTP Upgrade request. The data written in <em>buf</em> is not still
-base64url encoded and the application is responsible to do that.</p>
+base64url encoded and the application is responsible for encoding.</p>
 <p>This function returns the number of bytes written in <em>buf</em>, or one
 of the following negative error codes:</p>
 <dl class="docutils">
@@ -1636,8 +1618,7 @@ const char* <tt class="descname">nghttp2_strerror</tt><big>(</big>int<em>&nbsp;l
 int <tt class="descname">nghttp2_submit_request</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;pri</em>, const char<em>&nbsp;**nv</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_request" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame and optionally one or more DATA frames.</p>
 <p>The <em>pri</em> is priority of this request. 0 is the highest priority
-value. Use <tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_pri_lowest()</span></tt> to know the lowest
-priority value for this <em>session</em>.</p>
+value and <a class="reference internal" href="#NGHTTP2_PRI_LOWEST" title="NGHTTP2_PRI_LOWEST"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRI_LOWEST</span></tt></a> is the lowest value.</p>
 <p>The <em>nv</em> contains the name/value pairs. For i &gt;= 0, <tt class="docutils literal"><span class="pre">nv[2*i]</span></tt>
 contains a pointer to the name string and <tt class="docutils literal"><span class="pre">nv[2*i+1]</span></tt> contains a
 pointer to the value string. The one beyond last value must be
@@ -1685,8 +1666,8 @@ the stream is already opened,
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri</em> is invalid; or the <em>nv</em> includes empty name or NULL
-value.</dd>
+<dd>The <em>pri</em> is invalid; or the <em>nv</em> includes empty name or
+<tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -1718,7 +1699,7 @@ END_STREAM flag set.</p>
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>nv</em> includes empty name or NULL value.</dd>
+<dd>The <em>nv</em> includes empty name or <tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -1731,12 +1712,16 @@ int <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="refere
 following values:</p>
 <ul class="simple">
 <li><a class="reference internal" href="#NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a></li>
+<li><a class="reference internal" href="#NGHTTP2_FLAG_END_HEADERS" title="NGHTTP2_FLAG_END_HEADERS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_HEADERS</span></tt></a></li>
 <li><a class="reference internal" href="#NGHTTP2_FLAG_PRIORITY" title="NGHTTP2_FLAG_PRIORITY"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_PRIORITY</span></tt></a></li>
 </ul>
 <p>If <em>flags</em> includes <a class="reference internal" href="#NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a>, this frame has
-END_STREAM flag set.</p>
+END_STREAM flag set. The library does not support header
+continuation and the HEADERS frame always has
+<a class="reference internal" href="#NGHTTP2_FLAG_END_HEADERS" title="NGHTTP2_FLAG_END_HEADERS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_HEADERS</span></tt></a> flag set regardless of the <em>flags</em>
+value.</p>
 <p>If the <em>stream_id</em> is -1, this frame is assumed as request (i.e.,
-first HEADERS frame which opens new stream). In this case, the
+request HEADERS frame which opens new stream). In this case, the
 actual stream ID is assigned just before the frame is sent. For
 response, specify stream ID in <em>stream_id</em>.</p>
 <p>The <em>pri</em> is priority of this request.</p>
@@ -1752,14 +1737,14 @@ associated to the stream this frame will open. Therefore it is only
 used if this frame opens streams, in other words, it changes stream
 state from idle or reserved to open.</p>
 <p>This function is low-level in a sense that the application code can
-specify flags and the Associated-To-Stream-ID directly. For usual
-HTTP request, <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> is useful.</p>
+specify flags directly. For usual HTTP request,
+<a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> is useful.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri</em> is invalid; or the <em>assoc_stream_id</em> is invalid; or
-the <em>nv</em> includes empty name or NULL value.</dd>
+<dd>The <em>pri</em> is invalid; or the <em>nv</em> includes empty name or
+<tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -1815,9 +1800,7 @@ negative error codes:</p>
 int <tt class="descname">nghttp2_submit_settings</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry">nghttp2_settings_entry</a><em>&nbsp;*iv</em>, size_t<em>&nbsp;niv</em><big>)</big><a class="headerlink" href="#nghttp2_submit_settings" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stores local settings and submits SETTINGS frame. The <em>iv</em> is the
 pointer to the array of <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_entry</span></tt></a>. The <em>niv</em>
-indicates the number of <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_entry</span></tt></a>. The <em>flags</em>
-is bitwise-OR of one or more values from
-<tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_flag</span></tt>.</p>
+indicates the number of <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_entry</span></tt></a>.</p>
 <p>This function does not take ownership of the <em>iv</em>. This function
 copies all the elements in the <em>iv</em>.</p>
 <p>This function returns 0 if it succeeds, or one of the following
@@ -1833,7 +1816,10 @@ negative error codes:</p>
 <dl class="function">
 <dt id="nghttp2_submit_push_promise">
 int <tt class="descname">nghttp2_submit_push_promise</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const char<em>&nbsp;**nv</em><big>)</big><a class="headerlink" href="#nghttp2_submit_push_promise" title="Permalink to this definition">¶</a></dt>
-<dd><p>Submits PUSH_PROMISE frame. The <em>flags</em> is currently ignored.</p>
+<dd><p>Submits PUSH_PROMISE frame. The <em>flags</em> is currently ignored and
+the resulting PUSH_PROMISE frame always has
+<a class="reference internal" href="#NGHTTP2_FLAG_END_PUSH_PROMISE" title="NGHTTP2_FLAG_END_PUSH_PROMISE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_PUSH_PROMISE</span></tt></a> flag set due to the lack of
+header continuation support in the library.</p>
 <p>The <em>stream_id</em> must be client initiated stream ID.</p>
 <p>The <em>nv</em> contains the name/value pairs. For i &gt;= 0, <tt class="docutils literal"><span class="pre">nv[2*i]</span></tt>
 contains a pointer to the name string and <tt class="docutils literal"><span class="pre">nv[2*i+1]</span></tt> contains a
@@ -1847,14 +1833,14 @@ prioritized one first and the HTTP/2.0 specification requires the
 stream ID must be strictly increasing, the promised stream ID
 cannot be known until it is about to sent.  To know the promised
 stream ID, the application can use
-<tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_ctrl_send_callback</span></tt>. This
+<a class="reference internal" href="#nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a>. This
 callback is called just before the frame is sent. For PUSH_PROMISE
 frame, the argument frame has the promised stream ID assigned.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>nv</em> includes empty name or NULL value.</dd>
+<dd>The <em>nv</em> includes empty name or <tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -1866,10 +1852,10 @@ int <tt class="descname">nghttp2_submit_ping</tt><big>(</big><a class="reference
 <dd><p>Submits PING frame. You don&#8217;t have to send PING back when you
 received PING frame. The library automatically submits PING frame
 in this case.</p>
-<p>If the <em>opaque_data</em> is non NULL, then it should point to the 8
+<p>If the <em>opaque_data</em> is non <tt class="docutils literal"><span class="pre">NULL</span></tt>, then it should point to the 8
 bytes array of memory to specify opaque data to send with PING
-frame. If the <em>opaque_data</em> is NULL, 8 zero bytes will be sent as
-opaque data.</p>
+frame. If the <em>opaque_data</em> is <tt class="docutils literal"><span class="pre">NULL</span></tt>, zero-cleared 8 bytes will
+be sent as opaque data.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -1882,12 +1868,12 @@ negative error codes:</p>
 <dt id="nghttp2_submit_goaway">
 int <tt class="descname">nghttp2_submit_goaway</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, uint8_t<em>&nbsp;*opaque_data</em>, size_t<em>&nbsp;opaque_data_len</em><big>)</big><a class="headerlink" href="#nghttp2_submit_goaway" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits GOAWAY frame with the error code <em>error_code</em>.</p>
-<p>If the <em>opaque_data</em> is not NULL and opaque_data_len is not zero,
-those data will be sent as additional debug data.  The library
-makes a copy of the memory region pointed by <em>opaque_data</em> with the
-length <em>opaque_data_len</em>, so the caller does not need to keep this
-memory after the return of this function. If the <em>opaque_data_len</em>
-is 0, the <em>opaque_data</em> could be NULL.</p>
+<p>If the <em>opaque_data</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt> and <em>opaque_data_len</em> is not
+zero, those data will be sent as additional debug data.  The
+library makes a copy of the memory region pointed by <em>opaque_data</em>
+with the length <em>opaque_data_len</em>, so the caller does not need to
+keep this memory after the return of this function. If the
+<em>opaque_data_len</em> is 0, the <em>opaque_data</em> could be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -1902,16 +1888,17 @@ int <tt class="descname">nghttp2_submit_window_update</tt><big>(</big><a class="
 <dd><p>Submits WINDOW_UPDATE frame. The effective range of the
 <em>window_size_increment</em> is [1, (1 &lt;&lt; 31)-1], inclusive. But the
 application must be responsible to keep the resulting window size
-&lt;= (1 &lt;&lt; 31)-1. If NGHTTP2_FLAG_END_FLOW_CONTROL bit set in the
-<em>flags</em>, 0 can be specified in the <em>window_size_increment</em>. In
+&lt;= (1 &lt;&lt; 31)-1. If <a class="reference internal" href="#NGHTTP2_FLAG_END_FLOW_CONTROL" title="NGHTTP2_FLAG_END_FLOW_CONTROL"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_FLOW_CONTROL</span></tt></a> bit set in
+the <em>flags</em>, 0 can be specified in the <em>window_size_increment</em>. In
 fact, if this flag is set, the value specified in the
 <em>window_size_increment</em> is ignored.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>delta_window_size</em> is 0 or negative if
-NGHTTP2_FLAG_END_FLOW_CONTROL bit is not set in <em>flags</em>.</dd>
+<dd>The <em>delta_window_size</em> is 0 or negative and
+<a class="reference internal" href="#NGHTTP2_FLAG_END_FLOW_CONTROL" title="NGHTTP2_FLAG_END_FLOW_CONTROL"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_FLOW_CONTROL</span></tt></a> bit is not set in
+<em>flags</em>.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
 <dd>The stream is already closed or does not exist.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
