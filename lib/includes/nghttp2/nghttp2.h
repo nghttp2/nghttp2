@@ -234,11 +234,12 @@ typedef enum {
  */
 typedef struct {
   /**
-   * The |name| byte string, which is not necessarily NULL terminated.
+   * The |name| byte string, which is not necessarily ``NULL``
+   * terminated.
    */
   uint8_t *name;
   /**
-   * The |value| byte string, which is not necessarily NULL
+   * The |value| byte string, which is not necessarily ``NULL``
    * terminated.
    */
   uint8_t *value;
@@ -1313,24 +1314,24 @@ int nghttp2_session_fail_session(nghttp2_session *session,
  * different in each other.
  *
  * If called from client side, the |settings_payload| must be the
- * value sent in HTTP2-Settings header field and must be decoded by
- * base64url decoder. The |settings_payloadlen| is the length of
+ * value sent in ``HTTP2-Settings`` header field and must be decoded
+ * by base64url decoder. The |settings_payloadlen| is the length of
  * |settings_payload|. The |settings_payload| is unpacked and its
  * setting values will be submitted using
- * nghttp2_submit_settings(). This means that the client application
+ * `nghttp2_submit_settings()`. This means that the client application
  * code does not need to submit SETTINGS by itself. The stream with
  * stream ID=1 is opened and the |stream_user_data| is used for its
  * stream_user_data. The opened stream becomes half-closed (local)
  * state.
  *
  * If called from server side, the |settings_payload| must be the
- * value received in HTTP2-Settings header field and must be decoded
- * by base64url decoder. The |settings_payloadlen| is the length of
- * |settings_payload|. It is treated as if the SETTINGS frame with
- * that payload is received. Thus, callback functions for the
- * reception of SETTINGS frame will be invoked. The stream with stream
- * ID=1 is opened. The |stream_user_data| is ignored. The opened
- * stream becomes half-closed (remote).
+ * value received in ``HTTP2-Settings`` header field and must be
+ * decoded by base64url decoder. The |settings_payloadlen| is the
+ * length of |settings_payload|. It is treated as if the SETTINGS
+ * frame with that payload is received. Thus, callback functions for
+ * the reception of SETTINGS frame will be invoked. The stream with
+ * stream ID=1 is opened. The |stream_user_data| is ignored. The
+ * opened stream becomes half-closed (remote).
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1342,8 +1343,8 @@ int nghttp2_session_fail_session(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_PROTO`
  *     The stream ID 1 is already used or closed; or is not available;
  *     or the |settings_payload| does not include both
- *     NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS and
- *     NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE.
+ *     :enum:`NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS` and
+ *     :enum:`NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE`.
  */
 int nghttp2_session_upgrade(nghttp2_session *session,
                             const uint8_t *settings_payload,
@@ -1357,10 +1358,10 @@ int nghttp2_session_upgrade(nghttp2_session *session,
  * entry pointed by |iv| array is given by the |niv|. This function
  * may reorder the pointers in |iv|. The |buf| must have enough region
  * to hold serialized data. The required space for the |niv| entries
- * are 8*|niv| bytes. This function is used mainly for creating
- * SETTINGS payload to be sent with HTTP2-Settings header field in
+ * are ``8*niv`` bytes. This function is used mainly for creating
+ * SETTINGS payload to be sent with ``HTTP2-Settings`` header field in
  * HTTP Upgrade request. The data written in |buf| is not still
- * base64url encoded and the application is responsible to do that.
+ * base64url encoded and the application is responsible for encoding.
  *
  * This function returns the number of bytes written in |buf|, or one
  * of the following negative error codes:
@@ -1385,8 +1386,7 @@ const char* nghttp2_strerror(int lib_error_code);
  * Submits HEADERS frame and optionally one or more DATA frames.
  *
  * The |pri| is priority of this request. 0 is the highest priority
- * value. Use `nghttp2_session_get_pri_lowest()` to know the lowest
- * priority value for this |session|.
+ * value and :macro:`NGHTTP2_PRI_LOWEST` is the lowest value.
  *
  * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
  * contains a pointer to the name string and ``nv[2*i+1]`` contains a
@@ -1439,8 +1439,8 @@ const char* nghttp2_strerror(int lib_error_code);
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |nv| includes empty name or NULL
- *     value.
+ *     The |pri| is invalid; or the |nv| includes empty name or
+ *     ``NULL`` value.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1479,7 +1479,7 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nv| includes empty name or NULL value.
+ *     The |nv| includes empty name or ``NULL`` value.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1494,13 +1494,17 @@ int nghttp2_submit_response(nghttp2_session *session,
  * following values:
  *
  * * :enum:`NGHTTP2_FLAG_END_STREAM`
+ * * :enum:`NGHTTP2_FLAG_END_HEADERS`
  * * :enum:`NGHTTP2_FLAG_PRIORITY`
  *
  * If |flags| includes :enum:`NGHTTP2_FLAG_END_STREAM`, this frame has
- * END_STREAM flag set.
+ * END_STREAM flag set. The library does not support header
+ * continuation and the HEADERS frame always has
+ * :enum:`NGHTTP2_FLAG_END_HEADERS` flag set regardless of the |flags|
+ * value.
  *
  * If the |stream_id| is -1, this frame is assumed as request (i.e.,
- * first HEADERS frame which opens new stream). In this case, the
+ * request HEADERS frame which opens new stream). In this case, the
  * actual stream ID is assigned just before the frame is sent. For
  * response, specify stream ID in |stream_id|.
  *
@@ -1521,15 +1525,15 @@ int nghttp2_submit_response(nghttp2_session *session,
  * state from idle or reserved to open.
  *
  * This function is low-level in a sense that the application code can
- * specify flags and the Associated-To-Stream-ID directly. For usual
- * HTTP request, `nghttp2_submit_request()` is useful.
+ * specify flags directly. For usual HTTP request,
+ * `nghttp2_submit_request()` is useful.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |assoc_stream_id| is invalid; or
- *     the |nv| includes empty name or NULL value.
+ *     The |pri| is invalid; or the |nv| includes empty name or
+ *     ``NULL`` value.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1595,9 +1599,7 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
  *
  * Stores local settings and submits SETTINGS frame. The |iv| is the
  * pointer to the array of :type:`nghttp2_settings_entry`. The |niv|
- * indicates the number of :type:`nghttp2_settings_entry`. The |flags|
- * is bitwise-OR of one or more values from
- * :type:`nghttp2_settings_flag`.
+ * indicates the number of :type:`nghttp2_settings_entry`.
  *
  * This function does not take ownership of the |iv|. This function
  * copies all the elements in the |iv|.
@@ -1617,7 +1619,10 @@ int nghttp2_submit_settings(nghttp2_session *session,
 /**
  * @function
  *
- * Submits PUSH_PROMISE frame. The |flags| is currently ignored.
+ * Submits PUSH_PROMISE frame. The |flags| is currently ignored and
+ * the resulting PUSH_PROMISE frame always has
+ * :enum:`NGHTTP2_FLAG_END_PUSH_PROMISE` flag set due to the lack of
+ * header continuation support in the library.
  *
  * The |stream_id| must be client initiated stream ID.
  *
@@ -1635,7 +1640,7 @@ int nghttp2_submit_settings(nghttp2_session *session,
  * stream ID must be strictly increasing, the promised stream ID
  * cannot be known until it is about to sent.  To know the promised
  * stream ID, the application can use
- * :member:`nghttp2_session_callbacks.before_ctrl_send_callback`. This
+ * :member:`nghttp2_session_callbacks.before_frame_send_callback`. This
  * callback is called just before the frame is sent. For PUSH_PROMISE
  * frame, the argument frame has the promised stream ID assigned.
  *
@@ -1643,7 +1648,7 @@ int nghttp2_submit_settings(nghttp2_session *session,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nv| includes empty name or NULL value.
+ *     The |nv| includes empty name or ``NULL`` value.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1657,10 +1662,10 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
  * received PING frame. The library automatically submits PING frame
  * in this case.
  *
- * If the |opaque_data| is non NULL, then it should point to the 8
+ * If the |opaque_data| is non ``NULL``, then it should point to the 8
  * bytes array of memory to specify opaque data to send with PING
- * frame. If the |opaque_data| is NULL, 8 zero bytes will be sent as
- * opaque data.
+ * frame. If the |opaque_data| is ``NULL``, zero-cleared 8 bytes will
+ * be sent as opaque data.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1675,12 +1680,12 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t *opaque_data);
  *
  * Submits GOAWAY frame with the error code |error_code|.
  *
- * If the |opaque_data| is not NULL and opaque_data_len is not zero,
- * those data will be sent as additional debug data.  The library
- * makes a copy of the memory region pointed by |opaque_data| with the
- * length |opaque_data_len|, so the caller does not need to keep this
- * memory after the return of this function. If the |opaque_data_len|
- * is 0, the |opaque_data| could be NULL.
+ * If the |opaque_data| is not ``NULL`` and |opaque_data_len| is not
+ * zero, those data will be sent as additional debug data.  The
+ * library makes a copy of the memory region pointed by |opaque_data|
+ * with the length |opaque_data_len|, so the caller does not need to
+ * keep this memory after the return of this function. If the
+ * |opaque_data_len| is 0, the |opaque_data| could be ``NULL``.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1698,8 +1703,8 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  * Submits WINDOW_UPDATE frame. The effective range of the
  * |window_size_increment| is [1, (1 << 31)-1], inclusive. But the
  * application must be responsible to keep the resulting window size
- * <= (1 << 31)-1. If NGHTTP2_FLAG_END_FLOW_CONTROL bit set in the
- * |flags|, 0 can be specified in the |window_size_increment|. In
+ * <= (1 << 31)-1. If :enum:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit set in
+ * the |flags|, 0 can be specified in the |window_size_increment|. In
  * fact, if this flag is set, the value specified in the
  * |window_size_increment| is ignored.
  *
@@ -1707,8 +1712,9 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |delta_window_size| is 0 or negative if
- *     NGHTTP2_FLAG_END_FLOW_CONTROL bit is not set in |flags|.
+ *     The |delta_window_size| is 0 or negative and
+ *     :enum:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit is not set in
+ *     |flags|.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream is already closed or does not exist.
  * :enum:`NGHTTP2_ERR_NOMEM`
