@@ -83,6 +83,7 @@ struct Config {
   bool no_connection_flow_control;
   bool no_stream_flow_control;
   bool upgrade;
+  int32_t pri;
   int multiply;
   // milliseconds
   int timeout;
@@ -102,6 +103,7 @@ struct Config {
       no_connection_flow_control(false),
       no_stream_flow_control(false),
       upgrade(false),
+      pri(NGHTTP2_PRI_DEFAULT),
       multiply(1),
       timeout(-1),
       window_bits(-1),
@@ -895,7 +897,7 @@ void submit_request(HttpClient *client,
   }
   nv[pos] = nullptr;
 
-  int r = nghttp2_submit_request(client->session, NGHTTP2_PRI_DEFAULT,
+  int r = nghttp2_submit_request(client->session, config.pri,
                                  nv.get(), req->data_prd, req);
   assert(r == 0);
 }
@@ -1411,7 +1413,8 @@ int run(char **uris, int n)
 void print_usage(std::ostream& out)
 {
   out << "Usage: nghttp [-FOafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "              [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] <URI>..."
+      << "              [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] [-p <PRIORITY>]\n"
+      << "              <URI>..."
       << std::endl;
 }
 
@@ -1455,6 +1458,9 @@ void print_help(std::ostream& out)
       << "                       option is ignored if --no-tls is not given.\n"
       << "                       If -d is used, the HTTP upgrade request is\n"
       << "                       performed with OPTIONS method.\n"
+      << "    -p, --pri=<PRIORITY>\n"
+      << "                       Sets stream priority. Default: "
+      << NGHTTP2_PRI_DEFAULT << "\n"
       << std::endl;
 }
 
@@ -1480,10 +1486,11 @@ int main(int argc, char **argv)
       {"no-connection-flow-control", no_argument, 0, 'F'},
       {"no-stream-flow-control", no_argument, 0, 'f'},
       {"upgrade", no_argument, 0, 'u'},
+      {"pri", required_argument, 0, 'p'},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "FOad:fm:nhH:vst:uw:", long_options,
+    int c = getopt_long(argc, argv, "FOad:fm:np:hH:vst:uw:", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -1504,6 +1511,18 @@ int main(int argc, char **argv)
     case 'n':
       config.null_out = true;
       break;
+    case 'p': {
+      auto n = strtoul(optarg, nullptr, 10);
+      if(n <= NGHTTP2_PRI_LOWEST) {
+        config.pri = n;
+      } else {
+        std::cerr << "-p: specify the integer in the range [0, "
+                  << NGHTTP2_PRI_LOWEST << "], inclusive"
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      break;
+    }
     case 'v':
       config.verbose = true;
       break;
