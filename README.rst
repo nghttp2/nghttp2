@@ -103,9 +103,8 @@ The src directory contains HTTP/2.0 client, server and proxy programs.
 nghttp - client
 +++++++++++++++
 
-``nghttp`` is HTTP-default04/2.0 client. It can connect to the
-HTTP/2.0 server with prior knowledge, HTTP Upgrade and NPN TLS
-extension.
+``nghttp`` is a HTTP/2.0 client. It can connect to the HTTP/2.0 server
+with prior knowledge, HTTP Upgrade and NPN TLS extension.
 
 By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
 disable it.
