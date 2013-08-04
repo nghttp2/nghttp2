@@ -689,24 +689,6 @@ typedef struct {
 } nghttp2_window_update;
 
 /**
- * @struct
- *
- * The structure to hold chunk of memory.
- *
- * TODO Drop this if it is not used anymore.
- */
-typedef struct {
-  /**
-   * The pointer to the data.
-   */
-  uint8_t *data;
-  /**
-   * The length of the data.
-   */
-  size_t length;
-} nghttp2_mem_chunk;
-
-/**
  * @union
  *
  * This union includes all frames to pass them to various function
