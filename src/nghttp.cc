@@ -585,6 +585,12 @@ struct HttpClient {
           if(rv != 0) {
             return rv;
           }
+          // Read remaining data in the buffer because it is not
+          // notified callback anymore.
+          rv = on_read();
+          if(rv != 0) {
+            return rv;
+          }
         } else {
           std::cerr << "HTTP Upgrade failed" << std::endl;
           return -1;
