@@ -458,7 +458,8 @@ int Http2Handler::submit_response
  nghttp2_data_provider *data_prd)
 {
   std::string date_str = util::http_date(time(0));
-  auto nv = util::make_unique<const char*[]>(6+headers.size()*2+1);
+  const size_t static_size = 6;
+  auto nv = util::make_unique<const char*[]>(static_size+headers.size()*2+1);
   nv[0] = ":status";
   nv[1] = status.c_str();
   nv[2] = "server";
@@ -466,10 +467,10 @@ int Http2Handler::submit_response
   nv[4] = "date";
   nv[5] = date_str.c_str();
   for(int i = 0; i < (int)headers.size(); ++i) {
-    nv[6+i*2] = headers[i].first.c_str();
-    nv[6+i*2+1] = headers[i].second.c_str();
+    nv[static_size+i*2] = headers[i].first.c_str();
+    nv[static_size+i*2+1] = headers[i].second.c_str();
   }
-  nv[6+headers.size()*2] = nullptr;
+  nv[static_size+headers.size()*2] = nullptr;
   int r = nghttp2_submit_response(session_, stream_id, nv.get(), data_prd);
   return r;
 }
