@@ -36,7 +36,7 @@
 /* The maximum payload length of a frame */
 /* TODO The spec says the max payload length in HTTP is ((1 << 14) -
    1) */
-#define NGHTTP2_MAX_FRAME_SIZE ((1 << 16) - 1)
+#define NGHTTP2_MAX_FRAME_LENGTH ((1 << 16) - 1)
 
 /* The maximum header block length. This is not specified by the
    spec. We just chose the arbitrary size */
