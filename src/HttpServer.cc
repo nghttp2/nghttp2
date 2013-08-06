@@ -875,18 +875,7 @@ private:
 
 HttpServer::HttpServer(const Config *config)
   : config_(config)
-{
-  memset(sfd_, -1, sizeof(sfd_));
-}
-
-HttpServer::~HttpServer()
-{
-  for(int i = 0; i < 2; ++i) {
-    if(sfd_[i] != -1) {
-      close(sfd_[i]);
-    }
-  }
-}
+{}
 
 namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,

@@ -129,12 +129,10 @@ private:
 class HttpServer {
 public:
   HttpServer(const Config* config);
-  ~HttpServer();
   int listen();
   int run();
 private:
   const Config *config_;
-  int sfd_[2];
 };
 
 void htdocs_on_request_recv_callback
