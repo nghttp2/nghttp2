@@ -69,6 +69,8 @@ AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG([0.20])
 
+AX_CXX_COMPILE_STDCXX_11([noext], [optional])
+
 # Checks for libraries.
 
 # Additional libraries required for tests.
