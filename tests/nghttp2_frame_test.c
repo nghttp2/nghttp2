@@ -168,13 +168,20 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   ssize_t framelen;
   nghttp2_nv *nva;
   ssize_t nvlen;
-  size_t big_vallen = (1 << 16) - 1;
-  char *big_val = malloc(big_vallen + 1);
-  const char *big_hds[] = { "header", big_val, NULL };
+  size_t big_vallen = NGHTTP2_MAX_HD_VALUE_LENGTH;
+  char *big_hds[17];
+  size_t big_hdslen = sizeof(big_hds)/sizeof(big_hds[0]);
+  size_t i;
 
-  memset(big_val, '0', big_vallen);
-  big_val[big_vallen] = '\0';
-  nvlen = nghttp2_nv_array_from_cstr(&nva, big_hds);
+  for(i = 0; i < big_hdslen; i += 2) {
+    big_hds[i] = (char*)"header";
+    big_hds[i+1] = malloc(big_vallen+1);
+    memset(big_hds[i+1], '0'+i, big_vallen);
+    big_hds[i+1][big_vallen] = '\0';
+  }
+  big_hds[big_hdslen - 1] = NULL;
+
+  nvlen = nghttp2_nv_array_from_cstr(&nva, (const char**)big_hds);
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
   nghttp2_frame_headers_init(&frame, NGHTTP2_FLAG_END_STREAM, 1000000007,
                              0, nva, nvlen);
@@ -183,7 +190,9 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
 
   nghttp2_frame_headers_free(&frame);
   free(buf);
-  free(big_val);
+  for(i = 0; i < big_hdslen; i += 2) {
+    free(big_hds[i+1]);
+  }
   nghttp2_hd_deflate_free(&deflater);
 }
 

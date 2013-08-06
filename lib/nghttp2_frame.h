@@ -33,7 +33,17 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_buffer.h"
 
+/* The maximum payload length of a frame */
+/* TODO The spec says the max payload length in HTTP is ((1 << 14) -
+   1) */
 #define NGHTTP2_MAX_FRAME_SIZE ((1 << 16) - 1)
+
+/* The maximum header block length. This is not specified by the
+   spec. We just chose the arbitrary size */
+#define NGHTTP2_MAX_HD_BLOCK_LENGTH ((1 << 16) - 1)
+/* The maximum value length of name/value pair. This is not specified
+   by the spec. We just chose the arbitrary size */
+#define NGHTTP2_MAX_HD_VALUE_LENGTH ((1 << 13) - 1)
 
 #define NGHTTP2_STREAM_ID_MASK 0x7fffffff
 #define NGHTTP2_PRIORITY_MASK 0x7fffffff

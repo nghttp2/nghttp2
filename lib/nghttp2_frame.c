@@ -794,7 +794,7 @@ ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
   nghttp2_nv *p;
   for(i = 0; nv[i]; ++i) {
     size_t len = strlen(nv[i]);
-    if(len > (1 << 16) - 1) {
+    if(len > NGHTTP2_MAX_HD_VALUE_LENGTH) {
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
     buflen += len;

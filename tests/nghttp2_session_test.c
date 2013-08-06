@@ -1278,22 +1278,27 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  const char *nv[] = { ":path", NULL, NULL };
-  size_t valuelen = 64*1024-1;
-  char *value = malloc(valuelen+1);
   nghttp2_frame *frame = malloc(sizeof(nghttp2_frame));
   nghttp2_nv *nva;
   ssize_t nvlen;
+  size_t vallen = NGHTTP2_MAX_HD_VALUE_LENGTH;
+  char *nv[17];
+  size_t nnv = sizeof(nv)/sizeof(nv[0]);
+  size_t i;
 
-  memset(value, '0', valuelen);
-  value[valuelen] = '\0';
-  nv[1] = value;
+  for(i = 0; i < nnv; i += 2) {
+    nv[i] = (char*)"header";
+    nv[i+1] = malloc(vallen+1);
+    memset(nv[i+1], '0'+i, vallen);
+    nv[i+1][vallen] = '\0';
+  }
+  nv[nnv - 1] = NULL;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
-  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
+  nvlen = nghttp2_nv_array_from_cstr(&nva, (const char**)nv);
 
   nghttp2_frame_headers_init(&frame->headers, NGHTTP2_FLAG_END_HEADERS, -1,
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
@@ -1304,7 +1309,9 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
   CU_ASSERT(session->goaway_flags &
             (NGHTTP2_GOAWAY_SEND | NGHTTP2_GOAWAY_FAIL_ON_SEND));
 
-  free(value);
+  for(i = 0; i < nnv; i += 2) {
+    free(nv[i+1]);
+  }
   nghttp2_session_del(session);
 }
 
