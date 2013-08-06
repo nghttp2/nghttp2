@@ -352,7 +352,7 @@ int Http2Handler::on_connect()
   nghttp2_settings_entry entry[2];
   size_t niv = 1;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  entry[0].value = 100;
   if(sessions_->get_config()->no_connection_flow_control &&
      sessions_->get_config()->no_stream_flow_control) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
