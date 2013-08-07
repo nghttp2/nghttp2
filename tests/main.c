@@ -170,6 +170,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_flow_control_disable_remote) ||
       !CU_add_test(pSuite, "session_flow_control_disable_local",
                    test_nghttp2_session_flow_control_disable_local) ||
+      !CU_add_test(pSuite, "session_flow_control_data_recv",
+                   test_nghttp2_session_flow_control_data_recv) ||
       !CU_add_test(pSuite, "session_data_read_temporal_failure",
                    test_nghttp2_session_data_read_temporal_failure) ||
       !CU_add_test(pSuite, "session_on_request_recv_callback",

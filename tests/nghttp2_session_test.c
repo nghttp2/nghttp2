@@ -2614,6 +2614,65 @@ void test_nghttp2_session_flow_control_disable_local(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_flow_control_data_recv(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  uint8_t data[64*1024+16];
+  nghttp2_frame_hd hd;
+  nghttp2_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  /* Initial window size to 64KiB - 1*/
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_NONE,
+                              NGHTTP2_PRI_DEFAULT, NGHTTP2_STREAM_OPENED,
+                              NULL);
+
+  /* Create DATA frame */
+  memset(data, 0, sizeof(data));
+  hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+  hd.type = NGHTTP2_DATA;
+  hd.flags = NGHTTP2_FLAG_END_STREAM;
+  hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HEAD_LENGTH ==
+            nghttp2_session_mem_recv(session, data,
+                                     NGHTTP2_MAX_FRAME_LENGTH +
+                                     NGHTTP2_FRAME_HEAD_LENGTH));
+
+  item = nghttp2_session_get_next_ob_item(session);
+  /* Since this is the last frame, stream-level WINDOW_UPDATE is not
+     issued, but connection-level does. */
+  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
+  CU_ASSERT(0 == OB_CTRL(item)->hd.stream_id);
+  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH ==
+            OB_CTRL(item)->window_update.window_size_increment);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  /* Receive DATA for closed stream. They are still subject to under
+     connection-level flow control, since this situation arises when
+     RST_STREAM is issued by the remote, but the local side keeps
+     sending DATA frames. Without calculating connection-level window,
+     the subsequent flow control gets confused. */
+  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HEAD_LENGTH ==
+            nghttp2_session_mem_recv(session, data,
+                                     NGHTTP2_MAX_FRAME_LENGTH +
+                                     NGHTTP2_FRAME_HEAD_LENGTH));
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
+  CU_ASSERT(0 == OB_CTRL(item)->hd.stream_id);
+  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH ==
+            OB_CTRL(item)->window_update.window_size_increment);
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_data_read_temporal_failure(void)
 {
   nghttp2_session *session;
