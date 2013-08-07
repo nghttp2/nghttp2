@@ -906,7 +906,9 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
 
   if(spdy->get_flow_control()) {
     sd->dconn->inc_recv_window_size(len);
-    if(sd->dconn->get_recv_window_size() > spdy->get_initial_window_size()) {
+    if(sd->dconn->get_recv_window_size() >
+       std::max(NGHTTP2_INITIAL_WINDOW_SIZE,
+                spdy->get_initial_window_size())) {
       if(LOG_ENABLED(INFO)) {
         SSLOG(INFO, spdy) << "Flow control error: recv_window_size="
                           << sd->dconn->get_recv_window_size()

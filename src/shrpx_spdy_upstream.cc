@@ -248,7 +248,7 @@ void on_data_chunk_recv_callback(spdylay_session *session,
     if(upstream->get_flow_control()) {
       downstream->inc_recv_window_size(len);
       if(downstream->get_recv_window_size() >
-         upstream->get_initial_window_size()) {
+         std::max(65536, upstream->get_initial_window_size())) {
         if(LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream) << "Flow control error: recv_window_size="
                                << downstream->get_recv_window_size()
