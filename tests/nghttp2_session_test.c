@@ -906,8 +906,8 @@ void test_nghttp2_session_on_settings_received(void)
                                         NGHTTP2_STREAM_OPENING, NULL);
   /* Set window size for each streams and will see how settings
      updates these values */
-  stream1->window_size = 16*1024;
-  stream2->window_size = -48*1024;
+  stream1->remote_window_size = 16*1024;
+  stream2->remote_window_size = -48*1024;
 
   nghttp2_frame_settings_init(&frame.settings, dup_iv(iv, niv), niv);
 
@@ -919,15 +919,15 @@ void test_nghttp2_session_on_settings_received(void)
   CU_ASSERT(1 ==
             session->remote_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]);
 
-  CU_ASSERT(64*1024 == stream1->window_size);
-  CU_ASSERT(0 == stream2->window_size);
+  CU_ASSERT(64*1024 == stream1->remote_window_size);
+  CU_ASSERT(0 == stream2->remote_window_size);
 
   frame.settings.iv[2].value = 16*1024;
 
   CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame));
 
-  CU_ASSERT(16*1024 == stream1->window_size);
-  CU_ASSERT(-48*1024 == stream2->window_size);
+  CU_ASSERT(16*1024 == stream1->remote_window_size);
+  CU_ASSERT(-48*1024 == stream2->remote_window_size);
 
   CU_ASSERT(0 == stream1->remote_flow_control);
   CU_ASSERT(0 == stream2->remote_flow_control);
@@ -1141,7 +1141,7 @@ void test_nghttp2_session_on_window_update_received(void)
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
-  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024 == stream->window_size);
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024 == stream->remote_window_size);
 
   data_item = malloc(sizeof(nghttp2_outbound_item));
   memset(data_item, 0, sizeof(nghttp2_outbound_item));
@@ -1150,7 +1150,8 @@ void test_nghttp2_session_on_window_update_received(void)
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(2 == user_data.frame_recv_cb_called);
-  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024*2 == stream->window_size);
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024*2 ==
+            stream->remote_window_size);
   CU_ASSERT(NULL == stream->deferred_data);
 
   nghttp2_frame_window_update_free(&frame.window_update);
@@ -2475,12 +2476,12 @@ void test_nghttp2_session_flow_control(void)
   /* Change initial window size to 16KiB. The window_size becomes
      negative. */
   new_initial_window_size = 16*1024;
-  stream->window_size = new_initial_window_size-
+  stream->remote_window_size = new_initial_window_size-
     (session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]
-     -stream->window_size);
+     - stream->remote_window_size);
   session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
     new_initial_window_size;
-  CU_ASSERT(-48*1024 == stream->window_size);
+  CU_ASSERT(-48*1024 == stream->remote_window_size);
 
   /* Back 48KiB to stream window */
   frame.hd.stream_id = 1;

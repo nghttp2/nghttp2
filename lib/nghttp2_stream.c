@@ -31,7 +31,8 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          nghttp2_stream_state initial_state,
                          uint8_t remote_flow_control,
                          uint8_t local_flow_control,
-                         int32_t initial_window_size,
+                         int32_t remote_initial_window_size,
+                         int32_t local_initial_window_size,
                          void *stream_user_data)
 {
   nghttp2_map_entry_init(&stream->map_entry, stream_id);
@@ -45,7 +46,8 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
   stream->remote_flow_control = remote_flow_control;
   stream->local_flow_control = local_flow_control;
-  stream->window_size = initial_window_size;
+  stream->remote_window_size = remote_initial_window_size;
+  stream->local_window_size = local_initial_window_size;
   stream->recv_window_size = 0;
 }
 
@@ -75,12 +77,20 @@ void nghttp2_stream_detach_deferred_data(nghttp2_stream *stream)
   stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
 }
 
-void nghttp2_stream_update_initial_window_size(nghttp2_stream *stream,
-                                               int32_t new_initial_window_size,
-                                               int32_t old_initial_window_size)
+int nghttp2_stream_update_remote_initial_window_size
+(nghttp2_stream *stream,
+ int32_t new_initial_window_size,
+ int32_t old_initial_window_size)
 {
-  stream->window_size =
-    new_initial_window_size-(old_initial_window_size-stream->window_size);
+  int64_t new_window_size = (int64_t)stream->remote_window_size +
+    new_initial_window_size - old_initial_window_size;
+  if(INT32_MIN > new_window_size ||
+     new_window_size > NGHTTP2_MAX_WINDOW_SIZE) {
+    return -1;
+  }
+  stream->remote_window_size +=
+    new_initial_window_size - old_initial_window_size;
+  return 0;
 }
 
 void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream)

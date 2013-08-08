@@ -74,6 +74,13 @@ typedef struct nghttp2_session nghttp2_session;
 /**
  * @macro
  *
+ * The maximum window size
+ */
+#define NGHTTP2_MAX_WINDOW_SIZE ((int32_t)((1U << 31) - 1))
+
+/**
+ * @macro
+ *
  * The initial window size for stream level flow control.
  */
 #define NGHTTP2_INITIAL_WINDOW_SIZE ((1 << 16) - 1)
@@ -207,6 +214,10 @@ typedef enum {
    * Header block inflate/deflate error.
    */
   NGHTTP2_ERR_HEADER_COMP = -523,
+  /**
+   * Flow control error
+   */
+  NGHTTP2_ERR_FLOW_CONTROL = -524,
   /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data

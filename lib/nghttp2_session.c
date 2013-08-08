@@ -457,6 +457,8 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
                       [NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS],
                       session->remote_settings
                       [NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE],
+                      session->local_settings
+                      [NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE],
                       stream_user_data);
   r = nghttp2_map_insert(&session->streams, &stream->map_entry);
   if(r != 0) {
@@ -818,7 +820,7 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
     int32_t session_window_size =
       session->remote_flow_control ? session->window_size : INT32_MAX;
     int32_t stream_window_size =
-      stream->remote_flow_control ? stream->window_size : INT32_MAX;
+      stream->remote_flow_control ? stream->remote_window_size : INT32_MAX;
     int32_t window_size = nghttp2_min(session_window_size,
                                       stream_window_size);
     if(window_size > 0) {
@@ -1509,7 +1511,7 @@ int nghttp2_session_send(nghttp2_session *session)
         frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
         stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
         if(stream && stream->remote_flow_control) {
-          stream->window_size -= len;
+          stream->remote_window_size -= len;
         }
         if(session->remote_flow_control) {
           session->window_size -= len;
@@ -1857,21 +1859,24 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
 static int nghttp2_update_initial_window_size_func(nghttp2_map_entry *entry,
                                                    void *ptr)
 {
+  int rv;
   nghttp2_update_window_size_arg *arg;
   nghttp2_stream *stream;
   arg = (nghttp2_update_window_size_arg*)ptr;
   stream = (nghttp2_stream*)entry;
-  nghttp2_stream_update_initial_window_size(stream,
-                                            arg->new_window_size,
-                                            arg->old_window_size);
+  rv = nghttp2_stream_update_remote_initial_window_size(stream,
+                                                        arg->new_window_size,
+                                                        arg->old_window_size);
+  if(rv != 0) {
+    return NGHTTP2_ERR_FLOW_CONTROL;
+  }
   /* If window size gets positive, push deferred DATA frame to
      outbound queue. */
   if(stream->deferred_data &&
      (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL) &&
-     stream->window_size > 0 &&
+     stream->remote_window_size > 0 &&
      (arg->session->remote_flow_control == 0 ||
       arg->session->window_size > 0)) {
-    int rv;
     rv = nghttp2_pq_push(&arg->session->ob_pq, stream->deferred_data);
     if(rv == 0) {
       nghttp2_stream_detach_deferred_data(stream);
@@ -2011,10 +2016,15 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
-      if(entry->value < (1u << 31)) {
+      if(entry->value <= NGHTTP2_MAX_WINDOW_SIZE) {
         rv = nghttp2_session_update_initial_window_size(session, entry->value);
         if(rv != 0) {
-          return rv;
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          } else {
+            return nghttp2_session_handle_invalid_connection
+              (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
+          }
         }
       } else {
         return nghttp2_session_handle_invalid_connection
@@ -2143,7 +2153,7 @@ static int nghttp2_push_back_deferred_data_func(nghttp2_map_entry *entry,
      outbound queue. */
   if(stream->deferred_data &&
      (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL) &&
-     (stream->remote_flow_control == 0 || stream->window_size > 0)) {
+     (stream->remote_flow_control == 0 || stream->remote_window_size > 0)) {
     int rv;
     rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
     if(rv == 0) {
@@ -2232,15 +2242,16 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
         nghttp2_session_call_on_frame_received(session, frame);
         return 0;
       }
-      if(INT32_MAX - frame->window_update.window_size_increment <
-         stream->window_size) {
+      if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
+         stream->remote_window_size) {
         int r;
         r = nghttp2_session_handle_invalid_stream
           (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
         return r;
       } else {
-        stream->window_size += frame->window_update.window_size_increment;
-        if(stream->window_size > 0 &&
+        stream->remote_window_size +=
+          frame->window_update.window_size_increment;
+        if(stream->remote_window_size > 0 &&
            (session->remote_flow_control == 0 ||
             session->window_size > 0) &&
            stream->deferred_data != NULL &&

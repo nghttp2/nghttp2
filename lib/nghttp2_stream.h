@@ -109,12 +109,16 @@ typedef struct {
      flow control options off or sending WINDOW_UPDATE with
      END_FLOW_CONTROL bit set. */
   uint8_t local_flow_control;
-  /* Current sender window size. This value is computed against the
+  /* Current remote window size. This value is computed against the
      current initial window size of remote endpoint. */
-  int32_t window_size;
+  int32_t remote_window_size;
   /* Keep track of the number of bytes received without
      WINDOW_UPDATE. */
   int32_t recv_window_size;
+  /* window size for local window control. It is initially set to
+     NGHTTP2_INITIAL_WINDOW_SIZE and could be increased/decreased by
+     submitting WINDOW_UPDATE. See nghttp2_submit_window_update(). */
+  int32_t local_window_size;
 } nghttp2_stream;
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
@@ -122,7 +126,8 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          nghttp2_stream_state initial_state,
                          uint8_t remote_flow_control,
                          uint8_t local_flow_control,
-                         int32_t initial_window_size,
+                         int32_t remote_initial_window_size,
+                         int32_t local_initial_window_size,
                          void *stream_user_data);
 
 void nghttp2_stream_free(nghttp2_stream *stream);
@@ -149,13 +154,17 @@ void nghttp2_stream_defer_data(nghttp2_stream *stream,
 void nghttp2_stream_detach_deferred_data(nghttp2_stream *stream);
 
 /*
- * Updates the initial window size with the new value
+ * Updates the remote window size with the new value
  * |new_initial_window_size|. The |old_initial_window_size| is used to
  * calculate the current window size.
+ *
+ * This function returns 0 if it succeeds or -1. The failure is due to
+ * overflow.
  */
-void nghttp2_stream_update_initial_window_size(nghttp2_stream *stream,
-                                               int32_t new_initial_window_size,
-                                               int32_t old_initial_window_size);
+int nghttp2_stream_update_remote_initial_window_size
+(nghttp2_stream *stream,
+ int32_t new_initial_window_size,
+ int32_t old_initial_window_size);
 
 /*
  * Call this function if promised stream |stream| is replied with
