@@ -44,6 +44,11 @@ Macros
     
     The lowest priority value
 
+.. macro:: NGHTTP2_MAX_WINDOW_SIZE
+
+    
+    The maximum window size
+
 .. macro:: NGHTTP2_INITIAL_WINDOW_SIZE
 
     
@@ -180,6 +185,10 @@ Enums
 
         (``-523``) 
         Header block inflate/deflate error.
+    .. macro:: NGHTTP2_ERR_FLOW_CONTROL
+
+        (``-524``) 
+        Flow control error
     .. macro:: NGHTTP2_ERR_FATAL
 
         (``-900``) 
@@ -374,12 +383,19 @@ Enums
     
     Configuration options for :type:`nghttp2_session`.
 
-    .. macro:: NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE
+    .. macro:: NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE
 
         (``1``) 
-        This option prevents the library from sending WINDOW_UPDATE
-        automatically. If this option is set, the application is
+        This option prevents the library from sending WINDOW_UPDATE for a
+        stream automatically. If this option is set, the application is
         responsible for sending WINDOW_UPDATE using
+        `nghttp2_submit_window_update`.
+    .. macro:: NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE
+
+        (``2``) 
+        This option prevents the library from sending WINDOW_UPDATE for a
+        connection automatically. If this option is set, the application
+        is responsible for sending WINDOW_UPDATE with stream ID 0 using
         `nghttp2_submit_window_update`.
 
 
@@ -901,12 +917,19 @@ Functions
     
     The following *optname* are supported:
     
-    :macro:`NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE`
+    :macro:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`
         The *optval* must be a pointer to ``int``. If the *\*optval* is
-        nonzero, the library will not send WINDOW_UPDATE automatically.
-        Therefore, the application is responsible for sending
-        WINDOW_UPDATE using `nghttp2_submit_window_update`. This option
-        defaults to 0.
+        nonzero, the library will not send WINDOW_UPDATE for a stream
+        automatically.  Therefore, the application is responsible for
+        sending WINDOW_UPDATE using
+        `nghttp2_submit_window_update`. This option defaults to 0.
+    
+    :macro:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
+        The *optval* must be a pointer to ``int``. If the *\*optval* is
+        nonzero, the library will not send WINDOW_UPDATE for connection
+        automatically.  Therefore, the application is responsible for
+        sending WINDOW_UPDATE using
+        `nghttp2_submit_window_update`. This option defaults to 0.
     
     This function returns 0 if it succeeds, or one of the following
     negative error codes:
@@ -1377,6 +1400,10 @@ Functions
     This function does not take ownership of the *iv*. This function
     copies all the elements in the *iv*.
     
+    While updating individual stream's local window size, if the window
+    size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
+    RST_STREAM is issued against such a stream.
+    
     This function returns 0 if it succeeds, or one of the following
     negative error codes:
     
@@ -1460,21 +1487,31 @@ Functions
 .. function:: int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t window_size_increment)
 
     
-    Submits WINDOW_UPDATE frame. The effective range of the
-    *window_size_increment* is [1, (1 << 31)-1], inclusive. But the
-    application must be responsible to keep the resulting window size
-    <= (1 << 31)-1. If :macro:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit set in
-    the *flags*, 0 can be specified in the *window_size_increment*. In
-    fact, if this flag is set, the value specified in the
-    *window_size_increment* is ignored.
+    Submits WINDOW_UPDATE frame.
+    
+    If the *window_size_increment* is positive, the WINDOW_UPDATE with
+    that value as window_size_increment is queued. If the
+    *window_size_increment* is larger than the received bytes from the
+    remote endpoint, the local window size is increased by that
+    difference.
+    
+    If the *window_size_increment* is negative, the local window size
+    is decreased by -*window_size_increment*.  If
+    :macro:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE` (or
+    :macro:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` if *stream_id*
+    is 0) is not set and the library decided that the WINDOW_UPDATE
+    should be submitted, then WINDOW_UPDATE is queued with the current
+    received bytes count.
     
     This function returns 0 if it succeeds, or one of the following
     negative error codes:
     
     :macro:`NGHTTP2_ERR_INVALID_ARGUMENT`
-        The *delta_window_size* is 0 or negative and
+        The *delta_window_size* is 0 and
         :macro:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit is not set in
         *flags*.
+    :macro:`NGHTTP2_ERR_FLOW_CONTROL`
+        The local window size overflow or gets negative.
     :macro:`NGHTTP2_ERR_STREAM_CLOSED`
         The stream is already closed or does not exist.
     :macro:`NGHTTP2_ERR_NOMEM`
