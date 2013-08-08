@@ -91,6 +91,37 @@ void nghttp2_downcase(uint8_t *s, size_t len)
   }
 }
 
+int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
+                                     int32_t *recv_window_size_ptr,
+                                     int32_t delta)
+{
+  if(delta > 0) {
+    int32_t new_recv_window_size =  *recv_window_size_ptr - delta;
+    if(new_recv_window_size < 0) {
+      if(*local_window_size_ptr >
+         NGHTTP2_MAX_WINDOW_SIZE + new_recv_window_size) {
+        return NGHTTP2_ERR_FLOW_CONTROL;
+      }
+      *local_window_size_ptr -= new_recv_window_size;
+      new_recv_window_size = 0;
+    }
+    *recv_window_size_ptr = new_recv_window_size;
+    return 0;
+  } else {
+    if(*local_window_size_ptr + delta < 0) {
+      return NGHTTP2_ERR_FLOW_CONTROL;
+    }
+    *local_window_size_ptr += delta;
+  }
+  return 0;
+}
+
+int nghttp2_should_send_window_update(int32_t local_window_size,
+                                      int32_t recv_window_size)
+{
+  return recv_window_size >= local_window_size / 2;
+}
+
 const char* nghttp2_strerror(int error_code)
 {
   switch(error_code) {

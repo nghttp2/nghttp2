@@ -146,6 +146,7 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   (*session_ptr)->local_flow_control = 1;
   (*session_ptr)->window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
+  (*session_ptr)->local_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
 
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
   (*session_ptr)->last_stream_id = 0;
@@ -1856,8 +1857,9 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
   return 0;
 }
 
-static int nghttp2_update_initial_window_size_func(nghttp2_map_entry *entry,
-                                                   void *ptr)
+static int nghttp2_update_remote_initial_window_size_func
+(nghttp2_map_entry *entry,
+ void *ptr)
 {
   int rv;
   nghttp2_update_window_size_arg *arg;
@@ -1868,7 +1870,8 @@ static int nghttp2_update_initial_window_size_func(nghttp2_map_entry *entry,
                                                         arg->new_window_size,
                                                         arg->old_window_size);
   if(rv != 0) {
-    return NGHTTP2_ERR_FLOW_CONTROL;
+    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
+                                          NGHTTP2_FLOW_CONTROL_ERROR);
   }
   /* If window size gets positive, push deferred DATA frame to
      outbound queue. */
@@ -1890,8 +1893,8 @@ static int nghttp2_update_initial_window_size_func(nghttp2_map_entry *entry,
 }
 
 /*
- * Updates the initial window size of all active streams.
- * If error occurs, all streams may not be updated.
+ * Updates the remote initial window size of all active streams.  If
+ * error occurs, all streams may not be updated.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1899,7 +1902,7 @@ static int nghttp2_update_initial_window_size_func(nghttp2_map_entry *entry,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-static int nghttp2_session_update_initial_window_size
+static int nghttp2_session_update_remote_initial_window_size
 (nghttp2_session *session,
  int32_t new_initial_window_size)
 {
@@ -1909,7 +1912,66 @@ static int nghttp2_session_update_initial_window_size
   arg.old_window_size =
     session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE];
   return nghttp2_map_each(&session->streams,
-                          nghttp2_update_initial_window_size_func,
+                          nghttp2_update_remote_initial_window_size_func,
+                          &arg);
+}
+
+static int nghttp2_update_local_initial_window_size_func
+(nghttp2_map_entry *entry,
+ void *ptr)
+{
+  int rv;
+  nghttp2_update_window_size_arg *arg;
+  nghttp2_stream *stream;
+  arg = (nghttp2_update_window_size_arg*)ptr;
+  stream = (nghttp2_stream*)entry;
+  if(!stream->local_flow_control) {
+    return 0;
+  }
+  rv = nghttp2_stream_update_local_initial_window_size(stream,
+                                                       arg->new_window_size,
+                                                       arg->old_window_size);
+  if(rv != 0) {
+    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
+                                          NGHTTP2_FLOW_CONTROL_ERROR);
+  }
+  if(!(arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+    if(nghttp2_should_send_window_update(stream->local_window_size,
+                                         stream->recv_window_size)) {
+      rv = nghttp2_session_add_window_update(arg->session,
+                                             NGHTTP2_FLAG_NONE,
+                                             stream->stream_id,
+                                             stream->recv_window_size);
+      if(rv != 0) {
+        return rv;
+      }
+      stream->recv_window_size = 0;
+    }
+  }
+  return 0;
+}
+
+/*
+ * Updates the local initial window size of all active streams.  If
+ * error occurs, all streams may not be updated.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+static int nghttp2_session_update_local_initial_window_size
+(nghttp2_session *session,
+ int32_t new_initial_window_size,
+ int32_t old_initial_window_size)
+{
+  nghttp2_update_window_size_arg arg;
+  arg.session = session;
+  arg.new_window_size = new_initial_window_size;
+  arg.old_window_size = old_initial_window_size;
+  return nghttp2_map_each(&session->streams,
+                          nghttp2_update_local_initial_window_size_func,
                           &arg);
 }
 
@@ -1973,14 +2035,32 @@ static void nghttp2_session_disable_local_flow_control
   assert(rv == 0);
 }
 
-void nghttp2_session_update_local_settings(nghttp2_session *session,
-                                           nghttp2_settings_entry *iv,
-                                           size_t niv)
+int nghttp2_session_update_local_settings(nghttp2_session *session,
+                                          nghttp2_settings_entry *iv,
+                                          size_t niv)
 {
+  int rv;
   size_t i;
   uint8_t old_flow_control =
     session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS];
-
+  uint8_t new_flow_control = old_flow_control;
+  int32_t new_initial_window_size = -1;
+  for(i = 0; i < niv; ++i) {
+    if(iv[i].settings_id == NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE) {
+      new_initial_window_size = iv[i].value;
+    } else if(iv[i].settings_id == NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS) {
+      new_flow_control = iv[i].value;
+    }
+  }
+  if(!old_flow_control && !new_flow_control && new_initial_window_size != -1) {
+    rv = nghttp2_session_update_local_initial_window_size
+      (session,
+       new_initial_window_size,
+       session->local_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
+    if(rv != 0) {
+      return rv;
+    }
+  }
   for(i = 0; i < niv; ++i) {
     assert(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX);
     session->local_settings[iv[i].settings_id] = iv[i].value;
@@ -1989,6 +2069,7 @@ void nghttp2_session_update_local_settings(nghttp2_session *session,
      session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]) {
     nghttp2_session_disable_local_flow_control(session);
   }
+  return 0;
 }
 
 int nghttp2_session_on_settings_received(nghttp2_session *session,
@@ -2017,7 +2098,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
       if(entry->value <= NGHTTP2_MAX_WINDOW_SIZE) {
-        rv = nghttp2_session_update_initial_window_size(session, entry->value);
+        rv = nghttp2_session_update_remote_initial_window_size
+          (session, entry->value);
         if(rv != 0) {
           if(nghttp2_is_fatal(rv)) {
             return rv;
@@ -2201,7 +2283,7 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
       }
       return 0;
     }
-    if(INT32_MAX - frame->window_update.window_size_increment <
+    if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
        session->window_size) {
       return nghttp2_session_handle_invalid_connection
         (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
@@ -2552,18 +2634,18 @@ static int nghttp2_session_process_data_frame(nghttp2_session *session)
   }
 }
 
-static int32_t adjust_recv_window_size(int32_t recv_window_size, int32_t delta)
+/*
+ * If the resulting recv_window_size is strictly larger than
+ * NGHTTP2_MAX_WINDOW_SIZE, return NGHTTP2_ERR_FLOW_CONTROL.
+ */
+static int adjust_recv_window_size(int32_t *recv_window_size_ptr,
+                                   int32_t delta)
 {
-  /* If NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE is set and the application
-     does not send WINDOW_UPDATE and the remote endpoint keeps
-     sending data, stream->recv_window_size will eventually
-     overflow. */
-  if(recv_window_size > INT32_MAX - delta) {
-    recv_window_size = INT32_MAX;
-  } else {
-    recv_window_size += delta;
+  if(*recv_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta) {
+    return NGHTTP2_ERR_FLOW_CONTROL;
   }
-  return recv_window_size;
+  *recv_window_size_ptr += delta;
+  return 0;
 }
 
 /*
@@ -2583,23 +2665,25 @@ static int nghttp2_session_update_recv_stream_window_size
  nghttp2_stream *stream,
  int32_t delta_size)
 {
-  stream->recv_window_size = adjust_recv_window_size
-    (stream->recv_window_size, delta_size);
+  int rv;
+  rv = adjust_recv_window_size(&stream->recv_window_size, delta_size);
+  if(rv != 0) {
+    return nghttp2_session_add_rst_stream(session, stream->stream_id,
+                                          NGHTTP2_ERR_FLOW_CONTROL);
+  }
   if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
-    /* This is just a heuristics. */
     /* We have to use local_settings here because it is the constraint
        the remote endpoint should honor. */
-    if((size_t)stream->recv_window_size*2 >=
-       session->local_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]) {
-      int r;
-      r = nghttp2_session_add_window_update(session,
+    if(nghttp2_should_send_window_update(stream->local_window_size,
+                                         stream->recv_window_size)) {
+      rv = nghttp2_session_add_window_update(session,
                                             NGHTTP2_FLAG_NONE,
                                             stream->stream_id,
                                             stream->recv_window_size);
-      if(r == 0) {
+      if(rv == 0) {
         stream->recv_window_size = 0;
       } else {
-        return r;
+        return rv;
       }
     }
   }
@@ -2622,23 +2706,24 @@ static int nghttp2_session_update_recv_connection_window_size
 (nghttp2_session *session,
  int32_t delta_size)
 {
-  session->recv_window_size = adjust_recv_window_size
-    (session->recv_window_size, delta_size);
+  int rv;
+  rv = adjust_recv_window_size(&session->recv_window_size, delta_size);
+  if(rv != 0) {
+    return nghttp2_session_fail_session(session, NGHTTP2_ERR_FLOW_CONTROL);
+  }
   if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
-    /* Same heuristics above */
-    if((size_t)session->recv_window_size*2 >=
-       NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE) {
-      int r;
+    if(nghttp2_should_send_window_update(session->local_window_size,
+                                         session->recv_window_size)) {
       /* Use stream ID 0 to update connection-level flow control
          window */
-      r = nghttp2_session_add_window_update(session,
+      rv = nghttp2_session_add_window_update(session,
                                             NGHTTP2_FLAG_NONE,
                                             0,
                                             session->recv_window_size);
-      if(r == 0) {
+      if(rv == 0) {
         session->recv_window_size = 0;
       } else {
-        return r;
+        return rv;
       }
     }
   }

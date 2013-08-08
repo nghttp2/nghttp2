@@ -115,7 +115,7 @@ typedef struct {
   /* Keep track of the number of bytes received without
      WINDOW_UPDATE. */
   int32_t recv_window_size;
-  /* window size for local window control. It is initially set to
+  /* window size for local flow control. It is initially set to
      NGHTTP2_INITIAL_WINDOW_SIZE and could be increased/decreased by
      submitting WINDOW_UPDATE. See nghttp2_submit_window_update(). */
   int32_t local_window_size;
@@ -162,6 +162,19 @@ void nghttp2_stream_detach_deferred_data(nghttp2_stream *stream);
  * overflow.
  */
 int nghttp2_stream_update_remote_initial_window_size
+(nghttp2_stream *stream,
+ int32_t new_initial_window_size,
+ int32_t old_initial_window_size);
+
+/*
+ * Updates the local window size with the new value
+ * |new_initial_window_size|. The |old_initial_window_size| is used to
+ * calculate the current window size.
+ *
+ * This function returns 0 if it succeeds or -1. The failure is due to
+ * overflow.
+ */
+int nghttp2_stream_update_local_initial_window_size
 (nghttp2_stream *stream,
  int32_t new_initial_window_size,
  int32_t old_initial_window_size);

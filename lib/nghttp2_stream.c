@@ -77,20 +77,39 @@ void nghttp2_stream_detach_deferred_data(nghttp2_stream *stream)
   stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
 }
 
-int nghttp2_stream_update_remote_initial_window_size
-(nghttp2_stream *stream,
+static int update_initial_window_size
+(int32_t *window_size_ptr,
  int32_t new_initial_window_size,
  int32_t old_initial_window_size)
 {
-  int64_t new_window_size = (int64_t)stream->remote_window_size +
+  int64_t new_window_size = (int64_t)(*window_size_ptr) +
     new_initial_window_size - old_initial_window_size;
   if(INT32_MIN > new_window_size ||
      new_window_size > NGHTTP2_MAX_WINDOW_SIZE) {
     return -1;
   }
-  stream->remote_window_size +=
-    new_initial_window_size - old_initial_window_size;
+  *window_size_ptr += new_initial_window_size - old_initial_window_size;
   return 0;
+}
+
+int nghttp2_stream_update_remote_initial_window_size
+(nghttp2_stream *stream,
+ int32_t new_initial_window_size,
+ int32_t old_initial_window_size)
+{
+  return update_initial_window_size(&stream->remote_window_size,
+                                    new_initial_window_size,
+                                    old_initial_window_size);
+}
+
+int nghttp2_stream_update_local_initial_window_size
+(nghttp2_stream *stream,
+ int32_t new_initial_window_size,
+ int32_t old_initial_window_size)
+{
+  return update_initial_window_size(&stream->local_window_size,
+                                    new_initial_window_size,
+                                    old_initial_window_size);
 }
 
 void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream)

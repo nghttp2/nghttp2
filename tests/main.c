@@ -36,6 +36,7 @@
 #include "nghttp2_hd_test.h"
 #include "nghttp2_npn_test.h"
 #include "nghttp2_gzip_test.h"
+#include "nghttp2_helper_test.h"
 
 static int init_suite1(void)
 {
@@ -142,10 +143,14 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "submit_priority", test_nghttp2_submit_priority) ||
       !CU_add_test(pSuite, "session_submit_settings",
                    test_nghttp2_submit_settings) ||
+      !CU_add_test(pSuite, "session_submit_settings_update_local_window_size",
+                   test_nghttp2_submit_settings_update_local_window_size) ||
       !CU_add_test(pSuite, "session_submit_push_promise",
                    test_nghttp2_submit_push_promise) ||
       !CU_add_test(pSuite, "submit_window_update",
                    test_nghttp2_submit_window_update) ||
+      !CU_add_test(pSuite, "submit_window_update_local_window_size",
+                   test_nghttp2_submit_window_update_local_window_size) ||
       !CU_add_test(pSuite, "submit_invalid_nv",
                    test_nghttp2_submit_invalid_nv) ||
       !CU_add_test(pSuite, "session_open_stream",
@@ -231,7 +236,9 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_inflate_newname_subst) ||
       !CU_add_test(pSuite, "hd_deflate_inflate",
                    test_nghttp2_hd_deflate_inflate) ||
-      !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate)
+      !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
+      !CU_add_test(pSuite, "adjust_local_window_size",
+                   test_nghttp2_adjust_local_window_size)
       ) {
      CU_cleanup_registry();
      return CU_get_error();

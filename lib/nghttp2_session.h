@@ -174,6 +174,11 @@ struct nghttp2_session {
   /* Keep track of the number of bytes received without
      WINDOW_UPDATE. */
   int32_t recv_window_size;
+  /* window size for local flow control. It is initially set to
+     NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE and could be
+     increased/decreased by submitting WINDOW_UPDATE. See
+     nghttp2_submit_window_update(). */
+  int32_t local_window_size;
 
   /* Settings value received from the remote endpoint. We just use ID
      as index. The index = 0 is unused. */
@@ -517,9 +522,19 @@ nghttp2_outbound_item* nghttp2_session_get_next_ob_item
  * array pointed by the |iv| is given by the |niv|.  This function
  * assumes that the all settings_id member in |iv| are in range 1 to
  * NGHTTP2_SETTINGS_MAX, inclusive.
+ *
+ * While updating individual stream's local window size, if the window
+ * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
+ * RST_STREAM is issued against such a stream.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_session_update_local_settings(nghttp2_session *session,
-                                           nghttp2_settings_entry *iv,
-                                           size_t niv);
+int nghttp2_session_update_local_settings(nghttp2_session *session,
+                                          nghttp2_settings_entry *iv,
+                                          size_t niv);
 
 #endif /* NGHTTP2_SESSION_H */

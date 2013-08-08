@@ -25,6 +25,7 @@
 #include "nghttp2_submit.h"
 
 #include <string.h>
+#include <assert.h>
 
 #include "nghttp2_session.h"
 #include "nghttp2_frame.h"
@@ -168,10 +169,17 @@ int nghttp2_submit_settings(nghttp2_session *session,
   }
   nghttp2_frame_iv_sort(iv_copy, niv);
   nghttp2_frame_settings_init(&frame->settings, iv_copy, niv);
+
+  r = nghttp2_session_update_local_settings(session, iv_copy, niv);
+  if(r != 0) {
+    nghttp2_frame_settings_free(&frame->settings);
+    free(frame);
+    return r;
+  }
   r = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
-  if(r == 0) {
-    nghttp2_session_update_local_settings(session, iv_copy, niv);
-  } else {
+  if(r != 0) {
+    /* The only expected error is fatal one */
+    assert(r < NGHTTP2_ERR_FATAL);
     nghttp2_frame_settings_free(&frame->settings);
     free(frame);
   }
@@ -215,27 +223,59 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
                                  int32_t stream_id,
                                  int32_t window_size_increment)
 {
+  int rv;
   nghttp2_stream *stream;
   flags &= NGHTTP2_FLAG_END_FLOW_CONTROL;
   if(flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
     window_size_increment = 0;
-  } else if(window_size_increment <= 0) {
+  } else if(window_size_increment == 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   if(stream_id == 0) {
-    return nghttp2_session_add_window_update(session, flags, stream_id,
-                                             window_size_increment);
+    if(!session->local_flow_control) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+    rv = nghttp2_adjust_local_window_size(&session->local_window_size,
+                                          &session->recv_window_size,
+                                          window_size_increment);
+    if(rv != 0) {
+      return rv;
+    }
+    if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) &&
+       window_size_increment < 0 &&
+       nghttp2_should_send_window_update(session->local_window_size,
+                                         session->recv_window_size)) {
+      window_size_increment = session->recv_window_size;
+      session->recv_window_size = 0;
+    }
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
     if(stream) {
-      stream->recv_window_size -= nghttp2_min(window_size_increment,
-                                              stream->recv_window_size);
-      return nghttp2_session_add_window_update(session, flags, stream_id,
-                                               window_size_increment);
+      if(!stream->local_flow_control) {
+        return NGHTTP2_ERR_INVALID_ARGUMENT;
+      }
+      rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
+                                            &stream->recv_window_size,
+                                            window_size_increment);
+      if(rv != 0) {
+        return rv;
+      }
+      if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) &&
+         window_size_increment < 0 &&
+         nghttp2_should_send_window_update(stream->local_window_size,
+                                           stream->recv_window_size)) {
+        window_size_increment = stream->recv_window_size;
+        stream->recv_window_size = 0;
+      }
     } else {
       return NGHTTP2_ERR_STREAM_CLOSED;
     }
   }
+  if(window_size_increment > 0 || (flags & NGHTTP2_FLAG_END_FLOW_CONTROL)) {
+    return nghttp2_session_add_window_update(session, flags, stream_id,
+                                             window_size_increment);
+  }
+  return 0;
 }
 
 int nghttp2_submit_request(nghttp2_session *session, int32_t pri,

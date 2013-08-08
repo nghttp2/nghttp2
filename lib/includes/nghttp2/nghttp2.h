@@ -1615,6 +1615,10 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
  * This function does not take ownership of the |iv|. This function
  * copies all the elements in the |iv|.
  *
+ * While updating individual stream's local window size, if the window
+ * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
+ * RST_STREAM is issued against such a stream.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -1711,21 +1715,29 @@ int nghttp2_submit_goaway(nghttp2_session *session,
 /**
  * @function
  *
- * Submits WINDOW_UPDATE frame. The effective range of the
- * |window_size_increment| is [1, (1 << 31)-1], inclusive. But the
- * application must be responsible to keep the resulting window size
- * <= (1 << 31)-1. If :enum:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit set in
- * the |flags|, 0 can be specified in the |window_size_increment|. In
- * fact, if this flag is set, the value specified in the
- * |window_size_increment| is ignored.
+ * Submits WINDOW_UPDATE frame.
+ *
+ * If the |window_size_increment| is positive, the WINDOW_UPDATE with
+ * that value as window_size_increment is queued. If the
+ * |window_size_increment| is larger than the received bytes from the
+ * remote endpoint, the local window size is increased by that
+ * difference.
+ *
+ * If the |window_size_increment| is negative, the local window size
+ * is decreased by -|window_size_increment|.  If
+ * :enum:`NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE` is not set and the
+ * library decided that the WINDOW_UPDATE should be submitted, then
+ * WINDOW_UPDATE is queued with the current received bytes count.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |delta_window_size| is 0 or negative and
+ *     The |delta_window_size| is 0 and
  *     :enum:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit is not set in
  *     |flags|.
+ * :enum:`NGHTTP2_ERR_FLOW_CONTROL`
+ *     The local window size overflow or gets negative.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream is already closed or does not exist.
  * :enum:`NGHTTP2_ERR_NOMEM`

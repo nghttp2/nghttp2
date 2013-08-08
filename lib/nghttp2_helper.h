@@ -91,4 +91,29 @@ void* nghttp2_memdup(const void* src, size_t n);
 
 void nghttp2_downcase(uint8_t *s, size_t len);
 
+/*
+ * Adjusts |*local_window_size_ptr| and |*recv_window_size_ptr| with
+ * |delta| which is the WINDOW_UPDATE's window_size_increment sent
+ * from local side. If |delta| is strictly larger than
+ * |*recv_window_size_ptr|, |*local_window_size_ptr| is increased by
+ * delta - *recv_window_size_ptr. If |delta| is negative,
+ * |*local_window_size_ptr| is decreased by delta.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_FLOW_CONTROL
+ *     local_window_size overflow or gets negative.
+ */
+int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
+                                     int32_t *recv_window_size_ptr,
+                                     int32_t delta);
+
+/*
+ * Returns non-zero if the function decided that WINDOW_UPDATE should
+ * be sent.
+ */
+int nghttp2_should_send_window_update(int32_t local_window_size,
+                                      int32_t recv_window_size);
+
 #endif /* NGHTTP2_HELPER_H */
