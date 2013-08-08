@@ -7,7 +7,7 @@ version 2.0.
 Development Status
 ------------------
 
-We started to implement HTTP-defat-04/2.0
+We started to implement HTTP-draft-04/2.0
 (http://tools.ietf.org/html/draft-ietf-httpbis-http2-04) based on
 spdylay code base. The header compression is based on
 http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01
