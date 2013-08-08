@@ -1935,7 +1935,8 @@ static int nghttp2_update_local_initial_window_size_func
     return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
                                           NGHTTP2_FLOW_CONTROL_ERROR);
   }
-  if(!(arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+  if(!(arg->session->opt_flags &
+       NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {
     if(nghttp2_should_send_window_update(stream->local_window_size,
                                          stream->recv_window_size)) {
       rv = nghttp2_session_add_window_update(arg->session,
@@ -2651,8 +2652,8 @@ static int adjust_recv_window_size(int32_t *recv_window_size_ptr,
 /*
  * Accumulates received bytes |delta_size| for stream-level flow
  * control and decides whether to send WINDOW_UPDATE to that
- * stream. If NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE is set, WINDOW_UPDATE
- * will not be sent.
+ * stream. If NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE is set,
+ * WINDOW_UPDATE will not be sent.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -2671,7 +2672,7 @@ static int nghttp2_session_update_recv_stream_window_size
     return nghttp2_session_add_rst_stream(session, stream->stream_id,
                                           NGHTTP2_ERR_FLOW_CONTROL);
   }
-  if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+  if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {
     /* We have to use local_settings here because it is the constraint
        the remote endpoint should honor. */
     if(nghttp2_should_send_window_update(stream->local_window_size,
@@ -2693,8 +2694,8 @@ static int nghttp2_session_update_recv_stream_window_size
 /*
  * Accumulates received bytes |delta_size| for connection-level flow
  * control and decides whether to send WINDOW_UPDATE to the
- * connection.  If NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE is set,
- * WINDOW_UPDATE will not be sent.
+ * connection.  If NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE is
+ * set, WINDOW_UPDATE will not be sent.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -2711,7 +2712,8 @@ static int nghttp2_session_update_recv_connection_window_size
   if(rv != 0) {
     return nghttp2_session_fail_session(session, NGHTTP2_ERR_FLOW_CONTROL);
   }
-  if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+  if(!(session->opt_flags &
+       NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE)) {
     if(nghttp2_should_send_window_update(session->local_window_size,
                                          session->recv_window_size)) {
       /* Use stream ID 0 to update connection-level flow control
@@ -3094,18 +3096,26 @@ int nghttp2_session_set_option(nghttp2_session *session,
                                int optname, void *optval, size_t optlen)
 {
   switch(optname) {
-  case NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE:
+  case NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE:
+  case NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE: {
+    int flag;
+    if(optname == NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE) {
+      flag = NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE;
+    } else {
+      flag = NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
+    }
     if(optlen == sizeof(int)) {
       int intval = *(int*)optval;
       if(intval) {
-        session->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE;
+        session->opt_flags |= flag;
       } else {
-        session->opt_flags &= ~NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE;
+        session->opt_flags &= ~flag;
       }
     } else {
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
     break;
+  }
   default:
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }

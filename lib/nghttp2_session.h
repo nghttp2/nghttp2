@@ -42,7 +42,8 @@
  * Option flags.
  */
 typedef enum {
-  NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0
+  NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE = 1 << 0,
+  NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1
 } nghttp2_optmask;
 
 typedef struct {

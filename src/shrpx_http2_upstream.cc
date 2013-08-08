@@ -403,8 +403,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   flow_control_ = true;
   initial_window_size_ = (1 << get_config()->spdy_upstream_window_bits) - 1;
   rv = nghttp2_session_set_option(session_,
-                                  NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE, &val,
-                                  sizeof(val));
+                                  NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
+                                  &val, sizeof(val));
   assert(rv == 0);
 
   // TODO Maybe call from outside?
@@ -418,9 +418,10 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   rv = nghttp2_submit_settings
     (session_, entry, sizeof(entry)/sizeof(nghttp2_settings_entry));
   assert(rv == 0);
-  // Disable connection-level flow control
-  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_END_FLOW_CONTROL,
-                                    0, 0);
+  // Set large connection-level window size to effectively disable
+  // connection-level flow control.
+  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
+                                    0, 1000000007);
   assert(rv == 0);
 }
 

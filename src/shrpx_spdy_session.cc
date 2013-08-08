@@ -1057,8 +1057,8 @@ int SpdySession::on_connect()
   int val = 1;
   flow_control_ = true;
   rv = nghttp2_session_set_option(session_,
-                                  NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE, &val,
-                                  sizeof(val));
+                                  NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
+                                  &val, sizeof(val));
   assert(rv == 0);
 
   nghttp2_settings_entry entry[2];
@@ -1073,9 +1073,10 @@ int SpdySession::on_connect()
   if(rv != 0) {
     return -1;
   }
-  // Disable connection-level flow control
-  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_END_FLOW_CONTROL,
-                                    0, 0);
+  // Set large connection-level window size to effectively disable
+  // connection-level flow control.
+  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
+                                    0, 1000000007);
   if(rv != 0) {
     return -1;
   }

@@ -3091,17 +3091,20 @@ void test_nghttp2_session_set_option(void)
 
   intval = 1;
   CU_ASSERT(0 ==
-            nghttp2_session_set_option(session,
-                                       NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE,
-                                       &intval, sizeof(intval)));
-  CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE);
+            nghttp2_session_set_option
+            (session,
+             NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
+             &intval, sizeof(intval)));
+  CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE);
 
   intval = 0;
   CU_ASSERT(0 ==
-            nghttp2_session_set_option(session,
-                                       NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE,
-                                       &intval, sizeof(intval)));
-  CU_ASSERT((session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) == 0);
+            nghttp2_session_set_option
+            (session,
+             NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
+             &intval, sizeof(intval)));
+  CU_ASSERT((session->opt_flags &
+             NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE) == 0);
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_session_set_option(session, 0, /* 0 is invalid optname */
@@ -3109,9 +3112,19 @@ void test_nghttp2_session_set_option(void)
 
   charval = 1;
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_session_set_option(session,
-                                       NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE,
-                                       &charval, sizeof(charval)));
+            nghttp2_session_set_option
+            (session,
+             NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
+             &charval, sizeof(charval)));
+
+  intval = 1;
+  CU_ASSERT(0 ==
+            nghttp2_session_set_option
+            (session,
+             NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
+             &intval, sizeof(intval)));
+  CU_ASSERT(session->opt_flags &
+            NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE);
 
   nghttp2_session_del(session);
 }

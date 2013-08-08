@@ -1063,12 +1063,19 @@ void nghttp2_session_del(nghttp2_session *session);
  */
 typedef enum {
   /**
-   * This option prevents the library from sending WINDOW_UPDATE
-   * automatically. If this option is set, the application is
+   * This option prevents the library from sending WINDOW_UPDATE for a
+   * stream automatically. If this option is set, the application is
    * responsible for sending WINDOW_UPDATE using
    * `nghttp2_submit_window_update`.
    */
-  NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE = 1,
+  NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE = 1,
+  /**
+   * This option prevents the library from sending WINDOW_UPDATE for a
+   * connection automatically. If this option is set, the application
+   * is responsible for sending WINDOW_UPDATE with stream ID 0 using
+   * `nghttp2_submit_window_update`.
+   */
+  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE = 2
 } nghttp2_opt;
 
 /**
