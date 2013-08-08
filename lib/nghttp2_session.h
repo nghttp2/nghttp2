@@ -171,7 +171,7 @@ struct nghttp2_session {
   uint8_t local_flow_control;
   /* Current sender window size. This value is computed against the
      current initial window size of remote endpoint. */
-  int32_t window_size;
+  int32_t remote_window_size;
   /* Keep track of the number of bytes received without
      WINDOW_UPDATE. */
   int32_t recv_window_size;

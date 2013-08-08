@@ -2597,7 +2597,7 @@ void test_nghttp2_session_flow_control(void)
   /* Initial window size to 64KiB - 1*/
   nghttp2_session_client_new(&session, &callbacks, &ud);
   /* Change it to 64KiB for easy calculation */
-  session->window_size = 64*1024;
+  session->remote_window_size = 64*1024;
   session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] = 64*1024;
 
   nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT, nv, &data_prd, NULL);
