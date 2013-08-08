@@ -88,7 +88,7 @@ static int update_initial_window_size
      new_window_size > NGHTTP2_MAX_WINDOW_SIZE) {
     return -1;
   }
-  *window_size_ptr += new_initial_window_size - old_initial_window_size;
+  *window_size_ptr = new_window_size;
   return 0;
 }
 

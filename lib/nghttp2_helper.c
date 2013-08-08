@@ -96,7 +96,7 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
                                      int32_t delta)
 {
   if(delta > 0) {
-    int32_t new_recv_window_size =  *recv_window_size_ptr - delta;
+    int32_t new_recv_window_size = *recv_window_size_ptr - delta;
     if(new_recv_window_size < 0) {
       if(*local_window_size_ptr >
          NGHTTP2_MAX_WINDOW_SIZE + new_recv_window_size) {
