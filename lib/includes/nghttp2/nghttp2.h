@@ -1089,12 +1089,19 @@ typedef enum {
  *
  * The following |optname| are supported:
  *
- * :enum:`NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE`
+ * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`
  *     The |optval| must be a pointer to ``int``. If the |*optval| is
- *     nonzero, the library will not send WINDOW_UPDATE automatically.
- *     Therefore, the application is responsible for sending
- *     WINDOW_UPDATE using `nghttp2_submit_window_update`. This option
- *     defaults to 0.
+ *     nonzero, the library will not send WINDOW_UPDATE for a stream
+ *     automatically.  Therefore, the application is responsible for
+ *     sending WINDOW_UPDATE using
+ *     `nghttp2_submit_window_update`. This option defaults to 0.
+ *
+ * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
+ *     The |optval| must be a pointer to ``int``. If the |*optval| is
+ *     nonzero, the library will not send WINDOW_UPDATE for connection
+ *     automatically.  Therefore, the application is responsible for
+ *     sending WINDOW_UPDATE using
+ *     `nghttp2_submit_window_update`. This option defaults to 0.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1732,9 +1739,11 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  *
  * If the |window_size_increment| is negative, the local window size
  * is decreased by -|window_size_increment|.  If
- * :enum:`NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE` is not set and the
- * library decided that the WINDOW_UPDATE should be submitted, then
- * WINDOW_UPDATE is queued with the current received bytes count.
+ * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE` (or
+ * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` if |stream_id|
+ * is 0) is not set and the library decided that the WINDOW_UPDATE
+ * should be submitted, then WINDOW_UPDATE is queued with the current
+ * received bytes count.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
