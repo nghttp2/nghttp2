@@ -75,6 +75,22 @@ const char* strstatus(nghttp2_error_code error_code)
 } // namespace
 
 namespace {
+const char* strsettingsid(int32_t id)
+{
+  switch(id) {
+  case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+    return "MAX_CONCURRENT_STREAMS";
+  case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+    return "INITIAL_WINDOW_SIZE";
+  case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
+    return "FLOW_CONTROL_OPTIONS";
+  default:
+    return "UNKNOWN";
+  }
+}
+} // namespace
+
+namespace {
 const char *frame_names[] = {
   "DATA",
   "HEADERS",
@@ -261,7 +277,8 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
     printf("(niv=%lu)\n", static_cast<unsigned long>(frame->settings.niv));
     for(size_t i = 0; i < frame->settings.niv; ++i) {
       print_frame_attr_indent();
-      printf("[%d:%u]\n",
+      printf("[%s(%d):%u]\n",
+             strsettingsid(frame->settings.iv[i].settings_id),
              frame->settings.iv[i].settings_id,
              frame->settings.iv[i].value);
     }
