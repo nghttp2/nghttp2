@@ -34,10 +34,6 @@
 
 /* Priority for PING */
 #define NGHTTP2_OB_PRI_PING -10
-/* Priority for CREDENTIAL */
-#define NGHTTP2_OB_PRI_CREDENTIAL -2
-/* Priority for the frame which must be sent after CREDENTIAL */
-#define NGHTTP2_OB_PRI_AFTER_CREDENTIAL -1
 
 typedef struct {
   nghttp2_data_provider *data_prd;
@@ -50,19 +46,7 @@ typedef struct {
   nghttp2_frame_category frame_cat;
   void *frame;
   void *aux_data;
-  /* Initial priority of this item */
-  int inipri;
-  /* The current priority of this item. Initially, pri equals to
-     inipri. The item is chosen from the queue based on pri and
-     seq. For control frames, they consist of just 1 frame and pri
-     does not change. For DATA frame, they could split up to several
-     frames. After sending a frame, the pri becomes |inipri| +
-     |pridecay| and |pridecay| is multiplied by 2. If it becomes more
-     than lowest priority, then it returns back to |inipri| and do the
-     same sequence again and again. By doing this, the higher priority
-     long DATA frames don't starve the lower prioritized streams. */
   int pri;
-  uint32_t pridecay;
   int64_t seq;
 } nghttp2_outbound_item;
 

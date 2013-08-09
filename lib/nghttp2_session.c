@@ -415,8 +415,6 @@ int nghttp2_session_add_frame(nghttp2_session *session,
     free(item);
     return r;
   }
-  item->inipri = item->pri;
-  item->pridecay = 1;
   return 0;
 }
 
@@ -1194,28 +1192,6 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
 }
 
 /*
- * Adjust priority of item so that the higher priority long DATA
- * frames don't starve lower priority streams.
- */
-static void nghttp2_outbound_item_adjust_pri(nghttp2_session *session,
-                                             nghttp2_outbound_item *item)
-{
-  if(item->pri == NGHTTP2_PRI_LOWEST) {
-    nghttp2_stream *stream;
-    stream = nghttp2_session_get_stream
-      (session, nghttp2_outbound_item_get_data_frame(item)->hd.stream_id);
-    assert(stream);
-    item->pri = item->inipri = stream->pri;
-    item->pridecay = 1;
-  } else if(item->pri + item->pridecay > NGHTTP2_PRI_LOWEST) {
-    item->pri = NGHTTP2_PRI_LOWEST;
-  } else {
-    item->pri = item->inipri + item->pridecay;
-    item->pridecay *= 2;
-  }
-}
-
-/*
  * Called after a frame is sent.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -1368,7 +1344,6 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     } else {
       nghttp2_outbound_item* next_item;
       next_item = nghttp2_session_get_next_ob_item(session);
-      nghttp2_outbound_item_adjust_pri(session, session->aob.item);
       /* If priority of this stream is higher or equal to other stream
          waiting at the top of the queue, we continue to send this
          data. */
