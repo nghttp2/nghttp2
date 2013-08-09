@@ -91,17 +91,30 @@ const char* strsettingsid(int32_t id)
 } // namespace
 
 namespace {
-const char *frame_names[] = {
-  "DATA",
-  "HEADERS",
-  "PRIORITY",
-  "RST_STREAM",
-  "SETTINGS",
-  "PUSH_PROMISE",
-  "PING",
-  "GOAWAY",
-  "UNKNOWN",
-  "WINDOW_UPDATE"
+const char* strframetype(uint8_t type)
+{
+  switch(type) {
+  case NGHTTP2_DATA:
+    return "DATA";
+  case NGHTTP2_HEADERS:
+    return "HEADERS";
+  case NGHTTP2_PRIORITY:
+    return "PRIORITY";
+  case NGHTTP2_RST_STREAM:
+    return "RST_STREAM";
+  case NGHTTP2_SETTINGS:
+    return "SETTINGS";
+  case NGHTTP2_PUSH_PROMISE:
+    return "PUSH_PROMISE";
+  case NGHTTP2_PING:
+    return "PING";
+  case NGHTTP2_GOAWAY:
+    return "GOAWAY";
+  case NGHTTP2_WINDOW_UPDATE:
+    return "WINDOW_UPDATE";
+  default:
+    return "UNKNOWN";
+  }
 };
 } // namespace
 
@@ -231,7 +244,7 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
 {
   printf("%s%s%s frame ",
          frame_name_ansi_esc(ptype),
-         frame_names[frame->hd.type],
+         strframetype(frame->hd.type),
          ansi_escend());
   print_frame_hd(frame->hd);
   if(frame->hd.flags) {
@@ -357,7 +370,7 @@ void on_frame_recv_parse_error_callback(nghttp2_session *session,
   print_timer();
   printf(" [PARSE_ERROR] recv %s%s%s frame\n",
          frame_name_ansi_esc(PRINT_RECV),
-         frame_names[type],
+         strframetype(type),
          ansi_escend());
   print_frame_attr_indent();
   printf("Error: %s\n", nghttp2_strerror(error_code));
