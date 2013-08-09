@@ -308,10 +308,11 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
     break;
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();
-    printf("(last_stream_id=%d, error_code=%s(%u), opaque_data=%s)\n",
+    printf("(last_stream_id=%d, error_code=%s(%u), opaque_data(%u)=[%s])\n",
            frame->goaway.last_stream_id,
            strstatus(frame->goaway.error_code),
            frame->goaway.error_code,
+           static_cast<unsigned int>(frame->goaway.opaque_data_len),
            util::format_hex(frame->goaway.opaque_data,
                             frame->goaway.opaque_data_len).c_str());
     break;
