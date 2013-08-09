@@ -118,8 +118,13 @@ int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
 {
   int r;
   nghttp2_frame *frame;
+  nghttp2_stream *stream;
   if(pri < 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return NGHTTP2_ERR_STREAM_CLOSED;
   }
   frame = malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
@@ -134,10 +139,7 @@ int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
   }
   /* Only update priority if the sender is client for now */
   if(!session->server) {
-    nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
-    if(stream) {
-      nghttp2_session_reprioritize_stream(session, stream, pri);
-    }
+    nghttp2_session_reprioritize_stream(session, stream, pri);
   }
   return 0;
 }
@@ -202,6 +204,9 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
   uint8_t flags_copy;
   int r;
 
+  if(nghttp2_session_get_stream(session, stream_id) == NULL) {
+    return NGHTTP2_ERR_STREAM_CLOSED;
+  }
   if(!nghttp2_frame_nv_check_null(nv)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
@@ -240,6 +245,8 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
       stream = nghttp2_session_get_stream(session, stream_id);
       if(stream) {
         stream->local_flow_control = 0;
+      } else {
+        return NGHTTP2_ERR_STREAM_CLOSED;
       }
     }
     return nghttp2_session_add_window_update(session, flags, stream_id, 0);
@@ -331,6 +338,10 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
   int r;
   nghttp2_data *data_frame;
   uint8_t nflags = 0;
+
+  if(nghttp2_session_get_stream(session, stream_id) == NULL) {
+    return NGHTTP2_ERR_STREAM_CLOSED;
+  }
   data_frame = malloc(sizeof(nghttp2_frame));
   if(data_frame == NULL) {
     return NGHTTP2_ERR_NOMEM;

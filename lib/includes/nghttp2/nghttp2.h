@@ -1582,6 +1582,8 @@ int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
+ *     The stream is already closed or does not exist.
  */
 int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
                         int32_t stream_id,
@@ -1600,6 +1602,8 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |pri| is negative.
+ * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
+ *     The stream is already closed or does not exist.
  */
 int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
                             int32_t pri);
@@ -1678,6 +1682,8 @@ int nghttp2_submit_settings(nghttp2_session *session,
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |nv| includes empty name or ``NULL`` value.
+ * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
+ *     The stream is already closed or does not exist.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */

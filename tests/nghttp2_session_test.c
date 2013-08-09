@@ -3073,14 +3073,9 @@ void test_nghttp2_session_on_ctrl_not_send(void)
   CU_ASSERT(NGHTTP2_HEADERS == user_data.not_sent_frame_type);
   CU_ASSERT(NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE == user_data.not_sent_error);
 
-  session->next_stream_id = 1;
-  user_data.frame_not_send_cb_called = 0;
   /* Send PRIORITY to stream ID = 1 which does not exist */
-  CU_ASSERT(0 == nghttp2_submit_priority(session, 1, 0));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(1 == user_data.frame_not_send_cb_called);
-  CU_ASSERT(NGHTTP2_PRIORITY == user_data.not_sent_frame_type);
-  CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED == user_data.not_sent_error);
+  CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED ==
+            nghttp2_submit_priority(session, 1, 0));
 
   user_data.frame_not_send_cb_called = 0;
   /* Send GOAWAY */
