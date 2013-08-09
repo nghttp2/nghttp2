@@ -34,6 +34,8 @@
 
 /* Priority for PING */
 #define NGHTTP2_OB_PRI_PING -10
+/* Priority for SETTINGS */
+#define NGHTTP2_OB_PRI_SETTINGS -9
 
 typedef struct {
   nghttp2_data_provider *data_prd;

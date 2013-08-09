@@ -308,11 +308,60 @@ void nghttp2_session_del(nghttp2_session *session)
    free(session);
 }
 
+static int outbound_item_update_pri
+(nghttp2_outbound_item *item, nghttp2_stream *stream)
+{
+  if(item->frame_cat == NGHTTP2_CAT_CTRL) {
+    if(((nghttp2_frame*)item->frame)->hd.stream_id != stream->stream_id) {
+      return 0;
+    }
+    switch(((nghttp2_frame*)item->frame)->hd.type) {
+    case NGHTTP2_HEADERS:
+    case NGHTTP2_PUSH_PROMISE:
+      break;
+    default:
+      return 0;
+    }
+  } else {
+    if(((nghttp2_data*)item->frame)->hd.stream_id != stream->stream_id) {
+      return 0;
+    }
+  }
+  item->pri = stream->pri;
+  return 1;
+}
+
+static int update_stream_pri(void *ptr, void *arg)
+{
+  nghttp2_outbound_item *item = (nghttp2_outbound_item*)ptr;
+  nghttp2_stream *stream = (nghttp2_stream*)arg;
+  return outbound_item_update_pri(item, stream);
+}
+
+void nghttp2_session_reprioritize_stream
+(nghttp2_session *session, nghttp2_stream *stream, int32_t pri)
+{
+  if(stream->pri == pri) {
+    return;
+  }
+  stream->pri = pri;
+  nghttp2_pq_update(&session->ob_pq, update_stream_pri, stream);
+  nghttp2_pq_update(&session->ob_ss_pq, update_stream_pri, stream);
+  if(stream->deferred_data) {
+    stream->deferred_data->pri = pri;
+  }
+  if(session->aob.item) {
+    outbound_item_update_pri(session->aob.item, stream);
+  }
+}
+
 int nghttp2_session_add_frame(nghttp2_session *session,
                               nghttp2_frame_category frame_cat,
                               void *abs_frame,
                               void *aux_data)
 {
+  /* TODO Return error if stream is not found for the frame requiring
+     stream presence. */
   int r = 0;
   nghttp2_outbound_item *item;
   item = malloc(sizeof(nghttp2_outbound_item));
@@ -342,33 +391,26 @@ int nghttp2_session_add_frame(nghttp2_session *session,
         }
       }
       break;
-    case NGHTTP2_PRIORITY: {
-      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-      if(stream) {
-        item->pri = stream->pri;
-      }
+    case NGHTTP2_PRIORITY:
+      item->pri = -1;
       break;
-    }
-    case NGHTTP2_RST_STREAM: {
+    case NGHTTP2_RST_STREAM:
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
       if(stream) {
         stream->state = NGHTTP2_STREAM_CLOSING;
-        item->pri = stream->pri;
       }
-      break;
-    }
-    case NGHTTP2_SETTINGS:
-      /* Should NGHTTP2_SETTINGS have higher priority? Yes */
       item->pri = -1;
       break;
-    case NGHTTP2_PUSH_PROMISE: {
+    case NGHTTP2_SETTINGS:
+      item->pri = NGHTTP2_OB_PRI_SETTINGS;
+      break;
+    case NGHTTP2_PUSH_PROMISE:
       /* Use priority of associated stream */
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
       if(stream) {
         item->pri = stream->pri;
       }
       break;
-    }
     case NGHTTP2_PING:
       /* Ping has highest priority. */
       item->pri = NGHTTP2_OB_PRI_PING;
@@ -377,15 +419,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
       /* Should GOAWAY have higher priority? */
       break;
     case NGHTTP2_WINDOW_UPDATE:
-      if(frame->hd.stream_id == 0) {
-        /* Connection level window update should have higher priority */
-        item->pri = -1;
-      } else {
-        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-        if(stream) {
-          item->pri = stream->pri;
-        }
-      }
+      item->pri = -1;
       break;
     }
     if(frame->hd.type == NGHTTP2_HEADERS &&
@@ -714,7 +748,17 @@ static int nghttp2_session_predicate_headers_send(nghttp2_session *session,
 static int nghttp2_session_predicate_priority_send
 (nghttp2_session *session, int32_t stream_id)
 {
-  return nghttp2_session_predicate_stream_frame_send(session, stream_id);
+  nghttp2_stream *stream;
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return NGHTTP2_ERR_STREAM_CLOSED;
+  }
+  /* Sending PRIORITY to reserved state is OK */
+  if(stream->state != NGHTTP2_STREAM_CLOSING) {
+    return 0;
+  } else {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
 }
 
 /*
@@ -1273,15 +1317,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       break;
     }
     case NGHTTP2_PRIORITY:
-      // TODO Update priority of the stream if the stream is initiated
-      // by the local endpoint. The spec is not detailed about this.
-      if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-        nghttp2_stream *stream;
-        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-        if(stream) {
-          stream->pri = frame->priority.pri;
-        }
-      }
+      /* nothing to do */
       break;
     case NGHTTP2_RST_STREAM:
       nghttp2_session_close_stream(session, frame->hd.stream_id,
@@ -1804,17 +1840,12 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
   }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(stream) {
-    if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
-      // Update the priority of the stream if the stream is initiated
-      // by the remote endpoint.
-      if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-        stream->pri = frame->priority.pri;
-      }
-      nghttp2_session_call_on_frame_received(session, frame);
-    } else {
-      return nghttp2_session_handle_invalid_stream(session, frame,
-                                                   NGHTTP2_PROTOCOL_ERROR);
+    /* Only update priority on server side for now */
+    if(session->server) {
+      nghttp2_session_reprioritize_stream(session, stream,
+                                          frame->priority.pri);
     }
+    nghttp2_session_call_on_frame_received(session, frame);
   }
   return 0;
 }

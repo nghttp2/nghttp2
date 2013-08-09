@@ -67,6 +67,7 @@ int main(int argc, char* argv[])
 
    /* add the tests to the suite */
    if(!CU_add_test(pSuite, "pq", test_nghttp2_pq) ||
+      !CU_add_test(pSuite, "pq_update", test_nghttp2_pq_update) ||
       !CU_add_test(pSuite, "map", test_nghttp2_map) ||
       !CU_add_test(pSuite, "map_functional", test_nghttp2_map_functional) ||
       !CU_add_test(pSuite, "map_each_free", test_nghttp2_map_each_free) ||
@@ -117,8 +118,6 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_send_headers_header_comp_error) ||
       !CU_add_test(pSuite, "session_send_headers_push_reply",
                    test_nghttp2_session_send_headers_push_reply) ||
-      !CU_add_test(pSuite, "session_send_priority",
-                   test_nghttp2_session_send_priority) ||
       !CU_add_test(pSuite, "session_send_rst_stream",
                    test_nghttp2_session_send_rst_stream) ||
       !CU_add_test(pSuite, "session_send_push_promise",
@@ -126,6 +125,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "session_is_my_stream_id",
                    test_nghttp2_session_is_my_stream_id) ||
       !CU_add_test(pSuite, "session_upgrade", test_nghttp2_session_upgrade) ||
+      !CU_add_test(pSuite, "session_reprioritize_stream",
+                   test_nghttp2_session_reprioritize_stream) ||
       !CU_add_test(pSuite, "submit_response", test_nghttp2_submit_response) ||
       !CU_add_test(pSuite, "submit_response_without_data",
                    test_nghttp2_submit_response_without_data) ||

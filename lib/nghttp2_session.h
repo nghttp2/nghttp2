@@ -538,4 +538,10 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
                                           nghttp2_settings_entry *iv,
                                           size_t niv);
 
+/*
+ * Re-prioritize |stream|. The new priority is |pri|.
+ */
+void nghttp2_session_reprioritize_stream
+(nghttp2_session *session, nghttp2_stream *stream, int32_t pri);
+
 #endif /* NGHTTP2_SESSION_H */

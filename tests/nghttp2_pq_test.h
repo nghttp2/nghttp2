@@ -26,5 +26,6 @@
 #define NGHTTP2_PQ_TEST_H
 
 void test_nghttp2_pq(void);
+void test_nghttp2_pq_update(void);
 
 #endif /* NGHTTP2_PQ_TEST_H */

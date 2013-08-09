@@ -132,6 +132,13 @@ int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
     free(frame);
     return r;
   }
+  /* Only update priority if the sender is client for now */
+  if(!session->server) {
+    nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
+    if(stream) {
+      nghttp2_session_reprioritize_stream(session, stream, pri);
+    }
+  }
   return 0;
 }
 

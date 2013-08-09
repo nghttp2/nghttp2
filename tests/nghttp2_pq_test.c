@@ -77,3 +77,53 @@ void test_nghttp2_pq(void)
   nghttp2_pq_free(&pq);
 }
 
+typedef struct {
+  int key;
+  int val;
+} node;
+
+static int node_compar(const void *lhs, const void *rhs)
+{
+  node *ln = (node*)lhs;
+  node *rn = (node*)rhs;
+  return ln->key - rn->key;
+}
+
+static int node_update(void *item, void *arg)
+{
+  node *nd = (node*)item;
+  if((nd->key % 2) == 0) {
+    nd->key *= -1;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+void test_nghttp2_pq_update(void)
+{
+  nghttp2_pq pq;
+  node nodes[10];
+  size_t i;
+  node *nd;
+  int ans[] = {-8, -6, -4, -2, 0, 1, 3, 5, 7, 9};
+
+  nghttp2_pq_init(&pq, node_compar);
+
+  for(i = 0; i < sizeof(nodes)/sizeof(nodes[0]); ++i) {
+    nodes[i].key = i;
+    nodes[i].val = i;
+    nghttp2_pq_push(&pq, &nodes[i]);
+  }
+
+  nghttp2_pq_update(&pq, node_update, NULL);
+
+  for(i = 0; i < sizeof(nodes)/sizeof(nodes[0]); ++i) {
+    nd = nghttp2_pq_top(&pq);
+    CU_ASSERT(ans[i] == nd->key);
+    nghttp2_pq_pop(&pq);
+  }
+
+  nghttp2_pq_free(&pq);
+}
+

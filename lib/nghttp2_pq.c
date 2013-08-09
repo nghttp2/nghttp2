@@ -126,3 +126,20 @@ size_t nghttp2_pq_size(nghttp2_pq *pq)
 {
   return pq->length;
 }
+
+void nghttp2_pq_update(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg)
+{
+  size_t i;
+  int rv = 0;
+  if(pq->length == 0) {
+    return;
+  }
+  for(i = 0; i < pq->length; ++i) {
+    rv |= (*fun)(pq->q[i], arg);
+  }
+  if(rv) {
+    for(i = pq->length; i > 0; --i) {
+      bubble_down(pq, i - 1);
+    }
+  }
+}

@@ -96,4 +96,14 @@ int nghttp2_pq_empty(nghttp2_pq *pq);
  */
 size_t nghttp2_pq_size(nghttp2_pq *pq);
 
+typedef int (*nghttp2_pq_item_cb)(void *item, void *arg);
+
+/*
+ * Updates each item in |pq| using function |fun| and re-construct
+ * priority queue. The |fun| must return non-zero if it modifies the
+ * item in a way that it affects ordering in the priority queue. The
+ * |arg| is passed to the 2nd parameter of |fun|.
+ */
+void nghttp2_pq_update(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg);
+
 #endif /* NGHTTP2_PQ_H */
