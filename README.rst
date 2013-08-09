@@ -12,10 +12,18 @@ We started to implement HTTP-draft-04/2.0
 spdylay code base. The header compression is based on
 http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01
 
-Currently, the library lacks the following features:
-
-* Header continuation
-* ALPN: instead, NPN is used
+=================== =================
+Features            HTTP-draft-04/2.0
+=================== =================
+Flow Control        Done
+Header Compression  Done
+Reprioritization    Done
+Header Continuation
+Server Push         Done
+HTTP Upgrade        Done
+ALPN
+NPN                 Done
+=================== =================
 
 Requirements
 ------------
