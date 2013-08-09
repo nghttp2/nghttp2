@@ -1336,17 +1336,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       session->goaway_flags |= NGHTTP2_GOAWAY_SEND;
       break;
     case NGHTTP2_WINDOW_UPDATE:
-      if(frame->hd.flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
-        if(frame->hd.stream_id == 0) {
-          session->local_flow_control = 0;
-        } else {
-          nghttp2_stream *stream;
-          stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-          if(stream) {
-            stream->local_flow_control = 0;
-          }
-        }
-      }
+      /* nothing to do */
       break;
     }
     nghttp2_active_outbound_item_reset(&session->aob);
