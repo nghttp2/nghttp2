@@ -374,11 +374,11 @@ namespace {
 void print_data_frame(print_type ptype, uint16_t length, uint8_t flags,
                       int32_t stream_id)
 {
-  printf("%sDATA%s frame (length=%d, flags=%d, stream_id=%d)\n",
-         frame_name_ansi_esc(ptype), ansi_escend(),
-         length, flags, stream_id);
+  printf("%sDATA%s frame ",
+         frame_name_ansi_esc(ptype), ansi_escend());
+  nghttp2_frame_hd hd = {length, NGHTTP2_DATA, flags, stream_id};
+  print_frame_hd(hd);
   if(flags) {
-    nghttp2_frame_hd hd = {length, NGHTTP2_DATA, flags, stream_id};
     print_frame_attr_indent();
     print_flags(hd);
   }
