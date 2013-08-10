@@ -233,6 +233,19 @@ void drop_privileges()
 } // namespace
 
 namespace {
+void save_pid()
+{
+  std::ofstream out(get_config()->pid_file, std::ios::binary);
+  out << getpid() << "\n";
+  out.close();
+  if(!out) {
+    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
+    exit(EXIT_FAILURE);
+  }
+}
+} // namespace
+
+namespace {
 int event_loop()
 {
   auto evbase = event_base_new();
@@ -256,6 +269,10 @@ int event_loop()
       LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
       exit(EXIT_FAILURE);
     }
+  }
+
+  if(get_config()->pid_file) {
+    save_pid();
   }
 
   evconnlistener *evlistener6, *evlistener4;
@@ -288,19 +305,6 @@ int event_loop()
     evconnlistener_free(evlistener6);
   }
   return 0;
-}
-} // namespace
-
-namespace {
-void save_pid()
-{
-  std::ofstream out(get_config()->pid_file, std::ios::binary);
-  out << getpid() << "\n";
-  out.close();
-  if(!out) {
-    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
-    exit(EXIT_FAILURE);
-  }
 }
 } // namespace
 
@@ -960,10 +964,6 @@ int main(int argc, char **argv)
     openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
             get_config()->syslog_facility);
     mod_config()->use_syslog = true;
-  }
-
-  if(get_config()->pid_file) {
-    save_pid();
   }
 
   struct sigaction act;
