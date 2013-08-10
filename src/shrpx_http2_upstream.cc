@@ -192,43 +192,6 @@ void on_frame_recv_callback
     downstream->init_response_body_buf();
 
     auto nva = frame->headers.nva;
-    std::string path, scheme, host, method;
-    for(size_t i = 0; i < frame->headers.nvlen; ++i) {
-      if(util::strieq(":path", nva[i].name, nva[i].namelen)) {
-        path.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
-      } else if(util::strieq(":scheme", nva[i].name, nva[i].namelen)) {
-        scheme.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
-      } else if(util::strieq(":method", nva[i].name, nva[i].namelen)) {
-        method.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
-        downstream->set_request_method(method);
-      } else if(util::strieq(":host", nva[i].name, nva[i].namelen)) {
-        host.assign(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
-      } else if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-        downstream->add_request_header
-          (std::string(reinterpret_cast<char*>(nva[i].name), nva[i].namelen),
-           std::string(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen));
-      }
-    }
-    if(path.empty() || host.empty() || method.empty()) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return;
-    }
-    // SpdyDownstreamConnection examines request path to find
-    // scheme. We construct abs URI for spdy_bridge mode as well as
-    // spdy_proxy mode.
-    if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
-       !scheme.empty() && path[0] == '/') {
-      std::string reqpath = scheme;
-      reqpath += "://";
-      reqpath += host;
-      reqpath += path;
-      downstream->set_request_path(reqpath);
-    } else {
-      downstream->set_request_path(path);
-    }
-
-    downstream->add_request_header("host", host);
-    downstream->check_upgrade_request();
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
@@ -243,6 +206,100 @@ void on_frame_recv_callback
                            << downstream->get_stream_id()
                            << "\n" << ss.str();
     }
+
+    // Assuming that nva is sorted by name.
+    const char *req_headers[] = {":host", ":method", ":path", ":scheme" };
+    const size_t req_hdlen = sizeof(req_headers)/sizeof(req_headers[0]);
+    int req_hdidx[req_hdlen];
+    memset(req_hdidx, -1, sizeof(req_hdidx));
+    bool bad_req = false;
+    {
+      size_t i, j;
+      for(i = 0, j = 0; i < frame->headers.nvlen && j < req_hdlen;) {
+        int rv = util::strcompare(req_headers[j], nva[i].name, nva[i].namelen);
+        if(rv > 0) {
+          if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
+            downstream->add_request_header
+              (std::string(reinterpret_cast<char*>(nva[i].name),
+                           nva[i].namelen),
+               std::string(reinterpret_cast<char*>(nva[i].value),
+                           nva[i].valuelen));
+          }
+          ++i;
+        } else if(rv < 0) {
+          ++j;
+        } else {
+          if(req_hdidx[j] != -1) {
+            if(LOG_ENABLED(INFO)) {
+              ULOG(INFO, upstream) << "multiple " << req_headers[j]
+                                   << " found in the request";
+            }
+            bad_req = true;
+            break;
+          }
+          req_hdidx[j] = i;
+          ++i;
+        }
+      }
+      if(!bad_req) {
+        // Here :scheme is optional, because with CONNECT method, it
+        // is omitted.
+        for(j = 0; j < 3; ++j) {
+          if(req_hdidx[j] == -1) {
+            bad_req = true;
+            break;
+          }
+        }
+      }
+      if(!bad_req) {
+        for(; i < frame->headers.nvlen; ++i) {
+          if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
+            downstream->add_request_header
+              (std::string(reinterpret_cast<char*>(nva[i].name),
+                           nva[i].namelen),
+               std::string(reinterpret_cast<char*>(nva[i].value),
+                           nva[i].valuelen));
+          }
+        }
+      }
+    }
+    if(bad_req) {
+      downstream->set_request_state(Downstream::HEADER_COMPLETE);
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        downstream->set_request_state(Downstream::MSG_COMPLETE);
+      }
+      if(upstream->error_reply(downstream, 400) != 0) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      }
+      return;
+    }
+
+    std::string host(reinterpret_cast<char*>(nva[req_hdidx[0]].value),
+                     nva[req_hdidx[0]].valuelen);
+    std::string method(reinterpret_cast<char*>(nva[req_hdidx[1]].value),
+                       nva[req_hdidx[1]].valuelen);
+    std::string path(reinterpret_cast<char*>(nva[req_hdidx[2]].value),
+                     nva[req_hdidx[2]].valuelen);
+
+    downstream->set_request_method(method);
+
+    // SpdyDownstreamConnection examines request path to find
+    // scheme. We construct abs URI for spdy_bridge mode as well as
+    // spdy_proxy mode.
+    if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
+       req_hdidx[3] != -1 && path[0] == '/') {
+      std::string reqpath(reinterpret_cast<char*>(nva[req_hdidx[3]].value),
+                          nva[req_hdidx[3]].valuelen);
+      reqpath += "://";
+      reqpath += host;
+      reqpath += path;
+      downstream->set_request_path(reqpath);
+    } else {
+      downstream->set_request_path(path);
+    }
+
+    downstream->add_request_header("host", host);
+    downstream->check_upgrade_request();
 
     auto dconn = upstream->get_client_handler()->get_downstream_connection();
     int rv = dconn->attach_downstream(downstream);

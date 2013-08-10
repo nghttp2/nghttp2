@@ -26,6 +26,7 @@
 
 #include <time.h>
 
+#include <cassert>
 #include <cstdio>
 #include <cstring>
 
@@ -166,8 +167,28 @@ bool strieq(const char *a, const uint8_t *b, size_t bn)
     return false;
   }
   const uint8_t *blast = b + bn;
-  for(; *a && lowcase(*a) == lowcase(*b); ++a, ++b);
+  for(; *a && b != blast && lowcase(*a) == lowcase(*b); ++a, ++b);
   return !*a && b == blast;
+}
+
+int strcompare(const char *a, const uint8_t *b, size_t bn)
+{
+  assert(a && b);
+  const uint8_t *blast = b + bn;
+  for(; *a && b != blast; ++a, ++b) {
+    if(*a < *b) {
+      return -1;
+    } else if(*a > *b) {
+      return 1;
+    }
+  }
+  if(!*a && b == blast) {
+    return 0;
+  } else if(b == blast) {
+    return 1;
+  } else {
+    return -1;
+  }
 }
 
 bool strifind(const char *a, const char *b)

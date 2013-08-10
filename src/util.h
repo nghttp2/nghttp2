@@ -291,6 +291,8 @@ bool iendsWith
 
 bool endsWith(const std::string& a, const std::string& b);
 
+int strcompare(const char *a, const uint8_t *b, size_t n);
+
 bool strieq(const std::string& a, const std::string& b);
 
 bool strieq(const char *a, const char *b);
