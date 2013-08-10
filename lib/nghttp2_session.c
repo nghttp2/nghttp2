@@ -1277,10 +1277,11 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
             r = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
                                     frame->hd.stream_id, aux_data->data_prd);
             if(r != 0) {
-              /* FATAL error */
-              assert(r < NGHTTP2_ERR_FATAL);
-              /* TODO If r is not FATAL, we should send RST_STREAM. */
-              return r;
+              if(nghttp2_is_fatal(r)) {
+                return r;
+              }
+              /* If r is not fatal, the only possible error is closed
+                 stream, so we have nothing to do here. */
             }
           }
           break;
@@ -1299,10 +1300,11 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
             r = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
                                     frame->hd.stream_id, aux_data->data_prd);
             if(r != 0) {
-              /* FATAL error */
-              assert(r < NGHTTP2_ERR_FATAL);
-              /* TODO If r is not FATAL, we should send RST_STREAM. */
-              return r;
+              if(nghttp2_is_fatal(r)) {
+                return r;
+              }
+              /* If r is not fatal, the only possible error is closed
+                 stream, so we have nothing to do here. */
             }
           }
           break;
