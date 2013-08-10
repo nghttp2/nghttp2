@@ -2605,10 +2605,15 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
          in this state it MUST respond with a stream error (Section
          5.4.2) of type STREAM_CLOSED.
       */
-      error_code = NGHTTP2_STREAM_CLOSED;
+      if(stream->state != NGHTTP2_STREAM_CLOSING) {
+        error_code = NGHTTP2_STREAM_CLOSED;
+      }
     }
   } else {
-    error_code = NGHTTP2_PROTOCOL_ERROR;
+    /* This should be treated as stream error, but it results in lots
+       of RST_STREAM. So just ignore frame against nonexistent stream
+       for now. */
+    /* error_code = NGHTTP2_PROTOCOL_ERROR; */
   }
   if(error_code != 0) {
     r = nghttp2_session_add_rst_stream(session, stream_id, error_code);

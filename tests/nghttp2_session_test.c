@@ -514,9 +514,11 @@ void test_nghttp2_session_recv_data(void)
   CU_ASSERT(0 == ud.data_chunk_recv_cb_called);
   CU_ASSERT(0 == ud.data_recv_cb_called);
   item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
+  /* DATA against nonexistent stream is ignored for now */
+  CU_ASSERT(NULL == item);
+  /* CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item)); */
 
-  CU_ASSERT(0 == nghttp2_session_send(session));
+  /* CU_ASSERT(0 == nghttp2_session_send(session)); */
 
   /* Create stream 1 with CLOSING state. DATA is ignored. */
   stream = nghttp2_session_open_stream(session, 1,
@@ -1212,8 +1214,10 @@ void test_nghttp2_session_on_data_received(void)
   CU_ASSERT(0 == nghttp2_session_on_data_received(session, 4096,
                                                   NGHTTP2_FLAG_NONE, 6));
   top = nghttp2_session_get_ob_pq_top(session);
-  CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(top));
-  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(top)->rst_stream.error_code);
+  /* DATA against nonexistent stream is just ignored for now */
+  CU_ASSERT(top == NULL);
+  /* CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(top)); */
+  /* CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(top)->rst_stream.error_code); */
 
   nghttp2_session_del(session);
 }
