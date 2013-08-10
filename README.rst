@@ -25,6 +25,16 @@ ALPN
 NPN                 Done
 =================== =================
 
+Public Test Server
+------------------
+
+The following endpoints are available to try out nghttp2 implementation.
+
+* https://106.186.112.116:8443 TLS + NPN
+
+  Note: certificate is self-signed and a browser will show alert
+* http://106.186.112.116:8080 direct, HTTP Upgrade
+
 Requirements
 ------------
 
