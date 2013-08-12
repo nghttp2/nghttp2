@@ -79,7 +79,6 @@ struct Config {
   bool verbose;
   bool get_assets;
   bool stat;
-  bool no_tls;
   bool no_connection_flow_control;
   bool no_stream_flow_control;
   bool upgrade;
@@ -99,7 +98,6 @@ struct Config {
       verbose(false),
       get_assets(false),
       stat(false),
-      no_tls(false),
       no_connection_flow_control(false),
       no_stream_flow_control(false),
       upgrade(false),
@@ -400,6 +398,7 @@ struct HttpClient {
   std::set<std::string> path_cache;
   // The number of completed requests, including failed ones.
   size_t complete;
+  std::string scheme;
   std::string hostport;
   SessionStat stat;
   // Used for parse the HTTP upgrade response from server
@@ -434,6 +433,11 @@ struct HttpClient {
   {
     disconnect();
     delete htp;
+  }
+
+  bool need_upgrade() const
+  {
+    return config.upgrade && scheme == "http";
   }
 
   int initiate_connection(const std::string& host, uint16_t port)
@@ -475,7 +479,7 @@ struct HttpClient {
       return -1;
     }
     bufferevent_enable(bev, EV_READ);
-    if(config.upgrade) {
+    if(need_upgrade()) {
       htp = new http_parser();
       http_parser_init(htp, HTTP_RESPONSE);
       htp->data = this;
@@ -610,14 +614,14 @@ struct HttpClient {
   int on_connect()
   {
     int rv;
-    if(!config.upgrade) {
+    if(!need_upgrade()) {
       record_handshake_time();
     }
     rv = nghttp2_session_client_new(&session, callbacks, this);
     if(rv != 0) {
       return -1;
     }
-    if(config.upgrade) {
+    if(need_upgrade()) {
       // Adjust stream user-data depending on the existence of upload
       // data
       Request *stream_user_data = nullptr;
@@ -641,7 +645,7 @@ struct HttpClient {
     // If upgrade succeeds, the SETTINGS value sent with
     // HTTP2-Settings header field has already been submitted to
     // session object.
-    if(!config.upgrade) {
+    if(!need_upgrade()) {
       nghttp2_settings_entry iv[16];
       auto niv = populate_settings(iv);
       rv = nghttp2_submit_settings(session, iv, niv);
@@ -658,7 +662,7 @@ struct HttpClient {
     }
     // Adjust first request depending on the existence of the upload
     // data
-    for(auto i = std::begin(reqvec)+(config.upgrade && !reqvec[0]->data_prd);
+    for(auto i = std::begin(reqvec)+(need_upgrade() && !reqvec[0]->data_prd);
         i != std::end(reqvec); ++i) {
       submit_request(this, config.headers, (*i).get());
     }
@@ -744,6 +748,7 @@ struct HttpClient {
     if(reqvec.empty()) {
       return;
     }
+    scheme = get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_SCHEMA);
     std::stringstream ss;
     if(reqvec[0]->is_ipv6_literal_addr()) {
       ss << "[";
@@ -1187,7 +1192,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       std::cerr << "Setting option TCP_NODELAY failed: errno="
                 << errno << std::endl;
     }
-    if(config.upgrade) {
+    if(client->need_upgrade()) {
       rv = client->on_upgrade_connect();
     } else {
       // TODO Check NPN result and fail fast?
@@ -1239,7 +1244,8 @@ ssize_t client_recv_callback(nghttp2_session *session,
 }
 } // namespace
 
-int communicate(const std::string& host, uint16_t port,
+int communicate(const std::string& scheme, const std::string& host,
+                uint16_t port,
                 std::vector<std::tuple<std::string,
                                        nghttp2_data_provider*,
                                        int64_t>> requests,
@@ -1248,7 +1254,7 @@ int communicate(const std::string& host, uint16_t port,
   int result = 0;
   auto evbase = event_base_new();
   SSL_CTX *ssl_ctx = nullptr;
-  if(!config.no_tls) {
+  if(scheme == "https") {
     ssl_ctx = SSL_CTX_new(SSLv23_client_method());
     if(!ssl_ctx) {
       std::cerr << "Failed to create SSL_CTX: "
@@ -1355,6 +1361,7 @@ int run(char **uris, int n)
     callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  std::string prev_scheme;
   std::string prev_host;
   uint16_t prev_port = 0;
   int failures = 0;
@@ -1385,15 +1392,17 @@ int run(char **uris, int n)
        has_uri_field(u, UF_SCHEMA)) {
       uint16_t port = has_uri_field(u, UF_PORT) ?
         u.port : get_default_port(uri.c_str(), u);
-      if(!fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
+      if(!fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
+         !fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
          u.port != prev_port) {
         if(!requests.empty()) {
-          if (communicate(prev_host, prev_port, std::move(requests),
-                          &callbacks) != 0) {
+          if (communicate(prev_scheme, prev_host, prev_port,
+                          std::move(requests), &callbacks) != 0) {
             ++failures;
           }
           requests.clear();
         }
+        prev_scheme = get_uri_field(uri.c_str(), u, UF_SCHEMA);
         prev_host = get_uri_field(uri.c_str(), u, UF_HOST);
         prev_port = port;
       }
@@ -1402,7 +1411,7 @@ int run(char **uris, int n)
     }
   }
   if(!requests.empty()) {
-    if (communicate(prev_host, prev_port, std::move(requests),
+    if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
                     &callbacks) != 0) {
       ++failures;
     }
@@ -1413,7 +1422,7 @@ int run(char **uris, int n)
 void print_usage(std::ostream& out)
 {
   out << "Usage: nghttp [-FOafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "              [--key=<KEY>] [--no-tls] [-d <FILE>] [-m <N>] [-p <PRIORITY>]\n"
+      << "              [--key=<KEY>] [-d <FILE>] [-m <N>] [-p <PRIORITY>]\n"
       << "              <URI>..."
       << std::endl;
 }
@@ -1444,7 +1453,6 @@ void print_help(std::ostream& out)
       << "                       The file must be in PEM format.\n"
       << "    --key=<KEY>        Use the client private key file. The file\n"
       << "                       must be in PEM format.\n"
-      << "    --no-tls           Disable SSL/TLS.\n"
       << "    -d, --data=<FILE>  Post FILE to server. If - is given, data\n"
       << "                       will be read from stdin.\n"
       << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
@@ -1455,7 +1463,8 @@ void print_help(std::ostream& out)
       << "    -f, --no-stream-flow-control\n"
       << "                       Disables stream level flow control.\n"
       << "    -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
-      << "                       option is ignored if --no-tls is not given.\n"
+      << "                       option is ignored if the request URI has\n"
+      << "                       https scheme.\n"
       << "                       If -d is used, the HTTP upgrade request is\n"
       << "                       performed with OPTIONS method.\n"
       << "    -p, --pri=<PRIORITY>\n"
@@ -1480,7 +1489,6 @@ int main(int argc, char **argv)
       {"key", required_argument, &flag, 2 },
       {"help", no_argument, 0, 'h' },
       {"header", required_argument, 0, 'H' },
-      {"no-tls", no_argument, &flag, 3 },
       {"data", required_argument, 0, 'd' },
       {"multiply", required_argument, 0, 'm' },
       {"no-connection-flow-control", no_argument, 0, 'F'},
@@ -1597,10 +1605,6 @@ int main(int argc, char **argv)
         // key option
         config.keyfile = optarg;
         break;
-      case 3:
-        // no-tls option
-        config.no_tls = true;
-        break;
       }
       break;
     default:
@@ -1609,12 +1613,6 @@ int main(int argc, char **argv)
   }
 
   set_color_output(isatty(fileno(stdout)));
-
-  if(!config.no_tls && config.upgrade) {
-    std::cerr << "Warning: -u is ignored because --no-tls is not given."
-              << std::endl;
-    config.upgrade = false;
-  }
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
