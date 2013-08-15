@@ -1,4 +1,3 @@
-spdycat
-spdyd
-shrpx
-shrpx-unittest
+nghttp
+nghttpd
+nghttpx
