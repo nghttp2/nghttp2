@@ -2149,9 +2149,9 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   }
   if(!nghttp2_session_is_new_peer_stream_id
      (session, frame->push_promise.promised_stream_id)) {
-    /* The spec says if an endpoint receives a HEADERS with invalid
-       stream ID, it MUST issue connection error with error code
-       PROTOCOL_ERROR. It applies to PUSH_PROMISE too. */
+    /* The spec says if an endpoint receives a PUSH_PROMISE with
+       illegal stream ID is subject to a connection error of type
+       PROTOCOL_ERROR. */
     return nghttp2_session_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
