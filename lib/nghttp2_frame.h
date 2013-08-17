@@ -574,13 +574,6 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
                                               size_t niv);
 
 /*
- * Sorts the |iv| with the ascending order of the settings_id member.
- * The number of the element in the array pointed by the |iv| is given
- * by the |niv|.
- */
-void nghttp2_frame_iv_sort(nghttp2_settings_entry *iv, size_t niv);
-
-/*
  * Returns the offset of the name/header block in the frame, including
  * frame header. The |head| is frame header. If the indicated frame
  * type does not have header block, this function returns -1.
@@ -639,11 +632,12 @@ int nghttp2_nv_array_check_null(nghttp2_nv *nva, size_t nvlen);
 
 /*
  * Checks that the |iv|, which includes |niv| entries, does not have
- * duplicate IDs.
+ * invalid values. The |flow_control_opt| is current flow control
+ * option value.
  *
  * This function returns nonzero if it succeeds, or 0.
  */
-int nghttp2_settings_check_duplicate(const nghttp2_settings_entry *iv,
-                                     size_t niv);
+int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv,
+                     int32_t flow_control_opt);
 
 #endif /* NGHTTP2_FRAME_H */

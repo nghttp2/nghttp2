@@ -427,26 +427,28 @@ void test_nghttp2_nv_array_from_cstr(void)
   free(bigval);
 }
 
-void test_nghttp2_settings_check_duplicate(void)
+void test_nghttp2_iv_check(void)
 {
-  nghttp2_settings_entry set[3];
+  nghttp2_settings_entry iv[5];
 
-  set[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  set[0].value = 1;
-  set[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  set[1].value = 1023;
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 100;
+  iv[1].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
+  iv[1].value = 0;
+  iv[2].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
+  iv[2].value = 1;
 
-  CU_ASSERT(nghttp2_settings_check_duplicate(set, 2));
+  CU_ASSERT(nghttp2_iv_check(iv, 2, 0));
+  CU_ASSERT(nghttp2_iv_check(iv, 3, 0));
+  /* Re-enabling flow-control*/
+  CU_ASSERT(0 == nghttp2_iv_check(iv, 2, 1));
+  CU_ASSERT(0 == nghttp2_iv_check(iv, 3, 1));
 
-  set[1] = set[0];
-  CU_ASSERT(0 == nghttp2_settings_check_duplicate(set, 2));
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = NGHTTP2_MAX_WINDOW_SIZE;
+  CU_ASSERT(nghttp2_iv_check(iv, 2, 0));
 
-  /* Out-of-bound data is error */
-  set[0].settings_id = NGHTTP2_SETTINGS_MAX + 1;
-  CU_ASSERT(0 == nghttp2_settings_check_duplicate(set, 1));
-
-  /* settings_id == 0 is error */
-  set[0].settings_id = 0;
-  CU_ASSERT(0 == nghttp2_settings_check_duplicate(set, 1));
+  /* Too large window size */
+  iv[1].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
+  CU_ASSERT(0 == nghttp2_iv_check(iv, 2, 0));
 }
-

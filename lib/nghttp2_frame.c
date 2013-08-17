@@ -703,17 +703,6 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
   return iv_copy;
 }
 
-static int nghttp2_settings_entry_compar(const void *lhs, const void *rhs)
-{
-  return ((nghttp2_settings_entry *)lhs)->settings_id
-    -((nghttp2_settings_entry *)rhs)->settings_id;
-}
-
-void nghttp2_frame_iv_sort(nghttp2_settings_entry *iv, size_t niv)
-{
-  qsort(iv, niv, sizeof(nghttp2_settings_entry), nghttp2_settings_entry_compar);
-}
-
 ssize_t nghttp2_frame_nv_offset(const uint8_t *head)
 {
   switch(head[2]) {
@@ -831,18 +820,28 @@ ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
   return nvlen;
 }
 
-int nghttp2_settings_check_duplicate(const nghttp2_settings_entry *iv,
-                                     size_t niv)
+int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv,
+                     int32_t flow_control_opt)
 {
-  int check[NGHTTP2_SETTINGS_MAX+1];
   size_t i;
-  memset(check, 0, sizeof(check));
   for(i = 0; i < niv; ++i) {
-    if(iv[i].settings_id > NGHTTP2_SETTINGS_MAX || iv[i].settings_id == 0 ||
-       check[iv[i].settings_id] == 1) {
-      return 0;
-    } else {
-      check[iv[i].settings_id] = 1;
+    switch(iv[i].settings_id) {
+    case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+      if(iv[i].value > (uint32_t)NGHTTP2_MAX_WINDOW_SIZE) {
+        return 0;
+      }
+      break;
+    case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
+      if(flow_control_opt) {
+        if((iv[i].value & 0x1) == 0) {
+          /* Attempt to re-enabling flow-control is error */
+          return 0;
+        }
+      } else {
+        flow_control_opt = iv[i].value & 0x1;
+      }
+    default:
+      break;
     }
   }
   return 1;

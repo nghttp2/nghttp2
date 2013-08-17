@@ -218,8 +218,7 @@ int main(int argc, char* argv[])
                    test_nghttp2_frame_pack_window_update) ||
       !CU_add_test(pSuite, "nv_array_from_cstr",
                    test_nghttp2_nv_array_from_cstr) ||
-      !CU_add_test(pSuite, "settings_check_duplicate",
-                   test_nghttp2_settings_check_duplicate) ||
+      !CU_add_test(pSuite, "iv_check", test_nghttp2_iv_check) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc",
                    test_nghttp2_hd_inflate_indname_inc) ||

@@ -2044,6 +2044,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS];
   uint8_t new_flow_control = old_flow_control;
   int32_t new_initial_window_size = -1;
+  /* Use the value last seen. */
   for(i = 0; i < niv; ++i) {
     if(iv[i].settings_id == NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE) {
       new_initial_window_size = iv[i].value;
@@ -2061,8 +2062,9 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     }
   }
   for(i = 0; i < niv; ++i) {
-    assert(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX);
-    session->local_settings[iv[i].settings_id] = iv[i].value;
+    if(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX) {
+      session->local_settings[iv[i].settings_id] = iv[i].value;
+    }
   }
   if(old_flow_control == 0 &&
      session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]) {
@@ -2075,7 +2077,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
                                          nghttp2_frame *frame)
 {
   int rv;
-  size_t i;
+  int i;
   int check[NGHTTP2_SETTINGS_MAX+1];
   if(frame->hd.stream_id != 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
@@ -2083,11 +2085,13 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
   }
   /* Check ID/value pairs and persist them if necessary. */
   memset(check, 0, sizeof(check));
-  for(i = 0; i < frame->settings.niv; ++i) {
+  for(i = (int)frame->settings.niv - 1; i >= 0; --i) {
     nghttp2_settings_entry *entry = &frame->settings.iv[i];
-    /* The spec says if the multiple values for the same ID were
-       found, use the first one and ignore the rest. */
-    if(entry->settings_id > NGHTTP2_SETTINGS_MAX || entry->settings_id == 0 ||
+    /* The spec says the settings values are processed in the order
+       they appear in the payload. In other words, if the multiple
+       values for the same ID were found, use the last one and ignore
+       the rest. */
+    if(entry->settings_id > NGHTTP2_SETTINGS_MAX || entry->settings_id <= 0 ||
        check[entry->settings_id] == 1) {
       continue;
     }

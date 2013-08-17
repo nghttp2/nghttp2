@@ -164,7 +164,9 @@ int nghttp2_submit_settings(nghttp2_session *session,
   nghttp2_frame *frame;
   nghttp2_settings_entry *iv_copy;
   int r;
-  if(!nghttp2_settings_check_duplicate(iv, niv)) {
+  if(!nghttp2_iv_check(iv, niv,
+                       session->local_settings
+                       [NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS])) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   frame = malloc(sizeof(nghttp2_frame));
@@ -176,7 +178,6 @@ int nghttp2_submit_settings(nghttp2_session *session,
     free(frame);
     return NGHTTP2_ERR_NOMEM;
   }
-  nghttp2_frame_iv_sort(iv_copy, niv);
   nghttp2_frame_settings_init(&frame->settings, iv_copy, niv);
 
   r = nghttp2_session_update_local_settings(session, iv_copy, niv);
@@ -361,9 +362,10 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
 ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
                                       nghttp2_settings_entry *iv, size_t niv)
 {
-  if(!nghttp2_settings_check_duplicate(iv, niv)) {
+  /* Assume that current flow_control_option is 0 (which means that
+     flow control is enabled) */
+  if(!nghttp2_iv_check(iv, niv, 0)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
-  nghttp2_frame_iv_sort(iv, niv);
   return nghttp2_frame_pack_settings_payload(buf, iv, niv);
 }
