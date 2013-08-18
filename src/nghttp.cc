@@ -79,8 +79,7 @@ struct Config {
   bool verbose;
   bool get_assets;
   bool stat;
-  bool no_connection_flow_control;
-  bool no_stream_flow_control;
+  bool no_flow_control;
   bool upgrade;
   int32_t pri;
   int multiply;
@@ -98,8 +97,7 @@ struct Config {
       verbose(false),
       get_assets(false),
       stat(false),
-      no_connection_flow_control(false),
-      no_stream_flow_control(false),
+      no_flow_control(false),
       upgrade(false),
       pri(NGHTTP2_PRI_DEFAULT),
       multiply(1),
@@ -334,7 +332,7 @@ size_t populate_settings(nghttp2_settings_entry *iv)
   } else {
     iv[1].value = NGHTTP2_INITIAL_WINDOW_SIZE;
   }
-  if(config.no_connection_flow_control && config.no_stream_flow_control) {
+  if(config.no_flow_control) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
     iv[niv].value = 1;
     ++niv;
@@ -649,13 +647,6 @@ struct HttpClient {
       nghttp2_settings_entry iv[16];
       auto niv = populate_settings(iv);
       rv = nghttp2_submit_settings(session, iv, niv);
-      if(rv != 0) {
-        return -1;
-      }
-    }
-    if(config.no_connection_flow_control && !config.no_stream_flow_control) {
-      rv = nghttp2_submit_window_update(session, NGHTTP2_FLAG_END_FLOW_CONTROL,
-                                        0, 0);
       if(rv != 0) {
         return -1;
       }
@@ -983,12 +974,6 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
                                                                 stream_id);
   client->streams[stream_id] = req;
   req->record_syn_stream_time();
-
-  if(!config.no_connection_flow_control && config.no_stream_flow_control) {
-    nghttp2_submit_window_update(session,
-                                 NGHTTP2_FLAG_END_FLOW_CONTROL,
-                                 stream_id, 0);
-  }
 }
 } // namespace
 
@@ -1421,7 +1406,7 @@ int run(char **uris, int n)
 
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [-FOafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
+  out << "Usage: nghttp [-Oafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
       << "              [--key=<KEY>] [-d <FILE>] [-m <N>] [-p <PRIORITY>]\n"
       << "              <URI>..."
       << std::endl;
@@ -1458,10 +1443,9 @@ void print_help(std::ostream& out)
       << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
       << "                       URI is not requested twice. This option\n"
       << "                       disables it too.\n"
-      << "    -F, --no-connection-flow-control\n"
-      << "                       Disables connection level flow control.\n"
-      << "    -f, --no-stream-flow-control\n"
-      << "                       Disables stream level flow control.\n"
+      << "    -f, --no-low-control\n"
+      << "                       Disables connection and stream level flow\n"
+      << "                       controls.\n"
       << "    -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
       << "                       option is ignored if the request URI has\n"
       << "                       https scheme.\n"
@@ -1491,27 +1475,23 @@ int main(int argc, char **argv)
       {"header", required_argument, 0, 'H' },
       {"data", required_argument, 0, 'd' },
       {"multiply", required_argument, 0, 'm' },
-      {"no-connection-flow-control", no_argument, 0, 'F'},
-      {"no-stream-flow-control", no_argument, 0, 'f'},
+      {"no-flow-control", no_argument, 0, 'f'},
       {"upgrade", no_argument, 0, 'u'},
       {"pri", required_argument, 0, 'p'},
       {0, 0, 0, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "FOad:fm:np:hH:vst:uw:", long_options,
+    int c = getopt_long(argc, argv, "Oad:fm:np:hH:vst:uw:", long_options,
                         &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
-    case 'F':
-      config.no_connection_flow_control = true;
-      break;
     case 'O':
       config.remote_name = true;
       break;
     case 'f':
-      config.no_stream_flow_control = true;
+      config.no_flow_control = true;
       break;
     case 'h':
       print_help(std::cout);

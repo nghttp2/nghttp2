@@ -217,11 +217,6 @@ void print_flags(const nghttp2_frame_hd& hd)
       s += "PONG";
     }
     break;
-  case NGHTTP2_WINDOW_UPDATE:
-    if(hd.flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
-      s += "END_FLOW_CONTROL";
-    }
-    break;
   }
   printf("; %s\n", s.c_str());
 }

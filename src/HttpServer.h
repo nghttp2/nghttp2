@@ -57,8 +57,7 @@ struct Config {
   void *data_ptr;
   bool verify_client;
   bool no_tls;
-  bool no_connection_flow_control;
-  bool no_stream_flow_control;
+  bool no_flow_control;
   size_t output_upper_thres;
   Config();
 };

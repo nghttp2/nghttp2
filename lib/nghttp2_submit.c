@@ -238,22 +238,10 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
 {
   int rv;
   nghttp2_stream *stream;
-  flags &= NGHTTP2_FLAG_END_FLOW_CONTROL;
-  if(flags & NGHTTP2_FLAG_END_FLOW_CONTROL) {
-    if(stream_id == 0) {
-      session->local_flow_control = 0;
-    } else {
-      stream = nghttp2_session_get_stream(session, stream_id);
-      if(stream) {
-        stream->local_flow_control = 0;
-      } else {
-        return NGHTTP2_ERR_STREAM_CLOSED;
-      }
-    }
-    return nghttp2_session_add_window_update(session, flags, stream_id, 0);
-  } else if(window_size_increment == 0) {
+  if(window_size_increment == 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
+  flags = 0;
   if(stream_id == 0) {
     if(!session->local_flow_control) {
       return NGHTTP2_ERR_INVALID_ARGUMENT;

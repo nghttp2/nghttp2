@@ -337,11 +337,7 @@ typedef enum {
   /**
    * The PONG flag.
    */
-  NGHTTP2_FLAG_PONG = 0x1,
-  /**
-   * The END_FLOW_CONTROL flag.
-   */
-  NGHTTP2_FLAG_END_FLOW_CONTROL = 0x1
+  NGHTTP2_FLAG_PONG = 0x1
 } nghttp2_flag;
 
 /**
@@ -1738,6 +1734,8 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  *
  * Submits WINDOW_UPDATE frame.
  *
+ * The |flags| is currently ignored.
+ *
  * If the |window_size_increment| is positive, the WINDOW_UPDATE with
  * that value as window_size_increment is queued. If the
  * |window_size_increment| is larger than the received bytes from the
@@ -1756,9 +1754,7 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |delta_window_size| is 0 and
- *     :enum:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit is not set in
- *     |flags|.
+ *     The |delta_window_size| is 0.
  * :enum:`NGHTTP2_ERR_FLOW_CONTROL`
  *     The local window size overflow or gets negative.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`

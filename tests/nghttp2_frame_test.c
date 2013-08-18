@@ -368,7 +368,7 @@ void test_nghttp2_frame_pack_window_update(void)
   uint8_t *buf = NULL;
   size_t buflen = 0;
   ssize_t framelen;
-  nghttp2_frame_window_update_init(&frame, NGHTTP2_FLAG_END_FLOW_CONTROL,
+  nghttp2_frame_window_update_init(&frame, NGHTTP2_FLAG_NONE,
                                    1000000007, 4096);
   framelen = nghttp2_frame_pack_window_update(&buf, &buflen,
                                               &frame);
@@ -377,7 +377,7 @@ void test_nghttp2_frame_pack_window_update(void)
              &buf[0], NGHTTP2_FRAME_HEAD_LENGTH,
              &buf[NGHTTP2_FRAME_HEAD_LENGTH],
              framelen - NGHTTP2_FRAME_HEAD_LENGTH));
-  check_frame_header(4, NGHTTP2_WINDOW_UPDATE, NGHTTP2_FLAG_END_FLOW_CONTROL,
+  check_frame_header(4, NGHTTP2_WINDOW_UPDATE, NGHTTP2_FLAG_NONE,
                      1000000007, &oframe.hd);
   CU_ASSERT(4096 == oframe.window_size_increment);
   free(buf);

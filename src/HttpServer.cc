@@ -71,8 +71,7 @@ Config::Config()
     data_ptr(nullptr),
     verify_client(false),
     no_tls(false),
-    no_connection_flow_control(false),
-    no_stream_flow_control(false),
+    no_flow_control(false),
     output_upper_thres(1024*1024)
 {}
 
@@ -353,8 +352,7 @@ int Http2Handler::on_connect()
   size_t niv = 1;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = 100;
-  if(sessions_->get_config()->no_connection_flow_control &&
-     sessions_->get_config()->no_stream_flow_control) {
+  if(sessions_->get_config()->no_flow_control) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
     entry[niv].value = 1;
     ++niv;
@@ -362,14 +360,6 @@ int Http2Handler::on_connect()
   r = nghttp2_submit_settings(session_, entry, niv);
   if(r != 0) {
     return r;
-  }
-  if(sessions_->get_config()->no_connection_flow_control &&
-     !sessions_->get_config()->no_stream_flow_control) {
-    r = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_END_FLOW_CONTROL,
-                                     0, 0);
-    if(r != 0) {
-      return r;
-    }
   }
   return on_write();
 }
@@ -717,11 +707,6 @@ void hd_on_frame_recv_callback
       auto req = util::make_unique<Request>(stream_id);
       append_nv(req.get(), frame->headers.nva, frame->headers.nvlen);
       hd->add_stream(stream_id, std::move(req));
-      if(!hd->get_config()->no_connection_flow_control &&
-         hd->get_config()->no_stream_flow_control) {
-        nghttp2_submit_window_update(session, NGHTTP2_FLAG_END_FLOW_CONTROL,
-                                     stream_id, 0);
-      }
       break;
     }
     case NGHTTP2_HCAT_HEADERS:
