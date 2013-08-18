@@ -1807,6 +1807,10 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
         }
       }
     }
+  } else if(stream->state == NGHTTP2_STREAM_RESERVED) {
+    /* reserved (local) */
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   } else {
     /* half closed (remote): from the spec:
 
@@ -2162,6 +2166,10 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   session->last_recv_stream_id = frame->push_promise.promised_stream_id;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(stream) {
+    if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+      return nghttp2_session_handle_invalid_connection(session, frame,
+                                                       NGHTTP2_PROTOCOL_ERROR);
+    }
     if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
       if(stream->state == NGHTTP2_STREAM_CLOSING) {
         return nghttp2_session_add_rst_stream
@@ -2293,6 +2301,10 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
     nghttp2_stream *stream;
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
     if(stream) {
+      if(stream->state == NGHTTP2_STREAM_RESERVED) {
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      }
       if(stream->remote_flow_control == 0) {
         /* Same reason with connection-level flow control */
         nghttp2_session_call_on_frame_received(session, frame);

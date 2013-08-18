@@ -1043,7 +1043,7 @@ void test_nghttp2_session_on_push_promise_received(void)
   /* After GOAWAY, PUSH_PROMISE will be discarded */
   frame.push_promise.promised_stream_id = 10;
 
- user_data.frame_recv_cb_called = 0;
+  user_data.frame_recv_cb_called = 0;
   user_data.invalid_frame_recv_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_on_push_promise_received(session, &frame));
 
@@ -1052,6 +1052,25 @@ void test_nghttp2_session_on_push_promise_received(void)
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 
   nghttp2_frame_push_promise_free(&frame.push_promise);
+  nghttp2_session_del(session);
+
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+  stream = nghttp2_session_open_stream(session, 2, NGHTTP2_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_RESERVED, NULL);
+  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
+  /* Attempt to PUSH_PROMISE against reserved (remote) stream */
+  nghttp2_frame_push_promise_init(&frame.push_promise,
+                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 2, 4,
+                                  nva, nvlen);
+
+  user_data.frame_recv_cb_called = 0;
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(0 == nghttp2_session_on_push_promise_received(session, &frame));
+
+  CU_ASSERT(0 == user_data.frame_recv_cb_called);
+  CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
+
   nghttp2_session_del(session);
 }
 
