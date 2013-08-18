@@ -1808,7 +1808,10 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
       }
     }
   } else if(stream->state == NGHTTP2_STREAM_RESERVED) {
-    /* reserved (local) */
+    /* reserved (local). The valid push response HEADERS is processed
+       by nghttp2_session_on_push_response_headers_received(). This
+       generic HEADERS is called invalid cases for HEADERS against
+       reserved state. */
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   } else {
