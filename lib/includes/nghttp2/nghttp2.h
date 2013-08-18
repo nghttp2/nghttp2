@@ -1641,7 +1641,8 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |iv| contains duplicate settings ID or invalid value.
+ *     The |iv| contains invalid value (e.g., attempting to re-enable
+ *     flow control).
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
