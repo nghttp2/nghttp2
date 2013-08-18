@@ -1462,23 +1462,23 @@ int main(int argc, char **argv)
   while(1) {
     int flag;
     static option long_options[] = {
-      {"verbose", no_argument, 0, 'v' },
-      {"null-out", no_argument, 0, 'n' },
-      {"remote-name", no_argument, 0, 'O' },
-      {"timeout", required_argument, 0, 't' },
-      {"window-bits", required_argument, 0, 'w' },
-      {"get-assets", no_argument, 0, 'a' },
-      {"stat", no_argument, 0, 's' },
-      {"cert", required_argument, &flag, 1 },
-      {"key", required_argument, &flag, 2 },
-      {"help", no_argument, 0, 'h' },
-      {"header", required_argument, 0, 'H' },
-      {"data", required_argument, 0, 'd' },
-      {"multiply", required_argument, 0, 'm' },
-      {"no-flow-control", no_argument, 0, 'f'},
-      {"upgrade", no_argument, 0, 'u'},
-      {"pri", required_argument, 0, 'p'},
-      {0, 0, 0, 0 }
+      {"verbose", no_argument, nullptr, 'v'},
+      {"null-out", no_argument, nullptr, 'n'},
+      {"remote-name", no_argument, nullptr, 'O'},
+      {"timeout", required_argument, nullptr, 't'},
+      {"window-bits", required_argument, nullptr, 'w'},
+      {"get-assets", no_argument, nullptr, 'a'},
+      {"stat", no_argument, nullptr, 's'},
+      {"cert", required_argument, &flag, 1},
+      {"key", required_argument, &flag, 2},
+      {"help", no_argument, nullptr, 'h'},
+      {"header", required_argument, nullptr, 'H'},
+      {"data", required_argument, nullptr, 'd'},
+      {"multiply", required_argument, nullptr, 'm'},
+      {"no-flow-control", no_argument, nullptr, 'f'},
+      {"upgrade", no_argument, nullptr, 'u'},
+      {"pri", required_argument, nullptr, 'p'},
+      {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
     int c = getopt_long(argc, argv, "Oad:fm:np:hH:vst:uw:", long_options,

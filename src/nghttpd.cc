@@ -87,14 +87,14 @@ int main(int argc, char **argv)
   while(1) {
     int flag;
     static option long_options[] = {
-      {"daemon", no_argument, 0, 'D' },
-      {"htdocs", required_argument, 0, 'd' },
-      {"help", no_argument, 0, 'h' },
-      {"verbose", no_argument, 0, 'v' },
-      {"verify-client", no_argument, 0, 'V' },
-      {"no-tls", no_argument, &flag, 1 },
-      {"no-flow-control", no_argument, 0, 'f'},
-      {0, 0, 0, 0 }
+      {"daemon", no_argument, nullptr, 'D'},
+      {"htdocs", required_argument, nullptr, 'd'},
+      {"help", no_argument, nullptr, 'h'},
+      {"verbose", no_argument, nullptr, 'v'},
+      {"verify-client", no_argument, nullptr, 'V'},
+      {"no-tls", no_argument, &flag, 1},
+      {"no-flow-control", no_argument, nullptr, 'f'},
+      {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVd:fhv", long_options, &option_index);
