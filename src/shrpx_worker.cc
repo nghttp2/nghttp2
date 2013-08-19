@@ -52,7 +52,7 @@ Worker::~Worker()
 namespace {
 void readcb(bufferevent *bev, void *arg)
 {
-  ThreadEventReceiver *receiver = reinterpret_cast<ThreadEventReceiver*>(arg);
+  auto receiver = reinterpret_cast<ThreadEventReceiver*>(arg);
   receiver->on_read(bev);
 }
 } // namespace
@@ -71,17 +71,16 @@ void eventcb(bufferevent *bev, short events, void *arg)
 
 void Worker::run()
 {
-  event_base *evbase = event_base_new();
-  bufferevent *bev = bufferevent_socket_new(evbase, fd_,
-                                            BEV_OPT_DEFER_CALLBACKS);
-  SpdySession *spdy = 0;
+  auto evbase = event_base_new();
+  auto bev = bufferevent_socket_new(evbase, fd_, BEV_OPT_DEFER_CALLBACKS);
+  SpdySession *spdy = nullptr;
   if(get_config()->downstream_proto == PROTO_SPDY) {
     spdy = new SpdySession(evbase, cl_ssl_ctx_);
     if(spdy->init_notification() == -1) {
       DIE();
     }
   }
-  ThreadEventReceiver *receiver = new ThreadEventReceiver(sv_ssl_ctx_, spdy);
+  auto receiver = new ThreadEventReceiver(sv_ssl_ctx_, spdy);
   bufferevent_enable(bev, EV_READ);
   bufferevent_setcb(bev, readcb, 0, eventcb, receiver);
 

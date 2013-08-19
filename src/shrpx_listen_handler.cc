@@ -47,9 +47,9 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
     sv_ssl_ctx_(sv_ssl_ctx),
     cl_ssl_ctx_(cl_ssl_ctx),
     worker_round_robin_cnt_(0),
-    workers_(0),
+    workers_(nullptr),
     num_worker_(0),
-    spdy_(0)
+    spdy_(nullptr)
 {}
 
 ListenHandler::~ListenHandler()
@@ -61,7 +61,7 @@ void ListenHandler::create_worker_thread(size_t num)
   num_worker_ = 0;
   for(size_t i = 0; i < num; ++i) {
     int rv;
-    WorkerInfo *info = &workers_[num_worker_];
+    auto info = &workers_[num_worker_];
     rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
     if(rv == -1) {
       LLOG(ERROR, this) << "socketpair() failed: errno=" << errno;
@@ -80,8 +80,8 @@ void ListenHandler::create_worker_thread(size_t num)
       }
       continue;
     }
-    bufferevent *bev = bufferevent_socket_new(evbase_, info->sv[0],
-                                              BEV_OPT_DEFER_CALLBACKS);
+    auto bev = bufferevent_socket_new(evbase_, info->sv[0],
+                                      BEV_OPT_DEFER_CALLBACKS);
     info->bev = bev;
     if(LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << num_worker_;
@@ -97,8 +97,8 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
   if(num_worker_ == 0) {
-    ClientHandler* client = ssl::accept_connection(evbase_, sv_ssl_ctx_,
-                                                   fd, addr, addrlen);
+    auto client = ssl::accept_connection(evbase_, sv_ssl_ctx_,
+                                         fd, addr, addrlen);
     client->set_spdy_session(spdy_);
   } else {
     size_t idx = worker_round_robin_cnt_ % num_worker_;
@@ -108,7 +108,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     wev.client_fd = fd;
     memcpy(&wev.client_addr, addr, addrlen);
     wev.client_addrlen = addrlen;
-    evbuffer *output = bufferevent_get_output(workers_[idx].bev);
+    auto output = bufferevent_get_output(workers_[idx].bev);
     if(evbuffer_add(output, &wev, sizeof(wev)) != 0) {
       LLOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
