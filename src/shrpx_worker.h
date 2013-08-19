@@ -46,7 +46,7 @@ private:
   SSL_CTX *cl_ssl_ctx_;
 };
 
-void* start_threaded_worker(void *arg);
+void start_threaded_worker(WorkerInfo *info);
 
 } // namespace shrpx
 

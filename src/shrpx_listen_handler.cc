@@ -25,9 +25,10 @@
 #include "shrpx_listen_handler.h"
 
 #include <unistd.h>
-#include <pthread.h>
 
 #include <cerrno>
+#include <thread>
+#include <system_error>
 
 #include <event2/bufferevent_ssl.h>
 
@@ -60,10 +61,6 @@ void ListenHandler::create_worker_thread(size_t num)
   num_worker_ = 0;
   for(size_t i = 0; i < num; ++i) {
     int rv;
-    pthread_t thread;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     WorkerInfo *info = &workers_[num_worker_];
     rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
     if(rv == -1) {
@@ -72,9 +69,12 @@ void ListenHandler::create_worker_thread(size_t num)
     }
     info->sv_ssl_ctx = sv_ssl_ctx_;
     info->cl_ssl_ctx = cl_ssl_ctx_;
-    rv = pthread_create(&thread, &attr, start_threaded_worker, info);
-    if(rv != 0) {
-      LLOG(ERROR, this) << "pthread_create() failed: errno=" << rv;
+    try {
+      auto thread = std::thread{start_threaded_worker, info};
+      thread.detach();
+    } catch(const std::system_error& error) {
+      LLOG(ERROR, this) << "Could not start thread: code=" << error.code()
+                        << " msg=" << error.what();
       for(size_t j = 0; j < 2; ++j) {
         close(info->sv[j]);
       }

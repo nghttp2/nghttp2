@@ -90,12 +90,10 @@ void Worker::run()
   delete receiver;
 }
 
-void* start_threaded_worker(void *arg)
+void start_threaded_worker(WorkerInfo *info)
 {
-  WorkerInfo *info = reinterpret_cast<WorkerInfo*>(arg);
   Worker worker(info);
   worker.run();
-  return 0;
 }
 
 } // namespace shrpx
