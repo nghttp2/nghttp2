@@ -2571,6 +2571,9 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
         } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
           error_code = NGHTTP2_PROTOCOL_ERROR;
         }
+      } else if(stream->state == NGHTTP2_STREAM_RESERVED) {
+        /* reserved (remote) and receiving DATA is connection error */
+        return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
       } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
         /* It is OK if this is remote peer initiated stream and we did
            not receive END_STREAM unless stream is in
@@ -2740,10 +2743,12 @@ static int nghttp2_session_check_data_recv_allowed(nghttp2_session *session,
         if(stream->state == NGHTTP2_STREAM_OPENED) {
           return 1;
         }
-      } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
+      } else if(stream->state != NGHTTP2_STREAM_CLOSING &&
+                stream->state != NGHTTP2_STREAM_RESERVED) {
         /* It is OK if this is remote peer initiated stream and we did
            not receive END_STREAM unless stream is in
            NGHTTP2_STREAM_CLOSING state. This is a race condition. */
+        /* But DATA must not be received in reserved state */
         return 1;
       }
     }

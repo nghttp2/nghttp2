@@ -1233,6 +1233,17 @@ void test_nghttp2_session_on_data_received(void)
   /* CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(top)); */
   /* CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(top)->rst_stream.error_code); */
 
+  /* Receiving DATA against the reserved stream is subject to
+     connection error */
+  stream = nghttp2_session_open_stream(session, 6, NGHTTP2_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_RESERVED, NULL);
+  CU_ASSERT(0 == nghttp2_session_on_data_received(session, 4096,
+                                                  NGHTTP2_FLAG_NONE, 6));
+  top = nghttp2_session_get_ob_pq_top(session);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(top));
+  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(top)->goaway.error_code);
+
   nghttp2_session_del(session);
 }
 
