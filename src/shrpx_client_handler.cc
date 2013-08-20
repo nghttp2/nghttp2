@@ -211,6 +211,10 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
                              const char *ipaddr)
   : bev_(bev),
+    evbucket_cfg_(ev_token_bucket_cfg_new(1024*1024, 4*1024*1024,
+                                          EV_RATE_LIMIT_MAX,
+                                          EV_RATE_LIMIT_MAX,
+                                          nullptr)),
     fd_(fd),
     ssl_(ssl),
     upstream_(nullptr),
@@ -219,6 +223,7 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     spdy_(nullptr),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN)
 {
+  bufferevent_set_rate_limit(bev_, evbucket_cfg_);
   bufferevent_enable(bev_, EV_READ | EV_WRITE);
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
@@ -244,6 +249,7 @@ ClientHandler::~ClientHandler()
   }
   bufferevent_disable(bev_, EV_READ | EV_WRITE);
   bufferevent_free(bev_);
+  ev_token_bucket_cfg_free(evbucket_cfg_);
   if(ssl_) {
     SSL_free(ssl_);
   }
