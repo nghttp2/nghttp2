@@ -208,7 +208,8 @@ void on_frame_recv_callback
     }
 
     // Assuming that nva is sorted by name.
-    const char *req_headers[] = {":host", ":method", ":path", ":scheme" };
+    const char *req_headers[] = {":host", ":method", ":path", ":scheme",
+                                 "content-length"};
     const size_t req_hdlen = sizeof(req_headers)/sizeof(req_headers[0]);
     int req_hdidx[req_hdlen];
     memset(req_hdidx, -1, sizeof(req_hdidx));
@@ -243,12 +244,22 @@ void on_frame_recv_callback
       }
       if(!bad_req) {
         // Here :scheme is optional, because with CONNECT method, it
-        // is omitted.
+        // is omitted. content-length is mandatory if END_STREAM is
+        // not set.
         for(j = 0; j < 3; ++j) {
           if(req_hdidx[j] == -1) {
             bad_req = true;
             break;
           }
+        }
+        if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0 &&
+           req_hdidx[4] == -1) {
+          // If content-length is missing,
+          // Downstream::push_upload_data_chunk will fail and
+          // RST_STREAM will be sent. Therefore, error reply in
+          // HEADERS may not be sent. So just issue RST_STREAM here.
+          upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+          return;
         }
       }
       if(!bad_req) {
