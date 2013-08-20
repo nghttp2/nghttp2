@@ -488,7 +488,8 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
       }
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-      } else {
+      } else if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+        // If response was completed, then don't issue RST_STREAM
         if(upstream->error_reply(downstream, 502) != 0) {
           delete upstream->get_client_handler();
           return;
@@ -609,8 +610,12 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       delete dconn;
       dconn = 0;
       if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-        // For SSL tunneling
-        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+        // For SSL tunneling, we issue RST_STREAM. For other types of
+        // stream, we don't have to do anything since response was
+        // complete.
+        if(downstream->get_upgraded()) {
+          upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+        }
       } else {
         if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
           upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
