@@ -33,6 +33,7 @@
 
 struct nghttp2_gzip {
   z_stream zst;
+  int8_t finished;
 };
 
 #endif /* NGHTTP2_GZIP_H */
