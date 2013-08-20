@@ -161,6 +161,7 @@ void on_ctrl_recv_callback
     const char *scheme = 0;
     const char *host = 0;
     const char *method = 0;
+    const char *content_length = 0;
     for(size_t i = 0; nv[i]; i += 2) {
       if(strcmp(nv[i], ":path") == 0) {
         path = nv[i+1];
@@ -172,11 +173,20 @@ void on_ctrl_recv_callback
       } else if(strcmp(nv[i], ":host") == 0) {
         host = nv[i+1];
       } else if(nv[i][0] != ':') {
+        if(strcmp(nv[i], "content-length") == 0) {
+          content_length = nv[i+1];
+        }
         downstream->add_request_header(nv[i], nv[i+1]);
       }
     }
     if(!path || !host || !method) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      return;
+    }
+    // Require content-length if FIN flag is not set.
+    if((frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) == 0 &&
+       !content_length) {
+      upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
       return;
     }
     // SpdyDownstreamConnection examines request path to find
