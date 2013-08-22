@@ -40,7 +40,7 @@ extern "C" {
  *
  * The protocol version identification of this library supports.
  */
-#define NGHTTP2_PROTO_VERSION_ID "HTTP-draft-04/2.0"
+#define NGHTTP2_PROTO_VERSION_ID "HTTP-draft-06/2.0"
 /**
  * @macro
  *

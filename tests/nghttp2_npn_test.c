@@ -32,7 +32,7 @@ static void http2(void)
 {
   const unsigned char p[] = {
     8, 'h', 't', 't', 'p', '/', '1', '.', '1',
-    17, 'H', 'T', 'T', 'P', '-', 'd', 'r', 'a', 'f', 't', '-', '0', '4', '/',
+    17, 'H', 'T', 'T', 'P', '-', 'd', 'r', 'a', 'f', 't', '-', '0', '6', '/',
     '2', '.', '0',
     6, 's', 'p', 'd', 'y', '/', '3'
   };
@@ -40,7 +40,7 @@ static void http2(void)
   unsigned char* out;
   CU_ASSERT(1 == nghttp2_select_next_protocol(&out, &outlen, p, sizeof(p)));
   CU_ASSERT(17 == outlen);
-  CU_ASSERT(memcmp("HTTP-draft-04/2.0", out, outlen) == 0);
+  CU_ASSERT(memcmp("HTTP-draft-06/2.0", out, outlen) == 0);
 }
 
 static void http11(void)
