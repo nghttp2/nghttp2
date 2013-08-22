@@ -289,6 +289,14 @@ void on_frame_recv_callback
       return;
     }
 
+    if(req_hdidx[4] != -1) {
+      downstream->add_request_header
+        (std::string(reinterpret_cast<char*>(nva[req_hdidx[4]].name),
+                     nva[req_hdidx[4]].namelen),
+         std::string(reinterpret_cast<char*>(nva[req_hdidx[4]].value),
+                     nva[req_hdidx[4]].valuelen));
+    }
+
     std::string host(reinterpret_cast<char*>(nva[req_hdidx[0]].value),
                      nva[req_hdidx[0]].valuelen);
     std::string method(reinterpret_cast<char*>(nva[req_hdidx[1]].value),
