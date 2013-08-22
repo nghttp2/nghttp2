@@ -333,7 +333,7 @@ typedef enum {
   /**
    * The END_PUSH_PROMISE flag.
    */
-  NGHTTP2_FLAG_END_PUSH_PROMISE = 0x1,
+  NGHTTP2_FLAG_END_PUSH_PROMISE = 0x4,
   /**
    * The PONG flag.
    */
