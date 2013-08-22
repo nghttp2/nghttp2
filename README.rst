@@ -7,10 +7,12 @@ version 2.0.
 Development Status
 ------------------
 
-We started to implement HTTP-draft-04/2.0
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-04) based on
-spdylay code base. The header compression is based on
-http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01
+We started to implement HTTP-draft-06/2.0
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-06) and the
+header compression
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-02).
+
+The nghttp2 code base was forked from spdylay project.
 
 =================== =================
 Features            HTTP-draft-04/2.0
@@ -127,33 +129,34 @@ with prior knowledge, HTTP Upgrade and NPN TLS extension.
 It has verbose output mode for framing information. Here is sample
 output from ``nghttp`` client::
 
-    $ src/nghttp -nv https://localhost:3000/
-    [  0.000] NPN select next protocol: the remote server offers:
-              * HTTP-draft-04/2.0
+    $ src/nghttp -vn https://localhost:8443
+    [  0.001] NPN select next protocol: the remote server offers:
+              * HTTP-draft-06/2.0
               * spdy/3
               * spdy/2
               * http/1.1
-              NPN selected the protocol: HTTP-draft-04/2.0
-    [  0.005] send SETTINGS frame <length=0, flags=0, stream_id=0>
-              (niv=0)
-    [  0.005] send HEADERS frame <length=58, flags=5, stream_id=1>
+              NPN selected the protocol: HTTP-draft-06/2.0
+    [  0.006] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
+              (niv=2)
+              [MAX_CONCURRENT_STREAMS(4):100]
+              [INITIAL_WINDOW_SIZE(7):65535]
+    [  0.006] send HEADERS frame <length=58, flags=0x05, stream_id=1>
               ; END_STREAM | END_HEADERS
               ; Open new stream
-              :host: localhost:3000
+              :host: localhost:8443
               :method: GET
               :path: /
               :scheme: https
               accept: */*
               accept-encoding: gzip, deflate
               user-agent: nghttp2/0.1.0-DEV
-    [  0.005] recv SETTINGS frame <length=16, flags=0, stream_id=0>
+    [  0.007] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
               (niv=2)
-              [4:100]
-              [7:65536]
-    [  0.005] recv WINDOW_UPDATE frame <length=4, flags=1, stream_id=0>
-              ; END_FLOW_CONTROL
-              (window_size_increment=0)
-    [  0.006] recv HEADERS frame <length=179, flags=4, stream_id=1>
+              [MAX_CONCURRENT_STREAMS(4):100]
+              [INITIAL_WINDOW_SIZE(7):65535]
+    [  0.008] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
+              (window_size_increment=1000000007)
+    [  0.008] recv HEADERS frame <length=179, flags=0x04, stream_id=1>
               ; END_HEADERS
               ; First response header
               :status: 200 OK
@@ -161,66 +164,67 @@ output from ``nghttp`` client::
               content-encoding: gzip
               content-length: 56
               content-type: text/html
-              date: Sat, 27 Jul 2013 12:08:56 GMT
+              date: Thu, 22 Aug 2013 16:37:17 GMT
               etag: "cf405c-2d-45adabdf282c0"
               last-modified: Tue, 04 Nov 2008 10:44:03 GMT
               server: Apache/2.2.22 (Debian)
               vary: Accept-Encoding
               via: 1.1 nghttpx
-    [  0.006] recv DATA frame (length=56, flags=0, stream_id=1)
-    [  0.006] recv DATA frame (length=0, flags=1, stream_id=1)
-    [  0.006] send GOAWAY frame <length=8, flags=0, stream_id=0>
-              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data=)
+    [  0.009] recv DATA frame <length=56, flags=0x00, stream_id=1>
+    [  0.009] recv DATA frame <length=0, flags=0x01, stream_id=1>
+              ; END_STREAM
+    [  0.009] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
 The HTTP Upgrade is performed like this::
 
-    $ src/nghttp --no-tls -nvu http://localhost:3000/
+    $ src/nghttp -vnu http://localhost:8080
     [  0.000] HTTP Upgrade request
     GET / HTTP/1.1
-    Host: localhost:3000
+    Host: localhost:8080
     Connection: Upgrade, HTTP2-Settings
-    Upgrade: HTTP-draft-04/2.0
+    Upgrade: HTTP-draft-06/2.0
     HTTP2-Settings: AAAABAAAAGQAAAAHAAD__w
     Accept: */*
     User-Agent: nghttp2/0.1.0-DEV
 
 
-    [  0.183] HTTP Upgrade response
+    [  0.000] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
     Upgrade: HTTP/2.0
 
 
-    [  0.183] HTTP Upgrade success
-    [  0.183] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
+    [  0.000] HTTP Upgrade success
+    [  0.001] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
               (niv=2)
-              [4:100]
-              [7:65535]
-    [  0.202] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
+              [MAX_CONCURRENT_STREAMS(4):100]
+              [INITIAL_WINDOW_SIZE(7):65535]
+    [  0.001] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
               (niv=2)
-              [4:100]
-              [7:65536]
-    [  0.202] recv WINDOW_UPDATE frame <length=4, flags=0x01, stream_id=0>
-              ; END_FLOW_CONTROL
-              (window_size_increment=0)
-    [  0.275] recv HEADERS frame <length=198, flags=0x04, stream_id=1>
+              [MAX_CONCURRENT_STREAMS(4):100]
+              [INITIAL_WINDOW_SIZE(7):65535]
+    [  0.001] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
+              (window_size_increment=1000000007)
+    [  0.001] recv HEADERS frame <length=198, flags=0x04, stream_id=1>
               ; END_HEADERS
               ; First response header
               :status: 200 OK
               accept-ranges: bytes
               content-length: 45
               content-type: text/html
-              date: Sat, 03 Aug 2013 10:21:20 GMT
+              date: Thu, 22 Aug 2013 16:39:04 GMT
               etag: "cf405c-2d-45adabdf282c0"
               last-modified: Tue, 04 Nov 2008 10:44:03 GMT
               server: Apache/2.2.22 (Debian)
               vary: Accept-Encoding
               via: 1.1 nghttpx
               x-pad: avoid browser bug
-    [  0.275] recv DATA frame (length=45, flags=0, stream_id=1)
-    [  0.275] recv DATA frame (length=0, flags=1, stream_id=1)
-    [  0.275] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
-              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data=)
+    [  0.001] recv DATA frame <length=45, flags=0x00, stream_id=1>
+    [  0.001] recv DATA frame <length=0, flags=0x01, stream_id=1>
+              ; END_STREAM
+    [  0.001] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
 nghttpd - server
 ++++++++++++++++
@@ -237,46 +241,47 @@ HTTP/2.0 connection. No HTTP Upgrade is supported.
 Just like ``nghttp``, it has verbose output mode for framing
 information. Here is sample output from ``nghttpd`` server::
 
-    $ src/nghttpd 3000 --no-tls -v
-    IPv4: listen on port 3000
-    IPv6: listen on port 3000
-    [id=1] [  1.020] send SETTINGS frame <length=8, flags=0, stream_id=0>
+    $ src/nghttpd --no-tls -v 8080
+    IPv4: listen on port 8080
+    IPv6: listen on port 8080
+    [id=1] [ 14.716] send SETTINGS frame <length=8, flags=0x00, stream_id=0>
               (niv=1)
-              [4:100]
-    [id=1] [  1.020] closed
-    [id=2] [  1.838] send SETTINGS frame <length=8, flags=0, stream_id=0>
-              (niv=1)
-              [4:100]
-    [id=2] [  1.838] recv SETTINGS frame <length=0, flags=0, stream_id=0>
-              (niv=0)
-    [id=2] [  1.838] recv HEADERS frame <length=58, flags=5, stream_id=1>
+              [MAX_CONCURRENT_STREAMS(4):100]
+    [id=1] [ 14.717] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
+              (niv=2)
+              [MAX_CONCURRENT_STREAMS(4):100]
+              [INITIAL_WINDOW_SIZE(7):65535]
+    [id=1] [ 14.717] recv HEADERS frame <length=58, flags=0x05, stream_id=1>
               ; END_STREAM | END_HEADERS
               ; Open new stream
-              :host: localhost:3000
+              :host: localhost:8080
               :method: GET
               :path: /
               :scheme: http
               accept: */*
               accept-encoding: gzip, deflate
               user-agent: nghttp2/0.1.0-DEV
-    [id=2] [  1.838] send HEADERS frame <length=105, flags=4, stream_id=1>
+    [id=1] [ 14.717] send HEADERS frame <length=105, flags=0x04, stream_id=1>
               ; END_HEADERS
               ; First response header
               :status: 404 Not Found
               content-encoding: gzip
               content-type: text/html; charset=UTF-8
-              date: Sat, 27 Jul 2013 12:32:10 GMT
+              date: Thu, 22 Aug 2013 16:41:05 GMT
               server: nghttpd nghttp2/0.1.0-DEV
-    [id=2] [  1.838] send DATA frame (length=127, flags=0, stream_id=1)
-    [id=2] [  1.838] send DATA frame (length=0, flags=1, stream_id=1)
-    [id=2] [  1.838] stream_id=1 closed
-    [id=2] [  1.839] closed
+    [id=1] [ 14.717] send DATA frame <length=128, flags=0x00, stream_id=1>
+    [id=1] [ 14.717] send DATA frame <length=0, flags=0x01, stream_id=1>
+              ; END_STREAM
+    [id=1] [ 14.717] stream_id=1 closed
+    [id=1] [ 14.717] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
+              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+    [id=1] [ 14.717] closed
 
 nghttpx - proxy
 +++++++++++++++
 
 The ``nghttpx`` is a multi-threaded reverse proxy for
-HTTP-draft-04/2.0, SPDY and HTTP/1.1. It has several operation modes:
+HTTP-draft-06/2.0, SPDY and HTTP/1.1. It has several operation modes:
 
 ================== ============================== ============== =============
 Mode option        Frontend                       Backend        Note
@@ -289,7 +294,7 @@ default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================== ============== =============
 
 The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-04/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens HTTP-draft-06/2.0, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--spdy`` and ``--spdy-bridge`` modes use SSL/TLS
