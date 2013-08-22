@@ -32,8 +32,7 @@
 #include <nghttp2/nghttp2.h>
 
 #define NGHTTP2_INITIAL_HD_TABLE_SIZE 128
-#define NGHTTP2_INITIAL_REFSET_SIZE 128
-#define NGHTTP2_INITIAL_WS_SIZE 128
+#define NGHTTP2_INITIAL_EMIT_SET_SIZE 128
 
 #define NGHTTP2_HD_MAX_BUFFER_SIZE 4096
 #define NGHTTP2_HD_MAX_ENTRY_SIZE 1024
@@ -54,6 +53,11 @@ typedef enum {
   NGHTTP2_HD_FLAG_NAME_ALLOC = 1,
   /* Indicates value was dynamically allocated and must be freed */
   NGHTTP2_HD_FLAG_VALUE_ALLOC = 1 << 1,
+  /* Indicates that the entry is in the reference set */
+  NGHTTP2_HD_FLAG_REFSET = 1 << 2,
+  /* Indicates that the entry is emitted in the current header
+     processing. */
+  NGHTTP2_HD_FLAG_EMIT = 1 << 3,
 } nghttp2_hd_flags;
 
 typedef struct {
@@ -65,54 +69,20 @@ typedef struct {
   uint8_t flags;
 } nghttp2_hd_entry;
 
-typedef enum {
-  NGHTTP2_HD_CAT_NONE,
-  NGHTTP2_HD_CAT_INDEXED,
-  NGHTTP2_HD_CAT_INDNAME,
-  NGHTTP2_HD_CAT_NEWNAME
-} nghttp2_hd_entry_cat;
-
-typedef struct nghttp2_hd_ws_entry {
-  nghttp2_hd_entry_cat cat;
-  union {
-    /* For NGHTTP2_HD_CAT_INDEXED */
-    struct {
-      nghttp2_hd_entry *entry;
-      uint8_t index;
-    } indexed;
-    /* For NGHTTP2_HD_CAT_NEWNAME */
-    struct {
-      nghttp2_nv nv;
-    } newname;
-    /* For NGHTTP2_HD_CAT_LITERAL_INDNAME */
-    struct {
-      /* The entry in header table the name stored */
-      nghttp2_hd_entry *entry;
-      uint8_t *value;
-      uint16_t valuelen;
-    } indname;
-  };
-} nghttp2_hd_ws_entry;
-
 typedef struct {
   /* Header table */
   nghttp2_hd_entry **hd_table;
-  /* Reference set */
-  nghttp2_hd_entry **refset;
-  /* Working set */
-  nghttp2_hd_ws_entry *ws;
+  /* Holding emitted entry in deflating header block to retain
+     reference count. */
+  nghttp2_hd_entry **emit_set;
   /* The capacity of the |hd_table| */
   uint16_t hd_table_capacity;
-  /* the number of entry the |hd_table| contains */
+  /* The number of entry the |hd_table| contains */
   uint16_t hd_tablelen;
-  /* The capacity of the |refset| */
-  uint16_t refset_capacity;
-  /* The number of entry the |refset| contains */
-  uint16_t refsetlen;
-  /* The capacity of the |ws| */
-  uint16_t ws_capacity;
-  /* The number of entry the |ws| contains */
-  uint16_t wslen;
+  /* The capacity of the |emit_set| */
+  uint16_t emit_set_capacity;
+  /* The number of entry the |emit_set| contains */
+  uint16_t emit_setlen;
   /* Abstract buffer size of hd_table as described in the spec. This
      is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
@@ -218,8 +188,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
                               uint8_t *in, size_t inlen);
 
 /*
- * Signals the end of processing one header block. This function
- * creates new reference set from working set.
+ * Signals the end of processing one header block.
  *
  * This function returns 0 if it succeeds. Currently this function
  * always succeeds.

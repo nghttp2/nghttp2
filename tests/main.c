@@ -227,7 +227,7 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "hd_inflate_newname_inc",
                    test_nghttp2_hd_inflate_newname_inc) ||
       !CU_add_test(pSuite, "hd_inflate_indname_subst",
-                   test_nghttp2_hd_inflate_newname_inc) ||
+                   test_nghttp2_hd_inflate_indname_subst) ||
       !CU_add_test(pSuite, "hd_inflate_indname_subst_eviction",
                    test_nghttp2_hd_inflate_indname_subst_eviction) ||
       !CU_add_test(pSuite, "hd_inflate_indname_subst_eviction_neg",

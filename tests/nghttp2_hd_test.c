@@ -156,11 +156,11 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 12,
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 11,
                                                nv.value, nv.valuelen, 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
-  CU_ASSERT(39 == inflater.hd_tablelen);
+  CU_ASSERT(31 == inflater.hd_tablelen);
   assert_nv_equal(&nv, &inflater.hd_table[inflater.hd_tablelen-1]->nv, 1);
 
   nghttp2_nv_array_del(resnva);
@@ -174,13 +174,14 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   uint8_t *buf = NULL;
   size_t buflen = 0;
   size_t offset = 0;
-  /* Default header table capacity is 1592. Adding 2547 bytes,
+  /* Default header table capacity is 1262. Adding 2835 bytes,
      including overhead, to the table evicts first entry.
-     use name ":host" which index 2 and value length 2510. */
-  uint8_t value[2510];
+     use name ":host" which index 2 and value length 2798. */
+  uint8_t value[2798];
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
+  memset(value, '0', sizeof(value));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 2,
                                                value, sizeof(value), 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
@@ -191,8 +192,8 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
-  CU_ASSERT(38 == inflater.hd_tablelen);
-  CU_ASSERT(37 == inflater.refset[0]->index);
+  CU_ASSERT(30 == inflater.hd_tablelen);
+  CU_ASSERT(inflater.hd_table[29]->flags & NGHTTP2_HD_FLAG_REFSET);
 
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
@@ -212,7 +213,7 @@ void test_nghttp2_hd_inflate_newname_inc(void)
                                                &nv, 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
-  CU_ASSERT(39 == inflater.hd_tablelen);
+  CU_ASSERT(31 == inflater.hd_tablelen);
   assert_nv_equal(&nv, &inflater.hd_table[inflater.hd_tablelen-1]->nv, 1);
 
   nghttp2_nv_array_del(resnva);
@@ -231,13 +232,13 @@ void test_nghttp2_hd_inflate_indname_subst(void)
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
   CU_ASSERT(0 == nghttp2_hd_emit_subst_indname_block(&buf, &buflen, &offset,
-                                                     12,
+                                                     11,
                                                      nv.value, nv.valuelen,
-                                                     12));
+                                                     11));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
-  CU_ASSERT(38 == inflater.hd_tablelen);
-  assert_nv_equal(&nv, &inflater.hd_table[12]->nv, 1);
+  CU_ASSERT(30 == inflater.hd_tablelen);
+  assert_nv_equal(&nv, &inflater.hd_table[11]->nv, 1);
 
   nghttp2_nv_array_del(resnva);
   free(buf);
@@ -250,13 +251,14 @@ void test_nghttp2_hd_inflate_indname_subst_eviction(void)
   uint8_t *buf = NULL;
   size_t buflen = 0;
   size_t offset = 0;
-  /* Default header table capacity is 1592. Adding 2547 bytes,
+  /* Default header table capacity is 1262. Adding 2877 bytes,
      including overhead, to the table evicts first entry.
-     use name ":host" which index 2 and value length 2510. */
-  uint8_t value[2510];
+     use name ":host" which index 2 and value length 2840. */
+  uint8_t value[2840];
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
+  memset(value, '0', sizeof(value));
   CU_ASSERT(0 == nghttp2_hd_emit_subst_indname_block(&buf, &buflen, &offset,
                                                      2,
                                                      value, sizeof(value), 2));
@@ -268,8 +270,8 @@ void test_nghttp2_hd_inflate_indname_subst_eviction(void)
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
-  CU_ASSERT(37 == inflater.hd_tablelen);
-  CU_ASSERT(1 == inflater.refset[0]->index);
+  CU_ASSERT(29 == inflater.hd_tablelen);
+  CU_ASSERT(inflater.hd_table[1]->flags & NGHTTP2_HD_FLAG_REFSET);
 
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
@@ -281,12 +283,13 @@ void test_nghttp2_hd_inflate_indname_subst_eviction_neg(void)
   uint8_t *buf = NULL;
   size_t buflen = 0;
   size_t offset = 0;
-  /* Default header table capacity is 1592. Adding 2548 bytes,
-     including overhead, to the table evicts first entry.
-     use name ":host" which index 2 and value length 2511. */
-  uint8_t value[2511];
+  /* Default header table capacity is 1262. Adding 2878 bytes,
+     including overhead, to the table evicts first 2 entries.
+     use name ":host" which index 2 and value length 2841. */
+  uint8_t value[2841];
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+  memset(value, '0', sizeof(value));
   /* Try to substitute index 0, but it will be evicted */
   CU_ASSERT(0 == nghttp2_hd_emit_subst_indname_block(&buf, &buflen, &offset,
                                                      2,
@@ -299,8 +302,8 @@ void test_nghttp2_hd_inflate_indname_subst_eviction_neg(void)
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
-  CU_ASSERT(37 == inflater.hd_tablelen);
-  CU_ASSERT(0 == inflater.refset[0]->index);
+  CU_ASSERT(29 == inflater.hd_tablelen);
+  CU_ASSERT(inflater.hd_table[0]->flags & NGHTTP2_HD_FLAG_REFSET);
 
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
@@ -320,7 +323,7 @@ void test_nghttp2_hd_inflate_newname_subst(void)
                                                      &nv, 1));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
-  CU_ASSERT(38 == inflater.hd_tablelen);
+  CU_ASSERT(30 == inflater.hd_tablelen);
   assert_nv_equal(&nv, &inflater.hd_table[1]->nv, 1);
 
   nghttp2_nv_array_del(resnva);
