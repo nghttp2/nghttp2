@@ -252,7 +252,11 @@ void on_frame_recv_callback
             break;
           }
         }
-        if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0 &&
+        if(!bad_req &&
+           !util::strieq("CONNECT",
+                         nva[req_hdidx[1]].value,
+                         nva[req_hdidx[1]].valuelen) &&
+           (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0 &&
            req_hdidx[4] == -1) {
           // If content-length is missing,
           // Downstream::push_upload_data_chunk will fail and
