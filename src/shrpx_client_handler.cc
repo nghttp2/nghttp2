@@ -180,6 +180,7 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
     }
     // Reset header length for later HTTP/2.0 upgrade
     handler->set_left_connhd_len(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+    handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
     if(handler->on_read() != 0) {
       delete handler;
       return;
