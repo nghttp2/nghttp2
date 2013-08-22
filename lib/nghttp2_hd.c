@@ -173,8 +173,15 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
   context->hd_table_capacity = NGHTTP2_INITIAL_HD_TABLE_SIZE;
   context->hd_tablelen = 0;
 
-  context->emit_set = NULL;
-  context->emit_set_capacity = 0;
+  context->emit_set = malloc(sizeof(nghttp2_hd_entry*)*
+                             NGHTTP2_INITIAL_EMIT_SET_SIZE);
+  if(context->emit_set == NULL) {
+    free(context->hd_table);
+    return NGHTTP2_ERR_NOMEM;
+  }
+  memset(context->emit_set, 0, sizeof(nghttp2_hd_entry*)*
+         NGHTTP2_INITIAL_EMIT_SET_SIZE);
+  context->emit_set_capacity = NGHTTP2_INITIAL_EMIT_SET_SIZE;
   context->emit_setlen = 0;
 
   if(side == NGHTTP2_HD_SIDE_CLIENT) {
@@ -190,6 +197,7 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
         nghttp2_hd_entry_free(context->hd_table[i]);
         free(context->hd_table[i]);
       }
+      free(context->emit_set);
       free(context->hd_table);
       return NGHTTP2_ERR_NOMEM;
     }
@@ -207,6 +215,11 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
 int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater, nghttp2_hd_side side)
 {
   return nghttp2_hd_context_init(deflater, side);
+}
+
+int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater, nghttp2_hd_side side)
+{
+  return nghttp2_hd_context_init(inflater, side^1);
 }
 
 static void nghttp2_hd_context_free(nghttp2_hd_context *context)
@@ -227,26 +240,6 @@ static void nghttp2_hd_context_free(nghttp2_hd_context *context)
   }
   free(context->emit_set);
   free(context->hd_table);
-}
-
-int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater, nghttp2_hd_side side)
-{
-  int rv;
-  rv = nghttp2_hd_context_init(inflater, side^1);
-  if(rv != 0) {
-    return rv;
-  }
-  inflater->emit_set = malloc(sizeof(nghttp2_hd_entry*)*
-                              NGHTTP2_INITIAL_EMIT_SET_SIZE);
-  if(inflater->emit_set == NULL) {
-    nghttp2_hd_context_free(inflater);
-    return NGHTTP2_ERR_NOMEM;
-  }
-  memset(inflater->emit_set, 0, sizeof(nghttp2_hd_entry*)*
-         NGHTTP2_INITIAL_EMIT_SET_SIZE);
-  inflater->emit_set_capacity = NGHTTP2_INITIAL_EMIT_SET_SIZE;
-  inflater->emit_setlen = 0;
-  return 0;
 }
 
 void nghttp2_hd_deflate_free(nghttp2_hd_context *deflater)
@@ -713,13 +706,18 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
     nghttp2_hd_entry *ent;
     ent = find_in_hd_table(deflater, &nv[i]);
     if(ent) {
-      ent->flags |= NGHTTP2_HD_FLAG_EMIT;
       if((ent->flags & NGHTTP2_HD_FLAG_REFSET) == 0) {
-        ent->flags |= NGHTTP2_HD_FLAG_REFSET;
+        ent->flags |= NGHTTP2_HD_FLAG_REFSET | NGHTTP2_HD_FLAG_EMIT;
         rv = emit_indexed_block(buf_ptr, buflen_ptr, &offset, ent->index);
-        if(rv < 0) {
-          goto fail;
-        }
+      } else {
+        /* The common header in reference set could be removed on
+           eviction. In that case, we have to add it again. The bad
+           thing is that we could not know it happens here. So defer
+           its processing after all headers are processed. */
+        rv = add_emit_set(deflater, ent);
+      }
+      if(rv < 0) {
+        goto fail;
       }
     } else {
       uint8_t index = NGHTTP2_HD_INVALID_INDEX;
@@ -750,6 +748,34 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
         goto fail;
       }
     }
+  }
+
+  for(i = 0; i < deflater->emit_setlen; ++i) {
+    nghttp2_hd_entry *ent = deflater->emit_set[i];
+    if((ent->flags & NGHTTP2_HD_FLAG_EMIT) == 0 &&
+       ent->index == NGHTTP2_HD_INVALID_INDEX) {
+      /* If common header is removed from the header table, use
+         incremental indexing. */
+      uint8_t index = NGHTTP2_HD_INVALID_INDEX;
+      nghttp2_hd_entry *new_ent;
+      nghttp2_hd_entry *name_ent = find_name_in_hd_table(deflater, &ent->nv);
+      if(name_ent) {
+        index = name_ent->index;
+      }
+      new_ent = add_hd_table_incremental(deflater, &ent->nv);
+      if(!new_ent) {
+        rv = NGHTTP2_ERR_HEADER_COMP;
+        goto fail;
+      }
+      new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
+      if(index == NGHTTP2_HD_INVALID_INDEX) {
+        rv = emit_newname_block(buf_ptr, buflen_ptr, &offset, &ent->nv, 1);
+      } else {
+        rv = emit_indname_block(buf_ptr, buflen_ptr, &offset, index,
+                                ent->nv.value, ent->nv.valuelen, 1);
+      }
+    }
+    ent->flags |= NGHTTP2_HD_FLAG_EMIT;
   }
 
   for(i = 0; i < deflater->hd_tablelen; ++i) {
