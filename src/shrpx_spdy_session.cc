@@ -828,6 +828,10 @@ void on_frame_recv_callback
         SSLOG(INFO, spdy) << "HTTP upgrade success. stream_id="
                           << frame->hd.stream_id;
       }
+    } else if(downstream->get_request_method() == "CONNECT") {
+      // If request is CONNECT, terminate request body to avoid for
+      // stream to stall.
+      downstream->end_upload_data();
     }
     rv = upstream->on_downstream_header_complete(downstream);
     if(rv != 0) {

@@ -180,8 +180,12 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
     nread = evbuffer_remove(body, buf, length);
     if(nread == 0) {
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-        if(!downstream->get_upgrade_request()) {
+        if(!downstream->get_upgrade_request() ||
+           (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
+            !downstream->get_upgraded())) {
           *eof = 1;
+        } else {
+          return NGHTTP2_ERR_DEFERRED;
         }
         break;
       } else {
