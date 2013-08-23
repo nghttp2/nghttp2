@@ -111,17 +111,16 @@ void test_nghttp2_hd_deflate(void)
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
 
-  /* Fourth headers, including duplicate header fields. We don't
-     encode duplicates. Only first one is encoded. */
+  /* Fourth headers, including duplicate header fields. */
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, nv_offset, nva4,
                                    sizeof(nva4)/sizeof(nghttp2_nv));
   CU_ASSERT(blocklen > 0);
   nghttp2_hd_end_headers(&deflater);
 
-  CU_ASSERT(2 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf + nv_offset,
+  CU_ASSERT(3 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf + nv_offset,
                                        blocklen));
 
-  assert_nv_equal(nva4, resnva, 2);
+  assert_nv_equal(nva4, resnva, 3);
 
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
@@ -136,6 +135,56 @@ void test_nghttp2_hd_deflate(void)
                                        blocklen));
 
   assert_nv_equal(nva5, resnva, 2);
+
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+
+  /* Cleanup */
+  free(buf);
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+}
+
+void test_nghttp2_hd_deflate_same_indexed_repr(void)
+{
+  nghttp2_hd_context deflater, inflater;
+  nghttp2_nv nva1[] = {MAKE_NV("cookie", "alpha"),
+                       MAKE_NV("cookie", "alpha")};
+  nghttp2_nv nva2[] = {MAKE_NV("cookie", "alpha"),
+                       MAKE_NV("cookie", "alpha"),
+                       MAKE_NV("cookie", "alpha")};
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  nghttp2_nv *resnva;
+  ssize_t blocklen;
+
+  CU_ASSERT(0 == nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT));
+  CU_ASSERT(0 == nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER));
+
+  /* Encode 2 same headers. cookie:alpha is not in the reference set,
+     so first emit literal repr and then 2 emits of indexed repr. */
+  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva1,
+                                   sizeof(nva1)/sizeof(nghttp2_nv));
+  CU_ASSERT(blocklen > 0);
+  nghttp2_hd_end_headers(&deflater);
+
+  CU_ASSERT(2 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, blocklen));
+
+  assert_nv_equal(nva1, resnva, 2);
+
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+
+  /* Encode 3 same headers. This time, cookie:alpha is in the
+     reference set, so the encoder emits indexed repr 6 times */
+  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva1,
+                                   sizeof(nva2)/sizeof(nghttp2_nv));
+  CU_ASSERT(blocklen == 6);
+  nghttp2_hd_end_headers(&deflater);
+
+  CU_ASSERT(3 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, blocklen));
+
+  assert_nv_equal(nva2, resnva, 3);
 
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);

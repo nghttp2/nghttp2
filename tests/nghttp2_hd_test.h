@@ -26,6 +26,7 @@
 #define NGHTTP2_HD_TEST_H
 
 void test_nghttp2_hd_deflate(void);
+void test_nghttp2_hd_deflate_same_indexed_repr(void);
 void test_nghttp2_hd_inflate_indname_inc(void);
 void test_nghttp2_hd_inflate_indname_inc_eviction(void);
 void test_nghttp2_hd_inflate_newname_inc(void);

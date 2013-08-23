@@ -58,6 +58,7 @@ typedef enum {
   /* Indicates that the entry is emitted in the current header
      processing. */
   NGHTTP2_HD_FLAG_EMIT = 1 << 3,
+  NGHTTP2_HD_FLAG_IMPLICIT_EMIT = 1 << 4
 } nghttp2_hd_flags;
 
 typedef struct {

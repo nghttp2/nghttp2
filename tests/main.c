@@ -220,6 +220,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_nv_array_from_cstr) ||
       !CU_add_test(pSuite, "iv_check", test_nghttp2_iv_check) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
+      !CU_add_test(pSuite, "hd_deflate_same_indexed_repr",
+                   test_nghttp2_hd_deflate_same_indexed_repr) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc",
                    test_nghttp2_hd_inflate_indname_inc) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc_eviction",
