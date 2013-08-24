@@ -750,7 +750,7 @@ void test_nghttp2_session_on_headers_received(void)
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_CLOSING, NULL);
   frame.hd.stream_id = 3;
-  frame.hd.flags = NGHTTP2_FLAG_NONE;
+  frame.hd.flags = NGHTTP2_FLAG_END_HEADERS;
   CU_ASSERT(0 == nghttp2_session_on_headers_received(session, &frame, stream));
   /* See no counters are updated */
   CU_ASSERT(2 == user_data.frame_recv_cb_called);
@@ -762,7 +762,7 @@ void test_nghttp2_session_on_headers_received(void)
                                        NGHTTP2_STREAM_OPENING, NULL);
 
   /* half closed (remote) */
-  frame.hd.flags = NGHTTP2_FLAG_END_STREAM;
+  frame.hd.flags = NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM;
   frame.hd.stream_id = 2;
 
   CU_ASSERT(0 == nghttp2_session_on_headers_received(session, &frame, stream));
@@ -2465,7 +2465,7 @@ void test_nghttp2_session_max_concurrent_streams(void)
                               NGHTTP2_PRI_DEFAULT,
                               NGHTTP2_STREAM_OPENED, NULL);
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
-  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_NONE, 3,
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 3,
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
   session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
 

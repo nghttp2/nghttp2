@@ -1668,6 +1668,11 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
+  /* Connection error if header continuation is employed for now */
+  if((frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_INTERNAL_ERROR);
+  }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
     return 0;
@@ -1720,6 +1725,11 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
+  /* Connection error if header continuation is employed for now */
+  if((frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_INTERNAL_ERROR);
+  }
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     stream->state = NGHTTP2_STREAM_OPENED;
     nghttp2_session_call_on_frame_received(session, frame);
@@ -1752,6 +1762,11 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
+  /* Connection error if header continuation is employed for now */
+  if((frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_INTERNAL_ERROR);
+  }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
     return 0;
@@ -1776,6 +1791,11 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
+  }
+  /* Connection error if header continuation is employed for now */
+  if((frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_INTERNAL_ERROR);
   }
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
@@ -2152,6 +2172,11 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   if(session->server || frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
+  }
+  /* Connection error if header continuation is employed for now */
+  if((frame->hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) == 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_INTERNAL_ERROR);
   }
   if(session->goaway_flags) {
     /* We just dicard PUSH_PROMISE after GOAWAY is sent or
