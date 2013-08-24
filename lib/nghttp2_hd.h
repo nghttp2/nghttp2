@@ -48,6 +48,11 @@ typedef enum {
 } nghttp2_hd_side;
 
 typedef enum {
+  NGHTTP2_HD_ROLE_DEFLATE,
+  NGHTTP2_HD_ROLE_INFLATE
+} nghttp2_hd_role;
+
+typedef enum {
   NGHTTP2_HD_FLAG_NONE = 0,
   /* Indicates name was dynamically allocated and must be freed */
   NGHTTP2_HD_FLAG_NAME_ALLOC = 1,
@@ -92,6 +97,8 @@ typedef struct {
      further invocation of inflate/deflate will fail with
      NGHTTP2_ERR_HEADER_COMP. */
   uint8_t bad;
+  /* Role of this context; deflate or infalte */
+  nghttp2_hd_role role;
 } nghttp2_hd_context;
 
 /*
