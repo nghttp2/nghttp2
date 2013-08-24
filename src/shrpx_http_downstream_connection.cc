@@ -160,6 +160,7 @@ int HttpDownstreamConnection::push_request_headers()
     http::capitalize(hdrs, hdrs.size()-(*i).first.size());
     hdrs += ": ";
     hdrs += (*i).second;
+    http::sanitize_header_value(hdrs, hdrs.size()-(*i).second.size());
     hdrs += "\r\n";
   }
   if(downstream_->get_request_connection_close()) {

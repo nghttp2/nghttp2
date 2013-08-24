@@ -122,6 +122,15 @@ void capitalize(std::string& s, size_t offset)
   }
 }
 
+void sanitize_header_value(std::string& s, size_t offset)
+{
+  for(size_t i = offset, eoi = s.size(); i < eoi; ++i) {
+    if(s[i] == '\r' || s[i] == '\n') {
+      s[i] = ' ';
+    }
+  }
+}
+
 std::string colorizeHeaders(const char *hdrs)
 {
   std::string nhdrs;

@@ -41,6 +41,8 @@ std::string create_via_header_value(int major, int minor);
 
 void capitalize(std::string& s, size_t offset);
 
+void sanitize_header_value(std::string& s, size_t offset);
+
 // Adds ANSI color codes to HTTP headers |hdrs|.
 std::string colorizeHeaders(const char *hdrs);
 
