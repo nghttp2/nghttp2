@@ -217,6 +217,10 @@ void on_frame_recv_callback
     {
       size_t i, j;
       for(i = 0, j = 0; i < frame->headers.nvlen && j < req_hdlen;) {
+        if(!http::check_http2_allowed_header(nva[i].name, nva[i].namelen)) {
+          bad_req = true;
+          break;
+        }
         int rv = util::strcompare(req_headers[j], nva[i].name, nva[i].namelen);
         if(rv > 0) {
           if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
@@ -915,13 +919,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   nv[hdidx++] = response_status.c_str();
   for(Headers::const_iterator i = downstream->get_response_headers().begin();
       i != downstream->get_response_headers().end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "connection") ||
-       util::strieq((*i).first.c_str(), "host") ||
-       util::strieq((*i).first.c_str(), "keep-alive") ||
-       util::strieq((*i).first.c_str(), "proxy-connection") ||
-       util::strieq((*i).first.c_str(), "te") ||
-       util::strieq((*i).first.c_str(), "transfer-encoding") ||
-       util::strieq((*i).first.c_str(), "upgrade")) {
+    if(!http::check_http2_allowed_header((*i).first.c_str())) {
       // These are ignored
     } else if(!get_config()->no_via &&
               util::strieq((*i).first.c_str(), "via")) {

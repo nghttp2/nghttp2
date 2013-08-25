@@ -170,6 +170,24 @@ void copy_url_component(std::string& dest, http_parser_url *u, int field,
   }
 }
 
+bool check_http2_allowed_header(const char *name)
+{
+  return check_http2_allowed_header(reinterpret_cast<const uint8_t*>(name),
+                                    strlen(name));
+}
+
+bool check_http2_allowed_header(const uint8_t *name, size_t namelen)
+{
+  return
+    !util::strieq("connection", name, namelen) &&
+    !util::strieq("host", name, namelen) &&
+    !util::strieq("keep-alive", name, namelen) &&
+    !util::strieq("proxy-connection", name, namelen) &&
+    !util::strieq("te", name, namelen) &&
+    !util::strieq("transfer-encoding", name, namelen) &&
+    !util::strieq("upgrade", name, namelen);
+}
+
 } // namespace http
 
 } // namespace shrpx

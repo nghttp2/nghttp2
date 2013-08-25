@@ -52,6 +52,14 @@ std::string colorizeHeaders(const char *hdrs);
 void copy_url_component(std::string& dest, http_parser_url *u, int field,
                         const char* url);
 
+// Returns true if the header field |name| with length |namelen| bytes
+// is valid for HTTP/2.0.
+bool check_http2_allowed_header(const uint8_t *name, size_t namelen);
+
+// Calls check_http2_allowed_header with |name| and strlen(name),
+// assuming |name| is null-terminated string.
+bool check_http2_allowed_header(const char *name);
+
 } // namespace http
 
 } // namespace shrpx

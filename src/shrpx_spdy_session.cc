@@ -39,6 +39,7 @@
 #include "shrpx_spdy_downstream_connection.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
+#include "shrpx_http.h"
 #include "util.h"
 #include "base64.h"
 
@@ -747,6 +748,10 @@ void on_frame_recv_callback
     auto nva = frame->headers.nva;
     std::string status, content_length;
     for(size_t i = 0; i < frame->headers.nvlen; ++i) {
+      if(!http::check_http2_allowed_header(nva[i].name, nva[i].namelen)) {
+        status.clear();
+        break;
+      }
       if(util::strieq(":status", nva[i].name, nva[i].namelen)) {
         status.assign(reinterpret_cast<char*>(nva[i].value),
                       nva[i].valuelen);
