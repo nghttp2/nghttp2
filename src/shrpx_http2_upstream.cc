@@ -252,19 +252,17 @@ void on_frame_recv_callback
             break;
           }
         }
-        if(!bad_req &&
-           !util::strieq("CONNECT",
-                         nva[req_hdidx[1]].value,
-                         nva[req_hdidx[1]].valuelen) &&
-           (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0 &&
-           req_hdidx[4] == -1) {
-          // If content-length is missing,
-          // Downstream::push_upload_data_chunk will fail and
-          // RST_STREAM will be sent. Therefore, error reply in
-          // HEADERS may not be sent. So just issue RST_STREAM here.
-          upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-          return;
-        }
+      }
+      if(!bad_req &&
+         !util::strieq("CONNECT",
+                       nva[req_hdidx[1]].value,
+                       nva[req_hdidx[1]].valuelen) &&
+         (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0 &&
+         req_hdidx[4] == -1) {
+        // If content-length is missing,
+        // Downstream::push_upload_data_chunk will fail and
+        // RST_STREAM will be sent.
+        bad_req = true;
       }
       if(!bad_req) {
         for(; i < frame->headers.nvlen; ++i) {
@@ -279,13 +277,7 @@ void on_frame_recv_callback
       }
     }
     if(bad_req) {
-      downstream->set_request_state(Downstream::HEADER_COMPLETE);
-      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-        downstream->set_request_state(Downstream::MSG_COMPLETE);
-      }
-      if(upstream->error_reply(downstream, 400) != 0) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      }
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return;
     }
 
