@@ -271,16 +271,12 @@ Enums
         The PRIORITY flag.
     .. macro:: NGHTTP2_FLAG_END_PUSH_PROMISE
 
-        (``0x1``) 
+        (``0x4``) 
         The END_PUSH_PROMISE flag.
     .. macro:: NGHTTP2_FLAG_PONG
 
         (``0x1``) 
         The PONG flag.
-    .. macro:: NGHTTP2_FLAG_END_FLOW_CONTROL
-
-        (``0x1``) 
-        The END_FLOW_CONTROL flag.
 
 
 .. type:: nghttp2_settings_id
@@ -1363,6 +1359,8 @@ Functions
     
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
+    :macro:`NGHTTP2_ERR_STREAM_CLOSED`
+        The stream is already closed or does not exist.
 
 .. function:: int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id, int32_t pri)
 
@@ -1377,6 +1375,8 @@ Functions
         Out of memory.
     :macro:`NGHTTP2_ERR_INVALID_ARGUMENT`
         The *pri* is negative.
+    :macro:`NGHTTP2_ERR_STREAM_CLOSED`
+        The stream is already closed or does not exist.
 
 .. function:: int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code)
 
@@ -1408,7 +1408,8 @@ Functions
     negative error codes:
     
     :macro:`NGHTTP2_ERR_INVALID_ARGUMENT`
-        The *iv* contains duplicate settings ID or invalid value.
+        The *iv* contains invalid value (e.g., attempting to re-enable
+        flow control).
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
 
@@ -1445,6 +1446,8 @@ Functions
     
     :macro:`NGHTTP2_ERR_INVALID_ARGUMENT`
         The *nv* includes empty name or ``NULL`` value.
+    :macro:`NGHTTP2_ERR_STREAM_CLOSED`
+        The stream is already closed or does not exist.
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
 
@@ -1489,6 +1492,8 @@ Functions
     
     Submits WINDOW_UPDATE frame.
     
+    The *flags* is currently ignored.
+    
     If the *window_size_increment* is positive, the WINDOW_UPDATE with
     that value as window_size_increment is queued. If the
     *window_size_increment* is larger than the received bytes from the
@@ -1507,9 +1512,7 @@ Functions
     negative error codes:
     
     :macro:`NGHTTP2_ERR_INVALID_ARGUMENT`
-        The *delta_window_size* is 0 and
-        :macro:`NGHTTP2_FLAG_END_FLOW_CONTROL` bit is not set in
-        *flags*.
+        The *delta_window_size* is 0.
     :macro:`NGHTTP2_ERR_FLOW_CONTROL`
         The local window size overflow or gets negative.
     :macro:`NGHTTP2_ERR_STREAM_CLOSED`

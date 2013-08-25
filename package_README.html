@@ -58,14 +58,60 @@
 version 2.0.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
-<p>We started to implement HTTP-draft-04/2.0
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-04">http://tools.ietf.org/html/draft-ietf-httpbis-http2-04</a>) based on
-spdylay code base. The header compression is based on
-<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01</a></p>
-<p>Currently, the library lacks the following features:</p>
-<ul class="simple">
-<li>Header continuation</li>
-<li>ALPN: instead, NPN is used</li>
+<p>We started to implement HTTP-draft-06/2.0
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-06">http://tools.ietf.org/html/draft-ietf-httpbis-http2-06</a>) and the
+header compression
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-02">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-02</a>).</p>
+<p>The nghttp2 code base was forked from spdylay project.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="53%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Features</th>
+<th class="head">HTTP-draft-04/2.0</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Flow Control</td>
+<td>Done</td>
+</tr>
+<tr class="row-odd"><td>Header Compression</td>
+<td>Done</td>
+</tr>
+<tr class="row-even"><td>Reprioritization</td>
+<td>Done</td>
+</tr>
+<tr class="row-odd"><td>Header Continuation</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>Server Push</td>
+<td>Done</td>
+</tr>
+<tr class="row-odd"><td>HTTP Upgrade</td>
+<td>Done</td>
+</tr>
+<tr class="row-even"><td>ALPN</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>NPN</td>
+<td>Done</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="public-test-server">
+<h2>Public Test Server<a class="headerlink" href="#public-test-server" title="Permalink to this headline">¶</a></h2>
+<p>The following endpoints are available to try out nghttp2
+implementation.  These endpoints supports <tt class="docutils literal"><span class="pre">HTTP-draft-06/2.0</span></tt> and
+the earlier draft versions are not supporeted.</p>
+<ul>
+<li><p class="first"><a class="reference external" href="https://106.186.112.116:8443">https://106.186.112.116:8443</a> TLS + NPN</p>
+<p>Note: certificate is self-signed and a browser will show alert</p>
+</li>
+<li><p class="first"><a class="reference external" href="http://106.186.112.116:8080">http://106.186.112.116:8080</a> direct, HTTP Upgrade</p>
+</li>
 </ul>
 </div>
 <div class="section" id="requirements">
@@ -147,37 +193,36 @@ $ make</pre>
 <h3>nghttp - client<a class="headerlink" href="#nghttp-client" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttp</span></tt> is a HTTP/2.0 client. It can connect to the HTTP/2.0 server
 with prior knowledge, HTTP Upgrade and NPN TLS extension.</p>
-<p>By default, it uses SSL/TLS connection. Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
-disable it.</p>
 <p>It has verbose output mode for framing information. Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
-<div class="highlight-c"><pre>$ src/nghttp -nv https://localhost:3000/
-[  0.000] NPN select next protocol: the remote server offers:
-          * HTTP-draft-04/2.0
+<div class="highlight-c"><pre>$ src/nghttp -vn https://localhost:8443
+[  0.001] NPN select next protocol: the remote server offers:
+          * HTTP-draft-06/2.0
           * spdy/3
           * spdy/2
           * http/1.1
-          NPN selected the protocol: HTTP-draft-04/2.0
-[  0.005] send SETTINGS frame &lt;length=0, flags=0, stream_id=0&gt;
-          (niv=0)
-[  0.005] send HEADERS frame &lt;length=58, flags=5, stream_id=1&gt;
+          NPN selected the protocol: HTTP-draft-06/2.0
+[  0.006] send SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
+          (niv=2)
+          [MAX_CONCURRENT_STREAMS(4):100]
+          [INITIAL_WINDOW_SIZE(7):65535]
+[  0.006] send HEADERS frame &lt;length=58, flags=0x05, stream_id=1&gt;
           ; END_STREAM | END_HEADERS
           ; Open new stream
-          :host: localhost:3000
+          :host: localhost:8443
           :method: GET
           :path: /
           :scheme: https
           accept: */*
           accept-encoding: gzip, deflate
           user-agent: nghttp2/0.1.0-DEV
-[  0.005] recv SETTINGS frame &lt;length=16, flags=0, stream_id=0&gt;
+[  0.007] recv SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [4:100]
-          [7:65536]
-[  0.005] recv WINDOW_UPDATE frame &lt;length=4, flags=1, stream_id=0&gt;
-          ; END_FLOW_CONTROL
-          (window_size_increment=0)
-[  0.006] recv HEADERS frame &lt;length=179, flags=4, stream_id=1&gt;
+          [MAX_CONCURRENT_STREAMS(4):100]
+          [INITIAL_WINDOW_SIZE(7):65535]
+[  0.008] recv WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=0&gt;
+          (window_size_increment=1000000007)
+[  0.008] recv HEADERS frame &lt;length=179, flags=0x04, stream_id=1&gt;
           ; END_HEADERS
           ; First response header
           :status: 200 OK
@@ -185,65 +230,66 @@ output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> cl
           content-encoding: gzip
           content-length: 56
           content-type: text/html
-          date: Sat, 27 Jul 2013 12:08:56 GMT
+          date: Thu, 22 Aug 2013 16:37:17 GMT
           etag: "cf405c-2d-45adabdf282c0"
           last-modified: Tue, 04 Nov 2008 10:44:03 GMT
           server: Apache/2.2.22 (Debian)
           vary: Accept-Encoding
           via: 1.1 nghttpx
-[  0.006] recv DATA frame (length=56, flags=0, stream_id=1)
-[  0.006] recv DATA frame (length=0, flags=1, stream_id=1)
-[  0.006] send GOAWAY frame &lt;length=8, flags=0, stream_id=0&gt;
-          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data=)</pre>
+[  0.009] recv DATA frame &lt;length=56, flags=0x00, stream_id=1&gt;
+[  0.009] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+          ; END_STREAM
+[  0.009] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])</pre>
 </div>
 <p>The HTTP Upgrade is performed like this:</p>
-<div class="highlight-c"><pre>$ src/nghttp --no-tls -nvu http://localhost:3000/
+<div class="highlight-c"><pre>$ src/nghttp -vnu http://localhost:8080
 [  0.000] HTTP Upgrade request
 GET / HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Connection: Upgrade, HTTP2-Settings
-Upgrade: HTTP-draft-04/2.0
+Upgrade: HTTP-draft-06/2.0
 HTTP2-Settings: AAAABAAAAGQAAAAHAAD__w
 Accept: */*
 User-Agent: nghttp2/0.1.0-DEV
 
 
-[  0.183] HTTP Upgrade response
+[  0.000] HTTP Upgrade response
 HTTP/1.1 101 Switching Protocols
 Connection: Upgrade
 Upgrade: HTTP/2.0
 
 
-[  0.183] HTTP Upgrade success
-[  0.183] send SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
+[  0.000] HTTP Upgrade success
+[  0.001] send SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [4:100]
-          [7:65535]
-[  0.202] recv SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
+          [MAX_CONCURRENT_STREAMS(4):100]
+          [INITIAL_WINDOW_SIZE(7):65535]
+[  0.001] recv SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [4:100]
-          [7:65536]
-[  0.202] recv WINDOW_UPDATE frame &lt;length=4, flags=0x01, stream_id=0&gt;
-          ; END_FLOW_CONTROL
-          (window_size_increment=0)
-[  0.275] recv HEADERS frame &lt;length=198, flags=0x04, stream_id=1&gt;
+          [MAX_CONCURRENT_STREAMS(4):100]
+          [INITIAL_WINDOW_SIZE(7):65535]
+[  0.001] recv WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=0&gt;
+          (window_size_increment=1000000007)
+[  0.001] recv HEADERS frame &lt;length=198, flags=0x04, stream_id=1&gt;
           ; END_HEADERS
           ; First response header
           :status: 200 OK
           accept-ranges: bytes
           content-length: 45
           content-type: text/html
-          date: Sat, 03 Aug 2013 10:21:20 GMT
+          date: Thu, 22 Aug 2013 16:39:04 GMT
           etag: "cf405c-2d-45adabdf282c0"
           last-modified: Tue, 04 Nov 2008 10:44:03 GMT
           server: Apache/2.2.22 (Debian)
           vary: Accept-Encoding
           via: 1.1 nghttpx
           x-pad: avoid browser bug
-[  0.275] recv DATA frame (length=45, flags=0, stream_id=1)
-[  0.275] recv DATA frame (length=0, flags=1, stream_id=1)
-[  0.275] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
-          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data=)</pre>
+[  0.001] recv DATA frame &lt;length=45, flags=0x00, stream_id=1&gt;
+[  0.001] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+          ; END_STREAM
+[  0.001] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])</pre>
 </div>
 </div>
 <div class="section" id="nghttpd-server">
@@ -256,46 +302,47 @@ disable it.</p>
 HTTP/2.0 connection. No HTTP Upgrade is supported.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
 information. Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
-<div class="highlight-c"><pre>$ src/nghttpd 3000 --no-tls -v
-IPv4: listen on port 3000
-IPv6: listen on port 3000
-[id=1] [  1.020] send SETTINGS frame &lt;length=8, flags=0, stream_id=0&gt;
+<div class="highlight-c"><pre>$ src/nghttpd --no-tls -v 8080
+IPv4: listen on port 8080
+IPv6: listen on port 8080
+[id=1] [ 14.716] send SETTINGS frame &lt;length=8, flags=0x00, stream_id=0&gt;
           (niv=1)
-          [4:100]
-[id=1] [  1.020] closed
-[id=2] [  1.838] send SETTINGS frame &lt;length=8, flags=0, stream_id=0&gt;
-          (niv=1)
-          [4:100]
-[id=2] [  1.838] recv SETTINGS frame &lt;length=0, flags=0, stream_id=0&gt;
-          (niv=0)
-[id=2] [  1.838] recv HEADERS frame &lt;length=58, flags=5, stream_id=1&gt;
+          [MAX_CONCURRENT_STREAMS(4):100]
+[id=1] [ 14.717] recv SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
+          (niv=2)
+          [MAX_CONCURRENT_STREAMS(4):100]
+          [INITIAL_WINDOW_SIZE(7):65535]
+[id=1] [ 14.717] recv HEADERS frame &lt;length=58, flags=0x05, stream_id=1&gt;
           ; END_STREAM | END_HEADERS
           ; Open new stream
-          :host: localhost:3000
+          :host: localhost:8080
           :method: GET
           :path: /
           :scheme: http
           accept: */*
           accept-encoding: gzip, deflate
           user-agent: nghttp2/0.1.0-DEV
-[id=2] [  1.838] send HEADERS frame &lt;length=105, flags=4, stream_id=1&gt;
+[id=1] [ 14.717] send HEADERS frame &lt;length=105, flags=0x04, stream_id=1&gt;
           ; END_HEADERS
           ; First response header
           :status: 404 Not Found
           content-encoding: gzip
           content-type: text/html; charset=UTF-8
-          date: Sat, 27 Jul 2013 12:32:10 GMT
+          date: Thu, 22 Aug 2013 16:41:05 GMT
           server: nghttpd nghttp2/0.1.0-DEV
-[id=2] [  1.838] send DATA frame (length=127, flags=0, stream_id=1)
-[id=2] [  1.838] send DATA frame (length=0, flags=1, stream_id=1)
-[id=2] [  1.838] stream_id=1 closed
-[id=2] [  1.839] closed</pre>
+[id=1] [ 14.717] send DATA frame &lt;length=128, flags=0x00, stream_id=1&gt;
+[id=1] [ 14.717] send DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+          ; END_STREAM
+[id=1] [ 14.717] stream_id=1 closed
+[id=1] [ 14.717] recv GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+[id=1] [ 14.717] closed</pre>
 </div>
 </div>
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
-HTTP-draft-04/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
+HTTP-draft-06/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="24%" />
@@ -339,7 +386,7 @@ HTTP-draft-04/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-04/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens HTTP-draft-06/2.0, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--spdy</span></tt> and <tt class="docutils literal"><span class="pre">--spdy-bridge</span></tt> modes use SSL/TLS
 in the frontend connection by default. To disable SSL/TLS, use
@@ -437,6 +484,7 @@ the outside HTTP/2.0 proxy through HTTP proxy:</p>
   <ul>
 <li><a class="reference internal" href="#">nghttp2 - HTTP/2.0 C Library</a><ul>
 <li><a class="reference internal" href="#development-status">Development Status</a></li>
+<li><a class="reference internal" href="#public-test-server">Public Test Server</a></li>
 <li><a class="reference internal" href="#requirements">Requirements</a></li>
 <li><a class="reference internal" href="#build-from-git">Build from git</a></li>
 <li><a class="reference internal" href="#building-documentation">Building documentation</a></li>

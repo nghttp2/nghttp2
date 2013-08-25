@@ -448,7 +448,7 @@ The PRIORITY flag.</p>
 <dl class="macro">
 <dt id="NGHTTP2_FLAG_END_PUSH_PROMISE">
 <tt class="descname">NGHTTP2_FLAG_END_PUSH_PROMISE</tt><a class="headerlink" href="#NGHTTP2_FLAG_END_PUSH_PROMISE" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">0x1</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">0x4</span></tt>)
 The END_PUSH_PROMISE flag.</p>
 </dd></dl>
 
@@ -457,13 +457,6 @@ The END_PUSH_PROMISE flag.</p>
 <tt class="descname">NGHTTP2_FLAG_PONG</tt><a class="headerlink" href="#NGHTTP2_FLAG_PONG" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x1</span></tt>)
 The PONG flag.</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="NGHTTP2_FLAG_END_FLOW_CONTROL">
-<tt class="descname">NGHTTP2_FLAG_END_FLOW_CONTROL</tt><a class="headerlink" href="#NGHTTP2_FLAG_END_FLOW_CONTROL" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">0x1</span></tt>)
-The END_FLOW_CONTROL flag.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1793,6 +1786,8 @@ negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
+<dd>The stream is already closed or does not exist.</dd>
 </dl>
 </dd></dl>
 
@@ -1808,6 +1803,8 @@ negative error codes:</p>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
 <dd>The <em>pri</em> is negative.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
+<dd>The stream is already closed or does not exist.</dd>
 </dl>
 </dd></dl>
 
@@ -1839,7 +1836,8 @@ RST_STREAM is issued against such a stream.</p>
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>iv</em> contains duplicate settings ID or invalid value.</dd>
+<dd>The <em>iv</em> contains invalid value (e.g., attempting to re-enable
+flow control).</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -1873,6 +1871,8 @@ negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
 <dd>The <em>nv</em> includes empty name or <tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
+<dd>The stream is already closed or does not exist.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -1918,6 +1918,7 @@ negative error codes:</p>
 <dt id="nghttp2_submit_window_update">
 int <tt class="descname">nghttp2_submit_window_update</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;window_size_increment</em><big>)</big><a class="headerlink" href="#nghttp2_submit_window_update" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits WINDOW_UPDATE frame.</p>
+<p>The <em>flags</em> is currently ignored.</p>
 <p>If the <em>window_size_increment</em> is positive, the WINDOW_UPDATE with
 that value as window_size_increment is queued. If the
 <em>window_size_increment</em> is larger than the received bytes from the
@@ -1934,9 +1935,7 @@ received bytes count.</p>
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>delta_window_size</em> is 0 and
-<a class="reference internal" href="#NGHTTP2_FLAG_END_FLOW_CONTROL" title="NGHTTP2_FLAG_END_FLOW_CONTROL"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_FLOW_CONTROL</span></tt></a> bit is not set in
-<em>flags</em>.</dd>
+<dd>The <em>delta_window_size</em> is 0.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_FLOW_CONTROL" title="NGHTTP2_ERR_FLOW_CONTROL"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_FLOW_CONTROL</span></tt></a></dt>
 <dd>The local window size overflow or gets negative.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
