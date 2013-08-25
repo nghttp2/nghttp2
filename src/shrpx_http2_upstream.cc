@@ -915,10 +915,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   nv[hdidx++] = response_status.c_str();
   for(Headers::const_iterator i = downstream->get_response_headers().begin();
       i != downstream->get_response_headers().end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "transfer-encoding") ||
-       util::strieq((*i).first.c_str(), "keep-alive") || // HTTP/1.0?
-       util::strieq((*i).first.c_str(), "connection") ||
-       util:: strieq((*i).first.c_str(), "proxy-connection")) {
+    if(util::strieq((*i).first.c_str(), "connection") ||
+       util::strieq((*i).first.c_str(), "host") ||
+       util::strieq((*i).first.c_str(), "keep-alive") ||
+       util::strieq((*i).first.c_str(), "proxy-connection") ||
+       util::strieq((*i).first.c_str(), "te") ||
+       util::strieq((*i).first.c_str(), "transfer-encoding") ||
+       util::strieq((*i).first.c_str(), "upgrade")) {
       // These are ignored
     } else if(!get_config()->no_via &&
               util::strieq((*i).first.c_str(), "via")) {

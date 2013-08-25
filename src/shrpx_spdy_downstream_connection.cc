@@ -290,16 +290,12 @@ int SpdyDownstreamConnection::push_request_headers()
       }
       // Ignore transfer-encoding
       continue;
-    } else if(util::strieq((*i).first.c_str(), "upgrade")) {
-      // nghttpx handles HTTP/2.0 upgrade and does not relay it to the
-      // downstream.
-      if(util::strieq((*i).second.c_str(), NGHTTP2_PROTO_VERSION_ID)) {
-        continue;
-      }
     } else if(util::strieq((*i).first.c_str(), "x-forwarded-proto") ||
               util::strieq((*i).first.c_str(), "keep-alive") ||
               util::strieq((*i).first.c_str(), "connection") ||
               util::strieq((*i).first.c_str(), "proxy-connection") ||
+              util::strieq((*i).first.c_str(), "te") ||
+              util::strieq((*i).first.c_str(), "upgrade") ||
               util::strieq((*i).first.c_str(), "http2-settings")) {
       // These are ignored
       continue;
