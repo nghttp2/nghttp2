@@ -73,3 +73,32 @@ void test_nghttp2_adjust_local_window_size(void)
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(50 == recv_window_size);
 }
+
+static int check_header_name(const char *s)
+{
+  return nghttp2_check_header_name((const uint8_t*)s, strlen(s));
+}
+
+static int check_header_name_nocase(const char *s)
+{
+  return nghttp2_check_header_name_nocase((const uint8_t*)s, strlen(s));
+}
+
+void test_nghttp2_check_header_name(void)
+{
+  CU_ASSERT(check_header_name(":path"));
+  CU_ASSERT(check_header_name("path"));
+  CU_ASSERT(check_header_name("!#$%&'*+-.^_`|~"));
+  CU_ASSERT(!check_header_name(":PATH"));
+  CU_ASSERT(!check_header_name("path:"));
+  CU_ASSERT(!check_header_name(""));
+  CU_ASSERT(!check_header_name(":"));
+
+  CU_ASSERT(check_header_name_nocase(":path"));
+  CU_ASSERT(check_header_name_nocase("path"));
+  CU_ASSERT(check_header_name_nocase("!#$%&'*+-.^_`|~"));
+  CU_ASSERT(check_header_name_nocase(":PATH"));
+  CU_ASSERT(!check_header_name_nocase("path:"));
+  CU_ASSERT(!check_header_name_nocase(""));
+  CU_ASSERT(!check_header_name_nocase(":"));
+}

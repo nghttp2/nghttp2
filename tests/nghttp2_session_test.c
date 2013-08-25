@@ -1606,7 +1606,7 @@ void test_nghttp2_submit_response(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  const char *nv[] = { "Content-Length", "1024", NULL };
+  const char *nv[] = { "content-length", "1024", NULL };
   nghttp2_data_provider data_prd;
   my_user_data ud;
   nghttp2_outbound_item *item;
@@ -1632,7 +1632,7 @@ void test_nghttp2_submit_response_without_data(void)
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   accumulator acc;
-  const char *nv[] = { ":Version", "HTTP/1.1", NULL };
+  const char *nv[] = { ":version", "HTTP/1.1", NULL };
   nghttp2_data_provider data_prd = {{-1}, NULL};
   nghttp2_outbound_item *item;
   my_user_data ud;
@@ -1665,7 +1665,7 @@ void test_nghttp2_submit_request_with_data(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  const char *nv[] = { ":Version", "HTTP/1.1", NULL };
+  const char *nv[] = { ":version", "HTTP/1.1", NULL };
   nghttp2_data_provider data_prd;
   my_user_data ud;
   nghttp2_outbound_item *item;
@@ -1691,7 +1691,7 @@ void test_nghttp2_submit_request_without_data(void)
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   accumulator acc;
-  const char *nv[] = { ":Version", "HTTP/1.1", NULL };
+  const char *nv[] = { ":version", "HTTP/1.1", NULL };
   nghttp2_data_provider data_prd = {{-1}, NULL};
   nghttp2_outbound_item *item;
   my_user_data ud;
@@ -1842,7 +1842,7 @@ void test_nghttp2_submit_headers(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  const char *nv[] = { ":Version", "HTTP/1.1", NULL };
+  const char *nv[] = { ":version", "HTTP/1.1", NULL };
   my_user_data ud;
   nghttp2_outbound_item *item;
   nghttp2_stream *stream;

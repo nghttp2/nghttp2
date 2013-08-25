@@ -24,6 +24,7 @@
  */
 #include "nghttp2_helper.h"
 
+#include <assert.h>
 #include <string.h>
 
 #include "nghttp2_net.h"
@@ -120,6 +121,71 @@ int nghttp2_should_send_window_update(int32_t local_window_size,
                                       int32_t recv_window_size)
 {
   return recv_window_size >= local_window_size / 2;
+}
+
+static int VALID_HD_NAME_CHARS[] = {
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ 1 /* ! */,
+ -1,
+ 1 /* # */, 1 /* $ */, 1 /* % */, 1 /* & */, 1 /* ' */,
+ -1, -1,
+ 1 /* * */, 1 /* + */,
+ -1,
+ 1 /* - */, 1 /* . */,
+ -1,
+ 1 /* 0 */, 1 /* 1 */, 1 /* 2 */, 1 /* 3 */, 1 /* 4 */, 1 /* 5 */,
+ 1 /* 6 */, 1 /* 7 */, 1 /* 8 */, 1 /* 9 */,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ 1 /* ^ */, 1 /* _ */, 1 /* ` */, 1 /* a */, 1 /* b */, 1 /* c */, 1 /* d */,
+ 1 /* e */, 1 /* f */, 1 /* g */, 1 /* h */, 1 /* i */, 1 /* j */, 1 /* k */,
+ 1 /* l */, 1 /* m */, 1 /* n */, 1 /* o */, 1 /* p */, 1 /* q */, 1 /* r */,
+ 1 /* s */, 1 /* t */, 1 /* u */, 1 /* v */, 1 /* w */, 1 /* x */, 1 /* y */,
+ 1 /* z */,
+ -1,
+ 1 /* | */,
+ -1,
+ 1 /* ~ */,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+};
+
+static int check_header_name(const uint8_t *name, size_t len, int nocase)
+{
+  const uint8_t *last;
+  if(len == 0) {
+    return 0;
+  }
+  if(*name == ':') {
+    if(len == 1) {
+      return 0;
+    }
+    ++name;
+    --len;
+  }
+  for(last = name + len; name != last; ++name) {
+    if(nocase && 'A' <= *name && *name <= 'Z') continue;
+    if(VALID_HD_NAME_CHARS[*name] == -1) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+int nghttp2_check_header_name(const uint8_t *name, size_t len)
+{
+  return check_header_name(name, len, 0);
+}
+
+int nghttp2_check_header_name_nocase(const uint8_t *name, size_t len)
+{
+  return check_header_name(name, len, 1);
 }
 
 const char* nghttp2_strerror(int error_code)

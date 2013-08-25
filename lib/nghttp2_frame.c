@@ -721,16 +721,12 @@ ssize_t nghttp2_frame_nv_offset(const uint8_t *head)
 
 int nghttp2_frame_nv_check_null(const char **nv)
 {
-  size_t i, j;
+  size_t i;
   for(i = 0; nv[i]; i += 2) {
-    if(nv[i][0] == '\0' || nv[i+1] == NULL) {
+    if(nv[i+1] == NULL ||
+       !nghttp2_check_header_name_nocase((const uint8_t*)nv[i],
+                                         strlen(nv[i]))) {
       return 0;
-    }
-    for(j = 0; nv[i][j]; ++j) {
-      unsigned char c = nv[i][j];
-      if(c < 0x20 || c > 0x7e) {
-        return 0;
-      }
     }
   }
   return 1;

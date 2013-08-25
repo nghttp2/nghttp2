@@ -85,7 +85,7 @@ void test_nghttp2_frame_nv_check_null(void)
   const char *headers1[] = { "path", "/", "host", "a", NULL };
   const char *headers2[] = { "", "/", "host", "a", NULL };
   const char *headers3[] = { "path", "/", "host\x01", "a", NULL };
-  const char *headers4[] = { "path", "/", "host", NULL, NULL };
+  const char *headers4[] = { "PATH", "/", "host", NULL, NULL };
 
   CU_ASSERT(nghttp2_frame_nv_check_null(headers1));
   CU_ASSERT(0 == nghttp2_frame_nv_check_null(headers2));

@@ -914,6 +914,10 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
+      if(!nghttp2_check_header_name(in, namelen)) {
+        rv = NGHTTP2_ERR_HEADER_COMP;
+        goto fail;
+      }
       nv.name = in;
       in += namelen;
       in = decode_length(&valuelen, in, last, 8);
@@ -1002,6 +1006,10 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       }
       in = decode_length(&namelen, in, last, 8);
       if(namelen < 0 || in + namelen > last) {
+        rv = NGHTTP2_ERR_HEADER_COMP;
+        goto fail;
+      }
+      if(!nghttp2_check_header_name(in, namelen)) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }

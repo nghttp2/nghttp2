@@ -623,7 +623,8 @@ void nghttp2_nv_array_del(nghttp2_nv *nva);
 
 /*
  * Checks names are not empty string and do not contain control
- * characters and values are not NULL.
+ * characters and values are not NULL. This function allows captital
+ * alphabet letters in name.
  *
  * This function returns nonzero if it succeeds, or 0.
  */
