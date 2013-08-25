@@ -55,10 +55,10 @@ namespace nghttp2 {
 
 namespace {
 Config config;
-const std::string STATUS_200 = "200 OK";
-const std::string STATUS_304 = "304 Not Modified";
-const std::string STATUS_400 = "400 Bad Request";
-const std::string STATUS_404 = "404 Not Found";
+const std::string STATUS_200 = "200";
+const std::string STATUS_304 = "304";
+const std::string STATUS_400 = "400";
+const std::string STATUS_404 = "404";
 const std::string DEFAULT_HTML = "index.html";
 const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 } // namespace
