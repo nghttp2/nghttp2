@@ -30,7 +30,9 @@ NPN                 Done
 Public Test Server
 ------------------
 
-The following endpoints are available to try out nghttp2 implementation.
+The following endpoints are available to try out nghttp2
+implementation.  These endpoints supports ``HTTP-draft-06/2.0`` and
+the earlier draft versions are not supporeted.
 
 * https://106.186.112.116:8443 TLS + NPN
 
