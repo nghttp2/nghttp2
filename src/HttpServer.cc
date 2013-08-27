@@ -45,6 +45,7 @@
 #include <event2/listener.h>
 
 #include "app_helper.h"
+#include "http2.h"
 #include "util.h"
 
 #ifndef O_BINARY
@@ -608,39 +609,26 @@ void prepare_status_response(Request *req, Http2Handler *hd,
 namespace {
 void prepare_response(Request *req, Http2Handler *hd)
 {
-  std::string url;
-  bool url_found = false;
-  bool method_found = false;
-  bool scheme_found = false;
-  bool host_found = false;
+  auto url = (*std::lower_bound(std::begin(req->headers),
+                                std::end(req->headers),
+                                std::make_pair(std::string(":path"),
+                                               std::string()))).second;
+  auto ims = std::lower_bound(std::begin(req->headers),
+                              std::end(req->headers),
+                              std::make_pair(std::string("if-modified-since"),
+                                             std::string()));
   time_t last_mod = 0;
   bool last_mod_found = false;
-  for(int i = 0; i < (int)req->headers.size(); ++i) {
-    const std::string &field = req->headers[i].first;
-    const std::string &value = req->headers[i].second;
-    if(!url_found && field == ":path") {
-      url_found = true;
-      url = value;
-    } else if(field == ":method") {
-      method_found = true;
-    } else if(field == ":scheme") {
-      scheme_found = true;
-    } else if(field == ":host") {
-      host_found = true;
-    } else if(!last_mod_found && field == "if-modified-since") {
+  if(ims != std::end(req->headers) &&
+     (*ims).first == "if-modified-since") {
       last_mod_found = true;
-      last_mod = util::parse_http_date(value);
-    }
-  }
-  if(!url_found || !method_found || !scheme_found || !host_found) {
-    prepare_status_response(req, hd, STATUS_400);
-    return;
+      last_mod = util::parse_http_date((*ims).second);
   }
   auto query_pos = url.find("?");
   if(query_pos != std::string::npos) {
     // Do not response to this request to allow clients to test timeouts.
-    if (url.find("nghttpd_do_not_respond_to_req=yes",
-                 query_pos) != std::string::npos) {
+    if(url.find("nghttpd_do_not_respond_to_req=yes",
+                query_pos) != std::string::npos) {
       return;
     }
     url = url.substr(0, query_pos);
@@ -691,6 +679,12 @@ void append_nv(Request *req, nghttp2_nv *nva, size_t nvlen)
 } // namespace
 
 namespace {
+const char *REQUIRED_HEADERS[] = {
+  ":host", ":method", ":path", ":scheme", nullptr
+};
+} // namespace
+
+namespace {
 void hd_on_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
@@ -704,15 +698,25 @@ void hd_on_frame_recv_callback
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST: {
       int32_t stream_id = frame->hd.stream_id;
+      if(!http2::check_http2_headers(frame->headers.nva,
+                                     frame->headers.nvlen)) {
+        nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
+        return;
+      }
+      for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
+        if(!http2::get_unique_header(frame->headers.nva,
+                                     frame->headers.nvlen,
+                                     REQUIRED_HEADERS[i])) {
+          nghttp2_submit_rst_stream(session, stream_id,
+                                    NGHTTP2_PROTOCOL_ERROR);
+          return;
+        }
+      }
       auto req = util::make_unique<Request>(stream_id);
       append_nv(req.get(), frame->headers.nva, frame->headers.nvlen);
       hd->add_stream(stream_id, std::move(req));
       break;
     }
-    case NGHTTP2_HCAT_HEADERS:
-      append_nv(hd->get_stream(frame->hd.stream_id),
-                frame->headers.nva, frame->headers.nvlen);
-      break;
     default:
       break;
     }
@@ -727,7 +731,10 @@ void htdocs_on_request_recv_callback
 (nghttp2_session *session, int32_t stream_id, void *user_data)
 {
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
-  prepare_response(hd->get_stream(stream_id), hd);
+  auto stream = hd->get_stream(stream_id);
+  if(stream) {
+    prepare_response(hd->get_stream(stream_id), hd);
+  }
 }
 
 namespace {

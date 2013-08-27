@@ -44,8 +44,8 @@ LDADD = $(top_builddir)/lib/libnghttp2.la
 
 bin_PROGRAMS += nghttp nghttpd nghttpx
 
-HELPER_OBJECTS = util.cc timegm.c app_helper.cc
-HELPER_HFILES = util.h timegm.h app_helper.h nghttp2_config.h
+HELPER_OBJECTS = util.cc http2.cc timegm.c app_helper.cc
+HELPER_HFILES = util.h http2.h timegm.h app_helper.h nghttp2_config.h
 
 HTML_PARSER_OBJECTS =
 HTML_PARSER_HFILES = HtmlParser.h
