@@ -83,7 +83,13 @@ static int32_t nghttp2_pushed_stream_pri(nghttp2_stream *stream)
 int nghttp2_session_fail_session(nghttp2_session *session,
                                  nghttp2_error_code error_code)
 {
+  if(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) {
+    return 0;
+  }
   session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
+  if(session->goaway_flags & NGHTTP2_GOAWAY_SEND) {
+    return 0;
+  }
   return nghttp2_submit_goaway(session, error_code, NULL, 0);
 }
 
@@ -2806,8 +2812,23 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         session->iframe.state = NGHTTP2_RECV_PAYLOAD;
         session->iframe.payloadlen =
           nghttp2_get_uint16(&session->iframe.headbuf[0]);
-        if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
-          /* control frame */
+        /* TODO Make payloadlen configurable up to
+           NGHTTP2_MAX_FRAME_LENGTH */
+        if(session->iframe.payloadlen > NGHTTP2_MAX_HTTP_FRAME_LENGTH) {
+          session->iframe.error_code = NGHTTP2_ERR_FRAME_TOO_LARGE;
+          session->iframe.state = NGHTTP2_RECV_PAYLOAD_IGN;
+          /* Make inflater fail forcibly to disallow reception of
+             further HEADERS or PUSH_PROMISE */
+          session->hd_inflater.bad = 1;
+          /* Just tear down session for now */
+          r = nghttp2_session_fail_session(session, NGHTTP2_FRAME_TOO_LARGE);
+          if(r != 0) {
+            /* FATAL */
+            assert(r < NGHTTP2_ERR_FATAL);
+            return r;
+          }
+        } else if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
+          /* non-DATA frame */
           ssize_t buflen = session->iframe.payloadlen;
           session->iframe.buflen = buflen;
           r = nghttp2_reserve_buffer(&session->iframe.buf,
@@ -2901,15 +2922,19 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         }
       }
       if(session->iframe.payloadlen == session->iframe.off) {
-        if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
-          r = nghttp2_session_process_ctrl_frame(session);
-        } else {
-          r = nghttp2_session_process_data_frame(session);
-        }
-        if(r < 0) {
-          /* FATAL */
-          assert(r < NGHTTP2_ERR_FATAL);
-          return r;
+        if(session->iframe.error_code != NGHTTP2_ERR_FRAME_TOO_LARGE) {
+          if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
+            /* TODO Introduce callback which is invoked when payload is
+               ignored, especially for frame too large */
+            r = nghttp2_session_process_ctrl_frame(session);
+          } else {
+            r = nghttp2_session_process_data_frame(session);
+          }
+          if(r < 0) {
+            /* FATAL */
+            assert(r < NGHTTP2_ERR_FATAL);
+            return r;
+          }
         }
         nghttp2_inbound_frame_reset(&session->iframe);
       }
