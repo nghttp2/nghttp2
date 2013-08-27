@@ -184,7 +184,7 @@ void on_ctrl_recv_callback
       return;
     }
     // Require content-length if FIN flag is not set.
-    if(!util::strieq("CONNECT", method) &&
+    if(strcmp("CONNECT", method) == 0 &&
        (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) == 0 &&
        !content_length) {
       upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);

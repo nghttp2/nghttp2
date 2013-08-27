@@ -746,35 +746,10 @@ void on_frame_recv_callback
       break;
     }
     auto nva = frame->headers.nva;
-    std::string status, content_length;
-    for(size_t i = 0; i < frame->headers.nvlen; ++i) {
-      if(!http::check_http2_allowed_header(nva[i].name, nva[i].namelen)) {
-        status.clear();
-        break;
-      }
-      if(util::strieq(":status", nva[i].name, nva[i].namelen)) {
-        status.assign(reinterpret_cast<char*>(nva[i].value),
-                      nva[i].valuelen);
-        auto code = strtoul(status.c_str(), nullptr, 10);
-        downstream->set_response_http_status(code);
-      } else if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-        if(util::strieq("content-length", nva[i].name, nva[i].namelen)) {
-          content_length.assign(reinterpret_cast<char*>(nva[i].value),
-                                nva[i].valuelen);
-        }
-        downstream->add_response_header
-          (std::string(reinterpret_cast<char*>(nva[i].name),
-                       nva[i].namelen),
-           std::string(reinterpret_cast<char*>(nva[i].value),
-                       nva[i].valuelen));
-      }
-    }
-    // Just assume it is HTTP/1.1. But we really consider to say 2.0
-    // here.
-    downstream->set_response_major(1);
-    downstream->set_response_minor(1);
+    auto nvlen = frame->headers.nvlen;
 
-    if(status.empty()) {
+    // Assuming that nva is sorted by name.
+    if(!http::check_http2_headers(nva, nvlen)) {
       nghttp2_submit_rst_stream(session, frame->hd.stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
@@ -782,7 +757,31 @@ void on_frame_recv_callback
       return;
     }
 
-    if(content_length.empty() && downstream->get_request_method() != "HEAD" &&
+    for(size_t i = 0; i < nvlen; ++i) {
+      if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
+        downstream->add_response_header(http::name_to_str(&nva[i]),
+                                        http::value_to_str(&nva[i]));
+      }
+    }
+
+    auto status = http::get_unique_header(nva, nvlen, ":status");
+    if(!status || http::value_lws(status)) {
+      nghttp2_submit_rst_stream(session, frame->hd.stream_id,
+                                NGHTTP2_PROTOCOL_ERROR);
+      downstream->set_response_state(Downstream::MSG_RESET);
+      call_downstream_readcb(spdy, downstream);
+      return;
+    }
+    downstream->set_response_http_status
+      (strtoul(http::value_to_str(status).c_str(), nullptr, 10));
+
+    // Just assume it is HTTP/1.1. But we really consider to say 2.0
+    // here.
+    downstream->set_response_major(1);
+    downstream->set_response_minor(1);
+
+    auto content_length = http::get_header(nva, nvlen, "content-length");
+    if(!content_length && downstream->get_request_method() != "HEAD" &&
        downstream->get_request_method() != "CONNECT") {
       unsigned int status;
       status = downstream->get_response_http_status();

@@ -29,6 +29,9 @@
 #include <openssl/err.h>
 /* include test cases' include files here */
 #include "shrpx_ssl_test.h"
+#include "shrpx_http_test.h"
+#include "shrpx_downstream_test.h"
+#include "util_test.h"
 
 static int init_suite1(void)
 {
@@ -65,7 +68,30 @@ int main(int argc, char* argv[])
    if(!CU_add_test(pSuite, "ssl_create_lookup_tree",
                    shrpx::test_shrpx_ssl_create_lookup_tree) ||
       !CU_add_test(pSuite, "ssl_cert_lookup_tree_add_cert_from_file",
-                   shrpx::test_shrpx_ssl_cert_lookup_tree_add_cert_from_file)) {
+                   shrpx::test_shrpx_ssl_cert_lookup_tree_add_cert_from_file) ||
+      !CU_add_test(pSuite, "http_check_http2_headers",
+                   shrpx::test_http_check_http2_headers) ||
+      !CU_add_test(pSuite, "http_get_unique_header",
+                   shrpx::test_http_get_unique_header) ||
+      !CU_add_test(pSuite, "http_get_header",
+                   shrpx::test_http_get_header) ||
+      !CU_add_test(pSuite, "http_value_lws",
+                   shrpx::test_http_value_lws) ||
+      !CU_add_test(pSuite, "http_copy_norm_headers_to_nv",
+                   shrpx::test_http_copy_norm_headers_to_nv) ||
+      !CU_add_test(pSuite, "http_build_http1_headers_from_norm_headers",
+                   shrpx::test_http_build_http1_headers_from_norm_headers) ||
+      !CU_add_test(pSuite, "downstream_normalize_request_headers",
+                   shrpx::test_downstream_normalize_request_headers) ||
+      !CU_add_test(pSuite, "downstream_normalize_response_headers",
+                   shrpx::test_downstream_normalize_response_headers) ||
+      !CU_add_test(pSuite, "downstream_get_norm_request_header",
+                   shrpx::test_downstream_get_norm_request_header) ||
+      !CU_add_test(pSuite, "downstream_get_norm_response_header",
+                   shrpx::test_downstream_get_norm_response_header) ||
+      !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
+      !CU_add_test(pSuite, "util_inp_strlower",
+                   shrpx::test_util_inp_strlower)) {
      CU_cleanup_registry();
      return CU_get_error();
    }

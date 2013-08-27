@@ -1769,6 +1769,16 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
 /**
  * @function
  *
+ * Compares lhs->name with lhs->namelen bytes and rhs->name with
+ * rhs->namelen bytes. Returns negative integer if lhs->name is found
+ * to be less than rhs->name; or returns positive integer if lhs->name
+ * is found to be greater than rhs->name; or returns 0 otherwise.
+ */
+int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs);
+
+/**
+ * @function
+ *
  * A helper function for dealing with NPN in client side.  The |in|
  * contains server's protocol in preferable order.  The format of |in|
  * is length-prefixed and not null-terminated.  For example,

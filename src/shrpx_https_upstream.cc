@@ -654,8 +654,6 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
-  bool connection_upgrade = false;
-  std::string via_value;
   char temp[16];
   snprintf(temp, sizeof(temp), "HTTP/%d.%d ",
            downstream->get_request_major(),
@@ -663,26 +661,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   std::string hdrs = temp;
   hdrs += http::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
-  for(Headers::const_iterator i = downstream->get_response_headers().begin();
-      i != downstream->get_response_headers().end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "connection")) {
-      if(util::strifind((*i).second.c_str(), "upgrade")) {
-        connection_upgrade = true;
-      }
-    } else if(util::strieq((*i).first.c_str(), "keep-alive") || // HTTP/1.0?
-       util:: strieq((*i).first.c_str(), "proxy-connection")) {
-      // These are ignored
-    } else if(!get_config()->no_via &&
-              util::strieq((*i).first.c_str(), "via")) {
-      via_value = (*i).second;
-    } else {
-      hdrs += (*i).first;
-      http::capitalize(hdrs, hdrs.size()-(*i).first.size());
-      hdrs += ": ";
-      hdrs += (*i).second;
-      hdrs += "\r\n";
-    }
-  }
+  downstream->normalize_response_headers();
+  auto end_headers = std::end(downstream->get_response_headers());
+  http::build_http1_headers_from_norm_headers
+    (hdrs, downstream->get_response_headers());
 
   // We check downstream->get_response_connection_close() in case when
   // the Content-Length is not available.
@@ -692,23 +674,27 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
        downstream->get_request_minor() <= 0) {
       // We add this header for HTTP/1.0 or HTTP/0.9 clients
       hdrs += "Connection: Keep-Alive\r\n";
-    } else if(connection_upgrade) {
-      hdrs += "Connection: upgrade\r\n";
     }
-  } else if(!downstream->get_upgraded()) {
+  } else {
     hdrs += "Connection: close\r\n";
   }
-  if(!get_config()->no_via) {
+  auto via = downstream->get_norm_response_header("via");
+  if(get_config()->no_via) {
+    if(via != end_headers) {
+      hdrs += "Via: ";
+      hdrs += (*via).second;
+      hdrs += "\r\n";
+    }
+  } else {
     hdrs += "Via: ";
-    if(!via_value.empty()) {
-      hdrs += via_value;
+    if(via != end_headers) {
+      hdrs += (*via).second;
       hdrs += ", ";
     }
     hdrs += http::create_via_header_value
       (downstream->get_response_major(), downstream->get_response_minor());
     hdrs += "\r\n";
   }
-
   hdrs += "\r\n";
   if(LOG_ENABLED(INFO)) {
     const char *hdrp;

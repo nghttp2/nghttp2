@@ -91,16 +91,18 @@ endif # HAVE_SPDYLAY
 
 nghttpx_SOURCES = ${NGHTTPX_SRCS} shrpx.cc shrpx.h
 
-# if HAVE_CUNIT
-# check_PROGRAMS += shrpx-unittest
-# shrpx_unittest_SOURCES = shrpx-unittest.cc \
-# 	shrpx_ssl_test.cc shrpx_ssl_test.h\
-# 	${SHRPX_SRCS}
-# shrpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
-# 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
-# shrpx_unittest_LDFLAGS = -static @OPENSSL_LIBS@ @LIBEVENT_OPENSSL_LIBS@\
-# 	@SRC_LIBS@ @CUNIT_LIBS@ @TESTS_LIBS@
-# TESTS += shrpx-unittest
-# endif # HAVE_CUNIT
+if HAVE_CUNIT
+check_PROGRAMS += nghttpx-unittest
+nghttpx_unittest_SOURCES = shrpx-unittest.cc \
+	shrpx_ssl_test.cc shrpx_ssl_test.h \
+	shrpx_http_test.cc shrpx_http_test.h \
+	shrpx_downstream_test.cc shrpx_downstream_test.h \
+	util_test.cc util_test.h \
+	${NGHTTPX_SRCS}
+nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
+	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
+nghttpx_unittest_LDFLAGS = -static ${AM_LDFLAGS} @CUNIT_LIBS@ @TESTS_LIBS@
+TESTS += nghttpx-unittest
+endif # HAVE_CUNIT
 
 endif # ENABLE_SRC

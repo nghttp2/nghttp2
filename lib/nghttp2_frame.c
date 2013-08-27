@@ -766,6 +766,11 @@ static int nghttp2_nv_name_compar(const void *lhs, const void *rhs)
   }
 }
 
+int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs)
+{
+  return nghttp2_nv_name_compar(lhs, rhs);
+}
+
 void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen)
 {
   qsort(nva, nvlen, sizeof(nghttp2_nv), nghttp2_nv_name_compar);

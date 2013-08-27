@@ -1,3 +1,7 @@
 nghttp
 nghttpd
 nghttpx
+nghttpx-unittest
+nghttpx-unittest.log
+nghttpx-unittest.trs
+test-suite.log

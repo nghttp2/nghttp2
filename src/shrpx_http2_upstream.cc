@@ -192,6 +192,7 @@ void on_frame_recv_callback
     downstream->init_response_body_buf();
 
     auto nva = frame->headers.nva;
+    auto nvlen = frame->headers.nvlen;
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
@@ -208,116 +209,58 @@ void on_frame_recv_callback
     }
 
     // Assuming that nva is sorted by name.
-    const char *req_headers[] = {":host", ":method", ":path", ":scheme",
-                                 "content-length"};
-    const size_t req_hdlen = sizeof(req_headers)/sizeof(req_headers[0]);
-    int req_hdidx[req_hdlen];
-    memset(req_hdidx, -1, sizeof(req_hdidx));
-    bool bad_req = false;
-    {
-      size_t i, j;
-      for(i = 0, j = 0; i < frame->headers.nvlen && j < req_hdlen;) {
-        if(!http::check_http2_allowed_header(nva[i].name, nva[i].namelen)) {
-          bad_req = true;
-          break;
-        }
-        int rv = util::strcompare(req_headers[j], nva[i].name, nva[i].namelen);
-        if(rv > 0) {
-          if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-            downstream->add_request_header
-              (std::string(reinterpret_cast<char*>(nva[i].name),
-                           nva[i].namelen),
-               std::string(reinterpret_cast<char*>(nva[i].value),
-                           nva[i].valuelen));
-          }
-          ++i;
-        } else if(rv < 0) {
-          ++j;
-        } else {
-          if(req_hdidx[j] != -1) {
-            if(LOG_ENABLED(INFO)) {
-              ULOG(INFO, upstream) << "multiple " << req_headers[j]
-                                   << " found in the request";
-            }
-            bad_req = true;
-            break;
-          }
-          req_hdidx[j] = i;
-          ++i;
-        }
-      }
-      if(!bad_req) {
-        // Here :scheme is optional, because with CONNECT method, it
-        // is omitted. content-length is mandatory if END_STREAM is
-        // not set.
-        for(j = 0; j < 3; ++j) {
-          if(req_hdidx[j] == -1) {
-            bad_req = true;
-            break;
-          }
-        }
-      }
-      if(!bad_req &&
-         !util::strieq("CONNECT",
-                       nva[req_hdidx[1]].value,
-                       nva[req_hdidx[1]].valuelen) &&
-         (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0 &&
-         req_hdidx[4] == -1) {
-        // If content-length is missing,
-        // Downstream::push_upload_data_chunk will fail and
-        // RST_STREAM will be sent.
-        bad_req = true;
-      }
-      if(!bad_req) {
-        for(; i < frame->headers.nvlen; ++i) {
-          if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-            downstream->add_request_header
-              (std::string(reinterpret_cast<char*>(nva[i].name),
-                           nva[i].namelen),
-               std::string(reinterpret_cast<char*>(nva[i].value),
-                           nva[i].valuelen));
-          }
-        }
-      }
-    }
-    if(bad_req) {
+    if(!http::check_http2_headers(nva, nvlen)) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return;
     }
 
-    if(req_hdidx[4] != -1) {
-      downstream->add_request_header
-        (std::string(reinterpret_cast<char*>(nva[req_hdidx[4]].name),
-                     nva[req_hdidx[4]].namelen),
-         std::string(reinterpret_cast<char*>(nva[req_hdidx[4]].value),
-                     nva[req_hdidx[4]].valuelen));
+    for(size_t i = 0; i < nvlen; ++i) {
+      if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
+        downstream->add_request_header(http::name_to_str(&nva[i]),
+                                       http::value_to_str(&nva[i]));
+      }
     }
 
-    std::string host(reinterpret_cast<char*>(nva[req_hdidx[0]].value),
-                     nva[req_hdidx[0]].valuelen);
-    std::string method(reinterpret_cast<char*>(nva[req_hdidx[1]].value),
-                       nva[req_hdidx[1]].valuelen);
-    std::string path(reinterpret_cast<char*>(nva[req_hdidx[2]].value),
-                     nva[req_hdidx[2]].valuelen);
+    auto host = http::get_unique_header(nva, nvlen, ":host");
+    auto path = http::get_unique_header(nva, nvlen, ":path");
+    auto method = http::get_unique_header(nva, nvlen, ":method");
+    auto scheme = http::get_unique_header(nva, nvlen, ":scheme");
+    bool is_connect = method &&
+      util::streq("CONNECT", method->value, method->valuelen);
+    if(!host || !path || !method ||
+       http::value_lws(host) || http::value_lws(path) ||
+       http::value_lws(method) ||
+       (!is_connect && (!scheme || http::value_lws(scheme)))) {
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      return;
+    }
+    if(!is_connect &&
+       (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+      auto content_length = http::get_header(nva, nvlen, "content-length");
+      if(!content_length || http::value_lws(content_length)) {
+        // If content-length is missing,
+        // Downstream::push_upload_data_chunk will fail and
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+        return;
+      }
+    }
 
-    downstream->set_request_method(method);
+    downstream->set_request_method(http::value_to_str(method));
 
     // SpdyDownstreamConnection examines request path to find
     // scheme. We construct abs URI for spdy_bridge mode as well as
     // spdy_proxy mode.
     if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
-       req_hdidx[3] != -1 && path[0] == '/') {
-      std::string reqpath(reinterpret_cast<char*>(nva[req_hdidx[3]].value),
-                          nva[req_hdidx[3]].valuelen);
+       scheme && path->value[0] == '/') {
+      std::string reqpath(http::value_to_str(scheme));
       reqpath += "://";
-      reqpath += host;
-      reqpath += path;
+      reqpath += http::value_to_str(host);
+      reqpath += http::value_to_str(path);
       downstream->set_request_path(reqpath);
     } else {
-      downstream->set_request_path(path);
+      downstream->set_request_path(http::value_to_str(path));
     }
-
-    downstream->add_request_header("host", host);
+    downstream->add_request_header("host", http::value_to_str(host));
     downstream->check_upgrade_request();
 
     auto dconn = upstream->get_client_handler()->get_downstream_connection();
@@ -908,6 +851,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
+  downstream->normalize_response_headers();
+  auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();
   // 4 means :status and possible via header field.
   const char **nv = new const char*[nheader * 2 + 4 + 1];
@@ -917,20 +862,18 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     std::to_string(downstream->get_response_http_status());
   nv[hdidx++] = ":status";
   nv[hdidx++] = response_status.c_str();
-  for(Headers::const_iterator i = downstream->get_response_headers().begin();
-      i != downstream->get_response_headers().end(); ++i) {
-    if(!http::check_http2_allowed_header((*i).first.c_str())) {
-      // These are ignored
-    } else if(!get_config()->no_via &&
-              util::strieq((*i).first.c_str(), "via")) {
-      via_value = (*i).second;
-    } else {
-      nv[hdidx++] = (*i).first.c_str();
-      nv[hdidx++] = (*i).second.c_str();
+
+  hdidx += http::copy_norm_headers_to_nv(&nv[hdidx],
+                                         downstream->get_response_headers());
+  auto via = downstream->get_norm_response_header("via");
+  if(get_config()->no_via) {
+    if(via != end_headers) {
+      nv[hdidx++] = "via";
+      nv[hdidx++] = (*via).second.c_str();
     }
-  }
-  if(!get_config()->no_via) {
-    if(!via_value.empty()) {
+  } else {
+    if(via != end_headers) {
+      via_value = (*via).second;
       via_value += ", ";
     }
     via_value += http::create_via_header_value
@@ -938,7 +881,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     nv[hdidx++] = "via";
     nv[hdidx++] = via_value.c_str();
   }
-  nv[hdidx++] = 0;
+  nv[hdidx++] = nullptr;
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(size_t i = 0; nv[i]; i += 2) {

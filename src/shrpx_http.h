@@ -26,6 +26,9 @@
 #define SHRPX_HTTP_H
 
 #include <string>
+#include <vector>
+
+#include <nghttp2/nghttp2.h>
 
 #include "http-parser/http_parser.h"
 
@@ -59,6 +62,45 @@ bool check_http2_allowed_header(const uint8_t *name, size_t namelen);
 // Calls check_http2_allowed_header with |name| and strlen(name),
 // assuming |name| is null-terminated string.
 bool check_http2_allowed_header(const char *name);
+
+// Checks that headers |nva| including |nvlen| entries do not contain
+// disallowed header fields in HTTP/2.0 spec. This function returns
+// true if |nva| does not contains such headers.
+bool check_http2_headers(const nghttp2_nv *nva, size_t nvlen);
+
+// Returns the pointer to the entry in |nva| which has name |name| and
+// the |name| is uinque in the |nva|. If no such entry exist, returns
+// nullptr.
+const nghttp2_nv* get_unique_header(const nghttp2_nv *nva, size_t nvlen,
+                                    const char *name);
+
+// Returns the poiter to the entry in |nva| which has name |name|. If
+// more than one entries which have the name |name|, first occurrence
+// in |nva| is returned. If no such entry exist, returns nullptr.
+const nghttp2_nv* get_header(const nghttp2_nv *nva, size_t nvlen,
+                             const char *name);
+
+// Returns std::string version of nv->name with nv->namelen bytes.
+std::string name_to_str(const nghttp2_nv *nv);
+// Returns std::string version of nv->value with nv->valuelen bytes.
+std::string value_to_str(const nghttp2_nv *nv);
+
+// Returns true if the value of |nv| includes only ' ' (0x20) or '\t'.
+bool value_lws(const nghttp2_nv *nv);
+
+// Copies headers in |headers| to |nv|. Certain headers, including
+// disallowed headers in HTTP/2.0 spec and headers which require
+// special handling (i.e. via), are not copied.
+size_t copy_norm_headers_to_nv
+(const char **nv,
+ const std::vector<std::pair<std::string, std::string>>& headers);
+
+// Appends HTTP/1.1 style header lines to |hdrs| from headers in
+// |headers|. Certain headers, which requires special handling
+// (i.e. via), are not appended.
+void build_http1_headers_from_norm_headers
+(std::string& hdrs,
+ const std::vector<std::pair<std::string, std::string>>& headers);
 
 } // namespace http
 

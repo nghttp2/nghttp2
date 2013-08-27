@@ -171,6 +171,24 @@ bool strieq(const char *a, const uint8_t *b, size_t bn)
   return !*a && b == blast;
 }
 
+bool streq(const char *a, const uint8_t *b, size_t bn)
+{
+  if(!a || !b) {
+    return false;
+  }
+  const uint8_t *blast = b + bn;
+  for(; *a && b != blast && *a == *b; ++a, ++b);
+  return !*a && b == blast;
+}
+
+bool streq(const uint8_t *a, size_t alen, const uint8_t *b, size_t blen)
+{
+  if(alen != blen) {
+    return false;
+  }
+  return memcmp(a, b, alen) == 0;
+}
+
 int strcompare(const char *a, const uint8_t *b, size_t bn)
 {
   assert(a && b);
@@ -267,6 +285,15 @@ void to_base64(std::string& token68str)
   }
   token68str += std::string(4 - token68str.size() % 4, '=');
   return;
+}
+
+void inp_strlower(std::string& s)
+{
+  for(auto i = std::begin(s); i != std::end(s); ++i) {
+    if('A' <= *i && *i <= 'Z') {
+      *i = (*i) - 'A' + 'a';
+    }
+  }
 }
 
 } // namespace util

@@ -84,6 +84,15 @@ public:
   bool http2_upgrade_request() const;
   // downstream request API
   const Headers& get_request_headers() const;
+  // Makes key lowercase and sort headers by name using <
+  void normalize_request_headers();
+  // Returns iterator pointing to the request header with the name
+  // |name|. If multiple header have |name| as name, return first
+  // occurrence from the beginning. If no such header is found,
+  // returns std::end(get_request_headers()). This function must be
+  // called after calling normalize_request_headers().
+  Headers::const_iterator get_norm_request_header
+  (const std::string& name) const;
   void add_request_header(const std::string& name, const std::string& value);
   void set_last_request_header_value(const std::string& value);
 
@@ -120,6 +129,15 @@ public:
   int get_request_state() const;
   // downstream response API
   const Headers& get_response_headers() const;
+  // Makes key lowercase and sort headers by name using <
+  void normalize_response_headers();
+  // Returns iterator pointing to the response header with the name
+  // |name|. If multiple header have |name| as name, return first
+  // occurrence from the beginning. If no such header is found,
+  // returns std::end(get_response_headers()). This function must be
+  // called after calling normalize_response_headers().
+  Headers::const_iterator get_norm_response_header
+  (const std::string& name) const;
   void add_response_header(const std::string& name, const std::string& value);
   void set_last_response_header_value(const std::string& value);
 

@@ -188,6 +188,188 @@ bool check_http2_allowed_header(const uint8_t *name, size_t namelen)
     !util::strieq("upgrade", name, namelen);
 }
 
+namespace {
+const char *DISALLOWED_HD[] = {
+  "connection",
+  "host",
+  "keep-alive",
+  "proxy-connection",
+  "te",
+  "transfer-encoding",
+  "upgrade",
+};
+} // namespace
+
+namespace {
+size_t DISALLOWED_HDLEN = sizeof(DISALLOWED_HD)/sizeof(DISALLOWED_HD[0]);
+} // namespace
+
+namespace {
+const char *IGN_HD[] = {
+  "connection",
+  "expect",
+  "host",
+  "http2-settings",
+  "keep-alive",
+  "proxy-connection",
+  "te",
+  "transfer-encoding",
+  "upgrade",
+  "via",
+  "x-forwarded-for",
+  "x-forwarded-proto",
+};
+} // namespace
+
+namespace {
+size_t IGN_HDLEN = sizeof(IGN_HD)/sizeof(IGN_HD[0]);
+} // namespace
+
+namespace {
+const char *HTTP1_IGN_HD[] = {
+  "connection",
+  "expect",
+  "http2-settings",
+  "keep-alive",
+  "proxy-connection",
+  "upgrade",
+  "via",
+  "x-forwarded-for",
+  "x-forwarded-proto",
+};
+} // namespace
+
+namespace {
+size_t HTTP1_IGN_HDLEN = sizeof(HTTP1_IGN_HD)/sizeof(HTTP1_IGN_HD[0]);
+} // namespace
+
+namespace {
+auto nv_name_less = [](const nghttp2_nv& lhs, const nghttp2_nv& rhs)
+{
+  return nghttp2_nv_compare_name(&lhs, &rhs) < 0;
+};
+} // namespace
+
+bool check_http2_headers(const nghttp2_nv *nva, size_t nvlen)
+{
+  for(size_t i = 0; i < DISALLOWED_HDLEN; ++i) {
+    nghttp2_nv nv = {(uint8_t*)DISALLOWED_HD[i], nullptr,
+                     (uint16_t)strlen(DISALLOWED_HD[i]), 0};
+    if(std::binary_search(&nva[0], &nva[nvlen], nv, nv_name_less)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const nghttp2_nv* get_unique_header(const nghttp2_nv *nva, size_t nvlen,
+                                    const char *name)
+{
+  size_t namelen = strlen(name);
+  nghttp2_nv nv = {(uint8_t*)name, nullptr, (uint16_t)namelen, 0};
+  auto i = std::lower_bound(&nva[0], &nva[nvlen], nv, nv_name_less);
+  if(i != &nva[nvlen] && util::streq(i->name, i->namelen,
+                                     (const uint8_t*)name, namelen)) {
+    auto j = i + 1;
+    if(j == &nva[nvlen] || !util::streq(j->name, j->namelen,
+                                        (const uint8_t*)name, namelen)) {
+      return i;
+    }
+  }
+  return nullptr;
+}
+
+const nghttp2_nv* get_header(const nghttp2_nv *nva, size_t nvlen,
+                             const char *name)
+{
+  size_t namelen = strlen(name);
+  nghttp2_nv nv = {(uint8_t*)name, nullptr, (uint16_t)namelen, 0};
+  auto i = std::lower_bound(&nva[0], &nva[nvlen], nv, nv_name_less);
+  if(i != &nva[nvlen] && util::streq(i->name, i->namelen,
+                                     (const uint8_t*)name, namelen)) {
+    return i;
+  }
+  return nullptr;
+}
+
+std::string name_to_str(const nghttp2_nv *nv)
+{
+  return std::string(reinterpret_cast<const char*>(nv->name), nv->namelen);
+}
+
+std::string value_to_str(const nghttp2_nv *nv)
+{
+  return std::string(reinterpret_cast<const char*>(nv->value), nv->valuelen);
+}
+
+bool value_lws(const nghttp2_nv *nv)
+{
+  for(size_t i = 0; i < nv->valuelen; ++i) {
+    switch(nv->value[i]) {
+    case '\t':
+    case ' ':
+      continue;
+    default:
+      return false;
+    }
+  }
+  return true;
+}
+
+size_t copy_norm_headers_to_nv
+(const char **nv,
+ const std::vector<std::pair<std::string, std::string>>& headers)
+{
+  size_t i, j, nvlen = 0;
+  for(i = 0, j = 0; i < headers.size() && j < IGN_HDLEN;) {
+    int rv = strcmp(headers[i].first.c_str(), IGN_HD[j]);
+    if(rv < 0) {
+      nv[nvlen++] = headers[i].first.c_str();
+      nv[nvlen++] = headers[i].second.c_str();
+      ++i;
+    } else if(rv > 0) {
+      ++j;
+    } else {
+      ++i;
+    }
+  }
+  for(; i < headers.size(); ++i) {
+    nv[nvlen++] = headers[i].first.c_str();
+    nv[nvlen++] = headers[i].second.c_str();
+  }
+  return nvlen;
+}
+
+void build_http1_headers_from_norm_headers
+(std::string& hdrs,
+ const std::vector<std::pair<std::string,
+ std::string>>& headers)
+{
+  size_t i, j;
+  for(i = 0, j = 0; i < headers.size() && j < HTTP1_IGN_HDLEN;) {
+    int rv = strcmp(headers[i].first.c_str(), HTTP1_IGN_HD[j]);
+    if(rv < 0) {
+      hdrs += headers[i].first;
+      http::capitalize(hdrs, hdrs.size()-headers[i].first.size());
+      hdrs += ": ";
+      hdrs += headers[i].second;
+      hdrs += "\r\n";
+      ++i;
+    } else if(rv > 0) {
+      ++j;
+    } else {
+      ++i;
+    }
+  }
+  for(; i < headers.size(); ++i) {
+    hdrs += headers[i].first;
+    http::capitalize(hdrs, hdrs.size()-headers[i].first.size());
+    hdrs += ": ";
+    hdrs += headers[i].second;
+    hdrs += "\r\n";
+  }
+}
+
 } // namespace http
 
 } // namespace shrpx

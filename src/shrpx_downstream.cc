@@ -157,9 +157,51 @@ void check_connection_close(bool *connection_close,
 }
 } // namespace
 
+namespace {
+auto name_less = [](const Headers::value_type& lhs,
+                    const Headers::value_type& rhs)
+{
+  return lhs.first < rhs.first;
+};
+} // namespace
+
+namespace {
+void normalize_headers(Headers& headers)
+{
+  for(auto& kv : headers) {
+    util::inp_strlower(kv.first);
+  }
+  std::sort(std::begin(headers), std::end(headers), name_less);
+}
+} // namespace
+
+namespace {
+Headers::const_iterator get_norm_header(const Headers& headers,
+                                        const std::string& name)
+{
+  auto i = std::lower_bound(std::begin(headers), std::end(headers),
+                            std::make_pair(name, std::string()), name_less);
+  if(i != std::end(headers) && (*i).first == name) {
+    return i;
+  }
+  return std::end(headers);
+}
+} // namespace
+
 const Headers& Downstream::get_request_headers() const
 {
   return request_headers_;
+}
+
+void Downstream::normalize_request_headers()
+{
+  normalize_headers(request_headers_);
+}
+
+Headers::const_iterator Downstream::get_norm_request_header
+(const std::string& name) const
+{
+  return get_norm_header(request_headers_, name);
 }
 
 void Downstream::add_request_header(const std::string& name,
@@ -332,6 +374,17 @@ int Downstream::end_upload_data()
 const Headers& Downstream::get_response_headers() const
 {
   return response_headers_;
+}
+
+void Downstream::normalize_response_headers()
+{
+  normalize_headers(response_headers_);
+}
+
+Headers::const_iterator Downstream::get_norm_response_header
+(const std::string& name) const
+{
+  return get_norm_header(response_headers_, name);
 }
 
 void Downstream::add_response_header(const std::string& name,

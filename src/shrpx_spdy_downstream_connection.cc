@@ -230,6 +230,8 @@ int SpdyDownstreamConnection::push_request_headers()
     return 0;
   }
   size_t nheader = downstream_->get_request_headers().size();
+  downstream_->normalize_request_headers();
+  auto end_headers = std::end(downstream_->get_request_headers());
   // 10 means :method, :scheme, :path and possible via and
   // x-forwarded-for header fields. We rename host header field as
   // :host.
@@ -280,61 +282,63 @@ int SpdyDownstreamConnection::push_request_headers()
   nv[hdidx++] = ":method";
   nv[hdidx++] = downstream_->get_request_method().c_str();
 
-  bool chunked_encoding = false;
-  bool content_length = false;
-  for(Headers::const_iterator i = downstream_->get_request_headers().begin();
-      i != downstream_->get_request_headers().end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "transfer-encoding")) {
-      if(util::strieq((*i).second.c_str(), "chunked")) {
-        chunked_encoding = true;
-      }
-      // Ignore transfer-encoding
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "x-forwarded-proto") ||
-              util::strieq((*i).first.c_str(), "keep-alive") ||
-              util::strieq((*i).first.c_str(), "connection") ||
-              util::strieq((*i).first.c_str(), "proxy-connection") ||
-              util::strieq((*i).first.c_str(), "te") ||
-              util::strieq((*i).first.c_str(), "upgrade") ||
-              util::strieq((*i).first.c_str(), "http2-settings")) {
-      // These are ignored
-      continue;
-    } else if(!get_config()->no_via &&
-              util::strieq((*i).first.c_str(), "via")) {
-      via_value = (*i).second;
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
-      xff_value = (*i).second;
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "expect") &&
-       util::strifind((*i).second.c_str(), "100-continue")) {
-      // Ignore
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "host")) {
-      nv[hdidx++] = ":host";
-      nv[hdidx++] = (*i).second.c_str();
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "content-length")) {
-      content_length = true;
+  hdidx += http::copy_norm_headers_to_nv(&nv[hdidx],
+                                         downstream_->get_request_headers());
+
+  auto host = downstream_->get_norm_request_header("host");
+  if(host == end_headers) {
+    if(LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this) << "host header field missing";
     }
-    nv[hdidx++] = (*i).first.c_str();
-    nv[hdidx++] = (*i).second.c_str();
+    return -1;
+  }
+  nv[hdidx++] = ":host";
+  nv[hdidx++] = (*host).second.c_str();
+
+  bool content_length = false;
+  if(downstream_->get_norm_request_header("content-length") != end_headers) {
+    content_length = true;
   }
 
+  auto expect = downstream_->get_norm_request_header("expect");
+  if(expect != end_headers &&
+     util::strifind((*expect).second.c_str(), "100-continue")) {
+    nv[hdidx++] = "expect";
+    nv[hdidx++] = (*expect).second.c_str();
+  }
+
+  bool chunked_encoding = false;
+  auto transfer_encoding =
+    downstream_->get_norm_request_header("transfer-encoding");
+  if(transfer_encoding != end_headers &&
+     util::strieq((*transfer_encoding).second.c_str(), "chunked")) {
+    chunked_encoding = true;
+  }
+
+  auto xff = downstream_->get_norm_request_header("x-forwarded-for");
   if(get_config()->add_x_forwarded_for) {
     nv[hdidx++] = "x-forwarded-for";
-    if(!xff_value.empty()) {
+    if(xff != end_headers) {
+      xff_value = (*xff).second;
       xff_value += ", ";
     }
     xff_value += downstream_->get_upstream()->get_client_handler()->
       get_ipaddr();
     nv[hdidx++] = xff_value.c_str();
-  } else if(!xff_value.empty()) {
+  } else if(xff != end_headers) {
     nv[hdidx++] = "x-forwarded-for";
-    nv[hdidx++] = xff_value.c_str();
+    nv[hdidx++] = (*xff).second.c_str();
   }
-  if(!get_config()->no_via) {
-    if(!via_value.empty()) {
+
+  auto via = downstream_->get_norm_request_header("via");
+  if(get_config()->no_via) {
+    if(via != end_headers) {
+      nv[hdidx++] = "via";
+      nv[hdidx++] = (*via).second.c_str();
+    }
+  } else {
+    if(via != end_headers) {
+      via_value = (*via).second;
       via_value += ", ";
     }
     via_value += http::create_via_header_value
@@ -342,7 +346,8 @@ int SpdyDownstreamConnection::push_request_headers()
     nv[hdidx++] = "via";
     nv[hdidx++] = via_value.c_str();
   }
-  nv[hdidx++] = 0;
+  nv[hdidx++] = nullptr;
+
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(size_t i = 0; nv[i]; i += 2) {

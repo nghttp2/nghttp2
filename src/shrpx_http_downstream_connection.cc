@@ -118,69 +118,26 @@ int HttpDownstreamConnection::push_request_headers()
   hdrs += downstream_->get_request_path();
   hdrs += " ";
   hdrs += "HTTP/1.1\r\n";
-  std::string connection_upgrade;
-  std::string via_value;
-  std::string xff_value;
-  const Headers& request_headers = downstream_->get_request_headers();
-  for(Headers::const_iterator i = request_headers.begin();
-      i != request_headers.end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "connection")) {
-      // nghttpx handles HTTP/2.0 upgrade and does not relay it to the
-      // downstream.
-      if(util::strifind((*i).second.c_str(), "upgrade") &&
-         !util::strifind((*i).second.c_str(), "http2-settings")) {
-        connection_upgrade = (*i).second;
-      }
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "upgrade")) {
-      // nghttpx handles HTTP/2.0 upgrade and does not relay it to the
-      // downstream.
-      if(util::strieq((*i).second.c_str(), NGHTTP2_PROTO_VERSION_ID)) {
-        continue;
-      }
-    } else if(util::strieq((*i).first.c_str(), "x-forwarded-proto") ||
-              util::strieq((*i).first.c_str(), "keep-alive") ||
-              util::strieq((*i).first.c_str(), "proxy-connection") ||
-              util::strieq((*i).first.c_str(), "http2-settings")) {
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "via")) {
-      if(!get_config()->no_via) {
-        via_value = (*i).second;
-        continue;
-      }
-    } else if(util::strieq((*i).first.c_str(), "x-forwarded-for")) {
-      xff_value = (*i).second;
-      continue;
-    } else if(util::strieq((*i).first.c_str(), "expect")) {
-      if(util::strifind((*i).second.c_str(), "100-continue")) {
-        continue;
-      }
-    }
-    hdrs += (*i).first;
-    http::capitalize(hdrs, hdrs.size()-(*i).first.size());
-    hdrs += ": ";
-    hdrs += (*i).second;
-    http::sanitize_header_value(hdrs, hdrs.size()-(*i).second.size());
-    hdrs += "\r\n";
-  }
+  downstream_->normalize_request_headers();
+  auto end_headers = std::end(downstream_->get_request_headers());
+  http::build_http1_headers_from_norm_headers
+    (hdrs, downstream_->get_request_headers());
+
   if(downstream_->get_request_connection_close()) {
     hdrs += "Connection: close\r\n";
-  } else if(!connection_upgrade.empty()) {
-    hdrs += "Connection: ";
-    hdrs += connection_upgrade;
-    hdrs += "\r\n";
   }
+  auto xff = downstream_->get_norm_request_header("x-forwarded-for");
   if(get_config()->add_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
-    if(!xff_value.empty()) {
-      hdrs += xff_value;
+    if(xff != end_headers) {
+      hdrs += (*xff).second;
       hdrs += ", ";
     }
     hdrs += downstream_->get_upstream()->get_client_handler()->get_ipaddr();
     hdrs += "\r\n";
-  } else if(!xff_value.empty()) {
+  } else if(xff != end_headers) {
     hdrs += "X-Forwarded-For: ";
-    hdrs += xff_value;
+    hdrs += (*xff).second;
     hdrs += "\r\n";
   }
   if(downstream_->get_request_method() != "CONNECT") {
@@ -192,10 +149,24 @@ int HttpDownstreamConnection::push_request_headers()
     }
     hdrs += "\r\n";
   }
-  if(!get_config()->no_via) {
+  auto expect = downstream_->get_norm_request_header("expect");
+  if(expect != end_headers &&
+     util::strifind((*expect).second.c_str(), "100-continue")) {
+    hdrs += "Expect: ";
+    hdrs += (*expect).second;
+    hdrs += "\r\n";
+  }
+  auto via = downstream_->get_norm_request_header("via");
+  if(get_config()->no_via) {
+    if(via != end_headers) {
+      hdrs += "Via: ";
+      hdrs += (*via).second;
+      hdrs += "\r\n";
+    }
+  } else {
     hdrs += "Via: ";
-    if(!via_value.empty()) {
-      hdrs += via_value;
+    if(via != end_headers) {
+      hdrs += (*via).second;
       hdrs += ", ";
     }
     hdrs += http::create_via_header_value(downstream_->get_request_major(),

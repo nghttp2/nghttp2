@@ -299,6 +299,10 @@ bool strieq(const char *a, const char *b);
 
 bool strieq(const char *a, const uint8_t *b, size_t n);
 
+bool streq(const char *a, const uint8_t *b, size_t bn);
+
+bool streq(const uint8_t *a, size_t alen, const uint8_t *b, size_t blen);
+
 bool strifind(const char *a, const char *b);
 
 char upcase(char c);
@@ -343,6 +347,9 @@ inline char lowcase(char c)
   };
   return tbl[static_cast<unsigned char>(c)];
 }
+
+// Lowercase |s| in place.
+void inp_strlower(std::string& s);
 
 template<typename T>
 std::string utos(T n)
