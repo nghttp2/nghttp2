@@ -22,13 +22,13 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_http_test.h"
+#include "http2_test.h"
 
 #include <iostream>
 
 #include <CUnit/CUnit.h>
 
-#include "shrpx_http.h"
+#include "http2.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -37,25 +37,25 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-void test_http_check_http2_headers(void)
+void test_http2_check_http2_headers(void)
 {
   nghttp2_nv nv1[] = {MAKE_NV("alpha", "1"),
                       MAKE_NV("bravo", "2"),
                       MAKE_NV("upgrade", "http2")};
-  CU_ASSERT(!http::check_http2_headers(nv1, 3));
+  CU_ASSERT(!http2::check_http2_headers(nv1, 3));
 
   nghttp2_nv nv2[] = {MAKE_NV("connection", "1"),
                       MAKE_NV("delta", "2"),
                       MAKE_NV("echo", "3")};
-  CU_ASSERT(!http::check_http2_headers(nv2, 3));
+  CU_ASSERT(!http2::check_http2_headers(nv2, 3));
 
   nghttp2_nv nv3[] = {MAKE_NV("alpha", "1"),
                       MAKE_NV("bravo", "2"),
                       MAKE_NV("te2", "3")};
-  CU_ASSERT(http::check_http2_headers(nv3, 3));
+  CU_ASSERT(http2::check_http2_headers(nv3, 3));
 }
 
-void test_http_get_unique_header(void)
+void test_http2_get_unique_header(void)
 {
   nghttp2_nv nv[] = {MAKE_NV("alpha", "1"),
                      MAKE_NV("bravo", "2"),
@@ -65,18 +65,18 @@ void test_http_get_unique_header(void)
                      MAKE_NV("echo", "6"),};
   size_t nvlen = sizeof(nv)/sizeof(nv[0]);
   const nghttp2_nv *rv;
-  rv = http::get_unique_header(nv, nvlen, "delta");
+  rv = http2::get_unique_header(nv, nvlen, "delta");
   CU_ASSERT(rv != nullptr);
   CU_ASSERT(util::streq("delta", rv->name, rv->namelen));
 
-  rv = http::get_unique_header(nv, nvlen, "bravo");
+  rv = http2::get_unique_header(nv, nvlen, "bravo");
   CU_ASSERT(rv == nullptr);
 
-  rv = http::get_unique_header(nv, nvlen, "foxtrot");
+  rv = http2::get_unique_header(nv, nvlen, "foxtrot");
   CU_ASSERT(rv == nullptr);
 }
 
-void test_http_get_header(void)
+void test_http2_get_header(void)
 {
   nghttp2_nv nv[] = {MAKE_NV("alpha", "1"),
                      MAKE_NV("bravo", "2"),
@@ -86,30 +86,30 @@ void test_http_get_header(void)
                      MAKE_NV("echo", "6"),};
   size_t nvlen = sizeof(nv)/sizeof(nv[0]);
   const nghttp2_nv *rv;
-  rv = http::get_header(nv, nvlen, "delta");
+  rv = http2::get_header(nv, nvlen, "delta");
   CU_ASSERT(rv != nullptr);
   CU_ASSERT(util::streq("delta", rv->name, rv->namelen));
 
-  rv = http::get_header(nv, nvlen, "bravo");
+  rv = http2::get_header(nv, nvlen, "bravo");
   CU_ASSERT(rv != nullptr);
   CU_ASSERT(util::streq("bravo", rv->name, rv->namelen));
 
-  rv = http::get_header(nv, nvlen, "foxtrot");
+  rv = http2::get_header(nv, nvlen, "foxtrot");
   CU_ASSERT(rv == nullptr);
 }
 
-void test_http_value_lws(void)
+void test_http2_value_lws(void)
 {
   nghttp2_nv nv[] = {MAKE_NV("0", "alpha"),
                      MAKE_NV("1", " alpha"),
                      MAKE_NV("2", ""),
                      MAKE_NV("3", " "),
                      MAKE_NV("4", "  a ")};
-  CU_ASSERT(!http::value_lws(&nv[0]));
-  CU_ASSERT(!http::value_lws(&nv[1]));
-  CU_ASSERT(http::value_lws(&nv[2]));
-  CU_ASSERT(http::value_lws(&nv[3]));
-  CU_ASSERT(!http::value_lws(&nv[4]));
+  CU_ASSERT(!http2::value_lws(&nv[0]));
+  CU_ASSERT(!http2::value_lws(&nv[1]));
+  CU_ASSERT(http2::value_lws(&nv[2]));
+  CU_ASSERT(http2::value_lws(&nv[3]));
+  CU_ASSERT(!http2::value_lws(&nv[4]));
 }
 
 namespace {
@@ -129,10 +129,10 @@ auto headers = std::vector<std::pair<std::string, std::string>>
    {"zulu", "12"}};
 } // namespace
 
-void test_http_copy_norm_headers_to_nv(void)
+void test_http2_copy_norm_headers_to_nv(void)
 {
   const char* nv[30];
-  size_t nvlen = http::copy_norm_headers_to_nv(nv, headers);
+  size_t nvlen = http2::copy_norm_headers_to_nv(nv, headers);
   CU_ASSERT(12 == nvlen);
   CU_ASSERT(strcmp(nv[0], "alpha") == 0);
   CU_ASSERT(strcmp(nv[1], "0") == 0);
@@ -148,10 +148,10 @@ void test_http_copy_norm_headers_to_nv(void)
   CU_ASSERT(strcmp(nv[11], "12") == 0);
 }
 
-void test_http_build_http1_headers_from_norm_headers(void)
+void test_http2_build_http1_headers_from_norm_headers(void)
 {
   std::string hdrs;
-  http::build_http1_headers_from_norm_headers(hdrs, headers);
+  http2::build_http1_headers_from_norm_headers(hdrs, headers);
   CU_ASSERT(hdrs ==
             "Alpha: 0\r\n"
             "Bravo: 1\r\n"

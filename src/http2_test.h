@@ -22,18 +22,18 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_HTTP_TEST_H
-#define SHRPX_HTTP_TEST_H
+#ifndef SHRPX_HTTP2_TEST_H
+#define SHRPX_HTTP2_TEST_H
 
 namespace shrpx {
 
-void test_http_check_http2_headers(void);
-void test_http_get_unique_header(void);
-void test_http_get_header(void);
-void test_http_value_lws(void);
-void test_http_copy_norm_headers_to_nv(void);
-void test_http_build_http1_headers_from_norm_headers(void);
+void test_http2_check_http2_headers(void);
+void test_http2_get_unique_header(void);
+void test_http2_get_header(void);
+void test_http2_value_lws(void);
+void test_http2_copy_norm_headers_to_nv(void);
+void test_http2_build_http1_headers_from_norm_headers(void);
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP_TEST_H
+#endif // SHRPX_HTTP2_TEST_H

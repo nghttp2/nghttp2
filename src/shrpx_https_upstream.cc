@@ -36,6 +36,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_accesslog.h"
+#include "http2.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -583,7 +584,7 @@ int HttpsUpstream::error_reply(int status_code)
   std::string header;
   header.reserve(512);
   header += "HTTP/1.1 ";
-  header += http::get_status_string(status_code);
+  header += http2::get_status_string(status_code);
   header += "\r\nServer: ";
   header += get_config()->server_name;
   header += "\r\nContent-Length: ";
@@ -659,11 +660,11 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
            downstream->get_request_major(),
            downstream->get_request_minor());
   std::string hdrs = temp;
-  hdrs += http::get_status_string(downstream->get_response_http_status());
+  hdrs += http2::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
   downstream->normalize_response_headers();
   auto end_headers = std::end(downstream->get_response_headers());
-  http::build_http1_headers_from_norm_headers
+  http2::build_http1_headers_from_norm_headers
     (hdrs, downstream->get_response_headers());
 
   // We check downstream->get_response_connection_close() in case when

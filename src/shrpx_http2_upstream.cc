@@ -36,6 +36,7 @@
 #include "shrpx_config.h"
 #include "shrpx_http.h"
 #include "shrpx_accesslog.h"
+#include "http2.h"
 #include "util.h"
 #include "base64.h"
 
@@ -209,35 +210,35 @@ void on_frame_recv_callback
     }
 
     // Assuming that nva is sorted by name.
-    if(!http::check_http2_headers(nva, nvlen)) {
+    if(!http2::check_http2_headers(nva, nvlen)) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return;
     }
 
     for(size_t i = 0; i < nvlen; ++i) {
       if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-        downstream->add_request_header(http::name_to_str(&nva[i]),
-                                       http::value_to_str(&nva[i]));
+        downstream->add_request_header(http2::name_to_str(&nva[i]),
+                                       http2::value_to_str(&nva[i]));
       }
     }
 
-    auto host = http::get_unique_header(nva, nvlen, ":host");
-    auto path = http::get_unique_header(nva, nvlen, ":path");
-    auto method = http::get_unique_header(nva, nvlen, ":method");
-    auto scheme = http::get_unique_header(nva, nvlen, ":scheme");
+    auto host = http2::get_unique_header(nva, nvlen, ":host");
+    auto path = http2::get_unique_header(nva, nvlen, ":path");
+    auto method = http2::get_unique_header(nva, nvlen, ":method");
+    auto scheme = http2::get_unique_header(nva, nvlen, ":scheme");
     bool is_connect = method &&
       util::streq("CONNECT", method->value, method->valuelen);
     if(!host || !path || !method ||
-       http::value_lws(host) || http::value_lws(path) ||
-       http::value_lws(method) ||
-       (!is_connect && (!scheme || http::value_lws(scheme)))) {
+       http2::value_lws(host) || http2::value_lws(path) ||
+       http2::value_lws(method) ||
+       (!is_connect && (!scheme || http2::value_lws(scheme)))) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return;
     }
     if(!is_connect &&
        (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-      auto content_length = http::get_header(nva, nvlen, "content-length");
-      if(!content_length || http::value_lws(content_length)) {
+      auto content_length = http2::get_header(nva, nvlen, "content-length");
+      if(!content_length || http2::value_lws(content_length)) {
         // If content-length is missing,
         // Downstream::push_upload_data_chunk will fail and
         upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
@@ -245,22 +246,22 @@ void on_frame_recv_callback
       }
     }
 
-    downstream->set_request_method(http::value_to_str(method));
+    downstream->set_request_method(http2::value_to_str(method));
 
     // SpdyDownstreamConnection examines request path to find
     // scheme. We construct abs URI for spdy_bridge mode as well as
     // spdy_proxy mode.
     if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
        scheme && path->value[0] == '/') {
-      std::string reqpath(http::value_to_str(scheme));
+      std::string reqpath(http2::value_to_str(scheme));
       reqpath += "://";
-      reqpath += http::value_to_str(host);
-      reqpath += http::value_to_str(path);
+      reqpath += http2::value_to_str(host);
+      reqpath += http2::value_to_str(path);
       downstream->set_request_path(reqpath);
     } else {
-      downstream->set_request_path(http::value_to_str(path));
+      downstream->set_request_path(http2::value_to_str(path));
     }
-    downstream->add_request_header("host", http::value_to_str(host));
+    downstream->add_request_header("host", http2::value_to_str(host));
     downstream->check_upgrade_request();
 
     auto dconn = upstream->get_client_handler()->get_downstream_connection();
@@ -701,7 +702,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 } // namespace
 
 int Http2Upstream::rst_stream(Downstream *downstream,
-                             nghttp2_error_code error_code)
+                              nghttp2_error_code error_code)
 {
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "RST_STREAM stream_id="
@@ -863,8 +864,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   nv[hdidx++] = ":status";
   nv[hdidx++] = response_status.c_str();
 
-  hdidx += http::copy_norm_headers_to_nv(&nv[hdidx],
-                                         downstream->get_response_headers());
+  hdidx += http2::copy_norm_headers_to_nv(&nv[hdidx],
+                                          downstream->get_response_headers());
   auto via = downstream->get_norm_response_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
@@ -914,7 +915,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
 // WARNING: Never call directly or indirectly nghttp2_session_send or
 // nghttp2_session_recv. These calls may delete downstream.
 int Http2Upstream::on_downstream_body(Downstream *downstream,
-                                     const uint8_t *data, size_t len)
+                                      const uint8_t *data, size_t len)
 {
   evbuffer *body = downstream->get_response_body_buf();
   int rv = evbuffer_add(body, data, len);

@@ -62,7 +62,7 @@ nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	HttpServer.cc HttpServer.h
 
 NGHTTPX_SRCS = \
-	util.cc util.h timegm.c timegm.h base64.h \
+	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_listen_handler.cc shrpx_listen_handler.h \
@@ -95,8 +95,8 @@ if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
 nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_ssl_test.cc shrpx_ssl_test.h \
-	shrpx_http_test.cc shrpx_http_test.h \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
+	http2_test.cc http2_test.h \
 	util_test.cc util_test.h \
 	${NGHTTPX_SRCS}
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\

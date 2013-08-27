@@ -39,6 +39,7 @@
 #include "shrpx_error.h"
 #include "shrpx_http.h"
 #include "shrpx_spdy_session.h"
+#include "http2.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -252,9 +253,9 @@ int SpdyDownstreamConnection::push_request_headers()
                                downstream_->get_request_path().size(),
                                0, &u);
     if(rv == 0) {
-      http::copy_url_component(scheme, &u, UF_SCHEMA, url);
-      http::copy_url_component(path, &u, UF_PATH, url);
-      http::copy_url_component(query, &u, UF_QUERY, url);
+      http2::copy_url_component(scheme, &u, UF_SCHEMA, url);
+      http2::copy_url_component(path, &u, UF_PATH, url);
+      http2::copy_url_component(query, &u, UF_QUERY, url);
       if(path.empty()) {
         path = "/";
       }
@@ -282,8 +283,8 @@ int SpdyDownstreamConnection::push_request_headers()
   nv[hdidx++] = ":method";
   nv[hdidx++] = downstream_->get_request_method().c_str();
 
-  hdidx += http::copy_norm_headers_to_nv(&nv[hdidx],
-                                         downstream_->get_request_headers());
+  hdidx += http2::copy_norm_headers_to_nv(&nv[hdidx],
+                                          downstream_->get_request_headers());
 
   auto host = downstream_->get_norm_request_header("host");
   if(host == end_headers) {

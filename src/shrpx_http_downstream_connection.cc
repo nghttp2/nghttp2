@@ -30,6 +30,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_http.h"
+#include "http2.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -120,7 +121,7 @@ int HttpDownstreamConnection::push_request_headers()
   hdrs += "HTTP/1.1\r\n";
   downstream_->normalize_request_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
-  http::build_http1_headers_from_norm_headers
+  http2::build_http1_headers_from_norm_headers
     (hdrs, downstream_->get_request_headers());
 
   if(downstream_->get_request_connection_close()) {

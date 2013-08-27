@@ -37,6 +37,7 @@
 #include "shrpx_config.h"
 #include "shrpx_http.h"
 #include "shrpx_accesslog.h"
+#include "http2.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -740,7 +741,7 @@ int SpdyUpstream::error_reply(Downstream *downstream, int status_code)
   std::string content_length = util::utos(html.size());
 
   const char *nv[] = {
-    ":status", http::get_status_string(status_code),
+    ":status", http2::get_status_string(status_code),
     ":version", "http/1.1",
     "content-type", "text/html; charset=UTF-8",
     "server", get_config()->server_name,
@@ -810,7 +811,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   size_t hdidx = 0;
   std::string via_value;
   nv[hdidx++] = ":status";
-  nv[hdidx++] = http::get_status_string(downstream->get_response_http_status());
+  nv[hdidx++] = http2::get_status_string
+    (downstream->get_response_http_status());
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
   for(Headers::const_iterator i = downstream->get_response_headers().begin();

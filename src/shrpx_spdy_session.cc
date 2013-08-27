@@ -40,6 +40,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
+#include "http2.h"
 #include "util.h"
 #include "base64.h"
 
@@ -749,7 +750,7 @@ void on_frame_recv_callback
     auto nvlen = frame->headers.nvlen;
 
     // Assuming that nva is sorted by name.
-    if(!http::check_http2_headers(nva, nvlen)) {
+    if(!http2::check_http2_headers(nva, nvlen)) {
       nghttp2_submit_rst_stream(session, frame->hd.stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
@@ -759,13 +760,13 @@ void on_frame_recv_callback
 
     for(size_t i = 0; i < nvlen; ++i) {
       if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-        downstream->add_response_header(http::name_to_str(&nva[i]),
-                                        http::value_to_str(&nva[i]));
+        downstream->add_response_header(http2::name_to_str(&nva[i]),
+                                        http2::value_to_str(&nva[i]));
       }
     }
 
-    auto status = http::get_unique_header(nva, nvlen, ":status");
-    if(!status || http::value_lws(status)) {
+    auto status = http2::get_unique_header(nva, nvlen, ":status");
+    if(!status || http2::value_lws(status)) {
       nghttp2_submit_rst_stream(session, frame->hd.stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
@@ -773,14 +774,14 @@ void on_frame_recv_callback
       return;
     }
     downstream->set_response_http_status
-      (strtoul(http::value_to_str(status).c_str(), nullptr, 10));
+      (strtoul(http2::value_to_str(status).c_str(), nullptr, 10));
 
     // Just assume it is HTTP/1.1. But we really consider to say 2.0
     // here.
     downstream->set_response_major(1);
     downstream->set_response_minor(1);
 
-    auto content_length = http::get_header(nva, nvlen, "content-length");
+    auto content_length = http2::get_header(nva, nvlen, "content-length");
     if(!content_length && downstream->get_request_method() != "HEAD" &&
        downstream->get_request_method() != "CONNECT") {
       unsigned int status;

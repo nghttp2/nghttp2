@@ -38,9 +38,12 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "http-parser/http_parser.h"
+
 #include "shrpx_log.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
+#include "http2.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -341,7 +344,7 @@ int parse_config(const char *opt, const char *optarg)
     if(rv == 0) {
       std::string val;
       if(u.field_set & UF_USERINFO) {
-        http::copy_url_component(val, &u, UF_USERINFO, optarg);
+        http2::copy_url_component(val, &u, UF_USERINFO, optarg);
         // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
         // userinfo component is empty string.
         if(!val.empty()) {
@@ -351,7 +354,7 @@ int parse_config(const char *opt, const char *optarg)
         }
       }
       if(u.field_set & UF_HOST) {
-        http::copy_url_component(val, &u, UF_HOST, optarg);
+        http2::copy_url_component(val, &u, UF_HOST, optarg);
         set_config_str(&mod_config()->downstream_http_proxy_host, val.c_str());
       } else {
         LOG(ERROR) << "backend-http-proxy-uri does not contain hostname";
