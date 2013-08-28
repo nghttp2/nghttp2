@@ -900,104 +900,8 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
           goto fail;
         }
       }
-    } else if(c == 0x60u || c == 0x40u) {
-      /* Literal Header without Indexing - new name or Literal Header
-         with incremental indexing - new name */
-      nghttp2_nv nv;
-      ssize_t namelen, valuelen;
-      if(++in == last) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-      in = decode_length(&namelen, in, last, 8);
-      if(namelen < 0 || in + namelen > last) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-      if(!nghttp2_check_header_name(in, namelen)) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-      nv.name = in;
-      in += namelen;
-      in = decode_length(&valuelen, in, last, 8);
-      if(valuelen < 0 || in + valuelen > last) {
-        rv =  NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-      nv.namelen = namelen;
-      nv.value = in;
-      nv.valuelen = valuelen;
-      in += valuelen;
-      nghttp2_downcase(nv.name, nv.namelen);
-      if(c == 0x60u) {
-        rv = emit_newname_header(inflater, &nva_out, &nv);
-      } else {
-        nghttp2_hd_entry *new_ent;
-        new_ent = add_hd_table_incremental(inflater, &nv);
-        if(new_ent) {
-          rv = emit_indexed_header(inflater, &nva_out, new_ent);
-        } else {
-          rv = NGHTTP2_ERR_HEADER_COMP;
-          goto fail;
-        }
-      }
-      if(rv < 0) {
-        goto fail;
-      }
-    } else if((c & 0x60u) == 0x60u || (c & 0x40) == 0x40u) {
-      /* Literal Header without Indexing - indexed name or Literal
-         Header with incremental indexing - indexed name */
-      nghttp2_hd_entry *ent;
-      uint8_t *value;
-      ssize_t valuelen;
-      ssize_t index;
-      in = decode_length(&index, in, last, 5);
-      if(index < 0) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-      --index;
-      if(inflater->hd_tablelen <= index) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-      ent = inflater->hd_table[index];
-      in = decode_length(&valuelen, in , last, 8);
-      if(valuelen < 0 || in + valuelen > last) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-      value = in;
-      in += valuelen;
-      if((c & 0x60u) == 0x60u) {
-        rv = emit_indname_header(inflater, &nva_out, ent, value, valuelen);
-      } else {
-        nghttp2_nv nv;
-        nghttp2_hd_entry *new_ent;
-        ++ent->ref;
-        nv.name = ent->nv.name;
-        nv.namelen = ent->nv.namelen;
-        nv.value = value;
-        nv.valuelen = valuelen;
-        new_ent = add_hd_table_incremental(inflater, &nv);
-        if(--ent->ref == 0) {
-          nghttp2_hd_entry_free(ent);
-          free(ent);
-        }
-        if(new_ent) {
-          rv = emit_indexed_header(inflater, &nva_out, new_ent);
-        } else {
-          rv = NGHTTP2_ERR_HEADER_COMP;
-          goto fail;
-        }
-      }
-      if(rv < 0) {
-        goto fail;
-      }
-    } else if(c == 0) {
-      /* Literal Header with substitution indexing - new name */
-      nghttp2_hd_entry *new_ent;
+    } else if(c == 0x40u || c == 0x60u || c == 0) {
+      /* Literal Header Repr - New Name */
       nghttp2_nv nv;
       ssize_t namelen, valuelen, subindex;
       if(++in == last) {
@@ -1015,38 +919,47 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       }
       nv.name = in;
       in += namelen;
-      in = decode_length(&subindex, in, last, 8);
-      if(subindex < 0) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
+      if(c == 0) {
+        in = decode_length(&subindex, in, last, 8);
+        if(subindex < 0) {
+          rv = NGHTTP2_ERR_HEADER_COMP;
+          goto fail;
+        }
       }
       in = decode_length(&valuelen, in, last, 8);
       if(valuelen < 0 || in + valuelen > last) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
+        rv =  NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      nv.value = in;
       nv.namelen = namelen;
+      nv.value = in;
       nv.valuelen = valuelen;
       in += valuelen;
       nghttp2_downcase(nv.name, nv.namelen);
-      new_ent = add_hd_table_subst(inflater, &nv, subindex);
-      if(new_ent) {
-        rv = emit_indexed_header(inflater, &nva_out, new_ent);
-        if(rv < 0) {
-          goto fail;
-        }
+      if(c == 0x60u) {
+        rv = emit_newname_header(inflater, &nva_out, &nv);
       } else {
-        rv = NGHTTP2_ERR_HEADER_COMP;
+        nghttp2_hd_entry *new_ent;
+        if(c == 0) {
+          new_ent = add_hd_table_subst(inflater, &nv, subindex);
+        } else {
+          new_ent = add_hd_table_incremental(inflater, &nv);
+        }
+        if(new_ent) {
+          rv = emit_indexed_header(inflater, &nva_out, new_ent);
+        } else {
+          rv = NGHTTP2_ERR_HEADER_COMP;
+        }
+      }
+      if(rv != 0) {
         goto fail;
       }
     } else {
-      /* Literal Header with substitution indexing - indexed name */
-      nghttp2_hd_entry *ent, *new_ent;
-      ssize_t valuelen;
-      ssize_t index, subindex;
-      nghttp2_nv nv;
-      in = decode_length(&index, in, last, 6);
+      /* Literal Header Repr - Indexed Name */
+      nghttp2_hd_entry *ent;
+      uint8_t *value;
+      ssize_t valuelen, index, subindex;
+      in = decode_length(&index, in, last, (c & 0x40u) ? 5 : 6);
       if(index < 0) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -1057,34 +970,46 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
       ent = inflater->hd_table[index];
-      in = decode_length(&subindex, in, last, 8);
-      if(subindex < 0) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
+      if((c & 0x40u) == 0) {
+        in = decode_length(&subindex, in, last, 8);
+        if(subindex < 0) {
+          rv = NGHTTP2_ERR_HEADER_COMP;
+          goto fail;
+        }
       }
-      in = decode_length(&valuelen, in, last, 8);
+      in = decode_length(&valuelen, in , last, 8);
       if(valuelen < 0 || in + valuelen > last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      ++ent->ref;
-      nv.name = ent->nv.name;
-      nv.namelen = ent->nv.namelen;
-      nv.value = in;
-      nv.valuelen = valuelen;
+      value = in;
       in += valuelen;
-      new_ent = add_hd_table_subst(inflater, &nv, subindex);
-      if(--ent->ref == 0) {
-        nghttp2_hd_entry_free(ent);
-        free(ent);
-      }
-      if(new_ent) {
-        rv = emit_indexed_header(inflater, &nva_out, new_ent);
-        if(rv < 0) {
-          goto fail;
-        }
+      if((c & 0x60u) == 0x60u) {
+        rv = emit_indname_header(inflater, &nva_out, ent, value, valuelen);
       } else {
-        rv = NGHTTP2_ERR_HEADER_COMP;
+        nghttp2_nv nv;
+        nghttp2_hd_entry *new_ent;
+        ++ent->ref;
+        nv.name = ent->nv.name;
+        nv.namelen = ent->nv.namelen;
+        nv.value = value;
+        nv.valuelen = valuelen;
+        if((c & 0x40u) == 0) {
+          new_ent = add_hd_table_subst(inflater, &nv, subindex);
+        } else {
+          new_ent = add_hd_table_incremental(inflater, &nv);
+        }
+        if(--ent->ref == 0) {
+          nghttp2_hd_entry_free(ent);
+          free(ent);
+        }
+        if(new_ent) {
+          rv = emit_indexed_header(inflater, &nva_out, new_ent);
+        } else {
+          rv = NGHTTP2_ERR_HEADER_COMP;
+        }
+      }
+      if(rv != 0) {
         goto fail;
       }
     }
