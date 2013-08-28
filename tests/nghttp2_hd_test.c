@@ -380,6 +380,90 @@ void test_nghttp2_hd_inflate_newname_subst(void)
   nghttp2_hd_inflate_free(&inflater);
 }
 
+void test_nghttp2_hd_inflate_clearall_inc(void)
+{
+  nghttp2_hd_context inflater;
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  size_t offset = 0;
+  nghttp2_nv nv;
+  nghttp2_nv *resnva;
+  uint8_t value[4060];
+
+  /* Total 4097 bytes space required to hold this entry */
+  nv.name = (uint8_t*)"alpha";
+  nv.namelen = strlen((char*)nv.name);
+  memset(value, '0', sizeof(value));
+  nv.value = value;
+  nv.valuelen = sizeof(value);
+
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+
+  CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
+                                               &nv, 1));
+  CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
+  assert_nv_equal(&nv, resnva, 1);
+  CU_ASSERT(0 == inflater.hd_tablelen);
+
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+
+  /* Do it again */
+  CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
+  assert_nv_equal(&nv, resnva, 1);
+  CU_ASSERT(0 == inflater.hd_tablelen);
+
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+
+  /* This time, 4096 bytes space required, which is just fits in the
+     header table */
+  nv.valuelen = sizeof(value) - 1;
+
+  offset = 0;
+  CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
+                                               &nv, 1));
+  CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
+  assert_nv_equal(&nv, resnva, 1);
+  CU_ASSERT(1 == inflater.hd_tablelen);
+
+  nghttp2_nv_array_del(resnva);
+
+  free(buf);
+  nghttp2_hd_inflate_free(&inflater);
+}
+
+void test_nghttp2_hd_inflate_clearall_subst(void)
+{
+  nghttp2_hd_context inflater;
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  size_t offset = 0;
+  nghttp2_nv nv;
+  nghttp2_nv *resnva;
+  uint8_t value[4060];
+
+  /* Total 4097 bytes space required to hold this entry */
+  nv.name = (uint8_t*)"alpha";
+  nv.namelen = strlen((char*)nv.name);
+  memset(value, '0', sizeof(value));
+  nv.value = value;
+  nv.valuelen = sizeof(value);
+
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+
+  CU_ASSERT(0 == nghttp2_hd_emit_subst_newname_block(&buf, &buflen, &offset,
+                                                     &nv, 1));
+  CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
+  assert_nv_equal(&nv, resnva, 1);
+  CU_ASSERT(0 == inflater.hd_tablelen);
+
+  nghttp2_nv_array_del(resnva);
+
+  free(buf);
+  nghttp2_hd_inflate_free(&inflater);
+}
+
 static void check_deflate_inflate(nghttp2_hd_context *deflater,
                                   nghttp2_hd_context *inflater,
                                   nghttp2_nv *nva, size_t nvlen)

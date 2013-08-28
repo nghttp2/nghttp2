@@ -340,10 +340,6 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
   size_t i;
   nghttp2_hd_entry *new_ent;
   size_t room = entry_room(nv->namelen, nv->valuelen);
-  if(context->hd_tablelen == context->hd_table_capacity ||
-     room > NGHTTP2_HD_MAX_BUFFER_SIZE) {
-    return NULL;
-  }
   context->hd_table_bufsize += room;
   for(i = 0; i < context->hd_tablelen &&
         context->hd_table_bufsize > NGHTTP2_HD_MAX_BUFFER_SIZE; ++i) {
@@ -383,8 +379,20 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
   if(rv != 0) {
     return NULL;
   }
-  context->hd_table[context->hd_tablelen++] = new_ent;
-  new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
+  if(room > NGHTTP2_HD_MAX_BUFFER_SIZE) {
+    /* The entry taking more than NGHTTP2_HD_MAX_BUFFER_SIZE is
+       immediately evicted. */
+    new_ent->index = NGHTTP2_HD_INVALID_INDEX;
+    --new_ent->ref;
+  } else {
+    /* Because of current NGHTTP2_HD_MAX_BUFFER_SIZE,
+       NGHTTP2_HD_ENTRY_OVERHEAD and NGHTTP2_INITIAL_HD_TABLE_SIZE,
+       context->hd_tablelen is strictly less than
+       context->hd_table_capacity. */
+    assert(context->hd_tablelen < context->hd_table_capacity);
+    context->hd_table[context->hd_tablelen++] = new_ent;
+    new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
+  }
   return new_ent;
 }
 
@@ -396,8 +404,7 @@ static nghttp2_hd_entry* add_hd_table_subst(nghttp2_hd_context *context,
   int k;
   nghttp2_hd_entry *new_ent;
   size_t room = entry_room(nv->namelen, nv->valuelen);
-  if(room > NGHTTP2_HD_MAX_BUFFER_SIZE ||
-     context->hd_tablelen <= subindex) {
+  if(context->hd_tablelen <= subindex) {
     return NULL;
   }
   context->hd_table_bufsize -=
@@ -429,6 +436,9 @@ static nghttp2_hd_entry* add_hd_table_subst(nghttp2_hd_context *context,
   }
   if(i > 0) {
     size_t j;
+    /* k < 0 means that the index to substitute originally was
+       evicted. Therefore, index 0 is the position to substitute
+       now. */
     if(k < 0) {
       j = 1;
     } else {
@@ -470,8 +480,14 @@ static nghttp2_hd_entry* add_hd_table_subst(nghttp2_hd_context *context,
   if(rv != 0) {
     return NULL;
   }
-  context->hd_table[new_ent->index] = new_ent;
-  new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
+  if(room > NGHTTP2_HD_MAX_BUFFER_SIZE) {
+    new_ent->index = NGHTTP2_HD_INVALID_INDEX;
+    --new_ent->ref;
+    context->hd_tablelen = 0;
+  } else {
+    context->hd_table[new_ent->index] = new_ent;
+    new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
+  }
   return new_ent;
 }
 
