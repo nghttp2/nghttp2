@@ -152,7 +152,7 @@ int HttpDownstreamConnection::push_request_headers()
   }
   auto expect = downstream_->get_norm_request_header("expect");
   if(expect != end_headers &&
-     util::strifind((*expect).second.c_str(), "100-continue")) {
+     !util::strifind((*expect).second.c_str(), "100-continue")) {
     hdrs += "Expect: ";
     hdrs += (*expect).second;
     hdrs += "\r\n";
