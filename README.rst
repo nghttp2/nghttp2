@@ -10,12 +10,12 @@ Development Status
 We started to implement HTTP-draft-06/2.0
 (http://tools.ietf.org/html/draft-ietf-httpbis-http2-06) and the
 header compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-02).
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03).
 
 The nghttp2 code base was forked from spdylay project.
 
 =================== =================
-Features            HTTP-draft-04/2.0
+Features            HTTP-draft-06/2.0
 =================== =================
 Flow Control        Done
 Header Compression  Done
