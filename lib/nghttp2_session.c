@@ -2375,11 +2375,11 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
   return 0;
 }
 
-static int nghttp2_get_status_code_from_error_code(int lib_error_code)
+static int get_error_code_from_lib_error_code(int lib_error_code)
 {
   switch(lib_error_code) {
-  case(NGHTTP2_ERR_FRAME_TOO_LARGE):
-    return NGHTTP2_FRAME_TOO_LARGE;
+  case NGHTTP2_ERR_HEADER_COMP:
+    return NGHTTP2_COMPRESSION_ERROR;
   default:
     return NGHTTP2_PROTOCOL_ERROR;
   }
@@ -2440,16 +2440,9 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       }
       nghttp2_frame_headers_free(&frame.headers);
       nghttp2_hd_end_headers(&session->hd_inflater);
-    } else if(r == NGHTTP2_ERR_INVALID_HEADER_BLOCK) {
-      r = nghttp2_session_handle_invalid_stream
-        (session, &frame, nghttp2_get_status_code_from_error_code(r));
-      /* TODO test this. It seems NGHTTP2_ERR_INVALID_HEADER_BLOCK is
-         not used in framing anymore. */
-      nghttp2_frame_headers_free(&frame.headers);
-      nghttp2_hd_end_headers(&session->hd_inflater);
     } else if(nghttp2_is_non_fatal(r)) {
-      r = nghttp2_session_handle_parse_error(session, type, r,
-                                             NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error
+        (session, type, r, get_error_code_from_lib_error_code(r));
     }
     break;
   case NGHTTP2_PRIORITY:
@@ -2510,8 +2503,8 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       nghttp2_frame_push_promise_free(&frame.push_promise);
       nghttp2_hd_end_headers(&session->hd_inflater);
     } else if(nghttp2_is_non_fatal(r)) {
-      r = nghttp2_session_handle_parse_error(session, type, r,
-                                             NGHTTP2_PROTOCOL_ERROR);
+      r = nghttp2_session_handle_parse_error
+        (session, type, r, get_error_code_from_lib_error_code(r));
     }
     break;
   case NGHTTP2_PING:
