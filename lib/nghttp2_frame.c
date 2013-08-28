@@ -395,6 +395,10 @@ int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
                                             size_t payloadlen)
 {
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
+  /* TODO Return error if header continuation is used for now */
+  if((head[3] & NGHTTP2_FLAG_END_HEADERS) == 0) {
+    return NGHTTP2_ERR_PROTO;
+  }
   if(head[3] & NGHTTP2_FLAG_PRIORITY) {
     if(payloadlen < 4) {
       return NGHTTP2_ERR_INVALID_FRAME;
@@ -583,6 +587,10 @@ int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
                                                  size_t payloadlen)
 {
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
+  /* TODO Return error if header continuation is used for now */
+  if((head[3] & NGHTTP2_FLAG_END_PUSH_PROMISE) == 0) {
+    return NGHTTP2_ERR_PROTO;
+  }
   if(payloadlen < 4) {
     return NGHTTP2_ERR_INVALID_FRAME;
   }

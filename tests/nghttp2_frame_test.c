@@ -116,7 +116,9 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
   nvlen = nghttp2_nv_array_from_cstr(&nva, headers);
-  nghttp2_frame_headers_init(&frame, NGHTTP2_FLAG_END_STREAM, 1000000007,
+  nghttp2_frame_headers_init(&frame,
+                             NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
+                             1000000007,
                              1 << 20, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&buf, &buflen, &frame, &deflater);
   nghttp2_hd_end_headers(&deflater);
@@ -126,7 +128,8 @@ void test_nghttp2_frame_pack_headers()
                                             &inflater,
                                             buf, framelen));
   check_frame_header(framelen - NGHTTP2_FRAME_HEAD_LENGTH, NGHTTP2_HEADERS,
-                     NGHTTP2_FLAG_END_STREAM, 1000000007, &oframe.hd);
+                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS,
+                     1000000007, &oframe.hd);
   /* We didn't include PRIORITY flag so priority is not packed */
   CU_ASSERT(1 << 30 == oframe.pri);
   CU_ASSERT(7 == oframe.nvlen);
@@ -147,7 +150,8 @@ void test_nghttp2_frame_pack_headers()
                                             &inflater,
                                             buf, framelen));
   check_frame_header(framelen - NGHTTP2_FRAME_HEAD_LENGTH, NGHTTP2_HEADERS,
-                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY,
+                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
+                     NGHTTP2_FLAG_PRIORITY,
                      1000000007, &oframe.hd);
   CU_ASSERT(1 << 20 == oframe.pri);
   CU_ASSERT(nvnameeq("method", &oframe.nva[0]));
@@ -183,7 +187,9 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
 
   nvlen = nghttp2_nv_array_from_cstr(&nva, (const char**)big_hds);
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
-  nghttp2_frame_headers_init(&frame, NGHTTP2_FLAG_END_STREAM, 1000000007,
+  nghttp2_frame_headers_init(&frame,
+                             NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
+                             1000000007,
                              0, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&buf, &buflen, &frame, &deflater);
   CU_ASSERT_EQUAL(NGHTTP2_ERR_HEADER_COMP, framelen);
