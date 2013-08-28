@@ -1520,6 +1520,14 @@ Functions
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
 
+.. function:: int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs)
+
+    
+    Compares lhs->name with lhs->namelen bytes and rhs->name with
+    rhs->namelen bytes. Returns negative integer if lhs->name is found
+    to be less than rhs->name; or returns positive integer if lhs->name
+    is found to be greater than rhs->name; or returns 0 otherwise.
+
 .. function:: int nghttp2_select_next_protocol(unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen)
 
     

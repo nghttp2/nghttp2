@@ -1946,6 +1946,15 @@ negative error codes:</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="nghttp2_nv_compare_name">
+int <tt class="descname">nghttp2_nv_compare_name</tt><big>(</big>const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*lhs</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*rhs</em><big>)</big><a class="headerlink" href="#nghttp2_nv_compare_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compares lhs-&gt;name with lhs-&gt;namelen bytes and rhs-&gt;name with
+rhs-&gt;namelen bytes. Returns negative integer if lhs-&gt;name is found
+to be less than rhs-&gt;name; or returns positive integer if lhs-&gt;name
+is found to be greater than rhs-&gt;name; or returns 0 otherwise.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="nghttp2_select_next_protocol">
 int <tt class="descname">nghttp2_select_next_protocol</tt><big>(</big>unsigned char<em>&nbsp;**out</em>, unsigned char<em>&nbsp;*outlen</em>, const unsigned char<em>&nbsp;*in</em>, unsigned int<em>&nbsp;inlen</em><big>)</big><a class="headerlink" href="#nghttp2_select_next_protocol" title="Permalink to this definition">¶</a></dt>
 <dd><p>A helper function for dealing with NPN in client side.  The <em>in</em>
