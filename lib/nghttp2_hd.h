@@ -161,7 +161,7 @@ void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
  *
  * This function expands |*buf_ptr| as necessary to store the
  * result. When expansion occurred, memory previously pointed by
- * |*buf_ptr| is freed.  |*buf_ptr| and |*buflen_ptr| are updated
+ * |*buf_ptr| may change.  |*buf_ptr| and |*buflen_ptr| are updated
  * accordingly.
  *
  * This function returns the number of bytes outputted if it succeeds,
@@ -180,7 +180,7 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
 /*
  * Inflates name/value block stored in |in| with length |inlen|. This
  * function performs decompression. The |*nva_ptr| points to the final
- * result on succesful decompression. The caller must free |*nva_ptr|
+ * result on successful decompression. The caller must free |*nva_ptr|
  * using nghttp2_nv_array_del().
  *
  * This function returns the number of name/value pairs in |*nva_ptr|

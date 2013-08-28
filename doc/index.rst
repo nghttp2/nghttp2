@@ -20,5 +20,5 @@ Contents:
 Resources
 ---------
 
-* http://tools.ietf.org/html/draft-ietf-httpbis-http2-04
-* http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01
+* http://tools.ietf.org/html/draft-ietf-httpbis-http2-06
+* http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03

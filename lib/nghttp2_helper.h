@@ -63,8 +63,8 @@ uint32_t nghttp2_get_uint32(const uint8_t *data);
  * least |min_length| bytes. If |min_length| > |*buflen_ptr|,
  * allocates new buffer having at least |min_length| bytes and assigns
  * its pointer to |*buf_ptr| and allocated number of bytes to
- * |*buflen_ptr|. The memory pointed by |*buf_ptr| previously is
- * freed. No memory copy is done between old and new buffer.
+ * |*buflen_ptr|. The memory pointed by |*buf_ptr| previously may
+ * change. No memory copy is done between old and new buffer.
  * |*buf_ptr| and |*buflen_ptr| are only updated iff this function
  * succeeds.
  *

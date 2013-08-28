@@ -95,8 +95,8 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
  * Packs HEADERS frame |frame| in wire format and store it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
  * This function expands |*buf_ptr| as necessary to store frame. When
- * expansion occurred, memory previously pointed by |*buf_ptr| may be
- * freed.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
+ * expansion occurred, memory previously pointed by |*buf_ptr| may
+ * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
  * frame->hd.length is assigned after length is determined during
  * packing process.
@@ -280,8 +280,8 @@ int nghttp2_frame_unpack_settings_payload(nghttp2_settings_entry **iv_ptr,
  * Packs PUSH_PROMISE frame |frame| in wire format and store it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
  * This function expands |*buf_ptr| as necessary to store frame. When
- * expansion occurred, memory previously pointed by |*buf_ptr| may be
- * freed.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
+ * expansion occurred, memory previously pointed by |*buf_ptr| may
+ * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
  * frame->hd.length is assigned after length is determined during
  * packing process.
@@ -409,8 +409,7 @@ int nghttp2_frame_unpack_goaway(nghttp2_goaway *frame,
  * Packs WINDOW_UPDATE frame |frame| in wire frame format and store it
  * in |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. In SPDY/3 spec, WINDOW_UPDATE wire format is always 16
- * bytes long.
+ * given |frame|.
  *
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
