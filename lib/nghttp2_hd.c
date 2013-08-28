@@ -380,7 +380,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
                              NGHTTP2_HD_FLAG_NAME_ALLOC |
                              NGHTTP2_HD_FLAG_VALUE_ALLOC,
                              nv->name, nv->namelen, nv->value, nv->valuelen);
-  if(rv < 0) {
+  if(rv != 0) {
     return NULL;
   }
   context->hd_table[context->hd_tablelen++] = new_ent;
@@ -467,7 +467,7 @@ static nghttp2_hd_entry* add_hd_table_subst(nghttp2_hd_context *context,
                              NGHTTP2_HD_FLAG_NAME_ALLOC |
                              NGHTTP2_HD_FLAG_VALUE_ALLOC,
                              nv->name, nv->namelen, nv->value, nv->valuelen);
-  if(rv < 0) {
+  if(rv != 0) {
     return NULL;
   }
   context->hd_table[new_ent->index] = new_ent;
@@ -827,7 +827,7 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
     }
     ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
     rv = emit_indexed_block(buf_ptr, buflen_ptr, &offset, ent->index);
-    if(rv < 0) {
+    if(rv != 0) {
       goto fail;
     }
   }
@@ -896,7 +896,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
       if(ent->flags & NGHTTP2_HD_FLAG_REFSET) {
         rv = emit_indexed_header(inflater, &nva_out, ent);
-        if(rv < 0) {
+        if(rv != 0) {
           goto fail;
         }
       }
@@ -1019,7 +1019,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
     if((ent->flags & NGHTTP2_HD_FLAG_REFSET) &&
        (ent->flags & NGHTTP2_HD_FLAG_EMIT) == 0) {
       rv = emit_indexed_header(inflater, &nva_out, ent);
-      if(rv < 0) {
+      if(rv != 0) {
         goto fail;
       }
     }
