@@ -425,7 +425,7 @@ int on_data_recv_callback
   return 0;
 }
 
-void on_data_send_callback
+int on_data_send_callback
 (nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data)
 {
@@ -433,6 +433,7 @@ void on_data_send_callback
   printf(" send ");
   print_data_frame(PRINT_SEND, length, flags, stream_id);
   fflush(stdout);
+  return 0;
 }
 
 int64_t time_delta(const timeval& a, const timeval& b)

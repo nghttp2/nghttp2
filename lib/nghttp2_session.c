@@ -1355,13 +1355,15 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     nghttp2_data *data_frame;
     data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
     if(session->callbacks.on_data_send_callback) {
-      session->callbacks.on_data_send_callback
-        (session,
-         session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH,
-         data_frame->eof ? data_frame->hd.flags :
-         (data_frame->hd.flags & (~NGHTTP2_FLAG_END_STREAM)),
-         data_frame->hd.stream_id,
-         session->user_data);
+      if(session->callbacks.on_data_send_callback
+         (session,
+          session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH,
+          data_frame->eof ? data_frame->hd.flags :
+          (data_frame->hd.flags & (~NGHTTP2_FLAG_END_STREAM)),
+          data_frame->hd.stream_id,
+          session->user_data) != 0) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
     }
     if(data_frame->eof && (data_frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
       nghttp2_stream *stream =

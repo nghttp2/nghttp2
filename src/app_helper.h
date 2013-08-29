@@ -68,7 +68,7 @@ int on_data_recv_callback
 (nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 
-void on_data_send_callback
+int on_data_send_callback
 (nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 

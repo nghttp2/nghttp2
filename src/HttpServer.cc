@@ -778,7 +778,7 @@ int hd_on_data_recv_callback
 } // namespace
 
 namespace {
-void hd_on_data_send_callback
+int hd_on_data_send_callback
 (nghttp2_session *session, uint16_t length,  uint8_t flags, int32_t stream_id,
  void *user_data)
 {
@@ -787,6 +787,7 @@ void hd_on_data_send_callback
     print_session_id(hd->session_id());
     on_data_send_callback(session, length, flags, stream_id, user_data);
   }
+  return 0;
 }
 } // namespace
 
