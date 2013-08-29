@@ -61,7 +61,7 @@ void on_unknown_frame_recv_callback(nghttp2_session *session,
                                    size_t payloadlen,
                                    void *user_data);
 
-void on_frame_send_callback
+int on_frame_send_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 int on_data_recv_callback

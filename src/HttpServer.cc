@@ -739,7 +739,7 @@ void htdocs_on_request_recv_callback
 }
 
 namespace {
-void hd_on_frame_send_callback
+int hd_on_frame_send_callback
 (nghttp2_session *session, nghttp2_frame *frame,
  void *user_data)
 {
@@ -748,6 +748,7 @@ void hd_on_frame_send_callback
     print_session_id(hd->session_id());
     on_frame_send_callback(session, frame, user_data);
   }
+  return 0;
 }
 } // namespace
 

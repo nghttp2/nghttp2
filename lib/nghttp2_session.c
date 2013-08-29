@@ -1259,8 +1259,10 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     nghttp2_frame *frame;
     frame = nghttp2_outbound_item_get_ctrl_frame(session->aob.item);
     if(session->callbacks.on_frame_send_callback) {
-      session->callbacks.on_frame_send_callback(session, frame,
-                                                session->user_data);
+      if(session->callbacks.on_frame_send_callback(session, frame,
+                                                   session->user_data) != 0) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
     }
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS: {

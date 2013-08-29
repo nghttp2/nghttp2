@@ -389,13 +389,14 @@ void on_unknown_frame_recv_callback(nghttp2_session *session,
   fflush(stdout);
 }
 
-void on_frame_send_callback
+int on_frame_send_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   print_timer();
   printf(" send ");
   print_frame(PRINT_SEND, frame);
   fflush(stdout);
+  return 0;
 }
 
 namespace {

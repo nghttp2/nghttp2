@@ -863,8 +863,13 @@ typedef int (*nghttp2_before_frame_send_callback)
  * @functypedef
  *
  * Callback function invoked after the non-DATA frame |frame| is sent.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_frame_send_callback)
+typedef int (*nghttp2_on_frame_send_callback)
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 /**

@@ -978,7 +978,7 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
 }
 } // namespace
 
-void on_frame_send_callback2
+int on_frame_send_callback2
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
@@ -988,6 +988,7 @@ void on_frame_send_callback2
   if(config.verbose) {
     on_frame_send_callback(session, frame, user_data);
   }
+  return 0;
 }
 
 void check_response_header
