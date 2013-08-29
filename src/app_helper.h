@@ -39,7 +39,7 @@ namespace nghttp2 {
 
 void print_nv(char **nv);
 
-void on_frame_recv_callback
+int on_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 void on_invalid_frame_recv_callback

@@ -722,7 +722,7 @@ void on_stream_close_callback
 } // namespace
 
 namespace {
-void on_frame_recv_callback
+int on_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   int rv;
@@ -755,7 +755,7 @@ void on_frame_recv_callback
                                 NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
       call_downstream_readcb(spdy, downstream);
-      return;
+      return 0;
     }
 
     for(size_t i = 0; i < nvlen; ++i) {
@@ -771,7 +771,7 @@ void on_frame_recv_callback
                                 NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
       call_downstream_readcb(spdy, downstream);
-      return;
+      return 0;
     }
     downstream->set_response_http_status
       (strtoul(http2::value_to_str(status).c_str(), nullptr, 10));
@@ -826,7 +826,7 @@ void on_frame_recv_callback
       if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream) != 0) {
         // If resume_read fails, just drop connection. Not ideal.
         delete upstream->get_client_handler();
-        return;
+        return 0;
       }
       downstream->set_request_state(Downstream::HEADER_COMPLETE);
       if(LOG_ENABLED(INFO)) {
@@ -890,6 +890,7 @@ void on_frame_recv_callback
   default:
     break;
   }
+  return 0;
 }
 } // namespace
 

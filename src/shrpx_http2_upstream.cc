@@ -173,7 +173,7 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
 }
 
 namespace {
-void on_frame_recv_callback
+int on_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
@@ -212,7 +212,7 @@ void on_frame_recv_callback
     // Assuming that nva is sorted by name.
     if(!http2::check_http2_headers(nva, nvlen)) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return;
+      return 0;
     }
 
     for(size_t i = 0; i < nvlen; ++i) {
@@ -233,7 +233,7 @@ void on_frame_recv_callback
        http2::value_lws(method) ||
        (!is_connect && (!scheme || http2::value_lws(scheme)))) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return;
+      return 0;
     }
     if(!is_connect &&
        (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
@@ -242,7 +242,7 @@ void on_frame_recv_callback
         // If content-length is missing,
         // Downstream::push_upload_data_chunk will fail and
         upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-        return;
+        return 0;
       }
     }
 
@@ -270,12 +270,12 @@ void on_frame_recv_callback
       // If downstream connection fails, issue RST_STREAM.
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
       downstream->set_request_state(Downstream::CONNECT_FAIL);
-      return;
+      return 0;
     }
     rv = downstream->push_request_headers();
     if(rv != 0) {
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-      return;
+      return 0;
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
@@ -286,6 +286,7 @@ void on_frame_recv_callback
   default:
     break;
   }
+  return 0;
 }
 } // namespace
 

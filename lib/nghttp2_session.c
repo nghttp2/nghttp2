@@ -1567,13 +1567,18 @@ static void nghttp2_session_call_on_request_recv
   }
 }
 
-static void nghttp2_session_call_on_frame_received
+static int nghttp2_session_call_on_frame_received
 (nghttp2_session *session, nghttp2_frame *frame)
 {
+  int rv;
   if(session->callbacks.on_frame_recv_callback) {
-    session->callbacks.on_frame_recv_callback(session, frame,
-                                              session->user_data);
+    rv = session->callbacks.on_frame_recv_callback(session, frame,
+                                                   session->user_data);
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
+  return 0;
 }
 
 /*
@@ -1709,7 +1714,10 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
     if(flags & NGHTTP2_FLAG_END_STREAM) {
       nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     }
-    nghttp2_session_call_on_frame_received(session, frame);
+    r = nghttp2_session_call_on_frame_received(session, frame);
+    if(r != 0) {
+      return r;
+    }
     if(flags & NGHTTP2_FLAG_END_STREAM) {
       nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
     }
@@ -1723,6 +1731,7 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
                                                  nghttp2_frame *frame,
                                                  nghttp2_stream *stream)
 {
+  int rv;
   /* This function is only called if stream->state ==
      NGHTTP2_STREAM_OPENING and stream_id is local side initiated. */
   assert(stream->state == NGHTTP2_STREAM_OPENING &&
@@ -1738,7 +1747,10 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
   }
   if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
     stream->state = NGHTTP2_STREAM_OPENED;
-    nghttp2_session_call_on_frame_received(session, frame);
+    rv = nghttp2_session_call_on_frame_received(session, frame);
+    if(rv != 0) {
+      return rv;
+    }
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       /* This is the last frame of this stream, so disallow
          further receptions. */
@@ -1783,8 +1795,7 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
   }
   nghttp2_stream_promise_fulfilled(stream);
   ++session->num_incoming_streams;
-  nghttp2_session_call_on_frame_received(session, frame);
-  return 0;
+  return nghttp2_session_call_on_frame_received(session, frame);
 }
 
 int nghttp2_session_on_headers_received(nghttp2_session *session,
@@ -1807,7 +1818,10 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
     if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
       if(stream->state == NGHTTP2_STREAM_OPENED) {
         valid = 1;
-        nghttp2_session_call_on_frame_received(session, frame);
+        r = nghttp2_session_call_on_frame_received(session, frame);
+        if(r != 0) {
+          return r;
+        }
         if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
           nghttp2_session_close_stream_if_shut_rdwr(session, stream);
@@ -1825,7 +1839,10 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
          condition. */
       valid = 1;
       if(stream->state != NGHTTP2_STREAM_CLOSING) {
-        nghttp2_session_call_on_frame_received(session, frame);
+        r = nghttp2_session_call_on_frame_received(session, frame);
+        if(r != 0) {
+          return r;
+        }
         if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
@@ -1858,6 +1875,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
 int nghttp2_session_on_priority_received(nghttp2_session *session,
                                          nghttp2_frame *frame)
 {
+  int rv;
   nghttp2_stream *stream;
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
@@ -1870,7 +1888,10 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
       nghttp2_session_reprioritize_stream(session, stream,
                                           frame->priority.pri);
     }
-    nghttp2_session_call_on_frame_received(session, frame);
+    rv = nghttp2_session_call_on_frame_received(session, frame);
+    if(rv != 0) {
+      return rv;
+    }
   }
   return 0;
 }
@@ -1878,11 +1899,15 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame)
 {
+  int rv;
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
-  nghttp2_session_call_on_frame_received(session, frame);
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(rv != 0) {
+    return rv;
+  }
   nghttp2_session_close_stream(session, frame->hd.stream_id,
                                frame->rst_stream.error_code);
   return 0;
@@ -2167,13 +2192,13 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     }
     session->remote_settings[entry->settings_id] = entry->value;
   }
-  nghttp2_session_call_on_frame_received(session, frame);
-  return 0;
+  return nghttp2_session_call_on_frame_received(session, frame);
 }
 
 int nghttp2_session_on_push_promise_received(nghttp2_session *session,
                                              nghttp2_frame *frame)
 {
+  int rv;
   nghttp2_stream *stream;
   if(session->server || frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
@@ -2222,7 +2247,10 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
         if(!promised_stream) {
           return NGHTTP2_ERR_NOMEM;
         }
-        nghttp2_session_call_on_frame_received(session, frame);
+        rv = nghttp2_session_call_on_frame_received(session, frame);
+        if(rv != 0) {
+          return rv;
+        }
       }
     } else {
       if(session->callbacks.on_invalid_frame_recv_callback) {
@@ -2255,9 +2283,11 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
     /* Peer sent ping, so ping it back */
     r = nghttp2_session_add_ping(session, NGHTTP2_FLAG_PONG,
                                  frame->ping.opaque_data);
+    if(r != 0) {
+      return r;
+    }
   }
-  nghttp2_session_call_on_frame_received(session, frame);
-  return r;
+  return nghttp2_session_call_on_frame_received(session, frame);
 }
 
 int nghttp2_session_on_goaway_received(nghttp2_session *session,
@@ -2265,8 +2295,7 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
 {
   session->last_stream_id = frame->goaway.last_stream_id;
   session->goaway_flags |= NGHTTP2_GOAWAY_RECV;
-  nghttp2_session_call_on_frame_received(session, frame);
-  return 0;
+  return nghttp2_session_call_on_frame_received(session, frame);
 }
 
 static int nghttp2_push_back_deferred_data_func(nghttp2_map_entry *entry,
@@ -2307,6 +2336,7 @@ static int nghttp2_session_push_back_deferred_data(nghttp2_session *session)
 int nghttp2_session_on_window_update_received(nghttp2_session *session,
                                               nghttp2_frame *frame)
 {
+  int rv;
   if(frame->hd.stream_id == 0) {
     /* Handle connection-level flow control */
     if(session->remote_flow_control == 0) {
@@ -2314,8 +2344,7 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
          WINDOW_UPDATE are asynchronous, so it is hard to determine
          that the peer is misbehaving or not without measuring
          RTT. For now, we just ignore such frames. */
-      nghttp2_session_call_on_frame_received(session, frame);
-      return 0;
+      return nghttp2_session_call_on_frame_received(session, frame);
     }
     if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
        session->remote_window_size) {
@@ -2323,7 +2352,10 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
         (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
     }
     session->remote_window_size += frame->window_update.window_size_increment;
-    nghttp2_session_call_on_frame_received(session, frame);
+    rv = nghttp2_session_call_on_frame_received(session, frame);
+    if(rv != 0) {
+      return rv;
+    }
     /* To queue the DATA deferred by connection-level flow-control, we
        have to check all streams. Bad. */
     if(session->remote_window_size > 0) {
@@ -2341,8 +2373,7 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
       }
       if(stream->remote_flow_control == 0) {
         /* Same reason with connection-level flow control */
-        nghttp2_session_call_on_frame_received(session, frame);
-        return 0;
+        return nghttp2_session_call_on_frame_received(session, frame);
       }
       if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
          stream->remote_window_size) {
@@ -2368,7 +2399,7 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
             return r;
           }
         }
-        nghttp2_session_call_on_frame_received(session, frame);
+        return nghttp2_session_call_on_frame_received(session, frame);
       }
     }
   }

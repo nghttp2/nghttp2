@@ -779,8 +779,13 @@ typedef ssize_t (*nghttp2_recv_callback)
  *
  * Callback function invoked by `nghttp2_session_recv()` when a
  * non-DATA frame is received.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_frame_recv_callback)
+typedef int (*nghttp2_on_frame_recv_callback)
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 /**

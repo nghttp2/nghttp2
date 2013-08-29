@@ -685,7 +685,7 @@ const char *REQUIRED_HEADERS[] = {
 } // namespace
 
 namespace {
-void hd_on_frame_recv_callback
+int hd_on_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
@@ -701,7 +701,7 @@ void hd_on_frame_recv_callback
       if(!http2::check_http2_headers(frame->headers.nva,
                                      frame->headers.nvlen)) {
         nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-        return;
+        return 0;
       }
       for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
         if(!http2::get_unique_header(frame->headers.nva,
@@ -709,7 +709,7 @@ void hd_on_frame_recv_callback
                                      REQUIRED_HEADERS[i])) {
           nghttp2_submit_rst_stream(session, stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
-          return;
+          return 0;
         }
       }
       auto req = util::make_unique<Request>(stream_id);
@@ -724,6 +724,7 @@ void hd_on_frame_recv_callback
   default:
     break;
   }
+  return 0;
 }
 } // namespace
 

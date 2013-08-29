@@ -1024,7 +1024,7 @@ void check_response_header
   }
 }
 
-void on_frame_recv_callback2
+int on_frame_recv_callback2
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
@@ -1041,6 +1041,7 @@ void on_frame_recv_callback2
   if(config.verbose) {
     on_frame_recv_callback(session, frame, user_data);
   }
+  return 0;
 }
 
 void on_stream_close_callback
