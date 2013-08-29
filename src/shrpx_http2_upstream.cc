@@ -291,17 +291,17 @@ int on_frame_recv_callback
 } // namespace
 
 namespace {
-void on_data_chunk_recv_callback(nghttp2_session *session,
-                                 uint8_t flags, int32_t stream_id,
-                                 const uint8_t *data, size_t len,
-                                 void *user_data)
+int on_data_chunk_recv_callback(nghttp2_session *session,
+                                uint8_t flags, int32_t stream_id,
+                                const uint8_t *data, size_t len,
+                                void *user_data)
 {
   Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
   Downstream *downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->push_upload_data_chunk(data, len) != 0) {
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-      return;
+      return 0;
     }
     if(upstream->get_flow_control()) {
       downstream->inc_recv_window_size(len);
@@ -319,13 +319,14 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
                                << upstream->get_initial_window_size();
         }
         upstream->rst_stream(downstream, NGHTTP2_FLOW_CONTROL_ERROR);
-        return;
+        return 0;
       }
     }
     if(flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
   }
+  return 0;
 }
 } // namespace
 

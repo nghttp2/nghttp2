@@ -165,13 +165,14 @@ static void on_frame_not_send_callback(nghttp2_session *session,
   ud->not_sent_error = lib_error;
 }
 
-static void on_data_chunk_recv_callback(nghttp2_session *session,
-                                        uint8_t flags, int32_t stream_id,
-                                        const uint8_t *data, size_t len,
-                                        void *user_data)
+static int on_data_chunk_recv_callback(nghttp2_session *session,
+                                       uint8_t flags, int32_t stream_id,
+                                       const uint8_t *data, size_t len,
+                                       void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->data_chunk_recv_cb_called;
+  return 0;
 }
 
 static void on_data_recv_callback(nghttp2_session *session,

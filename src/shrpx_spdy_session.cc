@@ -895,10 +895,10 @@ int on_frame_recv_callback
 } // namespace
 
 namespace {
-void on_data_chunk_recv_callback(nghttp2_session *session,
-                                 uint8_t flags, int32_t stream_id,
-                                 const uint8_t *data, size_t len,
-                                 void *user_data)
+int on_data_chunk_recv_callback(nghttp2_session *session,
+                                uint8_t flags, int32_t stream_id,
+                                const uint8_t *data, size_t len,
+                                void *user_data)
 {
   int rv;
   auto spdy = reinterpret_cast<SpdySession*>(user_data);
@@ -906,12 +906,12 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
     nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
-    return;
+    return 0;
   }
   auto downstream = sd->dconn->get_downstream();
   if(!downstream || downstream->get_downstream_stream_id() != stream_id) {
     nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
-    return;
+    return 0;
   }
 
   if(spdy->get_flow_control()) {
@@ -929,7 +929,7 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
                                 NGHTTP2_FLOW_CONTROL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
       call_downstream_readcb(spdy, downstream);
-      return;
+      return 0;
     }
   }
 
@@ -940,6 +940,7 @@ void on_data_chunk_recv_callback(nghttp2_session *session,
     downstream->set_response_state(Downstream::MSG_RESET);
   }
   call_downstream_readcb(spdy, downstream);
+  return 0;
 }
 } // namespace
 

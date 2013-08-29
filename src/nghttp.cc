@@ -930,7 +930,7 @@ HttpClient* get_session(void *user_data)
   return reinterpret_cast<HttpClient*>(user_data);
 }
 
-void on_data_chunk_recv_callback
+int on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
@@ -963,6 +963,7 @@ void on_data_chunk_recv_callback
       update_html_parser(client, req, data, len, 0);
     }
   }
+  return 0;
 }
 
 namespace {

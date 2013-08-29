@@ -752,11 +752,12 @@ void hd_on_frame_send_callback
 } // namespace
 
 namespace {
-void on_data_chunk_recv_callback
+int on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
   // TODO Handle POST
+  return 0;
 }
 } // namespace
 

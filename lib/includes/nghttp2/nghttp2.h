@@ -816,8 +816,13 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)
  * necessarily mean this chunk of data is the last one in the
  * stream. You should use :type:`nghttp2_on_data_recv_callback` to
  * know all data frames are received.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_data_chunk_recv_callback)
+typedef int (*nghttp2_on_data_chunk_recv_callback)
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data);
 

@@ -2908,12 +2908,15 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         data_flags = session->iframe.headbuf[3];
         if(session->iframe.state != NGHTTP2_RECV_PAYLOAD_IGN) {
           if(session->callbacks.on_data_chunk_recv_callback) {
-            session->callbacks.on_data_chunk_recv_callback(session,
-                                                           data_flags,
-                                                           data_stream_id,
-                                                           inmark,
-                                                           readlen,
-                                                           session->user_data);
+            if(session->callbacks.on_data_chunk_recv_callback
+               (session,
+                data_flags,
+                data_stream_id,
+                inmark,
+                readlen,
+                session->user_data) != 0) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
           }
         }
         /* TODO We need on_ignored_data_chunk_recv_callback, for
