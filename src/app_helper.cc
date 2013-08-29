@@ -357,7 +357,7 @@ void dump_header(const uint8_t *head, size_t headlen)
 }
 } // namespace
 
-void on_frame_recv_parse_error_callback(nghttp2_session *session,
+int on_frame_recv_parse_error_callback(nghttp2_session *session,
                                        nghttp2_frame_type type,
                                        const uint8_t *head,
                                        size_t headlen,
@@ -374,6 +374,7 @@ void on_frame_recv_parse_error_callback(nghttp2_session *session,
   printf("Error: %s\n", nghttp2_strerror(error_code));
   dump_header(head, headlen);
   fflush(stdout);
+  return 0;
 }
 
 void on_unknown_frame_recv_callback(nghttp2_session *session,

@@ -1681,15 +1681,17 @@ static int nghttp2_session_handle_parse_error(nghttp2_session *session,
                                               nghttp2_error_code error_code)
 {
   if(session->callbacks.on_frame_recv_parse_error_callback) {
-    session->callbacks.on_frame_recv_parse_error_callback
-      (session,
-       type,
-       session->iframe.headbuf,
-       sizeof(session->iframe.headbuf),
-       session->iframe.buf,
-       session->iframe.buflen,
-       lib_error_code,
-       session->user_data);
+    if(session->callbacks.on_frame_recv_parse_error_callback
+       (session,
+        type,
+        session->iframe.headbuf,
+        sizeof(session->iframe.headbuf),
+        session->iframe.buf,
+        session->iframe.buflen,
+        lib_error_code,
+        session->user_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
   return nghttp2_session_fail_session(session, error_code);
 }

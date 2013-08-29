@@ -354,12 +354,12 @@ int on_frame_not_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_frame_recv_parse_error_callback(nghttp2_session *session,
-                                        nghttp2_frame_type type,
-                                        const uint8_t *head, size_t headlen,
-                                        const uint8_t *payload,
-                                        size_t payloadlen, int lib_error_code,
-                                        void *user_data)
+int on_frame_recv_parse_error_callback(nghttp2_session *session,
+                                       nghttp2_frame_type type,
+                                       const uint8_t *head, size_t headlen,
+                                       const uint8_t *payload,
+                                       size_t payloadlen, int lib_error_code,
+                                       void *user_data)
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
@@ -368,6 +368,7 @@ void on_frame_recv_parse_error_callback(nghttp2_session *session,
                          << ", error_code=" << lib_error_code << ":"
                          << nghttp2_strerror(lib_error_code);
   }
+  return 0;
 }
 } // namespace
 

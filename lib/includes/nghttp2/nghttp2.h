@@ -950,8 +950,13 @@ typedef int (*nghttp2_on_request_recv_callback)
  * The |payloadlen| is the length of the |payload|. This is the data
  * after the length field. The |lib_error_code| is one of the error code
  * defined in :enum:`nghttp2_error` and indicates the error.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_frame_recv_parse_error_callback)
+typedef int (*nghttp2_on_frame_recv_parse_error_callback)
 (nghttp2_session *session, nghttp2_frame_type type,
  const uint8_t *head, size_t headlen,
  const uint8_t *payload, size_t payloadlen,
