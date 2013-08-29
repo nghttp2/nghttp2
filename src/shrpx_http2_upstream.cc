@@ -331,9 +331,9 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_frame_not_send_callback(nghttp2_session *session,
-                                nghttp2_frame *frame,
-                                int lib_error_code, void *user_data)
+int on_frame_not_send_callback(nghttp2_session *session,
+                               nghttp2_frame *frame,
+                               int lib_error_code, void *user_data)
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   ULOG(WARNING, upstream) << "Failed to send control frame type="
@@ -348,6 +348,7 @@ void on_frame_not_send_callback(nghttp2_session *session,
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }
   }
+  return 0;
 }
 } // namespace
 

@@ -879,8 +879,13 @@ typedef int (*nghttp2_on_frame_send_callback)
  * sent because of the error. The error is indicated by the
  * |lib_error_code|, which is one of the values defined in
  * :type:`nghttp2_error`.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_frame_not_send_callback)
+typedef int (*nghttp2_on_frame_not_send_callback)
 (nghttp2_session *session, nghttp2_frame *frame, int lib_error_code,
  void *user_data);
 

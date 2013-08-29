@@ -970,7 +970,7 @@ int before_frame_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_frame_not_send_callback(nghttp2_session *session,
+int on_frame_not_send_callback(nghttp2_session *session,
                                 nghttp2_frame *frame,
                                 int lib_error_code, void *user_data)
 {
@@ -986,19 +986,20 @@ void on_frame_not_send_callback(nghttp2_session *session,
     auto sd = reinterpret_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd) {
-      return;
+      return 0;
     }
     if(sd->dconn) {
       auto downstream = sd->dconn->get_downstream();
       if(!downstream ||
          downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-        return;
+        return 0;
       }
       downstream->set_response_state(Downstream::MSG_RESET);
       call_downstream_readcb(spdy, downstream);
     }
     spdy->remove_stream_data(sd);
   }
+  return 0;
 }
 } // namespace
 

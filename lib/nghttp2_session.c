@@ -1474,8 +1474,10 @@ int nghttp2_session_send(nghttp2_session *session)
              it. */
           nghttp2_frame *frame = nghttp2_outbound_item_get_ctrl_frame(item);
           if(frame->hd.type != NGHTTP2_WINDOW_UPDATE) {
-            session->callbacks.on_frame_not_send_callback
-              (session, frame, framebuflen, session->user_data);
+            if(session->callbacks.on_frame_not_send_callback
+               (session, frame, framebuflen, session->user_data) != 0) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
           }
         }
         nghttp2_outbound_item_free(item);

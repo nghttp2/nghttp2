@@ -155,15 +155,16 @@ static int on_frame_send_callback(nghttp2_session *session,
   return 0;
 }
 
-static void on_frame_not_send_callback(nghttp2_session *session,
-                                       nghttp2_frame *frame,
-                                       int lib_error,
-                                       void *user_data)
+static int on_frame_not_send_callback(nghttp2_session *session,
+                                      nghttp2_frame *frame,
+                                      int lib_error,
+                                      void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->frame_not_send_cb_called;
   ud->not_sent_frame_type = frame->hd.type;
   ud->not_sent_error = lib_error;
+  return 0;
 }
 
 static int on_data_chunk_recv_callback(nghttp2_session *session,
