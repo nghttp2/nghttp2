@@ -175,12 +175,13 @@ static int on_data_chunk_recv_callback(nghttp2_session *session,
   return 0;
 }
 
-static void on_data_recv_callback(nghttp2_session *session,
-                                  uint16_t length, uint8_t flags,
-                                  int32_t stream_id, void *user_data)
+static int on_data_recv_callback(nghttp2_session *session,
+                                 uint16_t length, uint8_t flags,
+                                 int32_t stream_id, void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->data_recv_cb_called;
+  return 0;
 }
 
 static ssize_t fixed_length_data_source_read_callback

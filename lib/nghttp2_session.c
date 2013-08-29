@@ -2626,8 +2626,10 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
         if(stream->state == NGHTTP2_STREAM_OPENED) {
           valid = 1;
           if(session->callbacks.on_data_recv_callback) {
-            session->callbacks.on_data_recv_callback
-              (session, length, flags, stream_id, session->user_data);
+            if(session->callbacks.on_data_recv_callback
+               (session, length, flags, stream_id, session->user_data) != 0) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
           }
         } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
           error_code = NGHTTP2_PROTOCOL_ERROR;
@@ -2641,8 +2643,10 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
            NGHTTP2_STREAM_CLOSING state. This is a race condition. */
         valid = 1;
         if(session->callbacks.on_data_recv_callback) {
-          session->callbacks.on_data_recv_callback
-            (session, length, flags, stream_id, session->user_data);
+          if(session->callbacks.on_data_recv_callback
+             (session, length, flags, stream_id, session->user_data) != 0) {
+            return NGHTTP2_ERR_CALLBACK_FAILURE;
+          }
         }
         if(flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_session_call_on_request_recv(session, stream_id);

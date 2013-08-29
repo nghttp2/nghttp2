@@ -832,8 +832,13 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)
  * Callback function invoked when DATA frame is received. The actual
  * data it contains are received by
  * :type:`nghttp2_on_data_chunk_recv_callback`.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_data_recv_callback)
+typedef int (*nghttp2_on_data_recv_callback)
 (nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 
