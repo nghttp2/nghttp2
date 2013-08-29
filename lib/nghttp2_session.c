@@ -1496,10 +1496,12 @@ int nghttp2_session_send(nghttp2_session *session)
       /* Call before_send callback */
       if(item->frame_cat == NGHTTP2_CAT_CTRL &&
          session->callbacks.before_frame_send_callback) {
-        session->callbacks.before_frame_send_callback
-          (session,
-           nghttp2_outbound_item_get_ctrl_frame(item),
-           session->user_data);
+        if(session->callbacks.before_frame_send_callback
+           (session,
+            nghttp2_outbound_item_get_ctrl_frame(item),
+            session->user_data) != 0) {
+          return NGHTTP2_ERR_CALLBACK_FAILURE;
+        }
       }
     }
     data = session->aob.framebuf + session->aob.framebufoff;

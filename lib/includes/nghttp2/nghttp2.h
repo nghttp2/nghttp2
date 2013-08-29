@@ -850,8 +850,13 @@ typedef int (*nghttp2_on_data_recv_callback)
  * HEADERS and PUSH_PROMISE frame (see also
  * `nghttp2_session_get_stream_user_data()`), which is not assigned
  * when it was queued.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_before_frame_send_callback)
+typedef int (*nghttp2_before_frame_send_callback)
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
 /**

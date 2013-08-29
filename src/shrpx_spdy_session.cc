@@ -945,9 +945,9 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void before_frame_send_callback(nghttp2_session *session,
-                                nghttp2_frame *frame,
-                                void *user_data)
+int before_frame_send_callback(nghttp2_session *session,
+                               nghttp2_frame *frame,
+                               void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
@@ -956,7 +956,7 @@ void before_frame_send_callback(nghttp2_session *session,
     if(!sd || !sd->dconn) {
       nghttp2_submit_rst_stream(session, frame->hd.stream_id,
                                 NGHTTP2_CANCEL);
-      return;
+      return 0;
     }
     auto downstream = sd->dconn->get_downstream();
     if(downstream) {
@@ -965,6 +965,7 @@ void before_frame_send_callback(nghttp2_session *session,
       nghttp2_submit_rst_stream(session, frame->hd.stream_id, NGHTTP2_CANCEL);
     }
   }
+  return 0;
 }
 } // namespace
 
