@@ -1024,15 +1024,16 @@ int on_frame_recv_parse_error_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_unknown_frame_recv_callback(nghttp2_session *session,
-                                    const uint8_t *head, size_t headlen,
-                                    const uint8_t *payload, size_t payloadlen,
-                                    void *user_data)
+int on_unknown_frame_recv_callback(nghttp2_session *session,
+                                   const uint8_t *head, size_t headlen,
+                                   const uint8_t *payload, size_t payloadlen,
+                                   void *user_data)
 {
   auto spdy = reinterpret_cast<SpdySession*>(user_data);
   if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, spdy) << "Received unknown control frame";
   }
+  return 0;
 }
 } // namespace
 

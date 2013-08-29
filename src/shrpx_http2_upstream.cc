@@ -373,15 +373,16 @@ int on_frame_recv_parse_error_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_unknown_frame_recv_callback(nghttp2_session *session,
-                                    const uint8_t *head, size_t headlen,
-                                    const uint8_t *payload, size_t payloadlen,
-                                    void *user_data)
+int on_unknown_frame_recv_callback(nghttp2_session *session,
+                                   const uint8_t *head, size_t headlen,
+                                   const uint8_t *payload, size_t payloadlen,
+                                   void *user_data)
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Received unknown control frame.";
   }
+  return 0;
 }
 } // namespace
 

@@ -2669,13 +2669,15 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
   default:
     /* Unknown frame */
     if(session->callbacks.on_unknown_frame_recv_callback) {
-      session->callbacks.on_unknown_frame_recv_callback
-        (session,
-         session->iframe.headbuf,
-         sizeof(session->iframe.headbuf),
-         session->iframe.buf,
-         session->iframe.buflen,
-         session->user_data);
+      if(session->callbacks.on_unknown_frame_recv_callback
+         (session,
+          session->iframe.headbuf,
+          sizeof(session->iframe.headbuf),
+          session->iframe.buf,
+          session->iframe.buflen,
+          session->user_data) != 0) {
+        r = NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
     }
   }
   if(nghttp2_is_fatal(r)) {

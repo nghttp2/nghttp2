@@ -377,7 +377,7 @@ int on_frame_recv_parse_error_callback(nghttp2_session *session,
   return 0;
 }
 
-void on_unknown_frame_recv_callback(nghttp2_session *session,
+int on_unknown_frame_recv_callback(nghttp2_session *session,
                                    const uint8_t *head,
                                    size_t headlen,
                                    const uint8_t *payload,
@@ -388,6 +388,7 @@ void on_unknown_frame_recv_callback(nghttp2_session *session,
   printf(" recv unknown frame\n");
   dump_header(head, headlen);
   fflush(stdout);
+  return 0;
 }
 
 int on_frame_send_callback

@@ -972,8 +972,13 @@ typedef int (*nghttp2_on_frame_recv_parse_error_callback)
  * first 8 bytes of the received frame.  The |payload| is the pointer
  * to the data portion of the received frame.  The |payloadlen| is the
  * length of the |payload|. This is the data after the length field.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_unknown_frame_recv_callback)
+typedef int (*nghttp2_on_unknown_frame_recv_callback)
 (nghttp2_session *session,
  const uint8_t *head, size_t headlen,
  const uint8_t *payload, size_t payloadlen,
