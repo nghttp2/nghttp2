@@ -134,7 +134,7 @@ private:
   const Config *config_;
 };
 
-void htdocs_on_request_recv_callback
+int htdocs_on_request_recv_callback
 (nghttp2_session *session, int32_t stream_id, void *user_data);
 
 ssize_t file_read_callback

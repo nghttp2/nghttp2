@@ -928,8 +928,13 @@ typedef int (*nghttp2_on_stream_close_callback)
  * received.  In other words, the frame with END_STREAM flag set is
  * received.  In HTTP, this means HTTP request, including request
  * body, is fully received.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_request_recv_callback)
+typedef int (*nghttp2_on_request_recv_callback)
 (nghttp2_session *session, int32_t stream_id, void *user_data);
 
 /**

@@ -1611,13 +1611,16 @@ static ssize_t nghttp2_recv(nghttp2_session *session, uint8_t *buf, size_t len)
   return r;
 }
 
-static void nghttp2_session_call_on_request_recv
+static int nghttp2_session_call_on_request_recv
 (nghttp2_session *session, int32_t stream_id)
 {
   if(session->callbacks.on_request_recv_callback) {
-    session->callbacks.on_request_recv_callback(session, stream_id,
-                                                session->user_data);
+    if(session->callbacks.on_request_recv_callback(session, stream_id,
+                                                   session->user_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
+  return 0;
 }
 
 static int nghttp2_session_call_on_frame_received
@@ -1776,7 +1779,10 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
       return r;
     }
     if(flags & NGHTTP2_FLAG_END_STREAM) {
-      nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
+      r = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
+      if(r != 0) {
+        return r;
+      }
     }
   } else {
     r = nghttp2_session_handle_invalid_stream(session, frame, error_code);
@@ -1909,7 +1915,11 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
           return r;
         }
         if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-          nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
+          r = nghttp2_session_call_on_request_recv(session,
+                                                   frame->hd.stream_id);
+          if(r != 0) {
+            return r;
+          }
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
           r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
           if(r != 0 && nghttp2_is_fatal(r)) {
@@ -2717,7 +2727,10 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
           }
         }
         if(flags & NGHTTP2_FLAG_END_STREAM) {
-          nghttp2_session_call_on_request_recv(session, stream_id);
+          r = nghttp2_session_call_on_request_recv(session, stream_id);
+          if(r != 0) {
+            return r;
+          }
         }
       }
       if(valid) {

@@ -221,12 +221,13 @@ static ssize_t fail_data_source_read_callback
   return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
-static void on_request_recv_callback(nghttp2_session *session,
-                                     int32_t stream_id,
-                                     void *user_data)
+static int on_request_recv_callback(nghttp2_session *session,
+                                    int32_t stream_id,
+                                    void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
   ud->stream_id = stream_id;
+  return 0;
 }
 
 /* static void no_stream_user_data_stream_close_callback */

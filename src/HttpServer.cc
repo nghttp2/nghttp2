@@ -728,7 +728,7 @@ int hd_on_frame_recv_callback
 }
 } // namespace
 
-void htdocs_on_request_recv_callback
+int htdocs_on_request_recv_callback
 (nghttp2_session *session, int32_t stream_id, void *user_data)
 {
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
@@ -736,6 +736,7 @@ void htdocs_on_request_recv_callback
   if(stream) {
     prepare_response(hd->get_stream(stream_id), hd);
   }
+  return 0;
 }
 
 namespace {
