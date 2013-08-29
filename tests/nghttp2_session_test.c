@@ -263,14 +263,15 @@ static ssize_t defer_data_source_read_callback
   return NGHTTP2_ERR_DEFERRED;
 }
 
-static void stream_close_callback(nghttp2_session *session, int32_t stream_id,
-                                  nghttp2_error_code error_code,
-                                  void *user_data)
+static int stream_close_callback(nghttp2_session *session, int32_t stream_id,
+                                 nghttp2_error_code error_code,
+                                 void *user_data)
 {
   my_user_data* my_data = (my_user_data*)user_data;
   void *stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
   ++my_data->stream_close_cb_called;
   CU_ASSERT(stream_data != NULL);
+  return 0;
 }
 
 static nghttp2_settings_entry* dup_iv(const nghttp2_settings_entry *iv,

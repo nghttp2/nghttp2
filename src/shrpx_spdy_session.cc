@@ -681,7 +681,7 @@ ssize_t recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_stream_close_callback
+int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
@@ -696,7 +696,7 @@ void on_stream_close_callback
   if(sd == 0) {
     // We might get this close callback when pushed streams are
     // closed.
-    return;
+    return 0;
   }
   auto dconn = sd->dconn;
   if(dconn) {
@@ -718,6 +718,7 @@ void on_stream_close_callback
   }
   // The life time of StreamData ends here
   spdy->remove_stream_data(sd);
+  return 0;
 }
 } // namespace
 

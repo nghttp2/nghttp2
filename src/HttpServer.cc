@@ -792,7 +792,7 @@ int hd_on_data_send_callback
 } // namespace
 
 namespace {
-void on_stream_close_callback
+int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
@@ -804,6 +804,7 @@ void on_stream_close_callback
     printf(" stream_id=%d closed\n", stream_id);
     fflush(stdout);
   }
+  return 0;
 }
 } // namespace
 

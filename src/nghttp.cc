@@ -1046,7 +1046,7 @@ int on_frame_recv_callback2
   return 0;
 }
 
-void on_stream_close_callback
+int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
@@ -1060,6 +1060,7 @@ void on_stream_close_callback
       nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0);
     }
   }
+  return 0;
 }
 
 void print_stats(const HttpClient& client)

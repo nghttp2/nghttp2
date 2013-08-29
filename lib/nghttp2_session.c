@@ -524,6 +524,18 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   return stream;
 }
 
+/*
+ * Closes stream with stream ID |stream_id|. The |error_code|
+ * indicates the reason of the closure.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *   The stream is not found.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
+ */
 int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
                                  nghttp2_error_code error_code)
 {
@@ -534,9 +546,12 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
        /* TODO Should on_stream_close_callback be called against
           NGHTTP2_STREAM_RESERVED? It is actually not opened yet. */
        session->callbacks.on_stream_close_callback) {
-      session->callbacks.on_stream_close_callback(session, stream_id,
-                                                  error_code,
-                                                  session->user_data);
+      if(session->callbacks.on_stream_close_callback
+         (session, stream_id,
+          error_code,
+          session->user_data) != 0) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
     }
     if(stream->state != NGHTTP2_STREAM_RESERVED) {
       if(nghttp2_session_is_my_stream_id(session, stream_id)) {
@@ -554,6 +569,19 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
   }
 }
 
+/*
+ * Closes stream with stream ID |stream_id| if both transmission and
+ * reception of the stream were disallowed. The |error_code| indicates
+ * the reason of the closure.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *   The stream is not found.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
+ */
 int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
                                               nghttp2_stream *stream)
 {
@@ -1256,6 +1284,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
 {
   nghttp2_outbound_item *item = session->aob.item;
   if(item->frame_cat == NGHTTP2_CAT_CTRL) {
+    int r;
     nghttp2_frame *frame;
     frame = nghttp2_outbound_item_get_ctrl_frame(session->aob.item);
     if(session->callbacks.on_frame_send_callback) {
@@ -1276,21 +1305,23 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
             nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
           }
-          nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          if(r != 0 && nghttp2_is_fatal(r)) {
+            return r;
+          }
+          r = 0;
           /* We assume aux_data is a pointer to nghttp2_headers_aux_data */
           aux_data = (nghttp2_headers_aux_data*)item->aux_data;
           if(aux_data && aux_data->data_prd) {
-            int r;
             /* nghttp2_submit_data() makes a copy of aux_data->data_prd */
             r = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
                                     frame->hd.stream_id, aux_data->data_prd);
-            if(r != 0) {
-              if(nghttp2_is_fatal(r)) {
-                return r;
-              }
-              /* If r is not fatal, the only possible error is closed
-                 stream, so we have nothing to do here. */
+            if(r != 0 &&nghttp2_is_fatal(r)) {
+              return r;
             }
+            /* If r is not fatal, the only possible error is closed
+               stream, so we have nothing to do here. */
+            r = 0;
           }
           break;
         }
@@ -1300,27 +1331,33 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
             nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
           }
-          nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          if(r != 0 && nghttp2_is_fatal(r)) {
+            return r;
+          }
+          r = 0;
           /* We assume aux_data is a pointer to nghttp2_headers_aux_data */
           aux_data = (nghttp2_headers_aux_data*)item->aux_data;
           if(aux_data && aux_data->data_prd) {
-            int r;
             r = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
                                     frame->hd.stream_id, aux_data->data_prd);
-            if(r != 0) {
-              if(nghttp2_is_fatal(r)) {
-                return r;
-              }
-              /* If r is not fatal, the only possible error is closed
-                 stream, so we have nothing to do here. */
+            if(r != 0 && nghttp2_is_fatal(r)) {
+              return r;
             }
+            /* If r is not fatal, the only possible error is closed
+               stream, so we have nothing to do here. */
+            r = 0;
           }
           break;
         case NGHTTP2_HCAT_HEADERS:
           if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
             nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
           }
-          nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          if(r != 0 && nghttp2_is_fatal(r)) {
+            return r;
+          }
+          r = 0;
           break;
         }
       }
@@ -1330,8 +1367,12 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       /* nothing to do */
       break;
     case NGHTTP2_RST_STREAM:
-      nghttp2_session_close_stream(session, frame->hd.stream_id,
-                                   frame->rst_stream.error_code);
+      r = nghttp2_session_close_stream(session, frame->hd.stream_id,
+                                       frame->rst_stream.error_code);
+      if(r != 0 && nghttp2_is_fatal(r)) {
+        return r;
+      }
+      r = 0;
       break;
     case NGHTTP2_SETTINGS:
       /* nothing to do */
@@ -1370,7 +1411,11 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         nghttp2_session_get_stream(session, data_frame->hd.stream_id);
       if(stream) {
         nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
-        nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+        r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+        if(r != 0 && nghttp2_is_fatal(r)) {
+          return r;
+        }
+        r = 0;
       }
     }
     /* If session is closed or RST_STREAM was queued, we won't send
@@ -1767,7 +1812,11 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
       /* This is the last frame of this stream, so disallow
          further receptions. */
       nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-      nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+      rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+      if(rv != 0 && nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+      rv = 0;
     }
   } else {
     /* half closed (remote): from the spec:
@@ -1836,7 +1885,11 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
         }
         if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-          nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          if(r != 0 && nghttp2_is_fatal(r)) {
+            return r;
+          }
+          r = 0;
         }
       } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
         /* This is race condition. NGHTTP2_STREAM_CLOSING indicates
@@ -1858,7 +1911,11 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
         if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-          nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          if(r != 0 && nghttp2_is_fatal(r)) {
+            return r;
+          }
+          r = 0;
         }
       }
     }
@@ -1920,8 +1977,11 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
   if(rv != 0) {
     return rv;
   }
-  nghttp2_session_close_stream(session, frame->hd.stream_id,
-                               frame->rst_stream.error_code);
+  rv = nghttp2_session_close_stream(session, frame->hd.stream_id,
+                                    frame->rst_stream.error_code);
+  if(rv != 0 && nghttp2_is_fatal(rv)) {
+    return rv;
+  }
   return 0;
 }
 
@@ -2663,7 +2723,11 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
       if(valid) {
         if(flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-          nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          if(r != 0 && nghttp2_is_fatal(r)) {
+            return r;
+          }
+          r = 0;
         }
       }
     } else {

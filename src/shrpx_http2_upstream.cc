@@ -93,7 +93,7 @@ ssize_t recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-void on_stream_close_callback
+int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
@@ -135,6 +135,7 @@ void on_stream_close_callback
       }
     }
   }
+  return 0;
 }
 } // namespace
 
