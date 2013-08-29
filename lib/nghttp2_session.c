@@ -1649,8 +1649,10 @@ static int nghttp2_session_handle_invalid_stream
     return r;
   }
   if(session->callbacks.on_invalid_frame_recv_callback) {
-    session->callbacks.on_invalid_frame_recv_callback
-      (session, frame, error_code, session->user_data);
+    if(session->callbacks.on_invalid_frame_recv_callback
+       (session, frame, error_code, session->user_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
   return 0;
 }
@@ -1664,8 +1666,10 @@ static int nghttp2_session_handle_invalid_connection
  nghttp2_error_code error_code)
 {
   if(session->callbacks.on_invalid_frame_recv_callback) {
-    session->callbacks.on_invalid_frame_recv_callback
-      (session, frame, error_code, session->user_data);
+    if(session->callbacks.on_invalid_frame_recv_callback
+       (session, frame, error_code, session->user_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
   return nghttp2_session_fail_session(session, error_code);
 }
@@ -2254,8 +2258,10 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
       }
     } else {
       if(session->callbacks.on_invalid_frame_recv_callback) {
-        session->callbacks.on_invalid_frame_recv_callback
-          (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data);
+        if(session->callbacks.on_invalid_frame_recv_callback
+           (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data) != 0) {
+          return NGHTTP2_ERR_CALLBACK_FAILURE;
+        }
       }
       return nghttp2_session_add_rst_stream
         (session,

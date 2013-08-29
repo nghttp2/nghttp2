@@ -783,7 +783,7 @@ typedef ssize_t (*nghttp2_recv_callback)
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
- * return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_frame_recv_callback)
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data);
@@ -796,8 +796,13 @@ typedef int (*nghttp2_on_frame_recv_callback)
  * :enum:`nghttp2_error_code` and indicates the error. When this
  * callback function is invoked, the library automatically submits
  * either RST_STREAM or GOAWAY frame.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
-typedef void (*nghttp2_on_invalid_frame_recv_callback)
+typedef int (*nghttp2_on_invalid_frame_recv_callback)
 (nghttp2_session *session, nghttp2_frame *frame, nghttp2_error_code error_code,
  void *user_data);
 

@@ -333,7 +333,7 @@ int on_frame_recv_callback
   return 0;
 }
 
-void on_invalid_frame_recv_callback
+int on_invalid_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame,
  nghttp2_error_code error_code, void *user_data)
 {
@@ -341,6 +341,7 @@ void on_invalid_frame_recv_callback
   printf(" [INVALID; status=%s] recv ", strstatus(error_code));
   print_frame(PRINT_RECV, frame);
   fflush(stdout);
+  return 0;
 }
 
 namespace {

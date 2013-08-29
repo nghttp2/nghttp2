@@ -135,13 +135,14 @@ static int on_frame_recv_callback(nghttp2_session *session,
   return 0;
 }
 
-static void on_invalid_frame_recv_callback(nghttp2_session *session,
-                                           nghttp2_frame *frame,
-                                           nghttp2_error_code error_code,
-                                           void *user_data)
+static int on_invalid_frame_recv_callback(nghttp2_session *session,
+                                          nghttp2_frame *frame,
+                                          nghttp2_error_code error_code,
+                                          void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->invalid_frame_recv_cb_called;
+  return 0;
 }
 
 static void on_frame_send_callback(nghttp2_session *session,

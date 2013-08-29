@@ -42,7 +42,7 @@ void print_nv(char **nv);
 int on_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame, void *user_data);
 
-void on_invalid_frame_recv_callback
+int on_invalid_frame_recv_callback
 (nghttp2_session *session, nghttp2_frame *frame,
  nghttp2_error_code error_code, void *user_data);
 
