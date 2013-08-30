@@ -34,10 +34,14 @@ The following endpoints are available to try out nghttp2
 implementation.  These endpoints supports ``HTTP-draft-06/2.0`` and
 the earlier draft versions are not supporeted.
 
-* https://106.186.112.116:8443 TLS + NPN
+* https://106.186.112.116 (TLS + NPN)
+
+  NPN offers ``HTTP-draft-06/2.0``, ``spdy/3``, ``spdy/2`` and
+  ``http/1.1``.
 
   Note: certificate is self-signed and a browser will show alert
-* http://106.186.112.116:8080 direct, HTTP Upgrade
+
+* http://106.186.112.116 (Upgrade + Direct)
 
 Requirements
 ------------
