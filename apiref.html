@@ -1064,24 +1064,32 @@ it gets EOF before it reads any single byte, it must return
 
 <dl class="type">
 <dt id="nghttp2_on_frame_recv_callback">
-typedef void <tt class="descname">(*nghttp2_on_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked by <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> when a
 non-DATA frame is received.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_invalid_frame_recv_callback">
-typedef void <tt class="descname">(*nghttp2_on_invalid_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_invalid_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_invalid_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_invalid_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked by <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> when an
 invalid non-DATA frame is received. The <em>error_code</em> is one of the
 <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_error_code</span></tt></a> and indicates the error. When this
 callback function is invoked, the library automatically submits
 either RST_STREAM or GOAWAY frame.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_data_chunk_recv_callback">
-typedef void <tt class="descname">(*nghttp2_on_data_chunk_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const uint8_t<em>&nbsp;*data</em>, size_t<em>&nbsp;len</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_chunk_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_data_chunk_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const uint8_t<em>&nbsp;*data</em>, size_t<em>&nbsp;len</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_chunk_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when a chunk of data in DATA frame is
 received. The <em>stream_id</em> is the stream ID this DATA frame belongs
 to. The <em>flags</em> is the flags of DATA frame which this data chunk is
@@ -1089,69 +1097,101 @@ contained. <tt class="docutils literal"><span class="pre">(flags</span> <span cl
 necessarily mean this chunk of data is the last one in the
 stream. You should use <a class="reference internal" href="#nghttp2_on_data_recv_callback" title="nghttp2_on_data_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_data_recv_callback</span></tt></a> to
 know all data frames are received.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_data_recv_callback">
-typedef void <tt class="descname">(*nghttp2_on_data_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint16_t<em>&nbsp;length</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_data_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint16_t<em>&nbsp;length</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when DATA frame is received. The actual
 data it contains are received by
 <a class="reference internal" href="#nghttp2_on_data_chunk_recv_callback" title="nghttp2_on_data_chunk_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_data_chunk_recv_callback</span></tt></a>.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_before_frame_send_callback">
-typedef void <tt class="descname">(*nghttp2_before_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_before_frame_send_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_before_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_before_frame_send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked before the non-DATA frame <em>frame</em> is
 sent. This may be useful, for example, to know the stream ID of
 HEADERS and PUSH_PROMISE frame (see also
 <a class="reference internal" href="#nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a>), which is not assigned
 when it was queued.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_frame_send_callback">
-typedef void <tt class="descname">(*nghttp2_on_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_send_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked after the non-DATA frame <em>frame</em> is sent.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_frame_not_send_callback">
-typedef void <tt class="descname">(*nghttp2_on_frame_not_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, int<em>&nbsp;lib_error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_not_send_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_frame_not_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, int<em>&nbsp;lib_error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_not_send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked after the non-DATA frame <em>frame</em> is not
 sent because of the error. The error is indicated by the
 <em>lib_error_code</em>, which is one of the values defined in
 <a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_error</span></tt></a>.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_data_send_callback">
-typedef void <tt class="descname">(*nghttp2_on_data_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint16_t<em>&nbsp;length</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_send_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_data_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint16_t<em>&nbsp;length</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked after DATA frame is sent.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_stream_close_callback">
-typedef void <tt class="descname">(*nghttp2_on_stream_close_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_stream_close_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_stream_close_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_stream_close_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the stream <em>stream_id</em> is
 closed. The reason of closure is indicated by the
 <em>error_code</em>. The stream_user_data, which was specified in
 <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or <a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>, is
 still available in this function.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_request_recv_callback">
-typedef void <tt class="descname">(*nghttp2_on_request_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_request_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_request_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_request_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the request from the remote peer is
 received.  In other words, the frame with END_STREAM flag set is
 received.  In HTTP, this means HTTP request, including request
 body, is fully received.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_frame_recv_parse_error_callback">
-typedef void <tt class="descname">(*nghttp2_on_frame_recv_parse_error_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame_type" title="nghttp2_frame_type">nghttp2_frame_type</a><em>&nbsp;type</em>, const uint8_t<em>&nbsp;*head</em>, size_t<em>&nbsp;headlen</em>, const uint8_t<em>&nbsp;*payload</em>, size_t<em>&nbsp;payloadlen</em>, int<em>&nbsp;lib_error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_parse_error_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_frame_recv_parse_error_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame_type" title="nghttp2_frame_type">nghttp2_frame_type</a><em>&nbsp;type</em>, const uint8_t<em>&nbsp;*head</em>, size_t<em>&nbsp;headlen</em>, const uint8_t<em>&nbsp;*payload</em>, size_t<em>&nbsp;payloadlen</em>, int<em>&nbsp;lib_error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_parse_error_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the received control frame octets
 could not be parsed correctly. The <em>type</em> indicates the type of
 received non-DATA frame. The <em>head</em> is the pointer to the header of
@@ -1162,11 +1202,15 @@ words, the <em>head</em> is the first 8 bytes of the received frame.  The
 The <em>payloadlen</em> is the length of the <em>payload</em>. This is the data
 after the length field. The <em>lib_error_code</em> is one of the error code
 defined in <a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_error</span></tt></a> and indicates the error.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_unknown_frame_recv_callback">
-typedef void <tt class="descname">(*nghttp2_on_unknown_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const uint8_t<em>&nbsp;*head</em>, size_t<em>&nbsp;headlen</em>, const uint8_t<em>&nbsp;*payload</em>, size_t<em>&nbsp;payloadlen</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_unknown_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_unknown_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const uint8_t<em>&nbsp;*head</em>, size_t<em>&nbsp;headlen</em>, const uint8_t<em>&nbsp;*payload</em>, size_t<em>&nbsp;payloadlen</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_unknown_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the received frame type is
 unknown. The <em>head</em> is the pointer to the header of the received
 frame. The <em>headlen</em> is the length of the <em>head</em>. According to the
@@ -1174,6 +1218,10 @@ spec, the <em>headlen</em> is always 8. In other words, the <em>head</em> is the
 first 8 bytes of the received frame.  The <em>payload</em> is the pointer
 to the data portion of the received frame.  The <em>payloadlen</em> is the
 length of the <em>payload</em>. This is the data after the length field.</p>
+<p>The implementation of this function must return 0 if it
+succeeds. If nonzero is returned, it is treated as fatal error and
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
+immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
