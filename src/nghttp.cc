@@ -852,7 +852,7 @@ void submit_request(HttpClient *client,
   int header_count          = headers.size();
   int total_entry_count     = hardcoded_entry_count + header_count * 2;
   if(req->data_prd) {
-    ++total_entry_count;
+    total_entry_count += 2;
   }
 
   auto nv = util::make_unique<const char*[]>(total_entry_count + 1);
