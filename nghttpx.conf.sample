@@ -1,5 +1,5 @@
 #
-# Sample configuration file for Shrpx.
+# Sample configuration file for nghttpx.
 #
 # * Line staring '#' is treated as comment.
 #
