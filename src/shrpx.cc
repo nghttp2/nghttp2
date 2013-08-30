@@ -502,6 +502,8 @@ void print_help(std::ostream& out)
       << "  SSL/TLS:\n"
       << "    --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
       << "                       string is described in OpenSSL ciphers(1).\n"
+      << "                       If this option is used, --honor-cipher-order\n"
+      << "                       is implicitly enabled.\n"
       << "    --honor-cipher-order\n"
       << "                       Honor server cipher order, giving the\n"
       << "                       ability to mitigate BEAST attacks.\n"
