@@ -138,7 +138,9 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   }
   SSL_CTX_set_options(ssl_ctx,
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
-                      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+                      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
+                      SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
+                      SSL_OP_NO_TICKET);
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx)-1);
@@ -153,6 +155,36 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
     if(get_config()->honor_cipher_order) {
       SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
     }
+  }
+
+  // Use P-256, which is sufficiently secure at the time of this
+  // writing.
+  auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+  if(ecdh == nullptr) {
+    LOG(FATAL) << "EC_KEY_new_by_curv_name failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+  SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
+  EC_KEY_free(ecdh);
+
+  if(get_config()->dh_param_file) {
+    // Read DH parameters from file
+    auto bio = BIO_new_file(get_config()->dh_param_file, "r");
+    if(bio == nullptr) {
+      LOG(FATAL) << "BIO_new_file() failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+    auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
+    if(dh == nullptr) {
+      LOG(FATAL) << "PEM_read_bio_DHparams() failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+    SSL_CTX_set_tmp_dh(ssl_ctx, dh);
+    DH_free(dh);
+    BIO_free(bio);
   }
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);

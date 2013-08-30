@@ -47,6 +47,7 @@ struct CertLookupTree;
 extern const char SHRPX_OPT_PRIVATE_KEY_FILE[];
 extern const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[];
 extern const char SHRPX_OPT_CERTIFICATE_FILE[];
+extern const char SHRPX_OPT_DH_PARAM_FILE[];
 extern const char SHRPX_OPT_SUBCERT[];
 extern const char SHRPX_OPT_BACKEND[];
 extern const char SHRPX_OPT_FRONTEND[];
@@ -105,6 +106,7 @@ struct Config {
   char *private_key_file;
   char *private_key_passwd;
   char *cert_file;
+  char *dh_param_file;
   SSL_CTX *default_ssl_ctx;
   ssl::CertLookupTree *cert_tree;
   bool verify_client;

@@ -53,6 +53,7 @@ namespace shrpx {
 const char SHRPX_OPT_PRIVATE_KEY_FILE[] = "private-key-file";
 const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[] = "private-key-passwd-file";
 const char SHRPX_OPT_CERTIFICATE_FILE[] = "certificate-file";
+const char SHRPX_OPT_DH_PARAM_FILE[] = "dh-param-file";
 const char SHRPX_OPT_SUBCERT[] = "subcert";
 
 const char SHRPX_OPT_BACKEND[] = "backend";
@@ -296,6 +297,8 @@ int parse_config(const char *opt, const char *optarg)
     set_config_str(&mod_config()->private_key_passwd, passwd.c_str());
   } else if(util::strieq(opt, SHRPX_OPT_CERTIFICATE_FILE)) {
     set_config_str(&mod_config()->cert_file, optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_DH_PARAM_FILE)) {
+    set_config_str(&mod_config()->dh_param_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_SUBCERT)) {
     // Private Key file and certificate file separated by ':'.
     const char *sp = strchr(optarg, ':');

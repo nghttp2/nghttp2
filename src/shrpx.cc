@@ -529,6 +529,10 @@ void print_help(std::ostream& out)
       << "                       Explicitly set the content of the TLS SNI\n"
       << "                       extension.  This will default to the backend\n"
       << "                       HOST name.\n"
+      << "    --dh-param-file=<PATH>\n"
+      << "                       Path to file that contains DH parameters in\n"
+      << "                       PEM format. Without this option, DHE cipher\n"
+      << "                       suites are not available."
       << "\n"
       << "  HTTP/2.0 and SPDY:\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
@@ -660,6 +664,7 @@ int main(int argc, char **argv)
       {"frontend-no-tls", no_argument, &flag, 29},
       {"backend-tls-sni-field", required_argument, &flag, 31},
       {"honor-cipher-order", no_argument, &flag, 32},
+      {"dh-param-file", required_argument, &flag, 33},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -839,7 +844,10 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HONOR_CIPHER_ORDER,
                                          "yes"));
         break;
-
+      case 33:
+        // --dh-param-file
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_DH_PARAM_FILE, optarg));
+        break;
       default:
         break;
       }
