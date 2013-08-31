@@ -54,10 +54,10 @@ ssize_t send_callback(nghttp2_session *session,
                       void *user_data)
 {
   int rv;
-  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
-  ClientHandler *handler = upstream->get_client_handler();
-  bufferevent *bev = handler->get_bev();
-  evbuffer *output = bufferevent_get_output(bev);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto handler = upstream->get_client_handler();
+  auto bev = handler->get_bev();
+  auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
   if(evbuffer_get_length(output) > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
     return NGHTTP2_ERR_WOULDBLOCK;
@@ -77,10 +77,10 @@ namespace {
 ssize_t recv_callback(nghttp2_session *session,
                       uint8_t *data, size_t len, int flags, void *user_data)
 {
-  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
-  ClientHandler *handler = upstream->get_client_handler();
-  bufferevent *bev = handler->get_bev();
-  evbuffer *input = bufferevent_get_input(bev);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto handler = upstream->get_client_handler();
+  auto bev = handler->get_bev();
+  auto input = bufferevent_get_input(bev);
   int nread = evbuffer_remove(input, data, len);
   if(nread == -1) {
     return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -97,12 +97,12 @@ int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
-  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Stream stream_id=" << stream_id
                          << " is being closed";
   }
-  Downstream *downstream = upstream->find_downstream(stream_id);
+  auto downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       upstream->remove_downstream(downstream);
@@ -114,8 +114,7 @@ int on_stream_close_callback
         if(!downstream->get_upgraded() &&
            !downstream->get_response_connection_close()) {
           // Keep-alive
-          DownstreamConnection *dconn;
-          dconn = downstream->get_downstream_connection();
+          auto dconn = downstream->get_downstream_connection();
           if(dconn) {
             dconn->detach_downstream(downstream);
           }
@@ -254,7 +253,7 @@ int on_frame_recv_callback
     // spdy_proxy mode.
     if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
        scheme && path->value[0] == '/') {
-      std::string reqpath(http2::value_to_str(scheme));
+      auto reqpath = http2::value_to_str(scheme);
       reqpath += "://";
       reqpath += http2::value_to_str(host);
       reqpath += http2::value_to_str(path);
@@ -297,8 +296,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
                                 const uint8_t *data, size_t len,
                                 void *user_data)
 {
-  Http2Upstream *upstream = reinterpret_cast<Http2Upstream*>(user_data);
-  Downstream *downstream = upstream->find_downstream(stream_id);
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->push_upload_data_chunk(data, len) != 0) {
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
@@ -521,10 +520,9 @@ ClientHandler* Http2Upstream::get_client_handler() const
 namespace {
 void spdy_downstream_readcb(bufferevent *bev, void *ptr)
 {
-  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
-  Downstream *downstream = dconn->get_downstream();
-  Http2Upstream *upstream;
-  upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
+  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto downstream = dconn->get_downstream();
+  auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
     // If upstream SPDY stream was closed, we just close downstream,
     // because there is no consumer now. Downstream connection is also
@@ -581,10 +579,9 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
   if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     return;
   }
-  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
-  Downstream *downstream = dconn->get_downstream();
-  Http2Upstream *upstream;
-  upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
+  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto downstream = dconn->get_downstream();
+  auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   upstream->resume_read(SHRPX_NO_BUFFER, downstream);
 }
 } // namespace
@@ -592,10 +589,9 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
 namespace {
 void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
-  Downstream *downstream = dconn->get_downstream();
-  Http2Upstream *upstream;
-  upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
+  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto downstream = dconn->get_downstream();
+  auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Connection established. stream_id="
@@ -748,8 +744,8 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
                                 nghttp2_data_source *source,
                                 void *user_data)
 {
-  Downstream *downstream = reinterpret_cast<Downstream*>(source->ptr);
-  evbuffer *body = downstream->get_response_body_buf();
+  auto downstream = reinterpret_cast<Downstream*>(source->ptr);
+  auto body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
   if(nread == 0 &&
@@ -758,8 +754,8 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
       *eof = 1;
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
-      Http2Upstream *upstream;
-      upstream = reinterpret_cast<Http2Upstream*>(downstream->get_upstream());
+      auto upstream = reinterpret_cast<Http2Upstream*>
+        (downstream->get_upstream());
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
                              << stream_id;
@@ -778,9 +774,9 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
 int Http2Upstream::error_reply(Downstream *downstream, int status_code)
 {
   int rv;
-  std::string html = http::create_error_html(status_code);
+  auto html = http::create_error_html(status_code);
   downstream->init_response_body_buf();
-  evbuffer *body = downstream->get_response_body_buf();
+  auto body = downstream->get_response_body_buf();
   rv = evbuffer_add(body, html.c_str(), html.size());
   if(rv == -1) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
@@ -792,8 +788,8 @@ int Http2Upstream::error_reply(Downstream *downstream, int status_code)
   data_prd.source.ptr = downstream;
   data_prd.read_callback = spdy_data_read_callback;
 
-  std::string content_length = util::utos(html.size());
-  std::string status_code_str = std::to_string(status_code);
+  auto content_length = util::utos(html.size());
+  auto status_code_str = std::to_string(status_code);
   const char *nv[] = {
     ":status", status_code_str.c_str(),
     "content-type", "text/html; charset=UTF-8",
@@ -865,7 +861,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   const char **nv = new const char*[nheader * 2 + 4 + 1];
   size_t hdidx = 0;
   std::string via_value;
-  std::string response_status =
+  auto response_status =
     std::to_string(downstream->get_response_http_status());
   nv[hdidx++] = ":status";
   nv[hdidx++] = response_status.c_str();
@@ -923,7 +919,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
 int Http2Upstream::on_downstream_body(Downstream *downstream,
                                       const uint8_t *data, size_t len)
 {
-  evbuffer *body = downstream->get_response_body_buf();
+  auto body = downstream->get_response_body_buf();
   int rv = evbuffer_add(body, data, len);
   if(rv != 0) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
