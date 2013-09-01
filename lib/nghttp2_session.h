@@ -114,9 +114,6 @@ typedef enum {
 } nghttp2_goaway_flag;
 
 struct nghttp2_session {
-  /* The protocol version: either NGHTTP2_PROTO_SPDY2 or
-     NGHTTP2_PROTO_SPDY3  */
-  uint16_t version;
   uint8_t server;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
   uint32_t next_stream_id;
