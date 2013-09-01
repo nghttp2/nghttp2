@@ -56,6 +56,10 @@ required:
 
 * cunit >= 2.1
 
+To build the documentation, you need to install:
+
+* sphinx (http://sphinx-doc.org/)
+
 To build and run the application programs (``nghttp``, ``nghttpd`` and
 ``nghttpx``) in ``src`` directory, the following packages are
 required:
