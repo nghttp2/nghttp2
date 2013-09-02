@@ -1,7 +1,7 @@
 /*
- * nghttp2 - SPDY Library
+ * nghttp2 - HTTP/2.0 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -54,12 +54,12 @@ enum {
 struct Connection {
   SSL *ssl;
   nghttp2_session *session;
-  /* WANT_READ if SSL connection needs more input; or WANT_WRITE if it
-     needs more output; or IO_NONE. This is necessary because SSL/TLS
-     re-negotiation is possible at any time. nghttp2 API offers
-     similar functions like nghttp2_session_want_read() and
+  /* WANT_READ if SSL/TLS connection needs more input; or WANT_WRITE
+     if it needs more output; or IO_NONE. This is necessary because
+     SSL/TLS re-negotiation is possible at any time. nghttp2 API
+     offers similar functions like nghttp2_session_want_read() and
      nghttp2_session_want_write() but they do not take into account
-     SSL connection. */
+     SSL/TSL connection. */
   int want_io;
 };
 
@@ -131,28 +131,32 @@ static void diec(const char *func, int error_code)
   exit(EXIT_FAILURE);
 }
 
+static char CONTENT_LENGTH[] = "content-encoding";
+static size_t CONTENT_LENGTH_LEN = sizeof(CONTENT_LENGTH) - 1;
+static char GZIP[] = "gzip";
+static size_t GZIP_LEN = sizeof(GZIP) - 1;
+
 /*
- * Check response is content-encoding: gzip. We need this because SPDY
- * client is required to support gzip.
+ * Check response is content-encoding: gzip. We need this because
+ * HTTP/2.0 client is required to support gzip.
  */
-static void check_gzip(struct Request *req, char **nv)
+static void check_gzip(struct Request *req, nghttp2_nv *nva, size_t nvlen)
 {
-  int gzip = 0;
   size_t i;
-  for(i = 0; nv[i]; i += 2) {
-    if(strcmp("content-encoding", nv[i]) == 0) {
-      gzip = strcmp("gzip", nv[i+1]) == 0;
-      break;
-    }
+  if(req->inflater) {
+    return;
   }
-  if(gzip) {
-    int rv;
-    if(req->inflater) {
-      return;
-    }
-    rv = nghttp2_gzip_inflate_new(&req->inflater);
-    if(rv != 0) {
-      die("Can't allocate inflate stream.");
+  for(i = 0; i < nvlen; ++i) {
+    if(CONTENT_LENGTH_LEN == nva[i].namelen &&
+       memcmp(CONTENT_LENGTH, nva[i].name, nva[i].namelen) == 0 &&
+       GZIP_LEN == nva[i].valuelen &&
+       memcmp(GZIP, nva[i].value, nva[i].valuelen) == 0) {
+      int rv;
+      rv = nghttp2_gzip_inflate_new(&req->inflater);
+      if(rv != 0) {
+        die("Can't allocate inflate stream.");
+      }
+      break;
     }
   }
 }
@@ -218,86 +222,85 @@ static ssize_t recv_callback(nghttp2_session *session,
 }
 
 /*
- * The implementation of nghttp2_before_ctrl_send_callback type.  We
+ * The implementation of nghttp2_before_frame_send_callback type.  We
  * use this function to get stream ID of the request. This is because
  * stream ID is not known when we submit the request
  * (nghttp2_submit_request).
  */
-static void before_ctrl_send_callback(nghttp2_session *session,
-                                      nghttp2_frame_type type,
+static int before_frame_send_callback(nghttp2_session *session,
                                       nghttp2_frame *frame,
                                       void *user_data)
 {
-  if(type == NGHTTP2_SYN_STREAM) {
+  if(frame->hd.type == NGHTTP2_HEADERS &&
+     frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     struct Request *req;
-    int stream_id = frame->syn_stream.stream_id;
+    int32_t stream_id = frame->hd.stream_id;
     req = nghttp2_session_get_stream_user_data(session, stream_id);
     if(req && req->stream_id == -1) {
       req->stream_id = stream_id;
       printf("[INFO] Stream ID = %d\n", stream_id);
     }
   }
+  return 0;
 }
 
-static void on_ctrl_send_callback(nghttp2_session *session,
-                                  nghttp2_frame_type type,
+static int on_frame_send_callback(nghttp2_session *session,
                                   nghttp2_frame *frame, void *user_data)
 {
-  char **nv;
-  const char *name = NULL;
-  int32_t stream_id;
   size_t i;
-  switch(type) {
-  case NGHTTP2_SYN_STREAM:
-    nv = frame->syn_stream.nv;
-    name = "SYN_STREAM";
-    stream_id = frame->syn_stream.stream_id;
-    break;
-  default:
-    break;
-  }
-  if(name && nghttp2_session_get_stream_user_data(session, stream_id)) {
-    printf("[INFO] C ----------------------------> S (%s)\n", name);
-    for(i = 0; nv[i]; i += 2) {
-      printf("       %s: %s\n", nv[i], nv[i+1]);
-    }
-  }
-}
-
-static void on_ctrl_recv_callback(nghttp2_session *session,
-                                  nghttp2_frame_type type,
-                                  nghttp2_frame *frame, void *user_data)
-{
-  struct Request *req;
-  char **nv;
-  const char *name = NULL;
-  int32_t stream_id;
-  size_t i;
-  switch(type) {
-  case NGHTTP2_SYN_REPLY:
-    nv = frame->syn_reply.nv;
-    name = "SYN_REPLY";
-    stream_id = frame->syn_reply.stream_id;
-    break;
+  switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
-    nv = frame->headers.nv;
-    name = "HEADERS";
-    stream_id = frame->headers.stream_id;
-    break;
-  default:
-    break;
-  }
-  if(!name) {
-    return;
-  }
-  req = nghttp2_session_get_stream_user_data(session, stream_id);
-  if(req) {
-    check_gzip(req, nv);
-    printf("[INFO] C <---------------------------- S (%s)\n", name);
-    for(i = 0; nv[i]; i += 2) {
-      printf("       %s: %s\n", nv[i], nv[i+1]);
+    if(nghttp2_session_get_stream_user_data(session, frame->hd.stream_id)) {
+      const nghttp2_nv *nva = frame->headers.nva;
+      printf("[INFO] C ----------------------------> S (HEADERS)\n");
+      for(i = 0; i < frame->headers.nvlen; ++i) {
+        fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+        printf(": ");
+        fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+        printf("\n");
+      }
     }
+    break;
+  case NGHTTP2_RST_STREAM:
+    printf("[INFO] C ----------------------------> S (RST_STREAM)\n");
+    break;
+  case NGHTTP2_GOAWAY:
+    printf("[INFO] C ----------------------------> S (GOAWAY)\n");
+    break;
   }
+  return 0;
+}
+
+static int on_frame_recv_callback(nghttp2_session *session,
+                                  nghttp2_frame *frame, void *user_data)
+{
+  size_t i;
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
+      const nghttp2_nv *nva = frame->headers.nva;
+      struct Request *req;
+      req = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
+      if(req) {
+        check_gzip(req, frame->headers.nva, frame->headers.nvlen);
+        printf("[INFO] C <---------------------------- S (HEADERS)\n");
+        for(i = 0; i < frame->headers.nvlen; ++i) {
+          fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+          printf(": ");
+          fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+          printf("\n");
+        }
+      }
+    }
+    break;
+  case NGHTTP2_RST_STREAM:
+    printf("[INFO] C <---------------------------- S (RST_STREAM)\n");
+    break;
+  case NGHTTP2_GOAWAY:
+    printf("[INFO] C <---------------------------- S (GOAWAY)\n");
+    break;
+  }
+  return 0;
 }
 
 /*
@@ -306,20 +309,21 @@ static void on_ctrl_recv_callback(nghttp2_session *session,
  * fetch 1 resource in this program, after reception of the response,
  * we submit GOAWAY and close the session.
  */
-static void on_stream_close_callback(nghttp2_session *session,
-                                     int32_t stream_id,
-                                     nghttp2_status_code status_code,
+static int on_stream_close_callback(nghttp2_session *session,
+                                    int32_t stream_id,
+                                     nghttp2_error_code error_code,
                                      void *user_data)
 {
   struct Request *req;
   req = nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     int rv;
-    rv = nghttp2_submit_goaway(session, NGHTTP2_GOAWAY_OK);
+    rv = nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0);
     if(rv != 0) {
       diec("nghttp2_submit_goaway", rv);
     }
   }
+  return 0;
 }
 
 #define MAX_OUTLEN 4096
@@ -328,16 +332,16 @@ static void on_stream_close_callback(nghttp2_session *session,
  * The implementation of nghttp2_on_data_chunk_recv_callback type. We
  * use this function to print the received response body.
  */
-static void on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
-                                        int32_t stream_id,
-                                        const uint8_t *data, size_t len,
-                                        void *user_data)
+static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
+                                       int32_t stream_id,
+                                       const uint8_t *data, size_t len,
+                                       void *user_data)
 {
   struct Request *req;
   req = nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
-    printf("[INFO] C <---------------------------- S (DATA)\n");
-    printf("       %lu bytes\n", (unsigned long int)len);
+    printf("[INFO] C <---------------------------- S (DATA chunk)\n"
+           "%lu bytes\n", (unsigned long int)len);
     if(req->inflater) {
       while(len > 0) {
         uint8_t out[MAX_OUTLEN];
@@ -354,11 +358,11 @@ static void on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
         len -= tlen;
       }
     } else {
-      /* TODO add support gzip */
       fwrite(data, 1, len, stdout);
     }
     printf("\n");
   }
+  return 0;
 }
 
 /*
@@ -372,16 +376,16 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks)
   memset(callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks->send_callback = send_callback;
   callbacks->recv_callback = recv_callback;
-  callbacks->before_ctrl_send_callback = before_ctrl_send_callback;
-  callbacks->on_ctrl_send_callback = on_ctrl_send_callback;
-  callbacks->on_ctrl_recv_callback = on_ctrl_recv_callback;
+  callbacks->before_frame_send_callback = before_frame_send_callback;
+  callbacks->on_frame_send_callback = on_frame_send_callback;
+  callbacks->on_frame_recv_callback = on_frame_recv_callback;
   callbacks->on_stream_close_callback = on_stream_close_callback;
   callbacks->on_data_chunk_recv_callback = on_data_chunk_recv_callback;
 }
 
 /*
- * Callback function for SSL/TLS NPN. Since this program only supports
- * SPDY protocol, if server does not offer SPDY protocol the nghttp2
+ * Callback function for TLS NPN. Since this program only supports
+ * HTTP/2.0 protocol, if server does not offer HTTP/2.0 the nghttp2
  * library supports, we terminate program.
  */
 static int select_next_proto_cb(SSL* ssl,
@@ -390,31 +394,26 @@ static int select_next_proto_cb(SSL* ssl,
                                 void *arg)
 {
   int rv;
-  uint16_t *spdy_proto_version;
-  /* nghttp2_select_next_protocol() selects SPDY protocol version the
+  /* nghttp2_select_next_protocol() selects HTTP/2.0 protocol the
      nghttp2 library supports. */
   rv = nghttp2_select_next_protocol(out, outlen, in, inlen);
   if(rv <= 0) {
-    die("Server did not advertise spdy/2 or spdy/3 protocol.");
+    die("Server did not advertise HTTP/2.0 protocol");
   }
-  spdy_proto_version = (uint16_t*)arg;
-  *spdy_proto_version = rv;
   return SSL_TLSEXT_ERR_OK;
 }
 
 /*
- * Setup SSL context. We pass |spdy_proto_version| to get negotiated
- * SPDY protocol version in NPN callback.
+ * Setup SSL/TLS context.
  */
-static void init_ssl_ctx(SSL_CTX *ssl_ctx, uint16_t *spdy_proto_version)
+static void init_ssl_ctx(SSL_CTX *ssl_ctx)
 {
   /* Disable SSLv2 and enable all workarounds for buggy servers */
   SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
   /* Set NPN callback */
-  SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb,
-                                   spdy_proto_version);
+  SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
 }
 
 static void ssl_handshake(SSL *ssl, int fd)
@@ -479,9 +478,6 @@ static void make_non_block(int fd)
   }
 }
 
-/*
- * Setting TCP_NODELAY is not mandatory for the SPDY protocol.
- */
 static void set_tcp_nodelay(int fd)
 {
   int val = 1;
@@ -517,18 +513,15 @@ static void submit_request(struct Connection *connection, struct Request *req)
 {
   int pri = 0;
   int rv;
-  const char *nv[15];
-  /* We always use SPDY/3 style header even if the negotiated protocol
-     version is SPDY/2. The library translates the header name as
-     necessary. Make sure that the last item is NULL! */
+  const char *nv[13];
+  /* Make sure that the last item is NULL */
   nv[0] = ":method";     nv[1] = "GET";
   nv[2] = ":path";       nv[3] = req->path;
-  nv[4] = ":version";    nv[5] = "HTTP/1.1";
-  nv[6] = ":scheme";     nv[7] = "https";
-  nv[8] = ":host";       nv[9] = req->hostport;
-  nv[10] = "accept";     nv[11] = "*/*";
-  nv[12] = "user-agent"; nv[13] = "nghttp2/"NGHTTP2_VERSION;
-  nv[14] = NULL;
+  nv[4] = ":scheme";     nv[5] = "https";
+  nv[6] = ":host";       nv[7] = req->hostport;
+  nv[8] = "accept";     nv[9] = "*/*";
+  nv[10] = "user-agent"; nv[11] = "nghttp2/"NGHTTP2_VERSION;
+  nv[12] = NULL;
   rv = nghttp2_submit_request(connection->session, pri, nv, NULL, req);
   if(rv != 0) {
     diec("nghttp2_submit_request", rv);
@@ -583,7 +576,6 @@ static void fetch_uri(const struct URI *uri)
   int rv;
   nfds_t npollfds = 1;
   struct pollfd pollfds[1];
-  uint16_t spdy_proto_version;
 
   request_init(&req, uri);
 
@@ -598,7 +590,7 @@ static void fetch_uri(const struct URI *uri)
   if(ssl_ctx == NULL) {
     dief("SSL_CTX_new", ERR_error_string(ERR_get_error(), NULL));
   }
-  init_ssl_ctx(ssl_ctx, &spdy_proto_version);
+  init_ssl_ctx(ssl_ctx);
   ssl = SSL_new(ssl_ctx);
   if(ssl == NULL) {
     dief("SSL_new", ERR_error_string(ERR_get_error(), NULL));
@@ -610,13 +602,17 @@ static void fetch_uri(const struct URI *uri)
   connection.ssl = ssl;
   connection.want_io = IO_NONE;
 
+  /* Send connection header in blocking I/O mode */
+  SSL_write(ssl, NGHTTP2_CLIENT_CONNECTION_HEADER,
+            NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+
   /* Here make file descriptor non-block */
   make_non_block(fd);
   set_tcp_nodelay(fd);
 
-  printf("[INFO] SPDY protocol version = %d\n", spdy_proto_version);
-  rv = nghttp2_session_client_new(&connection.session, spdy_proto_version,
-                                  &callbacks, &connection);
+  printf("[INFO] SSL/TLS handshake completed\n");
+  rv = nghttp2_session_client_new(&connection.session, &callbacks,
+                                  &connection);
   if(rv != 0) {
     diec("nghttp2_session_client_new", rv);
   }
@@ -743,7 +739,7 @@ int main(int argc, char **argv)
   int rv;
 
   if(argc < 2) {
-    die("Specify URI");
+    die("Specify a https URI");
   }
 
   memset(&act, 0, sizeof(struct sigaction));

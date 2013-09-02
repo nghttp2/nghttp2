@@ -29,8 +29,8 @@ AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
 AM_LDFLAGS = @OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libnghttp2.la
 
-noinst_PROGRAMS = spdycli
-spdycli_SOURCES = spdycli.c
+noinst_PROGRAMS = client
+client_SOURCES = client.c
 
 endif # ENABLE_EXAMPLES
 
