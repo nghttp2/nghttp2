@@ -30,5 +30,5 @@ Description: HTTP/2.0 C library
 URL: https://github.com/tatsuhiro-t/nghttp2
 Version: @VERSION@
 Libs: -L${libdir} -lnghttp2
-Libs.private: -lzlib
+Libs.private: -lz
 Cflags: -I${includedir}
