@@ -237,8 +237,8 @@ struct Request {
           const nghttp2_data_provider *data_prd, int64_t data_length,
           int level = 0)
     : uri(uri), u(u),
-      inflater(0), html_parser(0), data_prd(data_prd),
-      data_length(data_length),data_offset(0),
+      inflater(nullptr), html_parser(nullptr), data_prd(data_prd),
+      data_length(data_length), data_offset(0),
       level(level)
   {}
 
@@ -400,7 +400,7 @@ struct HttpClient {
   std::string hostport;
   SessionStat stat;
   // Used for parse the HTTP upgrade response from server
-  http_parser *htp;
+  std::unique_ptr<http_parser> htp;
   // true if the response message of HTTP Upgrade request is fully
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
@@ -422,7 +422,6 @@ struct HttpClient {
       bev(nullptr),
       state(STATE_IDLE),
       complete(0),
-      htp(nullptr),
       upgrade_response_complete(false),
       upgrade_response_status_code(0)
   {}
@@ -430,7 +429,6 @@ struct HttpClient {
   ~HttpClient()
   {
     disconnect();
-    delete htp;
   }
 
   bool need_upgrade() const
@@ -460,7 +458,7 @@ struct HttpClient {
         host_string = host.c_str();
       }
       if (!SSL_set_tlsext_host_name(ssl, host_string)) {
-        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
         return -1;
       }
       bev = bufferevent_openssl_socket_new(evbase, -1, ssl,
@@ -478,8 +476,8 @@ struct HttpClient {
     }
     bufferevent_enable(bev, EV_READ);
     if(need_upgrade()) {
-      htp = new http_parser();
-      http_parser_init(htp, HTTP_RESPONSE);
+      htp = util::make_unique<http_parser>();
+      http_parser_init(htp.get(), HTTP_RESPONSE);
       htp->data = this;
       bufferevent_setcb(bev, upgrade_readcb, nullptr, eventcb, this);
     } else {
@@ -538,13 +536,13 @@ struct HttpClient {
     req += " HTTP/1.1\r\n"
       "Host: ";
     req += hostport;
-    req += "\r\n";
-    req += "Connection: Upgrade, HTTP2-Settings\r\n"
+    req += "\r\n"
+      "Connection: Upgrade, HTTP2-Settings\r\n"
       "Upgrade: " NGHTTP2_PROTO_VERSION_ID "\r\n"
       "HTTP2-Settings: ";
     req += token68;
-    req += "\r\n";
-    req += "Accept: */*\r\n"
+    req += "\r\n"
+      "Accept: */*\r\n"
       "User-Agent: nghttp2/" NGHTTP2_VERSION "\r\n"
       "\r\n";
     bufferevent_write(bev, req.c_str(), req.size());
@@ -565,7 +563,7 @@ struct HttpClient {
       return 0;
     }
     auto mem = evbuffer_pullup(input, -1);
-    auto nread = http_parser_execute(htp, &htp_hooks,
+    auto nread = http_parser_execute(htp.get(), &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      inputlen);
     if(config.verbose) {
@@ -573,7 +571,7 @@ struct HttpClient {
     }
     evbuffer_drain(input, nread);
 
-    auto htperr = HTTP_PARSER_ERRNO(htp);
+    auto htperr = HTTP_PARSER_ERRNO(htp.get());
     if(htperr == HPE_OK) {
       if(upgrade_response_complete) {
         if(config.verbose) {
@@ -702,7 +700,7 @@ struct HttpClient {
   int sendcb(const uint8_t *data, size_t len)
   {
     int rv;
-    evbuffer *output = bufferevent_get_output(bev);
+    auto output = bufferevent_get_output(bev);
     // Check buffer length and return WOULDBLOCK if it is large enough.
     if(evbuffer_get_length(output) > config.output_upper_thres) {
       return NGHTTP2_ERR_WOULDBLOCK;
@@ -719,7 +717,7 @@ struct HttpClient {
 
   int recvcb(uint8_t *buf, size_t len)
   {
-    evbuffer *input = bufferevent_get_input(bev);
+    auto input = bufferevent_get_input(bev);
     int nread = evbuffer_remove(input, buf, len);
     if(nread == -1) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -866,15 +864,13 @@ void submit_request(HttpClient *client,
 
   std::string content_length_str;
   if(req->data_prd) {
-    std::stringstream ss;
-    ss << req->data_length;
-    content_length_str = ss.str();
+    content_length_str = std::to_string(req->data_length);
     nv[pos++] = "content-length";
     nv[pos++] = content_length_str.c_str();
   }
   while( i != end ) {
-    const char *key = (*i).first.c_str();
-    const char *value = (*i).second.c_str();
+    auto key = (*i).first.c_str();
+    auto value = (*i).second.c_str();
     if ( util::strieq( key, "accept" ) ) {
       nv[POS_ACCEPT*2+1] = value;
     }
@@ -908,8 +904,8 @@ void update_html_parser(HttpClient *client, Request *req,
   req->update_html_parser(data, len, fin);
 
   for(size_t i = 0; i < req->html_parser->get_links().size(); ++i) {
-    const std::string& raw_uri = req->html_parser->get_links()[i];
-    std::string uri = strip_fragment(raw_uri.c_str());
+    const auto& raw_uri = req->html_parser->get_links()[i];
+    auto uri = strip_fragment(raw_uri.c_str());
     http_parser_url u;
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
@@ -934,10 +930,10 @@ int on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
-  HttpClient *client = get_session(user_data);
+  auto client = get_session(user_data);
   auto itr = client->streams.find(stream_id);
   if(itr != client->streams.end()) {
-    Request *req = (*itr).second;
+    auto req = (*itr).second;
     if(req->inflater) {
       while(len > 0) {
         const size_t MAX_OUTLEN = 4096;
@@ -970,9 +966,9 @@ namespace {
 void check_stream_id(nghttp2_session *session, int32_t stream_id,
                      void *user_data)
 {
-  HttpClient *client = get_session(user_data);
-  Request *req = (Request*)nghttp2_session_get_stream_user_data(session,
-                                                                stream_id);
+  auto client = get_session(user_data);
+  auto req = (Request*)nghttp2_session_get_stream_user_data(session,
+                                                            stream_id);
   client->streams[stream_id] = req;
   req->record_syn_stream_time();
 }
@@ -1056,14 +1052,14 @@ int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
-  HttpClient *client = get_session(user_data);
+  auto client = get_session(user_data);
   auto itr = client->streams.find(stream_id);
   if(itr != client->streams.end()) {
-    update_html_parser(client, (*itr).second, 0, 0, 1);
+    update_html_parser(client, (*itr).second, nullptr, 0, 1);
     (*itr).second->record_complete_time();
     ++client->complete;
     if(client->all_requests_processed()) {
-      nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0);
+      nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, nullptr, 0);
     }
   }
   return 0;
@@ -1125,9 +1121,9 @@ int client_select_next_proto_cb(SSL* ssl,
               << std::endl;
   } else {
     if(config.verbose) {
-      std::cout << "          NPN selected the protocol: "
-                << std::string((const char*)*out, (size_t)*outlen)
-                << std::endl;
+      std::cout << "          NPN selected the protocol: ";
+      std::cout.write(reinterpret_cast<const char*>(*out), (size_t)*outlen);
+      std::cout << std::endl;
     }
   }
   return SSL_TLSEXT_ERR_OK;
@@ -1177,7 +1173,7 @@ namespace {
 void eventcb(bufferevent *bev, short events, void *ptr)
 {
   int rv;
-  HttpClient *client = reinterpret_cast<HttpClient*>(ptr);
+  auto client = reinterpret_cast<HttpClient*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     client->state = STATE_CONNECTED;
     int fd = bufferevent_getfd(bev);
@@ -1266,7 +1262,7 @@ int communicate(const std::string& scheme, const std::string& host,
     if(!config.keyfile.empty()) {
       if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
                                      SSL_FILETYPE_PEM) != 1) {
-        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
         result = -1;
         goto fin;
       }
@@ -1274,7 +1270,7 @@ int communicate(const std::string& scheme, const std::string& host,
     if(!config.certfile.empty()) {
       if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
                                             config.certfile.c_str()) != 1) {
-        std::cerr << ERR_error_string(ERR_get_error(), 0) << std::endl;
+        std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
         result = -1;
         goto fin;
       }
@@ -1383,7 +1379,7 @@ int run(char **uris, int n)
     requests;
   for(int i = 0; i < n; ++i) {
     http_parser_url u;
-    std::string uri = strip_fragment(uris[i]);
+    auto uri = strip_fragment(uris[i]);
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
        has_uri_field(u, UF_SCHEMA)) {
       uint16_t port = has_uri_field(u, UF_PORT) ?
@@ -1533,7 +1529,7 @@ int main(int argc, char **argv)
       break;
     case 'w': {
       errno = 0;
-      unsigned long int n = strtoul(optarg, 0, 10);
+      unsigned long int n = strtoul(optarg, nullptr, 10);
       if(errno == 0 && n < 31) {
         config.window_bits = n;
       } else {
@@ -1582,7 +1578,7 @@ int main(int argc, char **argv)
       config.datafile = strcmp("-", optarg) == 0 ? "/dev/stdin" : optarg;
       break;
     case 'm':
-      config.multiply = strtoul(optarg, 0, 10);
+      config.multiply = strtoul(optarg, nullptr, 10);
       break;
     case '?':
       exit(EXIT_FAILURE);
@@ -1608,7 +1604,7 @@ int main(int argc, char **argv)
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
-  sigaction(SIGPIPE, &act, 0);
+  sigaction(SIGPIPE, &act, nullptr);
   SSL_load_error_strings();
   SSL_library_init();
   reset_timer();
