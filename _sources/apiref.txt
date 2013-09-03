@@ -687,7 +687,7 @@ Types (structs, unions and typedefs)
     :macro:`NGHTTP2_ERR_EOF`. For other errors, it must return
     :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.
 
-.. type:: typedef int (*nghttp2_on_frame_recv_callback) (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+.. type:: typedef int (*nghttp2_on_frame_recv_callback) (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 
     
     Callback function invoked by `nghttp2_session_recv()` when a
@@ -698,7 +698,7 @@ Types (structs, unions and typedefs)
     `nghttp2_session_recv()` and `nghttp2_session_send()` functions
     immediately return :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.
 
-.. type:: typedef int (*nghttp2_on_invalid_frame_recv_callback) (nghttp2_session *session, nghttp2_frame *frame, nghttp2_error_code error_code, void *user_data)
+.. type:: typedef int (*nghttp2_on_invalid_frame_recv_callback) (nghttp2_session *session, const nghttp2_frame *frame, nghttp2_error_code error_code, void *user_data)
 
     
     Callback function invoked by `nghttp2_session_recv()` when an
@@ -740,7 +740,7 @@ Types (structs, unions and typedefs)
     `nghttp2_session_recv()` and `nghttp2_session_send()` functions
     immediately return :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.
 
-.. type:: typedef int (*nghttp2_before_frame_send_callback) (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+.. type:: typedef int (*nghttp2_before_frame_send_callback) (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 
     
     Callback function invoked before the non-DATA frame *frame* is
@@ -754,7 +754,7 @@ Types (structs, unions and typedefs)
     `nghttp2_session_recv()` and `nghttp2_session_send()` functions
     immediately return :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.
 
-.. type:: typedef int (*nghttp2_on_frame_send_callback) (nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+.. type:: typedef int (*nghttp2_on_frame_send_callback) (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 
     
     Callback function invoked after the non-DATA frame *frame* is sent.
@@ -764,7 +764,7 @@ Types (structs, unions and typedefs)
     `nghttp2_session_recv()` and `nghttp2_session_send()` functions
     immediately return :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.
 
-.. type:: typedef int (*nghttp2_on_frame_not_send_callback) (nghttp2_session *session, nghttp2_frame *frame, int lib_error_code, void *user_data)
+.. type:: typedef int (*nghttp2_on_frame_not_send_callback) (nghttp2_session *session, const nghttp2_frame *frame, int lib_error_code, void *user_data)
 
     
     Callback function invoked after the non-DATA frame *frame* is not

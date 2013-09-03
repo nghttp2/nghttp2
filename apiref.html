@@ -1064,7 +1064,7 @@ it gets EOF before it reads any single byte, it must return
 
 <dl class="type">
 <dt id="nghttp2_on_frame_recv_callback">
-typedef int <tt class="descname">(*nghttp2_on_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked by <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> when a
 non-DATA frame is received.</p>
 <p>The implementation of this function must return 0 if it
@@ -1075,7 +1075,7 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 
 <dl class="type">
 <dt id="nghttp2_on_invalid_frame_recv_callback">
-typedef int <tt class="descname">(*nghttp2_on_invalid_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_invalid_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_invalid_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_invalid_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked by <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> when an
 invalid non-DATA frame is received. The <em>error_code</em> is one of the
 <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_error_code</span></tt></a> and indicates the error. When this
@@ -1117,7 +1117,7 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 
 <dl class="type">
 <dt id="nghttp2_before_frame_send_callback">
-typedef int <tt class="descname">(*nghttp2_before_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_before_frame_send_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_before_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_before_frame_send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked before the non-DATA frame <em>frame</em> is
 sent. This may be useful, for example, to know the stream ID of
 HEADERS and PUSH_PROMISE frame (see also
@@ -1131,7 +1131,7 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 
 <dl class="type">
 <dt id="nghttp2_on_frame_send_callback">
-typedef int <tt class="descname">(*nghttp2_on_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_send_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked after the non-DATA frame <em>frame</em> is sent.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
@@ -1141,7 +1141,7 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 
 <dl class="type">
 <dt id="nghttp2_on_frame_not_send_callback">
-typedef int <tt class="descname">(*nghttp2_on_frame_not_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, int<em>&nbsp;lib_error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_not_send_callback" title="Permalink to this definition">¶</a></dt>
+typedef int <tt class="descname">(*nghttp2_on_frame_not_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, int<em>&nbsp;lib_error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_not_send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked after the non-DATA frame <em>frame</em> is not
 sent because of the error. The error is indicated by the
 <em>lib_error_code</em>, which is one of the values defined in
