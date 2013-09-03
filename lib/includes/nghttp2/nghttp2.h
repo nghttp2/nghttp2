@@ -786,7 +786,7 @@ typedef ssize_t (*nghttp2_recv_callback)
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_frame_recv_callback)
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
 
 /**
  * @functypedef
@@ -803,8 +803,8 @@ typedef int (*nghttp2_on_frame_recv_callback)
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_invalid_frame_recv_callback)
-(nghttp2_session *session, nghttp2_frame *frame, nghttp2_error_code error_code,
- void *user_data);
+(nghttp2_session *session, const nghttp2_frame *frame,
+ nghttp2_error_code error_code, void *user_data);
 
 /**
  * @functypedef
@@ -857,7 +857,7 @@ typedef int (*nghttp2_on_data_recv_callback)
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_before_frame_send_callback)
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
 
 /**
  * @functypedef
@@ -870,7 +870,7 @@ typedef int (*nghttp2_before_frame_send_callback)
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_frame_send_callback)
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
 
 /**
  * @functypedef
@@ -886,7 +886,7 @@ typedef int (*nghttp2_on_frame_send_callback)
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_frame_not_send_callback)
-(nghttp2_session *session, nghttp2_frame *frame, int lib_error_code,
+(nghttp2_session *session, const nghttp2_frame *frame, int lib_error_code,
  void *user_data);
 
 /**

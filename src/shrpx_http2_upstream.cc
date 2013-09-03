@@ -174,7 +174,7 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
 
 namespace {
 int on_frame_recv_callback
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   switch(frame->hd.type) {
@@ -332,7 +332,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
 
 namespace {
 int on_frame_not_send_callback(nghttp2_session *session,
-                               nghttp2_frame *frame,
+                               const nghttp2_frame *frame,
                                int lib_error_code, void *user_data)
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);

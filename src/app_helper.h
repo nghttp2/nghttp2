@@ -40,10 +40,10 @@ namespace nghttp2 {
 void print_nv(char **nv);
 
 int on_frame_recv_callback
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
 
 int on_invalid_frame_recv_callback
-(nghttp2_session *session, nghttp2_frame *frame,
+(nghttp2_session *session, const nghttp2_frame *frame,
  nghttp2_error_code error_code, void *user_data);
 
 int on_frame_recv_parse_error_callback(nghttp2_session *session,
@@ -62,7 +62,7 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
                                    void *user_data);
 
 int on_frame_send_callback
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data);
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
 
 int on_data_recv_callback
 (nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,

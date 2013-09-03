@@ -228,7 +228,7 @@ static ssize_t recv_callback(nghttp2_session *session,
  * (nghttp2_submit_request).
  */
 static int before_frame_send_callback(nghttp2_session *session,
-                                      nghttp2_frame *frame,
+                                      const nghttp2_frame *frame,
                                       void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
@@ -245,7 +245,7 @@ static int before_frame_send_callback(nghttp2_session *session,
 }
 
 static int on_frame_send_callback(nghttp2_session *session,
-                                  nghttp2_frame *frame, void *user_data)
+                                  const nghttp2_frame *frame, void *user_data)
 {
   size_t i;
   switch(frame->hd.type) {
@@ -272,7 +272,7 @@ static int on_frame_send_callback(nghttp2_session *session,
 }
 
 static int on_frame_recv_callback(nghttp2_session *session,
-                                  nghttp2_frame *frame, void *user_data)
+                                  const nghttp2_frame *frame, void *user_data)
 {
   size_t i;
   switch(frame->hd.type) {
@@ -311,8 +311,8 @@ static int on_frame_recv_callback(nghttp2_session *session,
  */
 static int on_stream_close_callback(nghttp2_session *session,
                                     int32_t stream_id,
-                                     nghttp2_error_code error_code,
-                                     void *user_data)
+                                    nghttp2_error_code error_code,
+                                    void *user_data)
 {
   struct Request *req;
   req = nghttp2_session_get_stream_user_data(session, stream_id);

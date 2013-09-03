@@ -235,7 +235,7 @@ const char* frame_name_ansi_esc(print_type ptype)
 } // namespace
 
 namespace {
-void print_frame(print_type ptype, nghttp2_frame *frame)
+void print_frame(print_type ptype, const nghttp2_frame *frame)
 {
   printf("%s%s%s frame ",
          frame_name_ansi_esc(ptype),
@@ -324,7 +324,7 @@ void print_frame(print_type ptype, nghttp2_frame *frame)
 } // namespace
 
 int on_frame_recv_callback
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   print_timer();
   printf(" recv ");
@@ -334,7 +334,7 @@ int on_frame_recv_callback
 }
 
 int on_invalid_frame_recv_callback
-(nghttp2_session *session, nghttp2_frame *frame,
+(nghttp2_session *session, const nghttp2_frame *frame,
  nghttp2_error_code error_code, void *user_data)
 {
   print_timer();
@@ -392,7 +392,7 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
 }
 
 int on_frame_send_callback
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   print_timer();
   printf(" send ");

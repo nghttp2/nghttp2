@@ -979,7 +979,7 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 int on_frame_send_callback2
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
@@ -992,7 +992,7 @@ int on_frame_send_callback2
 }
 
 void check_response_header
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type != NGHTTP2_HEADERS ||
      frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
@@ -1027,7 +1027,7 @@ void check_response_header
 }
 
 int on_frame_recv_callback2
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {

@@ -686,7 +686,7 @@ const char *REQUIRED_HEADERS[] = {
 
 namespace {
 int hd_on_frame_recv_callback
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
@@ -741,7 +741,7 @@ int htdocs_on_request_recv_callback
 
 namespace {
 int hd_on_frame_send_callback
-(nghttp2_session *session, nghttp2_frame *frame,
+(nghttp2_session *session, const nghttp2_frame *frame,
  void *user_data)
 {
   auto hd = reinterpret_cast<Http2Handler*>(user_data);

@@ -724,7 +724,7 @@ int on_stream_close_callback
 
 namespace {
 int on_frame_recv_callback
-(nghttp2_session *session, nghttp2_frame *frame, void *user_data)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   int rv;
   auto spdy = reinterpret_cast<SpdySession*>(user_data);
@@ -947,7 +947,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
 
 namespace {
 int before_frame_send_callback(nghttp2_session *session,
-                               nghttp2_frame *frame,
+                               const nghttp2_frame *frame,
                                void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
@@ -972,8 +972,8 @@ int before_frame_send_callback(nghttp2_session *session,
 
 namespace {
 int on_frame_not_send_callback(nghttp2_session *session,
-                                nghttp2_frame *frame,
-                                int lib_error_code, void *user_data)
+                               const nghttp2_frame *frame,
+                               int lib_error_code, void *user_data)
 {
   auto spdy = reinterpret_cast<SpdySession*>(user_data);
   SSLOG(WARNING, spdy) << "Failed to send control frame type="

@@ -109,8 +109,8 @@ static ssize_t scripted_recv_callback(nghttp2_session *session,
 }
 
 static ssize_t eof_recv_callback(nghttp2_session *session,
-                                      uint8_t* data, size_t len, int flags,
-                                      void *user_data)
+                                 uint8_t* data, size_t len, int flags,
+                                 void *user_data)
 {
   return NGHTTP2_ERR_EOF;
 }
@@ -127,7 +127,7 @@ static ssize_t accumulator_send_callback(nghttp2_session *session,
 }
 
 static int on_frame_recv_callback(nghttp2_session *session,
-                                  nghttp2_frame *frame,
+                                  const nghttp2_frame *frame,
                                   void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -136,7 +136,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
 }
 
 static int on_invalid_frame_recv_callback(nghttp2_session *session,
-                                          nghttp2_frame *frame,
+                                          const nghttp2_frame *frame,
                                           nghttp2_error_code error_code,
                                           void *user_data)
 {
@@ -146,7 +146,7 @@ static int on_invalid_frame_recv_callback(nghttp2_session *session,
 }
 
 static int on_frame_send_callback(nghttp2_session *session,
-                                  nghttp2_frame *frame,
+                                  const nghttp2_frame *frame,
                                   void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -156,7 +156,7 @@ static int on_frame_send_callback(nghttp2_session *session,
 }
 
 static int on_frame_not_send_callback(nghttp2_session *session,
-                                      nghttp2_frame *frame,
+                                      const nghttp2_frame *frame,
                                       int lib_error,
                                       void *user_data)
 {
