@@ -1,6 +1,6 @@
 dnl nghttp2 - HTTP/2.0 C Library
 
-dnl Copyright (c) 2012 Tatsuhiro Tsujikawa
+dnl Copyright (c) 2012, 2013 Tatsuhiro Tsujikawa
 
 dnl Permission is hereby granted, free of charge, to any person obtaining
 dnl a copy of this software and associated documentation files (the
@@ -29,6 +29,14 @@ dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.
 AC_SUBST(LT_CURRENT, 0)
 AC_SUBST(LT_REVISION, 0)
 AC_SUBST(LT_AGE, 0)
+
+major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
+minor=`echo $PACKAGE_VERSION |cut -d. -f2 | sed -e "s/[^0-9]//g"`
+patch=`echo $PACKAGE_VERSION |cut -d. -f3 | cut -d- -f1 | sed -e "s/[^0-9]//g"`
+
+PACKAGE_VERSION_NUM=`printf "0x%02x%02x%02x" "$major" "$minor" "$patch"`
+
+AC_SUBST(PACKAGE_VERSION_NUM)
 
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
