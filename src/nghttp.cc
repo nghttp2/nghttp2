@@ -978,13 +978,19 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
 }
 } // namespace
 
-int on_frame_send_callback2
+int before_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     check_stream_id(session, frame->hd.stream_id, user_data);
   }
+  return 0;
+}
+
+int on_frame_send_callback2
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
+{
   if(config.verbose) {
     on_frame_send_callback(session, frame, user_data);
   }
@@ -1341,6 +1347,7 @@ int run(char **uris, int n)
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback2;
   callbacks.on_frame_send_callback = on_frame_send_callback2;
+  callbacks.before_frame_send_callback = before_frame_send_callback;
   if(config.verbose) {
     callbacks.on_data_recv_callback = on_data_recv_callback;
     callbacks.on_data_send_callback = on_data_send_callback;
