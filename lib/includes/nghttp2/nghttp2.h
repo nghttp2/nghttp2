@@ -58,6 +58,25 @@ struct nghttp2_session;
  */
 typedef struct nghttp2_session nghttp2_session;
 
+#define NGHTTP2_VERSION_AGE 1
+struct nghttp2_info {
+  int age; /* Age of this struct. This instance of nghttp2 sets it to
+              NGHTTP2_VERSION_AGE but a future version may bump it and add
+              more struct fields at the bottom */
+  int version_num;   /* the NGHTTP2_VERSION_NUM number */
+  const char *version_str; /* points to the NGHTTP2_VERSION string */
+  const char *proto_str;   /* points to the NGHTTP2_PROTO_VERSION_ID string
+                              this instance implements */
+  /* -------- the above fields all exist when age == 1 */
+};
+/**
+ * @struct
+ *
+ * This struct is what nghttp2_version() returns. It holds information about
+ * the particular nghttp2 version.
+ */
+typedef struct nghttp2_info nghttp2_info;
+
 /**
  * @macro
  *
@@ -1975,6 +1994,17 @@ void nghttp2_gzip_inflate_del(nghttp2_gzip *inflater);
 int nghttp2_gzip_inflate(nghttp2_gzip *inflater,
                          uint8_t *out, size_t *outlen_ptr,
                          const uint8_t *in, size_t *inlen_ptr);
+
+/**
+ * @function
+ *
+ * Returns a pointer to a nghttp2_info struct with version information about
+ * the run-time library in use.  The |least_version| argument can be set to a
+ * 24 bit numerical value for the least accepted version number and if the
+ * condition is not met, this function will return a NULL. Pass in 0 to skip
+ * the version checking.
+ */
+nghttp2_info *nghttp2_version(int least_version);
 
 #ifdef __cplusplus
 }

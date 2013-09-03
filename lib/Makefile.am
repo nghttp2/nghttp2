@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2.0 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2012, 2013 Tatsuhiro Tsujikawa
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -37,7 +37,7 @@ OBJECTS = nghttp2_pq.c nghttp2_map.c nghttp2_queue.c \
 	nghttp2_session.c nghttp2_submit.c \
 	nghttp2_helper.c \
 	nghttp2_npn.c nghttp2_gzip.c \
-	nghttp2_hd.c
+	nghttp2_hd.c nghttp2_version.c
 
 HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
 	nghttp2_buffer.h nghttp2_frame.h \
