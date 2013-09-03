@@ -524,7 +524,7 @@ typedef enum {
    * The HEADERS frame which does not apply for the above categories,
    * which is analogous to HEADERS in SPDY.
    */
-  NGHTTP2_HCAT_HEADERS = 3,
+  NGHTTP2_HCAT_HEADERS = 3
 } nghttp2_headers_category;
 
 /**
