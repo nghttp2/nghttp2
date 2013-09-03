@@ -164,6 +164,14 @@ void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
  * |*buf_ptr| may change.  |*buf_ptr| and |*buflen_ptr| are updated
  * accordingly.
  *
+ * This function copies necessary data into |*buf_ptr|. After this
+ * function returns, it is safe to delete the |nva|.
+ *
+ * TODO: The rest of the code call nghttp2_hd_end_headers() after this
+ * call, but it is just a regacy of the first implementation. Now it
+ * is called in this function and the caller does not need to call it
+ * by itself.
+ *
  * This function returns the number of bytes outputted if it succeeds,
  * or one of the following negative error codes:
  *
@@ -182,6 +190,12 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
  * function performs decompression. The |*nva_ptr| points to the final
  * result on successful decompression. The caller must free |*nva_ptr|
  * using nghttp2_nv_array_del().
+ *
+ * The |*nva_ptr| includes pointers to the memory region in the
+ * |in|. The caller must retain the |in| while the |*nva_ptr| is
+ * used. After the use of |*nva_ptr| is over, if the caller intends to
+ * inflate another set of headers, the caller must call
+ * nghttp2_hd_end_headers().
  *
  * This function returns the number of name/value pairs in |*nva_ptr|
  * if it succeeds, or one of the following negative error codes:

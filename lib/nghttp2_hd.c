@@ -874,6 +874,7 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
     nghttp2_hd_entry *ent = deflater->hd_table[i];
     ent->flags &= ~(NGHTTP2_HD_FLAG_EMIT | NGHTTP2_HD_FLAG_IMPLICIT_EMIT);
   }
+  nghttp2_hd_end_headers(deflater);
   return offset - nv_offset;
  fail:
   deflater->bad = 1;
