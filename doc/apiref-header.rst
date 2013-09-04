@@ -8,6 +8,9 @@ To use the public APIs, include ``nghttp2/nghttp2.h``::
 
     #include <nghttp2/nghttp2.h>
 
+The header files are also available online: :doc:`nghttp2.h` and
+:doc:`nghttp2ver.h`.
+
 Remarks
 -------
 
