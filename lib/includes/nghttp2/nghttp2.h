@@ -58,24 +58,41 @@ struct nghttp2_session;
  */
 typedef struct nghttp2_session nghttp2_session;
 
+/**
+ * @macro
+ *
+ * The age of :type:`nghttp2_info`
+ */
 #define NGHTTP2_VERSION_AGE 1
-struct nghttp2_info {
-  int age; /* Age of this struct. This instance of nghttp2 sets it to
-              NGHTTP2_VERSION_AGE but a future version may bump it and add
-              more struct fields at the bottom */
-  int version_num;   /* the NGHTTP2_VERSION_NUM number */
-  const char *version_str; /* points to the NGHTTP2_VERSION string */
-  const char *proto_str;   /* points to the NGHTTP2_PROTO_VERSION_ID string
-                              this instance implements */
-  /* -------- the above fields all exist when age == 1 */
-};
+
 /**
  * @struct
  *
- * This struct is what nghttp2_version() returns. It holds information about
- * the particular nghttp2 version.
+ * This struct is what `nghttp2_version()` returns. It holds
+ * information about the particular nghttp2 version.
  */
-typedef struct nghttp2_info nghttp2_info;
+typedef struct {
+  /**
+   * Age of this struct. This instance of nghttp2 sets it to
+   * :macro:`NGHTTP2_VERSION_AGE` but a future version may bump it and
+   * add more struct fields at the bottom
+   */
+  int age;
+  /**
+   * the :macro:`NGHTTP2_VERSION_NUM` number (since age ==1)
+   */
+  int version_num;
+  /**
+   * points to the NGHTTP2_VERSION string (since age ==1)
+   */
+  const char *version_str;
+  /**
+   * points to the NGHTTP2_PROTO_VERSION_ID string
+   * this instance implements (since age ==1)
+   */
+  const char *proto_str;
+  /* -------- the above fields all exist when age == 1 */
+} nghttp2_info;
 
 /**
  * @macro
