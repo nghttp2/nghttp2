@@ -16,6 +16,8 @@ Contents:
 
    package_README
    apiref
+   nghttp2.h
+   nghttp2ver.h
 
 Resources
 ---------

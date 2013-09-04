@@ -1,0 +1,2149 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nghttp2.h &mdash; nghttp2 0.1.0-DEV documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/default2.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1.0-DEV',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="nghttp2 0.1.0-DEV documentation" href="index.html" />
+    <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html" />
+    <link rel="prev" title="API Reference" href="apiref.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="nghttp2ver.h.html" title="nghttp2ver.h"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="apiref.html" title="API Reference"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">nghttp2 0.1.0-DEV documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="nghttp2-h">
+<h1>nghttp2.h<a class="headerlink" href="#nghttp2-h" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
+<span class="cm"> * nghttp2 - HTTP/2.0 C Library</span>
+<span class="cm"> *</span>
+<span class="cm"> * Copyright (c) 2013 Tatsuhiro Tsujikawa</span>
+<span class="cm"> *</span>
+<span class="cm"> * Permission is hereby granted, free of charge, to any person obtaining</span>
+<span class="cm"> * a copy of this software and associated documentation files (the</span>
+<span class="cm"> * &quot;Software&quot;), to deal in the Software without restriction, including</span>
+<span class="cm"> * without limitation the rights to use, copy, modify, merge, publish,</span>
+<span class="cm"> * distribute, sublicense, and/or sell copies of the Software, and to</span>
+<span class="cm"> * permit persons to whom the Software is furnished to do so, subject to</span>
+<span class="cm"> * the following conditions:</span>
+<span class="cm"> *</span>
+<span class="cm"> * The above copyright notice and this permission notice shall be</span>
+<span class="cm"> * included in all copies or substantial portions of the Software.</span>
+<span class="cm"> *</span>
+<span class="cm"> * THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,</span>
+<span class="cm"> * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF</span>
+<span class="cm"> * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND</span>
+<span class="cm"> * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE</span>
+<span class="cm"> * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION</span>
+<span class="cm"> * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION</span>
+<span class="cm"> * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</span>
+<span class="cm"> */</span>
+<span class="cp">#ifndef NGHTTP2_H</span>
+<span class="cp">#define NGHTTP2_H</span>
+
+<span class="cp">#ifdef  __cplusplus</span>
+<span class="k">extern</span> <span class="s">&quot;C&quot;</span> <span class="p">{</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;stdint.h&gt;</span>
+<span class="cp">#include &lt;sys/types.h&gt;</span>
+
+<span class="cp">#include &lt;nghttp2/nghttp2ver.h&gt;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The protocol version identification of this library supports.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;HTTP-draft-06/2.0&quot;</span>
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID_LEN 17</span>
+
+<span class="k">struct</span> <span class="n">nghttp2_session</span><span class="p">;</span>
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * The primary structure to hold the resources needed for a HTTP/2.0</span>
+<span class="cm"> * session. The details of this structure are intentionally hidden</span>
+<span class="cm"> * from the public API.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">nghttp2_session</span> <span class="n">nghttp2_session</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The age of :type:`nghttp2_info`</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_VERSION_AGE 1</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * This struct is what `nghttp2_version()` returns. It holds</span>
+<span class="cm"> * information about the particular nghttp2 version.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Age of this struct. This instance of nghttp2 sets it to</span>
+<span class="cm">   * :macro:`NGHTTP2_VERSION_AGE` but a future version may bump it and</span>
+<span class="cm">   * add more struct fields at the bottom</span>
+<span class="cm">   */</span>
+  <span class="kt">int</span> <span class="n">age</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * the :macro:`NGHTTP2_VERSION_NUM` number (since age ==1)</span>
+<span class="cm">   */</span>
+  <span class="kt">int</span> <span class="n">version_num</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * points to the :macro:`NGHTTP2_VERSION` string (since age ==1)</span>
+<span class="cm">   */</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">version_str</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * points to the :macro:`NGHTTP2_PROTO_VERSION_ID` string this</span>
+<span class="cm">   * instance implements (since age ==1)</span>
+<span class="cm">   */</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">proto_str</span><span class="p">;</span>
+  <span class="cm">/* -------- the above fields all exist when age == 1 */</span>
+<span class="p">}</span> <span class="n">nghttp2_info</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The default priority value</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_PRI_DEFAULT (1 &lt;&lt; 30)</span>
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The lowest priority value</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_PRI_LOWEST ((1U &lt;&lt; 31) - 1)</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The maximum window size</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_MAX_WINDOW_SIZE ((int32_t)((1U &lt;&lt; 31) - 1))</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The initial window size for stream level flow control.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_INITIAL_WINDOW_SIZE ((1 &lt;&lt; 16) - 1)</span>
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The initial window size for connection level flow control.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE ((1 &lt;&lt; 16) - 1)</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The client connection header.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_CLIENT_CONNECTION_HEADER &quot;PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n&quot;</span>
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The length of :macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN 24</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> *</span>
+<span class="cm"> * Error codes used in this library. The code range is [-999, -500],</span>
+<span class="cm"> * inclusive. The following values are defined:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Invalid argument passed.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_INVALID_ARGUMENT</span> <span class="o">=</span> <span class="o">-</span><span class="mi">501</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The specified protocol version is not supported.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_UNSUPPORTED_VERSION</span> <span class="o">=</span> <span class="o">-</span><span class="mi">503</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Used as a return value from :type:`nghttp2_send_callback` and</span>
+<span class="cm">   * :type:`nghttp2_recv_callback` to indicate that the operation</span>
+<span class="cm">   * would block.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_WOULDBLOCK</span> <span class="o">=</span> <span class="o">-</span><span class="mi">504</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * General protocol error</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_PROTO</span> <span class="o">=</span> <span class="o">-</span><span class="mi">505</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame is invalid.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_INVALID_FRAME</span> <span class="o">=</span> <span class="o">-</span><span class="mi">506</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The peer performed a shutdown on the connection.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_EOF</span> <span class="o">=</span> <span class="o">-</span><span class="mi">507</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Used as a return value from</span>
+<span class="cm">   * :func:`nghttp2_data_source_read_callback` to indicate that data</span>
+<span class="cm">   * transfer is postponed. See</span>
+<span class="cm">   * :func:`nghttp2_data_source_read_callback` for details.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_DEFERRED</span> <span class="o">=</span> <span class="o">-</span><span class="mi">508</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Stream ID has reached the maximum value. Therefore no stream ID</span>
+<span class="cm">   * is available.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">509</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The stream is already closed; or the stream ID is invalid.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_STREAM_CLOSED</span> <span class="o">=</span> <span class="o">-</span><span class="mi">510</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * RST_STREAM has been added to the outbound queue. The stream is in</span>
+<span class="cm">   * closing state.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_STREAM_CLOSING</span> <span class="o">=</span> <span class="o">-</span><span class="mi">511</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The transmission is not allowed for this stream (e.g., a frame</span>
+<span class="cm">   * with END_STREAM flag set has already sent).</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_STREAM_SHUT_WR</span> <span class="o">=</span> <span class="o">-</span><span class="mi">512</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The stream ID is invalid.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_INVALID_STREAM_ID</span> <span class="o">=</span> <span class="o">-</span><span class="mi">513</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The state of the stream is not valid (e.g., DATA cannot be sent</span>
+<span class="cm">   * to the stream if response HEADERS has not been sent).</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_INVALID_STREAM_STATE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">514</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Another DATA frame has already been deferred.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_DEFERRED_DATA_EXIST</span> <span class="o">=</span> <span class="o">-</span><span class="mi">515</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Starting new stream is not allowed. (e.g., GOAWAY has been sent</span>
+<span class="cm">   * and/or received.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_START_STREAM_NOT_ALLOWED</span> <span class="o">=</span> <span class="o">-</span><span class="mi">516</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * GOAWAY has already been sent.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_GOAWAY_ALREADY_SENT</span> <span class="o">=</span> <span class="o">-</span><span class="mi">517</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The received frame contains the invalid header block. (e.g.,</span>
+<span class="cm">   * There are duplicate header names; or the header names are not</span>
+<span class="cm">   * encoded in US-ASCII character set and not lower cased; or the</span>
+<span class="cm">   * header name is zero-length string; or the header value contains</span>
+<span class="cm">   * multiple in-sequence NUL bytes).</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_INVALID_HEADER_BLOCK</span> <span class="o">=</span> <span class="o">-</span><span class="mi">518</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Indicates that the context is not suitable to perform the</span>
+<span class="cm">   * requested operation.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_INVALID_STATE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">519</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The gzip error.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_GZIP</span> <span class="o">=</span> <span class="o">-</span><span class="mi">520</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The user callback function failed due to the temporal error.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">521</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length of the frame is too large.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_FRAME_TOO_LARGE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">522</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Header block inflate/deflate error.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_HEADER_COMP</span> <span class="o">=</span> <span class="o">-</span><span class="mi">523</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Flow control error</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_FLOW_CONTROL</span> <span class="o">=</span> <span class="o">-</span><span class="mi">524</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The errors &lt; :enum:`NGHTTP2_ERR_FATAL` mean that the library is</span>
+<span class="cm">   * under unexpected condition and cannot process any further data</span>
+<span class="cm">   * reliably (e.g., out of memory).</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_FATAL</span> <span class="o">=</span> <span class="o">-</span><span class="mi">900</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Out of memory. This is a fatal error.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_NOMEM</span> <span class="o">=</span> <span class="o">-</span><span class="mi">901</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The user callback function failed. This is a fatal error.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_CALLBACK_FAILURE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">902</span>
+<span class="p">}</span> <span class="n">nghttp2_error</span><span class="p">;</span>
+
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="n">NGHTTP2_MSG_MORE</span>
+<span class="p">}</span> <span class="n">nghttp2_io_flag</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * The name/value pair, which mainly used to represent header fields.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The |name| byte string, which is not necessarily ``NULL``</span>
+<span class="cm">   * terminated.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The |value| byte string, which is not necessarily ``NULL``</span>
+<span class="cm">   * terminated.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length of the |name|.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint16_t</span> <span class="n">namelen</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length of the |value|.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint16_t</span> <span class="n">valuelen</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_nv</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> * The control frame types in HTTP/2.0.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The DATA frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_DATA</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The HEADERS frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HEADERS</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PRIORITY frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_PRIORITY</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The RST_STREAM frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_RST_STREAM</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The SETTINGS frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PUSH_PROMISE frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_PUSH_PROMISE</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PING frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_PING</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The GOAWAY frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_GOAWAY</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The WINDOW_UPDATE frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="p">}</span> <span class="n">nghttp2_frame_type</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> *</span>
+<span class="cm"> * The flags for HTTP/2.0 frames. This enum defines all flags for</span>
+<span class="cm"> * frames, assuming that the same flag name has the same mask.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * No flag set.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_NONE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The END_STREAM flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_END_STREAM</span> <span class="o">=</span> <span class="mh">0x1</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The END_HEADERS flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_END_HEADERS</span> <span class="o">=</span> <span class="mh">0x4</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PRIORITY flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_PRIORITY</span> <span class="o">=</span> <span class="mh">0x8</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The END_PUSH_PROMISE flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_END_PUSH_PROMISE</span> <span class="o">=</span> <span class="mh">0x4</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PONG flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_PONG</span> <span class="o">=</span> <span class="mh">0x1</span>
+<span class="p">}</span> <span class="n">nghttp2_flag</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> * The SETTINGS ID.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * SETTINGS_MAX_CONCURRENT_STREAMS</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * SETTINGS_INITIAL_WINDOW_SIZE</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * SETTINGS_FLOW_CONTROL_OPTIONS</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Maximum ID of :type:`nghttp2_settings_id`.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="p">}</span> <span class="n">nghttp2_settings_id</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> * Default maximum concurrent streams.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ((1U &lt;&lt; 31) - 1)</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> * The status codes for the RST_STREAM and GOAWAY frames.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * No errors.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_NO_ERROR</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * PROTOCOL_ERROR</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_PROTOCOL_ERROR</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * INTERNAL_ERROR</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_INTERNAL_ERROR</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * FLOW_CONTROL_ERROR</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLOW_CONTROL_ERROR</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * STREAM_CLOSED</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_STREAM_CLOSED</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * FRAME_TOO_LARGE</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FRAME_TOO_LARGE</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * REFUSED_STREAM</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_REFUSED_STREAM</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * CANCEL</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_CANCEL</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * COMPRESSION_ERROR</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_COMPRESSION_ERROR</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="p">}</span> <span class="n">nghttp2_error_code</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The frame header.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length field of this frame, excluding frame header.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint16_t</span> <span class="n">length</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The type of this frame. See `nghttp2_frame`.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="n">type</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The flags.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The stream identifier (aka, stream ID)</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_frame_hd</span><span class="p">;</span>
+
+
+<span class="cm">/**</span>
+<span class="cm"> * @union</span>
+<span class="cm"> *</span>
+<span class="cm"> * This union represents the some kind of data source passed to</span>
+<span class="cm"> * :type:`nghttp2_data_source_read_callback`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">union</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The integer field, suitable for a file descriptor.</span>
+<span class="cm">   */</span>
+  <span class="kt">int</span> <span class="n">fd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The pointer to an arbitrary object.</span>
+<span class="cm">   */</span>
+  <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_data_source</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when the library wants to read data from</span>
+<span class="cm"> * the |source|. The read data is sent in the stream |stream_id|. The</span>
+<span class="cm"> * implementation of this function must read at most |length| bytes of</span>
+<span class="cm"> * data from |source| (or possibly other places) and store them in</span>
+<span class="cm"> * |buf| and return number of data stored in |buf|. If EOF is reached,</span>
+<span class="cm"> * set |*eof| to 1.  If the application wants to postpone DATA frames,</span>
+<span class="cm"> * (e.g., asynchronous I/O, or reading data blocks for long time), it</span>
+<span class="cm"> * is achieved by returning :enum:`NGHTTP2_ERR_DEFERRED` without</span>
+<span class="cm"> * reading any data in this invocation.  The library removes DATA</span>
+<span class="cm"> * frame from the outgoing queue temporarily.  To move back deferred</span>
+<span class="cm"> * DATA frame to outgoing queue, call `nghttp2_session_resume_data()`.</span>
+<span class="cm"> * In case of error, there are 2 choices. Returning</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close the stream</span>
+<span class="cm"> * by issuing RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.</span>
+<span class="cm"> * Returning :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the</span>
+<span class="cm"> * entire session failure.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_data_source_read_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+ <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">eof</span><span class="p">,</span>
+ <span class="n">nghttp2_data_source</span> <span class="o">*</span><span class="n">source</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * This struct represents the data source and the way to read a chunk</span>
+<span class="cm"> * of data from it.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The data source.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_data_source</span> <span class="n">source</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The callback function to read a chunk of data from the |source|.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_data_source_read_callback</span> <span class="n">read_callback</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_data_provider</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> *</span>
+<span class="cm"> * The category of HEADERS, which indicates the role of the frame. In</span>
+<span class="cm"> * HTTP/2.0 spec, request, response, push response and other arbitrary</span>
+<span class="cm"> * headers (e.g., trailers) are all called just HEADERS. To give the</span>
+<span class="cm"> * application the role of incoming HEADERS frame, we define several</span>
+<span class="cm"> * categories.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The HEADERS frame is opening new stream, which is analogous to</span>
+<span class="cm">   * SYN_STREAM in SPDY.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HCAT_REQUEST</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The HEADERS frame is the first response headers, which is</span>
+<span class="cm">   * analogous to SYN_REPLY in SPDY.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The HEADERS frame is the first headers sent against reserved</span>
+<span class="cm">   * stream.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HCAT_PUSH_RESPONSE</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The HEADERS frame which does not apply for the above categories,</span>
+<span class="cm">   * which is analogous to HEADERS in SPDY.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HCAT_HEADERS</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="p">}</span> <span class="n">nghttp2_headers_category</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The HEADERS frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The priority.</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The name/value pairs.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The number of name/value pairs in |nva|.</span>
+<span class="cm">   */</span>
+  <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">;</span>
+  <span class="n">nghttp2_headers_category</span> <span class="n">cat</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_headers</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The PRIORITY frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The priority.</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_priority</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The RST_STREAM frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The error code. See :type:`nghttp2_error_code`.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_rst_stream</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The SETTINGS ID/Value pair. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The SETTINGS ID. See :type:`nghttp2_settings_id`.</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">settings_id</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The value of this entry.</span>
+<span class="cm">   */</span>
+  <span class="kt">uint32_t</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_settings_entry</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The SETTINGS frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The number of SETTINGS ID/Value pairs in |iv|.</span>
+<span class="cm">   */</span>
+  <span class="kt">size_t</span> <span class="n">niv</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The pointer to the array of SETTINGS ID/Value pair.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_settings</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The PUSH_PROMISE frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The promised stream ID</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">promised_stream_id</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The name/value pairs.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The number of name/value pairs in |nva|.</span>
+<span class="cm">   */</span>
+  <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_push_promise</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The PING frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The opaque data</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="n">opaque_data</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
+<span class="p">}</span> <span class="n">nghttp2_ping</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> * The GOAWAY frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The last stream stream ID.</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">last_stream_id</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The error code. See :type:`nghttp2_error_code`.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The additional debug data</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length of |opaque_data| member.</span>
+<span class="cm">   */</span>
+  <span class="kt">size_t</span> <span class="n">opaque_data_len</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_goaway</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * The WINDOW_UPDATE frame. It has the following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The window size increment.</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">window_size_increment</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_window_update</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @union</span>
+<span class="cm"> *</span>
+<span class="cm"> * This union includes all frames to pass them to various function</span>
+<span class="cm"> * calls as nghttp2_frame type. The DATA frame is intentionally</span>
+<span class="cm"> * omitted from here.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">union</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header, which is convenient to inspect frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The HEADERS frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_headers</span> <span class="n">headers</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PRIORITY frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_priority</span> <span class="n">priority</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The RST_STREAM frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_rst_stream</span> <span class="n">rst_stream</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The SETTINGS frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_settings</span> <span class="n">settings</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PUSH_PROMISE frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_push_promise</span> <span class="n">push_promise</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PING frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_ping</span> <span class="n">ping</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The GOAWAY frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_goaway</span> <span class="n">goaway</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The WINDOW_UPDATE frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_window_update</span> <span class="n">window_update</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_frame</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when |session| wants to send data to the</span>
+<span class="cm"> * remote peer. The implementation of this function must send at most</span>
+<span class="cm"> * |length| bytes of data stored in |data|. The |flags| is currently</span>
+<span class="cm"> * not used and always 0. It must return the number of bytes sent if</span>
+<span class="cm"> * it succeeds.  If it cannot send any single byte without blocking,</span>
+<span class="cm"> * it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`. For other errors, it</span>
+<span class="cm"> * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_send_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+ <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when |session| wants to receive data from</span>
+<span class="cm"> * the remote peer. The implementation of this function must read at</span>
+<span class="cm"> * most |length| bytes of data and store it in |buf|. The |flags| is</span>
+<span class="cm"> * currently not used and always 0. It must return the number of bytes</span>
+<span class="cm"> * written in |buf| if it succeeds. If it cannot read any single byte</span>
+<span class="cm"> * without blocking, it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`. If</span>
+<span class="cm"> * it gets EOF before it reads any single byte, it must return</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_EOF`. For other errors, it must return</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_recv_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+ <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked by `nghttp2_session_recv()` when a</span>
+<span class="cm"> * non-DATA frame is received.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_recv_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked by `nghttp2_session_recv()` when an</span>
+<span class="cm"> * invalid non-DATA frame is received. The |error_code| is one of the</span>
+<span class="cm"> * :enum:`nghttp2_error_code` and indicates the error. When this</span>
+<span class="cm"> * callback function is invoked, the library automatically submits</span>
+<span class="cm"> * either RST_STREAM or GOAWAY frame.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_invalid_frame_recv_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+ <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when a chunk of data in DATA frame is</span>
+<span class="cm"> * received. The |stream_id| is the stream ID this DATA frame belongs</span>
+<span class="cm"> * to. The |flags| is the flags of DATA frame which this data chunk is</span>
+<span class="cm"> * contained. ``(flags &amp; NGHTTP2_FLAG_END_STREAM) != 0`` does not</span>
+<span class="cm"> * necessarily mean this chunk of data is the last one in the</span>
+<span class="cm"> * stream. You should use :type:`nghttp2_on_data_recv_callback` to</span>
+<span class="cm"> * know all data frames are received.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_data_chunk_recv_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+ <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when DATA frame is received. The actual</span>
+<span class="cm"> * data it contains are received by</span>
+<span class="cm"> * :type:`nghttp2_on_data_chunk_recv_callback`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_data_recv_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint16_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+ <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked before the non-DATA frame |frame| is</span>
+<span class="cm"> * sent. This may be useful, for example, to know the stream ID of</span>
+<span class="cm"> * HEADERS and PUSH_PROMISE frame (see also</span>
+<span class="cm"> * `nghttp2_session_get_stream_user_data()`), which is not assigned</span>
+<span class="cm"> * when it was queued.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_before_frame_send_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked after the non-DATA frame |frame| is sent.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_send_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked after the non-DATA frame |frame| is not</span>
+<span class="cm"> * sent because of the error. The error is indicated by the</span>
+<span class="cm"> * |lib_error_code|, which is one of the values defined in</span>
+<span class="cm"> * :type:`nghttp2_error`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_not_send_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">,</span>
+ <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked after DATA frame is sent.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_data_send_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint16_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+ <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when the stream |stream_id| is</span>
+<span class="cm"> * closed. The reason of closure is indicated by the</span>
+<span class="cm"> * |error_code|. The stream_user_data, which was specified in</span>
+<span class="cm"> * `nghttp2_submit_request()` or `nghttp2_submit_headers()`, is</span>
+<span class="cm"> * still available in this function.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_stream_close_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span>
+ <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when the request from the remote peer is</span>
+<span class="cm"> * received.  In other words, the frame with END_STREAM flag set is</span>
+<span class="cm"> * received.  In HTTP, this means HTTP request, including request</span>
+<span class="cm"> * body, is fully received.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_request_recv_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when the received control frame octets</span>
+<span class="cm"> * could not be parsed correctly. The |type| indicates the type of</span>
+<span class="cm"> * received non-DATA frame. The |head| is the pointer to the header of</span>
+<span class="cm"> * the received frame. The |headlen| is the length of the</span>
+<span class="cm"> * |head|. According to the spec, the |headlen| is always 8. In other</span>
+<span class="cm"> * words, the |head| is the first 8 bytes of the received frame.  The</span>
+<span class="cm"> * |payload| is the pointer to the data portion of the received frame.</span>
+<span class="cm"> * The |payloadlen| is the length of the |payload|. This is the data</span>
+<span class="cm"> * after the length field. The |lib_error_code| is one of the error code</span>
+<span class="cm"> * defined in :enum:`nghttp2_error` and indicates the error.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_recv_parse_error_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="n">nghttp2_frame_type</span> <span class="n">type</span><span class="p">,</span>
+ <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">headlen</span><span class="p">,</span>
+ <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">payload</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">payloadlen</span><span class="p">,</span>
+ <span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when the received frame type is</span>
+<span class="cm"> * unknown. The |head| is the pointer to the header of the received</span>
+<span class="cm"> * frame. The |headlen| is the length of the |head|. According to the</span>
+<span class="cm"> * spec, the |headlen| is always 8. In other words, the |head| is the</span>
+<span class="cm"> * first 8 bytes of the received frame.  The |payload| is the pointer</span>
+<span class="cm"> * to the data portion of the received frame.  The |payloadlen| is the</span>
+<span class="cm"> * length of the |payload|. This is the data after the length field.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The implementation of this function must return 0 if it</span>
+<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
+<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
+<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_unknown_frame_recv_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+ <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">headlen</span><span class="p">,</span>
+ <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">payload</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">payloadlen</span><span class="p">,</span>
+ <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback functions.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when the |session| wants to send data</span>
+<span class="cm">   * to the remote peer.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_send_callback</span> <span class="n">send_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when the |session| wants to receive</span>
+<span class="cm">   * data from the remote peer.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_recv_callback</span> <span class="n">recv_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked by `nghttp2_session_recv()` when a</span>
+<span class="cm">   * non-DATA frame is received.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_frame_recv_callback</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked by `nghttp2_session_recv()` when an</span>
+<span class="cm">   * invalid non-DATA frame is received.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_invalid_frame_recv_callback</span> <span class="n">on_invalid_frame_recv_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when a chunk of data in DATA frame is</span>
+<span class="cm">   * received.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_data_chunk_recv_callback</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when DATA frame is received.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_data_recv_callback</span> <span class="n">on_data_recv_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked before the non-DATA frame is sent.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_before_frame_send_callback</span> <span class="n">before_frame_send_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked after the non-DATA frame is sent.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_frame_send_callback</span> <span class="n">on_frame_send_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The callback function invoked when a non-DATA frame is not sent</span>
+<span class="cm">   * because of an error.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_frame_not_send_callback</span> <span class="n">on_frame_not_send_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked after DATA frame is sent.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_data_send_callback</span> <span class="n">on_data_send_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when the stream is closed.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_stream_close_callback</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when request from the remote peer is</span>
+<span class="cm">   * received.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_request_recv_callback</span> <span class="n">on_request_recv_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when the received non-DATA frame octets</span>
+<span class="cm">   * could not be parsed correctly.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_frame_recv_parse_error_callback</span>
+  <span class="n">on_frame_recv_parse_error_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when the received frame type is</span>
+<span class="cm">   * unknown.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_on_unknown_frame_recv_callback</span> <span class="n">on_unknown_frame_recv_callback</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_session_callbacks</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Initializes |*session_ptr| for client use. The all members of</span>
+<span class="cm"> * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|</span>
+<span class="cm"> * does not store |callbacks|. |user_data| is an arbitrary user</span>
+<span class="cm"> * supplied data, which will be passed to the callback functions.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The :member:`nghttp2_session_callbacks.send_callback` must be</span>
+<span class="cm"> * specified.  If the application code uses `nghttp2_session_recv()`,</span>
+<span class="cm"> * the :member:`nghttp2_session_callbacks.recv_callback` must be</span>
+<span class="cm"> * specified. The other members of |callbacks| can be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_client_new</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
+                               <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Initializes |*session_ptr| for server use. The all members of</span>
+<span class="cm"> * |callbacks| are copied to |*session_ptr|. Therefore |*session_ptr|</span>
+<span class="cm"> * does not store |callbacks|. |user_data| is an arbitrary user</span>
+<span class="cm"> * supplied data, which will be passed to the callback functions.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The :member:`nghttp2_session_callbacks.send_callback` must be</span>
+<span class="cm"> * specified.  If the application code uses `nghttp2_session_recv()`,</span>
+<span class="cm"> * the :member:`nghttp2_session_callbacks.recv_callback` must be</span>
+<span class="cm"> * specified. The other members of |callbacks| can be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_server_new</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
+                               <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Frees any resources allocated for |session|. If |session| is</span>
+<span class="cm"> * ``NULL``, this function does nothing.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_del</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> *</span>
+<span class="cm"> * Configuration options for :type:`nghttp2_session`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * This option prevents the library from sending WINDOW_UPDATE for a</span>
+<span class="cm">   * stream automatically. If this option is set, the application is</span>
+<span class="cm">   * responsible for sending WINDOW_UPDATE using</span>
+<span class="cm">   * `nghttp2_submit_window_update`.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * This option prevents the library from sending WINDOW_UPDATE for a</span>
+<span class="cm">   * connection automatically. If this option is set, the application</span>
+<span class="cm">   * is responsible for sending WINDOW_UPDATE with stream ID 0 using</span>
+<span class="cm">   * `nghttp2_submit_window_update`.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="p">}</span> <span class="n">nghttp2_opt</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Sets the configuration option for the |session|.  The |optname| is</span>
+<span class="cm"> * one of :type:`nghttp2_opt`. The |optval| is the pointer to the</span>
+<span class="cm"> * option value and the |optlen| is the size of |*optval|. The</span>
+<span class="cm"> * required type of |optval| varies depending on the |optname|. See</span>
+<span class="cm"> * below.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The following |optname| are supported:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`</span>
+<span class="cm"> *     The |optval| must be a pointer to ``int``. If the |*optval| is</span>
+<span class="cm"> *     nonzero, the library will not send WINDOW_UPDATE for a stream</span>
+<span class="cm"> *     automatically.  Therefore, the application is responsible for</span>
+<span class="cm"> *     sending WINDOW_UPDATE using</span>
+<span class="cm"> *     `nghttp2_submit_window_update`. This option defaults to 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`</span>
+<span class="cm"> *     The |optval| must be a pointer to ``int``. If the |*optval| is</span>
+<span class="cm"> *     nonzero, the library will not send WINDOW_UPDATE for connection</span>
+<span class="cm"> *     automatically.  Therefore, the application is responsible for</span>
+<span class="cm"> *     sending WINDOW_UPDATE using</span>
+<span class="cm"> *     `nghttp2_submit_window_update`. This option defaults to 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |optname| is not supported; or the |optval| and/or the</span>
+<span class="cm"> *     |optlen| are invalid.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_set_option</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                               <span class="kt">int</span> <span class="n">optname</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">optval</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">optlen</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Sends pending frames to the remote peer.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function retrieves the highest prioritized frame from the</span>
+<span class="cm"> * outbound queue and sends it to the remote peer. It does this as</span>
+<span class="cm"> * many as possible until the user callback</span>
+<span class="cm"> * :member:`nghttp2_session_callbacks.send_callback` returns</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_WOULDBLOCK` or the outbound queue becomes empty.</span>
+<span class="cm"> * This function calls several callback functions which are passed</span>
+<span class="cm"> * when initializing the |session|. Here is the simple time chart</span>
+<span class="cm"> * which tells when each callback is invoked:</span>
+<span class="cm"> *</span>
+<span class="cm"> * 1. Get the next frame to send from outbound queue.</span>
+<span class="cm"> * 2. Prepare transmission of the frame.</span>
+<span class="cm"> * 3. If the control frame cannot be sent because some preconditions</span>
+<span class="cm"> *    are not met (e.g., request HEADERS cannot be sent after</span>
+<span class="cm"> *    GOAWAY),</span>
+<span class="cm"> *    :member:`nghttp2_session_callbacks.on_ctrl_not_send_callback` is</span>
+<span class="cm"> *    invoked. Abort the following steps.</span>
+<span class="cm"> * 4. If the frame is request HEADERS, the stream is opened</span>
+<span class="cm"> *    here.</span>
+<span class="cm"> * 5. :member:`nghttp2_session_callbacks.before_ctrl_send_callback` is</span>
+<span class="cm"> *    invoked.</span>
+<span class="cm"> * 6. :member:`nghttp2_session_callbacks.send_callback` is invoked one</span>
+<span class="cm"> *    or more times to send the frame.</span>
+<span class="cm"> * 7. If the frame is a control frame,</span>
+<span class="cm"> *    :member:`nghttp2_session_callbacks.on_ctrl_send_callback` is</span>
+<span class="cm"> *    invoked.</span>
+<span class="cm"> * 8. If the frame is a DATA frame,</span>
+<span class="cm"> *    :member:`nghttp2_session_callbacks.on_data_send_callback` is</span>
+<span class="cm"> *    invoked.</span>
+<span class="cm"> * 9. If the transmission of the frame triggers closure of the stream,</span>
+<span class="cm"> *    the stream is closed and</span>
+<span class="cm"> *    :member:`nghttp2_session_callbacks.on_stream_close_callback` is</span>
+<span class="cm"> *    invoked.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`</span>
+<span class="cm"> *     The callback function failed.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_send</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Receives frames from the remote peer.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function receives as many frames as possible until the user</span>
+<span class="cm"> * callback :member:`nghttp2_session_callbacks.recv_callback` returns</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_WOULDBLOCK`. This function calls several</span>
+<span class="cm"> * callback functions which are passed when initializing the</span>
+<span class="cm"> * |session|. Here is the simple time chart which tells when each</span>
+<span class="cm"> * callback is invoked:</span>
+<span class="cm"> *</span>
+<span class="cm"> * 1. :member:`nghttp2_session_callbacks.recv_callback` is invoked one</span>
+<span class="cm"> *    or more times to receive frame header.</span>
+<span class="cm"> * 2. If the frame is DATA frame:</span>
+<span class="cm"> *</span>
+<span class="cm"> *   2.1. :member:`nghttp2_session_callbacks.recv_callback` is invoked</span>
+<span class="cm"> *        to receive DATA payload. For each chunk of data,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`</span>
+<span class="cm"> *        is invoked.</span>
+<span class="cm"> *   2.2. If one DATA frame is completely received,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_data_recv_callback` is</span>
+<span class="cm"> *        invoked.  If the frame is the final frame of the request,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_request_recv_callback`</span>
+<span class="cm"> *        is invoked.  If the reception of the frame triggers the</span>
+<span class="cm"> *        closure of the stream,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_stream_close_callback`</span>
+<span class="cm"> *        is invoked.</span>
+<span class="cm"> *</span>
+<span class="cm"> * 3. If the frame is the control frame:</span>
+<span class="cm"> *</span>
+<span class="cm"> *   3.1. :member:`nghttp2_session_callbacks.recv_callback` is invoked</span>
+<span class="cm"> *        one or more times to receive whole frame.</span>
+<span class="cm"> *   3.2. If the received frame is valid,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_ctrl_recv_callback` is</span>
+<span class="cm"> *        invoked.  If the frame is the final frame of the request,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_request_recv_callback`</span>
+<span class="cm"> *        is invoked.  If the reception of the frame triggers the</span>
+<span class="cm"> *        closure of the stream,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_stream_close_callback`</span>
+<span class="cm"> *        is invoked.</span>
+<span class="cm"> *   3.3. If the received frame is unpacked but is interpreted as</span>
+<span class="cm"> *        invalid,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_invalid_ctrl_recv_callback`</span>
+<span class="cm"> *        is invoked.</span>
+<span class="cm"> *   3.4. If the received frame could not be unpacked correctly,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_ctrl_recv_parse_error_callback`</span>
+<span class="cm"> *        is invoked.</span>
+<span class="cm"> *   3.5. If the received frame type is unknown,</span>
+<span class="cm"> *        :member:`nghttp2_session_callbacks.on_unknown_ctrl_recv_callback`</span>
+<span class="cm"> *        is invoked.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_EOF`</span>
+<span class="cm"> *     The remote peer did shutdown on the connection.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`</span>
+<span class="cm"> *     The callback function failed.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_recv</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Processes data |in| as an input from the remote endpoint. The</span>
+<span class="cm"> * |inlen| indicates the number of bytes in the |in|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function behaves like `nghttp2_session_recv()` except that it</span>
+<span class="cm"> * does not use :member:`nghttp2_session_callbacks.recv_callback` to</span>
+<span class="cm"> * receive data; the |in| is the only data for the invocation of this</span>
+<span class="cm"> * function. If all bytes are processed, this function returns. The</span>
+<span class="cm"> * other callbacks are called in the same way as they are in</span>
+<span class="cm"> * `nghttp2_session_recv()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * In the current implementation, this function always tries to</span>
+<span class="cm"> * processes all input data unless an error occurs.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns the number of processed bytes, or one of the</span>
+<span class="cm"> * following negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                 <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Puts back previously deferred DATA frame in the stream |stream_id|</span>
+<span class="cm"> * to the outbound queue.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The stream does not exist or no deferred data exist.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_resume_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns nonzero value if |session| wants to receive data from the</span>
+<span class="cm"> * remote peer.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If both `nghttp2_session_want_read()` and</span>
+<span class="cm"> * `nghttp2_session_want_write()` return 0, the application should</span>
+<span class="cm"> * drop the connection.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_want_read</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns nonzero value if |session| wants to send data to the remote</span>
+<span class="cm"> * peer.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If both `nghttp2_session_want_read()` and</span>
+<span class="cm"> * `nghttp2_session_want_write()` return 0, the application should</span>
+<span class="cm"> * drop the connection.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_want_write</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns stream_user_data for the stream |stream_id|. The</span>
+<span class="cm"> * stream_user_data is provided by `nghttp2_submit_request()` or</span>
+<span class="cm"> * `nghttp2_submit_syn_stream()`.  If the stream is initiated by the</span>
+<span class="cm"> * remote endpoint, stream_user_data is always ``NULL``. If the stream</span>
+<span class="cm"> * is initiated by the local endpoint and ``NULL`` is given in</span>
+<span class="cm"> * `nghttp2_submit_request()` or `nghttp2_submit_syn_stream()`, then</span>
+<span class="cm"> * this function returns ``NULL``. If the stream does not exist, this</span>
+<span class="cm"> * function returns ``NULL``.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span><span class="o">*</span> <span class="nf">nghttp2_session_get_stream_user_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                           <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns the number of frames in the outbound queue. This does not</span>
+<span class="cm"> * include the deferred DATA frames.</span>
+<span class="cm"> */</span>
+<span class="kt">size_t</span> <span class="nf">nghttp2_session_get_outbound_queue_size</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits GOAWAY frame with the given |error_code|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function should be called when the connection should be</span>
+<span class="cm"> * terminated after sending GOAWAY. If the remaining streams should be</span>
+<span class="cm"> * processed after GOAWAY, use `nghttp2_submit_goaway()` instead.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_fail_session</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                 <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Performs post-process of HTTP Upgrade request. This function can be</span>
+<span class="cm"> * called from both client and server, but the behavior is very</span>
+<span class="cm"> * different in each other.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If called from client side, the |settings_payload| must be the</span>
+<span class="cm"> * value sent in ``HTTP2-Settings`` header field and must be decoded</span>
+<span class="cm"> * by base64url decoder. The |settings_payloadlen| is the length of</span>
+<span class="cm"> * |settings_payload|. The |settings_payload| is unpacked and its</span>
+<span class="cm"> * setting values will be submitted using</span>
+<span class="cm"> * `nghttp2_submit_settings()`. This means that the client application</span>
+<span class="cm"> * code does not need to submit SETTINGS by itself. The stream with</span>
+<span class="cm"> * stream ID=1 is opened and the |stream_user_data| is used for its</span>
+<span class="cm"> * stream_user_data. The opened stream becomes half-closed (local)</span>
+<span class="cm"> * state.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If called from server side, the |settings_payload| must be the</span>
+<span class="cm"> * value received in ``HTTP2-Settings`` header field and must be</span>
+<span class="cm"> * decoded by base64url decoder. The |settings_payloadlen| is the</span>
+<span class="cm"> * length of |settings_payload|. It is treated as if the SETTINGS</span>
+<span class="cm"> * frame with that payload is received. Thus, callback functions for</span>
+<span class="cm"> * the reception of SETTINGS frame will be invoked. The stream with</span>
+<span class="cm"> * stream ID=1 is opened. The |stream_user_data| is ignored. The</span>
+<span class="cm"> * opened stream becomes half-closed (remote).</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |settings_payload| is badly formed.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_PROTO`</span>
+<span class="cm"> *     The stream ID 1 is already used or closed; or is not available;</span>
+<span class="cm"> *     or the |settings_payload| does not include both</span>
+<span class="cm"> *     :enum:`NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS` and</span>
+<span class="cm"> *     :enum:`NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE`.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_upgrade</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">settings_payload</span><span class="p">,</span>
+                            <span class="kt">size_t</span> <span class="n">settings_payloadlen</span><span class="p">,</span>
+                            <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Serializes the SETTINGS values |iv| in the |buf|. The number of</span>
+<span class="cm"> * entry pointed by |iv| array is given by the |niv|. This function</span>
+<span class="cm"> * may reorder the pointers in |iv|. The |buf| must have enough region</span>
+<span class="cm"> * to hold serialized data. The required space for the |niv| entries</span>
+<span class="cm"> * are ``8*niv`` bytes. This function is used mainly for creating</span>
+<span class="cm"> * SETTINGS payload to be sent with ``HTTP2-Settings`` header field in</span>
+<span class="cm"> * HTTP Upgrade request. The data written in |buf| is not still</span>
+<span class="cm"> * base64url encoded and the application is responsible for encoding.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns the number of bytes written in |buf|, or one</span>
+<span class="cm"> * of the following negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |iv| contains duplicate settings ID or invalid value.</span>
+<span class="cm"> */</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_pack_settings_payload</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
+                                      <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">niv</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns string describing the |lib_error_code|. The</span>
+<span class="cm"> * |lib_error_code| must be one of the :enum:`nghttp2_error`.</span>
+<span class="cm"> */</span>
+<span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">nghttp2_strerror</span><span class="p">(</span><span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits HEADERS frame and optionally one or more DATA frames.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |pri| is priority of this request. 0 is the highest priority</span>
+<span class="cm"> * value and :macro:`NGHTTP2_PRI_LOWEST` is the lowest value.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
+<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
+<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
+<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
+<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nv| must include following name/value pairs:</span>
+<span class="cm"> *</span>
+<span class="cm"> * ``:method``</span>
+<span class="cm"> *     HTTP method (e.g., ``GET``, ``POST``, ``HEAD``, etc)</span>
+<span class="cm"> * ``:scheme``</span>
+<span class="cm"> *     URI scheme (e.g., ``https``)</span>
+<span class="cm"> * ``:path``</span>
+<span class="cm"> *     Absolute path and parameters of this request (e.g., ``/foo``,</span>
+<span class="cm"> *     ``/foo;bar;haz?h=j&amp;y=123``)</span>
+<span class="cm"> * ``:host``</span>
+<span class="cm"> *     The hostport portion of the URI for this request (e.g.,</span>
+<span class="cm"> *     ``example.org:443``). This is the same as the HTTP &quot;Host&quot; header</span>
+<span class="cm"> *     field.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
+<span class="cm"> * also lower-cases all names in |nv|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If |data_prd| is not ``NULL``, it provides data which will be sent</span>
+<span class="cm"> * in subsequent DATA frames. In this case, a method that allows</span>
+<span class="cm"> * request message bodies</span>
+<span class="cm"> * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must</span>
+<span class="cm"> * be specified with ``:method`` key in |nv| (e.g. ``POST``). This</span>
+<span class="cm"> * function does not take ownership of the |data_prd|. The function</span>
+<span class="cm"> * copies the members of the |data_prd|. If |data_prd| is ``NULL``,</span>
+<span class="cm"> * HEADERS have END_STREAM set. The |stream_user_data| is data</span>
+<span class="cm"> * associated to the stream opened by this request and can be an</span>
+<span class="cm"> * arbitrary pointer, which can be retrieved later by</span>
+<span class="cm"> * `nghttp2_session_get_stream_user_data()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Since the library reorders the frames and tries to send the highest</span>
+<span class="cm"> * prioritized one first and the HTTP/2.0 specification requires the</span>
+<span class="cm"> * stream ID must be strictly increasing, the stream ID of this</span>
+<span class="cm"> * request cannot be known until it is about to sent.  To know the</span>
+<span class="cm"> * stream ID of the request, the application can use</span>
+<span class="cm"> * :member:`nghttp2_session_callbacks.before_ctrl_send_callback`. This</span>
+<span class="cm"> * callback is called just before the frame is sent. For HEADERS</span>
+<span class="cm"> * frame, the argument frame has the stream ID assigned. Also since</span>
+<span class="cm"> * the stream is already opened,</span>
+<span class="cm"> * `nghttp2_session_get_stream_user_data()` can be used to get</span>
+<span class="cm"> * |stream_user_data| to identify which HEADERS we are processing.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |pri| is invalid; or the |nv| includes empty name or</span>
+<span class="cm"> *     ``NULL`` value.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">,</span>
+                           <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits response HEADERS frame and optionally one or more DATA</span>
+<span class="cm"> * frames against the stream |stream_id|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
+<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
+<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
+<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
+<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nv| must include following name/value pairs:</span>
+<span class="cm"> *</span>
+<span class="cm"> * ``:status``</span>
+<span class="cm"> *     HTTP status code (e.g., ``200`` or ``200 OK``)</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
+<span class="cm"> * also lower-cases all names in |nv|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If |data_prd| is not ``NULL``, it provides data which will be sent</span>
+<span class="cm"> * in subsequent DATA frames.  This function does not take ownership</span>
+<span class="cm"> * of the |data_prd|. The function copies the members of the</span>
+<span class="cm"> * |data_prd|.  If |data_prd| is ``NULL``, HEADERS will have</span>
+<span class="cm"> * END_STREAM flag set.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |nv| includes empty name or ``NULL`` value.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_response</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits HEADERS frame. The |flags| is bitwise OR of the</span>
+<span class="cm"> * following values:</span>
+<span class="cm"> *</span>
+<span class="cm"> * * :enum:`NGHTTP2_FLAG_END_STREAM`</span>
+<span class="cm"> * * :enum:`NGHTTP2_FLAG_END_HEADERS`</span>
+<span class="cm"> * * :enum:`NGHTTP2_FLAG_PRIORITY`</span>
+<span class="cm"> *</span>
+<span class="cm"> * If |flags| includes :enum:`NGHTTP2_FLAG_END_STREAM`, this frame has</span>
+<span class="cm"> * END_STREAM flag set. The library does not support header</span>
+<span class="cm"> * continuation and the HEADERS frame always has</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_END_HEADERS` flag set regardless of the |flags|</span>
+<span class="cm"> * value.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If the |stream_id| is -1, this frame is assumed as request (i.e.,</span>
+<span class="cm"> * request HEADERS frame which opens new stream). In this case, the</span>
+<span class="cm"> * actual stream ID is assigned just before the frame is sent. For</span>
+<span class="cm"> * response, specify stream ID in |stream_id|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |pri| is priority of this request.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
+<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
+<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
+<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
+<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
+<span class="cm"> * also lower-cases all names in |nv|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |stream_user_data| is a pointer to an arbitrary data which is</span>
+<span class="cm"> * associated to the stream this frame will open. Therefore it is only</span>
+<span class="cm"> * used if this frame opens streams, in other words, it changes stream</span>
+<span class="cm"> * state from idle or reserved to open.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function is low-level in a sense that the application code can</span>
+<span class="cm"> * specify flags directly. For usual HTTP request,</span>
+<span class="cm"> * `nghttp2_submit_request()` is useful.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |pri| is invalid; or the |nv| includes empty name or</span>
+<span class="cm"> *     ``NULL`` value.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                           <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">,</span>
+                           <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits one or more DATA frames to the stream |stream_id|.  The</span>
+<span class="cm"> * data to be sent are provided by |data_prd|. If |flags| contains</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_END_STREAM`, the last DATA frame has END_STREAM</span>
+<span class="cm"> * flag set.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function does not take ownership of the |data_prd|. The</span>
+<span class="cm"> * function copies the members of the |data_prd|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
+<span class="cm"> *     The stream is already closed or does not exist.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                        <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                        <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits PRIORITY frame to change the priority of stream |stream_id|</span>
+<span class="cm"> * to the priority value |pri|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |pri| is negative.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
+<span class="cm"> *     The stream is already closed or does not exist.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_priority</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                            <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits RST_STREAM frame to cancel/reject the stream |stream_id|</span>
+<span class="cm"> * with the error code |error_code|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_rst_stream</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                              <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Stores local settings and submits SETTINGS frame. The |iv| is the</span>
+<span class="cm"> * pointer to the array of :type:`nghttp2_settings_entry`. The |niv|</span>
+<span class="cm"> * indicates the number of :type:`nghttp2_settings_entry`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function does not take ownership of the |iv|. This function</span>
+<span class="cm"> * copies all the elements in the |iv|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * While updating individual stream&#39;s local window size, if the window</span>
+<span class="cm"> * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,</span>
+<span class="cm"> * RST_STREAM is issued against such a stream.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |iv| contains invalid value (e.g., attempting to re-enable</span>
+<span class="cm"> *     flow control).</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_settings</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">niv</span><span class="p">);</span>
+
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits PUSH_PROMISE frame. The |flags| is currently ignored and</span>
+<span class="cm"> * the resulting PUSH_PROMISE frame always has</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_END_PUSH_PROMISE` flag set due to the lack of</span>
+<span class="cm"> * header continuation support in the library.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |stream_id| must be client initiated stream ID.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
+<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
+<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
+<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
+<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
+<span class="cm"> * also lower-cases all names in |nv|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Since the library reorders the frames and tries to send the highest</span>
+<span class="cm"> * prioritized one first and the HTTP/2.0 specification requires the</span>
+<span class="cm"> * stream ID must be strictly increasing, the promised stream ID</span>
+<span class="cm"> * cannot be known until it is about to sent.  To know the promised</span>
+<span class="cm"> * stream ID, the application can use</span>
+<span class="cm"> * :member:`nghttp2_session_callbacks.before_frame_send_callback`. This</span>
+<span class="cm"> * callback is called just before the frame is sent. For PUSH_PROMISE</span>
+<span class="cm"> * frame, the argument frame has the promised stream ID assigned.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |nv| includes empty name or ``NULL`` value.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
+<span class="cm"> *     The stream is already closed or does not exist.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                                <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits PING frame. You don&#39;t have to send PING back when you</span>
+<span class="cm"> * received PING frame. The library automatically submits PING frame</span>
+<span class="cm"> * in this case.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If the |opaque_data| is non ``NULL``, then it should point to the 8</span>
+<span class="cm"> * bytes array of memory to specify opaque data to send with PING</span>
+<span class="cm"> * frame. If the |opaque_data| is ``NULL``, zero-cleared 8 bytes will</span>
+<span class="cm"> * be sent as opaque data.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_ping</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits GOAWAY frame with the error code |error_code|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If the |opaque_data| is not ``NULL`` and |opaque_data_len| is not</span>
+<span class="cm"> * zero, those data will be sent as additional debug data.  The</span>
+<span class="cm"> * library makes a copy of the memory region pointed by |opaque_data|</span>
+<span class="cm"> * with the length |opaque_data_len|, so the caller does not need to</span>
+<span class="cm"> * keep this memory after the return of this function. If the</span>
+<span class="cm"> * |opaque_data_len| is 0, the |opaque_data| could be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_goaway</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                          <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span>
+                          <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">opaque_data_len</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Submits WINDOW_UPDATE frame.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |flags| is currently ignored.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If the |window_size_increment| is positive, the WINDOW_UPDATE with</span>
+<span class="cm"> * that value as window_size_increment is queued. If the</span>
+<span class="cm"> * |window_size_increment| is larger than the received bytes from the</span>
+<span class="cm"> * remote endpoint, the local window size is increased by that</span>
+<span class="cm"> * difference.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If the |window_size_increment| is negative, the local window size</span>
+<span class="cm"> * is decreased by -|window_size_increment|.  If</span>
+<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE` (or</span>
+<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` if |stream_id|</span>
+<span class="cm"> * is 0) is not set and the library decided that the WINDOW_UPDATE</span>
+<span class="cm"> * should be submitted, then WINDOW_UPDATE is queued with the current</span>
+<span class="cm"> * received bytes count.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |delta_window_size| is 0.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_FLOW_CONTROL`</span>
+<span class="cm"> *     The local window size overflow or gets negative.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
+<span class="cm"> *     The stream is already closed or does not exist.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_window_update</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                                 <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                                 <span class="kt">int32_t</span> <span class="n">window_size_increment</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Compares lhs-&gt;name with lhs-&gt;namelen bytes and rhs-&gt;name with</span>
+<span class="cm"> * rhs-&gt;namelen bytes. Returns negative integer if lhs-&gt;name is found</span>
+<span class="cm"> * to be less than rhs-&gt;name; or returns positive integer if lhs-&gt;name</span>
+<span class="cm"> * is found to be greater than rhs-&gt;name; or returns 0 otherwise.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_nv_compare_name</span><span class="p">(</span><span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">lhs</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">rhs</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * A helper function for dealing with NPN in client side.  The |in|</span>
+<span class="cm"> * contains server&#39;s protocol in preferable order.  The format of |in|</span>
+<span class="cm"> * is length-prefixed and not null-terminated.  For example,</span>
+<span class="cm"> * ``HTTP-draft-04/2.0`` and ``http/1.1`` stored in |in| like this::</span>
+<span class="cm"> *</span>
+<span class="cm"> *     in[0] = 17</span>
+<span class="cm"> *     in[1..17] = &quot;HTTP-draft-04/2.0&quot;</span>
+<span class="cm"> *     in[18] = 8</span>
+<span class="cm"> *     in[19..26] = &quot;http/1.1&quot;</span>
+<span class="cm"> *     inlen = 27</span>
+<span class="cm"> *</span>
+<span class="cm"> * The selection algorithm is as follows:</span>
+<span class="cm"> *</span>
+<span class="cm"> * 1. If server&#39;s list contains ``HTTP-draft-04/2.0``, it is selected</span>
+<span class="cm"> *    and returns 1. The following step is not taken.</span>
+<span class="cm"> *</span>
+<span class="cm"> * 2. If server&#39;s list contains ``http/1.1``, this function selects</span>
+<span class="cm"> *    ``http/1.1`` and returns 0. The following step is not taken.</span>
+<span class="cm"> *</span>
+<span class="cm"> * 3. This function selects nothing and returns -1. (So called</span>
+<span class="cm"> *    non-overlap case). In this case, |out| and |outlen| are left</span>
+<span class="cm"> *    untouched.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Selecting ``HTTP-draft-04/2.0`` means that ``HTTP-draft-04/2.0`` is</span>
+<span class="cm"> * written into |*out| and its length (which is 17) is</span>
+<span class="cm"> * assigned to |*outlen|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * See http://technotes.googlecode.com/git/nextprotoneg.html for more</span>
+<span class="cm"> * details about NPN.</span>
+<span class="cm"> *</span>
+<span class="cm"> * To use this method you should do something like::</span>
+<span class="cm"> *</span>
+<span class="cm"> *     static int select_next_proto_cb(SSL* ssl,</span>
+<span class="cm"> *                                     unsigned char **out,</span>
+<span class="cm"> *                                     unsigned char *outlen,</span>
+<span class="cm"> *                                     const unsigned char *in,</span>
+<span class="cm"> *                                     unsigned int inlen,</span>
+<span class="cm"> *                                     void *arg)</span>
+<span class="cm"> *     {</span>
+<span class="cm"> *         int rv;</span>
+<span class="cm"> *         rv = nghttp2_select_next_protocol(out, outlen, in, inlen);</span>
+<span class="cm"> *         if(rv == 1) {</span>
+<span class="cm"> *             ((MyType*)arg)-&gt;http2_selected = 1;</span>
+<span class="cm"> *         }</span>
+<span class="cm"> *         return SSL_TLSEXT_ERR_OK;</span>
+<span class="cm"> *     }</span>
+<span class="cm"> *     ...</span>
+<span class="cm"> *     SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, my_obj);</span>
+<span class="cm"> *</span>
+<span class="cm"> * Note that the HTTP/2.0 spec does use ALPN instead of NPN. This</span>
+<span class="cm"> * function is provided for transitional period before ALPN is got</span>
+<span class="cm"> * implemented in major SSL/TLS libraries.</span>
+<span class="cm"> *</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_select_next_protocol</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
+                                 <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">inlen</span><span class="p">);</span>
+
+<span class="k">struct</span> <span class="n">nghttp2_gzip</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * The gzip stream to inflate data. The details of this structure are</span>
+<span class="cm"> * intentionally hidden from the public API.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">nghttp2_gzip</span> <span class="n">nghttp2_gzip</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * A helper function to set up a per request gzip stream to inflate data.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_GZIP`</span>
+<span class="cm"> *     The initialization of gzip stream failed.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_gzip_inflate_new</span><span class="p">(</span><span class="n">nghttp2_gzip</span> <span class="o">**</span><span class="n">inflater_ptr</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Frees the inflate stream.  The |inflater| may be ``NULL``.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">nghttp2_gzip_inflate_del</span><span class="p">(</span><span class="n">nghttp2_gzip</span> <span class="o">*</span><span class="n">inflater</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Inflates data in |in| with the length |*inlen_ptr| and stores the</span>
+<span class="cm"> * inflated data to |out| which has allocated size at least</span>
+<span class="cm"> * |*outlen_ptr|. On return, |*outlen_ptr| is updated to represent</span>
+<span class="cm"> * the number of data written in |out|.  Similarly, |*inlen_ptr| is</span>
+<span class="cm"> * updated to represent the number of input bytes processed.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_GZIP`</span>
+<span class="cm"> *     The inflation of gzip stream failed.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The example follows::</span>
+<span class="cm"> *</span>
+<span class="cm"> *     void on_data_chunk_recv_callback(nghttp2_session *session,</span>
+<span class="cm"> *                                      uint8_t flags,</span>
+<span class="cm"> *                                      int32_t stream_id,</span>
+<span class="cm"> *                                      const uint8_t *data, size_t len,</span>
+<span class="cm"> *                                      void *user_data)</span>
+<span class="cm"> *     {</span>
+<span class="cm"> *         ...</span>
+<span class="cm"> *         req = nghttp2_session_get_stream_user_data(session, stream_id);</span>
+<span class="cm"> *         nghttp2_gzip *inflater = req-&gt;inflater;</span>
+<span class="cm"> *         while(len &gt; 0) {</span>
+<span class="cm"> *             uint8_t out[MAX_OUTLEN];</span>
+<span class="cm"> *             size_t outlen = MAX_OUTLEN;</span>
+<span class="cm"> *             size_t tlen = len;</span>
+<span class="cm"> *             int rv;</span>
+<span class="cm"> *             rv = nghttp2_gzip_inflate(inflater, out, &amp;outlen, data, &amp;tlen);</span>
+<span class="cm"> *             if(rv != 0) {</span>
+<span class="cm"> *                 nghttp2_submit_rst_stream(session, stream_id,</span>
+<span class="cm"> *                                           NGHTTP2_INTERNAL_ERROR);</span>
+<span class="cm"> *                 break;</span>
+<span class="cm"> *             }</span>
+<span class="cm"> *             ... Do stuff ...</span>
+<span class="cm"> *             data += tlen;</span>
+<span class="cm"> *             len -= tlen;</span>
+<span class="cm"> *         }</span>
+<span class="cm"> *         ....</span>
+<span class="cm"> *     }</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_gzip_inflate</span><span class="p">(</span><span class="n">nghttp2_gzip</span> <span class="o">*</span><span class="n">inflater</span><span class="p">,</span>
+                         <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">out</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">outlen_ptr</span><span class="p">,</span>
+                         <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">inlen_ptr</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns a pointer to a nghttp2_info struct with version information about</span>
+<span class="cm"> * the run-time library in use.  The |least_version| argument can be set to a</span>
+<span class="cm"> * 24 bit numerical value for the least accepted version number and if the</span>
+<span class="cm"> * condition is not met, this function will return a NULL. Pass in 0 to skip</span>
+<span class="cm"> * the version checking.</span>
+<span class="cm"> */</span>
+<span class="n">nghttp2_info</span> <span class="o">*</span><span class="nf">nghttp2_version</span><span class="p">(</span><span class="kt">int</span> <span class="n">least_version</span><span class="p">);</span>
+
+<span class="cp">#ifdef __cplusplus</span>
+<span class="p">}</span>
+<span class="cp">#endif</span>
+
+<span class="cp">#endif </span><span class="cm">/* NGHTTP2_H */</span><span class="cp"></span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><h3>Menu</h3>
+<ul>
+  <li><a href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+  <li><a href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
+</ul>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="apiref.html"
+                        title="previous chapter">API Reference</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="nghttp2ver.h.html"
+                        title="next chapter">nghttp2ver.h</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/nghttp2.h.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="nghttp2ver.h.html" title="nghttp2ver.h"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="apiref.html" title="API Reference"
+             >previous</a> |</li>
+        <li><a href="index.html">nghttp2 0.1.0-DEV documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, 2013, Tatsuhiro Tsujikawa.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

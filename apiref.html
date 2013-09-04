@@ -27,6 +27,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="nghttp2 0.1.0-DEV documentation" href="index.html" />
+    <link rel="next" title="nghttp2.h" href="nghttp2.h.html" />
     <link rel="prev" title="nghttp2 - HTTP/2.0 C Library" href="package_README.html" /> 
   </head>
   <body>
@@ -36,6 +37,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="nghttp2.h.html" title="nghttp2.h"
+             accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="package_README.html" title="nghttp2 - HTTP/2.0 C Library"
              accesskey="P">previous</a> |</li>
@@ -56,6 +60,8 @@
 <div class="highlight-c"><div class="highlight"><pre><span class="cp">#include &lt;nghttp2/nghttp2.h&gt;</span>
 </pre></div>
 </div>
+<p>The header files are also available online: <a class="reference internal" href="nghttp2.h.html"><em>nghttp2.h</em></a> and
+<a class="reference internal" href="nghttp2ver.h.html"><em>nghttp2ver.h</em></a>.</p>
 </div>
 <div class="section" id="remarks">
 <h2>Remarks<a class="headerlink" href="#remarks" title="Permalink to this headline">¶</a></h2>
@@ -75,6 +81,14 @@ callbacks.</p>
 </dd></dl>
 
 <dl class="macro">
+<dt id="NGHTTP2_VERSION_NUM">
+<tt class="descname">NGHTTP2_VERSION_NUM</tt><a class="headerlink" href="#NGHTTP2_VERSION_NUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Numerical representation of the version number of the nghttp2 library
+release. This is a 24 bit number with 8 bits for major number, 8 bits
+for minor and 8 bits for patch. Version 1.2.3 becomes 0x010203.</p>
+</dd></dl>
+
+<dl class="macro">
 <dt id="NGHTTP2_PROTO_VERSION_ID">
 <tt class="descname">NGHTTP2_PROTO_VERSION_ID</tt><a class="headerlink" href="#NGHTTP2_PROTO_VERSION_ID" title="Permalink to this definition">¶</a></dt>
 <dd><p>The protocol version identification of this library supports.</p>
@@ -83,7 +97,13 @@ callbacks.</p>
 <dl class="macro">
 <dt id="NGHTTP2_PROTO_VERSION_ID_LEN">
 <tt class="descname">NGHTTP2_PROTO_VERSION_ID_LEN</tt><a class="headerlink" href="#NGHTTP2_PROTO_VERSION_ID_LEN" title="Permalink to this definition">¶</a></dt>
-<dd><p>The length of NGHTTP2_PROTO_VERSION_ID.</p>
+<dd><p>The length of <a class="reference internal" href="#NGHTTP2_PROTO_VERSION_ID" title="NGHTTP2_PROTO_VERSION_ID"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PROTO_VERSION_ID</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="NGHTTP2_VERSION_AGE">
+<tt class="descname">NGHTTP2_VERSION_AGE</tt><a class="headerlink" href="#NGHTTP2_VERSION_AGE" title="Permalink to this definition">¶</a></dt>
+<dd><p>The age of <a class="reference internal" href="#nghttp2_info" title="nghttp2_info"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_info</span></tt></a></p>
 </dd></dl>
 
 <dl class="macro">
@@ -125,7 +145,7 @@ callbacks.</p>
 <dl class="macro">
 <dt id="NGHTTP2_CLIENT_CONNECTION_HEADER_LEN">
 <tt class="descname">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</tt><a class="headerlink" href="#NGHTTP2_CLIENT_CONNECTION_HEADER_LEN" title="Permalink to this definition">¶</a></dt>
-<dd><p>The length of NGHTTP2_CLIENT_CONNECTION_HEADER.</p>
+<dd><p>The length of <a class="reference internal" href="#NGHTTP2_CLIENT_CONNECTION_HEADER" title="NGHTTP2_CLIENT_CONNECTION_HEADER"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -641,6 +661,40 @@ is responsible for sending WINDOW_UPDATE with stream ID 0 using
 <dd><p>The primary structure to hold the resources needed for a HTTP/2.0
 session. The details of this structure are intentionally hidden
 from the public API.</p>
+</dd></dl>
+
+<dl class="type">
+<dt id="nghttp2_info">
+<tt class="descname">nghttp2_info</tt><a class="headerlink" href="#nghttp2_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>This struct is what <a class="reference internal" href="#nghttp2_version" title="nghttp2_version"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_version()</span></tt></a> returns. It holds
+information about the particular nghttp2 version.</p>
+<dl class="member">
+<dt id="nghttp2_info.age">
+int <tt class="descname">age</tt><a class="headerlink" href="#nghttp2_info.age" title="Permalink to this definition">¶</a></dt>
+<dd><p>Age of this struct. This instance of nghttp2 sets it to
+<a class="reference internal" href="#NGHTTP2_VERSION_AGE" title="NGHTTP2_VERSION_AGE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_VERSION_AGE</span></tt></a> but a future version may bump it and
+add more struct fields at the bottom</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_info.version_num">
+int <tt class="descname">version_num</tt><a class="headerlink" href="#nghttp2_info.version_num" title="Permalink to this definition">¶</a></dt>
+<dd><p>the <a class="reference internal" href="#NGHTTP2_VERSION_NUM" title="NGHTTP2_VERSION_NUM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_VERSION_NUM</span></tt></a> number (since age ==1)</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_info.version_str">
+const char *<tt class="descname">version_str</tt><a class="headerlink" href="#nghttp2_info.version_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>points to the <a class="reference internal" href="#NGHTTP2_VERSION" title="NGHTTP2_VERSION"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_VERSION</span></tt></a> string (since age ==1)</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_info.proto_str">
+const char *<tt class="descname">proto_str</tt><a class="headerlink" href="#nghttp2_info.proto_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>points to the <a class="reference internal" href="#NGHTTP2_PROTO_VERSION_ID" title="NGHTTP2_PROTO_VERSION_ID"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PROTO_VERSION_ID</span></tt></a> string this
+instance implements (since age ==1)</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -2120,6 +2174,16 @@ negative error codes:</p>
 </div>
 </dd></dl>
 
+<dl class="function">
+<dt id="nghttp2_version">
+<a class="reference internal" href="#nghttp2_info" title="nghttp2_info">nghttp2_info</a> *<tt class="descname">nghttp2_version</tt><big>(</big>int<em>&nbsp;least_version</em><big>)</big><a class="headerlink" href="#nghttp2_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a pointer to a nghttp2_info struct with version information about
+the run-time library in use.  The <em>least_version</em> argument can be set to a
+24 bit numerical value for the least accepted version number and if the
+condition is not met, this function will return a NULL. Pass in 0 to skip
+the version checking.</p>
+</dd></dl>
+
 </div>
 </div>
 
@@ -2149,6 +2213,9 @@ negative error codes:</p>
   <h4>Previous topic</h4>
   <p class="topless"><a href="package_README.html"
                         title="previous chapter">nghttp2 - HTTP/2.0 C Library</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="nghttp2.h.html"
+                        title="next chapter">nghttp2.h</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/apiref.txt"
@@ -2177,6 +2244,9 @@ negative error codes:</p>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="nghttp2.h.html" title="nghttp2.h"
+             >next</a> |</li>
         <li class="right" >
           <a href="package_README.html" title="nghttp2 - HTTP/2.0 C Library"
              >previous</a> |</li>

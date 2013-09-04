@@ -8,6 +8,9 @@ To use the public APIs, include ``nghttp2/nghttp2.h``::
 
     #include <nghttp2/nghttp2.h>
 
+The header files are also available online: :doc:`nghttp2.h` and
+:doc:`nghttp2ver.h`.
+
 Remarks
 -------
 
@@ -24,6 +27,12 @@ Macros
 
     Version number of the nghttp2 library release
 
+.. macro:: NGHTTP2_VERSION_NUM
+
+    Numerical representation of the version number of the nghttp2 library
+    release. This is a 24 bit number with 8 bits for major number, 8 bits
+    for minor and 8 bits for patch. Version 1.2.3 becomes 0x010203.
+
 .. macro:: NGHTTP2_PROTO_VERSION_ID
 
     
@@ -32,7 +41,12 @@ Macros
 .. macro:: NGHTTP2_PROTO_VERSION_ID_LEN
 
     
-    The length of NGHTTP2_PROTO_VERSION_ID.
+    The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.
+
+.. macro:: NGHTTP2_VERSION_AGE
+
+    
+    The age of :type:`nghttp2_info`
 
 .. macro:: NGHTTP2_PRI_DEFAULT
 
@@ -67,7 +81,7 @@ Macros
 .. macro:: NGHTTP2_CLIENT_CONNECTION_HEADER_LEN
 
     
-    The length of NGHTTP2_CLIENT_CONNECTION_HEADER.
+    The length of :macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.
 
 .. macro:: NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS
 
@@ -405,6 +419,29 @@ Types (structs, unions and typedefs)
     session. The details of this structure are intentionally hidden
     from the public API.
 
+
+
+.. type:: nghttp2_info
+
+    
+    This struct is what `nghttp2_version()` returns. It holds
+    information about the particular nghttp2 version.
+
+    .. member::   int age
+
+        Age of this struct. This instance of nghttp2 sets it to
+        :macro:`NGHTTP2_VERSION_AGE` but a future version may bump it and
+        add more struct fields at the bottom
+    .. member::   int version_num
+
+        the :macro:`NGHTTP2_VERSION_NUM` number (since age ==1)
+    .. member::   const char *version_str
+
+        points to the :macro:`NGHTTP2_VERSION` string (since age ==1)
+    .. member::   const char *proto_str
+
+        points to the :macro:`NGHTTP2_PROTO_VERSION_ID` string this
+        instance implements (since age ==1)
 
 
 .. type:: nghttp2_nv
@@ -1706,5 +1743,14 @@ Functions
             }
             ....
         }
+
+.. function:: nghttp2_info *nghttp2_version(int least_version)
+
+    
+    Returns a pointer to a nghttp2_info struct with version information about
+    the run-time library in use.  The *least_version* argument can be set to a
+    24 bit numerical value for the least accepted version number and if the
+    condition is not met, this function will return a NULL. Pass in 0 to skip
+    the version checking.
 
 
