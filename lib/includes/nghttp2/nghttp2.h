@@ -44,7 +44,7 @@ extern "C" {
 /**
  * @macro
  *
- * The length of NGHTTP2_PROTO_VERSION_ID.
+ * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.
  */
 #define NGHTTP2_PROTO_VERSION_ID_LEN 17
 
@@ -83,12 +83,12 @@ typedef struct {
    */
   int version_num;
   /**
-   * points to the NGHTTP2_VERSION string (since age ==1)
+   * points to the :macro:`NGHTTP2_VERSION` string (since age ==1)
    */
   const char *version_str;
   /**
-   * points to the NGHTTP2_PROTO_VERSION_ID string
-   * this instance implements (since age ==1)
+   * points to the :macro:`NGHTTP2_PROTO_VERSION_ID` string this
+   * instance implements (since age ==1)
    */
   const char *proto_str;
   /* -------- the above fields all exist when age == 1 */
@@ -136,7 +136,7 @@ typedef struct {
 /**
  * @macro
  *
- * The length of NGHTTP2_CLIENT_CONNECTION_HEADER.
+ * The length of :macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.
  */
 #define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN 24
 
