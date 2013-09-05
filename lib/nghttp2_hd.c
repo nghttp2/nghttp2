@@ -786,8 +786,7 @@ static int deflate_nv(nghttp2_hd_context *deflater,
     if(ent) {
       index = ent->index;
     }
-    if(entry_room(nv->namelen, nv->valuelen)
-       < NGHTTP2_HD_MAX_ENTRY_SIZE) {
+    if(entry_room(nv->namelen, nv->valuelen) <= NGHTTP2_HD_MAX_ENTRY_SIZE) {
       nghttp2_hd_entry *new_ent;
       new_ent = add_hd_table_incremental(deflater, nv);
       if(!new_ent) {
