@@ -804,7 +804,8 @@ typedef ssize_t (*nghttp2_send_callback)
  * without blocking, it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`. If
  * it gets EOF before it reads any single byte, it must return
  * :enum:`NGHTTP2_ERR_EOF`. For other errors, it must return
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning 0 is treated as
+ * :enum:`NGHTTP2_ERR_WOULDBLOCK`.
  */
 typedef ssize_t (*nghttp2_recv_callback)
 (nghttp2_session *session,
