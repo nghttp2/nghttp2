@@ -2394,70 +2394,83 @@ static int nghttp2_session_push_back_deferred_data(nghttp2_session *session)
                           nghttp2_push_back_deferred_data_func, session);
 }
 
+static int session_on_connection_window_update_received
+(nghttp2_session *session, nghttp2_frame *frame)
+{
+  int rv;
+  /* Handle connection-level flow control */
+  if(session->remote_flow_control == 0) {
+    /* Disabling flow control by sending SETTINGS and receiving
+       WINDOW_UPDATE are asynchronous, so it is hard to determine
+       that the peer is misbehaving or not without measuring
+       RTT. For now, we just ignore such frames. */
+    return nghttp2_session_call_on_frame_received(session, frame);
+  }
+  if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
+     session->remote_window_size) {
+    return nghttp2_session_handle_invalid_connection
+      (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
+  }
+  session->remote_window_size += frame->window_update.window_size_increment;
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(rv != 0) {
+    return rv;
+  }
+  /* To queue the DATA deferred by connection-level flow-control, we
+     have to check all streams. Bad. */
+  if(session->remote_window_size > 0) {
+    return nghttp2_session_push_back_deferred_data(session);
+  } else {
+    return 0;
+  }
+}
+
+static int session_on_stream_window_update_received
+(nghttp2_session *session, nghttp2_frame *frame)
+{
+  int rv;
+  nghttp2_stream *stream;
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  if(!stream) {
+    return 0;
+  }
+  if(stream->state == NGHTTP2_STREAM_RESERVED) {
+    return nghttp2_session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+  }
+  if(stream->remote_flow_control == 0) {
+    /* Same reason with connection-level flow control */
+    return nghttp2_session_call_on_frame_received(session, frame);
+  }
+  if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
+     stream->remote_window_size) {
+    return nghttp2_session_handle_invalid_stream(session, frame,
+                                                 NGHTTP2_FLOW_CONTROL_ERROR);
+  }
+  stream->remote_window_size += frame->window_update.window_size_increment;
+  if(stream->remote_window_size > 0 &&
+     (session->remote_flow_control == 0 ||
+      session->remote_window_size > 0) &&
+     stream->deferred_data != NULL &&
+     (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
+    rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
+    if(rv != 0) {
+      /* FATAL */
+      assert(rv < NGHTTP2_ERR_FATAL);
+      return rv;
+    }
+    nghttp2_stream_detach_deferred_data(stream);
+  }
+  return nghttp2_session_call_on_frame_received(session, frame);
+}
+
 int nghttp2_session_on_window_update_received(nghttp2_session *session,
                                               nghttp2_frame *frame)
 {
-  int rv;
   if(frame->hd.stream_id == 0) {
-    /* Handle connection-level flow control */
-    if(session->remote_flow_control == 0) {
-      /* Disabling flow control by sending SETTINGS and receiving
-         WINDOW_UPDATE are asynchronous, so it is hard to determine
-         that the peer is misbehaving or not without measuring
-         RTT. For now, we just ignore such frames. */
-      return nghttp2_session_call_on_frame_received(session, frame);
-    }
-    if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
-       session->remote_window_size) {
-      return nghttp2_session_handle_invalid_connection
-        (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
-    }
-    session->remote_window_size += frame->window_update.window_size_increment;
-    rv = nghttp2_session_call_on_frame_received(session, frame);
-    if(rv != 0) {
-      return rv;
-    }
-    /* To queue the DATA deferred by connection-level flow-control, we
-       have to check all streams. Bad. */
-    if(session->remote_window_size > 0) {
-      return nghttp2_session_push_back_deferred_data(session);
-    } else {
-      return 0;
-    }
+    return session_on_connection_window_update_received(session, frame);
   } else {
-    nghttp2_stream *stream;
-    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    if(!stream) {
-      return 0;
-    }
-    if(stream->state == NGHTTP2_STREAM_RESERVED) {
-      return nghttp2_session_handle_invalid_connection
-        (session, frame, NGHTTP2_PROTOCOL_ERROR);
-    }
-    if(stream->remote_flow_control == 0) {
-      /* Same reason with connection-level flow control */
-      return nghttp2_session_call_on_frame_received(session, frame);
-    }
-    if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
-       stream->remote_window_size) {
-      return nghttp2_session_handle_invalid_stream(session, frame,
-                                                   NGHTTP2_FLOW_CONTROL_ERROR);
-    }
-    stream->remote_window_size += frame->window_update.window_size_increment;
-    if(stream->remote_window_size > 0 &&
-       (session->remote_flow_control == 0 ||
-        session->remote_window_size > 0) &&
-       stream->deferred_data != NULL &&
-       (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
-      rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
-      if(rv != 0) {
-        /* FATAL */
-        assert(rv < NGHTTP2_ERR_FATAL);
-        return rv;
-      }
-      nghttp2_stream_detach_deferred_data(stream);
-    }
-    return nghttp2_session_call_on_frame_received(session, frame);
+    return session_on_stream_window_update_received(session, frame);
   }
 }
 
