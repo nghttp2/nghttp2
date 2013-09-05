@@ -860,7 +860,8 @@
 <span class="cm"> * without blocking, it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`. If</span>
 <span class="cm"> * it gets EOF before it reads any single byte, it must return</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_EOF`. For other errors, it must return</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning 0 is treated as</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_WOULDBLOCK`.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_recv_callback</span><span class="p">)</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>

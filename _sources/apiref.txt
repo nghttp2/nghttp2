@@ -722,7 +722,8 @@ Types (structs, unions and typedefs)
     without blocking, it must return :macro:`NGHTTP2_ERR_WOULDBLOCK`. If
     it gets EOF before it reads any single byte, it must return
     :macro:`NGHTTP2_ERR_EOF`. For other errors, it must return
-    :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+    :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning 0 is treated as
+    :macro:`NGHTTP2_ERR_WOULDBLOCK`.
 
 .. type:: typedef int (*nghttp2_on_frame_recv_callback) (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 

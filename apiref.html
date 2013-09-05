@@ -1113,7 +1113,8 @@ written in <em>buf</em> if it succeeds. If it cannot read any single byte
 without blocking, it must return <a class="reference internal" href="#NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a>. If
 it gets EOF before it reads any single byte, it must return
 <a class="reference internal" href="#NGHTTP2_ERR_EOF" title="NGHTTP2_ERR_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_EOF</span></tt></a>. For other errors, it must return
-<a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
+<a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>. Returning 0 is treated as
+<a class="reference internal" href="#NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
