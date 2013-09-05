@@ -540,17 +540,19 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
                                  nghttp2_error_code error_code)
 {
   nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
-  if(stream) {
-    /* We call on_stream_close_callback even if stream->state is
-       NGHTTP2_STREAM_INITIAL. This will happen while sending request
-       HEADERS, a local endpoint receives RST_STREAM for that
-       stream. It may be PROTOCOL_ERROR, but without notifying stream
-       closure will hang the stream in a local endpoint.
-     */
-    if(stream->state != NGHTTP2_STREAM_RESERVED &&
-       /* TODO Should on_stream_close_callback be called against
-          NGHTTP2_STREAM_RESERVED? It is actually not opened yet. */
-       session->callbacks.on_stream_close_callback) {
+  if(!stream) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  /* We call on_stream_close_callback even if stream->state is
+     NGHTTP2_STREAM_INITIAL. This will happen while sending request
+     HEADERS, a local endpoint receives RST_STREAM for that stream. It
+     may be PROTOCOL_ERROR, but without notifying stream closure will
+     hang the stream in a local endpoint.
+  */
+  /* TODO Should on_stream_close_callback be called against
+     NGHTTP2_STREAM_RESERVED? It is actually not opened yet. */
+  if(stream->state != NGHTTP2_STREAM_RESERVED) {
+    if(session->callbacks.on_stream_close_callback) {
       if(session->callbacks.on_stream_close_callback
          (session, stream_id,
           error_code,
@@ -558,20 +560,16 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
         return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
     }
-    if(stream->state != NGHTTP2_STREAM_RESERVED) {
-      if(nghttp2_session_is_my_stream_id(session, stream_id)) {
-        --session->num_outgoing_streams;
-      } else {
-        --session->num_incoming_streams;
-      }
+    if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+      --session->num_outgoing_streams;
+    } else {
+      --session->num_incoming_streams;
     }
-    nghttp2_map_remove(&session->streams, stream_id);
-    nghttp2_stream_free(stream);
-    free(stream);
-    return 0;
-  } else {
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
+  nghttp2_map_remove(&session->streams, stream_id);
+  nghttp2_stream_free(stream);
+  free(stream);
+  return 0;
 }
 
 /*
@@ -678,14 +676,12 @@ static int nghttp2_session_predicate_response_headers_send
   }
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
     return NGHTTP2_ERR_INVALID_STREAM_ID;
+  } else if(stream->state == NGHTTP2_STREAM_OPENING) {
+    return 0;
+  } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
   } else {
-    if(stream->state == NGHTTP2_STREAM_OPENING) {
-      return 0;
-    } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-      return NGHTTP2_ERR_STREAM_CLOSING;
-    } else {
-      return NGHTTP2_ERR_INVALID_STREAM_STATE;
-    }
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
 }
 
@@ -758,14 +754,12 @@ static int nghttp2_session_predicate_stream_frame_send
     } else {
       return NGHTTP2_ERR_STREAM_CLOSING;
     }
+  } else if(stream->state == NGHTTP2_STREAM_OPENED) {
+    return 0;
+  } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
   } else {
-    if(stream->state == NGHTTP2_STREAM_OPENED) {
-      return 0;
-    } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-      return NGHTTP2_ERR_STREAM_CLOSING;
-    } else {
-      return NGHTTP2_ERR_INVALID_STREAM_STATE;
-    }
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
 }
 
@@ -895,22 +889,22 @@ static int nghttp2_session_predicate_window_update_send
 static size_t nghttp2_session_next_data_read(nghttp2_session *session,
                                              nghttp2_stream *stream)
 {
-  /* TODO implement connection-level flow control here */
+  int32_t session_window_size;
+  int32_t stream_window_size;
+  int32_t window_size;
+  /* Take into account both connection-level flow control here */
   if(session->remote_flow_control == 0 && stream->remote_flow_control == 0) {
     return NGHTTP2_DATA_PAYLOAD_LENGTH;
+  }
+  session_window_size =
+    session->remote_flow_control ? session->remote_window_size : INT32_MAX;
+  stream_window_size =
+    stream->remote_flow_control ? stream->remote_window_size : INT32_MAX;
+  window_size = nghttp2_min(session_window_size, stream_window_size);
+  if(window_size > 0) {
+    return nghttp2_min(window_size, NGHTTP2_DATA_PAYLOAD_LENGTH);
   } else {
-    int32_t session_window_size =
-      session->remote_flow_control ? session->remote_window_size : INT32_MAX;
-    int32_t stream_window_size =
-      stream->remote_flow_control ? stream->remote_window_size : INT32_MAX;
-    int32_t window_size = nghttp2_min(session_window_size,
-                                      stream_window_size);
-    if(window_size > 0) {
-      return window_size < NGHTTP2_DATA_PAYLOAD_LENGTH ?
-        window_size : NGHTTP2_DATA_PAYLOAD_LENGTH;
-    } else {
-      return 0;
-    }
+    return 0;
   }
 }
 
@@ -963,14 +957,12 @@ static int nghttp2_session_predicate_data_send(nghttp2_session *session,
     } else {
       return NGHTTP2_ERR_STREAM_CLOSING;
     }
+  } else if(stream->state == NGHTTP2_STREAM_OPENED) {
+    return 0;
+  } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
   } else {
-    if(stream->state == NGHTTP2_STREAM_OPENED) {
-      return 0;
-    } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-      return NGHTTP2_ERR_STREAM_CLOSING;
-    } else {
-      return NGHTTP2_ERR_INVALID_STREAM_STATE;
-    }
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
 }
 
@@ -1649,13 +1641,13 @@ static int nghttp2_session_call_on_frame_received
 static int nghttp2_session_is_new_peer_stream_id(nghttp2_session *session,
                                                  int32_t stream_id)
 {
-  if(stream_id == 0) {
+  if(stream_id == 0 || session->last_recv_stream_id >= stream_id) {
     return 0;
   }
   if(session->server) {
-    return stream_id % 2 == 1 && session->last_recv_stream_id < stream_id;
+    return stream_id % 2 == 1;
   } else {
-    return stream_id % 2 == 0 && session->last_recv_stream_id < stream_id;
+    return stream_id % 2 == 0;
   }
 }
 
@@ -1740,8 +1732,9 @@ static int nghttp2_session_handle_invalid_connection
 int nghttp2_session_on_request_headers_received(nghttp2_session *session,
                                                 nghttp2_frame *frame)
 {
-  int r = 0;
-  nghttp2_error_code error_code = NGHTTP2_NO_ERROR;
+  int rv = 0;
+  nghttp2_error_code error_code;
+  nghttp2_stream *stream;
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
@@ -1759,42 +1752,37 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
     /* The spec says if an endpoint receives a HEADERS with invalid
        stream ID, it MUST issue connection error with error code
        PROTOCOL_ERROR */
-    return nghttp2_session_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
-  } else {
-    session->last_recv_stream_id = frame->hd.stream_id;
-    error_code = nghttp2_session_validate_request_headers
-      (session, &frame->headers);
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
-  if(error_code == 0) {
-    uint8_t flags = frame->hd.flags;
-    nghttp2_stream *stream;
-    stream = nghttp2_session_open_stream(session,
-                                         frame->hd.stream_id,
-                                         frame->hd.flags,
-                                         frame->headers.pri,
-                                         NGHTTP2_STREAM_OPENING,
-                                         NULL);
-    if(!stream) {
-      return NGHTTP2_ERR_NOMEM;
-    }
-    if(flags & NGHTTP2_FLAG_END_STREAM) {
-      nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-    }
-    r = nghttp2_session_call_on_frame_received(session, frame);
-    if(r != 0) {
-      return r;
-    }
-    if(flags & NGHTTP2_FLAG_END_STREAM) {
-      r = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
-      if(r != 0) {
-        return r;
-      }
-    }
-  } else {
-    r = nghttp2_session_handle_invalid_stream(session, frame, error_code);
+  session->last_recv_stream_id = frame->hd.stream_id;
+  error_code = nghttp2_session_validate_request_headers(session,
+                                                        &frame->headers);
+  if(error_code != NGHTTP2_NO_ERROR) {
+    return nghttp2_session_handle_invalid_stream(session, frame, error_code);
   }
-  return r;
+
+  stream = nghttp2_session_open_stream(session,
+                                       frame->hd.stream_id,
+                                       frame->hd.flags,
+                                       frame->headers.pri,
+                                       NGHTTP2_STREAM_OPENING,
+                                       NULL);
+  if(!stream) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+  }
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(rv != 0) {
+    return rv;
+  }
+  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
+  }
+  /* Here we assume that stream is not shutdown in NGHTTP2_SHUT_WR */
+  return rv;
 }
 
 int nghttp2_session_on_response_headers_received(nghttp2_session *session,
@@ -1815,23 +1803,7 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_INTERNAL_ERROR);
   }
-  if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
-    stream->state = NGHTTP2_STREAM_OPENED;
-    rv = nghttp2_session_call_on_frame_received(session, frame);
-    if(rv != 0) {
-      return rv;
-    }
-    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      /* This is the last frame of this stream, so disallow
-         further receptions. */
-      nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-      rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-      if(rv != 0 && nghttp2_is_fatal(rv)) {
-        return rv;
-      }
-      rv = 0;
-    }
-  } else {
+  if(stream->shut_flags & NGHTTP2_SHUT_RD) {
     /* half closed (remote): from the spec:
 
        If an endpoint receives additional frames for a stream that is
@@ -1840,6 +1812,20 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
     */
     return nghttp2_session_handle_invalid_stream(session, frame,
                                                  NGHTTP2_STREAM_CLOSED);
+  }
+  stream->state = NGHTTP2_STREAM_OPENED;
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(rv != 0) {
+    return rv;
+  }
+  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    /* This is the last frame of this stream, so disallow
+       further receptions. */
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+    rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+    if(rv != 0 && nghttp2_is_fatal(rv)) {
+      return rv;
+    }
   }
   return 0;
 }
@@ -1877,8 +1863,6 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
                                         nghttp2_stream *stream)
 {
   int r = 0;
-  int valid = 0;
-  nghttp2_error_code error_code = NGHTTP2_PROTOCOL_ERROR;
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
@@ -1888,98 +1872,92 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_INTERNAL_ERROR);
   }
-  if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
-    if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-      if(stream->state == NGHTTP2_STREAM_OPENED) {
-        valid = 1;
-        r = nghttp2_session_call_on_frame_received(session, frame);
-        if(r != 0) {
-          return r;
-        }
-        if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-          nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-          if(r != 0 && nghttp2_is_fatal(r)) {
-            return r;
-          }
-          r = 0;
-        }
-      } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-        /* This is race condition. NGHTTP2_STREAM_CLOSING indicates
-           that we queued RST_STREAM but it has not been sent. It will
-           eventually sent, so we just ignore this frame. */
-        valid = 1;
-      }
-    } else {
-      /* If this is remote peer initiated stream, it is OK unless it
-         has sent END_STREAM frame already. But if stream is in
-         NGHTTP2_STREAM_CLOSING, we discard the frame. This is a race
-         condition. */
-      valid = 1;
-      if(stream->state != NGHTTP2_STREAM_CLOSING) {
-        r = nghttp2_session_call_on_frame_received(session, frame);
-        if(r != 0) {
-          return r;
-        }
-        if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-          r = nghttp2_session_call_on_request_recv(session,
-                                                   frame->hd.stream_id);
-          if(r != 0) {
-            return r;
-          }
-          nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-          if(r != 0 && nghttp2_is_fatal(r)) {
-            return r;
-          }
-          r = 0;
-        }
-      }
-    }
-  } else if(stream->state == NGHTTP2_STREAM_RESERVED) {
-    /* reserved (local). The valid push response HEADERS is processed
-       by nghttp2_session_on_push_response_headers_received(). This
+  if(stream->state == NGHTTP2_STREAM_RESERVED) {
+    /* reserved. The valid push response HEADERS is processed by
+       nghttp2_session_on_push_response_headers_received(). This
        generic HEADERS is called invalid cases for HEADERS against
        reserved state. */
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
-  } else {
+  }
+  if((stream->shut_flags & NGHTTP2_SHUT_RD)) {
     /* half closed (remote): from the spec:
 
        If an endpoint receives additional frames for a stream that is
        in this state it MUST respond with a stream error (Section
        5.4.2) of type STREAM_CLOSED.
     */
-    error_code = NGHTTP2_STREAM_CLOSED;
+    return nghttp2_session_handle_invalid_stream(session, frame,
+                                                 NGHTTP2_STREAM_CLOSED);
   }
-  if(!valid) {
-    r = nghttp2_session_handle_invalid_stream(session, frame, error_code);
+  if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+    if(stream->state == NGHTTP2_STREAM_OPENED) {
+      r = nghttp2_session_call_on_frame_received(session, frame);
+      if(r != 0) {
+        return r;
+      }
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+        r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+        if(r != 0 && nghttp2_is_fatal(r)) {
+          return r;
+        }
+      }
+      return 0;
+    } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
+      /* This is race condition. NGHTTP2_STREAM_CLOSING indicates
+         that we queued RST_STREAM but it has not been sent. It will
+         eventually sent, so we just ignore this frame. */
+      return 0;
+    } else {
+      return nghttp2_session_handle_invalid_stream(session, frame,
+                                                   NGHTTP2_PROTOCOL_ERROR);
+    }
+  } else {
+    /* If this is remote peer initiated stream, it is OK unless it
+       has sent END_STREAM frame already. But if stream is in
+       NGHTTP2_STREAM_CLOSING, we discard the frame. This is a race
+       condition. */
+    if(stream->state != NGHTTP2_STREAM_CLOSING) {
+      r = nghttp2_session_call_on_frame_received(session, frame);
+      if(r != 0) {
+        return r;
+      }
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        r = nghttp2_session_call_on_request_recv(session,
+                                                 frame->hd.stream_id);
+        if(r != 0) {
+          return r;
+        }
+        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+        r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+        if(r != 0 && nghttp2_is_fatal(r)) {
+          return r;
+        }
+      }
+    }
+    return 0;
   }
-  return r;
 }
 
 int nghttp2_session_on_priority_received(nghttp2_session *session,
                                          nghttp2_frame *frame)
 {
-  int rv;
   nghttp2_stream *stream;
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-  if(stream) {
-    /* Only update priority on server side for now */
-    if(session->server) {
-      nghttp2_session_reprioritize_stream(session, stream,
-                                          frame->priority.pri);
-    }
-    rv = nghttp2_session_call_on_frame_received(session, frame);
-    if(rv != 0) {
-      return rv;
-    }
+  if(!stream) {
+    return 0;
   }
-  return 0;
+  /* Only update priority on server side for now */
+  if(session->server) {
+    nghttp2_session_reprioritize_stream(session, stream,
+                                        frame->priority.pri);
+  }
+  return nghttp2_session_call_on_frame_received(session, frame);
 }
 
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
@@ -2026,13 +2004,12 @@ static int nghttp2_update_remote_initial_window_size_func
      (arg->session->remote_flow_control == 0 ||
       arg->session->remote_window_size > 0)) {
     rv = nghttp2_pq_push(&arg->session->ob_pq, stream->deferred_data);
-    if(rv == 0) {
-      nghttp2_stream_detach_deferred_data(stream);
-    } else {
+    if(rv != 0) {
       /* FATAL */
       assert(rv < NGHTTP2_ERR_FATAL);
       return rv;
     }
+    nghttp2_stream_detach_deferred_data(stream);
   }
   return 0;
 }
@@ -2287,8 +2264,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 int nghttp2_session_on_push_promise_received(nghttp2_session *session,
                                              nghttp2_frame *frame)
 {
-  int rv;
   nghttp2_stream *stream;
+  nghttp2_stream *promised_stream;
   if(session->server || frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
@@ -2313,53 +2290,46 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   }
   session->last_recv_stream_id = frame->push_promise.promised_stream_id;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-  if(stream) {
-    if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-      return nghttp2_session_handle_invalid_connection(session, frame,
-                                                       NGHTTP2_PROTOCOL_ERROR);
-    }
-    if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
-      if(stream->state == NGHTTP2_STREAM_CLOSING) {
-        return nghttp2_session_add_rst_stream
-          (session,
-           frame->push_promise.promised_stream_id,
-           NGHTTP2_REFUSED_STREAM);
-      } else {
-        nghttp2_stream *promised_stream;
-        promised_stream = nghttp2_session_open_stream
-          (session,
-           frame->push_promise.promised_stream_id,
-           frame->hd.flags,
-           nghttp2_pushed_stream_pri(stream),
-           NGHTTP2_STREAM_RESERVED,
-           NULL);
-        if(!promised_stream) {
-          return NGHTTP2_ERR_NOMEM;
-        }
-        rv = nghttp2_session_call_on_frame_received(session, frame);
-        if(rv != 0) {
-          return rv;
-        }
-      }
-    } else {
-      if(session->callbacks.on_invalid_frame_recv_callback) {
-        if(session->callbacks.on_invalid_frame_recv_callback
-           (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data) != 0) {
-          return NGHTTP2_ERR_CALLBACK_FAILURE;
-        }
-      }
-      return nghttp2_session_add_rst_stream
-        (session,
-         frame->push_promise.promised_stream_id,
-         NGHTTP2_PROTOCOL_ERROR);
-    }
-  } else {
+  if(!stream) {
     return nghttp2_session_add_rst_stream
       (session,
        frame->push_promise.promised_stream_id,
        NGHTTP2_REFUSED_STREAM);
   }
-  return 0;
+
+  if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
+  }
+  if(stream->shut_flags & NGHTTP2_SHUT_RD) {
+    if(session->callbacks.on_invalid_frame_recv_callback) {
+      if(session->callbacks.on_invalid_frame_recv_callback
+         (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data) != 0) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
+    }
+    return nghttp2_session_add_rst_stream
+      (session,
+       frame->push_promise.promised_stream_id,
+       NGHTTP2_PROTOCOL_ERROR);
+  }
+  if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return nghttp2_session_add_rst_stream
+      (session,
+       frame->push_promise.promised_stream_id,
+       NGHTTP2_REFUSED_STREAM);
+  }
+  promised_stream = nghttp2_session_open_stream
+    (session,
+     frame->push_promise.promised_stream_id,
+     frame->hd.flags,
+     nghttp2_pushed_stream_pri(stream),
+     NGHTTP2_STREAM_RESERVED,
+     NULL);
+  if(!promised_stream) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  return nghttp2_session_call_on_frame_received(session, frame);
 }
 
 int nghttp2_session_on_ping_received(nghttp2_session *session,
@@ -2457,44 +2427,38 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
   } else {
     nghttp2_stream *stream;
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    if(stream) {
-      if(stream->state == NGHTTP2_STREAM_RESERVED) {
-        return nghttp2_session_handle_invalid_connection
-          (session, frame, NGHTTP2_PROTOCOL_ERROR);
-      }
-      if(stream->remote_flow_control == 0) {
-        /* Same reason with connection-level flow control */
-        return nghttp2_session_call_on_frame_received(session, frame);
-      }
-      if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
-         stream->remote_window_size) {
-        int r;
-        r = nghttp2_session_handle_invalid_stream
-          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
-        return r;
-      } else {
-        stream->remote_window_size +=
-          frame->window_update.window_size_increment;
-        if(stream->remote_window_size > 0 &&
-           (session->remote_flow_control == 0 ||
-            session->remote_window_size > 0) &&
-           stream->deferred_data != NULL &&
-           (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
-          int r;
-          r = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
-          if(r == 0) {
-            nghttp2_stream_detach_deferred_data(stream);
-          } else if(r < 0) {
-            /* FATAL */
-            assert(r < NGHTTP2_ERR_FATAL);
-            return r;
-          }
-        }
-        return nghttp2_session_call_on_frame_received(session, frame);
-      }
+    if(!stream) {
+      return 0;
     }
+    if(stream->state == NGHTTP2_STREAM_RESERVED) {
+      return nghttp2_session_handle_invalid_connection
+        (session, frame, NGHTTP2_PROTOCOL_ERROR);
+    }
+    if(stream->remote_flow_control == 0) {
+      /* Same reason with connection-level flow control */
+      return nghttp2_session_call_on_frame_received(session, frame);
+    }
+    if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
+       stream->remote_window_size) {
+      return nghttp2_session_handle_invalid_stream(session, frame,
+                                                   NGHTTP2_FLOW_CONTROL_ERROR);
+    }
+    stream->remote_window_size += frame->window_update.window_size_increment;
+    if(stream->remote_window_size > 0 &&
+       (session->remote_flow_control == 0 ||
+        session->remote_window_size > 0) &&
+       stream->deferred_data != NULL &&
+       (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
+      rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
+      if(rv != 0) {
+        /* FATAL */
+        assert(rv < NGHTTP2_ERR_FATAL);
+        return rv;
+      }
+      nghttp2_stream_detach_deferred_data(stream);
+    }
+    return nghttp2_session_call_on_frame_received(session, frame);
   }
-  return 0;
 }
 
 static int get_error_code_from_lib_error_code(int lib_error_code)
@@ -2696,8 +2660,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
                                      uint16_t length, uint8_t flags,
                                      int32_t stream_id)
 {
-  int r = 0;
-  nghttp2_error_code error_code = 0;
+  int rv = 0;
   nghttp2_stream *stream;
   if(stream_id == 0) {
     /* The spec says that if a DATA frame is received whose stream ID
@@ -2706,73 +2669,66 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
     return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
   }
   stream = nghttp2_session_get_stream(session, stream_id);
-  if(stream) {
-    if((stream->shut_flags & NGHTTP2_SHUT_RD) == 0) {
-      int valid = 0;
-      if(nghttp2_session_is_my_stream_id(session, stream_id)) {
-        if(stream->state == NGHTTP2_STREAM_OPENED) {
-          valid = 1;
-          if(session->callbacks.on_data_recv_callback) {
-            if(session->callbacks.on_data_recv_callback
-               (session, length, flags, stream_id, session->user_data) != 0) {
-              return NGHTTP2_ERR_CALLBACK_FAILURE;
-            }
-          }
-        } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
-          error_code = NGHTTP2_PROTOCOL_ERROR;
-        }
-      } else if(stream->state == NGHTTP2_STREAM_RESERVED) {
-        /* reserved (remote) and receiving DATA is connection error */
-        return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
-      } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
-        /* It is OK if this is remote peer initiated stream and we did
-           not receive END_STREAM unless stream is in
-           NGHTTP2_STREAM_CLOSING state. This is a race condition. */
-        valid = 1;
-        if(session->callbacks.on_data_recv_callback) {
-          if(session->callbacks.on_data_recv_callback
-             (session, length, flags, stream_id, session->user_data) != 0) {
-            return NGHTTP2_ERR_CALLBACK_FAILURE;
-          }
-        }
-        if(flags & NGHTTP2_FLAG_END_STREAM) {
-          r = nghttp2_session_call_on_request_recv(session, stream_id);
-          if(r != 0) {
-            return r;
-          }
-        }
-      }
-      if(valid) {
-        if(flags & NGHTTP2_FLAG_END_STREAM) {
-          nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-          r = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-          if(r != 0 && nghttp2_is_fatal(r)) {
-            return r;
-          }
-          r = 0;
-        }
-      }
-    } else {
-      /* half closed (remote): from the spec:
-
-         If an endpoint receives additional frames for a stream that is
-         in this state it MUST respond with a stream error (Section
-         5.4.2) of type STREAM_CLOSED.
-      */
-      if(stream->state != NGHTTP2_STREAM_CLOSING) {
-        error_code = NGHTTP2_STREAM_CLOSED;
-      }
-    }
-  } else {
+  if(!stream) {
     /* This should be treated as stream error, but it results in lots
        of RST_STREAM. So just ignore frame against nonexistent stream
        for now. */
-    /* error_code = NGHTTP2_PROTOCOL_ERROR; */
+    return 0;
   }
-  if(error_code != 0) {
-    r = nghttp2_session_add_rst_stream(session, stream_id, error_code);
+  if(stream->state == NGHTTP2_STREAM_RESERVED) {
+    /* reserved and receiving DATA is connection error */
+    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
   }
-  return r;
+  if(stream->shut_flags & NGHTTP2_SHUT_RD) {
+    /* half closed (remote): from the spec:
+
+       If an endpoint receives additional frames for a stream that is
+       in this state it MUST respond with a stream error (Section
+       5.4.2) of type STREAM_CLOSED.
+    */
+    if(stream->state != NGHTTP2_STREAM_CLOSING) {
+      return nghttp2_session_add_rst_stream(session, stream_id,
+                                            NGHTTP2_STREAM_CLOSED);
+    }
+    return 0;
+  }
+  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+    if(stream->state == NGHTTP2_STREAM_OPENED) {
+      if(session->callbacks.on_data_recv_callback) {
+        if(session->callbacks.on_data_recv_callback
+           (session, length, flags, stream_id, session->user_data) != 0) {
+          return NGHTTP2_ERR_CALLBACK_FAILURE;
+        }
+      }
+    } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
+      return nghttp2_session_add_rst_stream(session, stream_id,
+                                            NGHTTP2_PROTOCOL_ERROR);
+    }
+  } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
+    /* It is OK if this is remote peer initiated stream and we did
+       not receive END_STREAM unless stream is in
+       NGHTTP2_STREAM_CLOSING state. This is a race condition. */
+    if(session->callbacks.on_data_recv_callback) {
+      if(session->callbacks.on_data_recv_callback
+         (session, length, flags, stream_id, session->user_data) != 0) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
+    }
+    if(flags & NGHTTP2_FLAG_END_STREAM) {
+      rv = nghttp2_session_call_on_request_recv(session, stream_id);
+      if(rv != 0) {
+        return rv;
+      }
+    }
+  }
+  if(flags & NGHTTP2_FLAG_END_STREAM) {
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+    rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+    if(rv != 0 && nghttp2_is_fatal(rv)) {
+      return rv;
+    }
+  }
+  return 0;
 }
 
 /* For errors, this function only returns FATAL error. */
