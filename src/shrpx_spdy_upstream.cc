@@ -807,7 +807,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   }
   size_t nheader = downstream->get_response_headers().size();
   // 6 means :status, :version and possible via header field.
-  const char **nv = new const char*[nheader * 2 + 6 + 1];
+  auto nv = util::make_unique<const char*[]>(nheader * 2 + 6 + 1);
   size_t hdidx = 0;
   std::string via_value;
   nv[hdidx++] = ":status";
@@ -854,9 +854,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   data_prd.read_callback = spdy_data_read_callback;
 
   int rv;
-  rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,
+  rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv.get(),
                                &data_prd);
-  delete [] nv;
   if(rv != 0) {
     ULOG(FATAL, this) << "spdylay_submit_response() failed";
     return -1;

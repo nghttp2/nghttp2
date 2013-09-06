@@ -858,7 +858,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();
   // 4 means :status and possible via header field.
-  const char **nv = new const char*[nheader * 2 + 4 + 1];
+  auto nv = util::make_unique<const char*[]>(nheader * 2 + 4 + 1);
   size_t hdidx = 0;
   std::string via_value;
   auto response_status =
@@ -899,9 +899,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   data_prd.read_callback = spdy_data_read_callback;
 
   int rv;
-  rv = nghttp2_submit_response(session_, downstream->get_stream_id(), nv,
+  rv = nghttp2_submit_response(session_, downstream->get_stream_id(), nv.get(),
                                &data_prd);
-  delete [] nv;
   if(rv != 0) {
     ULOG(FATAL, this) << "nghttp2_submit_response() failed";
     return -1;
