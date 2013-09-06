@@ -195,6 +195,52 @@ void test_nghttp2_hd_deflate_same_indexed_repr(void)
   nghttp2_hd_deflate_free(&deflater);
 }
 
+void test_nghttp2_hd_deflate_common_header_eviction(void)
+{
+  nghttp2_hd_context deflater, inflater;
+  nghttp2_nv nva[] = {MAKE_NV(":scheme", "http"),
+                      MAKE_NV("", "")};
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  ssize_t blocklen;
+  nghttp2_nv *resnva;
+  /* Default header table capacity is 1262. Adding 2835 bytes,
+     including overhead, to the table evicts first entry.
+     use name ":host" which index 2 and value length 2798. */
+  uint8_t value[2798];
+
+  memset(value, '0', sizeof(value));
+  nva[1].name = (uint8_t*)":host";
+  nva[1].namelen = strlen((const char*)nva[1].name);
+  nva[1].value = value;
+  nva[1].valuelen = sizeof(value);
+
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+
+  /* Put :scheme: http (index = 0) in reference set */
+  deflater.hd_table[0]->flags |= NGHTTP2_HD_FLAG_REFSET;
+  inflater.hd_table[0]->flags |= NGHTTP2_HD_FLAG_REFSET;
+  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva,
+                                   sizeof(nva)/sizeof(nghttp2_nv));
+  CU_ASSERT(blocklen > 0);
+  nghttp2_hd_end_headers(&deflater);
+
+  /* Check common header :scheme: http, which is removed from the
+     header table because of eviction, is still emitted by the
+     inflater */
+  CU_ASSERT(2 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, blocklen));
+  nghttp2_nv_array_sort(nva, 2);
+  assert_nv_equal(nva, resnva, 2);
+
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+
+  free(buf);
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+}
+
 void test_nghttp2_hd_inflate_indname_inc(void)
 {
   nghttp2_hd_context inflater;

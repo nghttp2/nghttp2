@@ -169,8 +169,7 @@ void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
  *
  * TODO: The rest of the code call nghttp2_hd_end_headers() after this
  * call, but it is just a regacy of the first implementation. Now it
- * is called in this function and the caller does not need to call it
- * by itself.
+ * is not required to be called as of now.
  *
  * This function returns the number of bytes outputted if it succeeds,
  * or one of the following negative error codes:
