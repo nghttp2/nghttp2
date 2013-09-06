@@ -236,7 +236,7 @@ int SpdyDownstreamConnection::push_request_headers()
   // 10 means :method, :scheme, :path and possible via and
   // x-forwarded-for header fields. We rename host header field as
   // :host.
-  const char **nv = new const char*[nheader * 2 + 10 + 1];
+  auto nv = util::make_unique<const char*[]>(nheader * 2 + 10 + 1);
   size_t hdidx = 0;
   std::string via_value;
   std::string xff_value;
@@ -363,11 +363,10 @@ int SpdyDownstreamConnection::push_request_headers()
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
     data_prd.read_callback = spdy_data_read_callback;
-    rv = spdy_->submit_request(this, 0, nv, &data_prd);
+    rv = spdy_->submit_request(this, 0, nv.get(), &data_prd);
   } else {
-    rv = spdy_->submit_request(this, 0, nv, 0);
+    rv = spdy_->submit_request(this, 0, nv.get(), 0);
   }
-  delete [] nv;
   if(rv != 0) {
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";
     return -1;
