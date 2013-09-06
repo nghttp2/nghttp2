@@ -622,6 +622,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
                              NGHTTP2_HD_FLAG_VALUE_ALLOC,
                              nv->name, nv->namelen, nv->value, nv->valuelen);
   if(rv != 0) {
+    free(new_ent);
     return NULL;
   }
   if(room > NGHTTP2_HD_MAX_BUFFER_SIZE) {
@@ -709,6 +710,7 @@ static nghttp2_hd_entry* add_hd_table_subst(nghttp2_hd_context *context,
                              NGHTTP2_HD_FLAG_VALUE_ALLOC,
                              nv->name, nv->namelen, nv->value, nv->valuelen);
   if(rv != 0) {
+    free(new_ent);
     return NULL;
   }
   if(room > NGHTTP2_HD_MAX_BUFFER_SIZE) {
