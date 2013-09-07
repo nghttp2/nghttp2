@@ -787,9 +787,9 @@ typedef union {
  * not used and always 0. It must return the number of bytes sent if
  * it succeeds.  If it cannot send any single byte without blocking,
  * it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`. For other errors, it
- * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. The |user_data| pointer
- * is the third argument passed in to the call to nghttp2_session_client_new
- * or nghttp2_session_server_new
+ * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. The |user_data|
+ * pointer is the third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  */
 typedef ssize_t (*nghttp2_send_callback)
 (nghttp2_session *session,
@@ -807,7 +807,9 @@ typedef ssize_t (*nghttp2_send_callback)
  * it gets EOF before it reads any single byte, it must return
  * :enum:`NGHTTP2_ERR_EOF`. For other errors, it must return
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning 0 is treated as
- * :enum:`NGHTTP2_ERR_WOULDBLOCK`.
+ * :enum:`NGHTTP2_ERR_WOULDBLOCK`. The |user_data| pointer is the
+ * third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  */
 typedef ssize_t (*nghttp2_recv_callback)
 (nghttp2_session *session,
@@ -817,7 +819,9 @@ typedef ssize_t (*nghttp2_recv_callback)
  * @functypedef
  *
  * Callback function invoked by `nghttp2_session_recv()` when a
- * non-DATA frame is received.
+ * non-DATA frame is received. The |user_data| pointer is the third
+ * argument passed in to the call to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -834,7 +838,9 @@ typedef int (*nghttp2_on_frame_recv_callback)
  * invalid non-DATA frame is received. The |error_code| is one of the
  * :enum:`nghttp2_error_code` and indicates the error. When this
  * callback function is invoked, the library automatically submits
- * either RST_STREAM or GOAWAY frame.
+ * either RST_STREAM or GOAWAY frame. The |user_data| pointer is the
+ * third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -854,7 +860,9 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)
  * contained. ``(flags & NGHTTP2_FLAG_END_STREAM) != 0`` does not
  * necessarily mean this chunk of data is the last one in the
  * stream. You should use :type:`nghttp2_on_data_recv_callback` to
- * know all data frames are received.
+ * know all data frames are received. The |user_data| pointer is the
+ * third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -870,7 +878,9 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)
  *
  * Callback function invoked when DATA frame is received. The actual
  * data it contains are received by
- * :type:`nghttp2_on_data_chunk_recv_callback`.
+ * :type:`nghttp2_on_data_chunk_recv_callback`. The |user_data|
+ * pointer is the third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -888,7 +898,9 @@ typedef int (*nghttp2_on_data_recv_callback)
  * sent. This may be useful, for example, to know the stream ID of
  * HEADERS and PUSH_PROMISE frame (see also
  * `nghttp2_session_get_stream_user_data()`), which is not assigned
- * when it was queued.
+ * when it was queued. The |user_data| pointer is the third argument
+ * passed in to the call to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -902,6 +914,9 @@ typedef int (*nghttp2_before_frame_send_callback)
  * @functypedef
  *
  * Callback function invoked after the non-DATA frame |frame| is sent.
+ * The |user_data| pointer is the third argument passed in to the call
+ * to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -917,7 +932,9 @@ typedef int (*nghttp2_on_frame_send_callback)
  * Callback function invoked after the non-DATA frame |frame| is not
  * sent because of the error. The error is indicated by the
  * |lib_error_code|, which is one of the values defined in
- * :type:`nghttp2_error`.
+ * :type:`nghttp2_error`. The |user_data| pointer is the third
+ * argument passed in to the call to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -931,7 +948,9 @@ typedef int (*nghttp2_on_frame_not_send_callback)
 /**
  * @functypedef
  *
- * Callback function invoked after DATA frame is sent.
+ * Callback function invoked after DATA frame is sent. The |user_data|
+ * pointer is the third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -946,10 +965,12 @@ typedef int (*nghttp2_on_data_send_callback)
  * @functypedef
  *
  * Callback function invoked when the stream |stream_id| is
- * closed. The reason of closure is indicated by the
- * |error_code|. The stream_user_data, which was specified in
- * `nghttp2_submit_request()` or `nghttp2_submit_headers()`, is
- * still available in this function.
+ * closed. The reason of closure is indicated by the |error_code|. The
+ * stream_user_data, which was specified in `nghttp2_submit_request()`
+ * or `nghttp2_submit_headers()`, is still available in this
+ * function. The |user_data| pointer is the third argument passed in
+ * to the call to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -966,7 +987,9 @@ typedef int (*nghttp2_on_stream_close_callback)
  * Callback function invoked when the request from the remote peer is
  * received.  In other words, the frame with END_STREAM flag set is
  * received.  In HTTP, this means HTTP request, including request
- * body, is fully received.
+ * body, is fully received. The |user_data| pointer is the third
+ * argument passed in to the call to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -987,8 +1010,10 @@ typedef int (*nghttp2_on_request_recv_callback)
  * words, the |head| is the first 8 bytes of the received frame.  The
  * |payload| is the pointer to the data portion of the received frame.
  * The |payloadlen| is the length of the |payload|. This is the data
- * after the length field. The |lib_error_code| is one of the error code
- * defined in :enum:`nghttp2_error` and indicates the error.
+ * after the length field. The |lib_error_code| is one of the error
+ * code defined in :enum:`nghttp2_error` and indicates the error. The
+ * |user_data| pointer is the third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -1010,7 +1035,10 @@ typedef int (*nghttp2_on_frame_recv_parse_error_callback)
  * spec, the |headlen| is always 8. In other words, the |head| is the
  * first 8 bytes of the received frame.  The |payload| is the pointer
  * to the data portion of the received frame.  The |payloadlen| is the
- * length of the |payload|. This is the data after the length field.
+ * length of the |payload|. This is the data after the length
+ * field. The |user_data| pointer is the third argument passed in to
+ * the call to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
