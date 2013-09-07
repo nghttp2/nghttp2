@@ -306,6 +306,9 @@ static int emit_indexed_header(nghttp2_hd_context *context,
                                nghttp2_hd_entry *ent)
 {
   int rv;
+  /* ent->ref may be 0. This happens if the careless stupid encoder
+     emits literal block larger than header table capacity with
+     indexing. */
   rv = add_emit_set(context, ent);
   if(rv != 0) {
     return rv;
