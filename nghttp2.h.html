@@ -843,7 +843,9 @@
 <span class="cm"> * not used and always 0. It must return the number of bytes sent if</span>
 <span class="cm"> * it succeeds.  If it cannot send any single byte without blocking,</span>
 <span class="cm"> * it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`. For other errors, it</span>
-<span class="cm"> * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. The |user_data|</span>
+<span class="cm"> * pointer is the third argument passed in to the call to</span>
+<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_send_callback</span><span class="p">)</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -861,7 +863,9 @@
 <span class="cm"> * it gets EOF before it reads any single byte, it must return</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_EOF`. For other errors, it must return</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning 0 is treated as</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_WOULDBLOCK`.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_WOULDBLOCK`. The |user_data| pointer is the</span>
+<span class="cm"> * third argument passed in to the call to</span>
+<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_recv_callback</span><span class="p">)</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -871,7 +875,9 @@
 <span class="cm"> * @functypedef</span>
 <span class="cm"> *</span>
 <span class="cm"> * Callback function invoked by `nghttp2_session_recv()` when a</span>
-<span class="cm"> * non-DATA frame is received.</span>
+<span class="cm"> * non-DATA frame is received. The |user_data| pointer is the third</span>
+<span class="cm"> * argument passed in to the call to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -888,7 +894,9 @@
 <span class="cm"> * invalid non-DATA frame is received. The |error_code| is one of the</span>
 <span class="cm"> * :enum:`nghttp2_error_code` and indicates the error. When this</span>
 <span class="cm"> * callback function is invoked, the library automatically submits</span>
-<span class="cm"> * either RST_STREAM or GOAWAY frame.</span>
+<span class="cm"> * either RST_STREAM or GOAWAY frame. The |user_data| pointer is the</span>
+<span class="cm"> * third argument passed in to the call to</span>
+<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -908,7 +916,9 @@
 <span class="cm"> * contained. ``(flags &amp; NGHTTP2_FLAG_END_STREAM) != 0`` does not</span>
 <span class="cm"> * necessarily mean this chunk of data is the last one in the</span>
 <span class="cm"> * stream. You should use :type:`nghttp2_on_data_recv_callback` to</span>
-<span class="cm"> * know all data frames are received.</span>
+<span class="cm"> * know all data frames are received. The |user_data| pointer is the</span>
+<span class="cm"> * third argument passed in to the call to</span>
+<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -924,7 +934,9 @@
 <span class="cm"> *</span>
 <span class="cm"> * Callback function invoked when DATA frame is received. The actual</span>
 <span class="cm"> * data it contains are received by</span>
-<span class="cm"> * :type:`nghttp2_on_data_chunk_recv_callback`.</span>
+<span class="cm"> * :type:`nghttp2_on_data_chunk_recv_callback`. The |user_data|</span>
+<span class="cm"> * pointer is the third argument passed in to the call to</span>
+<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -942,7 +954,9 @@
 <span class="cm"> * sent. This may be useful, for example, to know the stream ID of</span>
 <span class="cm"> * HEADERS and PUSH_PROMISE frame (see also</span>
 <span class="cm"> * `nghttp2_session_get_stream_user_data()`), which is not assigned</span>
-<span class="cm"> * when it was queued.</span>
+<span class="cm"> * when it was queued. The |user_data| pointer is the third argument</span>
+<span class="cm"> * passed in to the call to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -956,6 +970,9 @@
 <span class="cm"> * @functypedef</span>
 <span class="cm"> *</span>
 <span class="cm"> * Callback function invoked after the non-DATA frame |frame| is sent.</span>
+<span class="cm"> * The |user_data| pointer is the third argument passed in to the call</span>
+<span class="cm"> * to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -971,7 +988,9 @@
 <span class="cm"> * Callback function invoked after the non-DATA frame |frame| is not</span>
 <span class="cm"> * sent because of the error. The error is indicated by the</span>
 <span class="cm"> * |lib_error_code|, which is one of the values defined in</span>
-<span class="cm"> * :type:`nghttp2_error`.</span>
+<span class="cm"> * :type:`nghttp2_error`. The |user_data| pointer is the third</span>
+<span class="cm"> * argument passed in to the call to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -985,7 +1004,9 @@
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
 <span class="cm"> *</span>
-<span class="cm"> * Callback function invoked after DATA frame is sent.</span>
+<span class="cm"> * Callback function invoked after DATA frame is sent. The |user_data|</span>
+<span class="cm"> * pointer is the third argument passed in to the call to</span>
+<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -1000,10 +1021,12 @@
 <span class="cm"> * @functypedef</span>
 <span class="cm"> *</span>
 <span class="cm"> * Callback function invoked when the stream |stream_id| is</span>
-<span class="cm"> * closed. The reason of closure is indicated by the</span>
-<span class="cm"> * |error_code|. The stream_user_data, which was specified in</span>
-<span class="cm"> * `nghttp2_submit_request()` or `nghttp2_submit_headers()`, is</span>
-<span class="cm"> * still available in this function.</span>
+<span class="cm"> * closed. The reason of closure is indicated by the |error_code|. The</span>
+<span class="cm"> * stream_user_data, which was specified in `nghttp2_submit_request()`</span>
+<span class="cm"> * or `nghttp2_submit_headers()`, is still available in this</span>
+<span class="cm"> * function. The |user_data| pointer is the third argument passed in</span>
+<span class="cm"> * to the call to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -1020,7 +1043,9 @@
 <span class="cm"> * Callback function invoked when the request from the remote peer is</span>
 <span class="cm"> * received.  In other words, the frame with END_STREAM flag set is</span>
 <span class="cm"> * received.  In HTTP, this means HTTP request, including request</span>
-<span class="cm"> * body, is fully received.</span>
+<span class="cm"> * body, is fully received. The |user_data| pointer is the third</span>
+<span class="cm"> * argument passed in to the call to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -1041,8 +1066,10 @@
 <span class="cm"> * words, the |head| is the first 8 bytes of the received frame.  The</span>
 <span class="cm"> * |payload| is the pointer to the data portion of the received frame.</span>
 <span class="cm"> * The |payloadlen| is the length of the |payload|. This is the data</span>
-<span class="cm"> * after the length field. The |lib_error_code| is one of the error code</span>
-<span class="cm"> * defined in :enum:`nghttp2_error` and indicates the error.</span>
+<span class="cm"> * after the length field. The |lib_error_code| is one of the error</span>
+<span class="cm"> * code defined in :enum:`nghttp2_error` and indicates the error. The</span>
+<span class="cm"> * |user_data| pointer is the third argument passed in to the call to</span>
+<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -1064,7 +1091,10 @@
 <span class="cm"> * spec, the |headlen| is always 8. In other words, the |head| is the</span>
 <span class="cm"> * first 8 bytes of the received frame.  The |payload| is the pointer</span>
 <span class="cm"> * to the data portion of the received frame.  The |payloadlen| is the</span>
-<span class="cm"> * length of the |payload|. This is the data after the length field.</span>
+<span class="cm"> * length of the |payload|. This is the data after the length</span>
+<span class="cm"> * field. The |user_data| pointer is the third argument passed in to</span>
+<span class="cm"> * the call to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it</span>
 <span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
@@ -1534,7 +1564,7 @@
 <span class="cm"> * to hold serialized data. The required space for the |niv| entries</span>
 <span class="cm"> * are ``8*niv`` bytes. This function is used mainly for creating</span>
 <span class="cm"> * SETTINGS payload to be sent with ``HTTP2-Settings`` header field in</span>
-<span class="cm"> * HTTP Upgrade request. The data written in |buf| is not still</span>
+<span class="cm"> * HTTP Upgrade request. The data written in |buf| is NOT</span>
 <span class="cm"> * base64url encoded and the application is responsible for encoding.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns the number of bytes written in |buf|, or one</span>

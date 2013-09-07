@@ -1099,7 +1099,9 @@ remote peer. The implementation of this function must send at most
 not used and always 0. It must return the number of bytes sent if
 it succeeds.  If it cannot send any single byte without blocking,
 it must return <a class="reference internal" href="#NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a>. For other errors, it
-must return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
+must return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>. The <em>user_data</em>
+pointer is the third argument passed in to the call to
+<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
@@ -1114,14 +1116,18 @@ without blocking, it must return <a class="reference internal" href="#NGHTTP2_ER
 it gets EOF before it reads any single byte, it must return
 <a class="reference internal" href="#NGHTTP2_ERR_EOF" title="NGHTTP2_ERR_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_EOF</span></tt></a>. For other errors, it must return
 <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>. Returning 0 is treated as
-<a class="reference internal" href="#NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a>.</p>
+<a class="reference internal" href="#NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a>. The <em>user_data</em> pointer is the
+third argument passed in to the call to
+<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="type">
 <dt id="nghttp2_on_frame_recv_callback">
 typedef int <tt class="descname">(*nghttp2_on_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked by <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> when a
-non-DATA frame is received.</p>
+non-DATA frame is received. The <em>user_data</em> pointer is the third
+argument passed in to the call to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1135,7 +1141,9 @@ typedef int <tt class="descname">(*nghttp2_on_invalid_frame_recv_callback)</tt><
 invalid non-DATA frame is received. The <em>error_code</em> is one of the
 <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_error_code</span></tt></a> and indicates the error. When this
 callback function is invoked, the library automatically submits
-either RST_STREAM or GOAWAY frame.</p>
+either RST_STREAM or GOAWAY frame. The <em>user_data</em> pointer is the
+third argument passed in to the call to
+<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1151,7 +1159,9 @@ to. The <em>flags</em> is the flags of DATA frame which this data chunk is
 contained. <tt class="docutils literal"><span class="pre">(flags</span> <span class="pre">&amp;</span> <span class="pre">NGHTTP2_FLAG_END_STREAM)</span> <span class="pre">!=</span> <span class="pre">0</span></tt> does not
 necessarily mean this chunk of data is the last one in the
 stream. You should use <a class="reference internal" href="#nghttp2_on_data_recv_callback" title="nghttp2_on_data_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_data_recv_callback</span></tt></a> to
-know all data frames are received.</p>
+know all data frames are received. The <em>user_data</em> pointer is the
+third argument passed in to the call to
+<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1163,7 +1173,9 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 typedef int <tt class="descname">(*nghttp2_on_data_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint16_t<em>&nbsp;length</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when DATA frame is received. The actual
 data it contains are received by
-<a class="reference internal" href="#nghttp2_on_data_chunk_recv_callback" title="nghttp2_on_data_chunk_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_data_chunk_recv_callback</span></tt></a>.</p>
+<a class="reference internal" href="#nghttp2_on_data_chunk_recv_callback" title="nghttp2_on_data_chunk_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_data_chunk_recv_callback</span></tt></a>. The <em>user_data</em>
+pointer is the third argument passed in to the call to
+<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1177,7 +1189,9 @@ typedef int <tt class="descname">(*nghttp2_before_frame_send_callback)</tt><big>
 sent. This may be useful, for example, to know the stream ID of
 HEADERS and PUSH_PROMISE frame (see also
 <a class="reference internal" href="#nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a>), which is not assigned
-when it was queued.</p>
+when it was queued. The <em>user_data</em> pointer is the third argument
+passed in to the call to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1187,7 +1201,10 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 <dl class="type">
 <dt id="nghttp2_on_frame_send_callback">
 typedef int <tt class="descname">(*nghttp2_on_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_send_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback function invoked after the non-DATA frame <em>frame</em> is sent.</p>
+<dd><p>Callback function invoked after the non-DATA frame <em>frame</em> is sent.
+The <em>user_data</em> pointer is the third argument passed in to the call
+to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1200,7 +1217,9 @@ typedef int <tt class="descname">(*nghttp2_on_frame_not_send_callback)</tt><big>
 <dd><p>Callback function invoked after the non-DATA frame <em>frame</em> is not
 sent because of the error. The error is indicated by the
 <em>lib_error_code</em>, which is one of the values defined in
-<a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_error</span></tt></a>.</p>
+<a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_error</span></tt></a>. The <em>user_data</em> pointer is the third
+argument passed in to the call to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1210,7 +1229,9 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 <dl class="type">
 <dt id="nghttp2_on_data_send_callback">
 typedef int <tt class="descname">(*nghttp2_on_data_send_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint16_t<em>&nbsp;length</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_data_send_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback function invoked after DATA frame is sent.</p>
+<dd><p>Callback function invoked after DATA frame is sent. The <em>user_data</em>
+pointer is the third argument passed in to the call to
+<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1221,10 +1242,12 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 <dt id="nghttp2_on_stream_close_callback">
 typedef int <tt class="descname">(*nghttp2_on_stream_close_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_stream_close_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the stream <em>stream_id</em> is
-closed. The reason of closure is indicated by the
-<em>error_code</em>. The stream_user_data, which was specified in
-<a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or <a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>, is
-still available in this function.</p>
+closed. The reason of closure is indicated by the <em>error_code</em>. The
+stream_user_data, which was specified in <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>
+or <a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>, is still available in this
+function. The <em>user_data</em> pointer is the third argument passed in
+to the call to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1237,7 +1260,9 @@ typedef int <tt class="descname">(*nghttp2_on_request_recv_callback)</tt><big>(<
 <dd><p>Callback function invoked when the request from the remote peer is
 received.  In other words, the frame with END_STREAM flag set is
 received.  In HTTP, this means HTTP request, including request
-body, is fully received.</p>
+body, is fully received. The <em>user_data</em> pointer is the third
+argument passed in to the call to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1255,8 +1280,10 @@ the received frame. The <em>headlen</em> is the length of the
 words, the <em>head</em> is the first 8 bytes of the received frame.  The
 <em>payload</em> is the pointer to the data portion of the received frame.
 The <em>payloadlen</em> is the length of the <em>payload</em>. This is the data
-after the length field. The <em>lib_error_code</em> is one of the error code
-defined in <a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_error</span></tt></a> and indicates the error.</p>
+after the length field. The <em>lib_error_code</em> is one of the error
+code defined in <a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_error</span></tt></a> and indicates the error. The
+<em>user_data</em> pointer is the third argument passed in to the call to
+<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1272,7 +1299,10 @@ frame. The <em>headlen</em> is the length of the <em>head</em>. According to the
 spec, the <em>headlen</em> is always 8. In other words, the <em>head</em> is the
 first 8 bytes of the received frame.  The <em>payload</em> is the pointer
 to the data portion of the received frame.  The <em>payloadlen</em> is the
-length of the <em>payload</em>. This is the data after the length field.</p>
+length of the <em>payload</em>. This is the data after the length
+field. The <em>user_data</em> pointer is the third argument passed in to
+the call to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1721,7 +1751,7 @@ may reorder the pointers in <em>iv</em>. The <em>buf</em> must have enough regio
 to hold serialized data. The required space for the <em>niv</em> entries
 are <tt class="docutils literal"><span class="pre">8*niv</span></tt> bytes. This function is used mainly for creating
 SETTINGS payload to be sent with <tt class="docutils literal"><span class="pre">HTTP2-Settings</span></tt> header field in
-HTTP Upgrade request. The data written in <em>buf</em> is not still
+HTTP Upgrade request. The data written in <em>buf</em> is NOT
 base64url encoded and the application is responsible for encoding.</p>
 <p>This function returns the number of bytes written in <em>buf</em>, or one
 of the following negative error codes:</p>
