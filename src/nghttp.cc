@@ -423,7 +423,8 @@ struct HttpClient {
       state(STATE_IDLE),
       complete(0),
       upgrade_response_complete(false),
-      upgrade_response_status_code(0)
+      upgrade_response_status_code(0),
+      settings_payloadlen(0)
   {}
 
   ~HttpClient()
@@ -515,13 +516,17 @@ struct HttpClient {
 
   int on_upgrade_connect()
   {
+    ssize_t rv;
     record_handshake_time();
     assert(!reqvec.empty());
     nghttp2_settings_entry iv[16];
     size_t niv = populate_settings(iv);
     assert(sizeof(settings_payload) >= 8*niv);
-    settings_payloadlen =
-      nghttp2_pack_settings_payload(settings_payload, iv, niv);
+    rv = nghttp2_pack_settings_payload(settings_payload, iv, niv);
+    if(rv < 0) {
+      return -1;
+    }
+    settings_payloadlen = rv;
     auto token68 = base64::encode(&settings_payload[0],
                                   &settings_payload[settings_payloadlen]);
     util::to_token68(token68);
@@ -759,7 +764,9 @@ struct HttpClient {
                    int level = 0)
   {
     http_parser_url u;
-    http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
+    if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+      return false;
+    }
     if(path_cache.count(uri)) {
       return false;
     } else {
@@ -969,6 +976,7 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
   auto client = get_session(user_data);
   auto req = (Request*)nghttp2_session_get_stream_user_data(session,
                                                             stream_id);
+  assert(req);
   client->streams[stream_id] = req;
   req->record_syn_stream_time();
 }
@@ -1318,6 +1326,7 @@ ssize_t file_read_callback
 {
   auto req = (Request*)nghttp2_session_get_stream_user_data
     (session, stream_id);
+  assert(req);
   int fd = source->fd;
   ssize_t r;
   while((r = pread(fd, buf, length, req->data_offset)) == -1 &&

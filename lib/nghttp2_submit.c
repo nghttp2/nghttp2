@@ -331,7 +331,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
   if(nghttp2_session_get_stream(session, stream_id) == NULL) {
     return NGHTTP2_ERR_STREAM_CLOSED;
   }
-  data_frame = malloc(sizeof(nghttp2_frame));
+  data_frame = malloc(sizeof(nghttp2_data));
   if(data_frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }

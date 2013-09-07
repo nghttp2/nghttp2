@@ -120,7 +120,6 @@ private:
   int fd_;
   SSL* ssl_;
   int64_t session_id_;
-  uint8_t io_flags_;
   std::map<int32_t, std::unique_ptr<Request>> id2req_;
   size_t left_connhd_len_;
 };

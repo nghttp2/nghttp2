@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 {
   Config config;
   while(1) {
-    int flag;
+    int flag = 0;
     static option long_options[] = {
       {"daemon", no_argument, nullptr, 'D'},
       {"htdocs", required_argument, nullptr, 'd'},
