@@ -196,9 +196,6 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_data_backoff_by_high_pri_frame) ||
       !CU_add_test(pSuite, "pack_settings_payload",
                    test_nghttp2_pack_settings_payload) ||
-      !CU_add_test(pSuite, "frame_nv_sort", test_nghttp2_frame_nv_sort) ||
-      !CU_add_test(pSuite, "frame_nv_downcase",
-                   test_nghttp2_frame_nv_downcase) ||
       !CU_add_test(pSuite, "frame_nv_check_null",
                    test_nghttp2_frame_nv_check_null) ||
       !CU_add_test(pSuite, "frame_pack_headers",

@@ -32,21 +32,6 @@
 #include "nghttp2_helper.h"
 #include "nghttp2_net.h"
 
-/* This is SPDY stuff, and will be removed after header compression is
-   implemented */
-static size_t nghttp2_frame_get_len_size(void)
-{
-  return 2;
-}
-
-static uint8_t* nghttp2_pack_str(uint8_t *buf, const char *str, size_t len)
-{
-  nghttp2_frame_put_nv_len(buf, len);
-  buf += nghttp2_frame_get_len_size();
-  memcpy(buf, str, len);
-  return buf+len;
-}
-
 int nghttp2_frame_is_data_frame(uint8_t *head)
 {
   return head[2] == 0;
@@ -66,122 +51,6 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf)
   hd->type = buf[2];
   hd->flags = buf[3];
   hd->stream_id = nghttp2_get_uint32(&buf[4]) & NGHTTP2_STREAM_ID_MASK;
-}
-
-ssize_t nghttp2_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size)
-{
-  int i;
-  uint8_t *bufp = buf+len_size;
-  uint32_t num_nv = 0;
-  const char *prev = "";
-  uint8_t *cur_vallen_buf = NULL;
-  uint32_t cur_vallen = 0;
-  size_t prevkeylen = 0;
-  size_t prevvallen = 0;
-  for(i = 0; nv[i]; i += 2) {
-    const char *key = nv[i];
-    const char *val = nv[i+1];
-    size_t keylen = strlen(key);
-    size_t vallen = strlen(val);
-    if(prevkeylen == keylen && memcmp(prev, key, keylen) == 0) {
-      if(vallen) {
-        if(prevvallen) {
-          /* Join previous value, with NULL character */
-          cur_vallen += vallen+1;
-          nghttp2_frame_put_nv_len(cur_vallen_buf, cur_vallen);
-          *bufp = '\0';
-          ++bufp;
-          memcpy(bufp, val, vallen);
-          bufp += vallen;
-        } else {
-          /* Previous value is empty. In this case, drop the
-             previous. */
-          cur_vallen += vallen;
-          nghttp2_frame_put_nv_len(cur_vallen_buf, cur_vallen);
-          memcpy(bufp, val, vallen);
-          bufp += vallen;
-        }
-      }
-    } else {
-      ++num_nv;
-      bufp = nghttp2_pack_str(bufp, key, keylen);
-      prev = key;
-      cur_vallen_buf = bufp;
-      cur_vallen = vallen;
-      prevkeylen = keylen;
-      prevvallen = vallen;
-      bufp = nghttp2_pack_str(bufp, val, vallen);
-    }
-  }
-  nghttp2_frame_put_nv_len(buf, num_nv);
-  return bufp-buf;
-}
-
-void nghttp2_frame_nv_del(char **nv)
-{
-  free(nv);
-}
-
-char** nghttp2_frame_nv_copy(const char **nv)
-{
-  int i;
-  char *buf;
-  char **idx, *data;
-  size_t buflen = 0;
-  for(i = 0; nv[i]; ++i) {
-    buflen += strlen(nv[i])+1;
-  }
-  buflen += (i+1)*sizeof(char*);
-  buf = malloc(buflen);
-  if(buf == NULL) {
-    return NULL;
-  }
-  idx = (char**)buf;
-  data = buf+(i+1)*sizeof(char*);
-
-  for(i = 0; nv[i]; ++i) {
-    size_t len = strlen(nv[i])+1;
-    memcpy(data, nv[i], len);
-    *idx++ = data;
-    data += len;
-  }
-  *idx = NULL;
-  return (char**)buf;
-}
-
-static int nghttp2_string_compar(const void *lhs, const void *rhs)
-{
-  return strcmp(*(char **)lhs, *(char **)rhs);
-}
-
-void nghttp2_frame_nv_sort(char **nv)
-{
-  int n;
-  for(n = 0; nv[n]; ++n);
-  qsort(nv, n/2, 2*sizeof(char*), nghttp2_string_compar);
-}
-
-void nghttp2_frame_nv_downcase(char **nv)
-{
-  int i, j;
-  for(i = 0; nv[i]; i += 2) {
-    for(j = 0; nv[i][j] != '\0'; ++j) {
-      if('A' <= nv[i][j] && nv[i][j] <= 'Z') {
-        nv[i][j] += 'a'-'A';
-      }
-    }
-  }
-}
-
-char** nghttp2_frame_nv_norm_copy(const char **nv)
-{
-  char **nv_copy;
-  nv_copy = nghttp2_frame_nv_copy(nv);
-  if(nv_copy != NULL) {
-    nghttp2_frame_nv_downcase(nv_copy);
-    nghttp2_frame_nv_sort(nv_copy);
-  }
-  return nv_copy;
 }
 
 static void nghttp2_frame_set_hd(nghttp2_frame_hd *hd, uint16_t length,
@@ -326,6 +195,10 @@ void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
 void nghttp2_frame_data_free(nghttp2_data *frame)
 {}
 
+/*
+ * Returns the offset of the name/header block in the HEADERS frame,
+ * including frame header length.
+ */
 static size_t headers_nv_offset(nghttp2_headers *frame)
 {
   if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
@@ -709,22 +582,6 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
   }
   memcpy(iv_copy, iv, len);
   return iv_copy;
-}
-
-ssize_t nghttp2_frame_nv_offset(const uint8_t *head)
-{
-  switch(head[2]) {
-  case NGHTTP2_HEADERS:
-    if(head[3] & NGHTTP2_FLAG_PRIORITY) {
-      return NGHTTP2_FRAME_HEAD_LENGTH + 4;
-    } else {
-      return NGHTTP2_FRAME_HEAD_LENGTH;
-    }
-  case NGHTTP2_PUSH_PROMISE:
-    return NGHTTP2_FRAME_HEAD_LENGTH + 4;
-  default:
-    return -1;
-  }
 }
 
 int nghttp2_frame_nv_check_null(const char **nv)

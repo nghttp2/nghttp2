@@ -44,42 +44,6 @@ static const char *headers[] = {
   NULL
 };
 
-void test_nghttp2_frame_nv_sort(void)
-{
-  char *nv[7];
-  nv[0] = (char*)"version";
-  nv[1] = (char*)"HTTP/1.1";
-  nv[2] = (char*)"method";
-  nv[3] = (char*)"GET";
-  nv[4] = (char*)"scheme";
-  nv[5] = (char*)"https";
-  nv[6] = NULL;
-  nghttp2_frame_nv_sort(nv);
-  CU_ASSERT(strcmp("method", nv[0]) == 0);
-  CU_ASSERT(strcmp("GET", nv[1]) == 0);
-  CU_ASSERT(strcmp("scheme", nv[2]) == 0);
-  CU_ASSERT(strcmp("https", nv[3]) == 0);
-  CU_ASSERT(strcmp("version", nv[4]) == 0);
-  CU_ASSERT(strcmp("HTTP/1.1", nv[5]) == 0);
-}
-
-void test_nghttp2_frame_nv_downcase(void)
-{
-  const char *nv_src[] = {
-    "VERSION", "HTTP/1.1",
-    "Content-Length", "1000000007",
-    NULL
-  };
-  char **nv;
-  nv = nghttp2_frame_nv_copy(nv_src);
-  nghttp2_frame_nv_downcase(nv);
-  CU_ASSERT(0 == strcmp("version", nv[0]));
-  CU_ASSERT(0 == strcmp("HTTP/1.1", nv[1]));
-  CU_ASSERT(0 == strcmp("content-length", nv[2]));
-  CU_ASSERT(0 == strcmp("1000000007", nv[3]));
-  nghttp2_frame_nv_del(nv);
-}
-
 void test_nghttp2_frame_nv_check_null(void)
 {
   const char *headers1[] = { "path", "/", "host", "a", NULL };

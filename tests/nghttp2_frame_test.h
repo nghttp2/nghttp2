@@ -25,8 +25,6 @@
 #ifndef NGHTTP2_FRAME_TEST_H
 #define NGHTTP2_FRAME_TEST_H
 
-void test_nghttp2_frame_nv_sort(void);
-void test_nghttp2_frame_nv_downcase(void);
 void test_nghttp2_frame_nv_check_null(void);
 void test_nghttp2_frame_pack_headers(void);
 void test_nghttp2_frame_pack_headers_frame_too_large(void);

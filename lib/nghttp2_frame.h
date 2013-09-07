@@ -64,9 +64,6 @@ typedef enum {
   NGHTTP2_CAT_DATA
 } nghttp2_frame_category;
 
-#define nghttp2_frame_get_nv_len(RED) nghttp2_buffer_reader_uint16(RED)
-#define nghttp2_frame_put_nv_len(OUT, VAL) nghttp2_put_uint16be(OUT, VAL)
-
 /**
  * @struct
  * The DATA frame. It has the following members:
@@ -435,24 +432,6 @@ int nghttp2_frame_unpack_window_update(nghttp2_window_update *frame,
                                        size_t payloadlen);
 
 /*
- * Returns number of bytes to pack name/value pairs |nv|. This
- * function expects |nv| is sorted in ascending order of key.
- * |len_size| is the number of bytes in length of name/value pair and
- * it must be 2 or 4.
- *
- * This function can handles duplicate keys and concatenation of thier
- * values with '\0'.
- */
-size_t nghttp2_frame_count_nv_space(char **nv, size_t len_size);
-
-/*
- * Packs name/value pairs in |nv| in |buf|. |buf| must have at least
- * nghttp2_frame_count_nv_space(nv) bytes.  |len_size| is the number
- * of bytes in length of name/value pair and it must be 2 or 4.
- */
-ssize_t nghttp2_frame_pack_nv(uint8_t *buf, char **nv, size_t len_size);
-
-/*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
  * ownership of |nva|, so caller must not free it. If |stream_id| is
  * not assigned yet, it must be -1.
@@ -532,52 +511,12 @@ void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
 void nghttp2_frame_data_free(nghttp2_data *frame);
 
 /*
- * Deallocates memory of name/value pair |nv|.
- */
-void nghttp2_frame_nv_del(char **nv);
-
-/*
- * Makes a deep copy of |nv| and returns the copy.  This function
- * returns the pointer to the copy if it succeeds, or NULL.  To free
- * allocated memory, use nghttp2_frame_nv_del().
- */
-char** nghttp2_frame_nv_copy(const char **nv);
-
-/*
- * Sorts |nv| in the ascending order of name.
- */
-void nghttp2_frame_nv_sort(char **nv);
-
-/*
- * Makes names in |nv| lower cased.
- */
-void nghttp2_frame_nv_downcase(char **nv);
-
-/*
- * This function first makes a copy of |nv| using
- * nghttp2_frame_nv_copy().  If it succeeds, then call
- * nghttp2_frame_nv_downcase() and nghttp2_frame_nv_sort() with the
- * copied name/value pairs.
- *
- * This function returns the copied name/value pairs if it succeeds,
- * or NULL.
- */
-char** nghttp2_frame_nv_norm_copy(const char **nv);
-
-/*
  * Makes copy of |iv| and return the copy. The |niv| is the number of
  * entries in |iv|. This function returns the pointer to the copy if
  * it succeeds, or NULL.
  */
 nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
                                               size_t niv);
-
-/*
- * Returns the offset of the name/header block in the frame, including
- * frame header. The |head| is frame header. If the indicated frame
- * type does not have header block, this function returns -1.
- */
-ssize_t nghttp2_frame_nv_offset(const uint8_t *head);
 
 /*
  * Checks names are not empty string and do not contain control
