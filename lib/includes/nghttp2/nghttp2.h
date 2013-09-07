@@ -787,7 +787,9 @@ typedef union {
  * not used and always 0. It must return the number of bytes sent if
  * it succeeds.  If it cannot send any single byte without blocking,
  * it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`. For other errors, it
- * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. The |user_data| pointer
+ * is the third argument passed in to the call to nghttp2_session_client_new
+ * or nghttp2_session_server_new
  */
 typedef ssize_t (*nghttp2_send_callback)
 (nghttp2_session *session,
