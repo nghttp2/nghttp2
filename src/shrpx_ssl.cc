@@ -157,6 +157,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
     SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
 
+#ifndef OPENSSL_NO_EC
   // Use P-256, which is sufficiently secure at the time of this
   // writing.
   auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -167,6 +168,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   }
   SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
   EC_KEY_free(ecdh);
+#endif /* OPENSSL_NO_EC */
 
   if(get_config()->dh_param_file) {
     // Read DH parameters from file
