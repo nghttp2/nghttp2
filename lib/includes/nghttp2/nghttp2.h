@@ -1478,7 +1478,7 @@ int nghttp2_session_upgrade(nghttp2_session *session,
  * to hold serialized data. The required space for the |niv| entries
  * are ``8*niv`` bytes. This function is used mainly for creating
  * SETTINGS payload to be sent with ``HTTP2-Settings`` header field in
- * HTTP Upgrade request. The data written in |buf| is not still
+ * HTTP Upgrade request. The data written in |buf| is NOT
  * base64url encoded and the application is responsible for encoding.
  *
  * This function returns the number of bytes written in |buf|, or one
