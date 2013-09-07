@@ -44,7 +44,7 @@ AC_CANONICAL_TARGET
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE()
+AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_HEADERS([config.h])
 
 dnl Checks for command-line options
@@ -76,6 +76,7 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG([0.20])
+AM_PATH_PYTHON([2.6],, [:])
 
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 

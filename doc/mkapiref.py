@@ -23,6 +23,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # Generates API reference from C source code.
+from __future__ import print_function # At least python 2.6 is required
 import re, sys, argparse
 
 class FunctionDoc:
@@ -32,10 +33,10 @@ class FunctionDoc:
         self.domain = domain
 
     def write(self, out):
-        print '''.. {}:: {}'''.format(self.domain, self.name)
-        print ''
+        print('''.. {}:: {}'''.format(self.domain, self.name))
+        print('')
         for line in self.content:
-            print '    {}'.format(line)
+            print('    {}'.format(line))
 
 class StructDoc:
     def __init__(self, name, content, members, member_domain):
@@ -46,17 +47,17 @@ class StructDoc:
 
     def write(self, out):
         if self.name:
-            print '''.. type:: {}'''.format(self.name)
-            print ''
+            print('''.. type:: {}'''.format(self.name))
+            print('')
             for line in self.content:
-                print '    {}'.format(line)
-            print ''
+                print('    {}'.format(line))
+            print('')
             for name, content in self.members:
-                print '''    .. {}:: {}'''.format(self.member_domain, name)
-                print ''
+                print('''    .. {}:: {}'''.format(self.member_domain, name))
+                print('')
                 for line in content:
-                    print '''        {}'''.format(line)
-            print ''
+                    print('''        {}'''.format(line))
+            print('')
 
 class MacroDoc:
     def __init__(self, name, content):
@@ -64,10 +65,10 @@ class MacroDoc:
         self.content = content
 
     def write(self, out):
-        print '''.. macro:: {}'''.format(self.name)
-        print ''
+        print('''.. macro:: {}'''.format(self.name))
+        print('')
         for line in self.content:
-            print '    {}'.format(line)
+            print('    {}'.format(line))
 
 def make_api_ref(infiles):
     macros = []
@@ -99,12 +100,12 @@ def make_api_ref(infiles):
     for title, docs in alldocs:
         if not docs:
             continue
-        print title
-        print '-'*len(title)
+        print(title)
+        print('-'*len(title))
         for doc in docs:
             doc.write(sys.stdout)
-            print ''
-        print ''
+            print('')
+        print('')
 
 def process_macro(infile):
     content = read_content(infile)
@@ -204,6 +205,6 @@ if __name__ == '__main__':
                         help='source file')
     args = parser.parse_args()
     if args.header:
-        print args.header.read()
+        print(args.header.read())
     for infile in args.files:
         make_api_ref(args.files)
