@@ -680,7 +680,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
           upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
         } else {
-          int status;
+          unsigned int status;
           if(events & BEV_EVENT_TIMEOUT) {
             status = 504;
           } else {
@@ -771,7 +771,8 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
 }
 } // namespace
 
-int Http2Upstream::error_reply(Downstream *downstream, int status_code)
+int Http2Upstream::error_reply(Downstream *downstream,
+                               unsigned int status_code)
 {
   int rv;
   auto html = http::create_error_html(status_code);
@@ -789,7 +790,7 @@ int Http2Upstream::error_reply(Downstream *downstream, int status_code)
   data_prd.read_callback = spdy_data_read_callback;
 
   auto content_length = util::utos(html.size());
-  auto status_code_str = std::to_string(status_code);
+  auto status_code_str = util::utos(status_code);
   const char *nv[] = {
     ":status", status_code_str.c_str(),
     "content-type", "text/html; charset=UTF-8",
@@ -861,8 +862,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   auto nv = util::make_unique<const char*[]>(nheader * 2 + 4 + 1);
   size_t hdidx = 0;
   std::string via_value;
-  auto response_status =
-    std::to_string(downstream->get_response_http_status());
+  auto response_status = util::utos(downstream->get_response_http_status());
   nv[hdidx++] = ":status";
   nv[hdidx++] = response_status.c_str();
 

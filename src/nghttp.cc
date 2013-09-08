@@ -871,7 +871,7 @@ void submit_request(HttpClient *client,
 
   std::string content_length_str;
   if(req->data_prd) {
-    content_length_str = std::to_string(req->data_length);
+    content_length_str = util::utos(req->data_length);
     nv[pos++] = "content-length";
     nv[pos++] = content_length_str.c_str();
   }
