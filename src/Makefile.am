@@ -93,7 +93,8 @@ noinst_LIBRARIES = libnghttpx.a
 libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}
 
 nghttpx_SOURCES = shrpx.cc shrpx.h
-nghttpx_LDADD = libnghttpx.a ${LDADD}
+nghttpx_LDFLAGS =
+nghttpx_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS}
 
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
@@ -104,8 +105,9 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	util_test.cc util_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
-nghttpx_unittest_LDFLAGS = -static ${AM_LDFLAGS} @CUNIT_LIBS@ @TESTS_LIBS@
-nghttpx_unittest_LDADD = libnghttpx.a ${LDADD}
+nghttpx_unittest_LDFLAGS = -static
+nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS} \
+	@CUNIT_LIBS@ @TESTS_LIBS@
 
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
