@@ -255,6 +255,10 @@ typedef enum {
    */
   NGHTTP2_ERR_FLOW_CONTROL = -524,
   /**
+   * Insufficient buffer size given to function.
+   */
+  NGHTTP2_ERR_INSUFF_BUFSIZE = -525,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -1502,13 +1506,13 @@ int nghttp2_session_upgrade(nghttp2_session *session,
 /**
  * @function
  *
- * Serializes the SETTINGS values |iv| in the |buf|. The number of
- * entry pointed by |iv| array is given by the |niv|. This function
- * may reorder the pointers in |iv|. The |buf| must have enough region
- * to hold serialized data. The required space for the |niv| entries
- * are ``8*niv`` bytes. This function is used mainly for creating
- * SETTINGS payload to be sent with ``HTTP2-Settings`` header field in
- * HTTP Upgrade request. The data written in |buf| is NOT
+ * Serializes the SETTINGS values |iv| in the |buf|. The size of the |buf| is
+ * specified by |buflen|. The number of entries in the |iv| array is given by
+ * |niv|. This function may reorder the pointers in |iv|. The required space
+ * in |buf| for the |niv| entries is ``8*niv`` bytes and if the given buffer
+ * is too small, an error is returned. This function is used mainly for
+ * creating a SETTINGS payload to be sent with the ``HTTP2-Settings`` header
+ * field in an HTTP Upgrade request. The data written in |buf| is NOT
  * base64url encoded and the application is responsible for encoding.
  *
  * This function returns the number of bytes written in |buf|, or one
@@ -1516,8 +1520,12 @@ int nghttp2_session_upgrade(nghttp2_session *session,
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |iv| contains duplicate settings ID or invalid value.
+ *
+ * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`
+ *     The provided |buflen| size is too small to hold the output.
  */
 ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
+                                      size_t buflen,
                                       nghttp2_settings_entry *iv, size_t niv);
 
 /**

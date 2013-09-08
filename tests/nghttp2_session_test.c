@@ -1544,7 +1544,9 @@ void test_nghttp2_session_upgrade(void)
   iv[0].value = 1;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = 4095;
-  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload, iv, 2);
+  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload,
+                                                      sizeof(settings_payload),
+                                                      iv, 2);
 
   /* Check client side */
   nghttp2_session_client_new(&session, &callbacks, NULL);
@@ -1594,7 +1596,9 @@ void test_nghttp2_session_upgrade(void)
   /* Check required settings */
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[0].value = 1;
-  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload, iv, 1);
+  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload,
+                                                      sizeof(settings_payload),
+                                                      iv, 1);
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
   CU_ASSERT(NGHTTP2_ERR_PROTO ==
@@ -1604,7 +1608,9 @@ void test_nghttp2_session_upgrade(void)
 
   iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[0].value = 4095;
-  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload, iv, 1);
+  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload,
+                                                      sizeof(settings_payload),
+                                                      iv, 1);
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
   CU_ASSERT(NGHTTP2_ERR_PROTO ==
@@ -3278,7 +3284,7 @@ void test_nghttp2_pack_settings_payload(void)
 {
   nghttp2_settings_entry iv[2];
   uint8_t buf[64];
-  size_t len;
+  ssize_t len;
   nghttp2_settings_entry *resiv;
   size_t resniv;
 
@@ -3287,7 +3293,7 @@ void test_nghttp2_pack_settings_payload(void)
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = 4095;
 
-  len = nghttp2_pack_settings_payload(buf, iv, 2);
+  len = nghttp2_pack_settings_payload(buf, sizeof(buf), iv, 2);
   CU_ASSERT(16 == len);
   CU_ASSERT(0 == nghttp2_frame_unpack_settings_payload(&resiv, &resniv,
                                                        buf, len));
@@ -3298,4 +3304,7 @@ void test_nghttp2_pack_settings_payload(void)
   CU_ASSERT(4095 == resiv[1].value);
 
   free(resiv);
+
+  len = nghttp2_pack_settings_payload(buf, 15 /* too small */, iv, 2);
+  CU_ASSERT(NGHTTP2_ERR_INSUFF_BUFSIZE == len);
 }

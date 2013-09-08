@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2.0 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2012, 2013 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -348,6 +348,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
 }
 
 ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
+                                      size_t buflen,
                                       nghttp2_settings_entry *iv, size_t niv)
 {
   /* Assume that current flow_control_option is 0 (which means that
@@ -355,5 +356,9 @@ ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
   if(!nghttp2_iv_check(iv, niv, 0)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
+
+  if(buflen < (niv * 8))
+    return NGHTTP2_ERR_INSUFF_BUFSIZE;
+
   return nghttp2_frame_pack_settings_payload(buf, iv, niv);
 }
