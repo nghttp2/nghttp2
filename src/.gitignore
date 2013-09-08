@@ -5,3 +5,4 @@ nghttpx-unittest
 nghttpx-unittest.log
 nghttpx-unittest.trs
 test-suite.log
+.dirstamp
