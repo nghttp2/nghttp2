@@ -89,7 +89,11 @@ if HAVE_SPDYLAY
 NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
 endif # HAVE_SPDYLAY
 
-nghttpx_SOURCES = ${NGHTTPX_SRCS} shrpx.cc shrpx.h
+noinst_LIBRARIES = libnghttpx.a
+libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}
+
+nghttpx_SOURCES = shrpx.cc shrpx.h
+nghttpx_LDADD = libnghttpx.a ${LDADD}
 
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
@@ -97,11 +101,12 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_ssl_test.cc shrpx_ssl_test.h \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
 	http2_test.cc http2_test.h \
-	util_test.cc util_test.h \
-	${NGHTTPX_SRCS}
+	util_test.cc util_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 nghttpx_unittest_LDFLAGS = -static ${AM_LDFLAGS} @CUNIT_LIBS@ @TESTS_LIBS@
+nghttpx_unittest_LDADD = libnghttpx.a ${LDADD}
+
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
 
