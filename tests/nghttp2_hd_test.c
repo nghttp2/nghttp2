@@ -177,7 +177,7 @@ void test_nghttp2_hd_deflate_same_indexed_repr(void)
 
   /* Encode 3 same headers. This time, cookie:alpha is in the
      reference set, so the encoder emits indexed repr 6 times */
-  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva1,
+  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva2,
                                    sizeof(nva2)/sizeof(nghttp2_nv));
   CU_ASSERT(blocklen == 6);
   nghttp2_hd_end_headers(&deflater);
