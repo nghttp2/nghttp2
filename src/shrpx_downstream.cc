@@ -144,20 +144,6 @@ void check_expect_100_continue(bool *res,
 } // namespace
 
 namespace {
-void check_connection_close(bool *connection_close,
-                            const Headers::value_type &item)
-{
-  if(util::strieq(item.first.c_str(), "connection")) {
-    if(util::strifind(item.second.c_str(), "close")) {
-      *connection_close = true;
-    } else if(util::strifind(item.second.c_str(), "keep-alive")) {
-      *connection_close = false;
-    }
-  }
-}
-} // namespace
-
-namespace {
 auto name_less = [](const Headers::value_type& lhs,
                     const Headers::value_type& rhs)
 {
@@ -218,7 +204,6 @@ void Downstream::set_last_request_header_value(const std::string& value)
   item.second = value;
   check_transfer_encoding_chunked(&chunked_request_, item);
   check_expect_100_continue(&request_expect_100_continue_, item);
-  //check_connection_close(&request_connection_close_, item);
 }
 
 bool Downstream::get_request_header_key_prev() const
@@ -402,7 +387,6 @@ void Downstream::set_last_response_header_value(const std::string& value)
   Headers::value_type &item = response_headers_.back();
   item.second = value;
   check_transfer_encoding_chunked(&chunked_response_, item);
-  //check_connection_close(&response_connection_close_, item);
 }
 
 bool Downstream::get_response_header_key_prev() const

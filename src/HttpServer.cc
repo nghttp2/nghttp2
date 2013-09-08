@@ -833,9 +833,8 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
 
 class ListenEventHandler {
 public:
-  ListenEventHandler(Sessions *sessions, int fd, int64_t *session_id_seed_ptr)
+  ListenEventHandler(Sessions *sessions, int64_t *session_id_seed_ptr)
     : sessions_(sessions),
-      fd_(fd),
       session_id_seed_ptr_(session_id_seed_ptr)
   {}
   void accept_connection(int fd, sockaddr *addr, int addrlen)
@@ -868,7 +867,6 @@ public:
   }
 private:
   Sessions *sessions_;
-  int fd_;
   int64_t *session_id_seed_ptr_;
 };
 
@@ -960,7 +958,7 @@ int start_listen(event_base *evbase, Sessions *sessions,
       auto evlistener = evconnlistener_new
         (evbase,
          evlistener_acceptcb,
-         new ListenEventHandler(sessions, fd, session_id_seed_ptr),
+         new ListenEventHandler(sessions, session_id_seed_ptr),
          LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
          256,
          fd);
