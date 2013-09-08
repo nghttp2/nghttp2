@@ -1376,7 +1376,7 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
   ssize_t nvlen;
   size_t vallen = NGHTTP2_MAX_HD_VALUE_LENGTH;
   char *nv[17];
-  size_t nnv = sizeof(nv)/sizeof(nv[0]);
+  size_t nnv = sizeof(nv)/sizeof(nv[0]) - 1;
   size_t i;
 
   for(i = 0; i < nnv; i += 2) {
@@ -1385,7 +1385,7 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
     memset(nv[i+1], '0'+i, vallen);
     nv[i+1][vallen] = '\0';
   }
-  nv[nnv - 1] = NULL;
+  nv[nnv] = NULL;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;

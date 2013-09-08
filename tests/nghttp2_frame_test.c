@@ -138,7 +138,7 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   ssize_t nvlen;
   size_t big_vallen = NGHTTP2_MAX_HD_VALUE_LENGTH;
   char *big_hds[17];
-  size_t big_hdslen = sizeof(big_hds)/sizeof(big_hds[0]);
+  size_t big_hdslen = sizeof(big_hds)/sizeof(big_hds[0]) - 1;
   size_t i;
 
   for(i = 0; i < big_hdslen; i += 2) {
@@ -147,7 +147,7 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
     memset(big_hds[i+1], '0'+i, big_vallen);
     big_hds[i+1][big_vallen] = '\0';
   }
-  big_hds[big_hdslen - 1] = NULL;
+  big_hds[big_hdslen] = NULL;
 
   nvlen = nghttp2_nv_array_from_cstr(&nva, (const char**)big_hds);
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
