@@ -356,7 +356,7 @@ ssize_t nghttp2_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
 }
 
 size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
-                                           nghttp2_settings_entry *iv,
+                                           const nghttp2_settings_entry *iv,
                                            size_t niv)
 {
   size_t i;

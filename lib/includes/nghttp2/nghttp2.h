@@ -1506,12 +1506,12 @@ int nghttp2_session_upgrade(nghttp2_session *session,
 /**
  * @function
  *
- * Serializes the SETTINGS values |iv| in the |buf|. The size of the |buf| is
- * specified by |buflen|. The number of entries in the |iv| array is given by
- * |niv|. This function may reorder the pointers in |iv|. The required space
- * in |buf| for the |niv| entries is ``8*niv`` bytes and if the given buffer
- * is too small, an error is returned. This function is used mainly for
- * creating a SETTINGS payload to be sent with the ``HTTP2-Settings`` header
+ * Serializes the SETTINGS values |iv| in the |buf|. The size of the
+ * |buf| is specified by |buflen|. The number of entries in the |iv|
+ * array is given by |niv|. The required space in |buf| for the |niv|
+ * entries is ``8*niv`` bytes and if the given buffer is too small, an
+ * error is returned. This function is used mainly for creating a
+ * SETTINGS payload to be sent with the ``HTTP2-Settings`` header
  * field in an HTTP Upgrade request. The data written in |buf| is NOT
  * base64url encoded and the application is responsible for encoding.
  *
@@ -1526,7 +1526,8 @@ int nghttp2_session_upgrade(nghttp2_session *session,
  */
 ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
                                       size_t buflen,
-                                      nghttp2_settings_entry *iv, size_t niv);
+                                      const nghttp2_settings_entry *iv,
+                                      size_t niv);
 
 /**
  * @function

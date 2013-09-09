@@ -349,7 +349,8 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
 
 ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
                                       size_t buflen,
-                                      nghttp2_settings_entry *iv, size_t niv)
+                                      const nghttp2_settings_entry *iv,
+                                      size_t niv)
 {
   /* Assume that current flow_control_option is 0 (which means that
      flow control is enabled) */
