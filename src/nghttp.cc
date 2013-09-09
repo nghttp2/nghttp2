@@ -522,7 +522,8 @@ struct HttpClient {
     nghttp2_settings_entry iv[16];
     size_t niv = populate_settings(iv);
     assert(sizeof(settings_payload) >= 8*niv);
-    rv = nghttp2_pack_settings_payload(settings_payload, iv, niv);
+    rv = nghttp2_pack_settings_payload(settings_payload,
+                                       sizeof(settings_payload), iv, niv);
     if(rv < 0) {
       return -1;
     }
