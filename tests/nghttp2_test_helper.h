@@ -32,6 +32,10 @@
 #include "nghttp2_frame.h"
 #include "nghttp2_hd.h"
 
+#define MAKE_NV(NAME, VALUE)                                            \
+  { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
+#define ARRLEN(ARR) (sizeof(ARR)/sizeof(ARR[0]))
+
 ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
                                    nghttp2_frame_type type,
                                    nghttp2_hd_context *inflater,

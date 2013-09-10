@@ -1787,6 +1787,62 @@ void test_nghttp2_submit_request_without_data(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_submit_request2_with_data(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_nv nva[] = {MAKE_NV(":version", "HTTP/1.1")};
+  nghttp2_data_provider data_prd;
+  my_user_data ud;
+  nghttp2_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  data_prd.read_callback = fixed_length_data_source_read_callback;
+  ud.data_source_length = 64*1024 - 1;
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+  CU_ASSERT(0 == nghttp2_submit_request2(session, NGHTTP2_PRI_DEFAULT,
+                                         nva, ARRLEN(nva), &data_prd, NULL));
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(nvnameeq(":version", &OB_CTRL(item)->headers.nva[0]));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == ud.data_source_length);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_submit_request2_without_data(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  accumulator acc;
+  nghttp2_nv nva[] = {MAKE_NV(":version", "HTTP/1.1")};
+  nghttp2_data_provider data_prd = {{-1}, NULL};
+  nghttp2_outbound_item *item;
+  my_user_data ud;
+  nghttp2_frame frame;
+
+  acc.length = 0;
+  ud.acc = &acc;
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = accumulator_send_callback;
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+  CU_ASSERT(0 == nghttp2_submit_request2(session, NGHTTP2_PRI_DEFAULT,
+                                         nva, ARRLEN(nva), &data_prd, NULL));
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(nvnameeq(":version", &OB_CTRL(item)->headers.nva[0]));
+  CU_ASSERT(OB_CTRL(item)->hd.flags & NGHTTP2_FLAG_END_STREAM);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == unpack_frame_with_nv_block(&frame, NGHTTP2_HEADERS,
+                                            &session->hd_inflater,
+                                            acc.buf, acc.length));
+  CU_ASSERT(nvnameeq(":version", &frame.headers.nva[0]));
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_session_del(session);
+}
 
 void test_nghttp2_submit_headers_start_stream(void)
 {

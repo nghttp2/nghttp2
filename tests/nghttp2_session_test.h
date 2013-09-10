@@ -57,6 +57,8 @@ void test_nghttp2_submit_response(void);
 void test_nghttp2_submit_response_without_data(void);
 void test_nghttp2_submit_request_with_data(void);
 void test_nghttp2_submit_request_without_data(void);
+void test_nghttp2_submit_request2_with_data(void);
+void test_nghttp2_submit_request2_without_data(void);
 void test_nghttp2_submit_headers_start_stream(void);
 void test_nghttp2_submit_headers_reply(void);
 void test_nghttp2_submit_headers_push_reply(void);

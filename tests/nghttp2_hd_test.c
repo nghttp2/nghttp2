@@ -31,10 +31,7 @@
 
 #include "nghttp2_hd.h"
 #include "nghttp2_frame.h"
-
-#define MAKE_NV(NAME, VALUE)                    \
-  { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
-#define ARRLEN(ARR) (sizeof(ARR)/sizeof(ARR[0]))
+#include "nghttp2_test_helper.h"
 
 static void assert_nv_equal(nghttp2_nv *a, nghttp2_nv *b, size_t len)
 {

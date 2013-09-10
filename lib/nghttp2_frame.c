@@ -597,6 +597,17 @@ int nghttp2_frame_nv_check_null(const char **nv)
   return 1;
 }
 
+int nghttp2_nv_array_check_null(const nghttp2_nv *nva, size_t nvlen)
+{
+  size_t i;
+  for(i = 0; i < nvlen; ++i) {
+    if(!nghttp2_check_header_name_nocase(nva[i].name, nva[i].namelen)) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b)
 {
   return a->namelen == b->namelen && a->valuelen == b->valuelen &&
@@ -680,6 +691,49 @@ ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
     p->value = data;
     p->valuelen = len;
     data += len;
+    ++p;
+  }
+  nghttp2_nv_array_sort(*nva_ptr, nvlen);
+  return nvlen;
+}
+
+ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
+                              const nghttp2_nv *nva, size_t nvlen)
+{
+  size_t i;
+  uint8_t *data;
+  size_t buflen = 0;
+  nghttp2_nv *p;
+  for(i = 0; i < nvlen; ++i) {
+    if(nva[i].namelen > NGHTTP2_MAX_HD_VALUE_LENGTH ||
+       nva[i].valuelen > NGHTTP2_MAX_HD_VALUE_LENGTH) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+    buflen += nva[i].namelen + nva[i].valuelen;
+  }
+  /* If all name/value pair is 0-length, remove them */
+  if(nvlen == 0 || buflen == 0) {
+    *nva_ptr = NULL;
+    return 0;
+  }
+  buflen += sizeof(nghttp2_nv)*nvlen;
+  *nva_ptr = malloc(buflen);
+  if(*nva_ptr == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  p = *nva_ptr;
+  data = (uint8_t*)(*nva_ptr) + sizeof(nghttp2_nv)*nvlen;
+
+  for(i = 0; i < nvlen; ++i) {
+    memcpy(data, nva[i].name, nva[i].namelen);
+    p->name = data;
+    p->namelen = nva[i].namelen;
+    nghttp2_downcase(p->name, p->namelen);
+    data += nva[i].namelen;
+    memcpy(data, nva[i].value, nva[i].valuelen);
+    p->value = data;
+    p->valuelen = nva[i].valuelen;
+    data += nva[i].valuelen;
     ++p;
   }
   nghttp2_nv_array_sort(*nva_ptr, nvlen);

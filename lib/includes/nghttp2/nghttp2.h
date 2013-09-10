@@ -1568,6 +1568,10 @@ const char* nghttp2_strerror(int lib_error_code);
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
  *
+ * The string in |nv| must be NULL-terminated. Use
+ * `nghttp2_submit_request2()` if name/value pairs are not
+ * NULL-terminated strings.
+ *
  * If |data_prd| is not ``NULL``, it provides data which will be sent
  * in subsequent DATA frames. In this case, a method that allows
  * request message bodies
@@ -1605,6 +1609,28 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
                            const char **nv,
                            const nghttp2_data_provider *data_prd,
                            void *stream_user_data);
+
+/**
+ * @function
+ *
+ * Just like `nghttp2_submit_request()`, but this function takes the
+ * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,
+ * as name/value pairs. This function is useful if name/value pairs
+ * are not NULL-terminated strings.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |pri| is invalid; or the |nva| includes empty name or
+ *     name which contains invalid characters.
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_submit_request2(nghttp2_session *session, int32_t pri,
+                            const nghttp2_nv *nva, size_t nvlen,
+                            const nghttp2_data_provider *data_prd,
+                            void *stream_user_data);
 
 /**
  * @function

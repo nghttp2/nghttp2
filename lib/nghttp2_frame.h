@@ -536,16 +536,37 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
  * Copies name/value pairs from |nv| to |*nva_ptr|, which is
  * dynamically allocated so that all items can be stored.
  *
+ * The |*nva_ptr| must be freed using nghttp2_nv_array_del().
+ *
  * This function returns the number of name/value pairs in |*nva_ptr|,
  * or one of the following negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_INVALID_ARGUMENT
- *     The length of name or value in |nv| is strictly larger than (1
- *     << 16) - 1.
+ *     The length of name or value in |nv| is strictly larger than
+ *     NGHTTP2_MAX_HD_VALUE_LENGTH.
  */
 ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv);
+
+/*
+ * Copies name/value pairs from |nva|, which contains |nvlen| pairs,
+ * to |*nva_ptr|, which is dynamically allocated so that all items can
+ * be stored.
+ *
+ * The |*nva_ptr| must be freed using nghttp2_nv_array_del().
+ *
+ * This function returns the number of name/value pairs in |*nva_ptr|,
+ * or one of the following negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     The length of name or value in |nva| is strictly larger than
+ *     NGHTTP2_MAX_HD_VALUE_LENGTH.
+ */
+ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
+                              const nghttp2_nv *nva, size_t nvlen);
 
 /*
  * Returns nonzero if the name/value pair |a| equals to |b|. The name
@@ -561,12 +582,11 @@ void nghttp2_nv_array_del(nghttp2_nv *nva);
 
 /*
  * Checks names are not empty string and do not contain control
- * characters and values are not NULL. This function allows captital
- * alphabet letters in name.
+ * characters. This function allows captital alphabet letters in name.
  *
  * This function returns nonzero if it succeeds, or 0.
  */
-int nghttp2_nv_array_check_null(nghttp2_nv *nva, size_t nvlen);
+int nghttp2_nv_array_check_null(const nghttp2_nv *nva, size_t nvlen);
 
 
 /*
