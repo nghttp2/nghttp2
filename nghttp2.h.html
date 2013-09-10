@@ -311,6 +311,10 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_FLOW_CONTROL</span> <span class="o">=</span> <span class="o">-</span><span class="mi">524</span><span class="p">,</span>
   <span class="cm">/**</span>
+<span class="cm">   * Insufficient buffer size given to function.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_INSUFF_BUFSIZE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">525</span><span class="p">,</span>
+  <span class="cm">/**</span>
 <span class="cm">   * The errors &lt; :enum:`NGHTTP2_ERR_FATAL` mean that the library is</span>
 <span class="cm">   * under unexpected condition and cannot process any further data</span>
 <span class="cm">   * reliably (e.g., out of memory).</span>
@@ -1558,13 +1562,13 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Serializes the SETTINGS values |iv| in the |buf|. The number of</span>
-<span class="cm"> * entry pointed by |iv| array is given by the |niv|. This function</span>
-<span class="cm"> * may reorder the pointers in |iv|. The |buf| must have enough region</span>
-<span class="cm"> * to hold serialized data. The required space for the |niv| entries</span>
-<span class="cm"> * are ``8*niv`` bytes. This function is used mainly for creating</span>
-<span class="cm"> * SETTINGS payload to be sent with ``HTTP2-Settings`` header field in</span>
-<span class="cm"> * HTTP Upgrade request. The data written in |buf| is NOT</span>
+<span class="cm"> * Serializes the SETTINGS values |iv| in the |buf|. The size of the</span>
+<span class="cm"> * |buf| is specified by |buflen|. The number of entries in the |iv|</span>
+<span class="cm"> * array is given by |niv|. The required space in |buf| for the |niv|</span>
+<span class="cm"> * entries is ``8*niv`` bytes and if the given buffer is too small, an</span>
+<span class="cm"> * error is returned. This function is used mainly for creating a</span>
+<span class="cm"> * SETTINGS payload to be sent with the ``HTTP2-Settings`` header</span>
+<span class="cm"> * field in an HTTP Upgrade request. The data written in |buf| is NOT</span>
 <span class="cm"> * base64url encoded and the application is responsible for encoding.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns the number of bytes written in |buf|, or one</span>
@@ -1572,9 +1576,14 @@
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
 <span class="cm"> *     The |iv| contains duplicate settings ID or invalid value.</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`</span>
+<span class="cm"> *     The provided |buflen| size is too small to hold the output.</span>
 <span class="cm"> */</span>
 <span class="kt">ssize_t</span> <span class="nf">nghttp2_pack_settings_payload</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
-                                      <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">niv</span><span class="p">);</span>
+                                      <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span>
+                                      <span class="k">const</span> <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">,</span>
+                                      <span class="kt">size_t</span> <span class="n">niv</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1615,6 +1624,10 @@
 <span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
 <span class="cm"> * also lower-cases all names in |nv|.</span>
 <span class="cm"> *</span>
+<span class="cm"> * The string in |nv| must be NULL-terminated. Use</span>
+<span class="cm"> * `nghttp2_submit_request2()` if name/value pairs are not</span>
+<span class="cm"> * NULL-terminated strings.</span>
+<span class="cm"> *</span>
 <span class="cm"> * If |data_prd| is not ``NULL``, it provides data which will be sent</span>
 <span class="cm"> * in subsequent DATA frames. In this case, a method that allows</span>
 <span class="cm"> * request message bodies</span>
@@ -1652,6 +1665,28 @@
                            <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">,</span>
                            <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">,</span>
                            <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Just like `nghttp2_submit_request()`, but this function takes the</span>
+<span class="cm"> * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,</span>
+<span class="cm"> * as name/value pairs. This function is useful if name/value pairs</span>
+<span class="cm"> * are not NULL-terminated strings.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |pri| is invalid; or the |nva| includes empty name or</span>
+<span class="cm"> *     name which contains invalid characters.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_request2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">,</span>
+                            <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>

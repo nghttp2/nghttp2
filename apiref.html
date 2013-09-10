@@ -339,6 +339,13 @@ Flow control error</p>
 </dd></dl>
 
 <dl class="macro">
+<dt id="NGHTTP2_ERR_INSUFF_BUFSIZE">
+<tt class="descname">NGHTTP2_ERR_INSUFF_BUFSIZE</tt><a class="headerlink" href="#NGHTTP2_ERR_INSUFF_BUFSIZE" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">-525</span></tt>)
+Insufficient buffer size given to function.</p>
+</dd></dl>
+
+<dl class="macro">
 <dt id="NGHTTP2_ERR_FATAL">
 <tt class="descname">NGHTTP2_ERR_FATAL</tt><a class="headerlink" href="#NGHTTP2_ERR_FATAL" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">-900</span></tt>)
@@ -1744,20 +1751,22 @@ or the <em>settings_payload</em> does not include both
 
 <dl class="function">
 <dt id="nghttp2_pack_settings_payload">
-ssize_t <tt class="descname">nghttp2_pack_settings_payload</tt><big>(</big>uint8_t<em>&nbsp;*buf</em>, <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry">nghttp2_settings_entry</a><em>&nbsp;*iv</em>, size_t<em>&nbsp;niv</em><big>)</big><a class="headerlink" href="#nghttp2_pack_settings_payload" title="Permalink to this definition">¶</a></dt>
-<dd><p>Serializes the SETTINGS values <em>iv</em> in the <em>buf</em>. The number of
-entry pointed by <em>iv</em> array is given by the <em>niv</em>. This function
-may reorder the pointers in <em>iv</em>. The <em>buf</em> must have enough region
-to hold serialized data. The required space for the <em>niv</em> entries
-are <tt class="docutils literal"><span class="pre">8*niv</span></tt> bytes. This function is used mainly for creating
-SETTINGS payload to be sent with <tt class="docutils literal"><span class="pre">HTTP2-Settings</span></tt> header field in
-HTTP Upgrade request. The data written in <em>buf</em> is NOT
+ssize_t <tt class="descname">nghttp2_pack_settings_payload</tt><big>(</big>uint8_t<em>&nbsp;*buf</em>, size_t<em>&nbsp;buflen</em>, const <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry">nghttp2_settings_entry</a><em>&nbsp;*iv</em>, size_t<em>&nbsp;niv</em><big>)</big><a class="headerlink" href="#nghttp2_pack_settings_payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Serializes the SETTINGS values <em>iv</em> in the <em>buf</em>. The size of the
+<em>buf</em> is specified by <em>buflen</em>. The number of entries in the <em>iv</em>
+array is given by <em>niv</em>. The required space in <em>buf</em> for the <em>niv</em>
+entries is <tt class="docutils literal"><span class="pre">8*niv</span></tt> bytes and if the given buffer is too small, an
+error is returned. This function is used mainly for creating a
+SETTINGS payload to be sent with the <tt class="docutils literal"><span class="pre">HTTP2-Settings</span></tt> header
+field in an HTTP Upgrade request. The data written in <em>buf</em> is NOT
 base64url encoded and the application is responsible for encoding.</p>
 <p>This function returns the number of bytes written in <em>buf</em>, or one
 of the following negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
 <dd>The <em>iv</em> contains duplicate settings ID or invalid value.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_INSUFF_BUFSIZE" title="NGHTTP2_ERR_INSUFF_BUFSIZE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INSUFF_BUFSIZE</span></tt></a></dt>
+<dd>The provided <em>buflen</em> size is too small to hold the output.</dd>
 </dl>
 </dd></dl>
 
@@ -1795,6 +1804,9 @@ field.</dd>
 </dl>
 <p>This function creates copies of all name/value pairs in <em>nv</em>.  It
 also lower-cases all names in <em>nv</em>.</p>
+<p>The string in <em>nv</em> must be NULL-terminated. Use
+<a class="reference internal" href="#nghttp2_submit_request2" title="nghttp2_submit_request2"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request2()</span></tt></a> if name/value pairs are not
+NULL-terminated strings.</p>
 <p>If <em>data_prd</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>, it provides data which will be sent
 in subsequent DATA frames. In this case, a method that allows
 request message bodies
@@ -1823,6 +1835,24 @@ negative error codes:</p>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
 <dd>The <em>pri</em> is invalid; or the <em>nv</em> includes empty name or
 <tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_submit_request2">
+int <tt class="descname">nghttp2_submit_request2</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;pri</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_request2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Just like <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>, but this function takes the
+<em>nva</em>, which is an array of <tt class="docutils literal"><span class="pre">nghttp2_nv</span></tt> with <em>nvlen</em> elements,
+as name/value pairs. This function is useful if name/value pairs
+are not NULL-terminated strings.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
+<dd>The <em>pri</em> is invalid; or the <em>nva</em> includes empty name or
+name which contains invalid characters.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
