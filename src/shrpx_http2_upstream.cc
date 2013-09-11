@@ -231,7 +231,11 @@ int on_frame_recv_callback
     if(!host || !path || !method ||
        http2::value_lws(host) || http2::value_lws(path) ||
        http2::value_lws(method) ||
-       (!is_connect && (!scheme || http2::value_lws(scheme)))) {
+       (!is_connect && (!scheme || http2::value_lws(scheme))) ||
+       !http2::check_header_value(host) ||
+       !http2::check_header_value(path) ||
+       !http2::check_header_value(method) ||
+       (scheme && !http2::check_header_value(scheme))) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return 0;
     }

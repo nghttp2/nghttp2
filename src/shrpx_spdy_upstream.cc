@@ -180,7 +180,11 @@ void on_ctrl_recv_callback
         downstream->add_request_header(nv[i], nv[i+1]);
       }
     }
-    if(!path || !host || !method) {
+    if(!path || !host || !method ||
+       !http2::check_header_value(host) ||
+       !http2::check_header_value(path) ||
+       !http2::check_header_value(method) ||
+       (scheme && !http2::check_header_value(scheme))) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }

@@ -90,6 +90,22 @@ void capitalize(std::string& s, size_t offset)
   }
 }
 
+bool check_header_value(const char *value)
+{
+  return strpbrk(value, "\r\n") == nullptr;
+}
+
+bool check_header_value(const nghttp2_nv* nv)
+{
+  size_t i;
+  for(i = 0; i < nv->valuelen; ++i) {
+    if(nv->value[i] == '\r' || nv->value[i] == '\n') {
+      return false;
+    }
+  }
+  return true;
+}
+
 void sanitize_header_value(std::string& s, size_t offset)
 {
   for(size_t i = offset, eoi = s.size(); i < eoi; ++i) {
@@ -290,6 +306,7 @@ void build_http1_headers_from_norm_headers
       capitalize(hdrs, hdrs.size()-headers[i].first.size());
       hdrs += ": ";
       hdrs += headers[i].second;
+      sanitize_header_value(hdrs, hdrs.size() - headers[i].second.size());
       hdrs += "\r\n";
       ++i;
     } else if(rv > 0) {
@@ -303,6 +320,7 @@ void build_http1_headers_from_norm_headers
     capitalize(hdrs, hdrs.size()-headers[i].first.size());
     hdrs += ": ";
     hdrs += headers[i].second;
+    sanitize_header_value(hdrs, hdrs.size() - headers[i].second.size());
     hdrs += "\r\n";
   }
 }

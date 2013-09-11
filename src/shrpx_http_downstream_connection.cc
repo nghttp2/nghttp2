@@ -114,11 +114,11 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 
 int HttpDownstreamConnection::push_request_headers()
 {
+  // Assume that method and request path do not contain \r\n.
   std::string hdrs = downstream_->get_request_method();
   hdrs += " ";
   hdrs += downstream_->get_request_path();
-  hdrs += " ";
-  hdrs += "HTTP/1.1\r\n";
+  hdrs += " HTTP/1.1\r\n";
   downstream_->normalize_request_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
   http2::build_http1_headers_from_norm_headers
@@ -132,6 +132,7 @@ int HttpDownstreamConnection::push_request_headers()
     hdrs += "X-Forwarded-For: ";
     if(xff != end_headers) {
       hdrs += (*xff).second;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).second.size());
       hdrs += ", ";
     }
     hdrs += downstream_->get_upstream()->get_client_handler()->get_ipaddr();
@@ -139,22 +140,23 @@ int HttpDownstreamConnection::push_request_headers()
   } else if(xff != end_headers) {
     hdrs += "X-Forwarded-For: ";
     hdrs += (*xff).second;
+    http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).second.size());
     hdrs += "\r\n";
   }
   if(downstream_->get_request_method() != "CONNECT") {
     hdrs += "X-Forwarded-Proto: ";
     if(util::istartsWith(downstream_->get_request_path(), "http:")) {
-      hdrs += "http";
+      hdrs += "http\r\n";
     } else {
-      hdrs += "https";
+      hdrs += "https\r\n";
     }
-    hdrs += "\r\n";
   }
   auto expect = downstream_->get_norm_request_header("expect");
   if(expect != end_headers &&
      !util::strifind((*expect).second.c_str(), "100-continue")) {
     hdrs += "Expect: ";
     hdrs += (*expect).second;
+    http2::sanitize_header_value(hdrs, hdrs.size() - (*expect).second.size());
     hdrs += "\r\n";
   }
   auto via = downstream_->get_norm_request_header("via");
@@ -162,12 +164,14 @@ int HttpDownstreamConnection::push_request_headers()
     if(via != end_headers) {
       hdrs += "Via: ";
       hdrs += (*via).second;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
       hdrs += "\r\n";
     }
   } else {
     hdrs += "Via: ";
     if(via != end_headers) {
       hdrs += (*via).second;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
       hdrs += ", ";
     }
     hdrs += http::create_via_header_value(downstream_->get_request_major(),

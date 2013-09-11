@@ -33,6 +33,7 @@ void test_http2_get_header(void);
 void test_http2_value_lws(void);
 void test_http2_copy_norm_headers_to_nv(void);
 void test_http2_build_http1_headers_from_norm_headers(void);
+void test_http2_check_header_value(void);
 
 } // namespace shrpx
 

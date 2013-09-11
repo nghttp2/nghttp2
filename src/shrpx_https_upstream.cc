@@ -684,12 +684,14 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     if(via != end_headers) {
       hdrs += "Via: ";
       hdrs += (*via).second;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
       hdrs += "\r\n";
     }
   } else {
     hdrs += "Via: ";
     if(via != end_headers) {
       hdrs += (*via).second;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
       hdrs += ", ";
     }
     hdrs += http::create_via_header_value

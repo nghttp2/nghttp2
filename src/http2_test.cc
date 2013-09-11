@@ -162,6 +162,26 @@ void test_http2_build_http1_headers_from_norm_headers(void)
             "Te: 8\r\n"
             "Te: 9\r\n"
             "Zulu: 12\r\n");
+
+  hdrs.clear();
+  auto hd2 = std::vector<std::pair<std::string, std::string>>
+    {{"alpha", "bravo\r\ncharlie\r\n"}};
+  http2::build_http1_headers_from_norm_headers(hdrs, hd2);
+  CU_ASSERT(hdrs == "Alpha: bravo  charlie  \r\n");
+}
+
+void test_http2_check_header_value(void)
+{
+  CU_ASSERT(http2::check_header_value("alpha"));
+  CU_ASSERT(!http2::check_header_value("alpha\r"));
+  CU_ASSERT(!http2::check_header_value("alpha\n"));
+
+  nghttp2_nv nv1 = MAKE_NV("alpha", "bravo");
+  CU_ASSERT(http2::check_header_value(&nv1));
+  nghttp2_nv nv2 = MAKE_NV("alpha", "bravo\r");
+  CU_ASSERT(!http2::check_header_value(&nv2));
+  nghttp2_nv nv3 = MAKE_NV("alpha", "bravo\n");
+  CU_ASSERT(!http2::check_header_value(&nv3));
 }
 
 } // namespace shrpx
