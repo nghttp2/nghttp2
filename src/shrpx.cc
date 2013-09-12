@@ -400,6 +400,10 @@ void fill_default_config()
   mod_config()->downstream_http_proxy_host = 0;
   mod_config()->downstream_http_proxy_port = 0;
   mod_config()->downstream_http_proxy_addrlen = 0;
+  mod_config()->rate_limit_cfg =
+    ev_token_bucket_cfg_new(1024*1024, 4*1024*1024,
+                            EV_RATE_LIMIT_MAX, EV_RATE_LIMIT_MAX,
+                            nullptr);
 }
 } // namespace
 

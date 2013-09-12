@@ -76,7 +76,6 @@ public:
   bool get_http2_upgrade_allowed() const;
 private:
   bufferevent *bev_;
-  ev_token_bucket_cfg *evbucket_cfg_;
   int fd_;
   SSL *ssl_;
   Upstream *upstream_;

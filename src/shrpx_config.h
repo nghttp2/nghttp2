@@ -34,6 +34,7 @@
 #include <arpa/inet.h>
 #include <vector>
 
+#include <event.h>
 #include <openssl/ssl.h>
 
 namespace shrpx {
@@ -167,6 +168,8 @@ struct Config {
   sockaddr_union downstream_http_proxy_addr;
   // actual size of downstream_http_proxy_addr
   size_t downstream_http_proxy_addrlen;
+  // Rate limit configuration
+  ev_token_bucket_cfg *rate_limit_cfg;
 };
 
 const Config* get_config();
