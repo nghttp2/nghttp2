@@ -138,7 +138,7 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
   host[len] = '\0';
 
   errno = 0;
-  unsigned long d = strtoul(p+1, 0, 10);
+  unsigned long d = strtoul(p+1, nullptr, 10);
   if(errno == 0 && 1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
     *port_ptr = d;
     return 0;
@@ -213,9 +213,9 @@ int parse_config(const char *opt, const char *optarg)
       mod_config()->port = port;
     }
   } else if(util::strieq(opt, SHRPX_OPT_WORKERS)) {
-    mod_config()->num_worker = strtol(optarg, 0, 10);
+    mod_config()->num_worker = strtol(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS)) {
-    mod_config()->spdy_max_concurrent_streams = strtol(optarg, 0, 10);
+    mod_config()->spdy_max_concurrent_streams = strtol(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_LOG_LEVEL)) {
     if(Log::set_severity_level_by_name(optarg) == -1) {
       LOG(ERROR) << "Invalid severity level: " << optarg;
@@ -234,24 +234,24 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_NO_VIA)) {
     mod_config()->no_via = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT)) {
-    timeval tv = {strtol(optarg, 0, 10), 0};
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->spdy_upstream_read_timeout = tv;
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_READ_TIMEOUT)) {
-    timeval tv = {strtol(optarg, 0, 10), 0};
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->upstream_read_timeout = tv;
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_WRITE_TIMEOUT)) {
-    timeval tv = {strtol(optarg, 0, 10), 0};
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->upstream_write_timeout = tv;
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_READ_TIMEOUT)) {
-    timeval tv = {strtol(optarg, 0, 10), 0};
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->downstream_read_timeout = tv;
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_WRITE_TIMEOUT)) {
-    timeval tv = {strtol(optarg, 0, 10), 0};
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->downstream_write_timeout = tv;
   } else if(util::strieq(opt, SHRPX_OPT_ACCESSLOG)) {
     mod_config()->accesslog = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT)) {
-    timeval tv = {strtol(optarg, 0, 10), 0};
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->downstream_idle_read_timeout = tv;
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS) ||
             util::strieq(opt, SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS)) {
@@ -265,7 +265,7 @@ int parse_config(const char *opt, const char *optarg)
       optname = SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS;
     }
     errno = 0;
-    unsigned long int n = strtoul(optarg, 0, 10);
+    unsigned long int n = strtoul(optarg, nullptr, 10);
     if(errno == 0 && n < 31) {
       *resp = n;
     } else {
@@ -328,7 +328,7 @@ int parse_config(const char *opt, const char *optarg)
     }
     mod_config()->syslog_facility = facility;
   } else if(util::strieq(opt, SHRPX_OPT_BACKLOG)) {
-    mod_config()->backlog = strtol(optarg, 0, 10);
+    mod_config()->backlog = strtol(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_CIPHERS)) {
     set_config_str(&mod_config()->ciphers, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_HONOR_CIPHER_ORDER)) {
