@@ -400,10 +400,22 @@ void fill_default_config()
   mod_config()->downstream_http_proxy_host = 0;
   mod_config()->downstream_http_proxy_port = 0;
   mod_config()->downstream_http_proxy_addrlen = 0;
-  mod_config()->rate_limit_cfg =
-    ev_token_bucket_cfg_new(1024*1024, 4*1024*1024,
-                            EV_RATE_LIMIT_MAX, EV_RATE_LIMIT_MAX,
-                            nullptr);
+  mod_config()->rate_limit_cfg = nullptr;
+  mod_config()->read_rate = 1024*1024;
+  mod_config()->read_burst = 4*1024*1024;
+  mod_config()->write_rate = 0;
+  mod_config()->write_burst = 0;
+}
+} // namespace
+
+namespace {
+size_t get_rate_limit(size_t rate_limit)
+{
+  if(rate_limit == 0) {
+    return EV_RATE_LIMIT_MAX;
+  } else {
+    return rate_limit;
+  }
 }
 } // namespace
 
@@ -461,6 +473,29 @@ void print_help(std::ostream& out)
       << "                       Set the number of worker threads.\n"
       << "                       Default: "
       << get_config()->num_worker << "\n"
+      << "    --read-rate=<RATE> Set maximum average read rate on frontend\n"
+      << "                       connection. Setting 0 to this option means\n"
+      << "                       read rate is unlimited.\n"
+      << "                       Default: "
+      << get_config()->read_rate << "\n"
+      << "    --read-burst=<SIZE>\n"
+      << "                       Set maximum read burst size on frontend\n"
+      << "                       connection. Setting 0 to this option means\n"
+      << "                       read burst size is unlimited.\n"
+      << "                       Default: "
+      << get_config()->read_burst << "\n"
+      << "    --write-rate=<RATE>\n"
+      << "                       Set maximum average write rate on frontend\n"
+      << "                       connection. Setting 0 to this option means\n"
+      << "                       write rate is unlimited.\n"
+      << "                       Default: "
+      << get_config()->write_rate << "\n"
+      << "    --write-burst=<SIZE>\n"
+      << "                       Set maximum write burst size on frontend\n"
+      << "                       connection. Setting 0 to this option means\n"
+      << "                       write burst size is unlimited.\n"
+      << "                       Default: "
+      << get_config()->write_burst << "\n"
       << "\n"
       << "  Timeout:\n"
       << "    --frontend-spdy-read-timeout=<SEC>\n"
@@ -671,6 +706,10 @@ int main(int argc, char **argv)
       {"backend-tls-sni-field", required_argument, &flag, 31},
       {"honor-cipher-order", no_argument, &flag, 32},
       {"dh-param-file", required_argument, &flag, 33},
+      {"read-rate", required_argument, &flag, 34},
+      {"read-burst", required_argument, &flag, 35},
+      {"write-rate", required_argument, &flag, 36},
+      {"write-burst", required_argument, &flag, 37},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -854,6 +893,22 @@ int main(int argc, char **argv)
         // --dh-param-file
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_DH_PARAM_FILE, optarg));
         break;
+      case 34:
+        // --read-rate
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_READ_RATE, optarg));
+        break;
+      case 35:
+        // --read-burst
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_READ_BURST, optarg));
+        break;
+      case 36:
+        // --write-rate
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WRITE_RATE, optarg));
+        break;
+      case 37:
+        // --write-burst
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WRITE_BURST, optarg));
+        break;
       default:
         break;
       }
@@ -979,6 +1034,13 @@ int main(int argc, char **argv)
             get_config()->syslog_facility);
     mod_config()->use_syslog = true;
   }
+
+  mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new
+    (get_rate_limit(get_config()->read_rate),
+     get_rate_limit(get_config()->read_burst),
+     get_rate_limit(get_config()->write_rate),
+     get_rate_limit(get_config()->write_burst),
+     nullptr);
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));

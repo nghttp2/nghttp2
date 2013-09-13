@@ -86,6 +86,10 @@ extern const char SHRPX_OPT_BACKEND_IPV4[];
 extern const char SHRPX_OPT_BACKEND_IPV6[];
 extern const char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[];
 extern const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[];
+extern const char SHRPX_OPT_READ_RATE[];
+extern const char SHRPX_OPT_READ_BURST[];
+extern const char SHRPX_OPT_WRITE_RATE[];
+extern const char SHRPX_OPT_WRITE_BURST[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -170,6 +174,10 @@ struct Config {
   size_t downstream_http_proxy_addrlen;
   // Rate limit configuration
   ev_token_bucket_cfg *rate_limit_cfg;
+  size_t read_rate;
+  size_t read_burst;
+  size_t write_rate;
+  size_t write_burst;
 };
 
 const Config* get_config();

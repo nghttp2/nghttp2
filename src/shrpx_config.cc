@@ -95,6 +95,10 @@ const char SHRPX_OPT_CACERT[] = "cacert";
 const char SHRPX_OPT_BACKEND_IPV4[] = "backend-ipv4";
 const char SHRPX_OPT_BACKEND_IPV6[] = "backend-ipv6";
 const char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[] = "backend-http-proxy-uri";
+const char SHRPX_OPT_READ_RATE[] = "read-rate";
+const char SHRPX_OPT_READ_BURST[] = "read-burst";
+const char SHRPX_OPT_WRITE_RATE[] = "write-rate";
+const char SHRPX_OPT_WRITE_BURST[] = "write-burst";
 
 namespace {
 Config *config = 0;
@@ -373,6 +377,14 @@ int parse_config(const char *opt, const char *optarg)
       LOG(ERROR) << "Could not parse backend-http-proxy-uri";
         return -1;
     }
+  } else if(util::strieq(opt, SHRPX_OPT_READ_RATE)) {
+    mod_config()->read_rate = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_READ_BURST)) {
+    mod_config()->read_burst = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_WRITE_RATE)) {
+    mod_config()->write_rate = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_WRITE_BURST)) {
+    mod_config()->write_burst = strtoul(optarg, nullptr, 10);
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {
