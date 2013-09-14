@@ -3264,6 +3264,19 @@ int nghttp2_session_set_option(nghttp2_session *session,
     }
     break;
   }
+  case NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS: {
+    ssize_t sszval;
+    if(optlen != sizeof(ssize_t)) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+    sszval = *(ssize_t*)optval;
+    if(sszval <= 0) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+    session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+      sszval;
+    break;
+  }
   default:
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }

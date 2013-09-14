@@ -91,6 +91,7 @@ struct Config {
   std::map<std::string, std::string> headers;
   std::string datafile;
   size_t output_upper_thres;
+  ssize_t peer_max_concurrent_streams;
   Config()
     : null_out(false),
       remote_name(false),
@@ -103,7 +104,8 @@ struct Config {
       multiply(1),
       timeout(-1),
       window_bits(-1),
-      output_upper_thres(1024*1024)
+      output_upper_thres(1024*1024),
+      peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS)
   {}
 };
 
@@ -620,6 +622,13 @@ struct HttpClient {
       record_handshake_time();
     }
     rv = nghttp2_session_client_new(&session, callbacks, this);
+    if(rv != 0) {
+      return -1;
+    }
+    rv = nghttp2_session_set_option(session,
+                                    NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
+                                    &config.peer_max_concurrent_streams,
+                                    sizeof(config.peer_max_concurrent_streams));
     if(rv != 0) {
       return -1;
     }
@@ -1471,6 +1480,11 @@ void print_help(std::ostream& out)
       << "    -p, --pri=<PRIORITY>\n"
       << "                       Sets stream priority. Default: "
       << NGHTTP2_PRI_DEFAULT << "\n"
+      << "    --peer-max-concurrent-streams=<N>\n"
+      << "                       Use <N> as SETTINGS_MAX_CONCURRENT_STREAMS\n"
+      << "                       value of remote endpoint as if it is\n"
+      << "                       received in SETTINGS frame. The default\n"
+      << "                       is large enough as it is seen as unlimited.\n"
       << std::endl;
 }
 
@@ -1495,6 +1509,7 @@ int main(int argc, char **argv)
       {"no-flow-control", no_argument, nullptr, 'f'},
       {"upgrade", no_argument, nullptr, 'u'},
       {"pri", required_argument, nullptr, 'p'},
+      {"peer-max-concurrent-streams", required_argument, &flag, 3},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -1601,6 +1616,10 @@ int main(int argc, char **argv)
       case 2:
         // key option
         config.keyfile = optarg;
+        break;
+      case 3:
+        // peer-max-concurrent-streams option
+        config.peer_max_concurrent_streams = strtoul(optarg, nullptr, 10);
         break;
       }
       break;

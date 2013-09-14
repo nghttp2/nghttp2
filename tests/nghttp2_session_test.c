@@ -3248,6 +3248,7 @@ void test_nghttp2_session_set_option(void)
   nghttp2_session_callbacks callbacks;
   int intval;
   char charval;
+  ssize_t sszval;
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   nghttp2_session_client_new(&session, &callbacks, NULL);
 
@@ -3287,6 +3288,29 @@ void test_nghttp2_session_set_option(void)
              &intval, sizeof(intval)));
   CU_ASSERT(session->opt_flags &
             NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE);
+
+  sszval = 100;
+  CU_ASSERT(0 ==
+            nghttp2_session_set_option
+            (session,
+             NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
+             &sszval, sizeof(sszval)));
+  CU_ASSERT(sszval ==
+            session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+
+  sszval = 0;
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_session_set_option
+            (session,
+             NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
+             &sszval, sizeof(sszval)));
+
+  intval = 100;
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_session_set_option
+            (session,
+             NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
+             &intval, sizeof(intval)));
 
   nghttp2_session_del(session);
 }
