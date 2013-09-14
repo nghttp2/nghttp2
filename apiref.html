@@ -657,6 +657,23 @@ is responsible for sending WINDOW_UPDATE with stream ID 0 using
 <a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>.</p>
 </dd></dl>
 
+<dl class="macro">
+<dt id="NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS">
+<tt class="descname">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</tt><a class="headerlink" href="#NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">3</span></tt>)
+This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of
+remote endpoint as if it is received in SETTINGS frame. Without
+specifying this option, before the local endpoint receives
+SETTINGS_MAX_CONCURRENT_STREAMS in SETTINGS frame from remote
+endpoint, SETTINGS_MAX_CONCURRENT_STREAMS is unlimited. This may
+cause problem if local endpoint submits lots of requests
+initially and sending them at once to the remote peer may lead to
+the rejection of some requests. Specifying this option to the
+sensible value, say 100, may avoid this kind of issue. This value
+will be overwritten if the local endpoint receives
+SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.</p>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -1492,6 +1509,9 @@ nonzero, the library will not send WINDOW_UPDATE for connection
 automatically.  Therefore, the application is responsible for
 sending WINDOW_UPDATE using
 <a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. This option defaults to 0.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS" title="NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span></tt></a></dt>
+<dd>The <em>optval</em> must be a pointer to <tt class="docutils literal"><span class="pre">ssize_t</span></tt>. It is an error
+if <em>*optval</em> is 0 or negative.</dd>
 </dl>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>

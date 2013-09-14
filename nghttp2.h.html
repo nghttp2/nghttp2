@@ -1258,7 +1258,21 @@
 <span class="cm">   * is responsible for sending WINDOW_UPDATE with stream ID 0 using</span>
 <span class="cm">   * `nghttp2_submit_window_update`.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">2</span>
+  <span class="n">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of</span>
+<span class="cm">   * remote endpoint as if it is received in SETTINGS frame. Without</span>
+<span class="cm">   * specifying this option, before the local endpoint receives</span>
+<span class="cm">   * SETTINGS_MAX_CONCURRENT_STREAMS in SETTINGS frame from remote</span>
+<span class="cm">   * endpoint, SETTINGS_MAX_CONCURRENT_STREAMS is unlimited. This may</span>
+<span class="cm">   * cause problem if local endpoint submits lots of requests</span>
+<span class="cm">   * initially and sending them at once to the remote peer may lead to</span>
+<span class="cm">   * the rejection of some requests. Specifying this option to the</span>
+<span class="cm">   * sensible value, say 100, may avoid this kind of issue. This value</span>
+<span class="cm">   * will be overwritten if the local endpoint receives</span>
+<span class="cm">   * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="p">}</span> <span class="n">nghttp2_opt</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -1285,6 +1299,10 @@
 <span class="cm"> *     automatically.  Therefore, the application is responsible for</span>
 <span class="cm"> *     sending WINDOW_UPDATE using</span>
 <span class="cm"> *     `nghttp2_submit_window_update`. This option defaults to 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`</span>
+<span class="cm"> *     The |optval| must be a pointer to ``ssize_t``. It is an error</span>
+<span class="cm"> *     if |*optval| is 0 or negative.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
