@@ -50,6 +50,7 @@
 #include <vector>
 #include <sstream>
 #include <tuple>
+#include <chrono>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -111,28 +112,21 @@ struct Config {
 };
 } // namespace
 
-namespace {
-struct RequestStat {
-  timeval on_syn_stream_time;
-  timeval on_syn_reply_time;
-  timeval on_complete_time;
-  RequestStat()
-  {
-    on_syn_stream_time.tv_sec = -1;
-    on_syn_stream_time.tv_usec = -1;
-    on_syn_reply_time.tv_sec = -1;
-    on_syn_reply_time.tv_usec = -1;
-    on_complete_time.tv_sec = -1;
-    on_complete_time.tv_usec = -1;
-  }
+enum StatStage {
+  STAT_INITIAL,
+  STAT_ON_REQUEST,
+  STAT_ON_RESPONSE,
+  STAT_ON_COMPLETE
 };
-} // namespace
 
 namespace {
-void record_time(timeval *tv)
-{
-  get_time(tv);
-}
+struct RequestStat {
+  std::chrono::steady_clock::time_point on_request_time;
+  std::chrono::steady_clock::time_point on_response_time;
+  std::chrono::steady_clock::time_point on_complete_time;
+  StatStage stage;
+  RequestStat():stage(STAT_INITIAL) {}
+};
 } // namespace
 
 namespace {
@@ -318,31 +312,29 @@ struct Request {
     }
   }
 
-  void record_syn_stream_time()
+  void record_request_time()
   {
-    record_time(&stat.on_syn_stream_time);
+    stat.stage = STAT_ON_REQUEST;
+    stat.on_request_time = get_time();
   }
 
-  void record_syn_reply_time()
+  void record_response_time()
   {
-    record_time(&stat.on_syn_reply_time);
+    stat.stage = STAT_ON_RESPONSE;
+    stat.on_response_time = get_time();
   }
 
   void record_complete_time()
   {
-    record_time(&stat.on_complete_time);
+    stat.stage = STAT_ON_COMPLETE;
+    stat.on_complete_time = get_time();
   }
 };
 } // namespace
 
 namespace {
 struct SessionStat {
-  timeval on_handshake_time;
-  SessionStat()
-  {
-    on_handshake_time.tv_sec = -1;
-    on_handshake_time.tv_usec = -1;
-  }
+  std::chrono::steady_clock::time_point on_handshake_time;
 };
 } // namespace
 
@@ -821,7 +813,7 @@ struct HttpClient {
   }
   void record_handshake_time()
   {
-    record_time(&stat.on_handshake_time);
+    stat.on_handshake_time = get_time();
   }
 };
 } // namespace
@@ -1026,7 +1018,7 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
                                                             stream_id);
   assert(req);
   client->streams[stream_id] = req;
-  req->record_syn_stream_time();
+  req->record_request_time();
 }
 } // namespace
 
@@ -1101,7 +1093,7 @@ int on_frame_recv_callback2
     // If this is the HTTP Upgrade with OPTIONS method to avoid POST,
     // req is nullptr.
     if(req) {
-      req->record_syn_reply_time();
+      req->record_response_time();
     }
   }
   check_response_header(session, frame, user_data);
@@ -1141,23 +1133,23 @@ void print_stats(const HttpClient& client)
     std::cout << "    Status: " << req->status << std::endl;
     std::cout << "    Delta (ms) from handshake(HEADERS):"
               << std::endl;
-    if(req->stat.on_syn_reply_time.tv_sec >= 0) {
-      std::cout << "        SYN_REPLY: "
-                << time_delta(req->stat.on_syn_reply_time,
-                              client.stat.on_handshake_time)
+    if(req->stat.stage >= STAT_ON_RESPONSE) {
+      std::cout << "        response HEADERS: "
+                << time_delta(req->stat.on_response_time,
+                              client.stat.on_handshake_time).count()
                 << "("
-                << time_delta(req->stat.on_syn_reply_time,
-                              req->stat.on_syn_stream_time)
+                << time_delta(req->stat.on_response_time,
+                              req->stat.on_request_time).count()
                 << ")"
                 << std::endl;
     }
-    if(req->stat.on_complete_time.tv_sec >= 0) {
+    if(req->stat.stage >= STAT_ON_COMPLETE) {
       std::cout << "        Completed: "
                 << time_delta(req->stat.on_complete_time,
-                              client.stat.on_handshake_time)
+                              client.stat.on_handshake_time).count()
                 << "("
                 << time_delta(req->stat.on_complete_time,
-                              req->stat.on_syn_stream_time)
+                              req->stat.on_request_time).count()
                 << ")"
                 << std::endl;
     }

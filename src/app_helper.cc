@@ -164,11 +164,10 @@ void print_nv(nghttp2_nv *nva, size_t nvlen)
 
 void print_timer()
 {
-  timeval tv;
-  get_timer(&tv);
+  auto millis = get_timer();
   printf("%s[%3ld.%03ld]%s",
          ansi_esc("\033[33m"),
-         (long int)tv.tv_sec, tv.tv_usec/1000,
+         (long int)(millis.count()/1000), (long int)(millis.count()%1000),
          ansi_escend());
 }
 
@@ -438,45 +437,23 @@ int on_data_send_callback
   return 0;
 }
 
-int64_t time_delta(const timeval& a, const timeval& b)
-{
-  int64_t res = (a.tv_sec - b.tv_sec) * 1000;
-  res += (a.tv_usec - b.tv_usec) / 1000;
-  return res;
-}
-
 namespace {
-timeval base_tv;
+std::chrono::steady_clock::time_point base_tv;
 } // namespace
 
 void reset_timer()
 {
-  get_time(&base_tv);
+  base_tv = std::chrono::steady_clock::now();
 }
 
-void get_timer(timeval* tv)
+std::chrono::milliseconds get_timer()
 {
-  get_time(tv);
-  tv->tv_usec -= base_tv.tv_usec;
-  tv->tv_sec -= base_tv.tv_sec;
-  if(tv->tv_usec < 0) {
-    tv->tv_usec += 1000000;
-    --tv->tv_sec;
-  }
+  return time_delta(std::chrono::steady_clock::now(), base_tv);
 }
 
-int get_time(timeval *tv)
+std::chrono::steady_clock::time_point get_time()
 {
-  int rv;
-#ifdef HAVE_CLOCK_GETTIME
-  timespec ts;
-  rv = clock_gettime(CLOCK_MONOTONIC, &ts);
-  tv->tv_sec = ts.tv_sec;
-  tv->tv_usec = ts.tv_nsec/1000;
-#else // !HAVE_CLOCK_GETTIME
-  rv = gettimeofday(tv, 0);
-#endif // !HAVE_CLOCK_GETTIME
-  return rv;
+  return std::chrono::steady_clock::now();
 }
 
 } // namespace nghttp2

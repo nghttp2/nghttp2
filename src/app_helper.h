@@ -31,7 +31,9 @@
 #include <cstdlib>
 #include <sys/time.h>
 #include <poll.h>
+
 #include <map>
+#include <chrono>
 
 #include <nghttp2/nghttp2.h>
 
@@ -74,13 +76,20 @@ int on_data_send_callback
 
 // Returns difference between |a| and |b| in milliseconds, assuming
 // |a| is more recent than |b|.
-int64_t time_delta(const timeval& a, const timeval& b);
+template<typename TimePoint>
+std::chrono::milliseconds time_delta(const TimePoint& a, const TimePoint& b)
+{
+  return std::chrono::duration_cast<std::chrono::milliseconds>(a - b);
+}
 
+// Resets timer
 void reset_timer();
 
-void get_timer(timeval *tv);
+// Returns the duration since timer reset.
+std::chrono::milliseconds get_timer();
 
-int get_time(timeval *tv);
+// Returns current time point.
+std::chrono::steady_clock::time_point get_time();
 
 void print_timer();
 
