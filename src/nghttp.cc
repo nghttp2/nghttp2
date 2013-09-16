@@ -1433,7 +1433,7 @@ int run(char **uris, int n)
 void print_usage(std::ostream& out)
 {
   out << "Usage: nghttp [-Oafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "              [--key=<KEY>] [-d <FILE>] [-m <N>] [-p <PRIORITY>]\n"
+      << "              [--key=<KEY>] [-d <FILE>] [-m <N>] [-p <PRIORITY>] [-M <N>]\n"
       << "              <URI>..."
       << std::endl;
 }
@@ -1480,7 +1480,7 @@ void print_help(std::ostream& out)
       << "    -p, --pri=<PRIORITY>\n"
       << "                       Sets stream priority. Default: "
       << NGHTTP2_PRI_DEFAULT << "\n"
-      << "    --peer-max-concurrent-streams=<N>\n"
+      << "    -M, --peer-max-concurrent-streams=<N>\n"
       << "                       Use <N> as SETTINGS_MAX_CONCURRENT_STREAMS\n"
       << "                       value of remote endpoint as if it is\n"
       << "                       received in SETTINGS frame. The default\n"
@@ -1509,16 +1509,20 @@ int main(int argc, char **argv)
       {"no-flow-control", no_argument, nullptr, 'f'},
       {"upgrade", no_argument, nullptr, 'u'},
       {"pri", required_argument, nullptr, 'p'},
-      {"peer-max-concurrent-streams", required_argument, &flag, 3},
+      {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "Oad:fm:np:hH:vst:uw:", long_options,
+    int c = getopt_long(argc, argv, "M:Oad:fm:np:hH:vst:uw:", long_options,
                         &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
+    case 'M':
+      // peer-max-concurrent-streams option
+      config.peer_max_concurrent_streams = strtoul(optarg, nullptr, 10);
+      break;
     case 'O':
       config.remote_name = true;
       break;
@@ -1616,10 +1620,6 @@ int main(int argc, char **argv)
       case 2:
         // key option
         config.keyfile = optarg;
-        break;
-      case 3:
-        // peer-max-concurrent-streams option
-        config.peer_max_concurrent_streams = strtoul(optarg, nullptr, 10);
         break;
       }
       break;
