@@ -73,6 +73,7 @@
 
 namespace nghttp2 {
 
+namespace {
 struct Config {
   bool null_out;
   bool remote_name;
@@ -108,7 +109,9 @@ struct Config {
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS)
   {}
 };
+} // namespace
 
+namespace {
 struct RequestStat {
   timeval on_syn_stream_time;
   timeval on_syn_reply_time;
@@ -123,17 +126,23 @@ struct RequestStat {
     on_complete_time.tv_usec = -1;
   }
 };
+} // namespace
 
+namespace {
 void record_time(timeval *tv)
 {
   get_time(tv);
 }
+} // namespace
 
+namespace {
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field)
 {
   return u.field_set & (1 << field);
 }
+} // namespace
 
+namespace {
 bool fieldeq(const char *uri1, const http_parser_url &u1,
              const char *uri2, const http_parser_url &u2,
              http_parser_url_fields field)
@@ -154,7 +163,9 @@ bool fieldeq(const char *uri1, const http_parser_url &u1,
                 uri2+u2.field_data[field].off,
                 u1.field_data[field].len) == 0;
 }
+} // namespace
 
+namespace {
 bool fieldeq(const char *uri, const http_parser_url &u,
              http_parser_url_fields field,
              const char *t)
@@ -173,7 +184,9 @@ bool fieldeq(const char *uri, const http_parser_url &u,
   for(i = 0; i < len && t[i] && p[i] == t[i]; ++i);
   return i == len && !t[i];
 }
+} // namespace
 
+namespace {
 uint16_t get_default_port(const char *uri, const http_parser_url &u)
 {
   if(fieldeq(uri, u, UF_SCHEMA, "https")) {
@@ -184,7 +197,9 @@ uint16_t get_default_port(const char *uri, const http_parser_url &u)
     return 443;
   }
 }
+} // namespace
 
+namespace {
 std::string get_uri_field(const char *uri, const http_parser_url &u,
                           http_parser_url_fields field)
 {
@@ -195,7 +210,9 @@ std::string get_uri_field(const char *uri, const http_parser_url &u,
     return "";
   }
 }
+} // namespace
 
+namespace {
 bool porteq(const char *uri1, const http_parser_url &u1,
             const char *uri2, const http_parser_url &u2)
 {
@@ -204,7 +221,9 @@ bool porteq(const char *uri1, const http_parser_url &u1,
   port2 = has_uri_field(u2, UF_PORT) ? u2.port : get_default_port(uri2, u2);
   return port1 == port2;
 }
+} // namespace
 
+namespace {
 void write_uri_field(std::ostream& o,
                      const char *uri, const http_parser_url &u,
                      http_parser_url_fields field)
@@ -213,7 +232,9 @@ void write_uri_field(std::ostream& o,
     o.write(uri+u.field_data[field].off, u.field_data[field].len);
   }
 }
+} // namespace
 
+namespace {
 std::string strip_fragment(const char *raw_uri)
 {
   const char *end;
@@ -221,7 +242,9 @@ std::string strip_fragment(const char *raw_uri)
   size_t len = end-raw_uri;
   return std::string(raw_uri, len);
 }
+} // namespace
 
+namespace {
 struct Request {
   // URI without fragment
   std::string uri;
@@ -310,7 +333,9 @@ struct Request {
     record_time(&stat.on_complete_time);
   }
 };
+} // namespace
 
+namespace {
 struct SessionStat {
   timeval on_handshake_time;
   SessionStat()
@@ -319,8 +344,11 @@ struct SessionStat {
     on_handshake_time.tv_usec = -1;
   }
 };
+} // namespace
 
+namespace {
 Config config;
+} // namespace
 
 namespace {
 size_t populate_settings(nghttp2_settings_entry *iv)
@@ -363,7 +391,9 @@ namespace {
 void writecb(bufferevent *bev, void *ptr);
 } // namespace
 
+namespace {
 struct HttpClient;
+} // namespace
 
 namespace {
 void submit_request(HttpClient *client,
@@ -381,6 +411,7 @@ enum client_state {
   STATE_CONNECTED
 };
 
+namespace {
 struct HttpClient {
   nghttp2_session *session;
   const nghttp2_session_callbacks *callbacks;
@@ -793,6 +824,7 @@ struct HttpClient {
     record_time(&stat.on_handshake_time);
   }
 };
+} // namespace
 
 namespace {
 int htp_msg_begincb(http_parser *htp)
@@ -912,6 +944,7 @@ void submit_request(HttpClient *client,
 }
 } // namespace
 
+namespace {
 void update_html_parser(HttpClient *client, Request *req,
                         const uint8_t *data, size_t len, int fin)
 {
@@ -937,12 +970,16 @@ void update_html_parser(HttpClient *client, Request *req,
   }
   req->html_parser->clear_links();
 }
+} // namespace
 
+namespace {
 HttpClient* get_session(void *user_data)
 {
   return reinterpret_cast<HttpClient*>(user_data);
 }
+} // namespace
 
+namespace {
 int on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
@@ -978,6 +1015,7 @@ int on_data_chunk_recv_callback
   }
   return 0;
 }
+} // namespace
 
 namespace {
 void check_stream_id(nghttp2_session *session, int32_t stream_id,
@@ -992,6 +1030,7 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
 }
 } // namespace
 
+namespace {
 int before_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -1001,7 +1040,9 @@ int before_frame_send_callback
   }
   return 0;
 }
+} // namespace
 
+namespace {
 int on_frame_send_callback2
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -1010,7 +1051,9 @@ int on_frame_send_callback2
   }
   return 0;
 }
+} // namespace
 
+namespace {
 void check_response_header
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -1045,7 +1088,9 @@ void check_response_header
     }
   }
 }
+} // namespace
 
+namespace {
 int on_frame_recv_callback2
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -1065,7 +1110,9 @@ int on_frame_recv_callback2
   }
   return 0;
 }
+} // namespace
 
+namespace {
 int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
@@ -1082,7 +1129,9 @@ int on_stream_close_callback
   }
   return 0;
 }
+} // namespace
 
+namespace {
 void print_stats(const HttpClient& client)
 {
   std::cout << "***** Statistics *****" << std::endl;
@@ -1115,6 +1164,7 @@ void print_stats(const HttpClient& client)
     std::cout << std::endl;
   }
 }
+} // namespace
 
 namespace {
 int client_select_next_proto_cb(SSL* ssl,
@@ -1253,6 +1303,7 @@ ssize_t client_recv_callback(nghttp2_session *session,
 }
 } // namespace
 
+namespace {
 int communicate(const std::string& scheme, const std::string& host,
                 uint16_t port,
                 std::vector<std::tuple<std::string,
@@ -1328,7 +1379,9 @@ int communicate(const std::string& scheme, const std::string& host,
   }
   return result;
 }
+} // namespace
 
+namespace {
 ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,
  uint8_t *buf, size_t length, int *eof,
@@ -1352,7 +1405,9 @@ ssize_t file_read_callback
     return r;
   }
 }
+} // namespace
 
+namespace {
 int run(char **uris, int n)
 {
   nghttp2_session_callbacks callbacks;
@@ -1429,7 +1484,9 @@ int run(char **uris, int n)
   }
   return failures;
 }
+} // namespace
 
+namespace {
 void print_usage(std::ostream& out)
 {
   out << "Usage: nghttp [-Oafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
@@ -1437,7 +1494,9 @@ void print_usage(std::ostream& out)
       << "              <URI>..."
       << std::endl;
 }
+} // namespace
 
+namespace {
 void print_help(std::ostream& out)
 {
   print_usage(out);
@@ -1487,6 +1546,7 @@ void print_help(std::ostream& out)
       << "                       is large enough as it is seen as unlimited.\n"
       << std::endl;
 }
+} // namespace
 
 int main(int argc, char **argv)
 {
