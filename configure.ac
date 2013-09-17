@@ -80,6 +80,26 @@ AM_PATH_PYTHON([2.6],, [:])
 
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 
+# Check that std::chrono::steady_clock is available. In particular,
+# gcc 4.6 does not have one, but has monotonic_clock which is the old
+# name existed in the pre-standard draft. If steady_clock is not
+# available, don't define HAVE_STEADY_CLOCK and replace steady_clock
+# with monotonic_clock.
+AC_LANG_PUSH(C++)
+AC_MSG_CHECKING([whether std::chrono::steady_clock is available])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <chrono>
+]],
+[[
+auto tp = std::chrono::steady_clock::now();
+]])],
+    [AC_DEFINE([HAVE_STEADY_CLOCK], [1],
+               [Define to 1 if you have the `std::chrono::steady_clock`.])
+     AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])])
+AC_LANG_POP()
+
 # Checks for libraries.
 
 # Additional libraries required for tests.
