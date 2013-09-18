@@ -78,7 +78,8 @@ void start_element_func
         free(u);
       }
     }
-  } else if(util::strieq(reinterpret_cast<const char*>(name), "img")) {
+  } else if(util::strieq(reinterpret_cast<const char*>(name), "img") ||
+            util::strieq(reinterpret_cast<const char*>(name), "script")) {
     const char *src_attr = get_attr(attrs, "src");
     if(src_attr) {
       xmlChar *u = xmlBuildURI(reinterpret_cast<const xmlChar*>(src_attr),
