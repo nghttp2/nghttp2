@@ -35,7 +35,7 @@ PATH=$TOOLCHAIN/bin:$PATH
     --disable-shared \
     --host=arm-linux-androideabi \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
-    --without-libxml2 \
+    --with-xml-prefix="$PREFIX" \
     CPPFLAGS="-I$PREFIX/include" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-L$PREFIX/lib"
