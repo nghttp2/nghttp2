@@ -62,8 +62,8 @@ namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                   void *arg)
 {
-  std::pair<unsigned char*, size_t> *next_proto =
-    reinterpret_cast<std::pair<unsigned char*, size_t>* >(arg);
+  auto next_proto =
+    reinterpret_cast<std::pair<unsigned char*, size_t>*>(arg);
   *data = next_proto->first;
   *len = next_proto->second;
   return SSL_TLSEXT_ERR_OK;
@@ -98,7 +98,7 @@ size_t set_npn_prefs(unsigned char *out, const char **protos, size_t len)
 namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
 {
-  Config *config = (Config *)user_data;
+  auto config = reinterpret_cast<Config*>(user_data);
   int len = (int)strlen(config->private_key_passwd);
   if (size < len + 1) {
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
@@ -116,8 +116,8 @@ int servername_callback(SSL *ssl, int *al, void *arg)
   if(get_config()->cert_tree) {
     const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if(hostname) {
-      SSL_CTX *ssl_ctx = cert_lookup_tree_lookup(get_config()->cert_tree,
-                                                 hostname, strlen(hostname));
+      auto ssl_ctx = cert_lookup_tree_lookup(get_config()->cert_tree,
+                                             hostname, strlen(hostname));
       if(ssl_ctx) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
       }
@@ -309,7 +309,7 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
       LOG(WARNING) << "Setting option TCP_NODELAY failed: errno="
                    << errno;
     }
-    SSL *ssl = 0;
+    SSL *ssl = nullptr;
     bufferevent *bev;
     if(ssl_ctx) {
       ssl = SSL_new(ssl_ctx);
@@ -324,8 +324,7 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
     } else {
       bev = bufferevent_socket_new(evbase, fd, BEV_OPT_DEFER_CALLBACKS);
     }
-    ClientHandler *client_handler = new ClientHandler(bev, fd, ssl, host);
-    return client_handler;
+    return new ClientHandler(bev, fd, ssl, host);
   } else {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
     return 0;
@@ -350,7 +349,7 @@ namespace {
 bool tls_hostname_match(const char *pattern, const char *hostname)
 {
   const char *ptWildcard = strchr(pattern, '*');
-  if(ptWildcard == 0) {
+  if(ptWildcard == nullptr) {
     return util::strieq(pattern, hostname);
   }
   const char *ptLeftLabelEnd = strchr(pattern, '.');
@@ -490,7 +489,7 @@ void get_altnames(X509 *cert,
 
 int check_cert(SSL *ssl)
 {
-  X509 *cert = SSL_get_peer_certificate(ssl);
+  auto cert = SSL_get_peer_certificate(ssl);
   if(!cert) {
     LOG(ERROR) << "No certificate found";
     return -1;
@@ -555,8 +554,8 @@ void teardown_ssl_lock()
 
 CertLookupTree* cert_lookup_tree_new()
 {
-  CertLookupTree *tree = new CertLookupTree();
-  CertNode *root = new CertNode();
+  auto tree = new CertLookupTree();
+  auto root = new CertNode();
   root->ssl_ctx = 0;
   root->str = 0;
   root->first = root->last = 0;
@@ -567,9 +566,8 @@ CertLookupTree* cert_lookup_tree_new()
 namespace {
 void cert_node_del(CertNode *node)
 {
-  for(std::vector<CertNode*>::iterator i = node->next.begin(),
-        eoi = node->next.end(); i != eoi; ++i) {
-    cert_node_del(*i);
+  for(auto& a : node->next) {
+    cert_node_del(a);
   }
   delete node;
 }
@@ -578,9 +576,8 @@ void cert_node_del(CertNode *node)
 void cert_lookup_tree_del(CertLookupTree *lt)
 {
   cert_node_del(lt->root);
-  for(std::vector<char*>::iterator i = lt->hosts.begin(),
-        eoi = lt->hosts.end(); i != eoi; ++i) {
-    delete [] *i;
+  for(auto& s : lt->hosts) {
+    delete [] s;
   }
   delete lt;
 }
@@ -594,7 +591,7 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
 {
   int i, next_len = node->next.size();
   char c = hostname[offset];
-  CertNode *cn = 0;
+  CertNode *cn = nullptr;
   for(i = 0; i < next_len; ++i) {
     cn = node->next[i];
     if(cn->str[cn->first] == c) {
@@ -611,7 +608,7 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
       node->wildcard_certs.push_back(std::make_pair(hostname, ssl_ctx));
     } else {
       int j;
-      CertNode *new_node = new CertNode();
+      auto new_node = new CertNode();
       new_node->str = hostname;
       new_node->first = offset;
       // If wildcard is found, set the region before it because we
@@ -621,7 +618,7 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
       if(j == -1) {
         new_node->ssl_ctx = ssl_ctx;
       } else {
-        new_node->ssl_ctx = 0;
+        new_node->ssl_ctx = nullptr;
         new_node->wildcard_certs.push_back(std::make_pair(hostname, ssl_ctx));
       }
       node->next.push_back(new_node);
@@ -643,7 +640,7 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
         cert_lookup_tree_add_cert(lt, cn, ssl_ctx, hostname, len, j);
       }
     } else {
-      CertNode *new_node = new CertNode();
+      auto new_node = new CertNode();
       new_node->ssl_ctx = cn->ssl_ctx;
       new_node->str = cn->str;
       new_node->first = i;
@@ -659,7 +656,7 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
         cn->ssl_ctx = ssl_ctx;
       } else {
         // This hostname and existing one share suffix.
-        cn->ssl_ctx = 0;
+        cn->ssl_ctx = nullptr;
         cert_lookup_tree_add_cert(lt, cn, ssl_ctx, hostname, len, j);
       }
     }
@@ -690,36 +687,31 @@ SSL_CTX* cert_lookup_tree_lookup(CertLookupTree *lt, CertNode *node,
   int i, j;
   for(i = node->first, j = offset; i > node->last && j >= 0 &&
         node->str[i] == util::lowcase(hostname[j]); --i, --j);
-  if(i == node->last) {
-    if(j == -1) {
-      if(node->ssl_ctx) {
-        // exact match
-        return node->ssl_ctx;
-      } else {
-        // Do not perform wildcard-match because '*' must match at least
-        // one character.
-        return 0;
-      }
-    } else {
-      for(std::vector<std::pair<char*, SSL_CTX*> >::iterator i =
-            node->wildcard_certs.begin(), eoi = node->wildcard_certs.end();
-          i != eoi; ++i) {
-        if(tls_hostname_match((*i).first, hostname)) {
-          return (*i).second;
-        }
-      }
-      char c = util::lowcase(hostname[j]);
-      for(std::vector<CertNode*>::iterator i = node->next.begin(),
-            eoi = node->next.end(); i != eoi; ++i) {
-        if((*i)->str[(*i)->first] == c) {
-          return cert_lookup_tree_lookup(lt, *i, hostname, len, j);
-        }
-      }
-      return 0;
-    }
-  } else {
-    return 0;
+  if(i != node->last) {
+    return nullptr;
   }
+  if(j == -1) {
+    if(node->ssl_ctx) {
+      // exact match
+      return node->ssl_ctx;
+    } else {
+      // Do not perform wildcard-match because '*' must match at least
+      // one character.
+      return nullptr;
+    }
+  }
+  for(auto& wildcert : node->wildcard_certs) {
+    if(tls_hostname_match(wildcert.first, hostname)) {
+      return wildcert.second;
+    }
+  }
+  char c = util::lowcase(hostname[j]);
+  for(auto& next_node : node->next) {
+    if(next_node->str[next_node->first] == c) {
+      return cert_lookup_tree_lookup(lt, next_node, hostname, len, j);
+    }
+  }
+  return nullptr;
 }
 } // namespace
 
@@ -733,7 +725,7 @@ SSL_CTX* cert_lookup_tree_lookup(CertLookupTree *lt,
 int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
                                         const char *certfile)
 {
-  BIO *bio = BIO_new(BIO_s_file());
+  auto bio = BIO_new(BIO_s_file());
   if(!bio) {
     LOG(ERROR) << "BIO_new failed";
     return -1;
@@ -743,7 +735,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
     LOG(ERROR) << "Could not read certificate file '" << certfile << "'";
     return -1;
   }
-  X509 *cert = PEM_read_bio_X509(bio, 0, 0, 0);
+  auto cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
   if(!cert) {
     LOG(ERROR) << "Could not read X509 structure from file '"
                << certfile << "'";
@@ -754,9 +746,8 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  for(std::vector<std::string>::iterator i = dns_names.begin(),
-        eoi = dns_names.end(); i != eoi; ++i) {
-    cert_lookup_tree_add_cert(lt, ssl_ctx, (*i).c_str(), (*i).size());
+  for(auto& dns_name : dns_names) {
+    cert_lookup_tree_add_cert(lt, ssl_ctx, dns_name.c_str(), dns_name.size());
   }
   cert_lookup_tree_add_cert(lt, ssl_ctx, common_name.c_str(),
                             common_name.size());
