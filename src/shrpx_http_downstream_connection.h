@@ -63,7 +63,7 @@ public:
 private:
   bufferevent *bev_;
   IOControl ioctrl_;
-  http_parser *response_htp_;
+  http_parser response_htp_;
 };
 
 } // namespace shrpx

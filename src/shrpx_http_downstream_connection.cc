@@ -47,13 +47,11 @@ HttpDownstreamConnection::HttpDownstreamConnection
 (ClientHandler *client_handler)
   : DownstreamConnection(client_handler),
     bev_(0),
-    ioctrl_(0),
-    response_htp_(new http_parser())
+    ioctrl_(0)
 {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection()
 {
-  delete response_htp_;
   if(bev_) {
     bufferevent_disable(bev_, EV_READ | EV_WRITE);
     bufferevent_free(bev_);
@@ -95,8 +93,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 
   ioctrl_.set_bev(bev_);
 
-  http_parser_init(response_htp_, HTTP_RESPONSE);
-  response_htp_->data = downstream_;
+  http_parser_init(&response_htp_, HTTP_RESPONSE);
+  response_htp_.data = downstream_;
 
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
   bufferevent_enable(bev_, EV_READ);
@@ -457,12 +455,12 @@ int HttpDownstreamConnection::on_read()
     evbuffer_drain(input, inputlen);
     return rv;
   }
-  size_t nread = http_parser_execute(response_htp_, &htp_hooks,
+  size_t nread = http_parser_execute(&response_htp_, &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      inputlen);
 
   evbuffer_drain(input, nread);
-  http_errno htperr = HTTP_PARSER_ERRNO(response_htp_);
+  http_errno htperr = HTTP_PARSER_ERRNO(&response_htp_);
   if(htperr == HPE_OK) {
     return 0;
   } else {
