@@ -512,7 +512,7 @@ int check_cert(SSL *ssl)
 }
 
 namespace {
-pthread_mutex_t *ssl_locks;
+std::unique_ptr<pthread_mutex_t[]> ssl_locks;
 } // namespace
 
 namespace {
@@ -528,7 +528,7 @@ void ssl_locking_cb(int mode, int type, const char *file, int line)
 
 void setup_ssl_lock()
 {
-  ssl_locks = new pthread_mutex_t[CRYPTO_num_locks()];
+  ssl_locks = util::make_unique<pthread_mutex_t[]>(CRYPTO_num_locks());
   for(int i = 0; i < CRYPTO_num_locks(); ++i) {
     // Always returns 0
     pthread_mutex_init(&(ssl_locks[i]), 0);
@@ -545,7 +545,7 @@ void teardown_ssl_lock()
   for(int i = 0; i < CRYPTO_num_locks(); ++i) {
     pthread_mutex_destroy(&(ssl_locks[i]));
   }
-  delete [] ssl_locks;
+  ssl_locks.reset();
 }
 
 CertLookupTree* cert_lookup_tree_new()
