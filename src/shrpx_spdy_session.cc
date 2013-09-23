@@ -59,8 +59,7 @@ SpdySession::SpdySession(event_base *evbase, SSL_CTX *ssl_ctx)
     notified_(false),
     wrbev_(nullptr),
     rdbev_(nullptr),
-    flow_control_(false),
-    proxy_htp_(0)
+    flow_control_(false)
 {}
 
 SpdySession::~SpdySession()
@@ -109,8 +108,7 @@ int SpdySession::disconnect()
   }
 
   if(proxy_htp_) {
-    delete proxy_htp_;
-    proxy_htp_ = 0;
+    proxy_htp_.reset();
   }
 
   notified_ = false;
@@ -386,8 +384,8 @@ int SpdySession::initiate_connection()
       bev_ = 0;
       return SHRPX_ERR_NETWORK;
     }
-    proxy_htp_ = new http_parser();
-    http_parser_init(proxy_htp_, HTTP_RESPONSE);
+    proxy_htp_ = util::make_unique<http_parser>();
+    http_parser_init(proxy_htp_.get(), HTTP_RESPONSE);
     proxy_htp_->data = this;
 
     state_ = PROXY_CONNECTING;
@@ -514,12 +512,12 @@ int SpdySession::on_read_proxy()
   evbuffer *input = bufferevent_get_input(bev_);
   unsigned char *mem = evbuffer_pullup(input, -1);
 
-  size_t nread = http_parser_execute(proxy_htp_, &htp_hooks,
+  size_t nread = http_parser_execute(proxy_htp_.get(), &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      evbuffer_get_length(input));
 
   evbuffer_drain(input, nread);
-  http_errno htperr = HTTP_PARSER_ERRNO(proxy_htp_);
+  http_errno htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
   if(htperr == HPE_OK) {
     return 0;
   } else {

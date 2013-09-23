@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <set>
+#include <memory>
 
 #include <openssl/ssl.h>
 
@@ -129,7 +130,7 @@ private:
   bufferevent *rdbev_;
   bool flow_control_;
   // Used to parse the response from HTTP proxy
-  http_parser *proxy_htp_;
+  std::unique_ptr<http_parser> proxy_htp_;
 };
 
 } // namespace shrpx
