@@ -133,7 +133,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   SSL_CTX *ssl_ctx;
   ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if(!ssl_ctx) {
-    LOG(FATAL) << ERR_error_string(ERR_get_error(), 0);
+    LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
   SSL_CTX_set_options(ssl_ctx,
@@ -149,7 +149,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   if(get_config()->ciphers) {
     if(SSL_CTX_set_cipher_list(ssl_ctx, get_config()->ciphers) == 0) {
       LOG(FATAL) << "SSL_CTX_set_cipher_list failed: "
-                 << ERR_error_string(ERR_get_error(), NULL);
+                 << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
     SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
@@ -199,17 +199,17 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   if(SSL_CTX_use_PrivateKey_file(ssl_ctx, private_key_file,
                                  SSL_FILETYPE_PEM) != 1) {
     LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed: "
-               << ERR_error_string(ERR_get_error(), NULL);
+               << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
   if(SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
     LOG(FATAL) << "SSL_CTX_use_certificate_file failed: "
-               << ERR_error_string(ERR_get_error(), NULL);
+               << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
   if(SSL_CTX_check_private_key(ssl_ctx) != 1) {
     LOG(FATAL) << "SSL_CTX_check_private_key failed: "
-               << ERR_error_string(ERR_get_error(), NULL);
+               << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
   if(get_config()->verify_client) {
@@ -253,7 +253,7 @@ SSL_CTX* create_ssl_client_context()
   SSL_CTX *ssl_ctx;
   ssl_ctx = SSL_CTX_new(SSLv23_client_method());
   if(!ssl_ctx) {
-    LOG(FATAL) << ERR_error_string(ERR_get_error(), 0);
+    LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
   SSL_CTX_set_options(ssl_ctx,
@@ -263,7 +263,7 @@ SSL_CTX* create_ssl_client_context()
   if(get_config()->ciphers) {
     if(SSL_CTX_set_cipher_list(ssl_ctx, get_config()->ciphers) == 0) {
       LOG(FATAL) << "SSL_CTX_set_cipher_list failed: "
-                 << ERR_error_string(ERR_get_error(), NULL);
+                 << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
   }
@@ -274,19 +274,20 @@ SSL_CTX* create_ssl_client_context()
 
   if(SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
     LOG(WARNING) << "Could not load system trusted ca certificates: "
-                 << ERR_error_string(ERR_get_error(), NULL);
+                 << ERR_error_string(ERR_get_error(), nullptr);
   }
 
   if(get_config()->cacert) {
-    if(SSL_CTX_load_verify_locations(ssl_ctx, get_config()->cacert, 0) != 1) {
+    if(SSL_CTX_load_verify_locations(ssl_ctx, get_config()->cacert, nullptr)
+       != 1) {
       LOG(FATAL) << "Could not load trusted ca certificates from "
                  << get_config()->cacert << ": "
-                 << ERR_error_string(ERR_get_error(), NULL);
+                 << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
   }
 
-  SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, 0);
+  SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, nullptr);
   return ssl_ctx;
 }
 
@@ -296,7 +297,8 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
 {
   char host[NI_MAXHOST];
   int rv;
-  rv = getnameinfo(addr, addrlen, host, sizeof(host), 0, 0, NI_NUMERICHOST);
+  rv = getnameinfo(addr, addrlen, host, sizeof(host), nullptr, 0,
+                   NI_NUMERICHOST);
   if(rv == 0) {
     if(get_config()->accesslog) {
       upstream_connect(host);
@@ -315,7 +317,7 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
       ssl = SSL_new(ssl_ctx);
       if(!ssl) {
         LOG(ERROR) << "SSL_new() failed: "
-                   << ERR_error_string(ERR_get_error(), NULL);
+                   << ERR_error_string(ERR_get_error(), nullptr);
         return 0;
       }
       bev = bufferevent_openssl_socket_new
@@ -338,7 +340,7 @@ bool numeric_host(const char *hostname)
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_flags = AI_NUMERICHOST;
-  if(getaddrinfo(hostname, 0, &hints, &res)) {
+  if(getaddrinfo(hostname, nullptr, &hints, &res)) {
     return false;
   }
   freeaddrinfo(res);
@@ -429,7 +431,7 @@ void get_altnames(X509 *cert,
 {
   GENERAL_NAMES* altnames;
   altnames = reinterpret_cast<GENERAL_NAMES*>
-    (X509_get_ext_d2i(cert, NID_subject_alt_name, 0, 0));
+    (X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if(altnames) {
     util::auto_delete<GENERAL_NAMES*> altnames_deleter(altnames,
                                                        GENERAL_NAMES_free);
