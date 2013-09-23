@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <set>
+#include <memory>
 
 #include <event.h>
 #include <openssl/ssl.h>
@@ -78,7 +79,7 @@ private:
   bufferevent *bev_;
   int fd_;
   SSL *ssl_;
-  Upstream *upstream_;
+  std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;
   bool should_close_after_write_;
   std::set<DownstreamConnection*> dconn_pool_;

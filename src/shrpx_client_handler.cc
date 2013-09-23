@@ -34,10 +34,12 @@
 #include "shrpx_http_downstream_connection.h"
 #include "shrpx_spdy_downstream_connection.h"
 #include "shrpx_accesslog.h"
-
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -214,7 +216,6 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
   : bev_(bev),
     fd_(fd),
     ssl_(ssl),
-    upstream_(nullptr),
     ipaddr_(ipaddr),
     should_close_after_write_(false),
     spdy_(nullptr),
@@ -231,7 +232,7 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     // For non-TLS version, first create HttpsUpstream. It may be
     // upgraded to HTTP/2.0 through HTTP Upgrade or direct HTTP/2.0
     // connection.
-    upstream_ = new HttpsUpstream(this);
+    upstream_ = util::make_unique<HttpsUpstream>(this);
     set_bev_cb(upstream_http1_connhd_readcb, nullptr, upstream_eventcb);
   }
 }
@@ -251,7 +252,6 @@ ClientHandler::~ClientHandler()
   }
   shutdown(fd_, SHUT_WR);
   close(fd_);
-  delete upstream_;
   for(std::set<DownstreamConnection*>::iterator i = dconn_pool_.begin();
       i != dconn_pool_.end(); ++i) {
     delete *i;
@@ -263,7 +263,7 @@ ClientHandler::~ClientHandler()
 
 Upstream* ClientHandler::get_upstream()
 {
-  return upstream_;
+  return upstream_.get();
 }
 
 bufferevent* ClientHandler::get_bev() const
@@ -304,13 +304,13 @@ int ClientHandler::validate_next_proto()
     if(proto == NGHTTP2_PROTO_VERSION_ID) {
       set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
                  upstream_eventcb);
-      upstream_ = new Http2Upstream(this);
+      upstream_ = util::make_unique<Http2Upstream>(this);
       return 0;
     } else {
 #ifdef HAVE_SPDYLAY
       uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
       if(version) {
-        upstream_ = new SpdyUpstream(version, this);
+        upstream_ = util::make_unique<SpdyUpstream>(version, this);
         return 0;
       }
 #endif // HAVE_SPDYLAY
@@ -323,7 +323,7 @@ int ClientHandler::validate_next_proto()
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Use HTTP/1.1";
   }
-  upstream_ = new HttpsUpstream(this);
+  upstream_ = util::make_unique<HttpsUpstream>(this);
   return 0;
 }
 
@@ -425,20 +425,18 @@ void ClientHandler::set_left_connhd_len(size_t left)
 
 void ClientHandler::direct_http2_upgrade()
 {
-  delete upstream_;
-  upstream_= new Http2Upstream(this);
+  upstream_= util::make_unique<Http2Upstream>(this);
   set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
 }
 
 int ClientHandler::perform_http2_upgrade(HttpsUpstream *http)
 {
   int rv;
-  auto upstream = new Http2Upstream(this);
+  auto upstream = util::make_unique<Http2Upstream>(this);
   if(upstream->upgrade_upstream(http) != 0) {
-    delete upstream;
     return -1;
   }
-  upstream_ = upstream;
+  upstream_ = std::move(upstream);
   set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb, upstream_eventcb);
   static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
     "Connection: Upgrade\r\n"
