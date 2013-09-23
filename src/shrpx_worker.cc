@@ -26,6 +26,7 @@
 
 #include <unistd.h>
 #include <sys/socket.h>
+#include <memory>
 
 #include <event.h>
 #include <event2/bufferevent.h>
@@ -34,6 +35,9 @@
 #include "shrpx_thread_event_receiver.h"
 #include "shrpx_log.h"
 #include "shrpx_spdy_session.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -80,13 +84,11 @@ void Worker::run()
       DIE();
     }
   }
-  auto receiver = new ThreadEventReceiver(sv_ssl_ctx_, spdy);
+  auto receiver = util::make_unique<ThreadEventReceiver>(sv_ssl_ctx_, spdy);
   bufferevent_enable(bev, EV_READ);
-  bufferevent_setcb(bev, readcb, 0, eventcb, receiver);
+  bufferevent_setcb(bev, readcb, 0, eventcb, receiver.get());
 
   event_base_loop(evbase, 0);
-
-  delete receiver;
 }
 
 void start_threaded_worker(WorkerInfo *info)
