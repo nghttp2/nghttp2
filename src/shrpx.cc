@@ -319,6 +319,14 @@ bool conf_exists(const char *path)
 } // namespace
 
 namespace {
+const char *DEFAULT_NPN_LIST = NGHTTP2_PROTO_VERSION_ID ","
+#ifdef HAVE_SPDYLAY
+  "spdy/3,spdy/2,"
+#endif // HAVE_SPDYLAY
+  "http/1.1";
+} // namespace
+
+namespace {
 void fill_default_config()
 {
   memset(mod_config(), 0, sizeof(*mod_config()));
@@ -405,6 +413,7 @@ void fill_default_config()
   mod_config()->read_burst = 4*1024*1024;
   mod_config()->write_rate = 0;
   mod_config()->write_burst = 0;
+  mod_config()->npn_list = nullptr;
 }
 } // namespace
 
@@ -573,7 +582,14 @@ void print_help(std::ostream& out)
       << "    --dh-param-file=<PATH>\n"
       << "                       Path to file that contains DH parameters in\n"
       << "                       PEM format. Without this option, DHE cipher\n"
-      << "                       suites are not available."
+      << "                       suites are not available.\n"
+      << "    --npn-list=<LIST>  Comma delimited list of NPN protocol sorted\n"
+      << "                       in the order of preference. That means\n"
+      << "                       most desirable protocol comes first.\n"
+      << "                       The parameter must be delimited by a single\n"
+      << "                       comma only and any white spaces are treated\n"
+      << "                       as a part of protocol string.\n"
+      << "                       Default: " << DEFAULT_NPN_LIST << "\n"
       << "\n"
       << "  HTTP/2.0 and SPDY:\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
@@ -710,6 +726,7 @@ int main(int argc, char **argv)
       {"read-burst", required_argument, &flag, 35},
       {"write-rate", required_argument, &flag, 36},
       {"write-burst", required_argument, &flag, 37},
+      {"npn-list", required_argument, &flag, 38},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -909,6 +926,10 @@ int main(int argc, char **argv)
         // --write-burst
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WRITE_BURST, optarg));
         break;
+      case 38:
+        // --npn-list
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_NPN_LIST, optarg));
+        break;
       default:
         break;
       }
@@ -945,6 +966,10 @@ int main(int argc, char **argv)
       LOG(FATAL) << "Failed to parse command-line argument.";
       exit(EXIT_FAILURE);
     }
+  }
+
+  if(!get_config()->npn_list) {
+    parse_config_npn_list(DEFAULT_NPN_LIST);
   }
 
   if(get_config()->cert_file && get_config()->private_key_file) {

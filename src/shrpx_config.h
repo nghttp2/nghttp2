@@ -90,6 +90,7 @@ extern const char SHRPX_OPT_READ_RATE[];
 extern const char SHRPX_OPT_READ_BURST[];
 extern const char SHRPX_OPT_WRITE_RATE[];
 extern const char SHRPX_OPT_WRITE_BURST[];
+extern const char SHRPX_OPT_NPN_LIST[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -178,6 +179,11 @@ struct Config {
   size_t read_burst;
   size_t write_rate;
   size_t write_burst;
+  // Comma delimited list of NPN protocol strings in the order of
+  // preference.
+  char **npn_list;
+  // The number of elements in npn_list
+  size_t npn_list_len;
 };
 
 const Config* get_config();
@@ -196,6 +202,14 @@ int load_config(const char *filename);
 
 // Read passwd from |filename|
 std::string read_passwd_from_file(const char *filename);
+
+// Parses NPN protocol strings in |s| and stores the protocols list in
+// mod_config()->npn_list and assigns the number of elements in
+// mod_config()->npn_list_len. The |s| must be comma delimited list of
+// protocol strings. The strings must be delimited by a single command
+// and any white spaces around it are treated as a part of protocol
+// strings.  This function always succeeds and returns 0.
+int parse_config_npn_list(const char *s);
 
 // Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
 // NULL, it is freed before copying.

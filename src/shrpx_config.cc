@@ -99,6 +99,7 @@ const char SHRPX_OPT_READ_RATE[] = "read-rate";
 const char SHRPX_OPT_READ_BURST[] = "read-burst";
 const char SHRPX_OPT_WRITE_RATE[] = "write-rate";
 const char SHRPX_OPT_WRITE_BURST[] = "write-burst";
+const char SHRPX_OPT_NPN_LIST[] = "npn-list";
 
 namespace {
 Config *config = 0;
@@ -192,6 +193,31 @@ void set_config_str(char **destp, const char *val)
     free(*destp);
   }
   *destp = strdup(val);
+}
+
+int parse_config_npn_list(const char *s)
+{
+  delete [] mod_config()->npn_list;
+  size_t len = 1;
+  for(const char *first = s, *p = nullptr; (p = strchr(first, ','));
+      ++len, first = p + 1);
+  auto list = new char*[len];
+  auto t = strdup(s);
+  auto first = t;
+  len = 0;
+  for(;;) {
+    auto p = strchr(first, ',');
+    if(p == nullptr) {
+      break;
+    }
+    list[len++] = first;
+    *p = '\0';
+    first = p + 1;
+  }
+  list[len++] = first;
+  mod_config()->npn_list = list;
+  mod_config()->npn_list_len = len;
+  return 0;
 }
 
 int parse_config(const char *opt, const char *optarg)
@@ -385,6 +411,8 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->write_rate = strtoul(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_WRITE_BURST)) {
     mod_config()->write_burst = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_NPN_LIST)) {
+    parse_config_npn_list(optarg);
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {

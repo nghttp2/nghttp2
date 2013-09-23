@@ -80,7 +80,7 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 } // namespace
 
 namespace {
-size_t set_npn_prefs(unsigned char *out, const char **protos, size_t len)
+size_t set_npn_prefs(unsigned char *out, char **protos, size_t len)
 {
   unsigned char *ptr = out;
   size_t listlen = 0;
@@ -220,14 +220,8 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
 
-
-  const char *protos[] = { NGHTTP2_PROTO_VERSION_ID,
-#ifdef HAVE_SPDYLAY
-                           "spdy/3", "spdy/2",
-#endif // HAVE_SPDYLAY
-                           "http/1.1" };
-  auto proto_list_len = set_npn_prefs(proto_list, protos,
-                                      sizeof(protos)/sizeof(protos[0]));
+  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,
+                                      get_config()->npn_list_len);
   next_proto.first = proto_list;
   next_proto.second = proto_list_len;
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
