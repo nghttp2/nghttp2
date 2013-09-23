@@ -50,18 +50,16 @@ const size_t SHRPX_HTTPS_MAX_HEADER_LENGTH = 64*1024;
 
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
   : handler_(handler),
-    htp_(new http_parser()),
     current_header_length_(0),
     downstream_(0),
     ioctrl_(handler->get_bev())
 {
-  http_parser_init(htp_, HTTP_REQUEST);
-  htp_->data = this;
+  http_parser_init(&htp_, HTTP_REQUEST);
+  htp_.data = this;
 }
 
 HttpsUpstream::~HttpsUpstream()
 {
-  delete htp_;
   delete downstream_;
 }
 
@@ -244,7 +242,7 @@ namespace {
 http_parser_settings htp_hooks = {
   htp_msg_begin, /*http_cb      on_message_begin;*/
   htp_uricb, /*http_data_cb on_url;*/
-  0, /*http_cb on_status_complete */
+  nullptr, /*http_cb on_status_complete */
   htp_hdr_keycb, /*http_data_cb on_header_field;*/
   htp_hdr_valcb, /*http_data_cb on_header_value;*/
   htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
@@ -285,7 +283,7 @@ int HttpsUpstream::on_read()
     return 0;
   }
 
-  size_t nread = http_parser_execute(htp_, &htp_hooks,
+  size_t nread = http_parser_execute(&htp_, &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      inputlen);
   evbuffer_drain(input, nread);
@@ -295,7 +293,7 @@ int HttpsUpstream::on_read()
   // execution
   downstream = get_downstream();
   auto handler = get_client_handler();
-  http_errno htperr = HTTP_PARSER_ERRNO(htp_);
+  http_errno htperr = HTTP_PARSER_ERRNO(&htp_);
   if(htperr == HPE_PAUSED) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       handler->set_should_close_after_write(true);
@@ -387,7 +385,7 @@ int HttpsUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
   if(ioctrl_.resume_read(reason)) {
     // Process remaining data in input buffer here because these bytes
     // are not notified by readcb until new data arrive.
-    http_parser_pause(htp_, 0);
+    http_parser_pause(&htp_, 0);
     return on_read();
   } else {
     return 0;

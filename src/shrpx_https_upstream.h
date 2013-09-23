@@ -66,7 +66,7 @@ public:
   void reset_current_header_length();
 private:
   ClientHandler *handler_;
-  http_parser *htp_;
+  http_parser htp_;
   size_t current_header_length_;
   Downstream *downstream_;
   IOControl ioctrl_;
