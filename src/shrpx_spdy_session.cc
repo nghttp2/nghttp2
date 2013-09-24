@@ -73,7 +73,7 @@ int SpdySession::disconnect()
     SSLOG(INFO, this) << "Disconnecting";
   }
   nghttp2_session_del(session_);
-  session_ = 0;
+  session_ = nullptr;
 
   if(ssl_) {
     SSL_shutdown(ssl_);
@@ -82,7 +82,7 @@ int SpdySession::disconnect()
     int fd = bufferevent_getfd(bev_);
     bufferevent_disable(bev_, EV_READ | EV_WRITE);
     bufferevent_free(bev_);
-    bev_ = 0;
+    bev_ = nullptr;
     if(fd != -1) {
       if(fd_ == -1) {
         fd_ = fd;
@@ -96,7 +96,7 @@ int SpdySession::disconnect()
   if(ssl_) {
     SSL_free(ssl_);
   }
-  ssl_ = 0;
+  ssl_ = nullptr;
 
   if(fd_ != -1) {
     if(LOG_ENABLED(INFO)) {
@@ -125,15 +125,13 @@ int SpdySession::disconnect()
   for(size_t i = 0; i < vec.size(); ++i) {
     handlers.insert(vec[i]->get_client_handler());
   }
-  for(std::set<ClientHandler*>::iterator i = handlers.begin(),
-        eoi = handlers.end(); i != eoi; ++i) {
-    delete *i;
+  for(auto& h : handlers) {
+    delete h;
   }
 
   dconns_.clear();
-  for(std::set<StreamData*>::iterator i = streams_.begin(),
-        eoi = streams_.end(); i != eoi; ++i) {
-    delete *i;
+  for(auto& s : streams_) {
+    delete s;
   }
   streams_.clear();
   return 0;
@@ -143,7 +141,7 @@ namespace {
 void notify_readcb(bufferevent *bev, void *arg)
 {
   int rv;
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(arg);
+  auto spdy = reinterpret_cast<SpdySession*>(arg);
   spdy->clear_notify();
   switch(spdy->get_state()) {
   case SpdySession::DISCONNECTED:
@@ -166,7 +164,7 @@ void notify_readcb(bufferevent *bev, void *arg)
 namespace {
 void notify_eventcb(bufferevent *bev, short events, void *arg)
 {
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(arg);
+  auto spdy = reinterpret_cast<SpdySession*>(arg);
   // TODO should DIE()?
   if(events & BEV_EVENT_EOF) {
     SSLOG(ERROR, spdy) << "Notification connection lost: EOF";
@@ -208,7 +206,7 @@ int SpdySession::init_notification()
     return -1;
   }
   bufferevent_enable(rdbev_, EV_READ);
-  bufferevent_setcb(rdbev_, notify_readcb, 0, notify_eventcb, this);
+  bufferevent_setcb(rdbev_, notify_readcb, nullptr, notify_eventcb, this);
   return 0;
 }
 
@@ -216,7 +214,7 @@ namespace {
 void readcb(bufferevent *bev, void *ptr)
 {
   int rv;
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
+  auto spdy = reinterpret_cast<SpdySession*>(ptr);
   rv = spdy->on_read();
   if(rv != 0) {
     spdy->disconnect();
@@ -231,7 +229,7 @@ void writecb(bufferevent *bev, void *ptr)
     return;
   }
   int rv;
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
+  auto spdy = reinterpret_cast<SpdySession*>(ptr);
   rv = spdy->on_write();
   if(rv != 0) {
     spdy->disconnect();
@@ -242,7 +240,7 @@ void writecb(bufferevent *bev, void *ptr)
 namespace {
 void eventcb(bufferevent *bev, short events, void *ptr)
 {
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
+  auto spdy = reinterpret_cast<SpdySession*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "Connection established";
@@ -282,7 +280,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 namespace {
 void proxy_readcb(bufferevent *bev, void *ptr)
 {
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
+  auto spdy = reinterpret_cast<SpdySession*>(ptr);
   if(spdy->on_read_proxy() == 0) {
     switch(spdy->get_state()) {
     case SpdySession::PROXY_CONNECTED:
@@ -307,7 +305,7 @@ void proxy_readcb(bufferevent *bev, void *ptr)
 namespace {
 void proxy_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(ptr);
+  auto spdy = reinterpret_cast<SpdySession*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "Connected to the proxy";
@@ -371,7 +369,7 @@ int SpdySession::initiate_connection()
 
     // No need to set writecb because we write the request when
     // connected at once.
-    bufferevent_setcb(bev_, proxy_readcb, 0, proxy_eventcb, this);
+    bufferevent_setcb(bev_, proxy_readcb, nullptr, proxy_eventcb, this);
     rv = bufferevent_socket_connect
       (bev_,
        const_cast<sockaddr*>(&get_config()->downstream_http_proxy_addr.sa),
@@ -381,7 +379,7 @@ int SpdySession::initiate_connection()
                          << get_config()->downstream_http_proxy_host << ":"
                          << get_config()->downstream_http_proxy_port;
       bufferevent_free(bev_);
-      bev_ = 0;
+      bev_ = nullptr;
       return SHRPX_ERR_NETWORK;
     }
     proxy_htp_ = util::make_unique<http_parser>();
@@ -402,7 +400,7 @@ int SpdySession::initiate_connection()
         return -1;
       }
 
-      const char *sni_name = 0;
+      const char *sni_name = nullptr;
       if ( get_config()->backend_tls_sni_name ) {
         sni_name = get_config()->backend_tls_sni_name;
       }
@@ -447,7 +445,7 @@ int SpdySession::initiate_connection()
     }
     if(rv != 0) {
       bufferevent_free(bev_);
-      bev_ = 0;
+      bev_ = nullptr;
       return SHRPX_ERR_NETWORK;
     }
 
@@ -472,14 +470,13 @@ void SpdySession::unwrap_free_bev()
   assert(fd_ == -1);
   fd_ = bufferevent_getfd(bev_);
   bufferevent_free(bev_);
-  bev_ = 0;
+  bev_ = nullptr;
 }
 
 namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
-  SpdySession *spdy;
-  spdy = reinterpret_cast<SpdySession*>(htp->data);
+  auto spdy = reinterpret_cast<SpdySession*>(htp->data);
   // We just check status code here
   if(htp->status_code == 200) {
     if(LOG_ENABLED(INFO)) {
@@ -496,28 +493,28 @@ int htp_hdrs_completecb(http_parser *htp)
 
 namespace {
 http_parser_settings htp_hooks = {
-  0, /*http_cb      on_message_begin;*/
-  0, /*http_data_cb on_url;*/
-  0, /*http_cb on_status_complete */
-  0, /*http_data_cb on_header_field;*/
-  0, /*http_data_cb on_header_value;*/
+  nullptr, /*http_cb      on_message_begin;*/
+  nullptr, /*http_data_cb on_url;*/
+  nullptr, /*http_cb on_status_complete */
+  nullptr, /*http_data_cb on_header_field;*/
+  nullptr, /*http_data_cb on_header_value;*/
   htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
-  0, /*http_data_cb on_body;*/
-  0  /*http_cb      on_message_complete;*/
+  nullptr, /*http_data_cb on_body;*/
+  nullptr  /*http_cb      on_message_complete;*/
 };
 } // namespace
 
 int SpdySession::on_read_proxy()
 {
-  evbuffer *input = bufferevent_get_input(bev_);
-  unsigned char *mem = evbuffer_pullup(input, -1);
+  auto input = bufferevent_get_input(bev_);
+  auto mem = evbuffer_pullup(input, -1);
 
   size_t nread = http_parser_execute(proxy_htp_.get(), &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      evbuffer_get_length(input));
 
   evbuffer_drain(input, nread);
-  http_errno htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
+  auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
   if(htperr == HPE_OK) {
     return 0;
   } else {
@@ -550,15 +547,14 @@ int SpdySession::submit_request(SpdyDownstreamConnection *dconn,
                                 const nghttp2_data_provider *data_prd)
 {
   assert(state_ == CONNECTED);
-  StreamData *sd = new StreamData();
-  int rv = nghttp2_submit_request(session_, pri, nv, data_prd, sd);
+  auto sd = util::make_unique<StreamData>();
+  int rv = nghttp2_submit_request(session_, pri, nv, data_prd, sd.get());
   if(rv == 0) {
-    dconn->attach_stream_data(sd);
-    streams_.insert(sd);
+    dconn->attach_stream_data(sd.get());
+    streams_.insert(sd.release());
   } else {
     SSLOG(FATAL, this) << "nghttp2_submit_request() failed: "
                        << nghttp2_strerror(rv);
-    delete sd;
     return -1;
   }
   return 0;
@@ -583,8 +579,7 @@ int SpdySession::submit_window_update(SpdyDownstreamConnection *dconn,
 {
   assert(state_ == CONNECTED);
   int rv;
-  int32_t stream_id;
-  stream_id = dconn->get_downstream()->get_downstream_stream_id();
+  auto stream_id = dconn->get_downstream()->get_downstream_stream_id();
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
                                     stream_id, amount);
   if(rv < NGHTTP2_ERR_FATAL) {
@@ -608,7 +603,7 @@ bool SpdySession::get_flow_control() const
 int SpdySession::resume_data(SpdyDownstreamConnection *dconn)
 {
   assert(state_ == CONNECTED);
-  Downstream *downstream = dconn->get_downstream();
+  auto downstream = dconn->get_downstream();
   int rv = nghttp2_session_resume_data(session_,
                                        downstream->get_downstream_stream_id());
   switch(rv) {
@@ -625,7 +620,7 @@ int SpdySession::resume_data(SpdyDownstreamConnection *dconn)
 namespace {
 void call_downstream_readcb(SpdySession *spdy, Downstream *downstream)
 {
-  Upstream *upstream = downstream->get_upstream();
+  auto upstream = downstream->get_upstream();
   if(upstream) {
     (upstream->get_downstream_readcb())
       (spdy->get_bev(),
@@ -640,10 +635,9 @@ ssize_t send_callback(nghttp2_session *session,
                       void *user_data)
 {
   int rv;
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
-
-  bufferevent *bev = spdy->get_bev();
-  evbuffer *output = bufferevent_get_output(bev);
+  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto bev = spdy->get_bev();
+  auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
   if(evbuffer_get_length(output) > Downstream::OUTPUT_UPPER_THRES) {
     return NGHTTP2_ERR_WOULDBLOCK;
@@ -663,10 +657,9 @@ namespace {
 ssize_t recv_callback(nghttp2_session *session,
                       uint8_t *data, size_t len, int flags, void *user_data)
 {
-  SpdySession *spdy = reinterpret_cast<SpdySession*>(user_data);
-
-  bufferevent *bev = spdy->get_bev();
-  evbuffer *input = bufferevent_get_input(bev);
+  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto bev = spdy->get_bev();
+  auto input = bufferevent_get_input(bev);
   int nread = evbuffer_remove(input, data, len);
   if(nread == -1) {
     return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -1038,7 +1031,7 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
 int SpdySession::on_connect()
 {
   int rv;
-  const unsigned char *next_proto = 0;
+  const unsigned char *next_proto = nullptr;
   unsigned int next_proto_len;
   if(ssl_ctx_) {
     SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
@@ -1164,7 +1157,7 @@ int SpdySession::send()
 
 void SpdySession::clear_notify()
 {
-  evbuffer *input = bufferevent_get_output(rdbev_);
+  auto input = bufferevent_get_output(rdbev_);
   evbuffer_drain(input, evbuffer_get_length(input));
   notified_ = false;
 }
