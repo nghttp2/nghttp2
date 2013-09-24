@@ -46,8 +46,8 @@ timeval max_timeout = { 86400, 0 };
 HttpDownstreamConnection::HttpDownstreamConnection
 (ClientHandler *client_handler)
   : DownstreamConnection(client_handler),
-    bev_(0),
-    ioctrl_(0)
+    bev_(nullptr),
+    ioctrl_(nullptr)
 {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection()
@@ -59,7 +59,7 @@ HttpDownstreamConnection::~HttpDownstreamConnection()
   // Downstream and DownstreamConnection may be deleted
   // asynchronously.
   if(downstream_) {
-    downstream_->set_downstream_connection(0);
+    downstream_->set_downstream_connection(nullptr);
   }
 }
 
@@ -68,9 +68,9 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
-  Upstream *upstream = downstream->get_upstream();
+  auto upstream = downstream->get_upstream();
   if(!bev_) {
-    event_base *evbase = client_handler_->get_evbase();
+    auto evbase = client_handler_->get_evbase();
     bev_ = bufferevent_socket_new
       (evbase, -1,
        BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
@@ -190,7 +190,7 @@ int HttpDownstreamConnection::push_request_headers()
     DCLOG(INFO, this) << "HTTP request headers. stream_id="
                       << downstream_->get_stream_id() << "\n" << hdrp;
   }
-  evbuffer *output = bufferevent_get_output(bev_);
+  auto output = bufferevent_get_output(bev_);
   int rv;
   rv = evbuffer_add(output, hdrs.c_str(), hdrs.size());
   if(rv != 0) {
@@ -216,7 +216,7 @@ int HttpDownstreamConnection::push_upload_data_chunk
   ssize_t res = 0;
   int rv;
   int chunked = downstream_->get_chunked_request();
-  evbuffer *output = bufferevent_get_output(bev_);
+  auto output = bufferevent_get_output(bev_);
   if(chunked) {
     char chunk_size_hex[16];
     rv = snprintf(chunk_size_hex, sizeof(chunk_size_hex), "%X\r\n",
@@ -248,7 +248,7 @@ int HttpDownstreamConnection::push_upload_data_chunk
 int HttpDownstreamConnection::end_upload_data()
 {
   if(downstream_->get_chunked_request()) {
-    evbuffer *output = bufferevent_get_output(bev_);
+    auto output = bufferevent_get_output(bev_);
     if(evbuffer_add(output, "0\r\n\r\n", 5) != 0) {
       DCLOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
@@ -261,8 +261,7 @@ namespace {
 // Gets called when DownstreamConnection is pooled in ClientHandler.
 void idle_eventcb(bufferevent *bev, short events, void *arg)
 {
-  HttpDownstreamConnection *dconn;
-  dconn = reinterpret_cast<HttpDownstreamConnection*>(arg);
+  auto dconn = reinterpret_cast<HttpDownstreamConnection*>(arg);
   if(events & BEV_EVENT_CONNECTED) {
     // Downstream was detached before connection established?
     // This may be safe to be left.
@@ -284,7 +283,7 @@ void idle_eventcb(bufferevent *bev, short events, void *arg)
       DCLOG(INFO, dconn) << "Idle connection network error";
     }
   }
-  ClientHandler *client_handler = dconn->get_client_handler();
+  auto client_handler = dconn->get_client_handler();
   client_handler->remove_downstream_connection(dconn);
   delete dconn;
 }
@@ -330,15 +329,14 @@ void HttpDownstreamConnection::force_resume_read()
 
 bool HttpDownstreamConnection::get_output_buffer_full()
 {
-  evbuffer *output = bufferevent_get_output(bev_);
+  auto output = bufferevent_get_output(bev_);
   return evbuffer_get_length(output) >= Downstream::OUTPUT_UPPER_THRES;
 }
 
 namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
+  auto downstream = reinterpret_cast<Downstream*>(htp->data);
   downstream->set_response_http_status(htp->status_code);
   downstream->set_response_major(htp->http_major);
   downstream->set_response_minor(htp->http_minor);
@@ -382,8 +380,7 @@ int htp_hdrs_completecb(http_parser *htp)
 namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
 {
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
+  auto downstream = reinterpret_cast<Downstream*>(htp->data);
   if(downstream->get_response_header_key_prev()) {
     downstream->append_last_response_header_key(data, len);
   } else {
@@ -396,8 +393,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
 namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
 {
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
+  auto downstream = reinterpret_cast<Downstream*>(htp->data);
   if(downstream->get_response_header_key_prev()) {
     downstream->set_last_response_header_value(std::string(data, len));
   } else {
@@ -410,9 +406,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
 namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len)
 {
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
-
+  auto downstream = reinterpret_cast<Downstream*>(htp->data);
   return downstream->get_upstream()->on_downstream_body
     (downstream, reinterpret_cast<const uint8_t*>(data), len);
 }
@@ -421,9 +415,7 @@ int htp_bodycb(http_parser *htp, const char *data, size_t len)
 namespace {
 int htp_msg_completecb(http_parser *htp)
 {
-  Downstream *downstream;
-  downstream = reinterpret_cast<Downstream*>(htp->data);
-
+  auto downstream = reinterpret_cast<Downstream*>(htp->data);
   downstream->set_response_state(Downstream::MSG_COMPLETE);
   return downstream->get_upstream()->on_downstream_body_complete(downstream);
 }
@@ -431,9 +423,9 @@ int htp_msg_completecb(http_parser *htp)
 
 namespace {
 http_parser_settings htp_hooks = {
-  0, /*http_cb      on_message_begin;*/
-  0, /*http_data_cb on_url;*/
-  0, /*http_cb on_status_complete */
+  nullptr, /*http_cb      on_message_begin;*/
+  nullptr, /*http_data_cb on_url;*/
+  nullptr, /*http_cb on_status_complete */
   htp_hdr_keycb, /*http_data_cb on_header_field;*/
   htp_hdr_valcb, /*http_data_cb on_header_value;*/
   htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
@@ -444,9 +436,9 @@ http_parser_settings htp_hooks = {
 
 int HttpDownstreamConnection::on_read()
 {
-  evbuffer *input = bufferevent_get_input(bev_);
+  auto input = bufferevent_get_input(bev_);
   size_t inputlen = evbuffer_get_length(input);
-  unsigned char *mem = evbuffer_pullup(input, -1);
+  auto mem = evbuffer_pullup(input, -1);
   if(downstream_->get_upgraded()) {
     // For upgraded connection, just pass data to the upstream.
     int rv;
@@ -460,7 +452,7 @@ int HttpDownstreamConnection::on_read()
                                      inputlen);
 
   evbuffer_drain(input, nread);
-  http_errno htperr = HTTP_PARSER_ERRNO(&response_htp_);
+  auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
   if(htperr == HPE_OK) {
     return 0;
   } else {
