@@ -275,9 +275,8 @@ int event_loop()
     save_pid();
   }
 
-  evconnlistener *evlistener6, *evlistener4;
-  evlistener6 = create_evlistener(listener_handler, AF_INET6);
-  evlistener4 = create_evlistener(listener_handler, AF_INET);
+  auto evlistener6 = create_evlistener(listener_handler, AF_INET6);
+  auto evlistener4 = create_evlistener(listener_handler, AF_INET);
   if(!evlistener6 && !evlistener4) {
     LOG(FATAL) << "Failed to listen on address "
                << get_config()->host << ", port " << get_config()->port;
