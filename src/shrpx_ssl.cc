@@ -312,7 +312,7 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
       if(!ssl) {
         LOG(ERROR) << "SSL_new() failed: "
                    << ERR_error_string(ERR_get_error(), nullptr);
-        return 0;
+        return nullptr;
       }
       bev = bufferevent_openssl_socket_new
         (evbase, fd, ssl,
@@ -320,10 +320,17 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
     } else {
       bev = bufferevent_socket_new(evbase, fd, BEV_OPT_DEFER_CALLBACKS);
     }
+    if(!bev) {
+      LOG(ERROR) << "bufferevent_socket_new() failed";
+      if(ssl) {
+        SSL_free(ssl);
+      }
+      return nullptr;
+    }
     return new ClientHandler(bev, fd, ssl, host);
   } else {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
-    return 0;
+    return nullptr;
   }
 }
 

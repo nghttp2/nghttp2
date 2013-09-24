@@ -74,6 +74,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
     bev_ = bufferevent_socket_new
       (evbase, -1,
        BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+    if(!bev_) {
+      DCLOG(INFO, this) << "bufferevent_socket_new() failed";
+      return SHRPX_ERR_NETWORK;
+    }
     int rv = bufferevent_socket_connect
       (bev_,
        // TODO maybe not thread-safe?
@@ -81,7 +85,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
        get_config()->downstream_addrlen);
     if(rv != 0) {
       bufferevent_free(bev_);
-      bev_ = 0;
+      bev_ = nullptr;
       return SHRPX_ERR_NETWORK;
     }
     if(LOG_ENABLED(INFO)) {

@@ -82,6 +82,13 @@ void ListenHandler::create_worker_thread(size_t num)
     }
     auto bev = bufferevent_socket_new(evbase_, info->sv[0],
                                       BEV_OPT_DEFER_CALLBACKS);
+    if(!bev) {
+      LLOG(ERROR, this) << "bufferevent_socket_new() failed";
+      for(size_t j = 0; j < 2; ++j) {
+        close(info->sv[j]);
+      }
+      continue;
+    }
     info->bev = bev;
     if(LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << num_worker_;
@@ -99,6 +106,10 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
   if(num_worker_ == 0) {
     auto client = ssl::accept_connection(evbase_, sv_ssl_ctx_,
                                          fd, addr, addrlen);
+    if(!client) {
+      LLOG(ERROR, this) << "ClientHandler creation failed";
+      return 0;
+    }
     client->set_spdy_session(spdy_);
   } else {
     size_t idx = worker_round_robin_cnt_ % num_worker_;

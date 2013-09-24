@@ -59,7 +59,7 @@ namespace {
 void ssl_acceptcb(evconnlistener *listener, int fd,
                   sockaddr *addr, int addrlen, void *arg)
 {
-  ListenHandler *handler = reinterpret_cast<ListenHandler*>(arg);
+  auto handler = reinterpret_cast<ListenHandler*>(arg);
   handler->accept_connection(fd, addr, addrlen);
 }
 } // namespace
@@ -200,7 +200,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
     return 0;
   }
 
-  evconnlistener *evlistener = evconnlistener_new
+  auto evlistener = evconnlistener_new
     (handler->get_evbase(),
      ssl_acceptcb,
      handler,
@@ -249,6 +249,10 @@ namespace {
 int event_loop()
 {
   auto evbase = event_base_new();
+  if(!evbase) {
+    LOG(FATAL) << "event_base_new() failed";
+    exit(EXIT_FAILURE);
+  }
   SSL_CTX *sv_ssl_ctx, *cl_ssl_ctx;
 
   if(get_config()->client_mode) {

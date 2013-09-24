@@ -363,6 +363,10 @@ int SpdySession::initiate_connection()
                         << get_config()->downstream_http_proxy_port;
     }
     bev_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_DEFER_CALLBACKS);
+    if(!bev_) {
+      SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
+      return SHRPX_ERR_NETWORK;
+    }
     bufferevent_enable(bev_, EV_READ);
     bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
                              &get_config()->downstream_write_timeout);
@@ -419,6 +423,11 @@ int SpdySession::initiate_connection()
       bev_ = bufferevent_openssl_socket_new(evbase_, fd_, ssl_,
                                             BUFFEREVENT_SSL_CONNECTING,
                                             BEV_OPT_DEFER_CALLBACKS);
+      if(!bev_) {
+        SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
+        SSL_free(ssl_);
+        return SHRPX_ERR_NETWORK;
+      }
       rv = bufferevent_socket_connect
         (bev_,
          // TODO maybe not thread-safe?
@@ -427,6 +436,10 @@ int SpdySession::initiate_connection()
     } else if(state_ == DISCONNECTED) {
       // Without TLS and proxy.
       bev_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_DEFER_CALLBACKS);
+      if(!bev_) {
+        SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
+        return SHRPX_ERR_NETWORK;
+      }
       rv = bufferevent_socket_connect
         (bev_,
          const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
@@ -435,6 +448,10 @@ int SpdySession::initiate_connection()
       assert(state_ == PROXY_CONNECTED);
       // Without TLS but with proxy.
       bev_ = bufferevent_socket_new(evbase_, fd_, BEV_OPT_DEFER_CALLBACKS);
+      if(!bev_) {
+        SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
+        return SHRPX_ERR_NETWORK;
+      }
       // Connection already established.
       eventcb(bev_, BEV_EVENT_CONNECTED, this);
       // eventcb() has no return value. Check state_ to whether it was

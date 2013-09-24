@@ -26,6 +26,7 @@
 
 #include <unistd.h>
 #include <sys/socket.h>
+
 #include <memory>
 
 #include <event.h>
@@ -75,20 +76,32 @@ void eventcb(bufferevent *bev, short events, void *arg)
 
 void Worker::run()
 {
-  auto evbase = event_base_new();
-  auto bev = bufferevent_socket_new(evbase, fd_, BEV_OPT_DEFER_CALLBACKS);
-  SpdySession *spdy = nullptr;
+  auto evbase = std::unique_ptr<event_base, decltype(&event_base_free)>
+    (event_base_new(), event_base_free);
+  if(!evbase) {
+    LOG(ERROR) << "event_base_new() failed";
+    return;
+  }
+  auto bev = std::unique_ptr<bufferevent, decltype(&bufferevent_free)>
+    (bufferevent_socket_new(evbase.get(), fd_, BEV_OPT_DEFER_CALLBACKS),
+     bufferevent_free);
+  if(!bev) {
+    LOG(ERROR) << "bufferevent_socket_new() failed";
+    return;
+  }
+  std::unique_ptr<SpdySession> spdy;
   if(get_config()->downstream_proto == PROTO_SPDY) {
-    spdy = new SpdySession(evbase, cl_ssl_ctx_);
+    spdy = util::make_unique<SpdySession>(evbase.get(), cl_ssl_ctx_);
     if(spdy->init_notification() == -1) {
       DIE();
     }
   }
-  auto receiver = util::make_unique<ThreadEventReceiver>(sv_ssl_ctx_, spdy);
-  bufferevent_enable(bev, EV_READ);
-  bufferevent_setcb(bev, readcb, 0, eventcb, receiver.get());
+  auto receiver = util::make_unique<ThreadEventReceiver>(sv_ssl_ctx_,
+                                                         spdy.get());
+  bufferevent_enable(bev.get(), EV_READ);
+  bufferevent_setcb(bev.get(), readcb, nullptr, eventcb, receiver.get());
 
-  event_base_loop(evbase, 0);
+  event_base_loop(evbase.get(), 0);
 }
 
 void start_threaded_worker(WorkerInfo *info)
