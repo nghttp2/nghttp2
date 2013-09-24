@@ -261,7 +261,7 @@ int on_frame_recv_callback
       reqpath += "://";
       reqpath += http2::value_to_str(host);
       reqpath += http2::value_to_str(path);
-      downstream->set_request_path(reqpath);
+      downstream->set_request_path(std::move(reqpath));
     } else {
       downstream->set_request_path(http2::value_to_str(path));
     }

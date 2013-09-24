@@ -190,18 +190,17 @@ Headers::const_iterator Downstream::get_norm_request_header
   return get_norm_header(request_headers_, name);
 }
 
-void Downstream::add_request_header(const std::string& name,
-                                    const std::string& value)
+void Downstream::add_request_header(std::string name, std::string value)
 {
   request_header_key_prev_ = true;
-  request_headers_.push_back(std::make_pair(name, value));
+  request_headers_.emplace_back(std::move(name), std::move(value));
 }
 
-void Downstream::set_last_request_header_value(const std::string& value)
+void Downstream::set_last_request_header_value(std::string value)
 {
   request_header_key_prev_ = false;
   Headers::value_type &item = request_headers_.back();
-  item.second = value;
+  item.second = std::move(value);
   check_transfer_encoding_chunked(&chunked_request_, item);
   check_expect_100_continue(&request_expect_100_continue_, item);
 }
@@ -214,20 +213,20 @@ bool Downstream::get_request_header_key_prev() const
 void Downstream::append_last_request_header_key(const char *data, size_t len)
 {
   assert(request_header_key_prev_);
-  Headers::value_type &item = request_headers_.back();
+  auto& item = request_headers_.back();
   item.first.append(data, len);
 }
 
 void Downstream::append_last_request_header_value(const char *data, size_t len)
 {
   assert(!request_header_key_prev_);
-  Headers::value_type &item = request_headers_.back();
+  auto& item = request_headers_.back();
   item.second.append(data, len);
 }
 
-void Downstream::set_request_method(const std::string& method)
+void Downstream::set_request_method(std::string method)
 {
-  request_method_ = method;
+  request_method_ = std::move(method);
 }
 
 const std::string& Downstream::get_request_method() const
@@ -235,9 +234,9 @@ const std::string& Downstream::get_request_method() const
   return request_method_;
 }
 
-void Downstream::set_request_path(const std::string& path)
+void Downstream::set_request_path(std::string path)
 {
-  request_path_ = path;
+  request_path_ = std::move(path);
 }
 
 void Downstream::append_request_path(const char *data, size_t len)
@@ -372,20 +371,19 @@ Headers::const_iterator Downstream::get_norm_response_header
   return get_norm_header(response_headers_, name);
 }
 
-void Downstream::add_response_header(const std::string& name,
-                                     const std::string& value)
+void Downstream::add_response_header(std::string name, std::string value)
 {
   response_header_key_prev_ = true;
-  response_headers_.push_back(std::make_pair(name, value));
+  response_headers_.emplace_back(std::move(name), std::move(value));
   check_transfer_encoding_chunked(&chunked_response_,
                                   response_headers_.back());
 }
 
-void Downstream::set_last_response_header_value(const std::string& value)
+void Downstream::set_last_response_header_value(std::string value)
 {
   response_header_key_prev_ = false;
-  Headers::value_type &item = response_headers_.back();
-  item.second = value;
+  auto& item = response_headers_.back();
+  item.second = std::move(value);
   check_transfer_encoding_chunked(&chunked_response_, item);
 }
 
@@ -397,7 +395,7 @@ bool Downstream::get_response_header_key_prev() const
 void Downstream::append_last_response_header_key(const char *data, size_t len)
 {
   assert(response_header_key_prev_);
-  Headers::value_type &item = response_headers_.back();
+  auto& item = response_headers_.back();
   item.first.append(data, len);
 }
 
@@ -405,7 +403,7 @@ void Downstream::append_last_response_header_value(const char *data,
                                                    size_t len)
 {
   assert(!response_header_key_prev_);
-  Headers::value_type &item = response_headers_.back();
+  auto& item = response_headers_.back();
   item.second.append(data, len);
 }
 

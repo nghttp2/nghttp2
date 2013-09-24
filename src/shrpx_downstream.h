@@ -93,16 +93,16 @@ public:
   // called after calling normalize_request_headers().
   Headers::const_iterator get_norm_request_header
   (const std::string& name) const;
-  void add_request_header(const std::string& name, const std::string& value);
-  void set_last_request_header_value(const std::string& value);
+  void add_request_header(std::string name, std::string value);
+  void set_last_request_header_value(std::string value);
 
   bool get_request_header_key_prev() const;
   void append_last_request_header_key(const char *data, size_t len);
   void append_last_request_header_value(const char *data, size_t len);
 
-  void set_request_method(const std::string& method);
+  void set_request_method(std::string method);
   const std::string& get_request_method() const;
-  void set_request_path(const std::string& path);
+  void set_request_path(std::string path);
   void append_request_path(const char *data, size_t len);
   const std::string& get_request_path() const;
   void set_request_major(int major);
@@ -138,8 +138,8 @@ public:
   // called after calling normalize_response_headers().
   Headers::const_iterator get_norm_response_header
   (const std::string& name) const;
-  void add_response_header(const std::string& name, const std::string& value);
-  void set_last_response_header_value(const std::string& value);
+  void add_response_header(std::string name, std::string value);
+  void set_last_response_header_value(std::string value);
 
   bool get_response_header_key_prev() const;
   void append_last_response_header_key(const char *data, size_t len);

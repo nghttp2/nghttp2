@@ -204,7 +204,7 @@ void on_ctrl_recv_callback
       reqpath += "://";
       reqpath += host;
       reqpath += path;
-      downstream->set_request_path(reqpath);
+      downstream->set_request_path(std::move(reqpath));
     } else {
       downstream->set_request_path(path);
     }
