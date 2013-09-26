@@ -161,7 +161,7 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
                         << nghttp2_strerror(rv);
     return -1;
   }
-  pre_upstream_ = http;
+  pre_upstream_.reset(http);
   http->pop_downstream();
   downstream->reset_upstream(this);
   add_downstream(downstream);
@@ -405,8 +405,7 @@ nghttp2_error_code infer_upstream_rst_stream_error_code
 
 Http2Upstream::Http2Upstream(ClientHandler *handler)
   : handler_(handler),
-    session_(nullptr),
-    pre_upstream_(nullptr)
+    session_(nullptr)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
@@ -457,7 +456,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 Http2Upstream::~Http2Upstream()
 {
   nghttp2_session_del(session_);
-  delete pre_upstream_;
 }
 
 int Http2Upstream::on_read()

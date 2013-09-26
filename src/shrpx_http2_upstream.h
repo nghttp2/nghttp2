@@ -27,6 +27,8 @@
 
 #include "shrpx.h"
 
+#include <memory>
+
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_upstream.h"
@@ -79,7 +81,7 @@ private:
   bool flow_control_;
   int32_t initial_window_size_;
   DownstreamQueue downstream_queue_;
-  HttpsUpstream *pre_upstream_;
+  std::unique_ptr<HttpsUpstream> pre_upstream_;
 };
 
 } // namespace shrpx
