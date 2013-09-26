@@ -436,6 +436,8 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http)
   if(upstream->upgrade_upstream(http) != 0) {
     return -1;
   }
+  // http pointer is now owned by upstream.
+  upstream_.release();
   upstream_ = std::move(upstream);
   set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb, upstream_eventcb);
   static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
