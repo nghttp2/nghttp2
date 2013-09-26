@@ -48,12 +48,15 @@ HtmlParser::~HtmlParser()
 namespace {
 const char* get_attr(const xmlChar **attrs, const char *name)
 {
+  if(attrs == nullptr) {
+    return nullptr;
+  }
   for(; *attrs; attrs += 2) {
     if(util::strieq(reinterpret_cast<const char*>(attrs[0]), name)) {
       return reinterpret_cast<const char*>(attrs[1]);
     }
   }
-  return 0;
+  return nullptr;
 }
 } // namespace
 
