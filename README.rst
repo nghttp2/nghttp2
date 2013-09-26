@@ -202,7 +202,7 @@ The HTTP Upgrade is performed like this::
     [  0.000] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
-    Upgrade: HTTP/2.0
+    Upgrade: HTTP-draft-06/2.0
 
 
     [  0.000] HTTP Upgrade success
