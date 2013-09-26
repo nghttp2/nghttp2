@@ -442,7 +442,7 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http)
   set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb, upstream_eventcb);
   static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
     "Connection: Upgrade\r\n"
-    "Upgrade: HTTP/2.0\r\n"
+    "Upgrade: " NGHTTP2_PROTO_VERSION_ID "\r\n"
     "\r\n";
   rv = bufferevent_write(bev_, res, sizeof(res) - 1);
   if(rv != 0) {
