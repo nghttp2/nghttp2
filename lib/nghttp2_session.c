@@ -122,8 +122,39 @@ static int nghttp2_outbound_item_compar(const void *lhsx, const void *rhsx)
   }
 }
 
-static void nghttp2_inbound_frame_reset(nghttp2_inbound_frame *iframe)
+static void nghttp2_inbound_frame_reset(nghttp2_session *session)
 {
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  if(iframe->error_code == NGHTTP2_ERR_PAUSE) {
+    switch(iframe->frame.hd.type) {
+    case NGHTTP2_HEADERS:
+      nghttp2_frame_headers_free(&iframe->frame.headers);
+      nghttp2_hd_end_headers(&session->hd_inflater);
+      break;
+    case NGHTTP2_PRIORITY:
+      nghttp2_frame_priority_free(&iframe->frame.priority);
+      break;
+    case NGHTTP2_RST_STREAM:
+      nghttp2_frame_rst_stream_free(&iframe->frame.rst_stream);
+      break;
+    case NGHTTP2_SETTINGS:
+      nghttp2_frame_settings_free(&iframe->frame.settings);
+      break;
+    case NGHTTP2_PUSH_PROMISE:
+      nghttp2_frame_push_promise_free(&iframe->frame.push_promise);
+      nghttp2_hd_end_headers(&session->hd_inflater);
+      break;
+    case NGHTTP2_PING:
+      nghttp2_frame_ping_free(&iframe->frame.ping);
+      break;
+    case NGHTTP2_GOAWAY:
+      nghttp2_frame_goaway_free(&iframe->frame.goaway);
+      break;
+    case NGHTTP2_WINDOW_UPDATE:
+      nghttp2_frame_window_update_free(&iframe->frame.window_update);
+      break;
+    }
+  }
   iframe->state = NGHTTP2_RECV_HEAD;
   iframe->payloadlen = iframe->buflen = iframe->off = 0;
   iframe->headbufoff = 0;
@@ -214,7 +245,7 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   }
   (*session_ptr)->iframe.bufmax = NGHTTP2_INITIAL_INBOUND_FRAMEBUF_LENGTH;
 
-  nghttp2_inbound_frame_reset(&(*session_ptr)->iframe);
+  nghttp2_inbound_frame_reset(*session_ptr);
 
   return 0;
 
@@ -302,6 +333,7 @@ void nghttp2_session_del(nghttp2_session *session)
   if(session == NULL) {
     return;
   }
+  nghttp2_inbound_frame_reset(session);
   nghttp2_map_each_free(&session->streams, nghttp2_free_streams, NULL);
   nghttp2_session_ob_pq_free(&session->ob_pq);
   nghttp2_session_ob_pq_free(&session->ob_ss_pq);
@@ -1627,6 +1659,9 @@ static int nghttp2_session_call_on_frame_received
   if(session->callbacks.on_frame_recv_callback) {
     rv = session->callbacks.on_frame_recv_callback(session, frame,
                                                    session->user_data);
+    if(rv == NGHTTP2_ERR_PAUSE) {
+      return rv;
+    }
     if(rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -1771,14 +1806,12 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   if(!stream) {
     return NGHTTP2_ERR_NOMEM;
   }
-  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-  }
   rv = nghttp2_session_call_on_frame_received(session, frame);
   if(rv != 0) {
     return rv;
   }
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
   }
   /* Here we assume that stream is not shutdown in NGHTTP2_SHUT_WR */
@@ -1855,7 +1888,20 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
   }
   nghttp2_stream_promise_fulfilled(stream);
   ++session->num_incoming_streams;
-  return nghttp2_session_call_on_frame_received(session, frame);
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(rv != 0) {
+    return rv;
+  }
+  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    /* This is the last frame of this stream, so disallow further
+       receptions. */
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+    rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+    if(rv != 0 && nghttp2_is_fatal(rv)) {
+      return rv;
+    }
+  }
+  return 0;
 }
 
 int nghttp2_session_on_headers_received(nghttp2_session *session,
@@ -2412,17 +2458,15 @@ static int session_on_connection_window_update_received
       (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
   }
   session->remote_window_size += frame->window_update.window_size_increment;
-  rv = nghttp2_session_call_on_frame_received(session, frame);
-  if(rv != 0) {
-    return rv;
-  }
   /* To queue the DATA deferred by connection-level flow-control, we
      have to check all streams. Bad. */
   if(session->remote_window_size > 0) {
-    return nghttp2_session_push_back_deferred_data(session);
-  } else {
-    return 0;
+    rv = nghttp2_session_push_back_deferred_data(session);
+    if(rv != 0) {
+      return 0;
+    }
   }
+  return nghttp2_session_call_on_frame_received(session, frame);
 }
 
 static int session_on_stream_window_update_received
@@ -2484,17 +2528,18 @@ static int get_error_code_from_lib_error_code(int lib_error_code)
   }
 }
 
-/* For errors, this function only returns FATAL error. */
+/* For errors, this function returns NGHTTP2_ERR_PAUSE, or FATAL
+   ones. */
 static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
 {
   int r = 0;
   uint16_t type;
-  nghttp2_frame frame;
+  nghttp2_frame *frame = &session->iframe.frame;
   type = session->iframe.headbuf[2];
   switch(type) {
   case NGHTTP2_HEADERS:
     if(session->iframe.error_code == 0) {
-      r = nghttp2_frame_unpack_headers(&frame.headers,
+      r = nghttp2_frame_unpack_headers(&frame->headers,
                                        session->iframe.headbuf,
                                        sizeof(session->iframe.headbuf),
                                        session->iframe.buf,
@@ -2502,7 +2547,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
                                        &session->hd_inflater);
     } else if(session->iframe.error_code == NGHTTP2_ERR_FRAME_TOO_LARGE) {
       r = nghttp2_frame_unpack_headers_without_nv
-        (&frame.headers,
+        (&frame->headers,
          session->iframe.headbuf, sizeof(session->iframe.headbuf),
          session->iframe.buf, session->iframe.buflen);
       if(r == 0) {
@@ -2513,74 +2558,82 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
     }
     if(r == 0) {
       nghttp2_stream *stream;
-      stream = nghttp2_session_get_stream(session, frame.hd.stream_id);
+      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
       if(stream) {
-        if(nghttp2_session_is_my_stream_id(session, frame.hd.stream_id)) {
+        if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
           if(stream->state == NGHTTP2_STREAM_OPENING) {
-            frame.headers.cat = NGHTTP2_HCAT_RESPONSE;
+            frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
             r = nghttp2_session_on_response_headers_received
-              (session, &frame, stream);
+              (session, frame, stream);
           } else {
-            frame.headers.cat = NGHTTP2_HCAT_HEADERS;
-            r = nghttp2_session_on_headers_received(session, &frame, stream);
+            frame->headers.cat = NGHTTP2_HCAT_HEADERS;
+            r = nghttp2_session_on_headers_received(session, frame, stream);
           }
         } else if(!session->server &&
                   stream->state == NGHTTP2_STREAM_RESERVED) {
-          frame.headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
+          frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
           r = nghttp2_session_on_push_response_headers_received
-            (session, &frame, stream);
+            (session, frame, stream);
         } else {
-          frame.headers.cat = NGHTTP2_HCAT_HEADERS;
-          r = nghttp2_session_on_headers_received(session, &frame, stream);
+          frame->headers.cat = NGHTTP2_HCAT_HEADERS;
+          r = nghttp2_session_on_headers_received(session, frame, stream);
         }
       } else {
-        frame.headers.cat = NGHTTP2_HCAT_REQUEST;
-        r = nghttp2_session_on_request_headers_received(session, &frame);
+        frame->headers.cat = NGHTTP2_HCAT_REQUEST;
+        r = nghttp2_session_on_request_headers_received(session, frame);
       }
-      nghttp2_frame_headers_free(&frame.headers);
-      nghttp2_hd_end_headers(&session->hd_inflater);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_headers_free(&frame->headers);
+        nghttp2_hd_end_headers(&session->hd_inflater);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error
         (session, type, r, get_error_code_from_lib_error_code(r));
     }
     break;
   case NGHTTP2_PRIORITY:
-    r = nghttp2_frame_unpack_priority(&frame.priority,
+    r = nghttp2_frame_unpack_priority(&frame->priority,
                                       session->iframe.headbuf,
                                       sizeof(session->iframe.headbuf),
                                       session->iframe.buf,
                                       session->iframe.buflen);
     if(r == 0) {
-      r = nghttp2_session_on_priority_received(session, &frame);
-      nghttp2_frame_priority_free(&frame.priority);
+      r = nghttp2_session_on_priority_received(session, frame);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_priority_free(&frame->priority);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error(session, type, r,
                                              NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_RST_STREAM:
-    r = nghttp2_frame_unpack_rst_stream(&frame.rst_stream,
+    r = nghttp2_frame_unpack_rst_stream(&frame->rst_stream,
                                         session->iframe.headbuf,
                                         sizeof(session->iframe.headbuf),
                                         session->iframe.buf,
                                         session->iframe.buflen);
     if(r == 0) {
-      r = nghttp2_session_on_rst_stream_received(session, &frame);
-      nghttp2_frame_rst_stream_free(&frame.rst_stream);
+      r = nghttp2_session_on_rst_stream_received(session, frame);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_rst_stream_free(&frame->rst_stream);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error(session, type, r,
                                              NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_SETTINGS:
-    r = nghttp2_frame_unpack_settings(&frame.settings,
+    r = nghttp2_frame_unpack_settings(&frame->settings,
                                       session->iframe.headbuf,
                                       sizeof(session->iframe.headbuf),
                                       session->iframe.buf,
                                       session->iframe.buflen);
     if(r == 0) {
-      r = nghttp2_session_on_settings_received(session, &frame);
-      nghttp2_frame_settings_free(&frame.settings);
+      r = nghttp2_session_on_settings_received(session, frame);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_settings_free(&frame->settings);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error(session, type, r,
                                              NGHTTP2_PROTOCOL_ERROR);
@@ -2588,7 +2641,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
     break;
   case NGHTTP2_PUSH_PROMISE:
     if(session->iframe.error_code == 0) {
-      r = nghttp2_frame_unpack_push_promise(&frame.push_promise,
+      r = nghttp2_frame_unpack_push_promise(&frame->push_promise,
                                             session->iframe.headbuf,
                                             sizeof(session->iframe.headbuf),
                                             session->iframe.buf,
@@ -2598,51 +2651,59 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       r = session->iframe.error_code;
     }
     if(r == 0) {
-      r = nghttp2_session_on_push_promise_received(session, &frame);
-      nghttp2_frame_push_promise_free(&frame.push_promise);
-      nghttp2_hd_end_headers(&session->hd_inflater);
+      r = nghttp2_session_on_push_promise_received(session, frame);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_push_promise_free(&frame->push_promise);
+        nghttp2_hd_end_headers(&session->hd_inflater);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error
         (session, type, r, get_error_code_from_lib_error_code(r));
     }
     break;
   case NGHTTP2_PING:
-    r = nghttp2_frame_unpack_ping(&frame.ping,
+    r = nghttp2_frame_unpack_ping(&frame->ping,
                                   session->iframe.headbuf,
                                   sizeof(session->iframe.headbuf),
                                   session->iframe.buf,
                                   session->iframe.buflen);
     if(r == 0) {
-      r = nghttp2_session_on_ping_received(session, &frame);
-      nghttp2_frame_ping_free(&frame.ping);
+      r = nghttp2_session_on_ping_received(session, frame);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_ping_free(&frame->ping);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error(session, type, r,
                                              NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_GOAWAY:
-    r = nghttp2_frame_unpack_goaway(&frame.goaway,
+    r = nghttp2_frame_unpack_goaway(&frame->goaway,
                                     session->iframe.headbuf,
                                     sizeof(session->iframe.headbuf),
                                     session->iframe.buf,
                                     session->iframe.buflen);
     if(r == 0) {
-      r = nghttp2_session_on_goaway_received(session, &frame);
-      nghttp2_frame_goaway_free(&frame.goaway);
+      r = nghttp2_session_on_goaway_received(session, frame);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_goaway_free(&frame->goaway);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error(session, type, r,
                                              NGHTTP2_PROTOCOL_ERROR);
     }
     break;
   case NGHTTP2_WINDOW_UPDATE:
-    r = nghttp2_frame_unpack_window_update(&frame.window_update,
+    r = nghttp2_frame_unpack_window_update(&frame->window_update,
                                            session->iframe.headbuf,
                                            sizeof(session->iframe.headbuf),
                                            session->iframe.buf,
                                            session->iframe.buflen);
     if(r == 0) {
-      r = nghttp2_session_on_window_update_received(session, &frame);
-      nghttp2_frame_window_update_free(&frame.window_update);
+      r = nghttp2_session_on_window_update_received(session, frame);
+      if(r != NGHTTP2_ERR_PAUSE) {
+        nghttp2_frame_window_update_free(&frame->window_update);
+      }
     } else if(nghttp2_is_non_fatal(r)) {
       r = nghttp2_session_handle_parse_error(session, type, r,
                                              NGHTTP2_PROTOCOL_ERROR);
@@ -2662,7 +2723,10 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
       }
     }
   }
-  if(nghttp2_is_fatal(r)) {
+  if(r == NGHTTP2_ERR_PAUSE) {
+    session->iframe.error_code = NGHTTP2_ERR_PAUSE;
+    return r;
+  } else if(nghttp2_is_fatal(r)) {
     return r;
   } else {
     return 0;
@@ -2884,6 +2948,73 @@ static int nghttp2_session_check_data_recv_allowed(nghttp2_session *session,
   return 0;
 }
 
+int nghttp2_session_continue(nghttp2_session *session)
+{
+  nghttp2_frame *frame = &session->iframe.frame;
+  nghttp2_stream *stream;
+  int rv = 0;
+  if(session->iframe.error_code != NGHTTP2_ERR_PAUSE) {
+    return 0;
+  }
+  switch(frame->hd.type) {
+  case NGHTTP2_DATA:
+    /* To call on_data_recv_callback */
+    return nghttp2_session_mem_recv(session, NULL, 0);
+  case NGHTTP2_HEADERS:
+    switch(frame->headers.cat) {
+    case NGHTTP2_HCAT_REQUEST:
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
+        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+      }
+      break;
+    case NGHTTP2_HCAT_RESPONSE:
+    case NGHTTP2_HCAT_PUSH_RESPONSE:
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+        /* This is the last frame of this stream, so disallow
+           further receptions. */
+        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+        rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+        if(!nghttp2_is_fatal(rv)) {
+          rv = 0;
+        }
+      }
+      break;
+    case NGHTTP2_HCAT_HEADERS:
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+          rv = nghttp2_session_call_on_request_recv(session,
+                                                   frame->hd.stream_id);
+          if(rv != 0) {
+            break;
+          }
+        }
+        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+        rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+        if(!nghttp2_is_fatal(rv)) {
+          rv = 0;
+        }
+      }
+      break;
+    }
+    break;
+  case NGHTTP2_RST_STREAM:
+    rv = nghttp2_session_close_stream(session, frame->hd.stream_id,
+                                      frame->rst_stream.error_code);
+    if(!nghttp2_is_fatal(rv)) {
+      rv = 0;
+    }
+    break;
+  default:
+    break;
+  }
+  nghttp2_inbound_frame_reset(session);
+  return rv;
+}
+
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                  const uint8_t *in, size_t inlen)
 {
@@ -2968,27 +3099,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
         }
       } else {
-        /* For data frame, We don't buffer data. Instead, just pass
-           received data to callback function. */
-        data_stream_id = nghttp2_get_uint32(&session->iframe.headbuf[4]) &
-          NGHTTP2_STREAM_ID_MASK;
-        data_flags = session->iframe.headbuf[3];
-        if(session->iframe.state != NGHTTP2_RECV_PAYLOAD_IGN) {
-          if(session->callbacks.on_data_chunk_recv_callback) {
-            if(session->callbacks.on_data_chunk_recv_callback
-               (session,
-                data_flags,
-                data_stream_id,
-                inmark,
-                readlen,
-                session->user_data) != 0) {
-              return NGHTTP2_ERR_CALLBACK_FAILURE;
-            }
-          }
-        }
-        /* TODO We need on_ignored_data_chunk_recv_callback, for
-           ingored DATA frame, so that the application can calculate
-           connection-level window size. */
       }
       session->iframe.off += readlen;
       inmark += readlen;
@@ -3020,6 +3130,35 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
             }
           }
         }
+        /* For data frame, We don't buffer data. Instead, just pass
+           received data to callback function. */
+        data_stream_id = nghttp2_get_uint32(&session->iframe.headbuf[4]) &
+          NGHTTP2_STREAM_ID_MASK;
+        data_flags = session->iframe.headbuf[3];
+        if(session->iframe.state != NGHTTP2_RECV_PAYLOAD_IGN) {
+          if(session->callbacks.on_data_chunk_recv_callback) {
+            r = session->callbacks.on_data_chunk_recv_callback
+              (session,
+               data_flags,
+               data_stream_id,
+               inmark - readlen,
+               readlen,
+               session->user_data);
+            if(r == NGHTTP2_ERR_PAUSE) {
+              /* Set type to NGHTTP2_DATA, so that we can see what was
+                 paused in nghttp2_session_continue() */
+              session->iframe.error_code = NGHTTP2_ERR_PAUSE;
+              session->iframe.frame.hd.type = NGHTTP2_DATA;
+              return inmark - in;
+            }
+            if(r != 0) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
+          }
+        }
+        /* TODO We need on_ignored_data_chunk_recv_callback, for
+           ingored DATA frame, so that the application can calculate
+           connection-level window size. */
       }
       if(session->iframe.payloadlen == session->iframe.off) {
         if(session->iframe.error_code != NGHTTP2_ERR_FRAME_TOO_LARGE) {
@@ -3030,13 +3169,16 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           } else {
             r = nghttp2_session_process_data_frame(session);
           }
+          if(r == NGHTTP2_ERR_PAUSE) {
+            return inmark - in;
+          }
           if(r < 0) {
             /* FATAL */
             assert(r < NGHTTP2_ERR_FATAL);
             return r;
           }
         }
-        nghttp2_inbound_frame_reset(&session->iframe);
+        nghttp2_inbound_frame_reset(session);
       }
     }
   }

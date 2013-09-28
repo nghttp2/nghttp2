@@ -67,6 +67,7 @@ typedef struct {
   size_t block_count;
   int data_chunk_recv_cb_called;
   int data_recv_cb_called;
+  const nghttp2_frame *frame;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -135,6 +136,16 @@ static int on_frame_recv_callback(nghttp2_session *session,
   return 0;
 }
 
+static int pause_on_frame_recv_callback(nghttp2_session *session,
+                                  const nghttp2_frame *frame,
+                                  void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->frame_recv_cb_called;
+  ud->frame = frame;
+  return NGHTTP2_ERR_PAUSE;
+}
+
 static int on_invalid_frame_recv_callback(nghttp2_session *session,
                                           const nghttp2_frame *frame,
                                           nghttp2_error_code error_code,
@@ -175,6 +186,16 @@ static int on_data_chunk_recv_callback(nghttp2_session *session,
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->data_chunk_recv_cb_called;
   return 0;
+}
+
+static int pause_on_data_chunk_recv_callback(nghttp2_session *session,
+                                             uint8_t flags, int32_t stream_id,
+                                             const uint8_t *data, size_t len,
+                                             void *user_data)
+{
+  my_user_data *ud = (my_user_data*)user_data;
+  ++ud->data_chunk_recv_cb_called;
+  return NGHTTP2_ERR_PAUSE;
 }
 
 static int on_data_recv_callback(nghttp2_session *session,
@@ -628,6 +649,117 @@ void test_nghttp2_session_recv_data(void)
   CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(item)->goaway.error_code);
 
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_continue(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data user_data;
+  const char *nv1[] = {
+    "url", "/", NULL
+  };
+  const char *nv2[] = {
+    "user-agent", "nghttp2/1.0.0", NULL
+  };
+  uint8_t *framedata = NULL;
+  size_t framedatalen = 0;
+  ssize_t framelen1, framelen2;
+  ssize_t rv;
+  uint8_t buffer[4096];
+  size_t buflen;
+  nghttp2_frame frame;
+  nghttp2_nv *nva;
+  ssize_t nvlen;
+  const nghttp2_frame *recv_frame;
+  nghttp2_nv nvcheck;
+  nghttp2_frame_hd data_hd;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_recv_callback = pause_on_frame_recv_callback;
+  callbacks.on_data_chunk_recv_callback = pause_on_data_chunk_recv_callback;
+  callbacks.on_data_recv_callback = on_data_recv_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &user_data);
+
+  /* Make 2 HEADERS frames */
+  nvlen = nghttp2_nv_array_from_cstr(&nva, nv1);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
+                             1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
+  framelen1 = nghttp2_frame_pack_headers(&framedata, &framedatalen,
+                                        &frame.headers,
+                                        &session->hd_deflater);
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_hd_end_headers(&session->hd_deflater);
+  memcpy(buffer, framedata, framelen1);
+
+  nvlen = nghttp2_nv_array_from_cstr(&nva, nv2);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
+                             3, NGHTTP2_PRI_DEFAULT, nva, nvlen);
+  framelen2 = nghttp2_frame_pack_headers(&framedata, &framedatalen,
+                                         &frame.headers,
+                                         &session->hd_deflater);
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_hd_end_headers(&session->hd_deflater);
+  memcpy(buffer + framelen1, framedata, framelen2);
+  buflen = framelen1 + framelen2;
+
+  /* Receive 1st HEADERS and pause */
+  rv = nghttp2_session_mem_recv(session, buffer, buflen);
+  CU_ASSERT(rv == framelen1);
+
+  recv_frame = user_data.frame;
+  CU_ASSERT(NGHTTP2_HEADERS == recv_frame->hd.type);
+  CU_ASSERT(framelen1 - NGHTTP2_FRAME_HEAD_LENGTH == recv_frame->hd.length);
+  CU_ASSERT(1 == recv_frame->headers.nvlen);
+  nvcheck.name = (uint8_t*)nv1[0];
+  nvcheck.namelen = strlen(nv1[0]);
+  nvcheck.value = (uint8_t*)nv1[1];
+  nvcheck.valuelen = strlen(nv1[1]);
+  CU_ASSERT(nghttp2_nv_equal(&nvcheck, recv_frame->headers.nva));
+
+  rv = nghttp2_session_continue(session);
+  CU_ASSERT(rv == 0);
+
+  /* Receive 2nd HEADERS and pause */
+  rv = nghttp2_session_mem_recv(session, buffer + framelen1,
+                                buflen - framelen1);
+  CU_ASSERT(rv == framelen2);
+
+  recv_frame = user_data.frame;
+  CU_ASSERT(NGHTTP2_HEADERS == recv_frame->hd.type);
+  CU_ASSERT(framelen2 - NGHTTP2_FRAME_HEAD_LENGTH == recv_frame->hd.length);
+  CU_ASSERT(1 == recv_frame->headers.nvlen);
+  nvcheck.name = (uint8_t*)nv2[0];
+  nvcheck.namelen = strlen(nv2[0]);
+  nvcheck.value = (uint8_t*)nv2[1];
+  nvcheck.valuelen = strlen(nv2[1]);
+  CU_ASSERT(nghttp2_nv_equal(&nvcheck, recv_frame->headers.nva));
+
+  rv = nghttp2_session_continue(session);
+  CU_ASSERT(rv == 0);
+
+  /* Receive DATA */
+  data_hd.length = 16;
+  data_hd.type = NGHTTP2_DATA;
+  data_hd.flags = NGHTTP2_FLAG_NONE;
+  data_hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(buffer, &data_hd);
+  /* Intentionally specify larger buffer size to see pause is kicked
+     in. */
+  rv = nghttp2_session_mem_recv(session, buffer, sizeof(buffer));
+  CU_ASSERT(16 + NGHTTP2_FRAME_HEAD_LENGTH == rv);
+
+  user_data.data_recv_cb_called = 0;
+  rv = nghttp2_session_continue(session);
+  CU_ASSERT(rv == 0);
+  CU_ASSERT(1 == user_data.data_recv_cb_called);
+
+  free(framedata);
   nghttp2_session_del(session);
 }
 

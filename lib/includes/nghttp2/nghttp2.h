@@ -259,6 +259,10 @@ typedef enum {
    */
   NGHTTP2_ERR_INSUFF_BUFSIZE = -525,
   /**
+   * Callback was paused by the application
+   */
+  NGHTTP2_ERR_PAUSE = -526,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -827,8 +831,19 @@ typedef ssize_t (*nghttp2_recv_callback)
  * argument passed in to the call to `nghttp2_session_client_new()` or
  * `nghttp2_session_server_new()`.
  *
+ * If the application uses `nghttp2_session_mem_recv()`, it can return
+ * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
+ * return without processing further input bytes.  The |frame|
+ * parameter is retained until `nghttp2_session_continue()` is
+ * called. The application must retain the input bytes which was used
+ * to produce the |frame| parameter, because it may refer to the
+ * memory region included in the input bytes. The application which
+ * returns :enum:`NGHTTP2_ERR_PAUSE` must call
+ * `nghttp2_session_continue()` before `nghttp2_session_mem_recv()`.
+ *
  * The implementation of this function must return 0 if it
- * succeeds. If nonzero is returned, it is treated as fatal error and
+ * succeeds. It may return :enum:`NGHTTP2_ERR_PAUSE`. If the other
+ * nonzero value is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
@@ -867,6 +882,16 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)
  * know all data frames are received. The |user_data| pointer is the
  * third argument passed in to the call to
  * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
+ *
+ * If the application uses `nghttp2_session_mem_recv()`, it can return
+ * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
+ * return without processing further input bytes.  The |frame|
+ * parameter is retained until `nghttp2_session_continue()` is
+ * called. The application must retain the input bytes which was used
+ * to produce the |frame| parameter, because it may refer to the
+ * memory region included in the input bytes. The application which
+ * returns :enum:`NGHTTP2_ERR_PAUSE` must call
+ * `nghttp2_session_continue()` before `nghttp2_session_mem_recv()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -1391,9 +1416,34 @@ int nghttp2_session_recv(nghttp2_session *session);
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
+ *     The callback function failed.
  */
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                  const uint8_t *in, size_t inlen);
+
+/**
+ * @function
+ *
+ * Perform post-processing after `nghttp2_session_mem_recv()` was
+ * paused by :enum:`NGHTTP2_ERR_PAUSE` from
+ * :member:`nghttp2_session_callbacks.on_frame_recv_callback` or
+ * :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`.
+ *
+ * If this function succeeds, the application can call
+ * `nghttp2_session_mem_recv()` again.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
+ *     The callback function failed.
+ *
+ */
+int nghttp2_session_continue(nghttp2_session *session);
 
 /**
  * @function

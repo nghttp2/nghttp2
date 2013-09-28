@@ -80,6 +80,7 @@ typedef enum {
 } nghttp2_inbound_state;
 
 typedef struct {
+  nghttp2_frame frame;
   nghttp2_inbound_state state;
   uint8_t headbuf[NGHTTP2_FRAME_HEAD_LENGTH];
   /* How many bytes are filled in headbuf */
