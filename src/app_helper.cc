@@ -68,6 +68,8 @@ const char* strstatus(nghttp2_error_code error_code)
     return "REFUSED_STREAM";
   case NGHTTP2_CANCEL:
     return "CANCEL";
+  case NGHTTP2_COMPRESSION_ERROR:
+    return "COMPRESSION_ERROR";
   default:
     return "UNKNOWN";
   }
