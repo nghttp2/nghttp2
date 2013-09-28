@@ -1409,7 +1409,13 @@ int nghttp2_session_recv(nghttp2_session *session);
  * `nghttp2_session_recv()`.
  *
  * In the current implementation, this function always tries to
- * processes all input data unless an error occurs.
+ * processes all input data unless either an error occurs or
+ * :enum:`NGHTTP2_ERR_PAUSE` is returned from
+ * :member:`nghttp2_session_callbacks.on_frame_recv_callback` or
+ * :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`.
+ * If :enum:`NGHTTP2_ERR_PAUSE` is used, the return value includes the
+ * number of bytes which was used to produce the data or frame for the
+ * callback.
  *
  * This function returns the number of processed bytes, or one of the
  * following negative error codes:
@@ -1429,6 +1435,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
  * paused by :enum:`NGHTTP2_ERR_PAUSE` from
  * :member:`nghttp2_session_callbacks.on_frame_recv_callback` or
  * :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`.
+ *
+ * This function frees resources associated with paused frames.  It
+ * may also call additional callbacks, such as
+ * :member:`nghttp2_session_callbacks.on_stream_close_callback`.
  *
  * If this function succeeds, the application can call
  * `nghttp2_session_mem_recv()` again.
