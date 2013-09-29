@@ -248,16 +248,17 @@ struct Request {
   const nghttp2_data_provider *data_prd;
   int64_t data_length;
   int64_t data_offset;
+  int32_t pri;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
   RequestStat stat;
   std::string status;
   Request(const std::string& uri, const http_parser_url &u,
           const nghttp2_data_provider *data_prd, int64_t data_length,
-          int level = 0)
+          int32_t pri, int level = 0)
     : uri(uri), u(u),
       inflater(nullptr), html_parser(nullptr), data_prd(data_prd),
-      data_length(data_length), data_offset(0),
+      data_length(data_length), data_offset(0), pri(pri),
       level(level)
   {}
 
@@ -794,6 +795,7 @@ struct HttpClient {
   bool add_request(const std::string& uri,
                    const nghttp2_data_provider *data_prd,
                    int64_t data_length,
+                   int32_t pri,
                    int level = 0)
   {
     http_parser_url u;
@@ -807,7 +809,7 @@ struct HttpClient {
         path_cache.insert(uri);
       }
       reqvec.push_back(util::make_unique<Request>(uri, u, data_prd,
-                                                  data_length, level));
+                                                  data_length, pri, level));
       return true;
     }
   }
@@ -930,9 +932,20 @@ void submit_request(HttpClient *client,
   }
   nv[pos] = nullptr;
 
-  int r = nghttp2_submit_request(client->session, config.pri,
+  int r = nghttp2_submit_request(client->session, req->pri,
                                  nv.get(), req->data_prd, req);
   assert(r == 0);
+}
+} // namespace
+
+namespace {
+int32_t adjust_pri(int32_t base_pri, int32_t rel_pri)
+{
+  if((int32_t)NGHTTP2_PRI_LOWEST - rel_pri < base_pri) {
+    return NGHTTP2_PRI_LOWEST;
+  } else {
+    return base_pri + rel_pri;
+  }
 }
 } // namespace
 
@@ -945,16 +958,16 @@ void update_html_parser(HttpClient *client, Request *req,
   }
   req->update_html_parser(data, len, fin);
 
-  for(size_t i = 0; i < req->html_parser->get_links().size(); ++i) {
-    const auto& raw_uri = req->html_parser->get_links()[i];
-    auto uri = strip_fragment(raw_uri.c_str());
+  for(auto& p : req->html_parser->get_links()) {
+    auto uri = strip_fragment(p.first.c_str());
     http_parser_url u;
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
        porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
+      int32_t pri = adjust_pri(req->pri, p.second);
       // No POST data for assets
-      if ( client->add_request(uri, nullptr, 0, req->level+1) ) {
+      if ( client->add_request(uri, nullptr, 0, pri, req->level+1) ) {
         submit_request(client, config.headers,
                        client->reqvec.back().get());
       }
@@ -1344,7 +1357,7 @@ int communicate(const std::string& scheme, const std::string& host,
     for(auto req : requests) {
       for(int i = 0; i < config.multiply; ++i) {
         client.add_request(std::get<0>(req), std::get<1>(req),
-                            std::get<2>(req));
+                           std::get<2>(req), config.pri);
       }
     }
     client.update_hostport();

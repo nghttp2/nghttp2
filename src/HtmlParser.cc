@@ -61,6 +61,20 @@ const char* get_attr(const xmlChar **attrs, const char *name)
 } // namespace
 
 namespace {
+void add_link(ParserData *parser_data, const char *uri, RequestPriority pri)
+{
+  auto u = xmlBuildURI(reinterpret_cast<const xmlChar*>(uri),
+                       reinterpret_cast<const xmlChar*>
+                       (parser_data->base_uri.c_str()));
+  if(u) {
+    parser_data->links.push_back(std::make_pair(reinterpret_cast<char*>(u),
+                                                pri));
+    free(u);
+  }
+}
+} // namespace
+
+namespace {
 void start_element_func
 (void* user_data,
  const xmlChar *name,
@@ -70,29 +84,26 @@ void start_element_func
   if(util::strieq(reinterpret_cast<const char*>(name), "link")) {
     const char *rel_attr = get_attr(attrs, "rel");
     const char *href_attr = get_attr(attrs, "href");
-    if((util::strieq(rel_attr, "shortcut icon") ||
-        util::strieq(rel_attr, "stylesheet")) &&
-       href_attr) {
-      xmlChar *u = xmlBuildURI(reinterpret_cast<const xmlChar*>(href_attr),
-                               reinterpret_cast<const xmlChar*>
-                               (parser_data->base_uri.c_str()));
-      if(u) {
-        parser_data->links.push_back(reinterpret_cast<char*>(u));
-        free(u);
-      }
+    if(!href_attr) {
+      return;
     }
-  } else if(util::strieq(reinterpret_cast<const char*>(name), "img") ||
-            util::strieq(reinterpret_cast<const char*>(name), "script")) {
+    if(util::strieq(rel_attr, "shortcut icon")) {
+      add_link(parser_data, href_attr, REQ_PRI_LOWEST);
+    } else if(util::strieq(rel_attr, "stylesheet")) {
+      add_link(parser_data, href_attr, REQ_PRI_MEDIUM);
+    }
+  } else if(util::strieq(reinterpret_cast<const char*>(name), "img")) {
     const char *src_attr = get_attr(attrs, "src");
-    if(src_attr) {
-      xmlChar *u = xmlBuildURI(reinterpret_cast<const xmlChar*>(src_attr),
-                               reinterpret_cast<const xmlChar*>
-                               (parser_data->base_uri.c_str()));
-      if(u) {
-        parser_data->links.push_back(reinterpret_cast<char*>(u));
-        free(u);
-      }
+    if(!src_attr) {
+      return;
     }
+    add_link(parser_data, src_attr, REQ_PRI_LOWEST);
+  } else if(util::strieq(reinterpret_cast<const char*>(name), "script")) {
+    const char *src_attr = get_attr(attrs, "src");
+    if(!src_attr) {
+      return;
+    }
+    add_link(parser_data, src_attr, REQ_PRI_MEDIUM);
   }
 }
 } // namespace
@@ -168,7 +179,8 @@ int HtmlParser::parse_chunk_internal(const char *chunk, size_t size,
   }
 }
 
-const std::vector<std::string>& HtmlParser::get_links() const
+const std::vector<std::pair<std::string, RequestPriority>>&
+HtmlParser::get_links() const
 {
   return parser_data_.links;
 }

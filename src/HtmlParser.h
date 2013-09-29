@@ -36,9 +36,16 @@
 
 namespace nghttp2 {
 
+enum RequestPriority {
+  REQ_PRI_HIGH = 0,
+  REQ_PRI_MEDIUM = 1,
+  REQ_PRI_LOW = 2,
+  REQ_PRI_LOWEST = 3
+};
+
 struct ParserData {
   std::string base_uri;
-  std::vector<std::string> links;
+  std::vector<std::pair<std::string, RequestPriority>> links;
   ParserData(const std::string& base_uri);
 };
 
@@ -47,7 +54,8 @@ public:
   HtmlParser(const std::string& base_uri);
   ~HtmlParser();
   int parse_chunk(const char *chunk, size_t size, int fin);
-  const std::vector<std::string>& get_links() const;
+  const std::vector<std::pair<std::string, RequestPriority>>&
+  get_links() const;
   void clear_links();
 private:
   int parse_chunk_internal(const char *chunk, size_t size, int fin);
