@@ -582,6 +582,12 @@ int SpdySession::submit_rst_stream(SpdyDownstreamConnection *dconn,
                                    nghttp2_error_code error_code)
 {
   assert(state_ == CONNECTED);
+  if(LOG_ENABLED(INFO)) {
+    SSLOG(INFO, this) << "RST_STREAM stream_id="
+                      << stream_id
+                      << " with error_code="
+                      << error_code;
+  }
   int rv = nghttp2_submit_rst_stream(session_, stream_id, error_code);
   if(rv != 0) {
     SSLOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "

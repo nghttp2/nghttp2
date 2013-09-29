@@ -710,7 +710,9 @@ int Http2Upstream::rst_stream(Downstream *downstream,
 {
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "RST_STREAM stream_id="
-                     << downstream->get_stream_id();
+                     << downstream->get_stream_id()
+                     << " with error_code="
+                     << error_code;
   }
   int rv;
   rv = nghttp2_submit_rst_stream(session_, downstream->get_stream_id(),
