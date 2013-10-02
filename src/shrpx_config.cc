@@ -102,7 +102,7 @@ const char SHRPX_OPT_WRITE_BURST[] = "write-burst";
 const char SHRPX_OPT_NPN_LIST[] = "npn-list";
 
 namespace {
-Config *config = 0;
+Config *config = nullptr;
 } // namespace
 
 const Config* get_config()
@@ -308,8 +308,8 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_PID_FILE)) {
     set_config_str(&mod_config()->pid_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_USER)) {
-    passwd *pwd = getpwnam(optarg);
-    if(pwd == 0) {
+    auto pwd = getpwnam(optarg);
+    if(!pwd) {
       LOG(ERROR) << "--user: failed to get uid from " << optarg
                  << ": " << strerror(errno);
       return -1;
@@ -319,7 +319,7 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_FILE)) {
     set_config_str(&mod_config()->private_key_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE)) {
-    std::string passwd = read_passwd_from_file(optarg);
+    auto passwd = read_passwd_from_file(optarg);
     if (passwd.empty()) {
       LOG(ERROR) << "Couldn't read key file's passwd from " << optarg;
       return -1;
@@ -335,7 +335,7 @@ int parse_config(const char *opt, const char *optarg)
     if(sp) {
       std::string keyfile(optarg, sp);
       // TODO Do we need private key for subcert?
-      SSL_CTX *ssl_ctx = ssl::create_ssl_context(keyfile.c_str(), sp+1);
+      auto ssl_ctx = ssl::create_ssl_context(keyfile.c_str(), sp+1);
       if(!get_config()->cert_tree) {
         mod_config()->cert_tree = ssl::cert_lookup_tree_new();
       }
@@ -444,7 +444,7 @@ int load_config(const char *filename)
       return -1;
     }
     line[i] = '\0';
-    const char *s = line.c_str();
+    auto s = line.c_str();
     if(parse_config(s, s+i+1) == -1) {
       return -1;
     }
