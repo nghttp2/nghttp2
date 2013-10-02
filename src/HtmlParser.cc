@@ -36,7 +36,7 @@ ParserData::ParserData(const std::string& base_uri)
 
 HtmlParser::HtmlParser(const std::string& base_uri)
   : base_uri_(base_uri),
-    parser_ctx_(0),
+    parser_ctx_(nullptr),
     parser_data_(base_uri)
 {}
 
@@ -80,10 +80,10 @@ void start_element_func
  const xmlChar *name,
  const xmlChar **attrs)
 {
-  ParserData *parser_data = reinterpret_cast<ParserData*>(user_data);
+  auto parser_data = reinterpret_cast<ParserData*>(user_data);
   if(util::strieq(reinterpret_cast<const char*>(name), "link")) {
-    const char *rel_attr = get_attr(attrs, "rel");
-    const char *href_attr = get_attr(attrs, "href");
+    auto rel_attr = get_attr(attrs, "rel");
+    auto href_attr = get_attr(attrs, "href");
     if(!href_attr) {
       return;
     }
@@ -93,13 +93,13 @@ void start_element_func
       add_link(parser_data, href_attr, REQ_PRI_MEDIUM);
     }
   } else if(util::strieq(reinterpret_cast<const char*>(name), "img")) {
-    const char *src_attr = get_attr(attrs, "src");
+    auto src_attr = get_attr(attrs, "src");
     if(!src_attr) {
       return;
     }
     add_link(parser_data, src_attr, REQ_PRI_LOWEST);
   } else if(util::strieq(reinterpret_cast<const char*>(name), "script")) {
-    const char *src_attr = get_attr(attrs, "src");
+    auto src_attr = get_attr(attrs, "src");
     if(!src_attr) {
       return;
     }
@@ -111,38 +111,38 @@ void start_element_func
 namespace {
 xmlSAXHandler saxHandler =
   {
-    0, // internalSubsetSAXFunc
-    0, // isStandaloneSAXFunc
-    0, // hasInternalSubsetSAXFunc
-    0, // hasExternalSubsetSAXFunc
-    0, // resolveEntitySAXFunc
-    0, // getEntitySAXFunc
-    0, // entityDeclSAXFunc
-    0, // notationDeclSAXFunc
-    0, // attributeDeclSAXFunc
-    0, // elementDeclSAXFunc
-    0, //   unparsedEntityDeclSAXFunc
-    0, //   setDocumentLocatorSAXFunc
-    0, //   startDocumentSAXFunc
-    0, //   endDocumentSAXFunc
-    &start_element_func, //   startElementSAXFunc
-    0, //   endElementSAXFunc
-    0, //   referenceSAXFunc
-    0, //   charactersSAXFunc
-    0, //   ignorableWhitespaceSAXFunc
-    0, //   processingInstructionSAXFunc
-    0, //   commentSAXFunc
-    0, //   warningSAXFunc
-    0, //   errorSAXFunc
-    0, //   fatalErrorSAXFunc
-    0, //   getParameterEntitySAXFunc
-    0, //   cdataBlockSAXFunc
-    0, //   externalSubsetSAXFunc
-    0, //   unsigned int        initialized
-    0, //   void *      _private
-    0, //   startElementNsSAX2Func
-    0, //   endElementNsSAX2Func
-    0, //   xmlStructuredErrorFunc
+    nullptr, // internalSubsetSAXFunc
+    nullptr, // isStandaloneSAXFunc
+    nullptr, // hasInternalSubsetSAXFunc
+    nullptr, // hasExternalSubsetSAXFunc
+    nullptr, // resolveEntitySAXFunc
+    nullptr, // getEntitySAXFunc
+    nullptr, // entityDeclSAXFunc
+    nullptr, // notationDeclSAXFunc
+    nullptr, // attributeDeclSAXFunc
+    nullptr, // elementDeclSAXFunc
+    nullptr, // unparsedEntityDeclSAXFunc
+    nullptr, // setDocumentLocatorSAXFunc
+    nullptr, // startDocumentSAXFunc
+    nullptr, // endDocumentSAXFunc
+    &start_element_func, // startElementSAXFunc
+    nullptr, // endElementSAXFunc
+    nullptr, // referenceSAXFunc
+    nullptr, // charactersSAXFunc
+    nullptr, // ignorableWhitespaceSAXFunc
+    nullptr, // processingInstructionSAXFunc
+    nullptr, // commentSAXFunc
+    nullptr, // warningSAXFunc
+    nullptr, // errorSAXFunc
+    nullptr, // fatalErrorSAXFunc
+    nullptr, // getParameterEntitySAXFunc
+    nullptr, // cdataBlockSAXFunc
+    nullptr, // externalSubsetSAXFunc
+    0,       // unsigned int initialized
+    nullptr, // void * _private
+    nullptr, // startElementNsSAX2Func
+    nullptr, // endElementNsSAX2Func
+    nullptr, // xmlStructuredErrorFunc
   };
 } // namespace
 
@@ -158,7 +158,7 @@ int HtmlParser::parse_chunk(const char *chunk, size_t size, int fin)
       return -1;
     } else {
       if(fin) {
-        return parse_chunk_internal(0, 0, fin);
+        return parse_chunk_internal(nullptr, 0, fin);
       } else {
         return 0;
       }

@@ -74,7 +74,6 @@ namespace nghttp2 {
 class HtmlParser {
 public:
   HtmlParser(const std::string& base_uri) {}
-  ~HtmlParser() {}
   int parse_chunk(const char *chunk, size_t size, int fin) { return 0; }
   const std::vector<std::string>& get_links() const { return links_; }
   void clear_links() {}
