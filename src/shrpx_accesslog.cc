@@ -64,7 +64,7 @@ void upstream_connect(const std::string& client_ip)
 }
 
 namespace {
-const char* status_code_color(int status_code)
+const char* status_code_color(unsigned int status_code)
 {
   if(status_code <= 199) {
     return "\033[1;36m";
@@ -82,13 +82,13 @@ const char* status_code_color(int status_code)
 }
 } // namespace
 
-void upstream_response(const std::string& client_ip, int status_code,
+void upstream_response(const std::string& client_ip, unsigned int status_code,
                        Downstream *downstream)
 {
   char datestr[64];
   get_datestr(datestr);
   if(downstream) {
-    fprintf(stderr, "%s%s [%s] %d%s %d \"%s %s HTTP/%u.%u\"\n",
+    fprintf(stderr, "%s%s [%s] %u%s %d \"%s %s HTTP/%u.%u\"\n",
             get_config()->tty ? status_code_color(status_code) : "",
             client_ip.c_str(), datestr,
             status_code,
@@ -100,7 +100,7 @@ void upstream_response(const std::string& client_ip, int status_code,
             downstream->get_request_minor());
     fflush(stderr);
     if(get_config()->use_syslog) {
-      syslog(LOG_INFO, "%s %d %d \"%s %s HTTP/%u.%u\"\n",
+      syslog(LOG_INFO, "%s %u %d \"%s %s HTTP/%u.%u\"\n",
             client_ip.c_str(),
             status_code,
             downstream->get_stream_id(),
@@ -110,13 +110,13 @@ void upstream_response(const std::string& client_ip, int status_code,
             downstream->get_request_minor());
     }
   } else {
-    fprintf(stderr, "%s%s [%s] %d%s 0 \"-\"\n",
+    fprintf(stderr, "%s%s [%s] %u%s 0 \"-\"\n",
             get_config()->tty ? status_code_color(status_code) : "",
             client_ip.c_str(), datestr,
             status_code,
             get_config()->tty ? "\033[0m" : "");
     if(get_config()->use_syslog) {
-      syslog(LOG_INFO, "%s %d 0 \"-\"\n", client_ip.c_str(), status_code);
+      syslog(LOG_INFO, "%s %u 0 \"-\"\n", client_ip.c_str(), status_code);
     }
     fflush(stderr);
   }

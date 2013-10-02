@@ -56,7 +56,7 @@ public:
 
   int rst_stream(Downstream *downstream, int status_code);
   int window_update(Downstream *downstream);
-  int error_reply(Downstream *downstream, int status_code);
+  int error_reply(Downstream *downstream, unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream);

@@ -35,11 +35,11 @@ namespace shrpx {
 
 namespace http {
 
-std::string create_error_html(int status_code)
+std::string create_error_html(unsigned int status_code)
 {
   std::string res;
   res.reserve(512);
-  const char *status = http2::get_status_string(status_code);
+  auto status = http2::get_status_string(status_code);
   res += "<html><head><title>";
   res += status;
   res += "</title></head><body><h1>";

@@ -34,7 +34,7 @@ namespace shrpx {
 class Downstream;
 
 void upstream_connect(const std::string& client_ip);
-void upstream_response(const std::string& client_ip, int status_code,
+void upstream_response(const std::string& client_ip, unsigned int status_code,
                        Downstream *downstream);
 
 } // namespace shrpx

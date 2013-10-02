@@ -38,7 +38,7 @@ namespace nghttp2 {
 
 namespace http2 {
 
-const char* get_status_string(int status_code);
+std::string get_status_string(unsigned int status_code);
 
 void capitalize(std::string& s, size_t offset);
 

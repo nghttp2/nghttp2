@@ -33,7 +33,7 @@ namespace shrpx {
 
 namespace http {
 
-std::string create_error_html(int status_code);
+std::string create_error_html(unsigned int status_code);
 
 std::string create_via_header_value(int major, int minor);
 

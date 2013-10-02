@@ -53,7 +53,7 @@ public:
   void delete_downstream();
   Downstream* get_downstream() const;
   Downstream* pop_downstream();
-  int error_reply(int status_code);
+  int error_reply(unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream);
