@@ -3099,6 +3099,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
         }
       } else {
+        data_stream_id = nghttp2_get_uint32(&session->iframe.headbuf[4]) &
+          NGHTTP2_STREAM_ID_MASK;
+        data_flags = session->iframe.headbuf[3];
       }
       session->iframe.off += readlen;
       inmark += readlen;
@@ -3132,9 +3135,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         }
         /* For data frame, We don't buffer data. Instead, just pass
            received data to callback function. */
-        data_stream_id = nghttp2_get_uint32(&session->iframe.headbuf[4]) &
-          NGHTTP2_STREAM_ID_MASK;
-        data_flags = session->iframe.headbuf[3];
         if(session->iframe.state != NGHTTP2_RECV_PAYLOAD_IGN) {
           if(session->callbacks.on_data_chunk_recv_callback) {
             r = session->callbacks.on_data_chunk_recv_callback
