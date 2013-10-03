@@ -86,6 +86,7 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_recv_data) ||
       !CU_add_test(pSuite, "session_recv_frame_too_large",
                    test_nghttp2_session_recv_frame_too_large) ||
+      !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
       !CU_add_test(pSuite, "session_on_request_headers_received",
