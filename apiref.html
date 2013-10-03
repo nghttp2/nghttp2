@@ -346,6 +346,13 @@ Insufficient buffer size given to function.</p>
 </dd></dl>
 
 <dl class="macro">
+<dt id="NGHTTP2_ERR_PAUSE">
+<tt class="descname">NGHTTP2_ERR_PAUSE</tt><a class="headerlink" href="#NGHTTP2_ERR_PAUSE" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">-526</span></tt>)
+Callback was paused by the application</p>
+</dd></dl>
+
+<dl class="macro">
 <dt id="NGHTTP2_ERR_FATAL">
 <tt class="descname">NGHTTP2_ERR_FATAL</tt><a class="headerlink" href="#NGHTTP2_ERR_FATAL" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">-900</span></tt>)
@@ -1152,8 +1159,18 @@ typedef int <tt class="descname">(*nghttp2_on_frame_recv_callback)</tt><big>(</b
 non-DATA frame is received. The <em>user_data</em> pointer is the third
 argument passed in to the call to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
 <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
+<p>If the application uses <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>, it can return
+<a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> to make <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>
+return without processing further input bytes.  The <em>frame</em>
+parameter is retained until <a class="reference internal" href="#nghttp2_session_continue" title="nghttp2_session_continue"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_continue()</span></tt></a> is
+called. The application must retain the input bytes which was used
+to produce the <em>frame</em> parameter, because it may refer to the
+memory region included in the input bytes. The application which
+returns <a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> must call
+<a class="reference internal" href="#nghttp2_session_continue" title="nghttp2_session_continue"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_continue()</span></tt></a> before <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
-succeeds. If nonzero is returned, it is treated as fatal error and
+succeeds. It may return <a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a>. If the other
+nonzero value is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
 immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
 </dd></dl>
@@ -1186,6 +1203,15 @@ stream. You should use <a class="reference internal" href="#nghttp2_on_data_recv
 know all data frames are received. The <em>user_data</em> pointer is the
 third argument passed in to the call to
 <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
+<p>If the application uses <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>, it can return
+<a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> to make <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>
+return without processing further input bytes.  The <em>frame</em>
+parameter is retained until <a class="reference internal" href="#nghttp2_session_continue" title="nghttp2_session_continue"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_continue()</span></tt></a> is
+called. The application must retain the input bytes which was used
+to produce the <em>frame</em> parameter, because it may refer to the
+memory region included in the input bytes. The application which
+returns <a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> must call
+<a class="reference internal" href="#nghttp2_session_continue" title="nghttp2_session_continue"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_continue()</span></tt></a> before <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it
 succeeds. If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
@@ -1651,12 +1677,42 @@ function. If all bytes are processed, this function returns. The
 other callbacks are called in the same way as they are in
 <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a>.</p>
 <p>In the current implementation, this function always tries to
-processes all input data unless an error occurs.</p>
+processes all input data unless either an error occurs or
+<a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> is returned from
+<a class="reference internal" href="#nghttp2_session_callbacks.on_frame_recv_callback" title="nghttp2_session_callbacks.on_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_callback</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_callbacks.on_data_chunk_recv_callback" title="nghttp2_session_callbacks.on_data_chunk_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_data_chunk_recv_callback</span></tt></a>.
+If <a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> is used, the return value includes the
+number of bytes which was used to produce the data or frame for the
+callback.</p>
 <p>This function returns the number of processed bytes, or one of the
 following negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a></dt>
+<dd>The callback function failed.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_session_continue">
+int <tt class="descname">nghttp2_session_continue</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em><big>)</big><a class="headerlink" href="#nghttp2_session_continue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform post-processing after <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> was
+paused by <a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> from
+<a class="reference internal" href="#nghttp2_session_callbacks.on_frame_recv_callback" title="nghttp2_session_callbacks.on_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_callback</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_callbacks.on_data_chunk_recv_callback" title="nghttp2_session_callbacks.on_data_chunk_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_data_chunk_recv_callback</span></tt></a>.</p>
+<p>This function frees resources associated with paused frames.  It
+may also call additional callbacks, such as
+<a class="reference internal" href="#nghttp2_session_callbacks.on_stream_close_callback" title="nghttp2_session_callbacks.on_stream_close_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_stream_close_callback</span></tt></a>.</p>
+<p>If this function succeeds, the application can call
+<a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> again.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a></dt>
+<dd>The callback function failed.</dd>
 </dl>
 </dd></dl>
 
