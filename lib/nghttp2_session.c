@@ -892,6 +892,8 @@ static int nghttp2_session_predicate_push_promise_send
  *     The stream is already closed or does not exist.
  * NGHTTP2_ERR_STREAM_CLOSING
  *     RST_STREAM was queued for this stream.
+ * NGHTTP2_ERR_INVALID_STREAM_STATE
+ *     The state of the stream is not valid.
  */
 static int nghttp2_session_predicate_window_update_send
 (nghttp2_session *session, int32_t stream_id)
@@ -905,12 +907,13 @@ static int nghttp2_session_predicate_window_update_send
   if(stream == NULL) {
     return NGHTTP2_ERR_STREAM_CLOSED;
   }
-  if(stream->state != NGHTTP2_STREAM_CLOSING &&
-     stream->state != NGHTTP2_STREAM_RESERVED) {
-    return 0;
-  } else {
+  if(stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
+  if(stream->state == NGHTTP2_STREAM_RESERVED) {
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
+  }
+  return 0;
 }
 
 /*
@@ -975,27 +978,26 @@ static int nghttp2_session_predicate_data_send(nghttp2_session *session,
     return NGHTTP2_ERR_DEFERRED_DATA_EXIST;
   }
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+    /* Request body data */
     /* If stream->state is NGHTTP2_STREAM_CLOSING, RST_STREAM was
        queued but not yet sent. In this case, we won't send DATA
-       frames. This is because in the current architecture, DATA and
-       RST_STREAM in the same stream have same priority and DATA is
-       small seq number. So RST_STREAM will not be sent until all DATA
-       frames are sent. This is not desirable situation; we want to
-       close stream as soon as possible. To achieve this, we remove
-       DATA frame before RST_STREAM. */
-    if(stream->state != NGHTTP2_STREAM_CLOSING &&
-       stream->state != NGHTTP2_STREAM_RESERVED) {
-      return 0;
-    } else {
+       frames. */
+    if(stream->state == NGHTTP2_STREAM_CLOSING) {
       return NGHTTP2_ERR_STREAM_CLOSING;
     }
-  } else if(stream->state == NGHTTP2_STREAM_OPENED) {
+    if(stream->state == NGHTTP2_STREAM_RESERVED) {
+      return NGHTTP2_ERR_INVALID_STREAM_STATE;
+    }
     return 0;
-  } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  } else {
-    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
+  /* Response body data */
+  if(stream->state == NGHTTP2_STREAM_OPENED) {
+    return 0;
+  }
+  if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
+  return NGHTTP2_ERR_INVALID_STREAM_STATE;
 }
 
 static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
