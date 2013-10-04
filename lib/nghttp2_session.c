@@ -623,9 +623,8 @@ int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
   if((stream->shut_flags & NGHTTP2_SHUT_RDWR) == NGHTTP2_SHUT_RDWR) {
     return nghttp2_session_close_stream(session, stream->stream_id,
                                         NGHTTP2_NO_ERROR);
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 /*
@@ -642,11 +641,11 @@ static int nghttp2_predicate_stream_for_send(nghttp2_stream *stream)
 {
   if(stream == NULL) {
     return NGHTTP2_ERR_STREAM_CLOSED;
-  } else if(stream->shut_flags & NGHTTP2_SHUT_WR) {
-    return NGHTTP2_ERR_STREAM_SHUT_WR;
-  } else {
-    return 0;
   }
+  if(stream->shut_flags & NGHTTP2_SHUT_WR) {
+    return NGHTTP2_ERR_STREAM_SHUT_WR;
+  }
+  return 0;
 }
 
 /*
@@ -708,13 +707,14 @@ static int nghttp2_session_predicate_response_headers_send
   }
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
     return NGHTTP2_ERR_INVALID_STREAM_ID;
-  } else if(stream->state == NGHTTP2_STREAM_OPENING) {
-    return 0;
-  } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  } else {
-    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
+  if(stream->state == NGHTTP2_STREAM_OPENING) {
+    return 0;
+  }
+  if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
+  return NGHTTP2_ERR_INVALID_STREAM_STATE;
 }
 
 /*
@@ -781,18 +781,18 @@ static int nghttp2_session_predicate_stream_frame_send
     return r;
   }
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
-    if(stream->state != NGHTTP2_STREAM_CLOSING) {
-      return 0;
-    } else {
+    if(stream->state == NGHTTP2_STREAM_CLOSING) {
       return NGHTTP2_ERR_STREAM_CLOSING;
     }
-  } else if(stream->state == NGHTTP2_STREAM_OPENED) {
     return 0;
-  } else if(stream->state == NGHTTP2_STREAM_CLOSING) {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  } else {
-    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
+  if(stream->state == NGHTTP2_STREAM_OPENED) {
+    return 0;
+  }
+  if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
+  return NGHTTP2_ERR_INVALID_STREAM_STATE;
 }
 
 /*
@@ -818,12 +818,11 @@ static int nghttp2_session_predicate_priority_send
   if(stream == NULL) {
     return NGHTTP2_ERR_STREAM_CLOSED;
   }
-  /* Sending PRIORITY to reserved state is OK */
-  if(stream->state != NGHTTP2_STREAM_CLOSING) {
-    return 0;
-  } else {
+  if(stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
+  /* Sending PRIORITY to reserved state is OK */
+  return 0;
 }
 
 /*
