@@ -572,6 +572,7 @@ void test_nghttp2_session_recv_data(void)
   nghttp2_outbound_item *item;
   nghttp2_stream *stream;
   nghttp2_frame_hd hd;
+  int i;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -609,6 +610,9 @@ void test_nghttp2_session_recv_data(void)
                                        NGHTTP2_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_CLOSING, NULL);
+  /* Set initial window size 16383 to check stream flow control,
+     isolating it from the conneciton flow control */
+  stream->local_window_size = 16383;
 
   ud.data_chunk_recv_cb_called = 0;
   ud.data_recv_cb_called = 0;
@@ -630,6 +634,38 @@ void test_nghttp2_session_recv_data(void)
 
   CU_ASSERT(1 == ud.data_chunk_recv_cb_called);
   CU_ASSERT(1 == ud.data_recv_cb_called);
+
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+
+  ud.data_chunk_recv_cb_called = 0;
+  ud.data_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, data, 8+4096);
+  CU_ASSERT(8+4096 == rv);
+
+  /* Now we got data more than initial-window-size / 2, WINDOW_UPDATE
+     must be queued */
+  CU_ASSERT(1 == ud.data_chunk_recv_cb_called);
+  CU_ASSERT(1 == ud.data_recv_cb_called);
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
+  CU_ASSERT(1 == OB_CTRL(item)->window_update.hd.stream_id);
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  /* Set initial window size to 1MiB, so that we can check connection
+     flow control individually */
+  stream->local_window_size = 1 << 20;
+  /* Connection flow control takes into account DATA which is received
+     in the error condition. We have received 4096 * 4 bytes of
+     DATA. Additional 4 DATA frames, connection flow control will kick
+     in. */
+  for(i = 0; i < 4; ++i) {
+    rv = nghttp2_session_mem_recv(session, data, 8+4096);
+    CU_ASSERT(8+4096 == rv);
+  }
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
+  CU_ASSERT(0 == OB_CTRL(item)->window_update.hd.stream_id);
+  CU_ASSERT(0 == nghttp2_session_send(session));
 
   /* Reception of DATA with stream ID = 0 causes connection error */
   hd.length = 4096;
