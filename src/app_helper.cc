@@ -296,6 +296,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     print_frame_attr_indent();
     printf("(promised_stream_id=%d)\n",
            frame->push_promise.promised_stream_id);
+    print_nv(frame->headers.nva, frame->headers.nvlen);
     break;
   case NGHTTP2_PING:
     print_frame_attr_indent();
