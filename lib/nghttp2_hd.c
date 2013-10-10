@@ -359,13 +359,15 @@ static int ensure_write_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 static size_t count_encoded_length(size_t n, int prefix)
 {
-  size_t k = (1 << prefix) - 1;
   size_t len = 0;
-  if(n >= k) {
-    n -= k;
-    ++len;
-  } else {
-    return 1;
+  if(prefix > 0) {
+    size_t k = (1 << prefix) - 1;
+    if(n >= k) {
+      n -= k;
+      ++len;
+    } else {
+      return 1;
+    }
   }
   do {
     ++len;
@@ -380,15 +382,17 @@ static size_t count_encoded_length(size_t n, int prefix)
 
 static size_t encode_length(uint8_t *buf, size_t n, int prefix)
 {
-  size_t k = (1 << prefix) - 1;
   size_t len = 0;
-  if(n >= k) {
-    *buf++ = k;
-    n -= k;
-    ++len;
-  } else {
-    *buf++ = n;
-    return 1;
+  if(prefix > 0) {
+    size_t k = (1 << prefix) - 1;
+    if(n >= k) {
+      *buf++ = k;
+      n -= k;
+      ++len;
+    } else {
+      *buf++ = n;
+      return 1;
+    }
   }
   do {
     ++len;
@@ -421,13 +425,17 @@ static  uint8_t* decode_length(ssize_t *res, uint8_t *in, uint8_t *last,
     *res = -1;
     return in;
   }
-  if((*in & k) == k) {
-    *res = k;
+  if(prefix > 0) {
+    if((*in & k) == k) {
+      *res = k;
+    } else {
+      *res = (*in) & k;
+      return in + 1;
+    }
+    ++in;
   } else {
-    *res = (*in) & k;
-    return in + 1;
+    *res = 0;
   }
-  ++in;
   for(r = 0; in != last; ++in, r += 7) {
     *res += (*in & 0x7f) << r;
     if(*res >= (1 << 16)) {
@@ -471,14 +479,14 @@ static int emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   int rv;
   uint8_t *bufp;
   size_t blocklen = count_encoded_length(index + 1, 5) +
-    count_encoded_length(valuelen, 8) + valuelen;
+    count_encoded_length(valuelen, 0) + valuelen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   bufp += encode_length(bufp, index + 1, 5);
-  bufp += encode_length(bufp, valuelen, 8);
+  bufp += encode_length(bufp, valuelen, 0);
   memcpy(bufp, value, valuelen);
   (*buf_ptr)[*offset_ptr] |= inc_indexing ? 0x40u : 0x60u;
   assert(bufp+valuelen - (*buf_ptr + *offset_ptr) == (ssize_t)blocklen);
@@ -492,18 +500,18 @@ static int emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
 {
   int rv;
   uint8_t *bufp;
-  size_t blocklen = 1 + count_encoded_length(nv->namelen, 8) + nv->namelen +
-    count_encoded_length(nv->valuelen, 8) + nv->valuelen;
+  size_t blocklen = 1 + count_encoded_length(nv->namelen, 0) + nv->namelen +
+    count_encoded_length(nv->valuelen, 0) + nv->valuelen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   *bufp++ = inc_indexing ? 0x40u : 0x60u;
-  bufp += encode_length(bufp, nv->namelen, 8);
+  bufp += encode_length(bufp, nv->namelen, 0);
   memcpy(bufp, nv->name, nv->namelen);
   bufp += nv->namelen;
-  bufp += encode_length(bufp, nv->valuelen, 8);
+  bufp += encode_length(bufp, nv->valuelen, 0);
   memcpy(bufp, nv->value, nv->valuelen);
   *offset_ptr += blocklen;
   return 0;
@@ -517,16 +525,16 @@ static int emit_subst_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   int rv;
   uint8_t *bufp;
   size_t blocklen = count_encoded_length(index + 1, 6) +
-    count_encoded_length(subindex, 8) +
-    count_encoded_length(valuelen, 8) + valuelen;
+    count_encoded_length(subindex, 0) +
+    count_encoded_length(valuelen, 0) + valuelen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   bufp += encode_length(bufp, index + 1, 6);
-  bufp += encode_length(bufp, subindex, 8);
-  bufp += encode_length(bufp, valuelen, 8);
+  bufp += encode_length(bufp, subindex, 0);
+  bufp += encode_length(bufp, valuelen, 0);
   memcpy(bufp, value, valuelen);
   *offset_ptr += blocklen;
   return 0;
@@ -538,20 +546,20 @@ static int emit_subst_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
 {
   int rv;
   uint8_t *bufp;
-  size_t blocklen = 1 + count_encoded_length(nv->namelen, 8) + nv->namelen +
-    count_encoded_length(subindex, 8) +
-    count_encoded_length(nv->valuelen, 8) + nv->valuelen;
+  size_t blocklen = 1 + count_encoded_length(nv->namelen, 0) + nv->namelen +
+    count_encoded_length(subindex, 0) +
+    count_encoded_length(nv->valuelen, 0) + nv->valuelen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   *bufp++ = 0;
-  bufp += encode_length(bufp, nv->namelen, 8);
+  bufp += encode_length(bufp, nv->namelen, 0);
   memcpy(bufp, nv->name, nv->namelen);
   bufp += nv->namelen;
-  bufp += encode_length(bufp, subindex, 8);
-  bufp += encode_length(bufp, nv->valuelen, 8);
+  bufp += encode_length(bufp, subindex, 0);
+  bufp += encode_length(bufp, nv->valuelen, 0);
   memcpy(bufp, nv->value, nv->valuelen);
   *offset_ptr += blocklen;
   return 0;
@@ -910,7 +918,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      in = decode_length(&namelen, in, last, 8);
+      in = decode_length(&namelen, in, last, 0);
       if(namelen < 0 || in + namelen > last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -922,13 +930,13 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       nv.name = in;
       in += namelen;
       if(c == 0) {
-        in = decode_length(&subindex, in, last, 8);
+        in = decode_length(&subindex, in, last, 0);
         if(subindex < 0) {
           rv = NGHTTP2_ERR_HEADER_COMP;
           goto fail;
         }
       }
-      in = decode_length(&valuelen, in, last, 8);
+      in = decode_length(&valuelen, in, last, 0);
       if(valuelen < 0 || in + valuelen > last) {
         rv =  NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -973,13 +981,13 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       }
       ent = inflater->hd_table[index];
       if((c & 0x40u) == 0) {
-        in = decode_length(&subindex, in, last, 8);
+        in = decode_length(&subindex, in, last, 0);
         if(subindex < 0) {
           rv = NGHTTP2_ERR_HEADER_COMP;
           goto fail;
         }
       }
-      in = decode_length(&valuelen, in , last, 8);
+      in = decode_length(&valuelen, in , last, 0);
       if(valuelen < 0 || in + valuelen > last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
