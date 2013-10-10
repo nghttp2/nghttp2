@@ -73,8 +73,7 @@ following packages are required:
 * spdylay >= 1.0.0
 
 To enable ``-a`` option (getting linked assets from the downloaded
-resouce) in ``nghttp``, the following
-packages are needed:
+resource) in ``nghttp``, the following packages are needed:
 
 * libxml2 >= 2.7.7
 
