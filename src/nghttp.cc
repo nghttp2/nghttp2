@@ -1533,7 +1533,7 @@ void print_help(std::ostream& out)
       << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
       << "                       URI is not requested twice. This option\n"
       << "                       disables it too.\n"
-      << "    -f, --no-low-control\n"
+      << "    -f, --no-flow-control\n"
       << "                       Disables connection and stream level flow\n"
       << "                       controls.\n"
       << "    -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
