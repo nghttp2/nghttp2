@@ -90,6 +90,7 @@ struct Config {
   std::string certfile;
   std::string keyfile;
   int window_bits;
+  int connection_window_bits;
   std::map<std::string, std::string> headers;
   std::string datafile;
   size_t output_upper_thres;
@@ -106,6 +107,7 @@ struct Config {
       multiply(1),
       timeout(-1),
       window_bits(-1),
+      connection_window_bits(-1),
       output_upper_thres(1024*1024),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS)
   {}
@@ -684,6 +686,14 @@ struct HttpClient {
       nghttp2_settings_entry iv[16];
       auto niv = populate_settings(iv);
       rv = nghttp2_submit_settings(session, iv, niv);
+      if(rv != 0) {
+        return -1;
+      }
+    }
+    if(config.connection_window_bits != -1) {
+      rv = nghttp2_submit_window_update
+        (session, NGHTTP2_FLAG_NONE, 0,
+         (1 << config.connection_window_bits) - 1);
       if(rv != 0) {
         return -1;
       }
@@ -1494,8 +1504,9 @@ int run(char **uris, int n)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [-Oafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [--cert=<CERT>]\n"
-      << "              [--key=<KEY>] [-d <FILE>] [-m <N>] [-p <PRIORITY>] [-M <N>]\n"
+  out << "Usage: nghttp [-Oafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [-W <WINDOW_BITS>]\n"
+      << "              [--cert=<CERT>] [--key=<KEY>] [-d <FILE>] [-m <N>]\n"
+      << "              [-p <PRIORITY>] [-M <N>]\n"
       << "              <URI>..."
       << std::endl;
 }
@@ -1516,7 +1527,11 @@ void print_help(std::ostream& out)
       << "                       filename. Not implemented yet.\n"
       << "    -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
       << "    -w, --window-bits=<N>\n"
-      << "                       Sets the initial window size to 2**<N>-1.\n"
+      << "                       Sets the stream level initial window size\n"
+      << "                       to 2**<N>-1.\n"
+      << "    -W, --connection-window-bits=<N>\n"
+      << "                       Sets the connection level initial window\n"
+      << "                       size to 2**<N>-1.\n"
       << "    -a, --get-assets   Download assets such as stylesheets, images\n"
       << "                       and script files linked from the downloaded\n"
       << "                       resource. Only links whose origins are the\n"
@@ -1563,6 +1578,7 @@ int main(int argc, char **argv)
       {"remote-name", no_argument, nullptr, 'O'},
       {"timeout", required_argument, nullptr, 't'},
       {"window-bits", required_argument, nullptr, 'w'},
+      {"connection-window-bits", required_argument, nullptr, 'W'},
       {"get-assets", no_argument, nullptr, 'a'},
       {"stat", no_argument, nullptr, 's'},
       {"cert", required_argument, &flag, 1},
@@ -1578,7 +1594,7 @@ int main(int argc, char **argv)
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oad:fm:np:hH:vst:uw:", long_options,
+    int c = getopt_long(argc, argv, "M:Oad:fm:np:hH:vst:uw:W:", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -1621,13 +1637,20 @@ int main(int argc, char **argv)
     case 'u':
       config.upgrade = true;
       break;
-    case 'w': {
+    case 'w':
+    case 'W': {
       errno = 0;
-      unsigned long int n = strtoul(optarg, nullptr, 10);
-      if(errno == 0 && n < 31) {
-        config.window_bits = n;
+      char *endptr = nullptr;
+      unsigned long int n = strtoul(optarg, &endptr, 10);
+      if(errno == 0 && *endptr == '\0' && n < 31) {
+        if(c == 'w') {
+          config.window_bits = n;
+        } else {
+          config.connection_window_bits = n;
+        }
       } else {
-        std::cerr << "-w: specify the integer in the range [0, 30], inclusive"
+        std::cerr << "-" << static_cast<char>(c)
+                  << ": specify the integer in the range [0, 30], inclusive"
                   << std::endl;
         exit(EXIT_FAILURE);
       }
