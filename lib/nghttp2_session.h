@@ -173,6 +173,9 @@ struct nghttp2_session {
   /* Keep track of the number of bytes received without
      WINDOW_UPDATE. */
   int32_t recv_window_size;
+  /* The amount of recv_window_size cut using submitting negative
+     value to WINDOW_UPDATE */
+  int32_t recv_reduction;
   /* window size for local flow control. It is initially set to
      NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE and could be
      increased/decreased by submitting WINDOW_UPDATE. See

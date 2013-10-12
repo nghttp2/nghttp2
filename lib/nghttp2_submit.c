@@ -285,7 +285,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   int rv;
   nghttp2_stream *stream;
   if(window_size_increment == 0) {
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
+    return 0;
   }
   flags = 0;
   if(stream_id == 0) {
@@ -294,7 +294,8 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
     }
     rv = nghttp2_adjust_local_window_size(&session->local_window_size,
                                           &session->recv_window_size,
-                                          window_size_increment);
+                                          &session->recv_reduction,
+                                          &window_size_increment);
     if(rv != 0) {
       return rv;
     }
@@ -314,7 +315,8 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
       }
       rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
                                             &stream->recv_window_size,
-                                            window_size_increment);
+                                            &stream->recv_reduction,
+                                            &window_size_increment);
       if(rv != 0) {
         return rv;
       }

@@ -183,6 +183,7 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   (*session_ptr)->local_flow_control = 1;
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
+  (*session_ptr)->recv_reduction = 0;
   (*session_ptr)->local_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
 
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;

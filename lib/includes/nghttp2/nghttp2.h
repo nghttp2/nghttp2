@@ -1990,11 +1990,12 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  * should be submitted, then WINDOW_UPDATE is queued with the current
  * received bytes count.
  *
+ * If the |window_size_increment| is 0, the function does nothing and
+ * returns 0.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |delta_window_size| is 0.
  * :enum:`NGHTTP2_ERR_FLOW_CONTROL`
  *     The local window size overflow or gets negative.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`

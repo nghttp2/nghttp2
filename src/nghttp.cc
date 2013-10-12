@@ -691,9 +691,10 @@ struct HttpClient {
       }
     }
     if(config.connection_window_bits != -1) {
+      int32_t wininc = (1 << config.connection_window_bits) - 1
+        - NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
       rv = nghttp2_submit_window_update
-        (session, NGHTTP2_FLAG_NONE, 0,
-         (1 << config.connection_window_bits) - 1);
+        (session, NGHTTP2_FLAG_NONE, 0, wininc);
       if(rv != 0) {
         return -1;
       }

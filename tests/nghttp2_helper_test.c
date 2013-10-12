@@ -32,46 +32,93 @@ void test_nghttp2_adjust_local_window_size(void)
 {
   int32_t local_window_size = 100;
   int32_t recv_window_size = 50;
+  int32_t recv_reduction = 0;
+  int32_t delta;
 
+  delta = 0;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size, 0));
+                                                  &recv_window_size,
+                                                  &recv_reduction,
+                                                  &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(50 == recv_window_size);
+  CU_ASSERT(0 == recv_reduction);
+  CU_ASSERT(0 == delta);
 
+  delta = 49;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size, 49));
+                                                  &recv_window_size,
+                                                  &recv_reduction,
+                                                  &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(1 == recv_window_size);
+  CU_ASSERT(0 == recv_reduction);
+  CU_ASSERT(49 == delta);
 
+  delta = 1;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size, 1));
+                                                  &recv_window_size,
+                                                  &recv_reduction,
+                                                  &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(0 == recv_window_size);
+  CU_ASSERT(0 == recv_reduction);
+  CU_ASSERT(1 == delta);
 
+  delta = 1;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size, 1));
+                                                  &recv_window_size,
+                                                  &recv_reduction,
+                                                  &delta));
   CU_ASSERT(101 == local_window_size);
   CU_ASSERT(0 == recv_window_size);
+  CU_ASSERT(0 == recv_reduction);
+  CU_ASSERT(1 == delta);
 
+  delta = -1;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size, -1));
+                                                  &recv_window_size,
+                                                  &recv_reduction,
+                                                  &delta));
   CU_ASSERT(100 == local_window_size);
+  CU_ASSERT(-1 == recv_window_size);
+  CU_ASSERT(1 == recv_reduction);
+  CU_ASSERT(-1 == delta);
+
+  delta = 1;
+  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
+                                                  &recv_window_size,
+                                                  &recv_reduction,
+                                                  &delta));
+  CU_ASSERT(101 == local_window_size);
   CU_ASSERT(0 == recv_window_size);
+  CU_ASSERT(0 == recv_reduction);
+  CU_ASSERT(0 == delta);
 
+  local_window_size = 100;
   recv_window_size = 50;
+  recv_reduction = 0;
+  delta = INT32_MAX;
   CU_ASSERT(NGHTTP2_ERR_FLOW_CONTROL ==
             nghttp2_adjust_local_window_size(&local_window_size,
                                              &recv_window_size,
-                                             INT32_MAX));
+                                             &recv_reduction,
+                                             &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(50 == recv_window_size);
+  CU_ASSERT(0 == recv_reduction);
+  CU_ASSERT(INT32_MAX == delta);
 
+  delta = INT32_MIN;
   CU_ASSERT(NGHTTP2_ERR_FLOW_CONTROL ==
             nghttp2_adjust_local_window_size(&local_window_size,
                                              &recv_window_size,
-                                             INT32_MIN));
+                                             &recv_reduction,
+                                             &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(50 == recv_window_size);
+  CU_ASSERT(0 == recv_reduction);
+  CU_ASSERT(INT32_MIN == delta);
 }
 
 static int check_header_name(const char *s)
