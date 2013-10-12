@@ -70,21 +70,23 @@ typedef struct {
   nghttp2_nv nv;
   /* Reference count */
   uint8_t ref;
-  /* Index in the header table */
-  uint8_t index;
   uint8_t flags;
 } nghttp2_hd_entry;
 
 typedef struct {
+  nghttp2_hd_entry **buffer;
+  size_t mask;
+  size_t first;
+  size_t len;
+} nghttp2_hd_ringbuf;
+
+typedef struct {
   /* Header table */
-  nghttp2_hd_entry **hd_table;
+  nghttp2_hd_ringbuf hd_table;
+  nghttp2_hd_entry **static_hd_table;
   /* Holding emitted entry in deflating header block to retain
      reference count. */
   nghttp2_hd_entry **emit_set;
-  /* The capacity of the |hd_table| */
-  uint16_t hd_table_capacity;
-  /* The number of entry the |hd_table| contains */
-  uint16_t hd_tablelen;
   /* The capacity of the |emit_set| */
   uint16_t emit_set_capacity;
   /* The number of entry the |emit_set| contains */
@@ -114,7 +116,7 @@ typedef struct {
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t index, uint8_t flags,
+int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
                           uint8_t *name, uint16_t namelen,
                           uint8_t *value, uint16_t valuelen);
 
@@ -237,5 +239,9 @@ int nghttp2_hd_emit_subst_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
 int nghttp2_hd_emit_subst_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                         size_t *offset_ptr, nghttp2_nv *nv,
                                         size_t subindex);
+
+/* For unittesting purpose */
+nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
+                                       size_t index);
 
 #endif /* NGHTTP2_HD_COMP_H */

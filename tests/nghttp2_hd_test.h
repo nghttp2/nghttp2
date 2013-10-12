@@ -31,12 +31,7 @@ void test_nghttp2_hd_deflate_common_header_eviction(void);
 void test_nghttp2_hd_inflate_indname_inc(void);
 void test_nghttp2_hd_inflate_indname_inc_eviction(void);
 void test_nghttp2_hd_inflate_newname_inc(void);
-void test_nghttp2_hd_inflate_indname_subst(void);
-void test_nghttp2_hd_inflate_indname_subst_eviction(void);
-void test_nghttp2_hd_inflate_indname_subst_eviction_neg(void);
-void test_nghttp2_hd_inflate_newname_subst(void);
 void test_nghttp2_hd_inflate_clearall_inc(void);
-void test_nghttp2_hd_inflate_clearall_subst(void);
 void test_nghttp2_hd_deflate_inflate(void);
 
 #endif /* NGHTTP2_HD_TEST_H */
