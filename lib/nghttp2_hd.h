@@ -31,10 +31,9 @@
 
 #include <nghttp2/nghttp2.h>
 
-#define NGHTTP2_INITIAL_HD_TABLE_SIZE 128
 #define NGHTTP2_INITIAL_EMIT_SET_SIZE 128
 
-#define NGHTTP2_HD_MAX_BUFFER_SIZE 4096
+#define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE (1 << 12)
 #define NGHTTP2_HD_MAX_ENTRY_SIZE 3072
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
 
@@ -90,13 +89,15 @@ typedef struct {
   /* Abstract buffer size of hd_table as described in the spec. This
      is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
-  uint16_t hd_table_bufsize;
+  size_t hd_table_bufsize;
   /* If inflate/deflate error occurred, this value is set to 1 and
      further invocation of inflate/deflate will fail with
      NGHTTP2_ERR_HEADER_COMP. */
   uint8_t bad;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
+  /* Maximum header table size */
+  size_t hd_table_bufsize_max;
 } nghttp2_hd_context;
 
 /*
@@ -130,6 +131,10 @@ void nghttp2_hd_entry_free(nghttp2_hd_entry *ent);
 int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
                             nghttp2_hd_side side);
 
+int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
+                             nghttp2_hd_side side,
+                             size_t hd_table_bufsize_max);
+
 /*
  * Initializes |inflater| for inflating name/values pairs.
  *
@@ -141,6 +146,10 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
  */
 int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater,
                             nghttp2_hd_side side);
+
+int nghttp2_hd_inflate_init2(nghttp2_hd_context *inflater,
+                             nghttp2_hd_side side,
+                             size_t hd_table_bufsize_max);
 
 /*
  * Deallocates any resources allocated for |deflater|.

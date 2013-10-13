@@ -213,14 +213,16 @@ static void nghttp2_hd_ringbuf_pop_back(nghttp2_hd_ringbuf *ringbuf)
 
 static int nghttp2_hd_context_init(nghttp2_hd_context *context,
                                    nghttp2_hd_role role,
-                                   nghttp2_hd_side side)
+                                   nghttp2_hd_side side,
+                                   size_t hd_table_bufsize_max)
 {
   int i;
   int rv;
   context->role = role;
   context->bad = 0;
+  context->hd_table_bufsize_max = hd_table_bufsize_max;
   rv = nghttp2_hd_ringbuf_init(&context->hd_table,
-                               NGHTTP2_INITIAL_HD_TABLE_SIZE);
+                               hd_table_bufsize_max/NGHTTP2_HD_ENTRY_OVERHEAD);
   if(rv != 0) {
     return rv;
   }
@@ -264,12 +266,30 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
 
 int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater, nghttp2_hd_side side)
 {
-  return nghttp2_hd_context_init(deflater, NGHTTP2_HD_ROLE_DEFLATE, side);
+  return nghttp2_hd_context_init(deflater, NGHTTP2_HD_ROLE_DEFLATE, side,
+                                 NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE);
+}
+
+int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
+                             nghttp2_hd_side side,
+                             size_t hd_table_bufsize_max)
+{
+  return nghttp2_hd_context_init(deflater, NGHTTP2_HD_ROLE_DEFLATE, side,
+                                 hd_table_bufsize_max);
 }
 
 int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater, nghttp2_hd_side side)
 {
-  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side^1);
+  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side^1,
+                                 NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE);
+}
+
+int nghttp2_hd_inflate_init2(nghttp2_hd_context *inflater,
+                             nghttp2_hd_side side,
+                             size_t hd_table_bufsize_max)
+{
+  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side^1,
+                                 hd_table_bufsize_max);
 }
 
 static void nghttp2_hd_context_free(nghttp2_hd_context *context)
@@ -583,7 +603,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
   nghttp2_hd_entry *new_ent;
   size_t room = entry_room(nv->namelen, nv->valuelen);
   context->hd_table_bufsize += room;
-  while(context->hd_table_bufsize > NGHTTP2_HD_MAX_BUFFER_SIZE &&
+  while(context->hd_table_bufsize > context->hd_table_bufsize_max &&
         context->hd_table.len > 0) {
     size_t index = context->hd_table.len - 1;
     nghttp2_hd_entry* ent = nghttp2_hd_ringbuf_get(&context->hd_table, index);
@@ -615,7 +635,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     free(new_ent);
     return NULL;
   }
-  if(room > NGHTTP2_HD_MAX_BUFFER_SIZE) {
+  if(room > context->hd_table_bufsize_max) {
     /* The entry taking more than NGHTTP2_HD_MAX_BUFFER_SIZE is
        immediately evicted. */
     --new_ent->ref;
