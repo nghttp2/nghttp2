@@ -32,6 +32,7 @@
 #include <nghttp2/nghttp2.h>
 
 #define NGHTTP2_INITIAL_EMIT_SET_SIZE 128
+#define NGHTTP2_INITIAL_BUF_TRACK_SIZE 128
 
 #define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE (1 << 12)
 #define NGHTTP2_HD_MAX_ENTRY_SIZE 3072
@@ -58,7 +59,13 @@ typedef enum {
   /* Indicates that the entry is emitted in the current header
      processing. */
   NGHTTP2_HD_FLAG_EMIT = 1 << 3,
-  NGHTTP2_HD_FLAG_IMPLICIT_EMIT = 1 << 4
+  NGHTTP2_HD_FLAG_IMPLICIT_EMIT = 1 << 4,
+  /* Indicates that the name was gifted to the entry and no copying
+     necessary. */
+  NGHTTP2_HD_FLAG_NAME_GIFT = 1 << 5,
+  /* Indicates that the value was gifted to the entry and no copying
+     necessary. */
+  NGHTTP2_HD_FLAG_VALUE_GIFT = 1 << 6
 } nghttp2_hd_flags;
 
 typedef struct {
@@ -96,8 +103,18 @@ typedef struct {
   uint8_t bad;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
+  /* Huffman compression side: NGHTTP2_HD_SIDE_CLIENT uses huffman
+     table for request. NGHTTP2_HD_SIDE_SERVER uses huffman table for
+     response. */
+  nghttp2_hd_side side;
   /* Maximum header table size */
   size_t hd_table_bufsize_max;
+  /* Keep track of allocated buffers in inflation */
+  uint8_t **buf_track;
+  /* The capacity of |buf_track| */
+  uint16_t buf_track_capacity;
+  /* The number of entry the |buf_track| contains. */
+  size_t buf_tracklen;
 } nghttp2_hd_context;
 
 /*
@@ -227,12 +244,14 @@ int nghttp2_hd_end_headers(nghttp2_hd_context *deflater_or_inflater);
 int nghttp2_hd_emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                   size_t *offset_ptr, size_t index,
                                   const uint8_t *value, size_t valuelen,
-                                  int inc_indexing);
+                                  int inc_indexing,
+                                  nghttp2_hd_side side);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                                   size_t *offset_ptr, nghttp2_nv *nv,
-                                  int inc_indexing);
+                                  int inc_indexing,
+                                  nghttp2_hd_side side);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_subst_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
@@ -248,5 +267,69 @@ int nghttp2_hd_emit_subst_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
 /* For unittesting purpose */
 nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                        size_t index);
+
+/* Huffman encoding/decoding functions */
+
+/*
+ * Counts the required bytes to encode |src| with length |len|. If
+ * |side| is NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
+ * used. Otherwise, the response code table is used.
+ *
+ * This function returns the number of required bytes to encode given
+ * data, including terminal symbol code. This function always
+ * succeeds.
+ */
+size_t nghttp2_hd_huff_encode_count(const uint8_t *src, size_t len,
+                                    nghttp2_hd_side side);
+
+/*
+ * Encodes the given data |src| with length |srclen| to the given
+ * memory location pointed by |dest|, allocated at lest |destlen|
+ * bytes. The caller is responsible to specify |destlen| at least the
+ * length that nghttp2_hd_huff_encode_count() returns.  If |side| is
+ * NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
+ * used. Otherwise, the response code table is used.
+ *
+ * This function returns the number of written bytes, including
+ * terminal symbol code. This return value is exactly the same with
+ * the return value of nghttp2_hd_huff_encode_count() if it is given
+ * with the same |src|, |srclen|, and |side|. This function always
+ * succeeds.
+ */
+ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
+                               const uint8_t *src, size_t srclen,
+                               nghttp2_hd_side side);
+
+/*
+ * Counts the number of required bytes to decode |src| with length
+ * |srclen|. The given input must be terminated with terminal code. If
+ * |side| is NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
+ * used. Otherwise, the response code table is used.
+ *
+ * This function returns the number of required bytes to decode given
+ * data if it succeeds, or -1.
+ */
+ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
+                                     nghttp2_hd_side side);
+
+/*
+ * Decodes the given data |src| with length |srclen| to the given
+ * memory location pointed by |dest|, allocated at lest |destlen|
+ * bytes. The given input must be terminated with terminal code. The
+ * caller is responsible to specify |destlen| at least the length that
+ * nghttp2_hd_huff_decode_count() returns.  If |side| is
+ * NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
+ * used. Otherwise, the response code table is used.
+ *
+ * This function returns the number of written bytes.  This return
+ * value is exactly the same with the return value of
+ * nghttp2_hd_huff_decode_count() if it is given with the same |src|,
+ * |srclen|, and |side|.
+ *
+ * This function returns -1 if it fails.
+ */
+ssize_t nghttp2_hd_huff_decode(uint8_t *dest, size_t destlen,
+                               const uint8_t *src, size_t srclen,
+                               nghttp2_hd_side side);
 
 #endif /* NGHTTP2_HD_COMP_H */

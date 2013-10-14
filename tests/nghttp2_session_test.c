@@ -386,6 +386,7 @@ void test_nghttp2_session_recv(void)
   nghttp2_outbound_item *item;
   nghttp2_nv *nva;
   ssize_t nvlen;
+  nghttp2_hd_context deflater;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -393,14 +394,15 @@ void test_nghttp2_session_recv(void)
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   user_data.df = &df;
   nghttp2_session_server_new(&session, &callbacks, &user_data);
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
 
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
                              1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
-                                        &session->hd_deflater);
-  nghttp2_hd_end_headers(&session->hd_deflater);
+                                        &deflater);
+  nghttp2_hd_end_headers(&deflater);
 
   scripted_data_feed_init(&df, framedata, framelen);
   /* Send 1 byte per each read */
@@ -421,8 +423,8 @@ void test_nghttp2_session_recv(void)
                              5, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
-                                        &session->hd_deflater);
-  nghttp2_hd_end_headers(&session->hd_deflater);
+                                        &deflater);
+  nghttp2_hd_end_headers(&deflater);
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -431,6 +433,7 @@ void test_nghttp2_session_recv(void)
   CU_ASSERT(0 == nghttp2_session_recv(session));
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
 
+  nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 
   /* Some tests for frame too large */
@@ -470,6 +473,8 @@ void test_nghttp2_session_recv_invalid_stream_id(void)
   nghttp2_frame frame;
   nghttp2_nv *nva;
   ssize_t nvlen;
+  nghttp2_hd_context deflater;
+
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.recv_callback = scripted_recv_callback;
   callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
@@ -477,13 +482,14 @@ void test_nghttp2_session_recv_invalid_stream_id(void)
   user_data.df = &df;
   user_data.invalid_frame_recv_cb_called = 0;
   nghttp2_session_server_new(&session, &callbacks, &user_data);
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 2,
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
-                                        &session->hd_deflater);
-  nghttp2_hd_end_headers(&session->hd_deflater);
+                                        &deflater);
+  nghttp2_hd_end_headers(&deflater);
 
   scripted_data_feed_init(&df, framedata, framelen);
   nghttp2_frame_headers_free(&frame.headers);
@@ -492,6 +498,7 @@ void test_nghttp2_session_recv_invalid_stream_id(void)
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
 
   free(framedata);
+  nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 }
 
@@ -510,6 +517,7 @@ void test_nghttp2_session_recv_invalid_frame(void)
   nghttp2_frame frame;
   nghttp2_nv *nva;
   ssize_t nvlen;
+  nghttp2_hd_context deflater;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.recv_callback = scripted_recv_callback;
@@ -519,13 +527,14 @@ void test_nghttp2_session_recv_invalid_frame(void)
   user_data.df = &df;
   user_data.frame_send_cb_called = 0;
   nghttp2_session_server_new(&session, &callbacks, &user_data);
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
-                                        &session->hd_deflater);
-  nghttp2_hd_end_headers(&session->hd_deflater);
+                                        &deflater);
+  nghttp2_hd_end_headers(&deflater);
 
   scripted_data_feed_init(&df, framedata, framelen);
 
@@ -544,6 +553,7 @@ void test_nghttp2_session_recv_invalid_frame(void)
   free(framedata);
   nghttp2_frame_headers_free(&frame.headers);
 
+  nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 }
 
@@ -711,6 +721,7 @@ void test_nghttp2_session_continue(void)
   const nghttp2_frame *recv_frame;
   nghttp2_nv nvcheck;
   nghttp2_frame_hd data_hd;
+  nghttp2_hd_context deflater;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -720,16 +731,18 @@ void test_nghttp2_session_continue(void)
 
   nghttp2_session_server_new(&session, &callbacks, &user_data);
 
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
+
   /* Make 2 HEADERS frames */
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv1);
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
                              1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framelen1 = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                         &frame.headers,
-                                        &session->hd_deflater);
+                                        &deflater);
   nghttp2_frame_headers_free(&frame.headers);
 
-  nghttp2_hd_end_headers(&session->hd_deflater);
+  nghttp2_hd_end_headers(&deflater);
   memcpy(buffer, framedata, framelen1);
 
   nvlen = nghttp2_nv_array_from_cstr(&nva, nv2);
@@ -737,10 +750,10 @@ void test_nghttp2_session_continue(void)
                              3, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framelen2 = nghttp2_frame_pack_headers(&framedata, &framedatalen,
                                          &frame.headers,
-                                         &session->hd_deflater);
+                                         &deflater);
   nghttp2_frame_headers_free(&frame.headers);
 
-  nghttp2_hd_end_headers(&session->hd_deflater);
+  nghttp2_hd_end_headers(&deflater);
   memcpy(buffer + framelen1, framedata, framelen2);
   buflen = framelen1 + framelen2;
 
@@ -796,6 +809,7 @@ void test_nghttp2_session_continue(void)
   CU_ASSERT(1 == user_data.data_recv_cb_called);
 
   free(framedata);
+  nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 }
 
@@ -1874,12 +1888,14 @@ void test_nghttp2_submit_response_without_data(void)
   nghttp2_outbound_item *item;
   my_user_data ud;
   nghttp2_frame frame;
+  nghttp2_hd_context inflater;
 
   acc.length = 0;
   ud.acc = &acc;
   memset(&callbacks, 0, sizeof(callbacks));
   callbacks.send_callback = accumulator_send_callback;
   CU_ASSERT(0 == nghttp2_session_server_new(&session, &callbacks, &ud));
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_CLIENT);
   nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_END_STREAM,
                               NGHTTP2_PRI_DEFAULT,
                               NGHTTP2_STREAM_OPENING, NULL);
@@ -1890,11 +1906,13 @@ void test_nghttp2_submit_response_without_data(void)
 
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(0 == unpack_frame_with_nv_block(&frame, NGHTTP2_HEADERS,
-                                            &session->hd_inflater,
+                                            &inflater,
                                             acc.buf, acc.length));
   CU_ASSERT(nvnameeq(":version", &frame.headers.nva[0]));
   nghttp2_frame_headers_free(&frame.headers);
+  nghttp2_hd_end_headers(&inflater);
 
+  nghttp2_hd_inflate_free(&inflater);
   nghttp2_session_del(session);
 }
 
@@ -1933,12 +1951,14 @@ void test_nghttp2_submit_request_without_data(void)
   nghttp2_outbound_item *item;
   my_user_data ud;
   nghttp2_frame frame;
+  nghttp2_hd_context inflater;
 
   acc.length = 0;
   ud.acc = &acc;
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = accumulator_send_callback;
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
   CU_ASSERT(0 == nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT, nv,
                                         &data_prd, NULL));
   item = nghttp2_session_get_next_ob_item(session);
@@ -1947,11 +1967,13 @@ void test_nghttp2_submit_request_without_data(void)
 
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(0 == unpack_frame_with_nv_block(&frame, NGHTTP2_HEADERS,
-                                            &session->hd_inflater,
+                                            &inflater,
                                             acc.buf, acc.length));
   CU_ASSERT(nvnameeq(":version", &frame.headers.nva[0]));
   nghttp2_frame_headers_free(&frame.headers);
+  nghttp2_hd_end_headers(&inflater);
 
+  nghttp2_hd_inflate_free(&inflater);
   nghttp2_session_del(session);
 }
 
@@ -1990,12 +2012,14 @@ void test_nghttp2_submit_request2_without_data(void)
   nghttp2_outbound_item *item;
   my_user_data ud;
   nghttp2_frame frame;
+  nghttp2_hd_context inflater;
 
   acc.length = 0;
   ud.acc = &acc;
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = accumulator_send_callback;
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
   CU_ASSERT(0 == nghttp2_submit_request2(session, NGHTTP2_PRI_DEFAULT,
                                          nva, ARRLEN(nva), &data_prd, NULL));
   item = nghttp2_session_get_next_ob_item(session);
@@ -2004,11 +2028,13 @@ void test_nghttp2_submit_request2_without_data(void)
 
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(0 == unpack_frame_with_nv_block(&frame, NGHTTP2_HEADERS,
-                                            &session->hd_inflater,
+                                            &inflater,
                                             acc.buf, acc.length));
   CU_ASSERT(nvnameeq(":version", &frame.headers.nva[0]));
   nghttp2_frame_headers_free(&frame.headers);
+  nghttp2_hd_end_headers(&inflater);
 
+  nghttp2_hd_inflate_free(&inflater);
   nghttp2_session_del(session);
 }
 
@@ -2141,6 +2167,7 @@ void test_nghttp2_submit_headers(void)
   nghttp2_stream *stream;
   accumulator acc;
   nghttp2_frame frame;
+  nghttp2_hd_context inflater;
 
   acc.length = 0;
   ud.acc = &acc;
@@ -2149,6 +2176,7 @@ void test_nghttp2_submit_headers(void)
   callbacks.on_frame_send_callback = on_frame_send_callback;
 
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
   CU_ASSERT(0 == nghttp2_submit_headers(session,
                                         NGHTTP2_FLAG_END_STREAM,
                                         1, NGHTTP2_PRI_DEFAULT,
@@ -2180,11 +2208,13 @@ void test_nghttp2_submit_headers(void)
 
   CU_ASSERT(0 == unpack_frame_with_nv_block(&frame,
                                             NGHTTP2_HEADERS,
-                                            &session->hd_inflater,
+                                            &inflater,
                                             acc.buf, acc.length));
   CU_ASSERT(nvnameeq(":version", &frame.headers.nva[0]));
   nghttp2_frame_headers_free(&frame.headers);
+  nghttp2_hd_end_headers(&inflater);
 
+  nghttp2_hd_inflate_free(&inflater);
   nghttp2_session_del(session);
 }
 
