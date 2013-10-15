@@ -245,7 +245,7 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   nghttp2_nv *resnva;
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 11,
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 51,
                                                nv.value, nv.valuelen, 1,
                                                NGHTTP2_HD_SIDE_CLIENT));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
@@ -270,22 +270,22 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
 
   memset(value, '0', sizeof(value));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 2,
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 7,
                                                value, sizeof(value), 1,
                                                NGHTTP2_HD_SIDE_CLIENT));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 3,
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 8,
                                                value, sizeof(value), 1,
                                                NGHTTP2_HD_SIDE_CLIENT));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 4,
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 9,
                                                value, sizeof(value), 1,
                                                NGHTTP2_HD_SIDE_CLIENT));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 5,
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 10,
                                                value, sizeof(value), 1,
                                                NGHTTP2_HD_SIDE_CLIENT));
 
   CU_ASSERT(4 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
-  CU_ASSERT(5 == resnva[0].namelen);
-  CU_ASSERT(0 == memcmp(":host", resnva[0].name, resnva[0].namelen));
+  CU_ASSERT(14 == resnva[0].namelen);
+  CU_ASSERT(0 == memcmp("accept-charset", resnva[0].name, resnva[0].namelen));
   CU_ASSERT(sizeof(value) == resnva[0].valuelen);
 
   nghttp2_nv_array_del(resnva);
