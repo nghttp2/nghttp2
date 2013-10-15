@@ -4,6 +4,19 @@ nghttp2 - HTTP/2.0 C Library
 This is an experimental implementation of Hypertext Transfer Protocol
 version 2.0.
 
+This branch explores upcoming HPACK changes:
+
+* Unified request/response static header table
+* Insert index 0 and remove the last one
+* Drop substitution
+* Huffman encoding
+
+With these changes, the implemented protocol is not compatible with
+HTTP-draft-06/2.0. Therefore, this branch uses
+HTTP-nghttp2hpack-06/2.0 as protocol identifier. The following section
+does not reflect this protocl identifier change. Read it by replacing
+HTTP-draft-06/2.0 with HTTP-nghttp2hpack-06/2.0.
+
 Development Status
 ------------------
 

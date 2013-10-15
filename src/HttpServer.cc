@@ -1018,11 +1018,11 @@ int HttpServer::run()
                          verify_callback);
     }
 
-    proto_list[0] = 17;
+    proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
     memcpy(&proto_list[1], NGHTTP2_PROTO_VERSION_ID,
            NGHTTP2_PROTO_VERSION_ID_LEN);
     next_proto.first = proto_list;
-    next_proto.second = 18;
+    next_proto.second = proto_list[0] + 1;
 
     SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
   }
