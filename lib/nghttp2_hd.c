@@ -1008,6 +1008,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
 
       in = decode_length(&valuelen, in, last, 0);
       if(valuelen < 0 || in + valuelen > last) {
+        free(nv.name);
         rv =  NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
