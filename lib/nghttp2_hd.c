@@ -462,15 +462,13 @@ static int ensure_write_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 static size_t count_encoded_length(size_t n, int prefix)
 {
+  size_t k = (1 << prefix) - 1;
   size_t len = 0;
-  if(prefix > 0) {
-    size_t k = (1 << prefix) - 1;
-    if(n >= k) {
-      n -= k;
-      ++len;
-    } else {
-      return 1;
-    }
+  if(n >= k) {
+    n -= k;
+    ++len;
+  } else {
+    return 1;
   }
   do {
     ++len;
@@ -485,17 +483,15 @@ static size_t count_encoded_length(size_t n, int prefix)
 
 static size_t encode_length(uint8_t *buf, size_t n, int prefix)
 {
+  size_t k = (1 << prefix) - 1;
   size_t len = 0;
-  if(prefix > 0) {
-    size_t k = (1 << prefix) - 1;
-    if(n >= k) {
-      *buf++ = k;
-      n -= k;
-      ++len;
-    } else {
-      *buf++ = n;
-      return 1;
-    }
+  if(n >= k) {
+    *buf++ = k;
+    n -= k;
+    ++len;
+  } else {
+    *buf++ = n;
+    return 1;
   }
   do {
     ++len;
@@ -528,17 +524,13 @@ static  uint8_t* decode_length(ssize_t *res, uint8_t *in, uint8_t *last,
     *res = -1;
     return in;
   }
-  if(prefix > 0) {
-    if((*in & k) == k) {
-      *res = k;
-    } else {
-      *res = (*in) & k;
-      return in + 1;
-    }
-    ++in;
+  if((*in & k) == k) {
+    *res = k;
   } else {
-    *res = 0;
+    *res = (*in) & k;
+    return in + 1;
   }
+  ++in;
   for(r = 0; in != last; ++in, r += 7) {
     *res += (*in & 0x7f) << r;
     if(*res >= (1 << 16)) {
@@ -549,7 +541,7 @@ static  uint8_t* decode_length(ssize_t *res, uint8_t *in, uint8_t *last,
       break;
     }
   }
-  if(*in & (1 << 7)) {
+  if(in == last || *in & (1 << 7)) {
     *res = -1;
     return NULL;
   } else {
@@ -584,14 +576,14 @@ static int emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   uint8_t *bufp;
   size_t encvallen = nghttp2_hd_huff_encode_count(value, valuelen, side);
   size_t blocklen = count_encoded_length(index + 1, 6) +
-    count_encoded_length(encvallen, 0) + encvallen;
+    count_encoded_length(encvallen, 8) + encvallen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   bufp += encode_length(bufp, index + 1, 6);
-  bufp += encode_length(bufp, encvallen, 0);
+  bufp += encode_length(bufp, encvallen, 8);
   nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
                          value, valuelen, side);
   if(!inc_indexing) {
@@ -613,19 +605,19 @@ static int emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
     nghttp2_hd_huff_encode_count(nv->name, nv->namelen, side);
   size_t encvallen =
     nghttp2_hd_huff_encode_count(nv->value, nv->valuelen, side);
-  size_t blocklen = 1 + count_encoded_length(encnamelen, 0) + encnamelen +
-    count_encoded_length(encvallen, 0) + encvallen;
+  size_t blocklen = 1 + count_encoded_length(encnamelen, 8) + encnamelen +
+    count_encoded_length(encvallen, 8) + encvallen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   *bufp++ = inc_indexing ? 0 : 0x40u;
-  bufp += encode_length(bufp, encnamelen, 0);
+  bufp += encode_length(bufp, encnamelen, 8);
   nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
                          nv->name, nv->namelen, side);
   bufp += encnamelen;
-  bufp += encode_length(bufp, encvallen, 0);
+  bufp += encode_length(bufp, encvallen, 8);
   nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
                          nv->value, nv->valuelen, side);
   *offset_ptr += blocklen;
@@ -988,7 +980,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      in = decode_length(&namelen, in, last, 0);
+      in = decode_length(&namelen, in, last, 8);
       if(namelen < 0 || in + namelen > last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -1006,7 +998,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
 
-      in = decode_length(&valuelen, in, last, 0);
+      in = decode_length(&valuelen, in, last, 8);
       if(valuelen < 0 || in + valuelen > last) {
         free(nv.name);
         rv =  NGHTTP2_ERR_HEADER_COMP;
@@ -1057,7 +1049,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
       ent = nghttp2_hd_table_get(inflater, index);
-      in = decode_length(&valuelen, in , last, 0);
+      in = decode_length(&valuelen, in , last, 8);
       if(valuelen < 0 || in + valuelen > last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;

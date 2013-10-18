@@ -68,6 +68,7 @@ typedef struct {
   int data_chunk_recv_cb_called;
   int data_recv_cb_called;
   const nghttp2_frame *frame;
+  size_t fixed_sendlen;
 } my_user_data;
 
 static void scripted_data_feed_init(scripted_data_feed *df,
@@ -93,6 +94,15 @@ static ssize_t fail_send_callback(nghttp2_session *session,
 {
   return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
+
+static ssize_t fixed_bytes_send_callback(nghttp2_session *session,
+                                         const uint8_t *data, size_t len,
+                                         int flags, void *user_data)
+{
+  size_t fixed_sendlen = ((my_user_data*)user_data)->fixed_sendlen;
+  return fixed_sendlen < len ? fixed_sendlen : len;
+}
+
 
 static ssize_t scripted_recv_callback(nghttp2_session *session,
                                       uint8_t* data, size_t len, int flags,
@@ -2979,12 +2989,15 @@ void test_nghttp2_session_flow_control(void)
   nghttp2_frame settings_frame;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.send_callback = null_send_callback;
+  callbacks.send_callback = fixed_bytes_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
   data_prd.read_callback = fixed_length_data_source_read_callback;
 
   ud.frame_send_cb_called = 0;
   ud.data_source_length = 128*1024;
+  /* Use smaller emission count so that we can check outbound flow
+     control window calculation is correct. */
+  ud.fixed_sendlen = 2*1024;
 
   /* Initial window size to 64KiB - 1*/
   nghttp2_session_client_new(&session, &callbacks, &ud);
