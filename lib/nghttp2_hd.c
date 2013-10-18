@@ -857,6 +857,9 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
          be removed. */
       ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
       rv = emit_indexed_block(buf_ptr, buflen_ptr, &offset, ent->index);
+      if(rv != 0) {
+        goto fail;
+      }
     }
     ent->flags &= ~(NGHTTP2_HD_FLAG_EMIT | NGHTTP2_HD_FLAG_IMPLICIT_EMIT);
   }
