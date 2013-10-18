@@ -438,7 +438,7 @@ static  uint8_t* decode_length(ssize_t *res, uint8_t *in, uint8_t *last,
       break;
     }
   }
-  if(*in & (1 << 7)) {
+  if(in == last || *in & (1 << 7)) {
     *res = -1;
     return NULL;
   } else {
