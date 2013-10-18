@@ -1597,11 +1597,16 @@ int nghttp2_session_send(nghttp2_session *session)
         return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
     } else {
-      session->aob.framebufoff += sentlen;
-      if(session->aob.item->frame_cat == NGHTTP2_CAT_DATA) {
+      if(session->aob.item->frame_cat == NGHTTP2_CAT_DATA &&
+         session->aob.framebufoff + sentlen > NGHTTP2_FRAME_HEAD_LENGTH) {
         nghttp2_data *frame;
         nghttp2_stream *stream;
-        uint16_t len = nghttp2_get_uint16(&session->aob.framebuf[0]);
+        uint16_t len;
+        if(session->aob.framebufoff < NGHTTP2_FRAME_HEAD_LENGTH) {
+          len = session->aob.framebufoff + sentlen - NGHTTP2_FRAME_HEAD_LENGTH;
+        } else {
+          len = sentlen;
+        }
         frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
         stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
         if(stream && stream->remote_flow_control) {
@@ -1611,6 +1616,7 @@ int nghttp2_session_send(nghttp2_session *session)
           session->remote_window_size -= len;
         }
       }
+      session->aob.framebufoff += sentlen;
       if(session->aob.framebufoff == session->aob.framebuflen) {
         /* Frame has completely sent */
         r = nghttp2_session_after_frame_sent(session);
