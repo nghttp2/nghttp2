@@ -411,16 +411,21 @@ static int emit_indexed_header(nghttp2_hd_context *context,
 
 static int emit_newname_header(nghttp2_hd_context *context,
                                nghttp2_nva_out *nva_out_ptr,
-                               nghttp2_nv *nv)
+                               nghttp2_nv *nv,
+                               uint8_t flags)
 {
   int rv;
-  rv = track_decode_buf(context, nv->name);
-  if(rv != 0) {
-    return rv;
+  if(flags & NGHTTP2_HD_FLAG_NAME_GIFT) {
+    rv = track_decode_buf(context, nv->name);
+    if(rv != 0) {
+      return rv;
+    }
   }
-  rv = track_decode_buf(context, nv->value);
-  if(rv != 0) {
-    return rv;
+  if(flags & NGHTTP2_HD_FLAG_VALUE_GIFT) {
+    rv = track_decode_buf(context, nv->value);
+    if(rv != 0) {
+      return rv;
+    }
   }
   return add_nva(nva_out_ptr,
                  nv->name, nv->namelen, nv->value, nv->valuelen);
@@ -429,16 +434,19 @@ static int emit_newname_header(nghttp2_hd_context *context,
 static int emit_indname_header(nghttp2_hd_context *context,
                                nghttp2_nva_out *nva_out_ptr,
                                nghttp2_hd_entry *ent,
-                               uint8_t *value, size_t valuelen)
+                               uint8_t *value, size_t valuelen,
+                               uint8_t flags)
 {
   int rv;
   rv = add_emit_set(context, ent);
   if(rv != 0) {
     return rv;
   }
-  rv = track_decode_buf(context, value);
-  if(rv != 0) {
-    return rv;
+  if(NGHTTP2_HD_FLAG_VALUE_GIFT) {
+    rv = track_decode_buf(context, value);
+    if(rv != 0) {
+      return rv;
+    }
   }
   return add_nva(nva_out_ptr, ent->nv.name, ent->nv.namelen, value, valuelen);
 }
@@ -576,8 +584,12 @@ static int emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   int rv;
   uint8_t *bufp;
   size_t encvallen = nghttp2_hd_huff_encode_count(value, valuelen, side);
-  size_t blocklen = count_encoded_length(index + 1, 6) +
-    count_encoded_length(encvallen, 8) + encvallen;
+  size_t blocklen = count_encoded_length(index + 1, 6);
+  int huffman = encvallen < valuelen;
+  if(!huffman) {
+    encvallen = valuelen;
+  }
+  blocklen += count_encoded_length(encvallen, 7) + encvallen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
@@ -585,9 +597,14 @@ static int emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   bufp = *buf_ptr + *offset_ptr;
   *bufp = inc_indexing ? 0 : 0x40u;
   bufp += encode_length(bufp, index + 1, 6);
-  bufp += encode_length(bufp, encvallen, 8);
-  nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
-                         value, valuelen, side);
+  *bufp = huffman ? 1 << 7 : 0;
+  bufp += encode_length(bufp, encvallen, 7);
+  if(huffman) {
+    nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
+                           value, valuelen, side);
+  } else {
+    memcpy(bufp, value, valuelen);
+  }
   assert(bufp+encvallen - (*buf_ptr + *offset_ptr) == (ssize_t)blocklen);
   *offset_ptr += blocklen;
   return 0;
@@ -604,21 +621,40 @@ static int emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
     nghttp2_hd_huff_encode_count(nv->name, nv->namelen, side);
   size_t encvallen =
     nghttp2_hd_huff_encode_count(nv->value, nv->valuelen, side);
-  size_t blocklen = 1 + count_encoded_length(encnamelen, 8) + encnamelen +
-    count_encoded_length(encvallen, 8) + encvallen;
+  size_t blocklen = 1;
+  int name_huffman = encnamelen < nv->namelen;
+  int value_huffman = encvallen < nv->valuelen;
+  if(!name_huffman) {
+    encnamelen = nv->namelen;
+  }
+  if(!value_huffman) {
+    encvallen = nv->valuelen;
+  }
+  blocklen += count_encoded_length(encnamelen, 7) + encnamelen +
+    count_encoded_length(encvallen, 7) + encvallen;
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   *bufp++ = inc_indexing ? 0 : 0x40u;
-  bufp += encode_length(bufp, encnamelen, 8);
-  nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
-                         nv->name, nv->namelen, side);
+  *bufp = name_huffman ? 1 << 7 : 0;
+  bufp += encode_length(bufp, encnamelen, 7);
+  if(name_huffman) {
+    nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
+                           nv->name, nv->namelen, side);
+  } else {
+    memcpy(bufp, nv->name, nv->namelen);
+  }
   bufp += encnamelen;
-  bufp += encode_length(bufp, encvallen, 8);
-  nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
-                         nv->value, nv->valuelen, side);
+  *bufp = value_huffman ? 1 << 7 : 0;
+  bufp += encode_length(bufp, encvallen, 7);
+  if(value_huffman) {
+    nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
+                           nv->value, nv->valuelen, side);
+  } else {
+    memcpy(bufp, nv->value, nv->valuelen);
+  }
   *offset_ptr += blocklen;
   return 0;
 }
@@ -975,20 +1011,27 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       /* Literal Header Repr - New Name */
       nghttp2_nv nv;
       ssize_t namelen, valuelen;
+      int name_huffman, value_huffman;
       if(++in == last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      in = decode_length(&namelen, in, last, 8);
+      name_huffman = *in & (1 << 7);
+      in = decode_length(&namelen, in, last, 7);
       if(namelen < 0 || in + namelen > last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      rv = inflate_decode(&nv.name, in, namelen, inflater->side);
-      if(rv < 0) {
-        goto fail;
+      if(name_huffman) {
+        rv = inflate_decode(&nv.name, in, namelen, inflater->side);
+        if(rv < 0) {
+          goto fail;
+        }
+        nv.namelen = rv;
+      } else {
+        nv.name = in;
+        nv.namelen = namelen;
       }
-      nv.namelen = rv;
       in += namelen;
 
       if(!nghttp2_check_header_name(nv.name, nv.namelen)) {
@@ -997,35 +1040,61 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
 
-      in = decode_length(&valuelen, in, last, 8);
+      if(in == last) {
+        rv = NGHTTP2_ERR_HEADER_COMP;
+        goto fail;
+      }
+      value_huffman = *in & (1 << 7);
+      in = decode_length(&valuelen, in, last, 7);
       if(valuelen < 0 || in + valuelen > last) {
         free(nv.name);
         rv =  NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      rv = inflate_decode(&nv.value, in, valuelen, inflater->side);
-      if(rv < 0) {
-        free(nv.name);
-        goto fail;
+      if(value_huffman) {
+        rv = inflate_decode(&nv.value, in, valuelen, inflater->side);
+        if(rv < 0) {
+          free(nv.name);
+          goto fail;
+        }
+        nv.valuelen = rv;
+      } else {
+        nv.value = in;
+        nv.valuelen = valuelen;
       }
-      nv.valuelen = rv;
       in += valuelen;
 
       nghttp2_downcase(nv.name, nv.namelen);
       if(c == 0x40u) {
-        rv = emit_newname_header(inflater, &nva_out, &nv);
+        int flags = NGHTTP2_HD_FLAG_NONE;
+        if(name_huffman) {
+          flags |= NGHTTP2_HD_FLAG_NAME_GIFT;
+        }
+        if(value_huffman) {
+          flags |= NGHTTP2_HD_FLAG_VALUE_GIFT;
+        }
+        rv = emit_newname_header(inflater, &nva_out, &nv, flags);
       } else {
         nghttp2_hd_entry *new_ent;
+        uint8_t ent_flags = NGHTTP2_HD_FLAG_NAME_ALLOC |
+          NGHTTP2_HD_FLAG_VALUE_ALLOC;
+        if(name_huffman) {
+          ent_flags |= NGHTTP2_HD_FLAG_NAME_GIFT;
+        }
+        if(value_huffman) {
+          ent_flags |= NGHTTP2_HD_FLAG_VALUE_GIFT;
+        }
         new_ent = add_hd_table_incremental(inflater, NULL, NULL, NULL, &nv,
-                                           NGHTTP2_HD_FLAG_NAME_ALLOC |
-                                           NGHTTP2_HD_FLAG_VALUE_ALLOC |
-                                           NGHTTP2_HD_FLAG_NAME_GIFT |
-                                           NGHTTP2_HD_FLAG_VALUE_GIFT);
+                                           ent_flags);
         if(new_ent) {
           rv = emit_indexed_header(inflater, &nva_out, new_ent);
         } else {
-          free(nv.value);
-          free(nv.name);
+          if(value_huffman) {
+            free(nv.value);
+          }
+          if(name_huffman) {
+            free(nv.name);
+          }
           rv = NGHTTP2_ERR_HEADER_COMP;
         }
       }
@@ -1037,6 +1106,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       nghttp2_hd_entry *ent;
       uint8_t *value;
       ssize_t valuelen, index;
+      int value_huffman;
       in = decode_length(&index, in, last, 6);
       if(index < 0) {
         rv = NGHTTP2_ERR_HEADER_COMP;
@@ -1048,24 +1118,41 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
       ent = nghttp2_hd_table_get(inflater, index);
-      in = decode_length(&valuelen, in , last, 8);
+      if(in == last) {
+        rv = NGHTTP2_ERR_HEADER_COMP;
+        goto fail;
+      }
+      value_huffman = *in & (1 << 7);
+      in = decode_length(&valuelen, in , last, 7);
       if(valuelen < 0 || in + valuelen > last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      rv = inflate_decode(&value, in, valuelen, inflater->side);
-      if(rv < 0) {
-        goto fail;
+      if(value_huffman) {
+        rv = inflate_decode(&value, in, valuelen, inflater->side);
+        if(rv < 0) {
+          goto fail;
+        }
+        in += valuelen;
+        valuelen = rv;
+      } else {
+        value = in;
+        in += valuelen;
       }
-      in += valuelen;
-      valuelen = rv;
       if((c & 0x40u) == 0x40u) {
-        rv = emit_indname_header(inflater, &nva_out, ent, value, valuelen);
+        uint8_t flags = NGHTTP2_HD_FLAG_NONE;
+        if(value_huffman) {
+          flags = NGHTTP2_HD_FLAG_VALUE_GIFT;
+        }
+        rv = emit_indname_header(inflater, &nva_out, ent, value, valuelen,
+                                 flags);
       } else {
         nghttp2_nv nv;
         nghttp2_hd_entry *new_ent;
-        uint8_t ent_flags = NGHTTP2_HD_FLAG_VALUE_GIFT |
-          NGHTTP2_HD_FLAG_VALUE_ALLOC;
+        uint8_t ent_flags = NGHTTP2_HD_FLAG_VALUE_ALLOC;
+        if(value_huffman) {
+          ent_flags |= NGHTTP2_HD_FLAG_VALUE_GIFT;
+        }
         ++ent->ref;
         nv.name = ent->nv.name;
         if((size_t)index < inflater->hd_table.len) {
@@ -1083,7 +1170,9 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         if(new_ent) {
           rv = emit_indexed_header(inflater, &nva_out, new_ent);
         } else {
-          free(nv.value);
+          if(value_huffman) {
+            free(nv.value);
+          }
           rv = NGHTTP2_ERR_HEADER_COMP;
         }
       }
