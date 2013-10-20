@@ -575,6 +575,24 @@ static int emit_indexed_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   return 0;
 }
 
+static size_t emit_string(uint8_t *buf, size_t buflen,
+                          size_t enclen, int huffman,
+                          const uint8_t *str, size_t len,
+                          nghttp2_hd_side side)
+{
+  size_t rv;
+  *buf = huffman ? 1 << 7 : 0;
+  rv = encode_length(buf, enclen, 7);
+  buf += rv;
+  if(huffman) {
+    nghttp2_hd_huff_encode(buf, buflen - rv, str, len, side);
+  } else {
+    assert(enclen == len);
+    memcpy(buf, str, len);
+  }
+  return rv + enclen;
+}
+
 static int emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
                               size_t *offset_ptr, size_t index,
                               const uint8_t *value, size_t valuelen,
@@ -597,15 +615,9 @@ static int emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   bufp = *buf_ptr + *offset_ptr;
   *bufp = inc_indexing ? 0 : 0x40u;
   bufp += encode_length(bufp, index + 1, 6);
-  *bufp = huffman ? 1 << 7 : 0;
-  bufp += encode_length(bufp, encvallen, 7);
-  if(huffman) {
-    nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
-                           value, valuelen, side);
-  } else {
-    memcpy(bufp, value, valuelen);
-  }
-  assert(bufp+encvallen - (*buf_ptr + *offset_ptr) == (ssize_t)blocklen);
+  bufp += emit_string(bufp, *buflen_ptr - (bufp - *buf_ptr),
+                      encvallen, huffman, value, valuelen, side);
+  assert(bufp - (*buf_ptr + *offset_ptr) == (ssize_t)blocklen);
   *offset_ptr += blocklen;
   return 0;
 }
@@ -638,23 +650,10 @@ static int emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
   }
   bufp = *buf_ptr + *offset_ptr;
   *bufp++ = inc_indexing ? 0 : 0x40u;
-  *bufp = name_huffman ? 1 << 7 : 0;
-  bufp += encode_length(bufp, encnamelen, 7);
-  if(name_huffman) {
-    nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
-                           nv->name, nv->namelen, side);
-  } else {
-    memcpy(bufp, nv->name, nv->namelen);
-  }
-  bufp += encnamelen;
-  *bufp = value_huffman ? 1 << 7 : 0;
-  bufp += encode_length(bufp, encvallen, 7);
-  if(value_huffman) {
-    nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
-                           nv->value, nv->valuelen, side);
-  } else {
-    memcpy(bufp, nv->value, nv->valuelen);
-  }
+  bufp += emit_string(bufp, *buflen_ptr - (bufp - *buf_ptr),
+                      encnamelen, name_huffman, nv->name, nv->namelen, side);
+  bufp += emit_string(bufp, *buflen_ptr - (bufp - *buf_ptr),
+                      encvallen, value_huffman, nv->value, nv->valuelen, side);
   *offset_ptr += blocklen;
   return 0;
 }
