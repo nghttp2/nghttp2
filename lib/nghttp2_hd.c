@@ -485,12 +485,13 @@ static size_t encode_length(uint8_t *buf, size_t n, int prefix)
 {
   size_t k = (1 << prefix) - 1;
   size_t len = 0;
+  *buf &= ~k;
   if(n >= k) {
-    *buf++ = k;
+    *buf++ |= k;
     n -= k;
     ++len;
   } else {
-    *buf++ = n;
+    *buf++ |= n;
     return 1;
   }
   do {
@@ -560,8 +561,8 @@ static int emit_indexed_block(uint8_t **buf_ptr, size_t *buflen_ptr,
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
+  *bufp = 0x80u;
   encode_length(bufp, index, 7);
-  (*buf_ptr)[*offset_ptr] |= 0x80u;
   *offset_ptr += blocklen;
   return 0;
 }
@@ -582,13 +583,11 @@ static int emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
+  *bufp = inc_indexing ? 0 : 0x40u;
   bufp += encode_length(bufp, index + 1, 6);
   bufp += encode_length(bufp, encvallen, 8);
   nghttp2_hd_huff_encode(bufp, *buflen_ptr - (bufp - *buf_ptr),
                          value, valuelen, side);
-  if(!inc_indexing) {
-    (*buf_ptr)[*offset_ptr] |= 0x40u;
-  }
   assert(bufp+encvallen - (*buf_ptr + *offset_ptr) == (ssize_t)blocklen);
   *offset_ptr += blocklen;
   return 0;
