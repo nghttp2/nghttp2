@@ -164,9 +164,10 @@ static void nghttp2_inbound_frame_reset(nghttp2_session *session)
 static int nghttp2_session_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data,
-                               nghttp2_hd_side side)
+                               int server)
 {
   int r;
+  nghttp2_hd_side side_deflate, side_inflate;
   *session_ptr = malloc(sizeof(nghttp2_session));
   if(*session_ptr == NULL) {
     r = NGHTTP2_ERR_NOMEM;
@@ -189,11 +190,19 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
   (*session_ptr)->last_stream_id = 0;
 
-  r = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater, side);
+  if(server) {
+    (*session_ptr)->server = 1;
+    side_deflate = NGHTTP2_HD_SIDE_RESPONSE;
+    side_inflate = NGHTTP2_HD_SIDE_REQUEST;
+  } else {
+    side_deflate = NGHTTP2_HD_SIDE_REQUEST;
+    side_inflate = NGHTTP2_HD_SIDE_RESPONSE;
+  }
+  r = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater, side_deflate);
   if(r != 0) {
     goto fail_hd_deflater;
   }
-  r = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater, side);
+  r = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater, side_inflate);
   if(r != 0) {
     goto fail_hd_inflater;
   }
@@ -275,8 +284,7 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
 {
   int r;
   /* For client side session, header compression is disabled. */
-  r = nghttp2_session_new(session_ptr, callbacks, user_data,
-                          NGHTTP2_HD_SIDE_CLIENT);
+  r = nghttp2_session_new(session_ptr, callbacks, user_data, 0);
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 1;
@@ -291,10 +299,8 @@ int nghttp2_session_server_new(nghttp2_session **session_ptr,
 {
   int r;
   /* Enable header compression on server side. */
-  r = nghttp2_session_new(session_ptr, callbacks, user_data,
-                          NGHTTP2_HD_SIDE_SERVER);
+  r = nghttp2_session_new(session_ptr, callbacks, user_data, 1);
   if(r == 0) {
-    (*session_ptr)->server = 1;
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 2;
     (*session_ptr)->last_recv_stream_id = 0;

@@ -296,7 +296,7 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
 
 int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater, nghttp2_hd_side side)
 {
-  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side^1,
+  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side,
                                  NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE);
 }
 
@@ -304,7 +304,7 @@ int nghttp2_hd_inflate_init2(nghttp2_hd_context *inflater,
                              nghttp2_hd_side side,
                              size_t hd_table_bufsize_max)
 {
-  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side^1,
+  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side,
                                  hd_table_bufsize_max);
 }
 

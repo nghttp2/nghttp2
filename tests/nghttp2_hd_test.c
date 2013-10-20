@@ -65,8 +65,8 @@ void test_nghttp2_hd_deflate(void)
   nghttp2_nv *resnva;
   ssize_t blocklen;
 
-  CU_ASSERT(0 == nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT));
-  CU_ASSERT(0 == nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER));
+  CU_ASSERT(0 == nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST));
+  CU_ASSERT(0 == nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST));
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, nv_offset, nva1,
                                    sizeof(nva1)/sizeof(nghttp2_nv));
   CU_ASSERT(blocklen > 0);
@@ -152,8 +152,8 @@ void test_nghttp2_hd_deflate_same_indexed_repr(void)
   nghttp2_nv *resnva;
   ssize_t blocklen;
 
-  CU_ASSERT(0 == nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT));
-  CU_ASSERT(0 == nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER));
+  CU_ASSERT(0 == nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST));
+  CU_ASSERT(0 == nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST));
 
   /* Encode 2 same headers. cookie:alpha is not in the reference set,
      so first emit literal repr and then 2 emits of indexed repr. */
@@ -209,8 +209,8 @@ void test_nghttp2_hd_deflate_common_header_eviction(void)
   nva[1].value = value;
   nva[1].valuelen = sizeof(value);
 
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_CLIENT);
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
   /* Put :scheme: http (index = 0) in reference set */
   GET_TABLE_ENT(&deflater, 0)->flags |= NGHTTP2_HD_FLAG_REFSET;
@@ -243,11 +243,11 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   size_t offset = 0;
   nghttp2_nv nv = MAKE_NV("user-agent", "nghttp2");
   nghttp2_nv *resnva;
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 51,
                                                nv.value, nv.valuelen, 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
   CU_ASSERT(1 == inflater.hd_table.len);
@@ -267,21 +267,21 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   size_t offset = 0;
   uint8_t value[1024];
   nghttp2_nv *resnva;
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
   memset(value, '0', sizeof(value));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 7,
                                                value, sizeof(value), 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 8,
                                                value, sizeof(value), 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 9,
                                                value, sizeof(value), 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 10,
                                                value, sizeof(value), 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
 
   CU_ASSERT(4 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   CU_ASSERT(14 == resnva[0].namelen);
@@ -306,11 +306,11 @@ void test_nghttp2_hd_inflate_newname_inc(void)
   size_t offset = 0;
   nghttp2_nv nv = MAKE_NV("x-rel", "nghttp2");
   nghttp2_nv *resnva;
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
   CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                &nv, 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
   CU_ASSERT(1 == inflater.hd_table.len);
@@ -339,11 +339,11 @@ void test_nghttp2_hd_inflate_clearall_inc(void)
   nv.value = value;
   nv.valuelen = sizeof(value);
 
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_SERVER);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
   CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                &nv, 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
   CU_ASSERT(0 == inflater.hd_table.len);
@@ -366,7 +366,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void)
   offset = 0;
   CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                &nv, 1,
-                                               NGHTTP2_HD_SIDE_CLIENT));
+                                               NGHTTP2_HD_SIDE_REQUEST));
   CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, offset));
   assert_nv_equal(&nv, resnva, 1);
   CU_ASSERT(1 == inflater.hd_table.len);
@@ -537,8 +537,8 @@ void test_nghttp2_hd_deflate_inflate(void)
     MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
 
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_SERVER);
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_CLIENT);
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
   check_deflate_inflate(&deflater, &inflater, nv1, ARRLEN(nv1));
   check_deflate_inflate(&deflater, &inflater, nv2, ARRLEN(nv2));

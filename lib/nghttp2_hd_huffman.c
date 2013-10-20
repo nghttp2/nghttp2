@@ -148,7 +148,7 @@ size_t nghttp2_hd_huff_encode_count(const uint8_t *src, size_t len,
   size_t nbits = 0;
   const nghttp2_huff_sym *huff_sym_table;
 
-  if(side == NGHTTP2_HD_SIDE_CLIENT) {
+  if(side == NGHTTP2_HD_SIDE_REQUEST) {
     huff_sym_table = req_huff_sym_table;
   } else {
     huff_sym_table = res_huff_sym_table;
@@ -169,7 +169,7 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
   size_t i;
   const nghttp2_huff_sym *huff_sym_table;
 
-  if(side == NGHTTP2_HD_SIDE_CLIENT) {
+  if(side == NGHTTP2_HD_SIDE_REQUEST) {
     huff_sym_table = req_huff_sym_table;
   } else {
     huff_sym_table = res_huff_sym_table;
@@ -192,7 +192,7 @@ ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
   const nghttp2_huff_sym *huff_sym_table;
   const huff_decode_table_type *huff_decode_table;
 
-  if(side == NGHTTP2_HD_SIDE_CLIENT) {
+  if(side == NGHTTP2_HD_SIDE_REQUEST) {
     huff_sym_table = req_huff_sym_table;
     huff_decode_table = req_huff_decode_table;
   } else {
@@ -227,7 +227,7 @@ ssize_t nghttp2_hd_huff_decode(uint8_t *dest, size_t destlen,
   const nghttp2_huff_sym *huff_sym_table;
   const huff_decode_table_type *huff_decode_table;
 
-  if(side == NGHTTP2_HD_SIDE_CLIENT) {
+  if(side == NGHTTP2_HD_SIDE_REQUEST) {
     huff_sym_table = req_huff_sym_table;
     huff_decode_table = req_huff_decode_table;
   } else {

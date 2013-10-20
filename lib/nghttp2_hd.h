@@ -39,8 +39,8 @@
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
 
 typedef enum {
-  NGHTTP2_HD_SIDE_CLIENT = 0,
-  NGHTTP2_HD_SIDE_SERVER = 1
+  NGHTTP2_HD_SIDE_REQUEST = 0,
+  NGHTTP2_HD_SIDE_RESPONSE = 1
 } nghttp2_hd_side;
 
 typedef enum {
@@ -103,8 +103,7 @@ typedef struct {
   uint8_t bad;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
-  /* Huffman compression side: NGHTTP2_HD_SIDE_CLIENT uses huffman
-     table for request. NGHTTP2_HD_SIDE_SERVER uses huffman table for
+  /* NGHTTP2_HD_SIDE_REQUEST for processing request, otherwise
      response. */
   nghttp2_hd_side side;
   /* Maximum header table size */
@@ -272,8 +271,8 @@ nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
 
 /*
  * Counts the required bytes to encode |src| with length |len|. If
- * |side| is NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
- * used. Otherwise, the response code table is used.
+ * |side| is NGHTTP2_HD_SIDE_REQUEST, the request huffman code table
+ * is used. Otherwise, the response code table is used.
  *
  * This function returns the number of required bytes to encode given
  * data, including terminal symbol code. This function always
@@ -287,7 +286,7 @@ size_t nghttp2_hd_huff_encode_count(const uint8_t *src, size_t len,
  * memory location pointed by |dest|, allocated at lest |destlen|
  * bytes. The caller is responsible to specify |destlen| at least the
  * length that nghttp2_hd_huff_encode_count() returns.  If |side| is
- * NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
+ * NGHTTP2_HD_SIDE_REQUEST, the request huffman code table is
  * used. Otherwise, the response code table is used.
  *
  * This function returns the number of written bytes, including
@@ -303,8 +302,8 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
 /*
  * Counts the number of required bytes to decode |src| with length
  * |srclen|. The given input must be terminated with terminal code. If
- * |side| is NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
- * used. Otherwise, the response code table is used.
+ * |side| is NGHTTP2_HD_SIDE_REQUEST, the request huffman code table
+ * is used. Otherwise, the response code table is used.
  *
  * This function returns the number of required bytes to decode given
  * data if it succeeds, or -1.
@@ -318,7 +317,7 @@ ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
  * bytes. The given input must be terminated with terminal code. The
  * caller is responsible to specify |destlen| at least the length that
  * nghttp2_hd_huff_decode_count() returns.  If |side| is
- * NGHTTP2_HD_SIDE_CLIENT, the request huffman code table is
+ * NGHTTP2_HD_SIDE_REQUEST, the request huffman code table is
  * used. Otherwise, the response code table is used.
  *
  * This function returns the number of written bytes.  This return
