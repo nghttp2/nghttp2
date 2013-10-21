@@ -88,14 +88,15 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
 static int perform(nghttp2_hd_side side)
 {
   nghttp2_hd_context inflater;
-  int i = 0;
+  size_t i;
   json_t *json;
   json_error_t error;
   size_t len;
 
   json = json_loadf(stdin, 0, &error);
   if(json == NULL) {
-    return -1;
+    fprintf(stderr, "JSON loading failed\n");
+    exit(EXIT_FAILURE);
   }
   nghttp2_hd_inflate_init(&inflater, side);
   printf("[\n");
@@ -103,7 +104,8 @@ static int perform(nghttp2_hd_side side)
   for(i = 0; i < len; ++i) {
     json_t *obj = json_array_get(json, i);
     if(!json_is_object(obj)) {
-      fprintf(stderr, "Unexpected JSON type at %d. It should be object.\n", i);
+      fprintf(stderr, "Unexpected JSON type at %zu. It should be object.\n",
+              i);
       continue;
     }
     if(inflate_hd(obj, &inflater, i) != 0) {
@@ -119,7 +121,7 @@ static int perform(nghttp2_hd_side side)
   return 0;
 }
 
-static void print_help()
+static void print_help(void)
 {
   printf("Usage: inflatehd [-r] < INPUT\n\n"
          "Reads JSON array from stdin and outputs inflated name/value pairs\n"

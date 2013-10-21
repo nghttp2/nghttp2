@@ -104,7 +104,7 @@ static int deflate_hd(json_t *obj, nghttp2_hd_context *deflater, int seq)
 static int perform(nghttp2_hd_side side)
 {
   nghttp2_hd_context deflater;
-  int i = 0;
+  size_t i;
   json_t *json;
   json_error_t error;
   size_t len;
@@ -112,7 +112,7 @@ static int perform(nghttp2_hd_side side)
   json = json_loadf(stdin, 0, &error);
   if(json == NULL) {
     fprintf(stderr, "JSON loading failed\n");
-    return -1;
+    exit(EXIT_FAILURE);
   }
   nghttp2_hd_deflate_init(&deflater, side);
   printf("[\n");
@@ -120,7 +120,8 @@ static int perform(nghttp2_hd_side side)
   for(i = 0; i < len; ++i) {
     json_t *obj = json_array_get(json, i);
     if(!json_is_object(obj)) {
-      fprintf(stderr, "Unexpected JSON type at %d. It should be object.\n", i);
+      fprintf(stderr, "Unexpected JSON type at %zu. It should be object.\n",
+              i);
       continue;
     }
     if(deflate_hd(obj, &deflater, i) != 0) {
@@ -136,7 +137,7 @@ static int perform(nghttp2_hd_side side)
   return 0;
 }
 
-static void print_help()
+static void print_help(void)
 {
   printf("Usage: deflatehd [-r] < INPUT\n\n"
          "Reads JSON array from stdin and outputs deflated header block\n"
