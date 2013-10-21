@@ -156,8 +156,8 @@ size_t nghttp2_hd_huff_encode_count(const uint8_t *src, size_t len,
   for(i = 0; i < len; ++i) {
     nbits += huff_sym_table[src[i]].nbits;
   }
-  /* 256 is special terminal symbol */
-  return (nbits + huff_sym_table[256].nbits + 7) / 8;
+  /* pad the prefix of EOS (256) */
+  return (nbits + 7) / 8;
 }
 
 ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
@@ -179,8 +179,10 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
     const nghttp2_huff_sym *sym = &huff_sym_table[src[i]];
     bitoff = huff_encode_sym(&dest, bitoff, sym);
   }
-  /* 256 is special terminal symbol */
-  bitoff = huff_encode_sym(&dest, bitoff, &huff_sym_table[256]);
+  /* 256 is special terminal symbol, pad with its prefix */
+  if(bitoff > 0) {
+    *dest |= huff_sym_table[256].code[0] >> bitoff;
+  }
   return dest - dest_first + (bitoff > 0);
 }
 
@@ -204,6 +206,10 @@ ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
     int rv = huff_decode(src + i, srclen - i, bitoff,
                          huff_sym_table, huff_decode_table);
     if(rv == -1) {
+      /* TODO Check prefix of EOS */
+      if(i + 1 == srclen && bitoff > 0) {
+        break;
+      }
       return -1;
     }
     if(rv == 256) {
@@ -239,6 +245,10 @@ ssize_t nghttp2_hd_huff_decode(uint8_t *dest, size_t destlen,
     int rv = huff_decode(src + i, srclen - i, bitoff,
                          huff_sym_table, huff_decode_table);
     if(rv == -1) {
+      /* TODO Check prefix of EOS */
+      if(i + 1 == srclen && bitoff > 0) {
+        break;
+      }
       return -1;
     }
     if(rv == 256) {
