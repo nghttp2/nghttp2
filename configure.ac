@@ -187,6 +187,13 @@ if test "x${have_libevent_openssl}" = "xno"; then
   AC_MSG_NOTICE($LIBEVENT_OPENSSL_PKG_ERRORS)
 fi
 
+# jansson (for hdtest/deflatehd and hdtest/inflatehd)
+PKG_CHECK_MODULES([JANSSON], [jansson >= 2.5],
+                  [have_jansson=yes], [have_jansson=no])
+if test "x${have_jansson}" == "xno"; then
+  AC_MSG_NOTICE($JANSSON_PKG_ERRORS)
+fi
+
 # libxml2 (for src/nghttp)
 have_libxml2=no
 if test "x$with_libxml2" != "xno"; then
@@ -226,6 +233,13 @@ if test "x${request_examples}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
+
+# hdtest requires jansson
+if test "x${have_jansson}" = "xyes"; then
+    enable_hdtest=yes
+fi
+
+AM_CONDITIONAL([ENABLE_HDTEST], [ test "x${enable_hdtest}" = "xyes" ])
 
 # Checks for header files.
 AC_CHECK_HEADERS([ \
@@ -301,6 +315,7 @@ AC_CONFIG_FILES([
   tests/testdata/Makefile
   src/Makefile
   examples/Makefile
+  hdtest/Makefile
   doc/Makefile
   doc/conf.py
 ])

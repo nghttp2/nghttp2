@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2.0 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2013 Tatsuhiro Tsujikawa
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,10 +20,21 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib src examples hdtest tests doc
 
-ACLOCAL_AMFLAGS = -I m4
+if ENABLE_HDTEST
 
-dist_doc_DATA = README.rst
+AM_CFLAGS = -Wall
+AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
+	-I$(srcdir)/../lib @JANSSON_CFLAGS@ @DEFS@
+AM_LDFLAGS = @JANSSON_LIBS@
+LDADD = $(top_builddir)/lib/libnghttp2.la
 
-EXTRA_DIST = shrpx.conf.sample proxy.pac.sample android-config android-make
+bin_PROGRAMS = inflatehd deflatehd
+
+inflatehd_SOURCES = inflatehd.c
+
+deflatehd_SOURCES = deflatehd.c
+
+endif # ENABLE_HDTEST
+
+EXTRA_DIST = README.rst
