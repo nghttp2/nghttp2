@@ -863,20 +863,19 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();
   // 4 means :status and possible via header field.
-  auto nv = util::make_unique<const char*[]>(nheader * 2 + 4 + 1);
-  size_t hdidx = 0;
+  auto nv = std::vector<const char*>();
+  nv.reserve(nheader * 2 + 4 + 1);
   std::string via_value;
   auto response_status = util::utos(downstream->get_response_http_status());
-  nv[hdidx++] = ":status";
-  nv[hdidx++] = response_status.c_str();
+  nv.push_back(":status");
+  nv.push_back(response_status.c_str());
 
-  hdidx += http2::copy_norm_headers_to_nv(&nv[hdidx],
-                                          downstream->get_response_headers());
+  http2::copy_norm_headers_to_nv(nv, downstream->get_response_headers());
   auto via = downstream->get_norm_response_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
-      nv[hdidx++] = "via";
-      nv[hdidx++] = (*via).second.c_str();
+      nv.push_back("via");
+      nv.push_back((*via).second.c_str());
     }
   } else {
     if(via != end_headers) {
@@ -885,10 +884,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     }
     via_value += http::create_via_header_value
       (downstream->get_response_major(), downstream->get_response_minor());
-    nv[hdidx++] = "via";
-    nv[hdidx++] = via_value.c_str();
+    nv.push_back("via");
+    nv.push_back(via_value.c_str());
   }
-  nv[hdidx++] = nullptr;
+  nv.push_back(nullptr);
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(size_t i = 0; nv[i]; i += 2) {
@@ -903,8 +902,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   data_prd.read_callback = spdy_data_read_callback;
 
   int rv;
-  rv = nghttp2_submit_response(session_, downstream->get_stream_id(), nv.get(),
-                               &data_prd);
+  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
+                               nv.data(), &data_prd);
   if(rv != 0) {
     ULOG(FATAL, this) << "nghttp2_submit_response() failed";
     return -1;

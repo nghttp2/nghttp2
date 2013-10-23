@@ -236,15 +236,15 @@ int SpdyDownstreamConnection::push_request_headers()
   // 10 means :method, :scheme, :path and possible via and
   // x-forwarded-for header fields. We rename host header field as
   // :host.
-  auto nv = util::make_unique<const char*[]>(nheader * 2 + 10 + 1);
-  size_t hdidx = 0;
+  auto nv = std::vector<const char*>();
+  nv.reserve(nheader * 2 + 10 + 1);
   std::string via_value;
   std::string xff_value;
   std::string scheme, path, query;
   if(downstream_->get_request_method() == "CONNECT") {
     // No :scheme header field for CONNECT method.
-    nv[hdidx++] = ":path";
-    nv[hdidx++] = downstream_->get_request_path().c_str();
+    nv.push_back(":path");
+    nv.push_back(downstream_->get_request_path().c_str());
   } else {
     http_parser_url u;
     const char *url = downstream_->get_request_path().c_str();
@@ -264,27 +264,26 @@ int SpdyDownstreamConnection::push_request_headers()
         path += query;
       }
     }
-    nv[hdidx++] = ":scheme";
+    nv.push_back(":scheme");
     if(scheme.empty()) {
       // The default scheme is http. For SPDY upstream, the path must
       // be absolute URI, so scheme should be provided.
-      nv[hdidx++] = "http";
+      nv.push_back("http");
     } else {
-      nv[hdidx++] = scheme.c_str();
+      nv.push_back(scheme.c_str());
     }
-    nv[hdidx++] = ":path";
+    nv.push_back(":path");
     if(path.empty()) {
-      nv[hdidx++] = downstream_->get_request_path().c_str();
+      nv.push_back(downstream_->get_request_path().c_str());
     } else {
-      nv[hdidx++] = path.c_str();
+      nv.push_back(path.c_str());
     }
   }
 
-  nv[hdidx++] = ":method";
-  nv[hdidx++] = downstream_->get_request_method().c_str();
+  nv.push_back(":method");
+  nv.push_back(downstream_->get_request_method().c_str());
 
-  hdidx += http2::copy_norm_headers_to_nv(&nv[hdidx],
-                                          downstream_->get_request_headers());
+  http2::copy_norm_headers_to_nv(nv, downstream_->get_request_headers());
 
   auto host = downstream_->get_norm_request_header("host");
   if(host == end_headers) {
@@ -293,8 +292,8 @@ int SpdyDownstreamConnection::push_request_headers()
     }
     return -1;
   }
-  nv[hdidx++] = ":host";
-  nv[hdidx++] = (*host).second.c_str();
+  nv.push_back(":host");
+  nv.push_back((*host).second.c_str());
 
   bool content_length = false;
   if(downstream_->get_norm_request_header("content-length") != end_headers) {
@@ -304,8 +303,8 @@ int SpdyDownstreamConnection::push_request_headers()
   auto expect = downstream_->get_norm_request_header("expect");
   if(expect != end_headers &&
      !util::strifind((*expect).second.c_str(), "100-continue")) {
-    nv[hdidx++] = "expect";
-    nv[hdidx++] = (*expect).second.c_str();
+    nv.push_back("expect");
+    nv.push_back((*expect).second.c_str());
   }
 
   bool chunked_encoding = false;
@@ -318,24 +317,24 @@ int SpdyDownstreamConnection::push_request_headers()
 
   auto xff = downstream_->get_norm_request_header("x-forwarded-for");
   if(get_config()->add_x_forwarded_for) {
-    nv[hdidx++] = "x-forwarded-for";
+    nv.push_back("x-forwarded-for");
     if(xff != end_headers) {
       xff_value = (*xff).second;
       xff_value += ", ";
     }
     xff_value += downstream_->get_upstream()->get_client_handler()->
       get_ipaddr();
-    nv[hdidx++] = xff_value.c_str();
+    nv.push_back(xff_value.c_str());
   } else if(xff != end_headers) {
-    nv[hdidx++] = "x-forwarded-for";
-    nv[hdidx++] = (*xff).second.c_str();
+    nv.push_back("x-forwarded-for");
+    nv.push_back((*xff).second.c_str());
   }
 
   auto via = downstream_->get_norm_request_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
-      nv[hdidx++] = "via";
-      nv[hdidx++] = (*via).second.c_str();
+      nv.push_back("via");
+      nv.push_back((*via).second.c_str());
     }
   } else {
     if(via != end_headers) {
@@ -344,10 +343,10 @@ int SpdyDownstreamConnection::push_request_headers()
     }
     via_value += http::create_via_header_value
       (downstream_->get_request_major(), downstream_->get_request_minor());
-    nv[hdidx++] = "via";
-    nv[hdidx++] = via_value.c_str();
+    nv.push_back("via");
+    nv.push_back(via_value.c_str());
   }
-  nv[hdidx++] = nullptr;
+  nv.push_back(nullptr);
 
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
@@ -363,9 +362,9 @@ int SpdyDownstreamConnection::push_request_headers()
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
     data_prd.read_callback = spdy_data_read_callback;
-    rv = spdy_->submit_request(this, 0, nv.get(), &data_prd);
+    rv = spdy_->submit_request(this, 0, nv.data(), &data_prd);
   } else {
-    rv = spdy_->submit_request(this, 0, nv.get(), 0);
+    rv = spdy_->submit_request(this, 0, nv.data(), nullptr);
   }
   if(rv != 0) {
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";

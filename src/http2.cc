@@ -269,16 +269,16 @@ bool value_lws(const nghttp2_nv *nv)
   return true;
 }
 
-size_t copy_norm_headers_to_nv
-(const char **nv,
+void copy_norm_headers_to_nv
+(std::vector<const char*>& nv,
  const std::vector<std::pair<std::string, std::string>>& headers)
 {
-  size_t i, j, nvlen = 0;
+  size_t i, j;
   for(i = 0, j = 0; i < headers.size() && j < IGN_HDLEN;) {
     int rv = strcmp(headers[i].first.c_str(), IGN_HD[j]);
     if(rv < 0) {
-      nv[nvlen++] = headers[i].first.c_str();
-      nv[nvlen++] = headers[i].second.c_str();
+      nv.push_back(headers[i].first.c_str());
+      nv.push_back(headers[i].second.c_str());
       ++i;
     } else if(rv > 0) {
       ++j;
@@ -287,10 +287,9 @@ size_t copy_norm_headers_to_nv
     }
   }
   for(; i < headers.size(); ++i) {
-    nv[nvlen++] = headers[i].first.c_str();
-    nv[nvlen++] = headers[i].second.c_str();
+    nv.push_back(headers[i].first.c_str());
+    nv.push_back(headers[i].second.c_str());
   }
-  return nvlen;
 }
 
 void build_http1_headers_from_norm_headers

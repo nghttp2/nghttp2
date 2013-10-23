@@ -132,9 +132,9 @@ auto headers = std::vector<std::pair<std::string, std::string>>
 
 void test_http2_copy_norm_headers_to_nv(void)
 {
-  const char* nv[30];
-  size_t nvlen = http2::copy_norm_headers_to_nv(nv, headers);
-  CU_ASSERT(12 == nvlen);
+  std::vector<const char*> nv;
+  http2::copy_norm_headers_to_nv(nv, headers);
+  CU_ASSERT(12 == nv.size());
   CU_ASSERT(strcmp(nv[0], "alpha") == 0);
   CU_ASSERT(strcmp(nv[1], "0") == 0);
   CU_ASSERT(strcmp(nv[2], "bravo") == 0);

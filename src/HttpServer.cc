@@ -450,19 +450,20 @@ int Http2Handler::submit_response
 {
   std::string date_str = util::http_date(time(0));
   const size_t static_size = 6;
-  auto nv = util::make_unique<const char*[]>(static_size+headers.size()*2+1);
-  nv[0] = ":status";
-  nv[1] = status.c_str();
-  nv[2] = "server";
-  nv[3] = NGHTTPD_SERVER.c_str();
-  nv[4] = "date";
-  nv[5] = date_str.c_str();
-  for(int i = 0; i < (int)headers.size(); ++i) {
-    nv[static_size+i*2] = headers[i].first.c_str();
-    nv[static_size+i*2+1] = headers[i].second.c_str();
+  auto nv = std::vector<const char*>();
+  nv.reserve(static_size + headers.size() * 2 + 1);
+  nv.push_back(":status");
+  nv.push_back(status.c_str());
+  nv.push_back("server");
+  nv.push_back(NGHTTPD_SERVER.c_str());
+  nv.push_back("date");
+  nv.push_back(date_str.c_str());
+  for(size_t i = 0; i < headers.size(); ++i) {
+    nv.push_back(headers[i].first.c_str());
+    nv.push_back(headers[i].second.c_str());
   }
-  nv[static_size+headers.size()*2] = nullptr;
-  int r = nghttp2_submit_response(session_, stream_id, nv.get(), data_prd);
+  nv.push_back(nullptr);
+  int r = nghttp2_submit_response(session_, stream_id, nv.data(), data_prd);
   return r;
 }
 
