@@ -89,11 +89,11 @@ std::string value_to_str(const nghttp2_nv *nv);
 // Returns true if the value of |nv| includes only ' ' (0x20) or '\t'.
 bool value_lws(const nghttp2_nv *nv);
 
-// Copies headers in |headers| to |nv|. Certain headers, including
+// Appends headers in |headers| to |nv|. Certain headers, including
 // disallowed headers in HTTP/2.0 spec and headers which require
 // special handling (i.e. via), are not copied.
-size_t copy_norm_headers_to_nv
-(const char **nv,
+void copy_norm_headers_to_nv
+(std::vector<const char*>& nv,
  const std::vector<std::pair<std::string, std::string>>& headers);
 
 // Appends HTTP/1.1 style header lines to |hdrs| from headers in
