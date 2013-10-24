@@ -391,9 +391,9 @@ struct HttpClient;
 } // namespace
 
 namespace {
-void submit_request(HttpClient *client,
-                    const std::map<std::string, std::string>& headers,
-                    Request *req);
+int submit_request(HttpClient *client,
+                   const std::map<std::string, std::string>& headers,
+                   Request *req);
 } // namespace
 
 namespace {
@@ -703,7 +703,9 @@ struct HttpClient {
     // data
     for(auto i = std::begin(reqvec)+(need_upgrade() && !reqvec[0]->data_prd);
         i != std::end(reqvec); ++i) {
-      submit_request(this, config.headers, (*i).get());
+      if(submit_request(this, config.headers, (*i).get()) != 0) {
+        return -1;
+      }
     }
     return on_write();
   }
@@ -874,16 +876,16 @@ http_parser_settings htp_hooks = {
 } // namespace
 
 namespace {
-void submit_request(HttpClient *client,
-                    const std::map<std::string, std::string>& headers,
-                    Request *req)
+int submit_request(HttpClient *client,
+                   const std::map<std::string, std::string>& headers,
+                   Request *req)
 {
   enum eStaticHeaderPosition
   {
     POS_METHOD = 0,
     POS_PATH,
     POS_SCHEME,
-    POS_HOST,
+    POS_AUTHORITY,
     POS_ACCEPT,
     POS_ACCEPT_ENCODING,
     POS_USERAGENT
@@ -894,7 +896,7 @@ void submit_request(HttpClient *client,
     ":method", req->data_prd ? "POST" : "GET",
     ":path", path.c_str(),
     ":scheme", scheme.c_str(),
-    ":host", client->hostport.c_str(),
+    ":authority", client->hostport.c_str(),
     "accept", "*/*",
     "accept-encoding", "gzip, deflate",
     "user-agent", "nghttp2/" NGHTTP2_VERSION
@@ -931,8 +933,8 @@ void submit_request(HttpClient *client,
     else if ( util::strieq( key, "user-agent" ) ) {
       nv[POS_USERAGENT*2+1] = value;
     }
-    else if ( util::strieq( key, "host" ) ) {
-      nv[POS_HOST*2+1] = value;
+    else if ( util::strieq( key, ":authority" ) ) {
+      nv[POS_AUTHORITY*2+1] = value;
     }
     else {
       nv[pos] = key;
@@ -943,9 +945,14 @@ void submit_request(HttpClient *client,
   }
   nv[pos] = nullptr;
 
-  int r = nghttp2_submit_request(client->session, req->pri,
+  int rv = nghttp2_submit_request(client->session, req->pri,
                                  nv.get(), req->data_prd, req);
-  assert(r == 0);
+  if(rv != 0) {
+    std::cerr << "nghttp2_submit_request() returned error: "
+              << nghttp2_strerror(rv) << std::endl;
+    return -1;
+  }
+  return 0;
 }
 } // namespace
 
@@ -1661,8 +1668,9 @@ int main(int argc, char **argv)
     }
     case 'H': {
       char *header = optarg;
-      char *value = strchr( optarg, ':' );
-      if ( ! value || header == value) {
+      // Skip first possible ':' in the header name
+      char *value = strchr( optarg + 1, ':' );
+      if ( ! value || header + 1 == value) {
         std::cerr << "-H: invalid header: " << optarg
                   << std::endl;
         exit(EXIT_FAILURE);

@@ -681,7 +681,7 @@ void append_nv(Request *req, nghttp2_nv *nva, size_t nvlen)
 
 namespace {
 const char *REQUIRED_HEADERS[] = {
-  ":host", ":method", ":path", ":scheme", nullptr
+  ":method", ":path", ":scheme", nullptr
 };
 } // namespace
 
@@ -713,6 +713,19 @@ int hd_on_frame_recv_callback
                                     NGHTTP2_PROTOCOL_ERROR);
           return 0;
         }
+      }
+      // intermediary translating from HTTP/1 request to HTTP/2 may
+      // not produce :authority header field. In this case, it should
+      // provide host HTTP/1.1 header field.
+      if(!http2::get_unique_header(frame->headers.nva,
+                                   frame->headers.nvlen,
+                                   ":authority") &&
+         !http2::get_unique_header(frame->headers.nva,
+                                   frame->headers.nvlen,
+                                   "host")) {
+        nghttp2_submit_rst_stream(session, stream_id,
+                                  NGHTTP2_PROTOCOL_ERROR);
+        return 0;
       }
       auto req = util::make_unique<Request>(stream_id);
       append_nv(req.get(), frame->headers.nva, frame->headers.nvlen);
