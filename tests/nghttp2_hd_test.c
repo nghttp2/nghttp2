@@ -198,13 +198,13 @@ void test_nghttp2_hd_deflate_common_header_eviction(void)
   size_t buflen = 0;
   ssize_t blocklen;
   nghttp2_nv *resnva;
-  /* Default header table capacity is 1262. Adding 2835 bytes,
-     including overhead, to the table evicts first entry.
-     use name ":host" which index 2 and value length 2798. */
-  uint8_t value[2798];
+  /* Default header table capacity is 4096. Adding 2 byte header name
+     and 4060 byte value, which is 4094 bytes including overhead, to
+     the table evicts first entry. */
+  uint8_t value[4060];
 
   memset(value, '0', sizeof(value));
-  nva[1].name = (uint8_t*)":host";
+  nva[1].name = (uint8_t*)"hd";
   nva[1].namelen = strlen((const char*)nva[1].name);
   nva[1].value = value;
   nva[1].valuelen = sizeof(value);
@@ -212,11 +212,20 @@ void test_nghttp2_hd_deflate_common_header_eviction(void)
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
-  /* Put :scheme: http (index = 0) in reference set */
-  GET_TABLE_ENT(&deflater, 0)->flags |= NGHTTP2_HD_FLAG_REFSET;
-  GET_TABLE_ENT(&inflater, 0)->flags |= NGHTTP2_HD_FLAG_REFSET;
-  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva,
-                                   sizeof(nva)/sizeof(nghttp2_nv));
+  /* First emit ":scheme: http" to put it in the reference set (index
+     = 0). */
+  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva, 1);
+  CU_ASSERT(blocklen > 0);
+  nghttp2_hd_end_headers(&deflater);
+
+  CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, blocklen));
+  nghttp2_nv_array_sort(nva, 1);
+  assert_nv_equal(nva, resnva, 1);
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+
+  /* Encode with large header */
+  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva, 2);
   CU_ASSERT(blocklen > 0);
   nghttp2_hd_end_headers(&deflater);
 
@@ -229,6 +238,9 @@ void test_nghttp2_hd_deflate_common_header_eviction(void)
 
   nghttp2_nv_array_del(resnva);
   nghttp2_hd_end_headers(&inflater);
+
+  CU_ASSERT(1 == deflater.hd_table.len);
+  CU_ASSERT(1 == inflater.hd_table.len);
 
   free(buf);
   nghttp2_hd_inflate_free(&inflater);

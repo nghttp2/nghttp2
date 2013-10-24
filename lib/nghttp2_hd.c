@@ -796,7 +796,28 @@ static int deflate_nv(nghttp2_hd_context *deflater,
   if(rv != -1) {
     size_t index = rv;
     ent = nghttp2_hd_table_get(deflater, index);
-    if((ent->flags & NGHTTP2_HD_FLAG_REFSET) == 0) {
+    if(index >= deflater->hd_table.len) {
+      nghttp2_hd_entry *new_ent;
+      /* It is important to first add entry to the header table and
+         let eviction go. If NGHTTP2_HD_FLAG_IMPLICIT_EMIT entry is
+         evicted, it must be emitted before the |nv|. */
+      new_ent = add_hd_table_incremental(deflater, buf_ptr, buflen_ptr,
+                                         offset_ptr, &ent->nv,
+                                         NGHTTP2_HD_FLAG_NONE);
+      if(!new_ent) {
+        return NGHTTP2_ERR_HEADER_COMP;
+      }
+      if(new_ent->ref == 0) {
+        nghttp2_hd_entry_free(new_ent);
+        free(new_ent);
+      } else {
+        new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
+      }
+      rv = emit_indexed_block(buf_ptr, buflen_ptr, offset_ptr, index);
+      if(rv != 0) {
+        return rv;
+      }
+    } else if((ent->flags & NGHTTP2_HD_FLAG_REFSET) == 0) {
       ent->flags |= NGHTTP2_HD_FLAG_REFSET | NGHTTP2_HD_FLAG_EMIT;
       rv = emit_indexed_block(buf_ptr, buflen_ptr, offset_ptr, index);
       if(rv != 0) {
@@ -859,7 +880,12 @@ static int deflate_nv(nghttp2_hd_context *deflater,
       if(!new_ent) {
         return NGHTTP2_ERR_HEADER_COMP;
       }
-      new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
+      if(new_ent->ref == 0) {
+        nghttp2_hd_entry_free(new_ent);
+        free(new_ent);
+      } else {
+        new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
+      }
       incidx = 1;
     }
     if(index == -1) {
@@ -919,14 +945,6 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
   for(i = 0; i < deflater->hd_table.len; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&deflater->hd_table, i);
     rv = deflate_post_process_hd_entry(ent, i, buf_ptr, buflen_ptr, &offset);
-    if(rv != 0) {
-      goto fail;
-    }
-  }
-  for(i = 0; deflater->static_hd_table[i]; ++i) {
-    nghttp2_hd_entry *ent = deflater->static_hd_table[i];
-    rv = deflate_post_process_hd_entry(ent, i + deflater->hd_table.len,
-                                       buf_ptr, buflen_ptr, &offset);
     if(rv != 0) {
       goto fail;
     }
@@ -1003,12 +1021,25 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
       ent = nghttp2_hd_table_get(inflater, index);
-      ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
-      if(ent->flags & NGHTTP2_HD_FLAG_REFSET) {
-        rv = emit_indexed_header(inflater, &nva_out, ent);
-        if(rv != 0) {
+      if(index >= (ssize_t)inflater->hd_table.len) {
+        nghttp2_hd_entry *new_ent;
+        new_ent = add_hd_table_incremental(inflater, NULL, NULL, NULL,
+                                           &ent->nv, NGHTTP2_HD_FLAG_NONE);
+        if(!new_ent) {
+          rv = NGHTTP2_ERR_HEADER_COMP;
           goto fail;
         }
+        /* new_ent->ref == 0 may be hold but emit_indexed_header
+           tracks new_ent, so there is no leak. */
+        rv = emit_indexed_header(inflater, &nva_out, new_ent);
+      } else {
+        ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
+        if(ent->flags & NGHTTP2_HD_FLAG_REFSET) {
+          rv = emit_indexed_header(inflater, &nva_out, ent);
+        }
+      }
+      if(rv != 0) {
+        goto fail;
       }
     } else if(c == 0x40u || c == 0) {
       /* Literal Header Repr - New Name */
@@ -1186,13 +1217,6 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
   }
   for(i = 0; i < inflater->hd_table.len; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&inflater->hd_table, i);
-    rv = inflater_post_process_hd_entry(inflater, ent, &nva_out);
-    if(rv != 0) {
-      goto fail;
-    }
-  }
-  for(i = 0; inflater->static_hd_table[i]; ++i) {
-    nghttp2_hd_entry *ent = inflater->static_hd_table[i];
     rv = inflater_post_process_hd_entry(inflater, ent, &nva_out);
     if(rv != 0) {
       goto fail;
