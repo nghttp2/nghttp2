@@ -83,9 +83,8 @@ typedef struct {
 } nghttp2_hd_ringbuf;
 
 typedef struct {
-  /* Header table */
+  /* dynamic header table */
   nghttp2_hd_ringbuf hd_table;
-  nghttp2_hd_entry **static_hd_table;
   /* Holding emitted entry in deflating header block to retain
      reference count. */
   nghttp2_hd_entry **emit_set;

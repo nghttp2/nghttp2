@@ -30,68 +30,75 @@
 #include "nghttp2_frame.h"
 #include "nghttp2_helper.h"
 
-static const char *static_table[] = {
-  /* 0 */ ":authority", "",
-  /* 1 */ ":method", "GET",
-  /* 2 */ ":method", "POST",
-  /* 3 */ ":path", "/",
-  /* 4 */ ":path", "/index.html",
-  /* 5 */ ":scheme", "http",
-  /* 6 */ ":scheme", "https",
-  /* 7 */ ":status", "200",
-  /* 8 */ ":status", "500",
-  /* 9 */ ":status", "404",
-  /* 10 */ ":status", "403",
-  /* 11 */ ":status", "400",
-  /* 12 */ ":status", "401",
-  /* 13 */ "accept-charset", "",
-  /* 14 */ "accept-encoding", "",
-  /* 15 */ "accept-language", "",
-  /* 16 */ "accept-ranges", "",
-  /* 17 */ "accept", "",
-  /* 18 */ "access-control-allow-origin", "",
-  /* 19 */ "age", "",
-  /* 20 */ "allow", "",
-  /* 21 */ "authorization", "",
-  /* 22 */ "cache-control", "",
-  /* 23 */ "content-disposition", "",
-  /* 24 */ "content-encoding", "",
-  /* 25 */ "content-language", "",
-  /* 26 */ "content-length", "",
-  /* 27 */ "content-location", "",
-  /* 28 */ "content-range", "",
-  /* 29 */ "content-type", "",
-  /* 30 */ "cookie", "",
-  /* 31 */ "date", "",
-  /* 32 */ "etag", "",
-  /* 33 */ "expect", "",
-  /* 34 */ "expires", "",
-  /* 35 */ "from", "",
-  /* 36 */ "if-match", "",
-  /* 37 */ "if-modified-since", "",
-  /* 38 */ "if-none-match", "",
-  /* 39 */ "if-range", "",
-  /* 40 */ "if-unmodified-since", "",
-  /* 41 */ "last-modified", "",
-  /* 42 */ "link", "",
-  /* 43 */ "location", "",
-  /* 44 */ "max-forwards", "",
-  /* 45 */ "proxy-authenticate", "",
-  /* 46 */ "proxy-authorization", "",
-  /* 47 */ "range", "",
-  /* 48 */ "referer", "",
-  /* 49 */ "refresh", "",
-  /* 50 */ "retry-after", "",
-  /* 51 */ "server", "",
-  /* 52 */ "set-cookie", "",
-  /* 53 */ "strict-transport-security", "",
-  /* 54 */ "transfer-encoding", "",
-  /* 55 */ "user-agent", "",
-  /* 56 */ "vary", "",
-  /* 57 */ "via", "",
-  /* 58 */ "www-authenticate", "",
-  NULL
+/* Make scalar initialization form of nghttp2_nv */
+#define MAKE_NV(N, V) \
+  { { (uint8_t*)N, (uint8_t*)V, sizeof(N) - 1, sizeof(V) - 1 }, \
+      1, NGHTTP2_HD_FLAG_NONE }
+
+static nghttp2_hd_entry static_table[] = {
+  /* 0 */ MAKE_NV(":authority", ""),
+  /* 1 */ MAKE_NV(":method", "GET"),
+  /* 2 */ MAKE_NV(":method", "POST"),
+  /* 3 */ MAKE_NV(":path", "/"),
+  /* 4 */ MAKE_NV(":path", "/index.html"),
+  /* 5 */ MAKE_NV(":scheme", "http"),
+  /* 6 */ MAKE_NV(":scheme", "https"),
+  /* 7 */ MAKE_NV(":status", "200"),
+  /* 8 */ MAKE_NV(":status", "500"),
+  /* 9 */ MAKE_NV(":status", "404"),
+  /* 10 */ MAKE_NV(":status", "403"),
+  /* 11 */ MAKE_NV(":status", "400"),
+  /* 12 */ MAKE_NV(":status", "401"),
+  /* 13 */ MAKE_NV("accept-charset", ""),
+  /* 14 */ MAKE_NV("accept-encoding", ""),
+  /* 15 */ MAKE_NV("accept-language", ""),
+  /* 16 */ MAKE_NV("accept-ranges", ""),
+  /* 17 */ MAKE_NV("accept", ""),
+  /* 18 */ MAKE_NV("access-control-allow-origin", ""),
+  /* 19 */ MAKE_NV("age", ""),
+  /* 20 */ MAKE_NV("allow", ""),
+  /* 21 */ MAKE_NV("authorization", ""),
+  /* 22 */ MAKE_NV("cache-control", ""),
+  /* 23 */ MAKE_NV("content-disposition", ""),
+  /* 24 */ MAKE_NV("content-encoding", ""),
+  /* 25 */ MAKE_NV("content-language", ""),
+  /* 26 */ MAKE_NV("content-length", ""),
+  /* 27 */ MAKE_NV("content-location", ""),
+  /* 28 */ MAKE_NV("content-range", ""),
+  /* 29 */ MAKE_NV("content-type", ""),
+  /* 30 */ MAKE_NV("cookie", ""),
+  /* 31 */ MAKE_NV("date", ""),
+  /* 32 */ MAKE_NV("etag", ""),
+  /* 33 */ MAKE_NV("expect", ""),
+  /* 34 */ MAKE_NV("expires", ""),
+  /* 35 */ MAKE_NV("from", ""),
+  /* 36 */ MAKE_NV("if-match", ""),
+  /* 37 */ MAKE_NV("if-modified-since", ""),
+  /* 38 */ MAKE_NV("if-none-match", ""),
+  /* 39 */ MAKE_NV("if-range", ""),
+  /* 40 */ MAKE_NV("if-unmodified-since", ""),
+  /* 41 */ MAKE_NV("last-modified", ""),
+  /* 42 */ MAKE_NV("link", ""),
+  /* 43 */ MAKE_NV("location", ""),
+  /* 44 */ MAKE_NV("max-forwards", ""),
+  /* 45 */ MAKE_NV("proxy-authenticate", ""),
+  /* 46 */ MAKE_NV("proxy-authorization", ""),
+  /* 47 */ MAKE_NV("range", ""),
+  /* 48 */ MAKE_NV("referer", ""),
+  /* 49 */ MAKE_NV("refresh", ""),
+  /* 50 */ MAKE_NV("retry-after", ""),
+  /* 51 */ MAKE_NV("server", ""),
+  /* 52 */ MAKE_NV("set-cookie", ""),
+  /* 53 */ MAKE_NV("strict-transport-security", ""),
+  /* 54 */ MAKE_NV("transfer-encoding", ""),
+  /* 55 */ MAKE_NV("user-agent", ""),
+  /* 56 */ MAKE_NV("vary", ""),
+  /* 57 */ MAKE_NV("via", ""),
+  /* 58 */ MAKE_NV("www-authenticate", "")
 };
+
+const static size_t STATIC_TABLE_LENGTH =
+  sizeof(static_table)/sizeof(static_table[0]);
 
 typedef struct {
   nghttp2_nv *nva;
@@ -215,7 +222,6 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
                                    nghttp2_hd_side side,
                                    size_t hd_table_bufsize_max)
 {
-  size_t i;
   int rv;
   context->role = role;
   context->side = side;
@@ -225,29 +231,6 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
                                hd_table_bufsize_max/NGHTTP2_HD_ENTRY_OVERHEAD);
   if(rv != 0) {
     return rv;
-  }
-  for(i = 0; static_table[i]; i += 2);
-  context->static_hd_table = malloc(sizeof(nghttp2_hd_entry*)*(i / 2 + 1));
-  if(context->static_hd_table == NULL) {
-    goto fail;
-  }
-  context->static_hd_table[i / 2] = NULL;
-  for(i = 0; static_table[i]; i += 2) {
-    nghttp2_hd_entry *p = malloc(sizeof(nghttp2_hd_entry));
-    if(p == NULL) {
-      size_t j;
-      for(j = 0; j < i / 2; ++j) {
-        --context->static_hd_table[j]->ref;
-        nghttp2_hd_entry_free(context->static_hd_table[j]);
-        free(context->static_hd_table[j]);
-      }
-      goto fail;
-    }
-    nghttp2_hd_entry_init(p, NGHTTP2_HD_FLAG_NONE,
-                          (uint8_t*)static_table[i], strlen(static_table[i]),
-                          (uint8_t*)static_table[i + 1],
-                          strlen(static_table[i+1]));
-    context->static_hd_table[i / 2] = p;
   }
 
   if(role == NGHTTP2_HD_ROLE_INFLATE) {
@@ -277,7 +260,6 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
   context->hd_table_bufsize = 0;
   return 0;
  fail:
-  free(context->static_hd_table);
   free(context->buf_track);
   free(context->emit_set);
   nghttp2_hd_ringbuf_free(&context->hd_table);
@@ -330,13 +312,6 @@ static void nghttp2_hd_context_free(nghttp2_hd_context *context)
   free(context->emit_set);
 
   nghttp2_hd_ringbuf_free(&context->hd_table);
-
-  for(i = 0; context->static_hd_table[i]; ++i) {
-    --context->static_hd_table[i]->ref;
-    nghttp2_hd_entry_free(context->static_hd_table[i]);
-    free(context->static_hd_table[i]);
-  }
-  free(context->static_hd_table);
 }
 
 void nghttp2_hd_deflate_free(nghttp2_hd_context *deflater)
@@ -745,8 +720,8 @@ static ssize_t find_in_hd_table(nghttp2_hd_context *context, nghttp2_nv *nv)
       return i;
     }
   }
-  for(i = 0; context->static_hd_table[i]; ++i) {
-    nghttp2_hd_entry *ent = context->static_hd_table[i];
+  for(i = 0; i < STATIC_TABLE_LENGTH; ++i) {
+    nghttp2_hd_entry *ent = &static_table[i];
     if(nghttp2_nv_equal(&ent->nv, nv)) {
       return context->hd_table.len + i;
     }
@@ -765,8 +740,8 @@ static ssize_t find_name_in_hd_table(nghttp2_hd_context *context,
       return i;
     }
   }
-  for(i = 0; context->static_hd_table[i]; ++i) {
-    nghttp2_hd_entry *ent = context->static_hd_table[i];
+  for(i = 0; i < STATIC_TABLE_LENGTH; ++i) {
+    nghttp2_hd_entry *ent = &static_table[i];
     if(ent->nv.namelen == nv->namelen &&
        memcmp(ent->nv.name, nv->name, nv->namelen) == 0) {
       return context->hd_table.len + i;
@@ -775,13 +750,19 @@ static ssize_t find_name_in_hd_table(nghttp2_hd_context *context,
   return -1;
 }
 
+static int check_index_range(nghttp2_hd_context *context, size_t index)
+{
+  return index < context->hd_table.len + STATIC_TABLE_LENGTH;
+}
+
 nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                        size_t index)
 {
+  assert(check_index_range(context, index));
   if(index < context->hd_table.len) {
     return nghttp2_hd_ringbuf_get(&context->hd_table, index);
   } else {
-    return context->static_hd_table[index - context->hd_table.len];
+    return &static_table[index - context->hd_table.len];
   }
 }
 
@@ -969,12 +950,6 @@ static int inflater_post_process_hd_entry(nghttp2_hd_context *inflater,
   }
   ent->flags &= ~NGHTTP2_HD_FLAG_EMIT;
   return 0;
-}
-
-static int check_index_range(nghttp2_hd_context *context, size_t index)
-{
-  return index < context->hd_table.len +
-    sizeof(static_table)/sizeof(static_table[0])/2;
 }
 
 static ssize_t inflate_decode(uint8_t **dest_ptr, uint8_t *in, size_t inlen,
