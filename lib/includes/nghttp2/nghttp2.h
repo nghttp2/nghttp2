@@ -1831,6 +1831,9 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  * Submits PRIORITY frame to change the priority of stream |stream_id|
  * to the priority value |pri|.
  *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -1841,8 +1844,8 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream is already closed or does not exist.
  */
-int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
-                            int32_t pri);
+int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
+                            int32_t stream_id, int32_t pri);
 
 /**
  * @function
@@ -1850,13 +1853,17 @@ int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
  * Submits RST_STREAM frame to cancel/reject the stream |stream_id|
  * with the error code |error_code|.
  *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
+int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
+                              int32_t stream_id,
                               nghttp2_error_code error_code);
 
 /**
@@ -1865,6 +1872,9 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
  * Stores local settings and submits SETTINGS frame. The |iv| is the
  * pointer to the array of :type:`nghttp2_settings_entry`. The |niv|
  * indicates the number of :type:`nghttp2_settings_entry`.
+ *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
  *
  * This function does not take ownership of the |iv|. This function
  * copies all the elements in the |iv|.
@@ -1882,7 +1892,7 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_settings(nghttp2_session *session,
+int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
                             const nghttp2_settings_entry *iv, size_t niv);
 
 
@@ -1934,6 +1944,9 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
  * received PING frame. The library automatically submits PING frame
  * in this case.
  *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
+ *
  * If the |opaque_data| is non ``NULL``, then it should point to the 8
  * bytes array of memory to specify opaque data to send with PING
  * frame. If the |opaque_data| is ``NULL``, zero-cleared 8 bytes will
@@ -1945,12 +1958,16 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_ping(nghttp2_session *session, uint8_t *opaque_data);
+int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
+                        uint8_t *opaque_data);
 
 /**
  * @function
  *
  * Submits GOAWAY frame with the error code |error_code|.
+ *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
  *
  * If the |opaque_data| is not ``NULL`` and |opaque_data_len| is not
  * zero, those data will be sent as additional debug data.  The
@@ -1965,7 +1982,7 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t *opaque_data);
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_goaway(nghttp2_session *session,
+int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           nghttp2_error_code error_code,
                           uint8_t *opaque_data, size_t opaque_data_len);
 
@@ -1974,7 +1991,8 @@ int nghttp2_submit_goaway(nghttp2_session *session,
  *
  * Submits WINDOW_UPDATE frame.
  *
- * The |flags| is currently ignored.
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
  *
  * If the |window_size_increment| is positive, the WINDOW_UPDATE with
  * that value as window_size_increment is queued. If the
