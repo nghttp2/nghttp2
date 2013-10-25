@@ -2032,9 +2032,11 @@ negative error codes:</p>
 
 <dl class="function">
 <dt id="nghttp2_submit_priority">
-int <tt class="descname">nghttp2_submit_priority</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;pri</em><big>)</big><a class="headerlink" href="#nghttp2_submit_priority" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_priority</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;pri</em><big>)</big><a class="headerlink" href="#nghttp2_submit_priority" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits PRIORITY frame to change the priority of stream <em>stream_id</em>
 to the priority value <em>pri</em>.</p>
+<p>The <em>flags</em> is currently ignored and should be
+<a class="reference internal" href="#NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -2049,9 +2051,11 @@ negative error codes:</p>
 
 <dl class="function">
 <dt id="nghttp2_submit_rst_stream">
-int <tt class="descname">nghttp2_submit_rst_stream</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em><big>)</big><a class="headerlink" href="#nghttp2_submit_rst_stream" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_rst_stream</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em><big>)</big><a class="headerlink" href="#nghttp2_submit_rst_stream" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits RST_STREAM frame to cancel/reject the stream <em>stream_id</em>
 with the error code <em>error_code</em>.</p>
+<p>The <em>flags</em> is currently ignored and should be
+<a class="reference internal" href="#NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -2062,10 +2066,12 @@ negative error codes:</p>
 
 <dl class="function">
 <dt id="nghttp2_submit_settings">
-int <tt class="descname">nghttp2_submit_settings</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry">nghttp2_settings_entry</a><em>&nbsp;*iv</em>, size_t<em>&nbsp;niv</em><big>)</big><a class="headerlink" href="#nghttp2_submit_settings" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_settings</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, const <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry">nghttp2_settings_entry</a><em>&nbsp;*iv</em>, size_t<em>&nbsp;niv</em><big>)</big><a class="headerlink" href="#nghttp2_submit_settings" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stores local settings and submits SETTINGS frame. The <em>iv</em> is the
 pointer to the array of <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_entry</span></tt></a>. The <em>niv</em>
 indicates the number of <a class="reference internal" href="#nghttp2_settings_entry" title="nghttp2_settings_entry"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_entry</span></tt></a>.</p>
+<p>The <em>flags</em> is currently ignored and should be
+<a class="reference internal" href="#NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>This function does not take ownership of the <em>iv</em>. This function
 copies all the elements in the <em>iv</em>.</p>
 <p>While updating individual stream&#8217;s local window size, if the window
@@ -2119,10 +2125,12 @@ negative error codes:</p>
 
 <dl class="function">
 <dt id="nghttp2_submit_ping">
-int <tt class="descname">nghttp2_submit_ping</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;*opaque_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_ping" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_ping</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, uint8_t<em>&nbsp;*opaque_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_ping" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits PING frame. You don&#8217;t have to send PING back when you
 received PING frame. The library automatically submits PING frame
 in this case.</p>
+<p>The <em>flags</em> is currently ignored and should be
+<a class="reference internal" href="#NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>If the <em>opaque_data</em> is non <tt class="docutils literal"><span class="pre">NULL</span></tt>, then it should point to the 8
 bytes array of memory to specify opaque data to send with PING
 frame. If the <em>opaque_data</em> is <tt class="docutils literal"><span class="pre">NULL</span></tt>, zero-cleared 8 bytes will
@@ -2137,8 +2145,10 @@ negative error codes:</p>
 
 <dl class="function">
 <dt id="nghttp2_submit_goaway">
-int <tt class="descname">nghttp2_submit_goaway</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, uint8_t<em>&nbsp;*opaque_data</em>, size_t<em>&nbsp;opaque_data_len</em><big>)</big><a class="headerlink" href="#nghttp2_submit_goaway" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_goaway</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em>, uint8_t<em>&nbsp;*opaque_data</em>, size_t<em>&nbsp;opaque_data_len</em><big>)</big><a class="headerlink" href="#nghttp2_submit_goaway" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits GOAWAY frame with the error code <em>error_code</em>.</p>
+<p>The <em>flags</em> is currently ignored and should be
+<a class="reference internal" href="#NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>If the <em>opaque_data</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt> and <em>opaque_data_len</em> is not
 zero, those data will be sent as additional debug data.  The
 library makes a copy of the memory region pointed by <em>opaque_data</em>
@@ -2157,7 +2167,8 @@ negative error codes:</p>
 <dt id="nghttp2_submit_window_update">
 int <tt class="descname">nghttp2_submit_window_update</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;window_size_increment</em><big>)</big><a class="headerlink" href="#nghttp2_submit_window_update" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits WINDOW_UPDATE frame.</p>
-<p>The <em>flags</em> is currently ignored.</p>
+<p>The <em>flags</em> is currently ignored and should be
+<a class="reference internal" href="#NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>If the <em>window_size_increment</em> is positive, the WINDOW_UPDATE with
 that value as window_size_increment is queued. If the
 <em>window_size_increment</em> is larger than the received bytes from the
@@ -2170,11 +2181,11 @@ is decreased by -<em>window_size_increment</em>.  If
 is 0) is not set and the library decided that the WINDOW_UPDATE
 should be submitted, then WINDOW_UPDATE is queued with the current
 received bytes count.</p>
+<p>If the <em>window_size_increment</em> is 0, the function does nothing and
+returns 0.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
-<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>delta_window_size</em> is 0.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_FLOW_CONTROL" title="NGHTTP2_ERR_FLOW_CONTROL"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_FLOW_CONTROL</span></tt></a></dt>
 <dd>The local window size overflow or gets negative.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>

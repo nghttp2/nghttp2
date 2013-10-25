@@ -1887,6 +1887,9 @@
 <span class="cm"> * Submits PRIORITY frame to change the priority of stream |stream_id|</span>
 <span class="cm"> * to the priority value |pri|.</span>
 <span class="cm"> *</span>
+<span class="cm"> * The |flags| is currently ignored and should be</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
+<span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
@@ -1897,8 +1900,8 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
 <span class="cm"> *     The stream is already closed or does not exist.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_priority</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                            <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_priority</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1906,13 +1909,17 @@
 <span class="cm"> * Submits RST_STREAM frame to cancel/reject the stream |stream_id|</span>
 <span class="cm"> * with the error code |error_code|.</span>
 <span class="cm"> *</span>
+<span class="cm"> * The |flags| is currently ignored and should be</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
+<span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_rst_stream</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_rst_stream</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                              <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
                               <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">);</span>
 
 <span class="cm">/**</span>
@@ -1921,6 +1928,9 @@
 <span class="cm"> * Stores local settings and submits SETTINGS frame. The |iv| is the</span>
 <span class="cm"> * pointer to the array of :type:`nghttp2_settings_entry`. The |niv|</span>
 <span class="cm"> * indicates the number of :type:`nghttp2_settings_entry`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |flags| is currently ignored and should be</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function does not take ownership of the |iv|. This function</span>
 <span class="cm"> * copies all the elements in the |iv|.</span>
@@ -1938,7 +1948,7 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_settings</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_settings</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                             <span class="k">const</span> <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">niv</span><span class="p">);</span>
 
 
@@ -1990,6 +2000,9 @@
 <span class="cm"> * received PING frame. The library automatically submits PING frame</span>
 <span class="cm"> * in this case.</span>
 <span class="cm"> *</span>
+<span class="cm"> * The |flags| is currently ignored and should be</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
+<span class="cm"> *</span>
 <span class="cm"> * If the |opaque_data| is non ``NULL``, then it should point to the 8</span>
 <span class="cm"> * bytes array of memory to specify opaque data to send with PING</span>
 <span class="cm"> * frame. If the |opaque_data| is ``NULL``, zero-cleared 8 bytes will</span>
@@ -2001,12 +2014,16 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_ping</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_ping</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                        <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * Submits GOAWAY frame with the error code |error_code|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |flags| is currently ignored and should be</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the |opaque_data| is not ``NULL`` and |opaque_data_len| is not</span>
 <span class="cm"> * zero, those data will be sent as additional debug data.  The</span>
@@ -2021,7 +2038,7 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_goaway</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_goaway</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                           <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span>
                           <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">opaque_data_len</span><span class="p">);</span>
 
@@ -2030,7 +2047,8 @@
 <span class="cm"> *</span>
 <span class="cm"> * Submits WINDOW_UPDATE frame.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |flags| is currently ignored.</span>
+<span class="cm"> * The |flags| is currently ignored and should be</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the |window_size_increment| is positive, the WINDOW_UPDATE with</span>
 <span class="cm"> * that value as window_size_increment is queued. If the</span>
@@ -2046,11 +2064,12 @@
 <span class="cm"> * should be submitted, then WINDOW_UPDATE is queued with the current</span>
 <span class="cm"> * received bytes count.</span>
 <span class="cm"> *</span>
+<span class="cm"> * If the |window_size_increment| is 0, the function does nothing and</span>
+<span class="cm"> * returns 0.</span>
+<span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |delta_window_size| is 0.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_FLOW_CONTROL`</span>
 <span class="cm"> *     The local window size overflow or gets negative.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>

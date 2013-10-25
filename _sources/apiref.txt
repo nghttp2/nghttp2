@@ -1594,11 +1594,14 @@ Functions
     :macro:`NGHTTP2_ERR_STREAM_CLOSED`
         The stream is already closed or does not exist.
 
-.. function:: int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id, int32_t pri)
+.. function:: int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t pri)
 
     
     Submits PRIORITY frame to change the priority of stream *stream_id*
     to the priority value *pri*.
+    
+    The *flags* is currently ignored and should be
+    :macro:`NGHTTP2_FLAG_NONE`.
     
     This function returns 0 if it succeeds, or one of the following
     negative error codes:
@@ -1610,11 +1613,14 @@ Functions
     :macro:`NGHTTP2_ERR_STREAM_CLOSED`
         The stream is already closed or does not exist.
 
-.. function:: int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code)
+.. function:: int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags, int32_t stream_id, nghttp2_error_code error_code)
 
     
     Submits RST_STREAM frame to cancel/reject the stream *stream_id*
     with the error code *error_code*.
+    
+    The *flags* is currently ignored and should be
+    :macro:`NGHTTP2_FLAG_NONE`.
     
     This function returns 0 if it succeeds, or one of the following
     negative error codes:
@@ -1622,12 +1628,15 @@ Functions
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
 
-.. function:: int nghttp2_submit_settings(nghttp2_session *session, const nghttp2_settings_entry *iv, size_t niv)
+.. function:: int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags, const nghttp2_settings_entry *iv, size_t niv)
 
     
     Stores local settings and submits SETTINGS frame. The *iv* is the
     pointer to the array of :type:`nghttp2_settings_entry`. The *niv*
     indicates the number of :type:`nghttp2_settings_entry`.
+    
+    The *flags* is currently ignored and should be
+    :macro:`NGHTTP2_FLAG_NONE`.
     
     This function does not take ownership of the *iv*. This function
     copies all the elements in the *iv*.
@@ -1683,12 +1692,15 @@ Functions
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
 
-.. function:: int nghttp2_submit_ping(nghttp2_session *session, uint8_t *opaque_data)
+.. function:: int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags, uint8_t *opaque_data)
 
     
     Submits PING frame. You don't have to send PING back when you
     received PING frame. The library automatically submits PING frame
     in this case.
+    
+    The *flags* is currently ignored and should be
+    :macro:`NGHTTP2_FLAG_NONE`.
     
     If the *opaque_data* is non ``NULL``, then it should point to the 8
     bytes array of memory to specify opaque data to send with PING
@@ -1701,10 +1713,13 @@ Functions
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
 
-.. function:: int nghttp2_submit_goaway(nghttp2_session *session, nghttp2_error_code error_code, uint8_t *opaque_data, size_t opaque_data_len)
+.. function:: int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags, nghttp2_error_code error_code, uint8_t *opaque_data, size_t opaque_data_len)
 
     
     Submits GOAWAY frame with the error code *error_code*.
+    
+    The *flags* is currently ignored and should be
+    :macro:`NGHTTP2_FLAG_NONE`.
     
     If the *opaque_data* is not ``NULL`` and *opaque_data_len* is not
     zero, those data will be sent as additional debug data.  The
@@ -1724,7 +1739,8 @@ Functions
     
     Submits WINDOW_UPDATE frame.
     
-    The *flags* is currently ignored.
+    The *flags* is currently ignored and should be
+    :macro:`NGHTTP2_FLAG_NONE`.
     
     If the *window_size_increment* is positive, the WINDOW_UPDATE with
     that value as window_size_increment is queued. If the
@@ -1740,11 +1756,12 @@ Functions
     should be submitted, then WINDOW_UPDATE is queued with the current
     received bytes count.
     
+    If the *window_size_increment* is 0, the function does nothing and
+    returns 0.
+    
     This function returns 0 if it succeeds, or one of the following
     negative error codes:
     
-    :macro:`NGHTTP2_ERR_INVALID_ARGUMENT`
-        The *delta_window_size* is 0.
     :macro:`NGHTTP2_ERR_FLOW_CONTROL`
         The local window size overflow or gets negative.
     :macro:`NGHTTP2_ERR_STREAM_CLOSED`
