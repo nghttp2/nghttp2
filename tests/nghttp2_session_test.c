@@ -2213,9 +2213,10 @@ void test_nghttp2_submit_priority(void)
                                        NGHTTP2_STREAM_OPENING, NULL);
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_submit_priority(session, 1, -1));
+            nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, -1));
 
-  CU_ASSERT(0 == nghttp2_submit_priority(session, 1, 1000000007));
+  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1,
+                                         1000000007));
   CU_ASSERT(1000000007 == stream->pri);
 
   nghttp2_session_del(session);
@@ -2252,7 +2253,7 @@ void test_nghttp2_submit_settings(void)
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_submit_settings(session, iv, 5));
+            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 5));
 
   /* Make sure that local settings are not changed */
   CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
@@ -2263,7 +2264,7 @@ void test_nghttp2_submit_settings(void)
             session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]);
 
   /* Now sends without 5th one */
-  CU_ASSERT(0 == nghttp2_submit_settings(session, iv, 4));
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 4));
 
   /* Make sure that local settings are changed */
   CU_ASSERT(50 ==
@@ -2326,7 +2327,7 @@ void test_nghttp2_submit_settings_update_local_window_size(void)
                                        NGHTTP2_STREAM_OPENED, NULL);
   stream->local_flow_control = 0;
 
-  CU_ASSERT(0 == nghttp2_submit_settings(session, iv, 1));
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
 
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(0 == stream->recv_window_size);
@@ -2350,7 +2351,7 @@ void test_nghttp2_submit_settings_update_local_window_size(void)
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENED, NULL);
 
-  CU_ASSERT(0 == nghttp2_submit_settings(session, iv, 2));
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 2));
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE == stream->local_window_size);
 
   nghttp2_session_del(session);
@@ -2363,7 +2364,7 @@ void test_nghttp2_submit_settings_update_local_window_size(void)
                                        NGHTTP2_STREAM_OPENED, NULL);
   stream->local_window_size = NGHTTP2_MAX_WINDOW_SIZE;
 
-  CU_ASSERT(0 == nghttp2_submit_settings(session, iv, 1));
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
   CU_ASSERT(NGHTTP2_STREAM_CLOSING == stream->state);
 
   nghttp2_session_del(session);
@@ -2645,7 +2646,7 @@ void test_nghttp2_session_get_next_ob_item(void)
   session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
 
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
-  nghttp2_submit_ping(session, NULL);
+  nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
   CU_ASSERT(NGHTTP2_PING ==
             OB_CTRL_TYPE(nghttp2_session_get_next_ob_item(session)));
 
@@ -2691,7 +2692,7 @@ void test_nghttp2_session_pop_next_ob_item(void)
   session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
 
   CU_ASSERT(NULL == nghttp2_session_pop_next_ob_item(session));
-  nghttp2_submit_ping(session, NULL);
+  nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
   nghttp2_submit_request(session, 1, nv, NULL, NULL);
 
   item = nghttp2_session_pop_next_ob_item(session);
@@ -2908,7 +2909,7 @@ void test_nghttp2_session_defer_data(void)
   CU_ASSERT(ud.data_source_length == 16*1024);
 
   ud.block_count = 1;
-  nghttp2_submit_ping(session, NULL);
+  nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
   /* Sends PING */
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_PING == ud.sent_frame_type);
@@ -3123,7 +3124,7 @@ void test_nghttp2_session_flow_control_disable_local(void)
   iv[0].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
   iv[0].value = 1;
 
-  CU_ASSERT(0 == nghttp2_submit_settings(session, iv,
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv,
                                          sizeof(iv)/sizeof(iv[0])));
   CU_ASSERT(0 == stream->local_flow_control);
   CU_ASSERT(0 == session->local_flow_control);
@@ -3369,7 +3370,8 @@ void test_nghttp2_session_on_ctrl_not_send(void)
   CU_ASSERT(0 ==
             nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, 1,
                                    NGHTTP2_PRI_DEFAULT, nv, NULL));
-  CU_ASSERT(0 == nghttp2_submit_rst_stream(session, 1, NGHTTP2_INTERNAL_ERROR));
+  CU_ASSERT(0 == nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1,
+                                           NGHTTP2_INTERNAL_ERROR));
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(1 == user_data.frame_not_send_cb_called);
   CU_ASSERT(NGHTTP2_HEADERS == user_data.not_sent_frame_type);
@@ -3385,7 +3387,8 @@ void test_nghttp2_session_on_ctrl_not_send(void)
   CU_ASSERT(0 ==
             nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, 3,
                                    NGHTTP2_PRI_DEFAULT, nv, NULL));
-  CU_ASSERT(0 == nghttp2_submit_rst_stream(session, 3, NGHTTP2_INTERNAL_ERROR));
+  CU_ASSERT(0 == nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 3,
+                                           NGHTTP2_INTERNAL_ERROR));
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(1 == user_data.frame_not_send_cb_called);
   CU_ASSERT(NGHTTP2_HEADERS == user_data.not_sent_frame_type);
@@ -3407,11 +3410,12 @@ void test_nghttp2_session_on_ctrl_not_send(void)
 
   /* Send PRIORITY to stream ID = 1 which does not exist */
   CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED ==
-            nghttp2_submit_priority(session, 1, 0));
+            nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, 0));
 
   user_data.frame_not_send_cb_called = 0;
   /* Send GOAWAY */
-  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0));
+  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE,
+                                       NGHTTP2_NO_ERROR, NULL, 0));
   CU_ASSERT(0 == nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, -1,
                                         NGHTTP2_PRI_DEFAULT, nv, NULL));
   CU_ASSERT(0 == nghttp2_session_send(session));
@@ -3431,10 +3435,11 @@ void test_nghttp2_session_get_outbound_queue_size(void)
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, NULL));
   CU_ASSERT(0 == nghttp2_session_get_outbound_queue_size(session));
 
-  CU_ASSERT(0 == nghttp2_submit_ping(session, NULL));
+  CU_ASSERT(0 == nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL));
   CU_ASSERT(1 == nghttp2_session_get_outbound_queue_size(session));
 
-  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0));
+  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE,
+                                       NGHTTP2_NO_ERROR, NULL, 0));
   CU_ASSERT(2 == nghttp2_session_get_outbound_queue_size(session));
 
   nghttp2_session_del(session);
@@ -3540,7 +3545,7 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void)
   /* data for DATA[1] is read from data_prd but it is not sent */
   CU_ASSERT(ud.data_source_length == 8*1024);
 
-  nghttp2_submit_ping(session, NULL);
+  nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
   ud.block_count = 2;
   /* Sends DATA[1] + PING, PING is interleaved in DATA sequence */
   CU_ASSERT(0 == nghttp2_session_send(session));

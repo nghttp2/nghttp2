@@ -443,8 +443,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = initial_window_size_;
 
-  rv = nghttp2_submit_settings
-    (session_, entry, sizeof(entry)/sizeof(nghttp2_settings_entry));
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE,
+                               entry,
+                               sizeof(entry)/sizeof(nghttp2_settings_entry));
   assert(rv == 0);
   // Set large connection-level window size to effectively disable
   // connection-level flow control.
@@ -715,8 +716,8 @@ int Http2Upstream::rst_stream(Downstream *downstream,
                      << error_code;
   }
   int rv;
-  rv = nghttp2_submit_rst_stream(session_, downstream->get_stream_id(),
-                                 error_code);
+  rv = nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE,
+                                 downstream->get_stream_id(), error_code);
   if(rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "
                       << nghttp2_strerror(rv);

@@ -318,7 +318,8 @@ static int on_stream_close_callback(nghttp2_session *session,
   req = nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     int rv;
-    rv = nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, NULL, 0);
+    rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
+                               NULL, 0);
     if(rv != 0) {
       diec("nghttp2_submit_goaway", rv);
     }
@@ -350,7 +351,8 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
         int rv;
         rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
         if(rv == -1) {
-          nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
+          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                                    NGHTTP2_INTERNAL_ERROR);
           break;
         }
         fwrite(out, 1, outlen, stdout);

@@ -90,7 +90,8 @@ int nghttp2_session_fail_session(nghttp2_session *session,
   if(session->goaway_flags & NGHTTP2_GOAWAY_SEND) {
     return 0;
   }
-  return nghttp2_submit_goaway(session, error_code, NULL, 0);
+  return nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, error_code,
+                               NULL, 0);
 }
 
 int nghttp2_session_is_my_stream_id(nghttp2_session *session,
@@ -3476,7 +3477,7 @@ int nghttp2_session_upgrade(nghttp2_session *session,
     frame.settings.niv = niv;
     rv = nghttp2_session_on_settings_received(session, &frame);
   } else {
-    rv = nghttp2_submit_settings(session, iv, niv);
+    rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
   }
   free(iv);
   if(rv != 0) {

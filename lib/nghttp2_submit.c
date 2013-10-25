@@ -154,13 +154,14 @@ int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
 }
 
 
-int nghttp2_submit_ping(nghttp2_session *session, uint8_t *opaque_data)
+int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
+                        uint8_t *opaque_data)
 {
   return nghttp2_session_add_ping(session, NGHTTP2_FLAG_NONE, opaque_data);
 }
 
-int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
-                            int32_t pri)
+int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
+                            int32_t stream_id, int32_t pri)
 {
   int r;
   nghttp2_frame *frame;
@@ -190,13 +191,14 @@ int nghttp2_submit_priority(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
-int nghttp2_submit_rst_stream(nghttp2_session *session, int32_t stream_id,
+int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
+                              int32_t stream_id,
                               nghttp2_error_code error_code)
 {
   return nghttp2_session_add_rst_stream(session, stream_id, error_code);
 }
 
-int nghttp2_submit_goaway(nghttp2_session *session,
+int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           nghttp2_error_code error_code,
                           uint8_t *opaque_data, size_t opaque_data_len)
 {
@@ -204,7 +206,7 @@ int nghttp2_submit_goaway(nghttp2_session *session,
                                     error_code, opaque_data, opaque_data_len);
 }
 
-int nghttp2_submit_settings(nghttp2_session *session,
+int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
                             const nghttp2_settings_entry *iv, size_t niv)
 {
   nghttp2_frame *frame;

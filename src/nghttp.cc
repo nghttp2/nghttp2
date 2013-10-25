@@ -685,7 +685,7 @@ struct HttpClient {
     if(!need_upgrade()) {
       nghttp2_settings_entry iv[16];
       auto niv = populate_settings(iv);
-      rv = nghttp2_submit_settings(session, iv, niv);
+      rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
       if(rv != 0) {
         return -1;
       }
@@ -1012,7 +1012,8 @@ int on_data_chunk_recv_callback
         size_t tlen = len;
         int rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
         if(rv != 0) {
-          nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
+          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                                    NGHTTP2_INTERNAL_ERROR);
           break;
         }
         if(!config.null_out) {
@@ -1140,7 +1141,8 @@ int on_stream_close_callback
     (*itr).second->record_complete_time();
     ++client->complete;
     if(client->all_requests_processed()) {
-      nghttp2_submit_goaway(session, NGHTTP2_NO_ERROR, nullptr, 0);
+      nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
+                            nullptr, 0);
     }
   }
   return 0;

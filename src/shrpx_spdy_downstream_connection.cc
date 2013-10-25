@@ -145,8 +145,7 @@ int SpdyDownstreamConnection::submit_rst_stream(Downstream *downstream)
                           << downstream << ", stream_id="
                           << downstream->get_downstream_stream_id();
       }
-      rv = spdy_->submit_rst_stream(this,
-                                    downstream->get_downstream_stream_id(),
+      rv = spdy_->submit_rst_stream(downstream->get_downstream_stream_id(),
                                     NGHTTP2_INTERNAL_ERROR);
     }
   }

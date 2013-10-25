@@ -358,7 +358,7 @@ int Http2Handler::on_connect()
     entry[niv].value = 1;
     ++niv;
   }
-  r = nghttp2_submit_settings(session_, entry, niv);
+  r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry, niv);
   if(r != 0) {
     return r;
   }
@@ -701,14 +701,15 @@ int hd_on_frame_recv_callback
       int32_t stream_id = frame->hd.stream_id;
       if(!http2::check_http2_headers(frame->headers.nva,
                                      frame->headers.nvlen)) {
-        nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                                  NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
       for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
         if(!http2::get_unique_header(frame->headers.nva,
                                      frame->headers.nvlen,
                                      REQUIRED_HEADERS[i])) {
-          nghttp2_submit_rst_stream(session, stream_id,
+          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
           return 0;
         }

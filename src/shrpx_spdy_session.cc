@@ -577,8 +577,7 @@ int SpdySession::submit_request(SpdyDownstreamConnection *dconn,
   return 0;
 }
 
-int SpdySession::submit_rst_stream(SpdyDownstreamConnection *dconn,
-                                   int32_t stream_id,
+int SpdySession::submit_rst_stream(int32_t stream_id,
                                    nghttp2_error_code error_code)
 {
   assert(state_ == CONNECTED);
@@ -588,7 +587,8 @@ int SpdySession::submit_rst_stream(SpdyDownstreamConnection *dconn,
                       << " with error_code="
                       << error_code;
   }
-  int rv = nghttp2_submit_rst_stream(session_, stream_id, error_code);
+  int rv = nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE,
+                                     stream_id, error_code);
   if(rv != 0) {
     SSLOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "
                        << nghttp2_strerror(rv);
@@ -750,15 +750,13 @@ int on_frame_recv_callback
     auto sd = reinterpret_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd || !sd->dconn) {
-      nghttp2_submit_rst_stream(session, frame->hd.stream_id,
-                                NGHTTP2_INTERNAL_ERROR);
+      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_INTERNAL_ERROR);
       break;
     }
     auto downstream = sd->dconn->get_downstream();
     if(!downstream ||
        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-      nghttp2_submit_rst_stream(session, frame->hd.stream_id,
-                                NGHTTP2_INTERNAL_ERROR);
+      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_INTERNAL_ERROR);
       break;
     }
     auto nva = frame->headers.nva;
@@ -766,8 +764,7 @@ int on_frame_recv_callback
 
     // Assuming that nva is sorted by name.
     if(!http2::check_http2_headers(nva, nvlen)) {
-      nghttp2_submit_rst_stream(session, frame->hd.stream_id,
-                                NGHTTP2_PROTOCOL_ERROR);
+      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
       call_downstream_readcb(spdy, downstream);
       return 0;
@@ -782,8 +779,7 @@ int on_frame_recv_callback
 
     auto status = http2::get_unique_header(nva, nvlen, ":status");
     if(!status || http2::value_lws(status)) {
-      nghttp2_submit_rst_stream(session, frame->hd.stream_id,
-                                NGHTTP2_PROTOCOL_ERROR);
+      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
       call_downstream_readcb(spdy, downstream);
       return 0;
@@ -855,8 +851,7 @@ int on_frame_recv_callback
     }
     rv = upstream->on_downstream_header_complete(downstream);
     if(rv != 0) {
-      nghttp2_submit_rst_stream(session, frame->hd.stream_id,
-                                NGHTTP2_PROTOCOL_ERROR);
+      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
     }
     call_downstream_readcb(spdy, downstream);
@@ -899,8 +894,7 @@ int on_frame_recv_callback
                         << frame->hd.stream_id;
     }
     // We just respond with RST_STREAM.
-    nghttp2_submit_rst_stream(session, frame->hd.stream_id,
-                              NGHTTP2_REFUSED_STREAM);
+    spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_REFUSED_STREAM);
     break;
   default:
     break;
@@ -920,12 +914,12 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   auto sd = reinterpret_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
-    nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
+    spdy->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
   if(!downstream || downstream->get_downstream_stream_id() != stream_id) {
-    nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
+    spdy->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
     return 0;
   }
 
@@ -940,8 +934,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
                           << ", initial_window_size="
                           << spdy->get_initial_window_size();
       }
-      nghttp2_submit_rst_stream(session, stream_id,
-                                NGHTTP2_FLOW_CONTROL_ERROR);
+      spdy->submit_rst_stream(stream_id, NGHTTP2_FLOW_CONTROL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
       call_downstream_readcb(spdy, downstream);
       return 0;
@@ -951,7 +944,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   auto upstream = downstream->get_upstream();
   rv = upstream->on_downstream_body(downstream, data, len);
   if(rv != 0) {
-    nghttp2_submit_rst_stream(session, stream_id, NGHTTP2_INTERNAL_ERROR);
+    spdy->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
   }
   call_downstream_readcb(spdy, downstream);
@@ -964,20 +957,20 @@ int before_frame_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame,
                                void *user_data)
 {
+  auto spdy = reinterpret_cast<SpdySession*>(user_data);
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     auto sd = reinterpret_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd || !sd->dconn) {
-      nghttp2_submit_rst_stream(session, frame->hd.stream_id,
-                                NGHTTP2_CANCEL);
+      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
       return 0;
     }
     auto downstream = sd->dconn->get_downstream();
     if(downstream) {
       downstream->set_downstream_stream_id(frame->hd.stream_id);
     } else {
-      nghttp2_submit_rst_stream(session, frame->hd.stream_id, NGHTTP2_CANCEL);
+      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
     }
   }
   return 0;
@@ -1098,8 +1091,8 @@ int SpdySession::on_connect()
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = get_initial_window_size();
 
-  rv = nghttp2_submit_settings
-    (session_, entry, sizeof(entry)/sizeof(nghttp2_settings_entry));
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry,
+                               sizeof(entry)/sizeof(nghttp2_settings_entry));
   if(rv != 0) {
     return -1;
   }
