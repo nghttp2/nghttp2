@@ -144,7 +144,6 @@ bool check_http2_allowed_header(const uint8_t *name, size_t namelen)
 namespace {
 const char *DISALLOWED_HD[] = {
   "connection",
-  "host",
   "keep-alive",
   "proxy-connection",
   "te",
@@ -161,7 +160,6 @@ namespace {
 const char *IGN_HD[] = {
   "connection",
   "expect",
-  "host",
   "http2-settings",
   "keep-alive",
   "proxy-connection",
@@ -247,12 +245,18 @@ const nghttp2_nv* get_header(const nghttp2_nv *nva, size_t nvlen,
 
 std::string name_to_str(const nghttp2_nv *nv)
 {
-  return std::string(reinterpret_cast<const char*>(nv->name), nv->namelen);
+  if(nv) {
+    return std::string(reinterpret_cast<const char*>(nv->name), nv->namelen);
+  }
+  return "";
 }
 
 std::string value_to_str(const nghttp2_nv *nv)
 {
-  return std::string(reinterpret_cast<const char*>(nv->value), nv->valuelen);
+  if(nv) {
+    return std::string(reinterpret_cast<const char*>(nv->value), nv->valuelen);
+  }
+  return "";
 }
 
 bool value_lws(const nghttp2_nv *nv)
@@ -267,6 +271,11 @@ bool value_lws(const nghttp2_nv *nv)
     }
   }
   return true;
+}
+
+bool non_empty_value(const nghttp2_nv* nv)
+{
+  return nv && !http2::value_lws(nv) && http2::check_header_value(nv);
 }
 
 void copy_norm_headers_to_nv

@@ -89,6 +89,10 @@ std::string value_to_str(const nghttp2_nv *nv);
 // Returns true if the value of |nv| includes only ' ' (0x20) or '\t'.
 bool value_lws(const nghttp2_nv *nv);
 
+// Returns true if the value of |nv| is not empty value and not LWS
+// and not contain illegal characters.
+bool non_empty_value(const nghttp2_nv* nv);
+
 // Appends headers in |headers| to |nv|. Certain headers, including
 // disallowed headers in HTTP/2.0 spec and headers which require
 // special handling (i.e. via), are not copied.

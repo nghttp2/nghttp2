@@ -104,7 +104,15 @@ public:
   const std::string& get_request_method() const;
   void set_request_path(std::string path);
   void append_request_path(const char *data, size_t len);
+  // Returns request path. For HTTP/1.1, this is request-target. For
+  // HTTP/2, this is :path header field value.
   const std::string& get_request_path() const;
+  // Returns HTTP/2 :scheme header field value.
+  const std::string& get_request_http2_scheme() const;
+  void set_request_http2_scheme(std::string scheme);
+  // Returns HTTP/2 :authority header field value.
+  const std::string& get_request_http2_authority() const;
+  void set_request_http2_authority(std::string authority);
   void set_request_major(int major);
   void set_request_minor(int minor);
   int get_request_major() const;
@@ -184,6 +192,8 @@ private:
   int request_state_;
   std::string request_method_;
   std::string request_path_;
+  std::string request_http2_scheme_;
+  std::string request_http2_authority_;
   int request_major_;
   int request_minor_;
   bool chunked_request_;

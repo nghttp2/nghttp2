@@ -232,19 +232,43 @@ int SpdyDownstreamConnection::push_request_headers()
   size_t nheader = downstream_->get_request_headers().size();
   downstream_->normalize_request_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
-  // 10 means :method, :scheme, :path and possible via and
-  // x-forwarded-for header fields. We rename host header field as
-  // :host.
+  // 12 means:
+  // 1. :method
+  // 2. :scheme
+  // 3. :path
+  // 4. :authority (optional)
+  // 5. via (optional)
+  // 6. x-forwarded-for (optional)
   auto nv = std::vector<const char*>();
   nv.reserve(nheader * 2 + 10 + 1);
   std::string via_value;
   std::string xff_value;
-  std::string scheme, path, query;
+  std::string scheme, authority, path, query;
   if(downstream_->get_request_method() == "CONNECT") {
-    // No :scheme header field for CONNECT method.
+    // The upstream may be HTTP/2 or HTTP/1
+    nv.push_back(":authority");
+    if(!downstream_->get_request_http2_authority().empty()) {
+      nv.push_back(downstream_->get_request_http2_authority().c_str());
+    } else {
+      nv.push_back(downstream_->get_request_path().c_str());
+    }
+  } else if(!downstream_->get_request_http2_scheme().empty()) {
+    // Here the upstream is HTTP/2
+    nv.push_back(":scheme");
+    nv.push_back(downstream_->get_request_http2_scheme().c_str());
     nv.push_back(":path");
     nv.push_back(downstream_->get_request_path().c_str());
+    if(!downstream_->get_request_http2_authority().empty()) {
+      nv.push_back(":authority");
+      nv.push_back(downstream_->get_request_http2_authority().c_str());
+    } else if(downstream_->get_norm_request_header("host") == end_headers) {
+      if(LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this) << "host header field missing";
+      }
+      return -1;
+    }
   } else {
+    // The upstream is HTTP/1
     http_parser_url u;
     const char *url = downstream_->get_request_path().c_str();
     memset(&u, 0, sizeof(u));
@@ -253,6 +277,7 @@ int SpdyDownstreamConnection::push_request_headers()
                                0, &u);
     if(rv == 0) {
       http2::copy_url_component(scheme, &u, UF_SCHEMA, url);
+      http2::copy_url_component(authority, &u, UF_HOST, url);
       http2::copy_url_component(path, &u, UF_PATH, url);
       http2::copy_url_component(query, &u, UF_QUERY, url);
       if(path.empty()) {
@@ -277,22 +302,30 @@ int SpdyDownstreamConnection::push_request_headers()
     } else {
       nv.push_back(path.c_str());
     }
+    if(!authority.empty()) {
+      // TODO properly check IPv6 numeric address
+      if(authority.find(":") != std::string::npos) {
+        authority = "[" + authority;
+        authority += "]";
+      }
+      if(u.field_set & (1 << UF_PORT)) {
+        authority += ":";
+        authority += util::utos(u.port);
+      }
+      nv.push_back(":authority");
+      nv.push_back(authority.c_str());
+    } else if(downstream_->get_norm_request_header("host") == end_headers) {
+      if(LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this) << "host header field missing";
+      }
+      return -1;
+    }
   }
 
   nv.push_back(":method");
   nv.push_back(downstream_->get_request_method().c_str());
 
   http2::copy_norm_headers_to_nv(nv, downstream_->get_request_headers());
-
-  auto host = downstream_->get_norm_request_header("host");
-  if(host == end_headers) {
-    if(LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this) << "host header field missing";
-    }
-    return -1;
-  }
-  nv.push_back(":host");
-  nv.push_back((*host).second.c_str());
 
   bool content_length = false;
   if(downstream_->get_norm_request_header("content-length") != end_headers) {

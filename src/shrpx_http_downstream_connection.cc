@@ -116,13 +116,39 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 
 int HttpDownstreamConnection::push_request_headers()
 {
+  downstream_->normalize_request_headers();
+  auto end_headers = std::end(downstream_->get_request_headers());
   // Assume that method and request path do not contain \r\n.
   std::string hdrs = downstream_->get_request_method();
   hdrs += " ";
-  hdrs += downstream_->get_request_path();
+  if(downstream_->get_request_method() == "CONNECT") {
+    if(!downstream_->get_request_http2_authority().empty()) {
+      hdrs += downstream_->get_request_http2_authority();
+    } else {
+      hdrs += downstream_->get_request_path();
+    }
+  } else if(get_config()->spdy_proxy &&
+     !downstream_->get_request_http2_scheme().empty() &&
+     !downstream_->get_request_http2_authority().empty() &&
+     downstream_->get_request_path().c_str()[0] == '/') {
+    // Construct absolute-form request target because we are going to
+    // send a request to a HTTP/1 proxy.
+    hdrs += downstream_->get_request_http2_scheme();
+    hdrs += "://";
+    hdrs += downstream_->get_request_http2_authority();
+    hdrs += downstream_->get_request_path();
+  } else {
+    // No proxy case. get_request_path() may be absolute-form but we
+    // don't care.
+    hdrs += downstream_->get_request_path();
+  }
   hdrs += " HTTP/1.1\r\n";
-  downstream_->normalize_request_headers();
-  auto end_headers = std::end(downstream_->get_request_headers());
+  if(downstream_->get_norm_request_header("host") == end_headers &&
+     !downstream_->get_request_http2_authority().empty()) {
+    hdrs += "Host: ";
+    hdrs += downstream_->get_request_http2_authority();
+    hdrs += "\r\n";
+  }
   http2::build_http1_headers_from_norm_headers
     (hdrs, downstream_->get_request_headers());
 
@@ -147,10 +173,13 @@ int HttpDownstreamConnection::push_request_headers()
   }
   if(downstream_->get_request_method() != "CONNECT") {
     hdrs += "X-Forwarded-Proto: ";
-    if(util::istartsWith(downstream_->get_request_path(), "http:")) {
-      hdrs += "http\r\n";
-    } else {
+    if(!downstream_->get_request_http2_scheme().empty()) {
+      hdrs += downstream_->get_request_http2_scheme();
+      hdrs += "\r\n";
+    } else if(util::istartsWith(downstream_->get_request_path(), "https:")) {
       hdrs += "https\r\n";
+    } else {
+      hdrs += "http\r\n";
     }
   }
   auto expect = downstream_->get_norm_request_header("expect");

@@ -143,25 +143,24 @@ void on_ctrl_recv_callback
 (spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
  void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   switch(type) {
   case SPDYLAY_SYN_STREAM: {
     if(LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Received upstream SYN_STREAM stream_id="
                            << frame->syn_stream.stream_id;
     }
-    Downstream *downstream;
-    downstream = new Downstream(upstream,
-                                frame->syn_stream.stream_id,
-                                frame->syn_stream.pri);
+    auto downstream = new Downstream(upstream,
+                                     frame->syn_stream.stream_id,
+                                     frame->syn_stream.pri);
     upstream->add_downstream(downstream);
     downstream->init_response_body_buf();
 
-    char **nv = frame->syn_stream.nv;
-    const char *path = 0;
-    const char *scheme = 0;
-    const char *host = 0;
-    const char *method = 0;
+    auto nv = frame->syn_stream.nv;
+    const char *path = nullptr;
+    const char *scheme = nullptr;
+    const char *host = nullptr;
+    const char *method = nullptr;
     const char *content_length = 0;
     for(size_t i = 0; nv[i]; i += 2) {
       if(strcmp(nv[i], ":path") == 0) {
@@ -170,7 +169,6 @@ void on_ctrl_recv_callback
         scheme = nv[i+1];
       } else if(strcmp(nv[i], ":method") == 0) {
         method = nv[i+1];
-        downstream->set_request_method(nv[i+1]);
       } else if(strcmp(nv[i], ":host") == 0) {
         host = nv[i+1];
       } else if(nv[i][0] != ':') {
@@ -180,36 +178,31 @@ void on_ctrl_recv_callback
         downstream->add_request_header(nv[i], nv[i+1]);
       }
     }
+    bool is_connect = method && strcmp("CONNECT", method) == 0;
     if(!path || !host || !method ||
        !http2::check_header_value(host) ||
        !http2::check_header_value(path) ||
        !http2::check_header_value(method) ||
-       (scheme && !http2::check_header_value(scheme))) {
+       (!is_connect && (!scheme || !http2::check_header_value(scheme)))) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }
     // Require content-length if FIN flag is not set.
-    if(strcmp("CONNECT", method) != 0 &&
-       (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) == 0 &&
-       !content_length) {
+    if(!is_connect && !content_length &&
+       (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) == 0) {
       upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
       return;
     }
-    // SpdyDownstreamConnection examines request path to find
-    // scheme. We construct abs URI for spdy_bridge mode as well as
-    // spdy_proxy mode.
-    if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
-       scheme && path[0] == '/') {
-      std::string reqpath = scheme;
-      reqpath += "://";
-      reqpath += host;
-      reqpath += path;
-      downstream->set_request_path(std::move(reqpath));
+
+    downstream->set_request_method(method);
+    if(is_connect) {
+      downstream->set_request_http2_authority(path);
     } else {
+      downstream->set_request_http2_scheme(scheme);
+      downstream->set_request_http2_authority(host);
       downstream->set_request_path(path);
     }
 
-    downstream->add_request_header("host", host);
     downstream->check_upgrade_request();
 
     if(LOG_ENABLED(INFO)) {
@@ -222,8 +215,7 @@ void on_ctrl_recv_callback
                            << "\n" << ss.str();
     }
 
-    DownstreamConnection *dconn;
-    dconn = upstream->get_client_handler()->get_downstream_connection();
+    auto dconn = upstream->get_client_handler()->get_downstream_connection();
     int rv = dconn->attach_downstream(downstream);
     if(rv != 0) {
       // If downstream connection fails, issue RST_STREAM.

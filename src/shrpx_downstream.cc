@@ -249,6 +249,26 @@ const std::string& Downstream::get_request_path() const
   return request_path_;
 }
 
+const std::string& Downstream::get_request_http2_scheme() const
+{
+  return request_http2_scheme_;
+}
+
+void Downstream::set_request_http2_scheme(std::string scheme)
+{
+  request_http2_scheme_ = std::move(scheme);
+}
+
+const std::string& Downstream::get_request_http2_authority() const
+{
+  return request_http2_authority_;
+}
+
+void Downstream::set_request_http2_authority(std::string authority)
+{
+  request_http2_authority_ = std::move(authority);
+}
+
 void Downstream::set_request_major(int major)
 {
   request_major_ = major;

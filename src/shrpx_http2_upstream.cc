@@ -222,22 +222,33 @@ int on_frame_recv_callback
       }
     }
 
-    auto host = http2::get_unique_header(nva, nvlen, ":host");
+    auto host = http2::get_unique_header(nva, nvlen, "host");
+    auto authority = http2::get_unique_header(nva, nvlen, ":authority");
     auto path = http2::get_unique_header(nva, nvlen, ":path");
     auto method = http2::get_unique_header(nva, nvlen, ":method");
     auto scheme = http2::get_unique_header(nva, nvlen, ":scheme");
     bool is_connect = method &&
       util::streq("CONNECT", method->value, method->valuelen);
-    if(!host || !path || !method ||
-       http2::value_lws(host) || http2::value_lws(path) ||
-       http2::value_lws(method) ||
-       (!is_connect && (!scheme || http2::value_lws(scheme))) ||
-       !http2::check_header_value(host) ||
-       !http2::check_header_value(path) ||
-       !http2::check_header_value(method) ||
-       (scheme && !http2::check_header_value(scheme))) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return 0;
+    bool having_host = http2::non_empty_value(host);
+    bool having_authority = http2::non_empty_value(authority);
+
+    if(is_connect) {
+      // Here we strictly require :authority header field.
+      if(scheme || path || !having_authority) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
+    } else {
+      // For proxy, :authority is required. Otherwise, we can accept
+      // :authority or host for methods.
+      if(!http2::non_empty_value(method) ||
+         !http2::non_empty_value(scheme) ||
+         (get_config()->spdy_proxy && !having_authority) ||
+         (!get_config()->spdy_proxy && !having_authority && !having_host) ||
+         !http2::non_empty_value(path)) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
     }
     if(!is_connect &&
        (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
@@ -251,21 +262,10 @@ int on_frame_recv_callback
     }
 
     downstream->set_request_method(http2::value_to_str(method));
+    downstream->set_request_http2_scheme(http2::value_to_str(scheme));
+    downstream->set_request_http2_authority(http2::value_to_str(authority));
+    downstream->set_request_path(http2::value_to_str(path));
 
-    // SpdyDownstreamConnection examines request path to find
-    // scheme. We construct abs URI for spdy_bridge mode as well as
-    // spdy_proxy mode.
-    if((get_config()->spdy_proxy || get_config()->spdy_bridge) &&
-       scheme && path->value[0] == '/') {
-      auto reqpath = http2::value_to_str(scheme);
-      reqpath += "://";
-      reqpath += http2::value_to_str(host);
-      reqpath += http2::value_to_str(path);
-      downstream->set_request_path(std::move(reqpath));
-    } else {
-      downstream->set_request_path(http2::value_to_str(path));
-    }
-    downstream->add_request_header("host", http2::value_to_str(host));
     downstream->check_upgrade_request();
 
     auto dconn = upstream->get_client_handler()->get_downstream_connection();
