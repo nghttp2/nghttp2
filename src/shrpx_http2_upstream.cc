@@ -801,7 +801,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
     "content-type", "text/html; charset=UTF-8",
     "server", get_config()->server_name,
     "content-length", content_length.c_str(),
-    0
+    nullptr
   };
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(), nv,
