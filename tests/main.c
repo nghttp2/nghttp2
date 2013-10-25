@@ -231,6 +231,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_deflate_same_indexed_repr) ||
       !CU_add_test(pSuite, "hd_deflate_common_header_eviction",
                    test_nghttp2_hd_deflate_common_header_eviction) ||
+      !CU_add_test(pSuite, "hd_deflate_local_buffer",
+                   test_nghttp2_hd_deflate_local_buffer) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc",
                    test_nghttp2_hd_inflate_indname_inc) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc_eviction",
@@ -239,6 +241,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_inflate_newname_inc) ||
       !CU_add_test(pSuite, "hd_inflate_clearall_inc",
                    test_nghttp2_hd_inflate_clearall_inc) ||
+      !CU_add_test(pSuite, "hd_change_table_size",
+                   test_nghttp2_hd_change_table_size) ||
       !CU_add_test(pSuite, "hd_deflate_inflate",
                    test_nghttp2_hd_deflate_inflate) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||

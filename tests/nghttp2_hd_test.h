@@ -28,10 +28,12 @@
 void test_nghttp2_hd_deflate(void);
 void test_nghttp2_hd_deflate_same_indexed_repr(void);
 void test_nghttp2_hd_deflate_common_header_eviction(void);
+void test_nghttp2_hd_deflate_local_buffer(void);
 void test_nghttp2_hd_inflate_indname_inc(void);
 void test_nghttp2_hd_inflate_indname_inc_eviction(void);
 void test_nghttp2_hd_inflate_newname_inc(void);
 void test_nghttp2_hd_inflate_clearall_inc(void);
+void test_nghttp2_hd_change_table_size(void);
 void test_nghttp2_hd_deflate_inflate(void);
 
 #endif /* NGHTTP2_HD_TEST_H */
