@@ -804,10 +804,6 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
       free(new_ent);
       return NULL;
     }
-    if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-      context->local_hd_table_bufsize += room;
-      ++context->local_hd_tablelen;
-    }
   }
   if(room > context->hd_table_bufsize_max) {
     /* The entry taking more than NGHTTP2_HD_MAX_BUFFER_SIZE is
@@ -817,6 +813,11 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     context->hd_table_bufsize += room;
     new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
     nghttp2_hd_ringbuf_push_front(&context->hd_table, new_ent);
+    if(context->role == NGHTTP2_HD_ROLE_DEFLATE &&
+       room <= context->local_hd_table_bufsize_max) {
+      context->local_hd_table_bufsize += room;
+      ++context->local_hd_tablelen;
+    }
   }
   return new_ent;
 }
