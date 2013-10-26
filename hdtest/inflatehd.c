@@ -3,11 +3,20 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <assert.h>
+#include <errno.h>
+#include <stdlib.h>
 
 #include <jansson.h>
 
 #include "nghttp2_hd.h"
 #include "nghttp2_frame.h"
+
+typedef struct {
+  nghttp2_hd_side side;
+  size_t table_size;
+} inflate_config;
+
+static inflate_config config;
 
 static uint8_t to_ud(char c)
 {
@@ -85,7 +94,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
   return 0;
 }
 
-static int perform(nghttp2_hd_side side)
+static int perform()
 {
   nghttp2_hd_context inflater;
   size_t i;
@@ -98,7 +107,8 @@ static int perform(nghttp2_hd_side side)
     fprintf(stderr, "JSON loading failed\n");
     exit(EXIT_FAILURE);
   }
-  nghttp2_hd_inflate_init(&inflater, side);
+  nghttp2_hd_inflate_init(&inflater, config.side);
+  nghttp2_hd_change_table_size(&inflater, config.table_size);
   printf("[\n");
   len = json_array_size(json);
   for(i = 0; i < len; ++i) {
@@ -123,7 +133,9 @@ static int perform(nghttp2_hd_side side)
 
 static void print_help(void)
 {
-  printf("Usage: inflatehd [-r] < INPUT\n\n"
+  printf("HPACK-draft-04 header decompressor\n"
+         "Usage: inflatehd [OPTIONS] < INPUT\n"
+         "\n"
          "Reads JSON array from stdin and outputs inflated name/value pairs\n"
          "in JSON array.\n"
          "The element of input array must be a JSON object. Each object must\n"
@@ -141,37 +153,54 @@ static void print_help(void)
          "\n"
          "OPTIONS:\n"
          "    -r, --response    Use response compression context instead of\n"
-         "                      request.\n");
+         "                      request.\n"
+         "    -s, --table-size=<N>\n"
+         "                      Set dynamic table size. This value is the\n"
+         "                      buffer size the decoder uses. In the HPACK\n"
+         "                      specification, this value is denoted by\n"
+         "                      SETTINGS_HEADER_TABLE_SIZE.\n"
+         "                      Default: 4096\n");
 }
 
 static struct option long_options[] = {
   {"response", no_argument, NULL, 'r'},
+  {"table-size", required_argument, NULL, 's'},
   {NULL, 0, NULL, 0 }
 };
 
 int main(int argc, char **argv)
 {
-  nghttp2_hd_side side = NGHTTP2_HD_SIDE_REQUEST;
+  char *end;
+  config.side = NGHTTP2_HD_SIDE_REQUEST;
+  config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "hr", long_options, &option_index);
+    int c = getopt_long(argc, argv, "hrs:", long_options, &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
     case 'r':
       /* --response */
-      side = NGHTTP2_HD_SIDE_RESPONSE;
+      config.side = NGHTTP2_HD_SIDE_RESPONSE;
       break;
     case 'h':
       print_help();
       exit(EXIT_SUCCESS);
+    case 's':
+      /* --table-size */
+      config.table_size = strtoul(optarg, &end, 10);
+      if(errno == ERANGE || *end != '\0') {
+        fprintf(stderr, "-s: Bad option value\n");
+        exit(EXIT_FAILURE);
+      }
+      break;
     case '?':
       exit(EXIT_FAILURE);
     default:
       break;
     }
   }
-  perform(side);
+  perform();
   return 0;
 }

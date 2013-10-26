@@ -3,11 +3,22 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <assert.h>
+#include <errno.h>
+#include <stdlib.h>
 
 #include <jansson.h>
 
 #include "nghttp2_hd.h"
 #include "nghttp2_frame.h"
+
+typedef struct {
+  nghttp2_hd_side side;
+  size_t table_size;
+  size_t local_table_size;
+  int http1text;
+} deflate_config;
+
+static deflate_config config;
 
 static void to_hex(char *dest, const uint8_t *src, size_t len)
 {
@@ -108,9 +119,8 @@ static int deflate_hd_json(json_t *obj, nghttp2_hd_context *deflater, int seq)
   return 0;
 }
 
-static int perform(nghttp2_hd_side side)
+static int perform(nghttp2_hd_context *deflater)
 {
-  nghttp2_hd_context deflater;
   size_t i;
   json_t *json;
   json_error_t error;
@@ -120,7 +130,6 @@ static int perform(nghttp2_hd_side side)
     fprintf(stderr, "JSON loading failed\n");
     exit(EXIT_FAILURE);
   }
-  nghttp2_hd_deflate_init(&deflater, side);
   printf("[\n");
   len = json_array_size(json);
   for(i = 0; i < len; ++i) {
@@ -130,7 +139,7 @@ static int perform(nghttp2_hd_side side)
               i);
       continue;
     }
-    if(deflate_hd_json(obj, &deflater, i) != 0) {
+    if(deflate_hd_json(obj, deflater, i) != 0) {
       continue;
     }
     if(i + 1 < len) {
@@ -138,18 +147,15 @@ static int perform(nghttp2_hd_side side)
     }
   }
   printf("]\n");
-  nghttp2_hd_deflate_free(&deflater);
   json_decref(json);
   return 0;
 }
 
-static int perform_from_http1text(nghttp2_hd_side side)
+static int perform_from_http1text(nghttp2_hd_context *deflater)
 {
   char line[1 << 14];
   nghttp2_nv nva[256];
-  nghttp2_hd_context deflater;
   int seq = 0;
-  nghttp2_hd_deflate_init(&deflater, side);
   printf("[\n");
   for(;;) {
     size_t nvlen = 0;
@@ -187,9 +193,8 @@ static int perform_from_http1text(nghttp2_hd_side side)
       ++nvlen;
       inputlen += nv->namelen + nv->valuelen;
     }
-    nghttp2_nv_array_sort(nva, nvlen);
 
-    deflate_hd(&deflater, nva, nvlen, inputlen, seq);
+    deflate_hd(deflater, nva, nvlen, inputlen, seq);
 
     for(i = 0; i < nvlen; ++i) {
       free(nva[i].name);
@@ -200,14 +205,13 @@ static int perform_from_http1text(nghttp2_hd_side side)
     ++seq;
   }
   printf("]\n");
-  nghttp2_hd_deflate_free(&deflater);
   return 0;
 }
 
 static void print_help(void)
 {
   printf("HPACK-draft-04 header compressor\n"
-         "Usage: deflatehd [-r] < INPUT\n"
+         "Usage: deflatehd [OPTIONS] < INPUT\n"
          "\n"
          "Reads JSON array or HTTP/1-style header fields from stdin and\n"
          "outputs deflated header block in JSON array.\n"
@@ -254,35 +258,75 @@ static void print_help(void)
          "                      request.\n"
          "    -t, --http1text   Use HTTP/1 style header field text as input.\n"
          "                      Each header set is delimited by single empty\n"
-         "                      line.\n");
+         "                      line.\n"
+         "    -s, --table-size=<N>\n"
+         "                      Set dynamic table size. This value is the\n"
+         "                      buffer size the decoder uses. In the HPACK\n"
+         "                      specification, this value is denoted by\n"
+         "                      SETTINGS_HEADER_TABLE_SIZE.\n"
+         "                      Default: 4096\n"
+         "    -S, --local-table-size=<N>\n"
+         "                      Set effective dynamic table size when\n"
+         "                      encoding headers. Although a decoder uses\n"
+         "                      the value specified in -s option, encoder\n"
+         "                      can use smaller buffer size than that. This\n"
+         "                      option specifies it. Therefore it is\n"
+         "                      meaningless to specify the value equals to\n"
+         "                      or greater than the value given in -s\n"
+         "                      option.\n"
+         "                      Default: 4096\n");
 }
 
 static struct option long_options[] = {
   {"response", no_argument, NULL, 'r'},
   {"http1text", no_argument, NULL, 't'},
+  {"table-size", required_argument, NULL, 's'},
+  {"local-table-size", required_argument, NULL, 'S'},
   {NULL, 0, NULL, 0 }
 };
 
 int main(int argc, char **argv)
 {
-  nghttp2_hd_side side = NGHTTP2_HD_SIDE_REQUEST;
-  int http1text = 0;
+  nghttp2_hd_context deflater;
+  char *end;
+
+  config.side = NGHTTP2_HD_SIDE_REQUEST;
+  config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
+  config.local_table_size = NGHTTP2_HD_DEFAULT_LOCAL_MAX_BUFFER_SIZE;
+  config.http1text = 0;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "hrt", long_options, &option_index);
+    int c = getopt_long(argc, argv, "S:hrs:t", long_options, &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
     case 'r':
       /* --response */
-      side = NGHTTP2_HD_SIDE_RESPONSE;
+      config.side = NGHTTP2_HD_SIDE_RESPONSE;
       break;
     case 'h':
       print_help();
       exit(EXIT_SUCCESS);
     case 't':
-      http1text = 1;
+      /* --http1text */
+      config.http1text = 1;
+      break;
+    case 's':
+      /* --table-size */
+      config.table_size = strtoul(optarg, &end, 10);
+      if(errno == ERANGE || *end != '\0') {
+        fprintf(stderr, "-s: Bad option value\n");
+        exit(EXIT_FAILURE);
+      }
+      break;
+    case 'S':
+      /* --local-table-size */
+      config.local_table_size = strtoul(optarg, &end, 10);
+      if(errno == ERANGE || *end != '\0') {
+        fprintf(stderr, "-S: Bad option value\n");
+        exit(EXIT_FAILURE);
+      }
       break;
     case '?':
       exit(EXIT_FAILURE);
@@ -290,10 +334,13 @@ int main(int argc, char **argv)
       break;
     }
   }
-  if(http1text) {
-    perform_from_http1text(side);
+  nghttp2_hd_deflate_init2(&deflater, config.side, config.local_table_size);
+  nghttp2_hd_change_table_size(&deflater, config.table_size);
+  if(config.http1text) {
+    perform_from_http1text(&deflater);
   } else {
-    perform(side);
+    perform(&deflater);
   }
+  nghttp2_hd_deflate_free(&deflater);
   return 0;
 }
