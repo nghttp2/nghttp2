@@ -31,9 +31,11 @@ LDADD = $(top_builddir)/lib/libnghttp2.la
 
 bin_PROGRAMS = inflatehd deflatehd
 
-inflatehd_SOURCES = inflatehd.c
+COMMON_SRCS = comp_helper.c comp_helper.h
 
-deflatehd_SOURCES = deflatehd.c
+inflatehd_SOURCES = inflatehd.c $(COMMON_SRCS)
+
+deflatehd_SOURCES = deflatehd.c $(COMMON_SRCS)
 
 endif # ENABLE_HDTEST
 

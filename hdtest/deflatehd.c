@@ -11,11 +11,14 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_frame.h"
 
+#include "comp_helper.h"
+
 typedef struct {
   nghttp2_hd_side side;
   size_t table_size;
   size_t local_table_size;
   int http1text;
+  int dump_header_table;
 } deflate_config;
 
 static deflate_config config;
@@ -29,7 +32,8 @@ static void to_hex(char *dest, const uint8_t *src, size_t len)
   }
 }
 
-static void output_to_json(const uint8_t *buf, size_t len, size_t inputlen,
+static void output_to_json(nghttp2_hd_context *deflater,
+                           const uint8_t *buf, size_t len, size_t inputlen,
                            int seq)
 {
   json_t *obj;
@@ -47,7 +51,10 @@ static void output_to_json(const uint8_t *buf, size_t len, size_t inputlen,
                       json_real((double)len / inputlen * 100));
   to_hex(hex, buf, len);
   json_object_set_new(obj, "output", json_pack("s#", hex, len * 2));
-  json_dumpf(obj, stdout, JSON_PRESERVE_ORDER);
+  if(config.dump_header_table) {
+    json_object_set_new(obj, "headerTable", dump_header_table(deflater));
+  }
+  json_dumpf(obj, stdout, JSON_PRESERVE_ORDER | JSON_INDENT(2));
   printf("\n");
   json_decref(obj);
 }
@@ -63,7 +70,7 @@ static void deflate_hd(nghttp2_hd_context *deflater,
     fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
     exit(EXIT_FAILURE);
   }
-  output_to_json(buf, rv, inputlen, seq);
+  output_to_json(deflater, buf, rv, inputlen, seq);
   nghttp2_hd_end_headers(deflater);
   free(buf);
 }
@@ -260,21 +267,16 @@ static void print_help(void)
          "                      Each header set is delimited by single empty\n"
          "                      line.\n"
          "    -s, --table-size=<N>\n"
-         "                      Set dynamic table size. This value is the\n"
-         "                      buffer size the decoder uses. In the HPACK\n"
+         "                      Set dynamic table size. In the HPACK\n"
          "                      specification, this value is denoted by\n"
          "                      SETTINGS_HEADER_TABLE_SIZE.\n"
          "                      Default: 4096\n"
          "    -S, --local-table-size=<N>\n"
-         "                      Set effective dynamic table size when\n"
-         "                      encoding headers. Although a decoder uses\n"
-         "                      the value specified in -s option, encoder\n"
-         "                      can use smaller buffer size than that. This\n"
-         "                      option specifies it. Therefore it is\n"
-         "                      meaningless to specify the value equals to\n"
-         "                      or greater than the value given in -s\n"
-         "                      option.\n"
-         "                      Default: 4096\n");
+         "                      Use first N bytes of dynamic header table\n"
+         "                      buffer.\n"
+         "                      Default: 4096\n"
+         "    -d, --dump-header-table\n"
+         "                      Output dynamic header table.\n");
 }
 
 static struct option long_options[] = {
@@ -282,6 +284,7 @@ static struct option long_options[] = {
   {"http1text", no_argument, NULL, 't'},
   {"table-size", required_argument, NULL, 's'},
   {"local-table-size", required_argument, NULL, 'S'},
+  {"dump-header-table", no_argument, NULL, 'd'},
   {NULL, 0, NULL, 0 }
 };
 
@@ -294,9 +297,10 @@ int main(int argc, char **argv)
   config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   config.local_table_size = NGHTTP2_HD_DEFAULT_LOCAL_MAX_BUFFER_SIZE;
   config.http1text = 0;
+  config.dump_header_table = 0;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "S:hrs:t", long_options, &option_index);
+    int c = getopt_long(argc, argv, "S:dhrs:t", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -327,6 +331,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "-S: Bad option value\n");
         exit(EXIT_FAILURE);
       }
+      break;
+    case 'd':
+      /* --dump-header-table */
+      config.dump_header_table = 1;
       break;
     case '?':
       exit(EXIT_FAILURE);
