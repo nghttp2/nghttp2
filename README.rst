@@ -4,12 +4,11 @@ nghttp2 - HTTP/2.0 C Library
 This is an experimental implementation of Hypertext Transfer Protocol
 version 2.0.
 
-This branch explores upcoming HPACK changes:
+This branch implements HPACK-draft-04
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04).
 
-* Unified request/response static header table
-* Insert index 0 and remove the last one
-* Drop substitution
-* Huffman encoding
+There are command-line header compression test tools in hdtest
+directory. Check out deflatehd and inflatehd commands.
 
 With these changes, the implemented protocol is not compatible with
 HTTP-draft-06/2.0. Therefore, this branch uses
