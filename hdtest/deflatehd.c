@@ -7,6 +7,7 @@
 #include <jansson.h>
 
 #include "nghttp2_hd.h"
+#include "nghttp2_frame.h"
 
 static void to_hex(char *dest, const uint8_t *src, size_t len)
 {
@@ -40,15 +41,28 @@ static void output_to_json(const uint8_t *buf, size_t len, size_t inputlen,
   json_decref(obj);
 }
 
-static int deflate_hd(json_t *obj, nghttp2_hd_context *deflater, int seq)
+static void deflate_hd(nghttp2_hd_context *deflater,
+                       nghttp2_nv *nva, size_t nvlen, size_t inputlen, int seq)
 {
-  json_t *js;
+  ssize_t rv;
   uint8_t *buf = NULL;
   size_t buflen = 0;
+  rv = nghttp2_hd_deflate_hd(deflater, &buf, &buflen, 0, nva, nvlen);
+  if(rv < 0) {
+    fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
+    exit(EXIT_FAILURE);
+  }
+  output_to_json(buf, rv, inputlen, seq);
+  nghttp2_hd_end_headers(deflater);
+  free(buf);
+}
+
+static int deflate_hd_json(json_t *obj, nghttp2_hd_context *deflater, int seq)
+{
+  json_t *js;
   nghttp2_nv nva[128];
   size_t len;
   size_t i;
-  ssize_t rv;
   size_t inputlen = 0;
 
   js = json_object_get(obj, "headers");
@@ -90,14 +104,7 @@ static int deflate_hd(json_t *obj, nghttp2_hd_context *deflater, int seq)
     nva[i].valuelen = strlen(json_string_value(s));
     inputlen += nva[i].namelen + nva[i].valuelen;
   }
-  rv = nghttp2_hd_deflate_hd(deflater, &buf, &buflen, 0, nva, len);
-  if(rv < 0) {
-    fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
-    exit(EXIT_FAILURE);
-  }
-  output_to_json(buf, rv, inputlen, seq);
-  nghttp2_hd_end_headers(deflater);
-  free(buf);
+  deflate_hd(deflater, nva, len, inputlen, seq);
   return 0;
 }
 
@@ -108,7 +115,6 @@ static int perform(nghttp2_hd_side side)
   json_t *json;
   json_error_t error;
   size_t len;
-
   json = json_loadf(stdin, 0, &error);
   if(json == NULL) {
     fprintf(stderr, "JSON loading failed\n");
@@ -124,7 +130,7 @@ static int perform(nghttp2_hd_side side)
               i);
       continue;
     }
-    if(deflate_hd(obj, &deflater, i) != 0) {
+    if(deflate_hd_json(obj, &deflater, i) != 0) {
       continue;
     }
     if(i + 1 < len) {
@@ -137,13 +143,77 @@ static int perform(nghttp2_hd_side side)
   return 0;
 }
 
+static int perform_from_http1text(nghttp2_hd_side side)
+{
+  char line[1 << 14];
+  nghttp2_nv nva[256];
+  nghttp2_hd_context deflater;
+  int seq = 0;
+  nghttp2_hd_deflate_init(&deflater, side);
+  printf("[\n");
+  for(;;) {
+    size_t nvlen = 0;
+    int end = 0;
+    size_t inputlen = 0;
+    size_t i;
+    for(;;) {
+      nghttp2_nv *nv;
+      char *rv = fgets(line, sizeof(line), stdin);
+      char *val, *val_end;
+      if(rv == NULL) {
+        end = 1;
+        break;
+      } else if(line[0] == '\n') {
+        break;
+      }
+      assert(nvlen < sizeof(nva)/sizeof(nva[0]));
+      nv = &nva[nvlen];
+      val = strchr(line+1, ':');
+      if(val == NULL) {
+        fprintf(stderr, "Bad HTTP/1 header field format at %d.\n", seq);
+        exit(EXIT_FAILURE);
+      }
+      *val = '\0';
+      ++val;
+      for(; *val && (*val == ' ' || *val == '\t'); ++val);
+      for(val_end = val; *val_end && (*val_end != '\r' && *val_end != '\n');
+          ++val_end);
+      *val_end = '\0';
+      /* printf("[%s] : [%s]\n", line, val); */
+      nv->namelen = strlen(line);
+      nv->valuelen = strlen(val);
+      nv->name = (uint8_t*)strdup(line);
+      nv->value = (uint8_t*)strdup(val);
+      ++nvlen;
+      inputlen += nv->namelen + nv->valuelen;
+    }
+    nghttp2_nv_array_sort(nva, nvlen);
+
+    deflate_hd(&deflater, nva, nvlen, inputlen, seq);
+
+    for(i = 0; i < nvlen; ++i) {
+      free(nva[i].name);
+      free(nva[i].value);
+    }
+    if(end) break;
+    printf(",\n");
+    ++seq;
+  }
+  printf("]\n");
+  nghttp2_hd_deflate_free(&deflater);
+  return 0;
+}
+
 static void print_help(void)
 {
-  printf("Usage: deflatehd [-r] < INPUT\n\n"
-         "Reads JSON array from stdin and outputs deflated header block\n"
-         "in JSON array.\n"
-         "The element of input array must be a JSON object. Each object must\n"
-         "have following key:\n"
+  printf("HPACK-draft-04 header compressor\n"
+         "Usage: deflatehd [-r] < INPUT\n"
+         "\n"
+         "Reads JSON array or HTTP/1-style header fields from stdin and\n"
+         "outputs deflated header block in JSON array.\n"
+         "\n"
+         "For the JSON input, the element of input array must be a JSON\n"
+         "object. Each object must have at least following key:\n"
          "\n"
          "    headers: a JSON array of name/value pairs. The each element is\n"
          "             a JSON array of 2 strings. The index 0 must\n"
@@ -166,24 +236,40 @@ static void print_help(void)
          "  }\n"
          "]\n"
          "\n"
+         "With -t option, the program can accept more familiar HTTP/1 style\n"
+         "header field block. Each header set is delimited by empty line:\n"
+         "\n"
+         "Example:\n"
+         ":method: GET\n"
+         ":scheme: https\n"
+         ":path: /\n"
+         "\n"
+         ":method: POST\n"
+         "user-agent: nghttp2\n"
+         "\n"
          "The output of this program can be used as input for inflatehd.\n"
          "\n"
          "OPTIONS:\n"
          "    -r, --response    Use response compression context instead of\n"
-         "                      request.\n");
+         "                      request.\n"
+         "    -t, --http1text   Use HTTP/1 style header field text as input.\n"
+         "                      Each header set is delimited by single empty\n"
+         "                      line.\n");
 }
 
 static struct option long_options[] = {
   {"response", no_argument, NULL, 'r'},
+  {"http1text", no_argument, NULL, 't'},
   {NULL, 0, NULL, 0 }
 };
 
 int main(int argc, char **argv)
 {
   nghttp2_hd_side side = NGHTTP2_HD_SIDE_REQUEST;
+  int http1text = 0;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "hr", long_options, &option_index);
+    int c = getopt_long(argc, argv, "hrt", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -195,12 +281,19 @@ int main(int argc, char **argv)
     case 'h':
       print_help();
       exit(EXIT_SUCCESS);
+    case 't':
+      http1text = 1;
+      break;
     case '?':
       exit(EXIT_FAILURE);
     default:
       break;
     }
   }
-  perform(side);
+  if(http1text) {
+    perform_from_http1text(side);
+  } else {
+    perform(side);
+  }
   return 0;
 }
