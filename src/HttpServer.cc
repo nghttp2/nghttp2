@@ -723,7 +723,7 @@ int hd_on_frame_recv_callback
          !http2::get_unique_header(frame->headers.nva,
                                    frame->headers.nvlen,
                                    "host")) {
-        nghttp2_submit_rst_stream(session, stream_id,
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
                                   NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
