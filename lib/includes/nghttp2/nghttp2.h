@@ -1915,6 +1915,9 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
  * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
  * RST_STREAM is issued against such a stream.
  *
+ * SETTINGS with :enum:`NGHTTP2_FLAG_ACK` is automatically submitted
+ * by the library and application could not send it at its will.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
