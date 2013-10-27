@@ -147,51 +147,57 @@ It has verbose output mode for framing information. Here is sample
 output from ``nghttp`` client::
 
     $ src/nghttp -vn https://localhost:8443
-    [  0.001] NPN select next protocol: the remote server offers:
-              * HTTP-draft-06/2.0
-              * spdy/3
-              * spdy/2
-              * http/1.1
-              NPN selected the protocol: HTTP-draft-06/2.0
-    [  0.006] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
-              (niv=2)
-              [MAX_CONCURRENT_STREAMS(4):100]
-              [INITIAL_WINDOW_SIZE(7):65535]
-    [  0.006] send HEADERS frame <length=58, flags=0x05, stream_id=1>
-              ; END_STREAM | END_HEADERS
-              ; Open new stream
-              :host: localhost:8443
-              :method: GET
-              :path: /
-              :scheme: https
-              accept: */*
-              accept-encoding: gzip, deflate
-              user-agent: nghttp2/0.1.0-DEV
-    [  0.007] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-              (niv=2)
-              [MAX_CONCURRENT_STREAMS(4):100]
-              [INITIAL_WINDOW_SIZE(7):65535]
-    [  0.008] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
-              (window_size_increment=1000000007)
-    [  0.008] recv HEADERS frame <length=179, flags=0x04, stream_id=1>
-              ; END_HEADERS
-              ; First response header
-              :status: 200 OK
-              accept-ranges: bytes
-              content-encoding: gzip
-              content-length: 56
-              content-type: text/html
-              date: Thu, 22 Aug 2013 16:37:17 GMT
-              etag: "cf405c-2d-45adabdf282c0"
-              last-modified: Tue, 04 Nov 2008 10:44:03 GMT
-              server: Apache/2.2.22 (Debian)
-              vary: Accept-Encoding
-              via: 1.1 nghttpx
-    [  0.009] recv DATA frame <length=56, flags=0x00, stream_id=1>
-    [  0.009] recv DATA frame <length=0, flags=0x01, stream_id=1>
-              ; END_STREAM
-    [  0.009] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
-              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+    [  0.003] NPN select next protocol: the remote server offers:
+	      * HTTP-draft-07/2.0
+	      * spdy/3
+	      * spdy/2
+	      * http/1.1
+	      NPN selected the protocol: HTTP-draft-07/2.0
+    [  0.005] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+    [  0.006] send HEADERS frame <length=47, flags=0x05, stream_id=1>
+	      ; END_STREAM | END_HEADERS
+	      ; Open new stream
+	      :authority: localhost:8443
+	      :method: GET
+	      :path: /
+	      :scheme: https
+	      accept: */*
+	      accept-encoding: gzip, deflate
+	      user-agent: nghttp2/0.1.0-DEV
+    [  0.006] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+    [  0.006] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [  0.006] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
+	      (window_size_increment=1000000007)
+    [  0.006] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [  0.006] recv HEADERS frame <length=132, flags=0x04, stream_id=1>
+	      ; END_HEADERS
+	      ; First response header
+	      :status: 200
+	      accept-ranges: bytes
+	      content-encoding: gzip
+	      content-length: 146
+	      content-type: text/html
+	      date: Sun, 27 Oct 2013 14:23:54 GMT
+	      etag: "b1-4e5535a027780-gzip"
+	      last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+	      server: Apache/2.4.6 (Debian)
+	      vary: Accept-Encoding
+	      via: 1.1 nghttpx
+    [  0.006] recv DATA frame <length=146, flags=0x00, stream_id=1>
+    [  0.006] recv DATA frame <length=0, flags=0x01, stream_id=1>
+	      ; END_STREAM
+    [  0.007] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+	      (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
 The HTTP Upgrade is performed like this::
 
@@ -200,7 +206,7 @@ The HTTP Upgrade is performed like this::
     GET / HTTP/1.1
     Host: localhost:8080
     Connection: Upgrade, HTTP2-Settings
-    Upgrade: HTTP-draft-06/2.0
+    Upgrade: HTTP-draft-07/2.0
     HTTP2-Settings: AAAABAAAAGQAAAAHAAD__w
     Accept: */*
     User-Agent: nghttp2/0.1.0-DEV
@@ -209,39 +215,44 @@ The HTTP Upgrade is performed like this::
     [  0.000] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
-    Upgrade: HTTP-draft-06/2.0
+    Upgrade: HTTP-draft-07/2.0
 
 
-    [  0.000] HTTP Upgrade success
+    [  0.001] HTTP Upgrade success
     [  0.001] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
-              (niv=2)
-              [MAX_CONCURRENT_STREAMS(4):100]
-              [INITIAL_WINDOW_SIZE(7):65535]
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
     [  0.001] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-              (niv=2)
-              [MAX_CONCURRENT_STREAMS(4):100]
-              [INITIAL_WINDOW_SIZE(7):65535]
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
     [  0.001] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
-              (window_size_increment=1000000007)
-    [  0.001] recv HEADERS frame <length=198, flags=0x04, stream_id=1>
-              ; END_HEADERS
-              ; First response header
-              :status: 200 OK
-              accept-ranges: bytes
-              content-length: 45
-              content-type: text/html
-              date: Thu, 22 Aug 2013 16:39:04 GMT
-              etag: "cf405c-2d-45adabdf282c0"
-              last-modified: Tue, 04 Nov 2008 10:44:03 GMT
-              server: Apache/2.2.22 (Debian)
-              vary: Accept-Encoding
-              via: 1.1 nghttpx
-              x-pad: avoid browser bug
-    [  0.001] recv DATA frame <length=45, flags=0x00, stream_id=1>
+	      (window_size_increment=1000000007)
+    [  0.001] recv HEADERS frame <length=121, flags=0x04, stream_id=1>
+	      ; END_HEADERS
+	      ; First response header
+	      :status: 200
+	      accept-ranges: bytes
+	      content-length: 177
+	      content-type: text/html
+	      date: Sun, 27 Oct 2013 14:26:04 GMT
+	      etag: "b1-4e5535a027780"
+	      last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+	      server: Apache/2.4.6 (Debian)
+	      vary: Accept-Encoding
+	      via: 1.1 nghttpx
+    [  0.001] recv DATA frame <length=177, flags=0x00, stream_id=1>
     [  0.001] recv DATA frame <length=0, flags=0x01, stream_id=1>
-              ; END_STREAM
+	      ; END_STREAM
+    [  0.001] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
     [  0.001] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
-              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+	      (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+    [  0.001] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
 
 nghttpd - server
 ++++++++++++++++
@@ -261,44 +272,50 @@ information. Here is sample output from ``nghttpd`` server::
     $ src/nghttpd --no-tls -v 8080
     IPv4: listen on port 8080
     IPv6: listen on port 8080
-    [id=1] [ 14.716] send SETTINGS frame <length=8, flags=0x00, stream_id=0>
-              (niv=1)
-              [MAX_CONCURRENT_STREAMS(4):100]
-    [id=1] [ 14.717] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-              (niv=2)
-              [MAX_CONCURRENT_STREAMS(4):100]
-              [INITIAL_WINDOW_SIZE(7):65535]
-    [id=1] [ 14.717] recv HEADERS frame <length=58, flags=0x05, stream_id=1>
-              ; END_STREAM | END_HEADERS
-              ; Open new stream
-              :host: localhost:8080
-              :method: GET
-              :path: /
-              :scheme: http
-              accept: */*
-              accept-encoding: gzip, deflate
-              user-agent: nghttp2/0.1.0-DEV
-    [id=1] [ 14.717] send HEADERS frame <length=105, flags=0x04, stream_id=1>
-              ; END_HEADERS
-              ; First response header
-              :status: 404 Not Found
-              content-encoding: gzip
-              content-type: text/html; charset=UTF-8
-              date: Thu, 22 Aug 2013 16:41:05 GMT
-              server: nghttpd nghttp2/0.1.0-DEV
-    [id=1] [ 14.717] send DATA frame <length=128, flags=0x00, stream_id=1>
-    [id=1] [ 14.717] send DATA frame <length=0, flags=0x01, stream_id=1>
-              ; END_STREAM
-    [id=1] [ 14.717] stream_id=1 closed
-    [id=1] [ 14.717] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
-              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-    [id=1] [ 14.717] closed
+    [id=1] [  1.189] send SETTINGS frame <length=8, flags=0x00, stream_id=0>
+	      (niv=1)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+    [id=1] [  1.191] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+    [id=1] [  1.191] recv HEADERS frame <length=47, flags=0x05, stream_id=1>
+	      ; END_STREAM | END_HEADERS
+	      ; Open new stream
+	      :authority: localhost:8080
+	      :method: GET
+	      :path: /
+	      :scheme: http
+	      accept: */*
+	      accept-encoding: gzip, deflate
+	      user-agent: nghttp2/0.1.0-DEV
+    [id=1] [  1.192] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [id=1] [  1.192] send HEADERS frame <length=70, flags=0x04, stream_id=1>
+	      ; END_HEADERS
+	      ; First response header
+	      :status: 404
+	      content-encoding: gzip
+	      content-type: text/html; charset=UTF-8
+	      date: Sun, 27 Oct 2013 14:27:53 GMT
+	      server: nghttpd nghttp2/0.1.0-DEV
+    [id=1] [  1.192] send DATA frame <length=117, flags=0x00, stream_id=1>
+    [id=1] [  1.192] send DATA frame <length=0, flags=0x01, stream_id=1>
+	      ; END_STREAM
+    [id=1] [  1.192] stream_id=1 closed
+    [id=1] [  1.192] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [id=1] [  1.192] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
+	      (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+    [id=1] [  1.192] closed
 
 nghttpx - proxy
 +++++++++++++++
 
 The ``nghttpx`` is a multi-threaded reverse proxy for
-HTTP-draft-06/2.0, SPDY and HTTP/1.1. It has several operation modes:
+HTTP-draft-07/2.0, SPDY and HTTP/1.1. It has several operation modes:
 
 ================== ============================== ============== =============
 Mode option        Frontend                       Backend        Note
@@ -311,7 +328,7 @@ default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================== ============== =============
 
 The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-06/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens HTTP-draft-07/2.0, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--spdy`` and ``--spdy-bridge`` modes use SSL/TLS
