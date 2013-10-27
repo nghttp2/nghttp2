@@ -250,9 +250,9 @@ typedef enum {
    */
   NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE = -521,
   /**
-   * The length of the frame is too large.
+   * The length of the frame is invalid, either too large or too small.
    */
-  NGHTTP2_ERR_FRAME_TOO_LARGE = -522,
+  NGHTTP2_ERR_FRAME_SIZE_ERROR = -522,
   /**
    * Header block inflate/deflate error.
    */

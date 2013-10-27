@@ -2706,7 +2706,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
                                        session->iframe.buf,
                                        session->iframe.buflen,
                                        &session->hd_inflater);
-    } else if(session->iframe.error_code == NGHTTP2_ERR_FRAME_TOO_LARGE) {
+    } else if(session->iframe.error_code == NGHTTP2_ERR_FRAME_SIZE_ERROR) {
       r = nghttp2_frame_unpack_headers_without_nv
         (&frame->headers,
          session->iframe.headbuf, sizeof(session->iframe.headbuf),
@@ -3204,7 +3204,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         /* TODO Make payloadlen configurable up to
            NGHTTP2_MAX_FRAME_LENGTH */
         if(session->iframe.payloadlen > NGHTTP2_MAX_HTTP_FRAME_LENGTH) {
-          session->iframe.error_code = NGHTTP2_ERR_FRAME_TOO_LARGE;
+          session->iframe.error_code = NGHTTP2_ERR_FRAME_SIZE_ERROR;
           session->iframe.state = NGHTTP2_RECV_PAYLOAD_IGN;
           /* Make inflater fail forcibly to disallow reception of
              further HEADERS or PUSH_PROMISE */
@@ -3322,7 +3322,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
            connection-level window size. */
       }
       if(session->iframe.payloadlen == session->iframe.off) {
-        if(session->iframe.error_code != NGHTTP2_ERR_FRAME_TOO_LARGE) {
+        if(session->iframe.error_code != NGHTTP2_ERR_FRAME_SIZE_ERROR) {
           if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
             /* TODO Introduce callback which is invoked when payload is
                ignored, especially for frame too large */
