@@ -358,7 +358,7 @@ void test_nghttp2_session_recv_frame_too_large(void)
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(item != NULL);
   CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
-  CU_ASSERT(NGHTTP2_FRAME_TOO_LARGE == OB_CTRL(item)->goaway.error_code);
+  CU_ASSERT(NGHTTP2_FRAME_SIZE_ERROR == OB_CTRL(item)->goaway.error_code);
 
   /* Check next frame can be received */
   nghttp2_frame_ping_init(&frame.ping, NGHTTP2_FLAG_NONE, NULL);

@@ -455,13 +455,17 @@ typedef enum {
    */
   NGHTTP2_FLOW_CONTROL_ERROR = 3,
   /**
+   * SETTINGS_TIMEOUT
+   */
+  NGHTTP2_SETTINGS_TIMEOUT = 4,
+  /**
    * STREAM_CLOSED
    */
   NGHTTP2_STREAM_CLOSED = 5,
   /**
-   * FRAME_TOO_LARGE
+   * FRAME_SIZE_ERROR
    */
-  NGHTTP2_FRAME_TOO_LARGE = 6,
+  NGHTTP2_FRAME_SIZE_ERROR = 6,
   /**
    * REFUSED_STREAM
    */
@@ -473,7 +477,15 @@ typedef enum {
   /**
    * COMPRESSION_ERROR
    */
-  NGHTTP2_COMPRESSION_ERROR = 9
+  NGHTTP2_COMPRESSION_ERROR = 9,
+  /**
+   * CONNECT_ERROR
+   */
+  NGHTTP2_CONNECT_ERROR = 10,
+  /**
+   * ENHANCE_YOUR_CALM
+   */
+  NGHTTP2_ENHANCE_YOUR_CALM = 420
 } nghttp2_error_code;
 
 /**

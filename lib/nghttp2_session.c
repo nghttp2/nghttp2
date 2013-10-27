@@ -2363,7 +2363,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
   if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
     if(frame->settings.niv != 0) {
       return nghttp2_session_handle_invalid_connection
-        (session, frame, NGHTTP2_FRAME_TOO_LARGE);
+        (session, frame, NGHTTP2_FRAME_SIZE_ERROR);
     }
     if(session->inflight_niv == -1) {
       return nghttp2_session_handle_invalid_connection(session, frame,
@@ -3210,7 +3210,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
              further HEADERS or PUSH_PROMISE */
           session->hd_inflater.bad = 1;
           /* Just tear down session for now */
-          r = nghttp2_session_fail_session(session, NGHTTP2_FRAME_TOO_LARGE);
+          r = nghttp2_session_fail_session(session, NGHTTP2_FRAME_SIZE_ERROR);
           if(r != 0) {
             /* FATAL */
             assert(r < NGHTTP2_ERR_FATAL);
