@@ -56,6 +56,7 @@
 #include <openssl/err.h>
 
 #include <event.h>
+#include <event2/event.h>
 #include <event2/bufferevent_ssl.h>
 #include <event2/dns.h>
 
@@ -401,6 +402,10 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
                      void *user_data);
 } // namespace
 
+namespace {
+void settings_timeout_cb(evutil_socket_t fd, short what, void *arg);
+} // namespace
+
 enum client_state {
   STATE_IDLE,
   STATE_CONNECTED
@@ -415,6 +420,7 @@ struct HttpClient {
   SSL_CTX *ssl_ctx;
   SSL *ssl;
   bufferevent *bev;
+  event *settings_timerev;
   client_state state;
   std::vector<std::unique_ptr<Request>> reqvec;
   // Map from stream ID to Request object.
@@ -448,6 +454,7 @@ struct HttpClient {
       ssl_ctx(ssl_ctx),
       ssl(nullptr),
       bev(nullptr),
+      settings_timerev(nullptr),
       state(STATE_IDLE),
       complete(0),
       upgrade_response_complete(false),
@@ -535,6 +542,10 @@ struct HttpClient {
     if(dnsbase) {
       evdns_base_free(dnsbase, 1);
       dnsbase = nullptr;
+    }
+    if(settings_timerev) {
+      event_free(settings_timerev);
+      settings_timerev = nullptr;
     }
     if(ssl) {
       SSL_free(ssl);
@@ -690,6 +701,12 @@ struct HttpClient {
         return -1;
       }
     }
+    assert(settings_timerev == nullptr);
+    settings_timerev = evtimer_new(evbase, settings_timeout_cb, this);
+    // SETTINGS ACK timeout is 10 seconds for now
+    timeval settings_timeout = { 10, 0 };
+    evtimer_add(settings_timerev, &settings_timeout);
+
     if(config.connection_window_bits != -1) {
       int32_t wininc = (1 << config.connection_window_bits) - 1
         - NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
@@ -1055,6 +1072,16 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 namespace {
+void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
+{
+  auto client = get_session(arg);
+  nghttp2_submit_goaway(client->session, NGHTTP2_FLAG_NONE,
+                        NGHTTP2_SETTINGS_TIMEOUT, nullptr, 0);
+  client->on_write();
+}
+} // namespace
+
+namespace {
 int before_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -1129,6 +1156,15 @@ int on_frame_recv_callback2
     }
   }
   check_response_header(session, frame, user_data);
+  if(frame->hd.type == NGHTTP2_SETTINGS &&
+     (frame->hd.flags & NGHTTP2_FLAG_ACK)) {
+    auto client = get_session(user_data);
+    if(client->settings_timerev) {
+      evtimer_del(client->settings_timerev);
+      event_free(client->settings_timerev);
+      client->settings_timerev = nullptr;
+    }
+  }
   if(config.verbose) {
     on_frame_recv_callback(session, frame, user_data);
   }

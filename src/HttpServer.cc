@@ -177,12 +177,16 @@ Http2Handler::Http2Handler(Sessions *sessions,
                            int fd, SSL *ssl, int64_t session_id)
   : session_(nullptr), sessions_(sessions), bev_(nullptr), fd_(fd), ssl_(ssl),
     session_id_(session_id),
-    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN)
+    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN),
+    settings_timerev_(nullptr)
 {}
 
 Http2Handler::~Http2Handler()
 {
   on_session_closed(this, session_id_);
+  if(settings_timerev_) {
+    event_free(settings_timerev_);
+  }
   nghttp2_session_del(session_);
   if(ssl_) {
     SSL_shutdown(ssl_);
@@ -340,6 +344,15 @@ int Http2Handler::on_write()
   return rv;
 }
 
+namespace {
+void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
+{
+  auto hd = reinterpret_cast<Http2Handler*>(arg);
+  hd->submit_goaway(NGHTTP2_SETTINGS_TIMEOUT);
+  hd->on_write();
+}
+} // namespace
+
 int Http2Handler::on_connect()
 {
   int r;
@@ -362,6 +375,13 @@ int Http2Handler::on_connect()
   if(r != 0) {
     return r;
   }
+  assert(settings_timerev_ == nullptr);
+  settings_timerev_ = evtimer_new(sessions_->get_evbase(), settings_timeout_cb,
+                                  this);
+  // SETTINGS ACK timeout is 10 seconds for now
+  timeval settings_timeout = { 10, 0 };
+  evtimer_add(settings_timerev_, &settings_timeout);
+
   return on_write();
 }
 
@@ -522,6 +542,20 @@ size_t Http2Handler::get_left_connhd_len() const
 void Http2Handler::set_left_connhd_len(size_t left)
 {
   left_connhd_len_ = left;
+}
+
+void Http2Handler::remove_settings_timer()
+{
+  if(settings_timerev_) {
+    evtimer_del(settings_timerev_);
+    event_free(settings_timerev_);
+    settings_timerev_ = nullptr;
+  }
+}
+
+void Http2Handler::submit_goaway(nghttp2_error_code error_code)
+{
+  nghttp2_submit_goaway(session_, NGHTTP2_FLAG_NONE, error_code, NULL, 0);
 }
 
 namespace {
@@ -734,6 +768,11 @@ int hd_on_frame_recv_callback
     }
     default:
       break;
+    }
+    break;
+  case NGHTTP2_SETTINGS:
+    if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
+      hd->remove_settings_timer();
     }
     break;
   default:
