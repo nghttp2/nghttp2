@@ -40,13 +40,13 @@ extern "C" {
  *
  * The protocol version identification of this library supports.
  */
-#define NGHTTP2_PROTO_VERSION_ID "HTTP-nghttp2hpack-06/2.0"
+#define NGHTTP2_PROTO_VERSION_ID "HTTP-draft-07/2.0"
 /**
  * @macro
  *
  * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.
  */
-#define NGHTTP2_PROTO_VERSION_ID_LEN 24
+#define NGHTTP2_PROTO_VERSION_ID_LEN 17
 
 struct nghttp2_session;
 /**

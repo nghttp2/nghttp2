@@ -4,40 +4,30 @@ nghttp2 - HTTP/2.0 C Library
 This is an experimental implementation of Hypertext Transfer Protocol
 version 2.0.
 
-This branch implements HPACK-draft-04
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04).
-
 There are command-line header compression test tools in hdtest
 directory. Check out deflatehd and inflatehd commands.
-
-With these changes, the implemented protocol is not compatible with
-HTTP-draft-06/2.0. Therefore, this branch uses
-HTTP-nghttp2hpack-06/2.0 as protocol identifier. The following section
-does not reflect this protocl identifier change. Read it by replacing
-HTTP-draft-06/2.0 with HTTP-nghttp2hpack-06/2.0.
 
 Development Status
 ------------------
 
-We started to implement HTTP-draft-06/2.0
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-06) and the
+We started to implement HTTP-draft-07/2.0
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-07) and the
 header compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03).
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07).
 
 The nghttp2 code base was forked from spdylay project.
 
-=================== =================
-Features            HTTP-draft-06/2.0
-=================== =================
-Flow Control        Done
-Header Compression  Done
-Reprioritization    Done
+========================== =================
+Features                   HTTP-draft-07/2.0
+========================== =================
+:authority                 Done
+HPACK-draft-04             Done
+SETTINGS_HEADER_TABLE_SIZE Done
+SETTINGS_ENABLE_PUSH
+FRAME_SIZE_ERROR           Done
 Header Continuation
-Server Push         Done
-HTTP Upgrade        Done
 ALPN
-NPN                 Done
-=================== =================
+========================== =================
 
 Public Test Server
 ------------------
