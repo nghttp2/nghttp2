@@ -89,6 +89,11 @@ resource) in ``nghttp``, the following packages are needed:
 
 * libxml2 >= 2.7.7
 
+The header compression test tools in hdtest directory require the
+following package:
+
+* jansson >= 2.5
+
 If you are using Ubuntu 12.04, you need the following packages
 installed:
 
@@ -102,6 +107,7 @@ installed:
 * libssl-dev
 * libxml2-dev
 * libevent-dev
+* libjansson-dev
 
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://spdylay.sourceforge.net/
