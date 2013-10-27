@@ -340,6 +340,8 @@ AC_MSG_NOTICE([summary of build options:
     OpenSSL:        ${have_openssl}
     Libxml2:        ${have_libxml2}
     Libevent(SSL):  ${have_libevent_openssl}
+    Jansson:        ${have_jansson}
     Src:            ${enable_src}
     Examples:       ${enable_examples}
+    Hdtest:         ${enable_hdtest}
 ])
