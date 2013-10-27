@@ -34,9 +34,7 @@
 #include "nghttp2_buffer.h"
 
 /* The maximum payload length of a frame */
-#define NGHTTP2_MAX_FRAME_LENGTH ((1 << 16) - 1)
-/* The maximum paylaod length of a frame used in HTTP */
-#define NGHTTP2_MAX_HTTP_FRAME_LENGTH ((1 << 14) - 1)
+#define NGHTTP2_MAX_FRAME_LENGTH ((1 << 14) - 1)
 
 /* The maximum header block length. This is not specified by the
    spec. We just chose the arbitrary size */
@@ -45,6 +43,7 @@
    by the spec. We just chose the arbitrary size */
 #define NGHTTP2_MAX_HD_VALUE_LENGTH ((1 << 13) - 1)
 
+#define NGHTTP2_FRAME_LENGTH_MASK 0x3fff
 #define NGHTTP2_STREAM_ID_MASK 0x7fffffff
 #define NGHTTP2_PRIORITY_MASK 0x7fffffff
 #define NGHTTP2_WINDOW_SIZE_INCREMENT_MASK 0x7fffffff

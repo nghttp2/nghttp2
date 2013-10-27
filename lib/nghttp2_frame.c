@@ -47,7 +47,7 @@ void nghttp2_frame_pack_frame_hd(uint8_t* buf, const nghttp2_frame_hd *hd)
 
 void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf)
 {
-  hd->length = nghttp2_get_uint16(&buf[0]);
+  hd->length = nghttp2_get_uint16(&buf[0]) & NGHTTP2_FRAME_LENGTH_MASK;
   hd->type = buf[2];
   hd->flags = buf[3];
   hd->stream_id = nghttp2_get_uint32(&buf[4]) & NGHTTP2_STREAM_ID_MASK;

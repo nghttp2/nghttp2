@@ -3202,23 +3202,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       if(session->iframe.headbufoff == NGHTTP2_FRAME_HEAD_LENGTH) {
         session->iframe.state = NGHTTP2_RECV_PAYLOAD;
         session->iframe.payloadlen =
-          nghttp2_get_uint16(&session->iframe.headbuf[0]);
-        /* TODO Make payloadlen configurable up to
-           NGHTTP2_MAX_FRAME_LENGTH */
-        if(session->iframe.payloadlen > NGHTTP2_MAX_HTTP_FRAME_LENGTH) {
-          session->iframe.error_code = NGHTTP2_ERR_FRAME_SIZE_ERROR;
-          session->iframe.state = NGHTTP2_RECV_PAYLOAD_IGN;
-          /* Make inflater fail forcibly to disallow reception of
-             further HEADERS or PUSH_PROMISE */
-          session->hd_inflater.bad = 1;
-          /* Just tear down session for now */
-          r = nghttp2_session_fail_session(session, NGHTTP2_FRAME_SIZE_ERROR);
-          if(r != 0) {
-            /* FATAL */
-            assert(r < NGHTTP2_ERR_FATAL);
-            return r;
-          }
-        } else if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
+          nghttp2_get_uint16(&session->iframe.headbuf[0]) &
+          NGHTTP2_FRAME_LENGTH_MASK;
+        if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
           /* non-DATA frame */
           ssize_t buflen = session->iframe.payloadlen;
           session->iframe.buflen = buflen;
