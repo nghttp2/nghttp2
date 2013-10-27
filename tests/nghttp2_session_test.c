@@ -2236,7 +2236,7 @@ void test_nghttp2_submit_settings(void)
   my_user_data ud;
   nghttp2_outbound_item *item;
   nghttp2_frame *frame;
-  nghttp2_settings_entry iv[5];
+  nghttp2_settings_entry iv[6];
   nghttp2_frame ack_frame;
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
@@ -2251,9 +2251,12 @@ void test_nghttp2_submit_settings(void)
   iv[3].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[3].value = 50;
 
-  /* Attempt to re-enable flow-control */
-  iv[4].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
+  iv[4].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iv[4].value = 0;
+
+  /* Attempt to re-enable flow-control */
+  iv[5].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
+  iv[5].value = 0;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -2261,7 +2264,7 @@ void test_nghttp2_submit_settings(void)
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 5));
+            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 6));
 
   /* Make sure that local settings are not changed */
   CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
@@ -2271,15 +2274,15 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(0 ==
             session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]);
 
-  /* Now sends without 5th one */
-  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 4));
+  /* Now sends without 6th one */
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 5));
 
   item = nghttp2_session_get_next_ob_item(session);
 
   CU_ASSERT(NGHTTP2_SETTINGS == OB_CTRL_TYPE(item));
 
   frame = item->frame;
-  CU_ASSERT(4 == frame->settings.niv);
+  CU_ASSERT(5 == frame->settings.niv);
   CU_ASSERT(5 == frame->settings.iv[0].value);
   CU_ASSERT(NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS ==
             frame->settings.iv[0].settings_id);
@@ -2305,6 +2308,7 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(1 ==
             session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]);
   CU_ASSERT(0 == session->local_flow_control);
+  CU_ASSERT(0 == session->hd_inflater.hd_table_bufsize_max);
 
   nghttp2_session_del(session);
 }
