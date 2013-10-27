@@ -33,21 +33,18 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_buffer.h"
 
-/* The maximum payload length of a frame */
-#define NGHTTP2_MAX_FRAME_LENGTH ((1 << 14) - 1)
-
-/* The maximum header block length. This is not specified by the
-   spec. We just chose the arbitrary size */
-#define NGHTTP2_MAX_HD_BLOCK_LENGTH ((1 << 16) - 1)
 /* The maximum value length of name/value pair. This is not specified
    by the spec. We just chose the arbitrary size */
 #define NGHTTP2_MAX_HD_VALUE_LENGTH ((1 << 13) - 1)
 
-#define NGHTTP2_FRAME_LENGTH_MASK 0x3fff
-#define NGHTTP2_STREAM_ID_MASK 0x7fffffff
-#define NGHTTP2_PRIORITY_MASK 0x7fffffff
-#define NGHTTP2_WINDOW_SIZE_INCREMENT_MASK 0x7fffffff
-#define NGHTTP2_SETTINGS_ID_MASK 0xffffff
+#define NGHTTP2_FRAME_LENGTH_MASK ((1 << 14) - 1)
+#define NGHTTP2_STREAM_ID_MASK ((1u << 31) - 1)
+#define NGHTTP2_PRIORITY_MASK ((1u << 31) - 1)
+#define NGHTTP2_WINDOW_SIZE_INCREMENT_MASK ((1u << 31) - 1)
+#define NGHTTP2_SETTINGS_ID_MASK ((1 << 24) - 1)
+
+/* The maximum payload length of a frame */
+#define NGHTTP2_MAX_FRAME_LENGTH ((1 << 14) - 1)
 
 /* The maximum length of DATA frame payload. */
 #define NGHTTP2_DATA_PAYLOAD_LENGTH 4096
