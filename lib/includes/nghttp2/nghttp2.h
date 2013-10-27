@@ -130,6 +130,13 @@ typedef struct {
 /**
  * @macro
  *
+ * The maximum header table size.
+ */
+#define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 << 16)
+
+/**
+ * @macro
+ *
  * The client connection header.
  */
 #define NGHTTP2_CLIENT_CONNECTION_HEADER "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
@@ -263,6 +270,11 @@ typedef enum {
    */
   NGHTTP2_ERR_PAUSE = -526,
   /**
+   * There are too many in-flight SETTING frame and no more
+   * transmission of SETTINGS is allowed.
+   */
+  NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS = -527,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -379,9 +391,9 @@ typedef enum {
    */
   NGHTTP2_FLAG_END_PUSH_PROMISE = 0x4,
   /**
-   * The PONG flag.
+   * The ACK flag.
    */
-  NGHTTP2_FLAG_PONG = 0x1
+  NGHTTP2_FLAG_ACK = 0x1
 } nghttp2_flag;
 
 /**

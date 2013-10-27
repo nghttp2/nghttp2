@@ -209,39 +209,7 @@ int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
 int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
                             const nghttp2_settings_entry *iv, size_t niv)
 {
-  nghttp2_frame *frame;
-  nghttp2_settings_entry *iv_copy;
-  int r;
-  if(!nghttp2_iv_check(iv, niv,
-                       session->local_settings
-                       [NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS])) {
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-  frame = malloc(sizeof(nghttp2_frame));
-  if(frame == NULL) {
-    return NGHTTP2_ERR_NOMEM;
-  }
-  iv_copy = nghttp2_frame_iv_copy(iv, niv);
-  if(iv_copy == NULL) {
-    free(frame);
-    return NGHTTP2_ERR_NOMEM;
-  }
-  nghttp2_frame_settings_init(&frame->settings, iv_copy, niv);
-
-  r = nghttp2_session_update_local_settings(session, iv_copy, niv);
-  if(r != 0) {
-    nghttp2_frame_settings_free(&frame->settings);
-    free(frame);
-    return r;
-  }
-  r = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
-  if(r != 0) {
-    /* The only expected error is fatal one */
-    assert(r < NGHTTP2_ERR_FATAL);
-    nghttp2_frame_settings_free(&frame->settings);
-    free(frame);
-  }
-  return r;
+  return nghttp2_session_add_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
 }
 
 int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,

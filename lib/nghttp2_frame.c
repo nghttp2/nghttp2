@@ -106,12 +106,11 @@ void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame)
 {}
 
 
-void nghttp2_frame_settings_init(nghttp2_settings *frame,
+void nghttp2_frame_settings_init(nghttp2_settings *frame, uint8_t flags,
                                  nghttp2_settings_entry *iv, size_t niv)
 {
   memset(frame, 0, sizeof(nghttp2_settings));
-  nghttp2_frame_set_hd(&frame->hd, niv*8, NGHTTP2_SETTINGS, NGHTTP2_FLAG_NONE,
-                       0);
+  nghttp2_frame_set_hd(&frame->hd, niv*8, NGHTTP2_SETTINGS, flags, 0);
   frame->niv = niv;
   frame->iv = iv;
 }

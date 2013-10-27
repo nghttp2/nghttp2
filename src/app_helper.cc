@@ -80,12 +80,16 @@ namespace {
 const char* strsettingsid(int32_t id)
 {
   switch(id) {
+  case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+    return "SETTINGS_HEADER_TABLE_SIZE";
+  case NGHTTP2_SETTINGS_ENABLE_PUSH:
+    return "SETTINGS_ENABLE_PUSH";
   case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
-    return "MAX_CONCURRENT_STREAMS";
+    return "SETTINGS_MAX_CONCURRENT_STREAMS";
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
-    return "INITIAL_WINDOW_SIZE";
+    return "SETTINGS_INITIAL_WINDOW_SIZE";
   case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
-    return "FLOW_CONTROL_OPTIONS";
+    return "SETTINGS_FLOW_CONTROL_OPTIONS";
   default:
     return "UNKNOWN";
   }
@@ -208,14 +212,19 @@ void print_flags(const nghttp2_frame_hd& hd)
       s += "PRIORITY";
     }
     break;
+  case NGHTTP2_SETTINGS:
+    if(hd.flags & NGHTTP2_FLAG_ACK) {
+      s += "ACK";
+    }
+    break;
   case NGHTTP2_PUSH_PROMISE:
     if(hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) {
       s += "END_PUSH_PROMISE";
     }
     break;
   case NGHTTP2_PING:
-    if(hd.flags & NGHTTP2_FLAG_PONG) {
-      s += "PONG";
+    if(hd.flags & NGHTTP2_FLAG_ACK) {
+      s += "ACK";
     }
     break;
   }

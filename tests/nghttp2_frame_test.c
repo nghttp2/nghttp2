@@ -223,7 +223,8 @@ void test_nghttp2_frame_pack_settings()
   iv[2].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
   iv[2].value = 1;
 
-  nghttp2_frame_settings_init(&frame, nghttp2_frame_iv_copy(iv, 3), 3);
+  nghttp2_frame_settings_init(&frame, NGHTTP2_FLAG_NONE,
+                              nghttp2_frame_iv_copy(iv, 3), 3);
   framelen = nghttp2_frame_pack_settings(&buf, &buflen, &frame);
   CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH+3*8 == framelen);
 
@@ -290,14 +291,14 @@ void test_nghttp2_frame_pack_ping(void)
   size_t buflen = 0;
   ssize_t framelen;
   const uint8_t opaque_data[] = "01234567";
-  nghttp2_frame_ping_init(&frame, NGHTTP2_FLAG_PONG, opaque_data);
+  nghttp2_frame_ping_init(&frame, NGHTTP2_FLAG_ACK, opaque_data);
   framelen = nghttp2_frame_pack_ping(&buf, &buflen, &frame);
   CU_ASSERT(0 == nghttp2_frame_unpack_ping
             (&oframe,
              &buf[0], NGHTTP2_FRAME_HEAD_LENGTH,
              &buf[NGHTTP2_FRAME_HEAD_LENGTH],
              framelen - NGHTTP2_FRAME_HEAD_LENGTH));
-  check_frame_header(8, NGHTTP2_PING, NGHTTP2_FLAG_PONG, 0, &oframe.hd);
+  check_frame_header(8, NGHTTP2_PING, NGHTTP2_FLAG_ACK, 0, &oframe.hd);
   CU_ASSERT(memcmp(opaque_data, oframe.opaque_data, sizeof(opaque_data) - 1)
             == 0);
   free(buf);

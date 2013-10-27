@@ -191,6 +191,8 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
   (*session_ptr)->last_stream_id = 0;
 
+  (*session_ptr)->inflight_niv = -1;
+
   if(server) {
     (*session_ptr)->server = 1;
     side_deflate = NGHTTP2_HD_SIDE_RESPONSE;
@@ -341,6 +343,7 @@ void nghttp2_session_del(nghttp2_session *session)
   if(session == NULL) {
     return;
   }
+  free(session->inflight_iv);
   nghttp2_inbound_frame_reset(session);
   nghttp2_map_each_free(&session->streams, nghttp2_free_streams, NULL);
   nghttp2_session_ob_pq_free(&session->ob_pq);
@@ -924,6 +927,27 @@ static int nghttp2_session_predicate_window_update_send
 }
 
 /*
+ * This function checks SETTINGS can be sent at this time.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS
+ *     There is already another in-flight SETTINGS.  Note that the
+ *     current implementation only allows 1 in-flight SETTINGS frame
+ *     without ACK flag set.
+ */
+static int nghttp2_session_predicate_settings_send(nghttp2_session *session,
+                                                   nghttp2_frame *frame)
+{
+  if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0 &&
+     session->inflight_niv != -1) {
+    return NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS;
+  }
+  return 0;
+}
+
+/*
  * Returns the maximum length of next data read. If the
  * connection-level and/or stream-wise flow control are enabled, the
  * return value takes into account those current window sizes.
@@ -1102,7 +1126,12 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         return framebuflen;
       }
       break;
-    case NGHTTP2_SETTINGS:
+    case NGHTTP2_SETTINGS: {
+      int r;
+      r = nghttp2_session_predicate_settings_send(session, frame);
+      if(r != 0) {
+        return r;
+      }
       framebuflen = nghttp2_frame_pack_settings(&session->aob.framebuf,
                                                 &session->aob.framebufmax,
                                                 &frame->settings);
@@ -1110,6 +1139,7 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         return framebuflen;
       }
       break;
+    }
     case NGHTTP2_PUSH_PROMISE: {
       int r;
       nghttp2_stream *stream;
@@ -1412,9 +1442,29 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       }
       r = 0;
       break;
-    case NGHTTP2_SETTINGS:
-      /* nothing to do */
+    case NGHTTP2_SETTINGS: {
+      size_t i;
+      if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
+        break;
+      }
+      /* Only update max concurrent stream here. Applying it without
+         ACK is safe because we can respond to the exceeding streams
+         with REFUSED_STREAM and client will retry later. */
+      for(i = frame->settings.niv; i > 0; --i) {
+        if(frame->settings.iv[i - 1].settings_id ==
+           NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
+          session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+            frame->settings.iv[i - 1].value;
+          break;
+        }
+      }
+      assert(session->inflight_niv == -1);
+      session->inflight_iv = frame->settings.iv;
+      session->inflight_niv = frame->settings.niv;
+      frame->settings.iv = NULL;
+      frame->settings.niv = 0;
       break;
+    }
     case NGHTTP2_PUSH_PROMISE:
       /* nothing to do */
       break;
@@ -2187,6 +2237,10 @@ static int nghttp2_disable_remote_flow_control_func(nghttp2_map_entry *entry,
 /*
  * Disable remote side connection-level flow control and stream-level
  * flow control of existing streams.
+ *
+ * This function returns 0 if it succeeds, or one of negative error codes.
+ *
+ * The error code is always FATAL.
  */
 static int nghttp2_session_disable_remote_flow_control
 (nghttp2_session *session)
@@ -2219,6 +2273,20 @@ static void nghttp2_session_disable_local_flow_control
   assert(rv == 0);
 }
 
+/*
+ * Apply SETTINGS values |iv| having |niv| elements to the local
+ * settings. SETTINGS_MAX_CONCURRENT_STREAMS is not applied here
+ * because it has been already applied on transmission of SETTINGS
+ * frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_HEADER_COMP
+ *     The header table size is out of range
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
 int nghttp2_session_update_local_settings(nghttp2_session *session,
                                           nghttp2_settings_entry *iv,
                                           size_t niv)
@@ -2229,12 +2297,32 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS];
   uint8_t new_flow_control = old_flow_control;
   int32_t new_initial_window_size = -1;
+  int32_t header_table_size = -1;
+  uint8_t header_table_size_seen = 0;
   /* Use the value last seen. */
   for(i = 0; i < niv; ++i) {
-    if(iv[i].settings_id == NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE) {
+    switch(iv[i].settings_id) {
+    case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+      header_table_size_seen = 1;
+      header_table_size = iv[i].value;
+      break;
+    case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       new_initial_window_size = iv[i].value;
-    } else if(iv[i].settings_id == NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS) {
+      break;
+    case  NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
       new_flow_control = iv[i].value;
+      break;
+    }
+  }
+  if(header_table_size_seen) {
+    if(header_table_size < 0 ||
+       header_table_size > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
+      return NGHTTP2_ERR_HEADER_COMP;
+    }
+    rv = nghttp2_hd_change_table_size(&session->hd_inflater,
+                                      header_table_size);
+    if(rv != 0) {
+      return rv;
     }
   }
   if(!old_flow_control && !new_flow_control && new_initial_window_size != -1) {
@@ -2247,7 +2335,10 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     }
   }
   for(i = 0; i < niv; ++i) {
-    if(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX) {
+    /* SETTINGS_MAX_CONCURRENT_STREAMS has already been applied on
+       transmission of the SETTINGS frame. */
+    if(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX &&
+       iv[i].settings_id != NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
       session->local_settings[iv[i].settings_id] = iv[i].value;
     }
   }
@@ -2259,7 +2350,8 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
 }
 
 int nghttp2_session_on_settings_received(nghttp2_session *session,
-                                         nghttp2_frame *frame)
+                                         nghttp2_frame *frame,
+                                         int noack)
 {
   int rv;
   int i;
@@ -2267,6 +2359,33 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
   if(frame->hd.stream_id != 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
+  }
+  if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
+    if(frame->settings.niv != 0) {
+      return nghttp2_session_handle_invalid_connection
+        (session, frame, NGHTTP2_FRAME_TOO_LARGE);
+    }
+    if(session->inflight_niv == -1) {
+      return nghttp2_session_handle_invalid_connection(session, frame,
+                                                       NGHTTP2_PROTOCOL_ERROR);
+    }
+    rv = nghttp2_session_update_local_settings(session, session->inflight_iv,
+                                               session->inflight_niv);
+    free(session->inflight_iv);
+    session->inflight_iv = NULL;
+    session->inflight_niv = -1;
+    if(rv != 0) {
+      nghttp2_error_code error_code = NGHTTP2_INTERNAL_ERROR;
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+      if(rv == NGHTTP2_ERR_HEADER_COMP) {
+        error_code = NGHTTP2_COMPRESSION_ERROR;
+      }
+      return nghttp2_session_handle_invalid_connection(session, frame,
+                                                       error_code);
+    }
+    return nghttp2_session_call_on_frame_received(session, frame);
   }
   /* Check ID/value pairs and persist them if necessary. */
   memset(check, 0, sizeof(check));
@@ -2282,6 +2401,21 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     }
     check[entry->settings_id] = 1;
     switch(entry->settings_id) {
+    case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+      if(entry->value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_COMPRESSION_ERROR);
+      }
+      rv = nghttp2_hd_change_table_size(&session->hd_deflater, entry->value);
+      if(rv != 0) {
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        } else {
+          return nghttp2_session_handle_invalid_connection
+            (session, frame, NGHTTP2_COMPRESSION_ERROR);
+        }
+      }
+      break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
@@ -2306,6 +2440,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
         if(session->remote_settings[entry->settings_id] == 0) {
           rv = nghttp2_session_disable_remote_flow_control(session);
           if(rv != 0) {
+            /* FATAL */
+            assert(rv < NGHTTP2_ERR_FATAL);
             return rv;
           }
         }
@@ -2318,6 +2454,16 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       break;
     }
     session->remote_settings[entry->settings_id] = entry->value;
+  }
+  if(!noack) {
+    rv = nghttp2_session_add_settings(session, NGHTTP2_FLAG_ACK, NULL, 0);
+    if(rv != 0) {
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+      return nghttp2_session_handle_invalid_connection
+        (session, frame, NGHTTP2_INTERNAL_ERROR);
+    }
   }
   return nghttp2_session_call_on_frame_received(session, frame);
 }
@@ -2401,9 +2547,9 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
-  if((frame->hd.flags & NGHTTP2_FLAG_PONG) == 0) {
+  if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
     /* Peer sent ping, so ping it back */
-    r = nghttp2_session_add_ping(session, NGHTTP2_FLAG_PONG,
+    r = nghttp2_session_add_ping(session, NGHTTP2_FLAG_ACK,
                                  frame->ping.opaque_data);
     if(r != 0) {
       return r;
@@ -2645,7 +2791,7 @@ static int nghttp2_session_process_ctrl_frame(nghttp2_session *session)
                                       session->iframe.buf,
                                       session->iframe.buflen);
     if(r == 0) {
-      r = nghttp2_session_on_settings_received(session, frame);
+      r = nghttp2_session_on_settings_received(session, frame, 0 /* ACK */);
       if(r != NGHTTP2_ERR_PAUSE) {
         nghttp2_frame_settings_free(&frame->settings);
       }
@@ -3328,6 +3474,37 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
   return r;
 }
 
+int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
+                                 const nghttp2_settings_entry *iv, size_t niv)
+{
+  nghttp2_frame *frame;
+  nghttp2_settings_entry *iv_copy;
+  int r;
+  if(!nghttp2_iv_check(iv, niv,
+                       session->local_settings
+                       [NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS])) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  frame = malloc(sizeof(nghttp2_frame));
+  if(frame == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  iv_copy = nghttp2_frame_iv_copy(iv, niv);
+  if(iv_copy == NULL) {
+    free(frame);
+    return NGHTTP2_ERR_NOMEM;
+  }
+  nghttp2_frame_settings_init(&frame->settings, flags, iv_copy, niv);
+  r = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+  if(r != 0) {
+    /* The only expected error is fatal one */
+    assert(r < NGHTTP2_ERR_FATAL);
+    nghttp2_frame_settings_free(&frame->settings);
+    free(frame);
+  }
+  return r;
+}
+
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
                                   size_t datamax,
@@ -3481,7 +3658,7 @@ int nghttp2_session_upgrade(nghttp2_session *session,
     memset(&frame.hd, 0, sizeof(frame.hd));
     frame.settings.iv = iv;
     frame.settings.niv = niv;
-    rv = nghttp2_session_on_settings_received(session, &frame);
+    rv = nghttp2_session_on_settings_received(session, &frame, 1 /* No ACK */);
   } else {
     rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
   }

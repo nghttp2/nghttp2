@@ -188,6 +188,13 @@ struct nghttp2_session {
   /* Settings value of the local endpoint. */
   uint32_t local_settings[NGHTTP2_SETTINGS_MAX+1];
 
+  /* In-flight SETTINGS values. NULL does not necessarily mean there
+     is no in-flight SETTINGS. */
+  nghttp2_settings_entry *inflight_iv;
+  /* The number of entries in |inflight_iv|. -1 if there is no
+     in-flight SETTINGS. */
+  ssize_t inflight_niv;
+
   /* Option flags. This is bitwise-OR of 0 or more of nghttp2_optmask. */
   uint32_t opt_flags;
 
@@ -296,6 +303,18 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
                                       int32_t window_size_increment);
 
 /*
+ * Adds SETTINGS frame.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
+                                 const nghttp2_settings_entry *iv, size_t niv);
+
+/*
  * Creates new stream in |session| with stream ID |stream_id|,
  * priority |pri| and flags |flags|. NGHTTP2_FLAG_END_STREAM flag is
  * set in |flags|, the sender of HEADERS will not send any further
@@ -386,19 +405,33 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
  * Called when RST_STREAM is received, assuming |frame| is properly
  * initialized.
  *
- * This function returns 0 and never fail.
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * TBD
  */
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame);
 
 /*
  * Called when SETTINGS is received, assuming |frame| is properly
- * initialized.
+ * initialized. If |noack| is non-zero, SETTINGS with ACK will not be
+ * submitted. If |frame| has NGHTTP2_FLAG_ACK flag set, no SETTINGS
+ * with ACK will not be submitted regardless of |noack|.
  *
- * This function returns 0 and never fail.
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ * NGHTTP2_ERR_PAUSE
+ *     Callback function returns NGHTTP2_ERR_PAUSE
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The read_callback failed
  */
 int nghttp2_session_on_settings_received(nghttp2_session *session,
-                                         nghttp2_frame *frame);
+                                         nghttp2_frame *frame,
+                                         int noack);
 
 /*
  * Called when PUSH_PROMISE is received, assuming |frame| is properly

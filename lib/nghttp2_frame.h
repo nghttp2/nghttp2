@@ -470,7 +470,7 @@ void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame);
  * ownership of |iv|, so caller must not free it. The |flags| are
  * bitwise-OR of one or more of nghttp2_settings_flag.
  */
-void nghttp2_frame_settings_init(nghttp2_settings *frame,
+void nghttp2_frame_settings_init(nghttp2_settings *frame, uint8_t flags,
                                  nghttp2_settings_entry *iv, size_t niv);
 
 void nghttp2_frame_settings_free(nghttp2_settings *frame);
