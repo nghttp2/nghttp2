@@ -132,8 +132,8 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
  *     The inflate operation failed.
  * NGHTTP2_ERR_INVALID_HEADER_BLOCK
  *     Unpacking succeeds but the header block is invalid.
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
@@ -149,8 +149,8 @@ int nghttp2_frame_unpack_headers(nghttp2_headers *frame,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  */
 int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
                                             const uint8_t *head,
@@ -179,8 +179,8 @@ ssize_t nghttp2_frame_pack_priority(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  */
 int nghttp2_frame_unpack_priority(nghttp2_priority *frame,
                                   const uint8_t *head, size_t headlen,
@@ -208,8 +208,8 @@ ssize_t nghttp2_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  */
 int nghttp2_frame_unpack_rst_stream(nghttp2_rst_stream *frame,
                                     const uint8_t *head, size_t headlen,
@@ -246,8 +246,8 @@ size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
@@ -317,8 +317,8 @@ ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
  *     The inflate operation failed.
  * NGHTTP2_ERR_INVALID_HEADER_BLOCK
  *     Unpacking succeeds but the header block is invalid.
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
@@ -335,8 +335,8 @@ int nghttp2_frame_unpack_push_promise(nghttp2_push_promise *frame,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  */
 int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
                                                  const uint8_t *head,
@@ -365,8 +365,8 @@ ssize_t nghttp2_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  */
 int nghttp2_frame_unpack_ping(nghttp2_ping *frame,
                               const uint8_t *head, size_t headlen,
@@ -393,8 +393,8 @@ ssize_t nghttp2_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
@@ -423,8 +423,8 @@ ssize_t nghttp2_frame_pack_window_update(uint8_t **buf_ptr, size_t *buflen_ptr,
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_INVALID_FRAME
- *     The input data are invalid.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The input length is invalid
  */
 int nghttp2_frame_unpack_window_update(nghttp2_window_update *frame,
                                        const uint8_t *head, size_t headlen,

@@ -273,7 +273,7 @@ int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
   }
   if(head[3] & NGHTTP2_FLAG_PRIORITY) {
     if(payloadlen < 4) {
-      return NGHTTP2_ERR_INVALID_FRAME;
+      return NGHTTP2_ERR_FRAME_SIZE_ERROR;
     }
     frame->pri = nghttp2_get_uint32(payload) & NGHTTP2_PRIORITY_MASK;
   } else {
@@ -304,7 +304,7 @@ int nghttp2_frame_unpack_priority(nghttp2_priority *frame,
                                   const uint8_t *payload, size_t payloadlen)
 {
   if(payloadlen != 4) {
-    return NGHTTP2_ERR_INVALID_FRAME;
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
   frame->pri = nghttp2_get_uint32(payload) & NGHTTP2_PRIORITY_MASK;
@@ -332,7 +332,7 @@ int nghttp2_frame_unpack_rst_stream(nghttp2_rst_stream *frame,
                                     const uint8_t *payload, size_t payloadlen)
 {
   if(payloadlen != 4) {
-    return NGHTTP2_ERR_INVALID_FRAME;
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
   frame->error_code = nghttp2_get_uint32(payload);
@@ -371,10 +371,12 @@ int nghttp2_frame_unpack_settings(nghttp2_settings *frame,
                                   const uint8_t *payload, size_t payloadlen)
 {
   int rv;
-  if(payloadlen % 8) {
-    return NGHTTP2_ERR_INVALID_FRAME;
-  }
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
+  if((payloadlen & 0x7) ||
+     ((frame->hd.flags & NGHTTP2_FLAG_ACK) && payloadlen > 0)) {
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
+  }
+
   rv = nghttp2_frame_unpack_settings_payload(&frame->iv, &frame->niv,
                                              payload, payloadlen);
   if(rv != 0) {
@@ -464,7 +466,7 @@ int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
     return NGHTTP2_ERR_PROTO;
   }
   if(payloadlen < 4) {
-    return NGHTTP2_ERR_INVALID_FRAME;
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
   frame->promised_stream_id = nghttp2_get_uint32(payload) &
     NGHTTP2_STREAM_ID_MASK;
@@ -493,7 +495,7 @@ int nghttp2_frame_unpack_ping(nghttp2_ping *frame,
                               const uint8_t *payload, size_t payloadlen)
 {
   if(payloadlen != 8) {
-    return NGHTTP2_ERR_INVALID_FRAME;
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
   memcpy(frame->opaque_data, payload, sizeof(frame->opaque_data));
@@ -524,7 +526,7 @@ int nghttp2_frame_unpack_goaway(nghttp2_goaway *frame,
 {
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
   if(payloadlen < 8) {
-    return NGHTTP2_ERR_INVALID_FRAME;
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
   frame->last_stream_id = nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
   frame->error_code = nghttp2_get_uint32(payload+4);
@@ -562,7 +564,7 @@ int nghttp2_frame_unpack_window_update(nghttp2_window_update *frame,
                                        size_t payloadlen)
 {
   if(payloadlen != 4) {
-    return NGHTTP2_ERR_INVALID_FRAME;
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
   nghttp2_frame_unpack_frame_hd(&frame->hd, head);
   frame->window_size_increment = nghttp2_get_uint32(payload) &

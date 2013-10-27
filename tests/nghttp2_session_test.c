@@ -463,7 +463,7 @@ void test_nghttp2_session_recv(void)
   CU_ASSERT(0 == user_data.frame_recv_cb_called);
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
-  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(item)->goaway.error_code);
+  CU_ASSERT(NGHTTP2_FRAME_SIZE_ERROR == OB_CTRL(item)->goaway.error_code);
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   free(framedata);
