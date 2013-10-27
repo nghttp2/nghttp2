@@ -24,9 +24,9 @@
  */
 #include "nghttp2_buffer_test.h"
 
-#include <CUnit/CUnit.h>
-
 #include <stdio.h>
+
+#include <CUnit/CUnit.h>
 
 #include "nghttp2_buffer.h"
 #include "nghttp2_net.h"

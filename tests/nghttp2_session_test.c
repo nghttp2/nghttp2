@@ -24,10 +24,10 @@
  */
 #include "nghttp2_session_test.h"
 
-#include <CUnit/CUnit.h>
-
 #include <stdio.h>
 #include <assert.h>
+
+#include <CUnit/CUnit.h>
 
 #include "nghttp2_session.h"
 #include "nghttp2_stream.h"
