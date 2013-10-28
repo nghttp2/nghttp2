@@ -598,12 +598,15 @@ available. This will happen when specifying smaller value in
 entry overhead.</dd>
 <dt>maxSize</dt>
 <dd>The maximum header table size.</dd>
-<dt>localSize</dt>
-<dd>The sum of the spaces entries occupied within <tt class="docutils literal"><span class="pre">maxLocalSize</span></tt>.</dd>
-<dt>maxLocalSize</dt>
+<dt>deflateSize</dt>
+<dd>The sum of the spaces entries occupied within <tt class="docutils literal"><span class="pre">maxDeflateSize</span></tt>.</dd>
+<dt>maxDeflateSize</dt>
 <dd>The maximum header table size encoder uses. This can be smaller
 than <tt class="docutils literal"><span class="pre">maxSize</span></tt>. In this case, encoder only uses up to first
-<tt class="docutils literal"><span class="pre">maxSize</span></tt> buffer.</dd>
+<tt class="docutils literal"><span class="pre">maxSize</span></tt> buffer. Since the header table size is still
+<tt class="docutils literal"><span class="pre">maxSize</span></tt>, the encoder keeps track of entries ouside the
+<tt class="docutils literal"><span class="pre">maxDeflateSize</span></tt> but inside the <tt class="docutils literal"><span class="pre">maxSize</span></tt>, but it makes sure
+that they are no longer referenced.</dd>
 </dl>
 <p>Example:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="p">[</span>
@@ -653,8 +656,8 @@ than <tt class="docutils literal"><span class="pre">maxSize</span></tt>. In this
       <span class="p">],</span>
       <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">226</span><span class="p">,</span>
       <span class="s">&quot;maxSize&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
-      <span class="s">&quot;localSize&quot;</span><span class="o">:</span> <span class="mi">226</span><span class="p">,</span>
-      <span class="s">&quot;maxLocalSize&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+      <span class="s">&quot;deflateSize&quot;</span><span class="o">:</span> <span class="mi">226</span><span class="p">,</span>
+      <span class="s">&quot;maxDeflateSize&quot;</span><span class="o">:</span> <span class="mi">4096</span>
     <span class="p">}</span>
   <span class="p">},</span>
   <span class="p">{</span>
@@ -717,8 +720,8 @@ than <tt class="docutils literal"><span class="pre">maxSize</span></tt>. In this
       <span class="p">],</span>
       <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">314</span><span class="p">,</span>
       <span class="s">&quot;maxSize&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
-      <span class="s">&quot;localSize&quot;</span><span class="o">:</span> <span class="mi">314</span><span class="p">,</span>
-      <span class="s">&quot;maxLocalSize&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+      <span class="s">&quot;deflateSize&quot;</span><span class="o">:</span> <span class="mi">314</span><span class="p">,</span>
+      <span class="s">&quot;maxDeflateSize&quot;</span><span class="o">:</span> <span class="mi">4096</span>
     <span class="p">}</span>
   <span class="p">}</span>
 <span class="p">]</span>
