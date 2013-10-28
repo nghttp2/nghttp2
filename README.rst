@@ -532,13 +532,16 @@ size
 maxSize
     The maximum header table size.
 
-localSize
-    The sum of the spaces entries occupied within ``maxLocalSize``.
+deflateSize
+    The sum of the spaces entries occupied within ``maxDeflateSize``.
 
-maxLocalSize
+maxDeflateSize
     The maximum header table size encoder uses. This can be smaller
     than ``maxSize``. In this case, encoder only uses up to first
-    ``maxSize`` buffer.
+    ``maxSize`` buffer. Since the header table size is still
+    ``maxSize``, the encoder keeps track of entries ouside the
+    ``maxDeflateSize`` but inside the ``maxSize``, but it makes sure
+    that they are no longer referenced.
 
 Example::
 
@@ -589,8 +592,8 @@ Example::
 	  ],
 	  "size": 226,
 	  "maxSize": 4096,
-	  "localSize": 226,
-	  "maxLocalSize": 4096
+	  "deflateSize": 226,
+	  "maxDeflateSize": 4096
 	}
       },
       {
@@ -653,8 +656,8 @@ Example::
 	  ],
 	  "size": 314,
 	  "maxSize": 4096,
-	  "localSize": 314,
-	  "maxLocalSize": 4096
+	  "deflateSize": 314,
+	  "maxDeflateSize": 4096
 	}
       }
     ]
