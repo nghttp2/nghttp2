@@ -3536,7 +3536,8 @@ void test_nghttp2_session_set_option(void)
              NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
              &sszval, sizeof(sszval)));
   CU_ASSERT(sszval ==
-            session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+            (ssize_t)session->
+            remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
 
   sszval = 0;
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
@@ -3545,12 +3546,12 @@ void test_nghttp2_session_set_option(void)
              NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
              &sszval, sizeof(sszval)));
 
-  intval = 100;
+  charval = 100;
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_session_set_option
             (session,
              NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
-             &intval, sizeof(intval)));
+             &charval, sizeof(charval)));
 
   nghttp2_session_del(session);
 }
