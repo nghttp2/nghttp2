@@ -73,11 +73,6 @@ Macros
     
     The initial window size for connection level flow control.
 
-.. macro:: NGHTTP2_MAX_HEADER_TABLE_SIZE
-
-    
-    The maximum header table size.
-
 .. macro:: NGHTTP2_CLIENT_CONNECTION_HEADER
 
     
@@ -196,10 +191,10 @@ Enums
 
         (``-521``) 
         The user callback function failed due to the temporal error.
-    .. macro:: NGHTTP2_ERR_FRAME_SIZE_ERROR
+    .. macro:: NGHTTP2_ERR_FRAME_TOO_LARGE
 
         (``-522``) 
-        The length of the frame is invalid, either too large or too small.
+        The length of the frame is too large.
     .. macro:: NGHTTP2_ERR_HEADER_COMP
 
         (``-523``) 
@@ -216,11 +211,6 @@ Enums
 
         (``-526``) 
         Callback was paused by the application
-    .. macro:: NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS
-
-        (``-527``) 
-        There are too many in-flight SETTING frame and no more
-        transmission of SETTINGS is allowed.
     .. macro:: NGHTTP2_ERR_FATAL
 
         (``-900``) 
@@ -305,24 +295,16 @@ Enums
 
         (``0x4``) 
         The END_PUSH_PROMISE flag.
-    .. macro:: NGHTTP2_FLAG_ACK
+    .. macro:: NGHTTP2_FLAG_PONG
 
         (``0x1``) 
-        The ACK flag.
+        The PONG flag.
 
 
 .. type:: nghttp2_settings_id
 
     The SETTINGS ID.
 
-    .. macro:: NGHTTP2_SETTINGS_HEADER_TABLE_SIZE
-
-        (``1``) 
-        SETTINGS_HEADER_TABLE_SIZE
-    .. macro:: NGHTTP2_SETTINGS_ENABLE_PUSH
-
-        (``2``) 
-        SETTINGS_ENABLE_PUSH
     .. macro:: NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS
 
         (``4``) 
@@ -361,18 +343,14 @@ Enums
 
         (``3``) 
         FLOW_CONTROL_ERROR
-    .. macro:: NGHTTP2_SETTINGS_TIMEOUT
-
-        (``4``) 
-        SETTINGS_TIMEOUT
     .. macro:: NGHTTP2_STREAM_CLOSED
 
         (``5``) 
         STREAM_CLOSED
-    .. macro:: NGHTTP2_FRAME_SIZE_ERROR
+    .. macro:: NGHTTP2_FRAME_TOO_LARGE
 
         (``6``) 
-        FRAME_SIZE_ERROR
+        FRAME_TOO_LARGE
     .. macro:: NGHTTP2_REFUSED_STREAM
 
         (``7``) 
@@ -385,14 +363,6 @@ Enums
 
         (``9``) 
         COMPRESSION_ERROR
-    .. macro:: NGHTTP2_CONNECT_ERROR
-
-        (``10``) 
-        CONNECT_ERROR
-    .. macro:: NGHTTP2_ENHANCE_YOUR_CALM
-
-        (``420``) 
-        ENHANCE_YOUR_CALM
 
 
 .. type:: nghttp2_headers_category
@@ -1674,9 +1644,6 @@ Functions
     While updating individual stream's local window size, if the window
     size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
     RST_STREAM is issued against such a stream.
-    
-    SETTINGS with :macro:`NGHTTP2_FLAG_ACK` is automatically submitted
-    by the library and application could not send it at its will.
     
     This function returns 0 if it succeeds, or one of the following
     negative error codes:

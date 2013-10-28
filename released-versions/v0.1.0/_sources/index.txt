@@ -19,12 +19,6 @@ Contents:
    nghttp2.h
    nghttp2ver.h
 
-Released Versions
-=================
-
-* `v0.1.0 <released-versions/v0.1.0/>`_ `(Download) <https://github.com/tatsuhiro-t/nghttp2/releases/tag/v0.1.0>`_
-
-
 Resources
 ---------
 

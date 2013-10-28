@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>API Reference &mdash; nghttp2 0.2.0-DEV documentation</title>
+    <title>API Reference &mdash; nghttp2 0.1.0 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.2.0-DEV',
+        VERSION:     '0.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -26,7 +26,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="nghttp2 0.2.0-DEV documentation" href="index.html" />
+    <link rel="top" title="nghttp2 0.1.0 documentation" href="index.html" />
     <link rel="next" title="nghttp2.h" href="nghttp2.h.html" />
     <link rel="prev" title="nghttp2 - HTTP/2.0 C Library" href="package_README.html" /> 
   </head>
@@ -43,7 +43,7 @@
         <li class="right" >
           <a href="package_README.html" title="nghttp2 - HTTP/2.0 C Library"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">nghttp2 0.2.0-DEV documentation</a> &raquo;</li> 
+        <li><a href="index.html">nghttp2 0.1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -134,12 +134,6 @@ for minor and 8 bits for patch. Version 1.2.3 becomes 0x010203.</p>
 <dt id="NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE">
 <tt class="descname">NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE</tt><a class="headerlink" href="#NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE" title="Permalink to this definition">¶</a></dt>
 <dd><p>The initial window size for connection level flow control.</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="NGHTTP2_MAX_HEADER_TABLE_SIZE">
-<tt class="descname">NGHTTP2_MAX_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#NGHTTP2_MAX_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
-<dd><p>The maximum header table size.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -324,10 +318,10 @@ The user callback function failed due to the temporal error.</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="NGHTTP2_ERR_FRAME_SIZE_ERROR">
-<tt class="descname">NGHTTP2_ERR_FRAME_SIZE_ERROR</tt><a class="headerlink" href="#NGHTTP2_ERR_FRAME_SIZE_ERROR" title="Permalink to this definition">¶</a></dt>
+<dt id="NGHTTP2_ERR_FRAME_TOO_LARGE">
+<tt class="descname">NGHTTP2_ERR_FRAME_TOO_LARGE</tt><a class="headerlink" href="#NGHTTP2_ERR_FRAME_TOO_LARGE" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">-522</span></tt>)
-The length of the frame is invalid, either too large or too small.</p>
+The length of the frame is too large.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -356,14 +350,6 @@ Insufficient buffer size given to function.</p>
 <tt class="descname">NGHTTP2_ERR_PAUSE</tt><a class="headerlink" href="#NGHTTP2_ERR_PAUSE" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">-526</span></tt>)
 Callback was paused by the application</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS">
-<tt class="descname">NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS</tt><a class="headerlink" href="#NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">-527</span></tt>)
-There are too many in-flight SETTING frame and no more
-transmission of SETTINGS is allowed.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -501,10 +487,10 @@ The END_PUSH_PROMISE flag.</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="NGHTTP2_FLAG_ACK">
-<tt class="descname">NGHTTP2_FLAG_ACK</tt><a class="headerlink" href="#NGHTTP2_FLAG_ACK" title="Permalink to this definition">¶</a></dt>
+<dt id="NGHTTP2_FLAG_PONG">
+<tt class="descname">NGHTTP2_FLAG_PONG</tt><a class="headerlink" href="#NGHTTP2_FLAG_PONG" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x1</span></tt>)
-The ACK flag.</p>
+The PONG flag.</p>
 </dd></dl>
 
 </dd></dl>
@@ -513,20 +499,6 @@ The ACK flag.</p>
 <dt id="nghttp2_settings_id">
 <tt class="descname">nghttp2_settings_id</tt><a class="headerlink" href="#nghttp2_settings_id" title="Permalink to this definition">¶</a></dt>
 <dd><p>The SETTINGS ID.</p>
-<dl class="macro">
-<dt id="NGHTTP2_SETTINGS_HEADER_TABLE_SIZE">
-<tt class="descname">NGHTTP2_SETTINGS_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">1</span></tt>)
-SETTINGS_HEADER_TABLE_SIZE</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="NGHTTP2_SETTINGS_ENABLE_PUSH">
-<tt class="descname">NGHTTP2_SETTINGS_ENABLE_PUSH</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_ENABLE_PUSH" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">2</span></tt>)
-SETTINGS_ENABLE_PUSH</p>
-</dd></dl>
-
 <dl class="macro">
 <dt id="NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS">
 <tt class="descname">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS" title="Permalink to this definition">¶</a></dt>
@@ -590,13 +562,6 @@ FLOW_CONTROL_ERROR</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="NGHTTP2_SETTINGS_TIMEOUT">
-<tt class="descname">NGHTTP2_SETTINGS_TIMEOUT</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_TIMEOUT" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">4</span></tt>)
-SETTINGS_TIMEOUT</p>
-</dd></dl>
-
-<dl class="macro">
 <dt id="NGHTTP2_STREAM_CLOSED">
 <tt class="descname">NGHTTP2_STREAM_CLOSED</tt><a class="headerlink" href="#NGHTTP2_STREAM_CLOSED" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">5</span></tt>)
@@ -604,10 +569,10 @@ STREAM_CLOSED</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="NGHTTP2_FRAME_SIZE_ERROR">
-<tt class="descname">NGHTTP2_FRAME_SIZE_ERROR</tt><a class="headerlink" href="#NGHTTP2_FRAME_SIZE_ERROR" title="Permalink to this definition">¶</a></dt>
+<dt id="NGHTTP2_FRAME_TOO_LARGE">
+<tt class="descname">NGHTTP2_FRAME_TOO_LARGE</tt><a class="headerlink" href="#NGHTTP2_FRAME_TOO_LARGE" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">6</span></tt>)
-FRAME_SIZE_ERROR</p>
+FRAME_TOO_LARGE</p>
 </dd></dl>
 
 <dl class="macro">
@@ -629,20 +594,6 @@ CANCEL</p>
 <tt class="descname">NGHTTP2_COMPRESSION_ERROR</tt><a class="headerlink" href="#NGHTTP2_COMPRESSION_ERROR" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">9</span></tt>)
 COMPRESSION_ERROR</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="NGHTTP2_CONNECT_ERROR">
-<tt class="descname">NGHTTP2_CONNECT_ERROR</tt><a class="headerlink" href="#NGHTTP2_CONNECT_ERROR" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">10</span></tt>)
-CONNECT_ERROR</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="NGHTTP2_ENHANCE_YOUR_CALM">
-<tt class="descname">NGHTTP2_ENHANCE_YOUR_CALM</tt><a class="headerlink" href="#NGHTTP2_ENHANCE_YOUR_CALM" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">420</span></tt>)
-ENHANCE_YOUR_CALM</p>
 </dd></dl>
 
 </dd></dl>
@@ -2126,8 +2077,6 @@ copies all the elements in the <em>iv</em>.</p>
 <p>While updating individual stream&#8217;s local window size, if the window
 size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
 RST_STREAM is issued against such a stream.</p>
-<p>SETTINGS with <a class="reference internal" href="#NGHTTP2_FLAG_ACK" title="NGHTTP2_FLAG_ACK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_ACK</span></tt></a> is automatically submitted
-by the library and application could not send it at its will.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -2449,7 +2398,7 @@ the version checking.</p>
         <li class="right" >
           <a href="package_README.html" title="nghttp2 - HTTP/2.0 C Library"
              >previous</a> |</li>
-        <li><a href="index.html">nghttp2 0.2.0-DEV documentation</a> &raquo;</li> 
+        <li><a href="index.html">nghttp2 0.1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

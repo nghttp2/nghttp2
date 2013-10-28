@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>nghttp2.h &mdash; nghttp2 0.2.0-DEV documentation</title>
+    <title>nghttp2.h &mdash; nghttp2 0.1.0 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.2.0-DEV',
+        VERSION:     '0.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -26,7 +26,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="nghttp2 0.2.0-DEV documentation" href="index.html" />
+    <link rel="top" title="nghttp2 0.1.0 documentation" href="index.html" />
     <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html" />
     <link rel="prev" title="API Reference" href="apiref.html" /> 
   </head>
@@ -43,7 +43,7 @@
         <li class="right" >
           <a href="apiref.html" title="API Reference"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">nghttp2 0.2.0-DEV documentation</a> &raquo;</li> 
+        <li><a href="index.html">nghttp2 0.1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -96,7 +96,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * The protocol version identification of this library supports.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;HTTP-draft-07/2.0&quot;</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;HTTP-draft-06/2.0&quot;</span>
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
@@ -182,13 +182,6 @@
 <span class="cm"> * The initial window size for connection level flow control.</span>
 <span class="cm"> */</span>
 <span class="cp">#define NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE ((1 &lt;&lt; 16) - 1)</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @macro</span>
-<span class="cm"> *</span>
-<span class="cm"> * The maximum header table size.</span>
-<span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 &lt;&lt; 16)</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -306,9 +299,9 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">521</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The length of the frame is invalid, either too large or too small.</span>
+<span class="cm">   * The length of the frame is too large.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_ERR_FRAME_SIZE_ERROR</span> <span class="o">=</span> <span class="o">-</span><span class="mi">522</span><span class="p">,</span>
+  <span class="n">NGHTTP2_ERR_FRAME_TOO_LARGE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">522</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * Header block inflate/deflate error.</span>
 <span class="cm">   */</span>
@@ -325,11 +318,6 @@
 <span class="cm">   * Callback was paused by the application</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_PAUSE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">526</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * There are too many in-flight SETTING frame and no more</span>
-<span class="cm">   * transmission of SETTINGS is allowed.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS</span> <span class="o">=</span> <span class="o">-</span><span class="mi">527</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * The errors &lt; :enum:`NGHTTP2_ERR_FATAL` mean that the library is</span>
 <span class="cm">   * under unexpected condition and cannot process any further data</span>
@@ -447,9 +435,9 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLAG_END_PUSH_PROMISE</span> <span class="o">=</span> <span class="mh">0x4</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The ACK flag.</span>
+<span class="cm">   * The PONG flag.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_ACK</span> <span class="o">=</span> <span class="mh">0x1</span>
+  <span class="n">NGHTTP2_FLAG_PONG</span> <span class="o">=</span> <span class="mh">0x1</span>
 <span class="p">}</span> <span class="n">nghttp2_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -457,14 +445,6 @@
 <span class="cm"> * The SETTINGS ID.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
-  <span class="cm">/**</span>
-<span class="cm">   * SETTINGS_HEADER_TABLE_SIZE</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_HEADER_TABLE_SIZE</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * SETTINGS_ENABLE_PUSH</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_ENABLE_PUSH</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_MAX_CONCURRENT_STREAMS</span>
 <span class="cm">   */</span>
@@ -511,17 +491,13 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLOW_CONTROL_ERROR</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * SETTINGS_TIMEOUT</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_TIMEOUT</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
-  <span class="cm">/**</span>
 <span class="cm">   * STREAM_CLOSED</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_STREAM_CLOSED</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * FRAME_SIZE_ERROR</span>
+<span class="cm">   * FRAME_TOO_LARGE</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FRAME_SIZE_ERROR</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+  <span class="n">NGHTTP2_FRAME_TOO_LARGE</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * REFUSED_STREAM</span>
 <span class="cm">   */</span>
@@ -533,15 +509,7 @@
   <span class="cm">/**</span>
 <span class="cm">   * COMPRESSION_ERROR</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_COMPRESSION_ERROR</span> <span class="o">=</span> <span class="mi">9</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * CONNECT_ERROR</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_CONNECT_ERROR</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * ENHANCE_YOUR_CALM</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_ENHANCE_YOUR_CALM</span> <span class="o">=</span> <span class="mi">420</span>
+  <span class="n">NGHTTP2_COMPRESSION_ERROR</span> <span class="o">=</span> <span class="mi">9</span>
 <span class="p">}</span> <span class="n">nghttp2_error_code</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -1971,9 +1939,6 @@
 <span class="cm"> * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,</span>
 <span class="cm"> * RST_STREAM is issued against such a stream.</span>
 <span class="cm"> *</span>
-<span class="cm"> * SETTINGS with :enum:`NGHTTP2_FLAG_ACK` is automatically submitted</span>
-<span class="cm"> * by the library and application could not send it at its will.</span>
-<span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
@@ -2336,7 +2301,7 @@
         <li class="right" >
           <a href="apiref.html" title="API Reference"
              >previous</a> |</li>
-        <li><a href="index.html">nghttp2 0.2.0-DEV documentation</a> &raquo;</li> 
+        <li><a href="index.html">nghttp2 0.1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
