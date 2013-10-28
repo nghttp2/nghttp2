@@ -4,9 +4,6 @@ nghttp2 - HTTP/2.0 C Library
 This is an experimental implementation of Hypertext Transfer Protocol
 version 2.0.
 
-There are command-line header compression test tools in hdtest
-directory. Check out deflatehd and inflatehd commands.
-
 Development Status
 ------------------
 
@@ -417,3 +414,307 @@ the outside HTTP/2.0 proxy through HTTP proxy::
 
             --===================---> HTTP/2.0 Proxy
               (HTTP proxy tunnel)     (e.g., nghttpx -s)
+
+Header compression test tools
+-----------------------------
+
+The ``hdtest`` directory contains header compression test tools. The
+``deflatehd`` is command-line header compression tool. The
+``inflatehd`` is command-line header decompression tool.  Both tools
+read input from stdin and write output to stdout. The errors are
+written to stderr. They take JSON as input and output.
+
+deflatehd - header compressor
++++++++++++++++++++++++++++++
+
+The ``deflatehd`` reads JSON array or HTTP/1-style header fields from
+stdin and outputs compressed header block in JSON array.
+
+For the JSON input, the element of input array must be a JSON
+object. Each object must have at least following key:
+
+headers
+    A JSON array of name/value pairs. The each element is a JSON array
+    of 2 strings. The index 0 must contain header name and the index 1
+    must contain header value.
+
+Example::
+
+    [
+      {
+	"headers": [
+	  [ ":method", "GET" ],
+	  [ ":path", "/" ]
+	]
+      },
+      {
+	"headers": [
+	  [ ":method", "POST" ],
+	  [ ":path", "/" ]
+	]
+      }
+    ]
+
+These header sets are processed in the order they appear in the JSON
+outer most array using same compression context.
+
+With ``-t`` option, the program can accept more familiar HTTP/1 style
+header field block. Each header set is delimited by empty line:
+
+Example::
+
+    :method: GET
+    :scheme: https
+    :path: /
+
+    :method: POST
+    user-agent: nghttp2
+
+The output is a JSON array and each element is JSON object, which has
+at least following keys:
+
+seq
+    The index of header set in the input.
+
+inputLen
+    The sum of length of name/value pair in the input.
+
+outputLength
+    The length of compressed header block.
+
+percentageOfOriginalSize
+    inputLen / outputLength * 100
+
+output
+    The compressed header block in hex string.
+
+Examples::
+
+    [
+      {
+        "seq": 0,
+        "inputLen": 66,
+        "outputLength": 20,
+        "percentageOfOriginalSize": 30.303030303030305,
+        "output": "818703881f3468e5891afcbf863c856659c62e3f"
+      },
+      {
+        "seq": 1,
+        "inputLen": 74,
+        "outputLength": 10,
+        "percentageOfOriginalSize": 13.513513513513514,
+        "output": "87038504252dd5918386"
+      }
+    ]
+
+The output can be used as the input for ``inflatehd``.
+
+With ``-d`` option, the extra ``headerTable`` key is added and its
+associated value contains the state of dyanmic header table after the
+corresponding header set was processed. The value contains following
+keys:
+
+entries
+    The entry in the header table. If ``referenced`` is ``true``, it
+    is in the reference set. The ``size`` includes the overhead (32
+    bytes). The ``index`` corresponds to the index of header table.
+    The ``name`` is the header field name and the ``value`` is the
+    header field value. They may be displayed as ``**DEALLOCATED**``,
+    which means that the memory for that string is freed and not
+    available. This will happen when specifying smaller value in
+    ``-S`` than ``-s``.
+
+size
+    The sum of the spaces entries occupied, this includes the
+    entry overhead.
+
+maxSize
+    The maximum header table size.
+
+localSize
+    The sum of the spaces entries occupied within ``maxLocalSize``.
+
+maxLocalSize
+    The maximum header table size encoder uses. This can be smaller
+    than ``maxSize``. In this case, encoder only uses up to first
+    ``maxSize`` buffer.
+
+Example::
+
+    [
+      {
+	"seq": 0,
+	"inputLen": 66,
+	"outputLength": 20,
+	"percentageOfOriginalSize": 30.303030303030305,
+	"output": "818703881f3468e5891afcbf863c856659c62e3f",
+	"headerTable": {
+	  "entries": [
+	    {
+	      "index": 0,
+	      "name": "user-agent",
+	      "value": "nghttp2",
+	      "referenced": true,
+	      "size": 49
+	    },
+	    {
+	      "index": 1,
+	      "name": ":path",
+	      "value": "/",
+	      "referenced": true,
+	      "size": 38
+	    },
+	    {
+	      "index": 2,
+	      "name": ":authority",
+	      "value": "example.org",
+	      "referenced": true,
+	      "size": 53
+	    },
+	    {
+	      "index": 3,
+	      "name": ":scheme",
+	      "value": "https",
+	      "referenced": true,
+	      "size": 44
+	    },
+	    {
+	      "index": 4,
+	      "name": ":method",
+	      "value": "GET",
+	      "referenced": true,
+	      "size": 42
+	    }
+	  ],
+	  "size": 226,
+	  "maxSize": 4096,
+	  "localSize": 226,
+	  "maxLocalSize": 4096
+	}
+      },
+      {
+	"seq": 1,
+	"inputLen": 74,
+	"outputLength": 10,
+	"percentageOfOriginalSize": 13.513513513513514,
+	"output": "87038504252dd5918386",
+	"headerTable": {
+	  "entries": [
+	    {
+	      "index": 0,
+	      "name": ":path",
+	      "value": "/account",
+	      "referenced": true,
+	      "size": 45
+	    },
+	    {
+	      "index": 1,
+	      "name": ":method",
+	      "value": "POST",
+	      "referenced": true,
+	      "size": 43
+	    },
+	    {
+	      "index": 2,
+	      "name": "user-agent",
+	      "value": "nghttp2",
+	      "referenced": true,
+	      "size": 49
+	    },
+	    {
+	      "index": 3,
+	      "name": ":path",
+	      "value": "/",
+	      "referenced": false,
+	      "size": 38
+	    },
+	    {
+	      "index": 4,
+	      "name": ":authority",
+	      "value": "example.org",
+	      "referenced": true,
+	      "size": 53
+	    },
+	    {
+	      "index": 5,
+	      "name": ":scheme",
+	      "value": "https",
+	      "referenced": true,
+	      "size": 44
+	    },
+	    {
+	      "index": 6,
+	      "name": ":method",
+	      "value": "GET",
+	      "referenced": false,
+	      "size": 42
+	    }
+	  ],
+	  "size": 314,
+	  "maxSize": 4096,
+	  "localSize": 314,
+	  "maxLocalSize": 4096
+	}
+      }
+    ]
+
+inflatehd - header decompressor
++++++++++++++++++++++++++++++++
+
+The ``inflatehd`` reads JSON array from stdin and outputs decompressed
+name/value pairs in JSON array.  The element of input array must be a
+JSON object. Each object must have at least following key:
+
+output
+    compressed header block in hex string.
+
+Example::
+
+    [
+      { "output": "0284f77778ff" },
+      { "output": "0185fafd3c3c7f81" }
+    ]
+
+The output is a JSON array and each element is JSON object, which has
+at least following keys:
+
+seq
+    The index of header set in the input.
+
+headers
+    The JSON array contains decompressed name/value pairs. Each
+    element is JSON aray having 2 elements. The index 0 of the array
+    contains the header field name. The index 1 contains the header
+    field value.
+
+Example::
+
+    [
+      {
+	"seq": 0,
+	"headers": [
+	  [":authority", "example.org"],
+	  [":method", "GET"],
+	  [":path", "/"],
+	  [":scheme", "https"],
+	  ["user-agent", "nghttp2"]
+	]
+      },
+      {
+	"seq": 1,
+	"headers": [
+	  [":authority", "example.org"],
+	  [":method", "POST"],
+	  [":path", "/account"],
+	  [":scheme", "https"],
+	  ["user-agent", "nghttp2"]
+	]
+      }
+    ]
+
+The output can be used as the input for ``deflatehd``.
+
+With ``-d`` option, the extra ``headerTable`` key is added and its
+associated value contains the state of dyanmic header table after the
+corresponding header set was processed. The format is the same as
+``deflatehd``.
