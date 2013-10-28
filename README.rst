@@ -13,7 +13,7 @@ Development Status
 We started to implement HTTP-draft-07/2.0
 (http://tools.ietf.org/html/draft-ietf-httpbis-http2-07) and the
 header compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07).
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04).
 
 The nghttp2 code base was forked from spdylay project.
 
