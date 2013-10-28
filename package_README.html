@@ -56,8 +56,6 @@
 <h1>nghttp2 - HTTP/2.0 C Library<a class="headerlink" href="#nghttp2-http-2-0-c-library" title="Permalink to this headline">¶</a></h1>
 <p>This is an experimental implementation of Hypertext Transfer Protocol
 version 2.0.</p>
-<p>There are command-line header compression test tools in hdtest
-directory. Check out deflatehd and inflatehd commands.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
 <p>We started to implement HTTP-draft-07/2.0
@@ -91,10 +89,13 @@ header compression
 <tr class="row-even"><td>FRAME_SIZE_ERROR</td>
 <td>Done</td>
 </tr>
-<tr class="row-odd"><td>Header Continuation</td>
+<tr class="row-odd"><td>SETTINGS with ACK</td>
+<td>Done</td>
+</tr>
+<tr class="row-even"><td>Header Continuation</td>
 <td>&nbsp;</td>
 </tr>
-<tr class="row-even"><td>ALPN</td>
+<tr class="row-odd"><td>ALPN</td>
 <td>&nbsp;</td>
 </tr>
 </tbody>
@@ -495,6 +496,294 @@ the outside HTTP/2.0 proxy through HTTP proxy:</p>
 </div>
 </div>
 </div>
+<div class="section" id="header-compression-test-tools">
+<h2>Header compression test tools<a class="headerlink" href="#header-compression-test-tools" title="Permalink to this headline">¶</a></h2>
+<p>The <tt class="docutils literal"><span class="pre">hdtest</span></tt> directory contains header compression test tools. The
+<tt class="docutils literal"><span class="pre">deflatehd</span></tt> is command-line header compression tool. The
+<tt class="docutils literal"><span class="pre">inflatehd</span></tt> is command-line header decompression tool.  Both tools
+read input from stdin and write output to stdout. The errors are
+written to stderr. They take JSON as input and output.</p>
+<div class="section" id="deflatehd-header-compressor">
+<h3>deflatehd - header compressor<a class="headerlink" href="#deflatehd-header-compressor" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> reads JSON array or HTTP/1-style header fields from
+stdin and outputs compressed header block in JSON array.</p>
+<p>For the JSON input, the element of input array must be a JSON
+object. Each object must have at least following key:</p>
+<dl class="docutils">
+<dt>headers</dt>
+<dd>A JSON array of name/value pairs. The each element is a JSON array
+of 2 strings. The index 0 must contain header name and the index 1
+must contain header value.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="p">[</span>
+  <span class="p">{</span>
+    <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="p">[</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span> <span class="s">&quot;GET&quot;</span> <span class="p">],</span>
+      <span class="p">[</span> <span class="s">&quot;:path&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span> <span class="p">]</span>
+    <span class="p">]</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+    <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="p">[</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span> <span class="s">&quot;POST&quot;</span> <span class="p">],</span>
+      <span class="p">[</span> <span class="s">&quot;:path&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span> <span class="p">]</span>
+    <span class="p">]</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>These header sets are processed in the order they appear in the JSON
+outer most array using same compression context.</p>
+<p>With <tt class="docutils literal"><span class="pre">-t</span></tt> option, the program can accept more familiar HTTP/1 style
+header field block. Each header set is delimited by empty line:</p>
+<p>Example:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="o">:</span><span class="n">method</span><span class="o">:</span> <span class="n">GET</span>
+<span class="o">:</span><span class="n">scheme</span><span class="o">:</span> <span class="n">https</span>
+<span class="o">:</span><span class="n">path</span><span class="o">:</span> <span class="o">/</span>
+
+<span class="o">:</span><span class="n">method</span><span class="o">:</span> <span class="n">POST</span>
+<span class="n">user</span><span class="o">-</span><span class="n">agent</span><span class="o">:</span> <span class="n">nghttp2</span>
+</pre></div>
+</div>
+<p>The output is a JSON array and each element is JSON object, which has
+at least following keys:</p>
+<dl class="docutils">
+<dt>seq</dt>
+<dd>The index of header set in the input.</dd>
+<dt>inputLen</dt>
+<dd>The sum of length of name/value pair in the input.</dd>
+<dt>outputLength</dt>
+<dd>The length of compressed header block.</dd>
+<dt>percentageOfOriginalSize</dt>
+<dd>inputLen / outputLength * 100</dd>
+<dt>output</dt>
+<dd>The compressed header block in hex string.</dd>
+</dl>
+<p>Examples:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="p">[</span>
+  <span class="p">{</span>
+    <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s">&quot;inputLen&quot;</span><span class="o">:</span> <span class="mi">66</span><span class="p">,</span>
+    <span class="s">&quot;outputLength&quot;</span><span class="o">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="s">&quot;percentageOfOriginalSize&quot;</span><span class="o">:</span> <span class="mf">30.303030303030305</span><span class="p">,</span>
+    <span class="s">&quot;output&quot;</span><span class="o">:</span> <span class="s">&quot;818703881f3468e5891afcbf863c856659c62e3f&quot;</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+    <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s">&quot;inputLen&quot;</span><span class="o">:</span> <span class="mi">74</span><span class="p">,</span>
+    <span class="s">&quot;outputLength&quot;</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s">&quot;percentageOfOriginalSize&quot;</span><span class="o">:</span> <span class="mf">13.513513513513514</span><span class="p">,</span>
+    <span class="s">&quot;output&quot;</span><span class="o">:</span> <span class="s">&quot;87038504252dd5918386&quot;</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>The output can be used as the input for <tt class="docutils literal"><span class="pre">inflatehd</span></tt>.</p>
+<p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">headerTable</span></tt> key is added and its
+associated value contains the state of dyanmic header table after the
+corresponding header set was processed. The value contains following
+keys:</p>
+<dl class="docutils">
+<dt>entries</dt>
+<dd>The entry in the header table. If <tt class="docutils literal"><span class="pre">referenced</span></tt> is <tt class="docutils literal"><span class="pre">true</span></tt>, it
+is in the reference set. The <tt class="docutils literal"><span class="pre">size</span></tt> includes the overhead (32
+bytes). The <tt class="docutils literal"><span class="pre">index</span></tt> corresponds to the index of header table.
+The <tt class="docutils literal"><span class="pre">name</span></tt> is the header field name and the <tt class="docutils literal"><span class="pre">value</span></tt> is the
+header field value. They may be displayed as <tt class="docutils literal"><span class="pre">**DEALLOCATED**</span></tt>,
+which means that the memory for that string is freed and not
+available. This will happen when specifying smaller value in
+<tt class="docutils literal"><span class="pre">-S</span></tt> than <tt class="docutils literal"><span class="pre">-s</span></tt>.</dd>
+<dt>size</dt>
+<dd>The sum of the spaces entries occupied, this includes the
+entry overhead.</dd>
+<dt>maxSize</dt>
+<dd>The maximum header table size.</dd>
+<dt>localSize</dt>
+<dd>The sum of the spaces entries occupied within <tt class="docutils literal"><span class="pre">maxLocalSize</span></tt>.</dd>
+<dt>maxLocalSize</dt>
+<dd>The maximum header table size encoder uses. This can be smaller
+than <tt class="docutils literal"><span class="pre">maxSize</span></tt>. In this case, encoder only uses up to first
+<tt class="docutils literal"><span class="pre">maxSize</span></tt> buffer.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="p">[</span>
+  <span class="p">{</span>
+    <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s">&quot;inputLen&quot;</span><span class="o">:</span> <span class="mi">66</span><span class="p">,</span>
+    <span class="s">&quot;outputLength&quot;</span><span class="o">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="s">&quot;percentageOfOriginalSize&quot;</span><span class="o">:</span> <span class="mf">30.303030303030305</span><span class="p">,</span>
+    <span class="s">&quot;output&quot;</span><span class="o">:</span> <span class="s">&quot;818703881f3468e5891afcbf863c856659c62e3f&quot;</span><span class="p">,</span>
+    <span class="s">&quot;headerTable&quot;</span><span class="o">:</span> <span class="p">{</span>
+      <span class="s">&quot;entries&quot;</span><span class="o">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;user-agent&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">49</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:path&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">38</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:authority&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">53</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:scheme&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">44</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">4</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">42</span>
+        <span class="p">}</span>
+      <span class="p">],</span>
+      <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">226</span><span class="p">,</span>
+      <span class="s">&quot;maxSize&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
+      <span class="s">&quot;localSize&quot;</span><span class="o">:</span> <span class="mi">226</span><span class="p">,</span>
+      <span class="s">&quot;maxLocalSize&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+    <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+    <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s">&quot;inputLen&quot;</span><span class="o">:</span> <span class="mi">74</span><span class="p">,</span>
+    <span class="s">&quot;outputLength&quot;</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s">&quot;percentageOfOriginalSize&quot;</span><span class="o">:</span> <span class="mf">13.513513513513514</span><span class="p">,</span>
+    <span class="s">&quot;output&quot;</span><span class="o">:</span> <span class="s">&quot;87038504252dd5918386&quot;</span><span class="p">,</span>
+    <span class="s">&quot;headerTable&quot;</span><span class="o">:</span> <span class="p">{</span>
+      <span class="s">&quot;entries&quot;</span><span class="o">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:path&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;/account&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">45</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;POST&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">43</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;user-agent&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">49</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:path&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">false</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">38</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">4</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:authority&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">53</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">5</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:scheme&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">44</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+          <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">6</span><span class="p">,</span>
+          <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span>
+          <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span><span class="p">,</span>
+          <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">false</span><span class="p">,</span>
+          <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">42</span>
+        <span class="p">}</span>
+      <span class="p">],</span>
+      <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">314</span><span class="p">,</span>
+      <span class="s">&quot;maxSize&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
+      <span class="s">&quot;localSize&quot;</span><span class="o">:</span> <span class="mi">314</span><span class="p">,</span>
+      <span class="s">&quot;maxLocalSize&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="inflatehd-header-decompressor">
+<h3>inflatehd - header decompressor<a class="headerlink" href="#inflatehd-header-decompressor" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> reads JSON array from stdin and outputs decompressed
+name/value pairs in JSON array.  The element of input array must be a
+JSON object. Each object must have at least following key:</p>
+<dl class="docutils">
+<dt>output</dt>
+<dd>compressed header block in hex string.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="p">[</span>
+  <span class="p">{</span> <span class="s">&quot;output&quot;</span><span class="o">:</span> <span class="s">&quot;0284f77778ff&quot;</span> <span class="p">},</span>
+  <span class="p">{</span> <span class="s">&quot;output&quot;</span><span class="o">:</span> <span class="s">&quot;0185fafd3c3c7f81&quot;</span> <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>The output is a JSON array and each element is JSON object, which has
+at least following keys:</p>
+<dl class="docutils">
+<dt>seq</dt>
+<dd>The index of header set in the input.</dd>
+<dt>headers</dt>
+<dd>The JSON array contains decompressed name/value pairs. Each
+element is JSON aray having 2 elements. The index 0 of the array
+contains the header field name. The index 1 contains the header
+field value.</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="p">[</span>
+  <span class="p">{</span>
+    <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="p">[</span><span class="s">&quot;:authority&quot;</span><span class="p">,</span> <span class="s">&quot;example.org&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;:method&quot;</span><span class="p">,</span> <span class="s">&quot;GET&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;:path&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;:scheme&quot;</span><span class="p">,</span> <span class="s">&quot;https&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;user-agent&quot;</span><span class="p">,</span> <span class="s">&quot;nghttp2&quot;</span><span class="p">]</span>
+    <span class="p">]</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+    <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="p">[</span><span class="s">&quot;:authority&quot;</span><span class="p">,</span> <span class="s">&quot;example.org&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;:method&quot;</span><span class="p">,</span> <span class="s">&quot;POST&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;:path&quot;</span><span class="p">,</span> <span class="s">&quot;/account&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;:scheme&quot;</span><span class="p">,</span> <span class="s">&quot;https&quot;</span><span class="p">],</span>
+      <span class="p">[</span><span class="s">&quot;user-agent&quot;</span><span class="p">,</span> <span class="s">&quot;nghttp2&quot;</span><span class="p">]</span>
+    <span class="p">]</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>The output can be used as the input for <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
+<p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">headerTable</span></tt> key is added and its
+associated value contains the state of dyanmic header table after the
+corresponding header set was processed. The format is the same as
+<tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
+</div>
+</div>
 </div>
 
 
@@ -519,6 +808,11 @@ the outside HTTP/2.0 proxy through HTTP proxy:</p>
 <li><a class="reference internal" href="#nghttp-client">nghttp - client</a></li>
 <li><a class="reference internal" href="#nghttpd-server">nghttpd - server</a></li>
 <li><a class="reference internal" href="#nghttpx-proxy">nghttpx - proxy</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#header-compression-test-tools">Header compression test tools</a><ul>
+<li><a class="reference internal" href="#deflatehd-header-compressor">deflatehd - header compressor</a></li>
+<li><a class="reference internal" href="#inflatehd-header-decompressor">inflatehd - header decompressor</a></li>
 </ul>
 </li>
 </ul>
