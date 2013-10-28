@@ -22,6 +22,7 @@ HPACK-draft-04             Done
 SETTINGS_HEADER_TABLE_SIZE Done
 SETTINGS_ENABLE_PUSH
 FRAME_SIZE_ERROR           Done
+SETTINGS with ACK          Done
 Header Continuation
 ALPN
 ========================== =================
