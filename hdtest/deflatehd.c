@@ -47,7 +47,7 @@ static void output_to_json(nghttp2_hd_context *deflater,
   json_object_set_new(obj, "seq", json_integer(seq));
   json_object_set_new(obj, "inputLen", json_integer(inputlen));
   json_object_set_new(obj, "outputLength", json_integer(len));
-  json_object_set_new(obj, "PercentageOfOriginalSize",
+  json_object_set_new(obj, "percentageOfOriginalSize",
                       json_real((double)len / inputlen * 100));
   to_hex(hex, buf, len);
   json_object_set_new(obj, "output", json_pack("s#", hex, len * 2));
@@ -234,13 +234,13 @@ static void print_help(void)
          "Example:\n"
          "[\n"
          "  {\n"
-         "   \"headers\": [\n"
+         "    \"headers\": [\n"
          "      [ \":method\", \"GET\" ],\n"
          "      [ \":path\", \"/\" ]\n"
          "    ]\n"
          "  },\n"
          "  {\n"
-         "   \"headers\": [\n"
+         "    \"headers\": [\n"
          "      [ \":method\", \"POST\" ],\n"
          "      [ \":path\", \"/\" ]\n"
          "    ]\n"

@@ -146,7 +146,7 @@ static void print_help(void)
          "Reads JSON array from stdin and outputs inflated name/value pairs\n"
          "in JSON array.\n"
          "The element of input array must be a JSON object. Each object must\n"
-         "have following key:\n"
+         "have at least following key:\n"
          "\n"
          "    output: deflated header block in hex-string.\n"
          "\n"

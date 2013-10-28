@@ -60,7 +60,7 @@ json_t* dump_header_table(nghttp2_hd_context *context)
   if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
     json_object_set_new(obj, "localSize",
                         json_integer(context->local_hd_table_bufsize));
-    json_object_set_new(obj, "localMaxSize",
+    json_object_set_new(obj, "maxLocalSize",
                         json_integer(context->local_hd_table_bufsize_max));
   }
   return obj;
