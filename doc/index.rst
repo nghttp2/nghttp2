@@ -19,8 +19,14 @@ Contents:
    nghttp2.h
    nghttp2ver.h
 
+Released Versions
+=================
+
+* `v0.1.0 <released-versions/v0.1.0/>`_ `(Download) <https://github.com/tatsuhiro-t/nghttp2/releases/tag/v0.1.0>`_
+
+
 Resources
 ---------
 
-* http://tools.ietf.org/html/draft-ietf-httpbis-http2-06
-* http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03
+* http://tools.ietf.org/html/draft-ietf-httpbis-http2-07
+* http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04
