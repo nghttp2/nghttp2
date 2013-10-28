@@ -58,10 +58,10 @@ json_t* dump_header_table(nghttp2_hd_context *context)
   json_object_set_new(obj, "maxSize",
                       json_integer(context->hd_table_bufsize_max));
   if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-    json_object_set_new(obj, "localSize",
-                        json_integer(context->local_hd_table_bufsize));
-    json_object_set_new(obj, "maxLocalSize",
-                        json_integer(context->local_hd_table_bufsize_max));
+    json_object_set_new(obj, "deflateSize",
+                        json_integer(context->deflate_hd_table_bufsize));
+    json_object_set_new(obj, "maxDeflateSize",
+                        json_integer(context->deflate_hd_table_bufsize_max));
   }
   return obj;
 }

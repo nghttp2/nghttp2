@@ -16,7 +16,7 @@
 typedef struct {
   nghttp2_hd_side side;
   size_t table_size;
-  size_t local_table_size;
+  size_t deflate_table_size;
   int http1text;
   int dump_header_table;
 } deflate_config;
@@ -271,7 +271,7 @@ static void print_help(void)
          "                      specification, this value is denoted by\n"
          "                      SETTINGS_HEADER_TABLE_SIZE.\n"
          "                      Default: 4096\n"
-         "    -S, --local-table-size=<N>\n"
+         "    -S, --deflate-table-size=<N>\n"
          "                      Use first N bytes of dynamic header table\n"
          "                      buffer.\n"
          "                      Default: 4096\n"
@@ -283,7 +283,7 @@ static struct option long_options[] = {
   {"response", no_argument, NULL, 'r'},
   {"http1text", no_argument, NULL, 't'},
   {"table-size", required_argument, NULL, 's'},
-  {"local-table-size", required_argument, NULL, 'S'},
+  {"deflate-table-size", required_argument, NULL, 'S'},
   {"dump-header-table", no_argument, NULL, 'd'},
   {NULL, 0, NULL, 0 }
 };
@@ -295,7 +295,7 @@ int main(int argc, char **argv)
 
   config.side = NGHTTP2_HD_SIDE_REQUEST;
   config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
-  config.local_table_size = NGHTTP2_HD_DEFAULT_LOCAL_MAX_BUFFER_SIZE;
+  config.deflate_table_size = NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE;
   config.http1text = 0;
   config.dump_header_table = 0;
   while(1) {
@@ -325,8 +325,8 @@ int main(int argc, char **argv)
       }
       break;
     case 'S':
-      /* --local-table-size */
-      config.local_table_size = strtoul(optarg, &end, 10);
+      /* --deflate-table-size */
+      config.deflate_table_size = strtoul(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0') {
         fprintf(stderr, "-S: Bad option value\n");
         exit(EXIT_FAILURE);
@@ -342,7 +342,7 @@ int main(int argc, char **argv)
       break;
     }
   }
-  nghttp2_hd_deflate_init2(&deflater, config.side, config.local_table_size);
+  nghttp2_hd_deflate_init2(&deflater, config.side, config.deflate_table_size);
   nghttp2_hd_change_table_size(&deflater, config.table_size);
   if(config.http1text) {
     perform_from_http1text(&deflater);

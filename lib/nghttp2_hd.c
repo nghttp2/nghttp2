@@ -31,7 +31,7 @@
 #include "nghttp2_helper.h"
 
 /* Make scalar initialization form of nghttp2_nv */
-#define MAKE_NV(N, V) \
+#define MAKE_NV(N, V)                                           \
   { { (uint8_t*)N, (uint8_t*)V, sizeof(N) - 1, sizeof(V) - 1 }, \
       1, NGHTTP2_HD_FLAG_NONE }
 
@@ -245,7 +245,7 @@ static void nghttp2_hd_ringbuf_pop_back(nghttp2_hd_ringbuf *ringbuf)
 static int nghttp2_hd_context_init(nghttp2_hd_context *context,
                                    nghttp2_hd_role role,
                                    nghttp2_hd_side side,
-                                   size_t local_hd_table_bufsize_max)
+                                   size_t deflate_hd_table_bufsize_max)
 {
   int rv;
   context->role = role;
@@ -281,9 +281,9 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
     context->buf_track = NULL;
     context->buf_track_capacity = 0;
   }
-  context->local_hd_table_bufsize_max = local_hd_table_bufsize_max;
-  context->local_hd_table_bufsize = 0;
-  context->local_hd_tablelen = 0;
+  context->deflate_hd_table_bufsize_max = deflate_hd_table_bufsize_max;
+  context->deflate_hd_table_bufsize = 0;
+  context->deflate_hd_tablelen = 0;
   context->emit_setlen = 0;
   context->buf_tracklen = 0;
   context->hd_table_bufsize = 0;
@@ -298,15 +298,15 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
 int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater, nghttp2_hd_side side)
 {
   return nghttp2_hd_context_init(deflater, NGHTTP2_HD_ROLE_DEFLATE, side,
-                                 NGHTTP2_HD_DEFAULT_LOCAL_MAX_BUFFER_SIZE);
+                                 NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE);
 }
 
 int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
                              nghttp2_hd_side side,
-                             size_t local_hd_table_bufsize_max)
+                             size_t deflate_hd_table_bufsize_max)
 {
   return nghttp2_hd_context_init(deflater, NGHTTP2_HD_ROLE_DEFLATE, side,
-                                 local_hd_table_bufsize_max);
+                                 deflate_hd_table_bufsize_max);
 }
 
 int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater, nghttp2_hd_side side)
@@ -706,10 +706,10 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     nghttp2_hd_entry* ent = nghttp2_hd_ringbuf_get(&context->hd_table, index);
     context->hd_table_bufsize -= entry_room(ent->nv.namelen, ent->nv.valuelen);
     if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-      if(context->hd_table_bufsize < context->local_hd_table_bufsize) {
-        context->local_hd_table_bufsize -= entry_room(ent->nv.namelen,
-                                                      ent->nv.valuelen);
-        --context->local_hd_tablelen;
+      if(context->hd_table_bufsize < context->deflate_hd_table_bufsize) {
+        context->deflate_hd_table_bufsize -= entry_room(ent->nv.namelen,
+                                                        ent->nv.valuelen);
+        --context->deflate_hd_tablelen;
       }
       if(ent->flags & NGHTTP2_HD_FLAG_IMPLICIT_EMIT) {
         /* Emit common header just before it slips away from the
@@ -728,15 +728,15 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     }
   }
   if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-    while(context->local_hd_table_bufsize + room >
-          context->local_hd_table_bufsize_max
-          && context->local_hd_tablelen > 0) {
-      size_t index = context->local_hd_tablelen - 1;
+    while(context->deflate_hd_table_bufsize + room >
+          context->deflate_hd_table_bufsize_max
+          && context->deflate_hd_tablelen > 0) {
+      size_t index = context->deflate_hd_tablelen - 1;
       nghttp2_hd_entry *ent =
         nghttp2_hd_ringbuf_get(&context->hd_table, index);
-      context->local_hd_table_bufsize -= entry_room(ent->nv.namelen,
-                                                    ent->nv.valuelen);
-      --context->local_hd_tablelen;
+      context->deflate_hd_table_bufsize -= entry_room(ent->nv.namelen,
+                                                      ent->nv.valuelen);
+      --context->deflate_hd_tablelen;
       if(ent->flags & NGHTTP2_HD_FLAG_IMPLICIT_EMIT) {
         /* Just like a normal eviction, implicit header must be
            emitted twice. */
@@ -775,7 +775,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
   }
 
   if(context->role == NGHTTP2_HD_ROLE_DEFLATE &&
-     room > context->local_hd_table_bufsize_max) {
+     room > context->deflate_hd_table_bufsize_max) {
     uint8_t flags = entry_flags &
       ~(NGHTTP2_HD_FLAG_NAME_ALLOC | NGHTTP2_HD_FLAG_VALUE_ALLOC |
         NGHTTP2_HD_FLAG_NAME_GIFT | NGHTTP2_HD_FLAG_VALUE_GIFT);
@@ -814,9 +814,9 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
     nghttp2_hd_ringbuf_push_front(&context->hd_table, new_ent);
     if(context->role == NGHTTP2_HD_ROLE_DEFLATE &&
-       room <= context->local_hd_table_bufsize_max) {
-      context->local_hd_table_bufsize += room;
-      ++context->local_hd_tablelen;
+       room <= context->deflate_hd_table_bufsize_max) {
+      context->deflate_hd_table_bufsize += room;
+      ++context->deflate_hd_tablelen;
     }
   }
   return new_ent;
@@ -826,7 +826,7 @@ static ssize_t find_in_hd_table(nghttp2_hd_context *context, nghttp2_nv *nv)
 {
   size_t i;
   size_t max = context->role == NGHTTP2_HD_ROLE_DEFLATE ?
-    context->local_hd_tablelen : context->hd_table.len;
+    context->deflate_hd_tablelen : context->hd_table.len;
   for(i = 0; i < max; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&context->hd_table, i);
     if(nghttp2_nv_equal(&ent->nv, nv)) {
@@ -847,7 +847,7 @@ static ssize_t find_name_in_hd_table(nghttp2_hd_context *context,
 {
   size_t i;
   size_t max = context->role == NGHTTP2_HD_ROLE_DEFLATE ?
-    context->local_hd_tablelen : context->hd_table.len;
+    context->deflate_hd_tablelen : context->hd_table.len;
   for(i = 0; i < max; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&context->hd_table, i);
     if(ent->nv.namelen == nv->namelen &&
@@ -881,10 +881,10 @@ int nghttp2_hd_change_table_size(nghttp2_hd_context *context,
     nghttp2_hd_entry* ent = nghttp2_hd_ringbuf_get(&context->hd_table, index);
     context->hd_table_bufsize -= entry_room(ent->nv.namelen, ent->nv.valuelen);
     if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-      if(context->hd_table_bufsize < context->local_hd_table_bufsize) {
-        context->local_hd_table_bufsize -= entry_room(ent->nv.namelen,
-                                                      ent->nv.valuelen);
-        --context->local_hd_tablelen;
+      if(context->hd_table_bufsize < context->deflate_hd_table_bufsize) {
+        context->deflate_hd_table_bufsize -= entry_room(ent->nv.namelen,
+                                                        ent->nv.valuelen);
+        --context->deflate_hd_tablelen;
       }
     }
     nghttp2_hd_ringbuf_pop_back(&context->hd_table);
@@ -940,7 +940,7 @@ static int deflate_nv(nghttp2_hd_context *deflater,
         new_ent = NULL;
       } else if(new_ent->nv.name != NULL) {
         /* new_ent->ref > 0 and nv.name is not NULL means that new_ent is
-           in the reference set and in local_hd_table_bufsize */
+           in the reference set and in deflate_hd_table_bufsize */
         new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
       }
       rv = emit_indexed_block(buf_ptr, buflen_ptr, offset_ptr, index);
@@ -1015,7 +1015,7 @@ static int deflate_nv(nghttp2_hd_context *deflater,
         free(new_ent);
       } else if(new_ent->nv.name != NULL) {
         /* new_ent->ref > 0 and nv.name is not NULL means that new_ent is
-           in the reference set and in local_hd_table_bufsize */
+           in the reference set and in deflate_hd_table_bufsize */
         new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
       }
       incidx = 1;

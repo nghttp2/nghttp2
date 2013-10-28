@@ -41,7 +41,7 @@
 /* Default size of maximum table buffer size for encoder. Even if
    remote decoder notifies larger buffer size for its decoding,
    encoder only uses the memory up to this value. */
-#define NGHTTP2_HD_DEFAULT_LOCAL_MAX_BUFFER_SIZE (1 << 12)
+#define NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE (1 << 12)
 
 typedef enum {
   NGHTTP2_HD_SIDE_REQUEST = 0,
@@ -96,18 +96,18 @@ typedef struct {
   size_t hd_table_bufsize_max;
   /* The current effective header table size for encoding. This value
      is meaningful iff this context is initialized as
-     encoder. |local_hd_table_bufsize| <= |hd_table_bufsize| must be
+     encoder. |deflate_hd_table_bufsize| <= |hd_table_bufsize| must be
      hold. */
-  size_t local_hd_table_bufsize;
+  size_t deflate_hd_table_bufsize;
   /* The maximum effective header table for encoding. Although header
      table size is bounded by |hd_table_bufsize_max|, the encoder can
      use smaller buffer by not retaining the header name/values beyond
-     the |local_hd_table_bufsize_max| and not referencing those
+     the |deflate_hd_table_bufsize_max| and not referencing those
      entries. This value is meaningful iff this context is initialized
      as encoder. */
-  size_t local_hd_table_bufsize_max;
+  size_t deflate_hd_table_bufsize_max;
   /* The number of effective entry in |hd_table|. */
-  size_t local_hd_tablelen;
+  size_t deflate_hd_tablelen;
   /* Holding emitted entry in deflating header block to retain
      reference count. */
   nghttp2_hd_entry **emit_set;
@@ -159,7 +159,7 @@ void nghttp2_hd_entry_free(nghttp2_hd_entry *ent);
  * Initializes |deflater| for deflating name/values pairs.
  *
  * The encoder only uses up to
- * NGHTTP2_HD_DEFAULT_LOCAL_MAX_BUFFER_SIZE bytes for header table
+ * NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE bytes for header table
  * even if the larger value is specified later in
  * nghttp2_hd_change_table_size().
  *
@@ -175,8 +175,8 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
 /*
  * Initializes |deflater| for deflating name/values pairs.
  *
- * The encoder only uses up to |local_hd_table_bufsize_max| bytes for
- * header table even if the larger value is specified later in
+ * The encoder only uses up to |deflate_hd_table_bufsize_max| bytes
+ * for header table even if the larger value is specified later in
  * nghttp2_hd_change_table_size().
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -187,7 +187,7 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
  */
 int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
                              nghttp2_hd_side side,
-                             size_t local_hd_table_bufsize_max);
+                             size_t deflate_hd_table_bufsize_max);
 
 /*
  * Initializes |inflater| for inflating name/values pairs.

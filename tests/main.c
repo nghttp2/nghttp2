@@ -229,8 +229,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_deflate_same_indexed_repr) ||
       !CU_add_test(pSuite, "hd_deflate_common_header_eviction",
                    test_nghttp2_hd_deflate_common_header_eviction) ||
-      !CU_add_test(pSuite, "hd_deflate_local_buffer",
-                   test_nghttp2_hd_deflate_local_buffer) ||
+      !CU_add_test(pSuite, "hd_deflate_deflate_buffer",
+                   test_nghttp2_hd_deflate_deflate_buffer) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc",
                    test_nghttp2_hd_inflate_indname_inc) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc_eviction",

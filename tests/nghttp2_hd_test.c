@@ -247,7 +247,7 @@ void test_nghttp2_hd_deflate_common_header_eviction(void)
   nghttp2_hd_deflate_free(&deflater);
 }
 
-void test_nghttp2_hd_deflate_local_buffer(void)
+void test_nghttp2_hd_deflate_deflate_buffer(void)
 {
   nghttp2_hd_context deflater, inflater;
   size_t i;
@@ -275,7 +275,7 @@ void test_nghttp2_hd_deflate_local_buffer(void)
   nv3.namelen = nv3.valuelen = sizeof(val);
 
   /* Check the case where entry from static table is inserted to
-     dynamic header table. And it is out of local header table
+     dynamic header table. And it is out of deflate header table
      size. */
   nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST, 32);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
@@ -290,8 +290,8 @@ void test_nghttp2_hd_deflate_local_buffer(void)
    * name/value of all entries must be NULL.
    */
   CU_ASSERT(2 == deflater.hd_table.len);
-  CU_ASSERT(0 == deflater.local_hd_tablelen);
-  CU_ASSERT(0 == deflater.local_hd_table_bufsize);
+  CU_ASSERT(0 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(0 == deflater.deflate_hd_table_bufsize);
   for(i = 0; i < 2; ++i) {
     ent = nghttp2_hd_table_get(&deflater, i);
     CU_ASSERT(ent->nv.name == NULL);
@@ -308,7 +308,7 @@ void test_nghttp2_hd_deflate_local_buffer(void)
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_hd_inflate_free(&inflater);
 
-  /* 156 buffer size can hold all headers in local region */
+  /* 156 buffer size can hold all headers in deflate region */
   nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST,
                            156);
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0,
@@ -322,8 +322,8 @@ void test_nghttp2_hd_deflate_local_buffer(void)
    *  3: k1, v1
    */
   CU_ASSERT(4 == deflater.hd_table.len);
-  CU_ASSERT(4 == deflater.local_hd_tablelen);
-  CU_ASSERT(156 == deflater.local_hd_table_bufsize);
+  CU_ASSERT(4 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(156 == deflater.deflate_hd_table_bufsize);
   for(i = 0; i < 4; ++i) {
     CU_ASSERT(nghttp2_hd_table_get(&deflater, i)->nv.name != NULL);
     CU_ASSERT(nghttp2_hd_table_get(&deflater, i)->nv.value != NULL);
@@ -331,15 +331,15 @@ void test_nghttp2_hd_deflate_local_buffer(void)
 
   CU_ASSERT(0 == nghttp2_hd_change_table_size(&deflater, 156));
   CU_ASSERT(4 == deflater.hd_table.len);
-  CU_ASSERT(4 == deflater.local_hd_tablelen);
-  CU_ASSERT(156 == deflater.local_hd_table_bufsize);
+  CU_ASSERT(4 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(156 == deflater.deflate_hd_table_bufsize);
 
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, &nv3, 1);
   CU_ASSERT(blocklen > 0);
   /* Now header table should be empty */
   CU_ASSERT(0 == deflater.hd_table.len);
-  CU_ASSERT(0 == deflater.local_hd_tablelen);
-  CU_ASSERT(0 == deflater.local_hd_table_bufsize);
+  CU_ASSERT(0 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(0 == deflater.deflate_hd_table_bufsize);
 
   nghttp2_hd_deflate_free(&deflater);
 
@@ -357,12 +357,12 @@ void test_nghttp2_hd_deflate_local_buffer(void)
    *  2: k10, v10 (R)
    *  3: k1, v1 (-)  <- name, value must be NULL and not in reference set
    *
-   * But due to the local table size limit, name/value of index=3 must
+   * But due to the deflate table size limit, name/value of index=3 must
    * be NULL.
    */
   CU_ASSERT(4 == deflater.hd_table.len);
-  CU_ASSERT(3 == deflater.local_hd_tablelen);
-  CU_ASSERT(120 == deflater.local_hd_table_bufsize);
+  CU_ASSERT(3 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(120 == deflater.deflate_hd_table_bufsize);
   for(i = 0; i < 3; ++i) {
     CU_ASSERT(nghttp2_hd_table_get(&deflater, i)->nv.name != NULL);
     CU_ASSERT(nghttp2_hd_table_get(&deflater, i)->nv.value != NULL);
@@ -390,8 +390,8 @@ void test_nghttp2_hd_deflate_local_buffer(void)
    *  4: k1, v1   (-) <- name, value must be NULL
    */
   CU_ASSERT(5 == deflater.hd_table.len);
-  CU_ASSERT(3 == deflater.local_hd_tablelen);
-  CU_ASSERT(118 == deflater.local_hd_table_bufsize);
+  CU_ASSERT(3 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(118 == deflater.deflate_hd_table_bufsize);
   ent = nghttp2_hd_table_get(&deflater, 3);
   CU_ASSERT(0 == (ent->flags & NGHTTP2_HD_FLAG_REFSET));
   ent = nghttp2_hd_table_get(&deflater, 3);
@@ -419,8 +419,8 @@ void test_nghttp2_hd_deflate_local_buffer(void)
    *  name/value of all entries must be NULL.
    */
   CU_ASSERT(6 == deflater.hd_table.len);
-  CU_ASSERT(0 == deflater.local_hd_tablelen);
-  CU_ASSERT(0 == deflater.local_hd_table_bufsize);
+  CU_ASSERT(0 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(0 == deflater.deflate_hd_table_bufsize);
   for(i = 0; i < 6; ++i) {
     ent = nghttp2_hd_table_get(&deflater, i);
     CU_ASSERT(0 == (ent->flags & NGHTTP2_HD_FLAG_REFSET));
@@ -601,14 +601,14 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(0 == nghttp2_hd_change_table_size(&deflater, 16384));
   CU_ASSERT(511 == deflater.hd_table.mask);
   CU_ASSERT(2 == deflater.hd_table.len);
-  CU_ASSERT(2 == deflater.local_hd_tablelen);
+  CU_ASSERT(2 == deflater.deflate_hd_tablelen);
   CU_ASSERT(5 ==
             deflater.hd_table.buffer[deflater.hd_table.first]->nv.namelen);
 
   CU_ASSERT(0 == nghttp2_hd_change_table_size(&deflater, 0));
   CU_ASSERT(511 == deflater.hd_table.mask);
   CU_ASSERT(0 == deflater.hd_table.len);
-  CU_ASSERT(0 == deflater.local_hd_tablelen);
+  CU_ASSERT(0 == deflater.deflate_hd_tablelen);
 
   free(buf);
   nghttp2_hd_deflate_free(&deflater);
