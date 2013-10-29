@@ -267,9 +267,19 @@ void on_data_chunk_recv_callback(spdylay_session *session,
         return;
       }
     }
-    if(flags & SPDYLAY_DATA_FLAG_FIN) {
-      downstream->set_request_state(Downstream::MSG_COMPLETE);
-    }
+  }
+}
+} // namespace
+
+namespace {
+void on_data_recv_callback(spdylay_session *session, uint8_t flags,
+                           int32_t stream_id, int32_t length, void *user_data)
+{
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto downstream = upstream->find_downstream(stream_id);
+  if(downstream && (flags & SPDYLAY_DATA_FLAG_FIN)) {
+    downstream->end_upload_data();
+    downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
 }
 } // namespace
@@ -357,6 +367,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_ctrl_recv_callback = on_ctrl_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_data_recv_callback = on_data_recv_callback;
   callbacks.on_ctrl_not_send_callback = on_ctrl_not_send_callback;
   callbacks.on_ctrl_recv_parse_error_callback =
     on_ctrl_recv_parse_error_callback;

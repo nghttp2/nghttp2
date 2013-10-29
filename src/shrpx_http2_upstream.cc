@@ -310,9 +310,21 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     if(upstream->get_flow_control()) {
       downstream->inc_recv_window_size(len);
     }
-    if(flags & NGHTTP2_FLAG_END_STREAM) {
-      downstream->set_request_state(Downstream::MSG_COMPLETE);
-    }
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_data_recv_callback(nghttp2_session *session,
+                          uint16_t length, uint8_t flags, int32_t stream_id,
+                          void *user_data)
+{
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto downstream = upstream->find_downstream(stream_id);
+  if(downstream && (flags & NGHTTP2_FLAG_END_STREAM)) {
+    downstream->end_upload_data();
+    downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
   return 0;
 }
@@ -402,6 +414,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_data_recv_callback = on_data_recv_callback;
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
   callbacks.on_frame_recv_parse_error_callback =
     on_frame_recv_parse_error_callback;
