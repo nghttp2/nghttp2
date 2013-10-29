@@ -58,7 +58,7 @@ public:
   nghttp2_session* get_spdy_session();
 
   int rst_stream(Downstream *downstream, nghttp2_error_code error_code);
-  int window_update(Downstream *downstream);
+  int window_update(Downstream *downstream, int32_t window_size_increment);
   int error_reply(Downstream *downstream, unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);

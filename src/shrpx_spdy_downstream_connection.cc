@@ -442,14 +442,20 @@ int SpdyDownstreamConnection::resume_read(IOCtrlReason reason)
   int rv;
   if(spdy_->get_state() == SpdySession::CONNECTED &&
      spdy_->get_flow_control() &&
-     downstream_ && downstream_->get_downstream_stream_id() != -1 &&
-     recv_window_size_ >= spdy_->get_initial_window_size()/2) {
-    rv = spdy_->submit_window_update(this, recv_window_size_);
-    if(rv == -1) {
-      return -1;
+     downstream_ && downstream_->get_downstream_stream_id() != -1) {
+    int32_t recv_length, window_size;
+    recv_length = spdy_->get_stream_effective_recv_data_length
+      (downstream_->get_stream_id());
+    window_size = spdy_->get_stream_effective_local_window_size
+      (downstream_->get_stream_id());
+    if(recv_length >= window_size / 2) {
+      rv = spdy_->submit_window_update(this, recv_length);
+      if(rv == -1) {
+        return -1;
+      }
+      spdy_->notify();
+      recv_window_size_ = 0;
     }
-    spdy_->notify();
-    recv_window_size_ = 0;
   }
   return 0;
 }

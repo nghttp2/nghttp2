@@ -3571,6 +3571,31 @@ size_t nghttp2_session_get_outbound_queue_size(nghttp2_session *session)
   return nghttp2_pq_size(&session->ob_pq)+nghttp2_pq_size(&session->ob_ss_pq);
 }
 
+int32_t nghttp2_session_get_stream_effective_recv_data_length
+(nghttp2_session *session, int32_t stream_id)
+{
+  nghttp2_stream *stream;
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return -1;
+  }
+  if(stream->local_flow_control == 0) {
+    return 0;
+  }
+  return stream->recv_window_size;
+}
+
+int32_t nghttp2_session_get_stream_effective_local_window_size
+(nghttp2_session *session, int32_t stream_id)
+{
+  nghttp2_stream *stream;
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return -1;
+  }
+  return stream->local_window_size;
+}
+
 int nghttp2_session_set_option(nghttp2_session *session,
                                int optname, void *optval, size_t optlen)
 {

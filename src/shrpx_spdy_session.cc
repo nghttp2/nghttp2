@@ -618,6 +618,18 @@ int32_t SpdySession::get_initial_window_size() const
   return (1 << get_config()->spdy_downstream_window_bits) - 1;
 }
 
+int32_t SpdySession::get_stream_effective_recv_data_length(int32_t stream_id)
+{
+  return nghttp2_session_get_stream_effective_recv_data_length
+    (session_, stream_id);
+}
+
+int32_t SpdySession::get_stream_effective_local_window_size(int32_t stream_id)
+{
+  return nghttp2_session_get_stream_effective_local_window_size
+    (session_, stream_id);
+}
+
 bool SpdySession::get_flow_control() const
 {
   return flow_control_;

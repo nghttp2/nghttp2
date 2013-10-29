@@ -723,12 +723,13 @@ int Http2Upstream::rst_stream(Downstream *downstream,
   return 0;
 }
 
-int Http2Upstream::window_update(Downstream *downstream)
+int Http2Upstream::window_update(Downstream *downstream,
+                                 int32_t window_size_increment)
 {
   int rv;
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
                                     downstream->get_stream_id(),
-                                    downstream->get_recv_window_size());
+                                    window_size_increment);
   downstream->set_recv_window_size(0);
   if(rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_window_update() failed: "
@@ -962,8 +963,15 @@ void Http2Upstream::pause_read(IOCtrlReason reason)
 int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 {
   if(get_flow_control()) {
-    if(downstream->get_recv_window_size() >= get_initial_window_size()/2) {
-      window_update(downstream);
+    int32_t recv_length, window_size;
+    recv_length = nghttp2_session_get_stream_effective_recv_data_length
+      (session_, downstream->get_stream_id());
+    window_size = nghttp2_session_get_stream_effective_local_window_size
+      (session_, downstream->get_stream_id());
+    if(recv_length != -1 && window_size != -1) {
+      if(recv_length >= window_size / 2) {
+        window_update(downstream, recv_length);
+      }
     }
   }
   return send();

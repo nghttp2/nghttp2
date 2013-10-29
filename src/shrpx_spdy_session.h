@@ -74,6 +74,9 @@ public:
 
   int32_t get_initial_window_size() const;
 
+  int32_t get_stream_effective_recv_data_length(int32_t stream_id);
+  int32_t get_stream_effective_local_window_size(int32_t stream_id);
+
   bool get_flow_control() const;
 
   int resume_data(SpdyDownstreamConnection *dconn);
