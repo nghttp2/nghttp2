@@ -51,8 +51,7 @@ SpdyDownstreamConnection::SpdyDownstreamConnection
   : DownstreamConnection(client_handler),
     spdy_(client_handler->get_spdy_session()),
     request_body_buf_(0),
-    sd_(0),
-    recv_window_size_(0)
+    sd_(0)
 {}
 
 SpdyDownstreamConnection::~SpdyDownstreamConnection()
@@ -112,7 +111,6 @@ int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
   }
   downstream->set_downstream_connection(this);
   downstream_ = downstream;
-  recv_window_size_ = 0;
   return 0;
 }
 
@@ -454,7 +452,6 @@ int SpdyDownstreamConnection::resume_read(IOCtrlReason reason)
         return -1;
       }
       spdy_->notify();
-      recv_window_size_ = 0;
     }
   }
   return 0;
@@ -507,16 +504,6 @@ bool SpdyDownstreamConnection::get_output_buffer_full()
   } else {
     return false;
   }
-}
-
-int32_t SpdyDownstreamConnection::get_recv_window_size() const
-{
-  return recv_window_size_;
-}
-
-void SpdyDownstreamConnection::inc_recv_window_size(int32_t amount)
-{
-  recv_window_size_ += amount;
 }
 
 } // namespace shrpx

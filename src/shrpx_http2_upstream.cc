@@ -307,9 +307,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
       return 0;
     }
-    if(upstream->get_flow_control()) {
-      downstream->inc_recv_window_size(len);
-    }
   }
   return 0;
 }
@@ -730,7 +727,6 @@ int Http2Upstream::window_update(Downstream *downstream,
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
                                     downstream->get_stream_id(),
                                     window_size_increment);
-  downstream->set_recv_window_size(0);
   if(rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_window_update() failed: "
                       << nghttp2_strerror(rv);
