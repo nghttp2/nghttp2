@@ -1821,6 +1821,58 @@ include the deferred DATA frames.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="nghttp2_session_get_stream_effective_recv_data_length">
+int32_t <tt class="descname">nghttp2_session_get_stream_effective_recv_data_length</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em><big>)</big><a class="headerlink" href="#nghttp2_session_get_stream_effective_recv_data_length" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of DATA payload in bytes received without
+WINDOW_UPDATE transmission for the stream <em>stream_id</em>. The local
+(receive) window size can be adjusted by
+<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. This function takes into account
+that and returns effective data length. In particular, if the
+local window size is reduced by submitting negative
+window_size_increment with <a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>, this
+function returns the number of bytes less than actually received.</p>
+<p>If flow control is disabled for that stream, this function returns
+0.</p>
+<p>This function returns -1 if it fails.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_session_get_stream_effective_local_window_size">
+int32_t <tt class="descname">nghttp2_session_get_stream_effective_local_window_size</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em><big>)</big><a class="headerlink" href="#nghttp2_session_get_stream_effective_local_window_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the local (receive) window size for the stream
+<em>stream_id</em>. The local window size can be adjusted by
+<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. This function takes into account
+that and returns effective window size.</p>
+<p>This function returns -1 if it fails.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_session_get_effective_recv_data_length">
+int32_t <tt class="descname">nghttp2_session_get_effective_recv_data_length</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em><big>)</big><a class="headerlink" href="#nghttp2_session_get_effective_recv_data_length" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of DATA payload in bytes received without
+WINDOW_UPDATE transmission for a connection. The local (receive)
+window size can be adjusted by
+<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. This function takes into account
+that and returns effective data length. In particular, if the local
+window size is reduced by submitting negative window_size_increment
+with <a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>, this function returns the
+number of bytes less than actually received.</p>
+<p>If flow control is disabled for a connection, this function returns
+0.</p>
+<p>This function returns -1 if it fails.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_session_get_effective_local_window_size">
+int32_t <tt class="descname">nghttp2_session_get_effective_local_window_size</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em><big>)</big><a class="headerlink" href="#nghttp2_session_get_effective_local_window_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the local (receive) window size for a connection. The local
+window size can be adjusted by
+<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. This function takes into account
+that and returns effective window size.</p>
+<p>This function returns -1 if it fails.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="nghttp2_session_fail_session">
 int <tt class="descname">nghttp2_session_fail_session</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em><big>)</big><a class="headerlink" href="#nghttp2_session_fail_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits GOAWAY frame with the given <em>error_code</em>.</p>

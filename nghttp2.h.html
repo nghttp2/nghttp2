@@ -1609,6 +1609,72 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
+<span class="cm"> * Returns the number of DATA payload in bytes received without</span>
+<span class="cm"> * WINDOW_UPDATE transmission for the stream |stream_id|. The local</span>
+<span class="cm"> * (receive) window size can be adjusted by</span>
+<span class="cm"> * `nghttp2_submit_window_update()`. This function takes into account</span>
+<span class="cm"> * that and returns effective data length. In particular, if the</span>
+<span class="cm"> * local window size is reduced by submitting negative</span>
+<span class="cm"> * window_size_increment with `nghttp2_submit_window_update()`, this</span>
+<span class="cm"> * function returns the number of bytes less than actually received.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If flow control is disabled for that stream, this function returns</span>
+<span class="cm"> * 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns -1 if it fails.</span>
+<span class="cm"> */</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_effective_recv_data_length</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns the local (receive) window size for the stream</span>
+<span class="cm"> * |stream_id|. The local window size can be adjusted by</span>
+<span class="cm"> * `nghttp2_submit_window_update()`. This function takes into account</span>
+<span class="cm"> * that and returns effective window size.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns -1 if it fails.</span>
+<span class="cm"> */</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_effective_local_window_size</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns the number of DATA payload in bytes received without</span>
+<span class="cm"> * WINDOW_UPDATE transmission for a connection. The local (receive)</span>
+<span class="cm"> * window size can be adjusted by</span>
+<span class="cm"> * `nghttp2_submit_window_update()`. This function takes into account</span>
+<span class="cm"> * that and returns effective data length. In particular, if the local</span>
+<span class="cm"> * window size is reduced by submitting negative window_size_increment</span>
+<span class="cm"> * with `nghttp2_submit_window_update()`, this function returns the</span>
+<span class="cm"> * number of bytes less than actually received.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If flow control is disabled for a connection, this function returns</span>
+<span class="cm"> * 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns -1 if it fails.</span>
+<span class="cm"> */</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_effective_recv_data_length</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns the local (receive) window size for a connection. The local</span>
+<span class="cm"> * window size can be adjusted by</span>
+<span class="cm"> * `nghttp2_submit_window_update()`. This function takes into account</span>
+<span class="cm"> * that and returns effective window size.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns -1 if it fails.</span>
+<span class="cm"> */</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_effective_local_window_size</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
 <span class="cm"> * Submits GOAWAY frame with the given |error_code|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function should be called when the connection should be</span>
