@@ -2987,14 +2987,21 @@ static int nghttp2_session_process_data_frame(nghttp2_session *session)
 }
 
 /*
- * If the resulting recv_window_size is strictly larger than
- * NGHTTP2_MAX_WINDOW_SIZE, return NGHTTP2_ERR_FLOW_CONTROL.
+ * Now we have SETTINGS synchronization, flow control error can be
+ * detected strictly. If DATA frame is received with length > 0 and
+ * current received window size is equal to or larger than local
+ * window size (latter happens when we shirnk window size), it is
+ * subject to FLOW_CONTROL_ERROR, so return -1. If the resulting
+ * recv_window_size is strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
+ * return -1 too.
  */
 static int adjust_recv_window_size(int32_t *recv_window_size_ptr,
-                                   int32_t delta)
+                                   int32_t delta,
+                                   int32_t local_window_size)
 {
-  if(*recv_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta) {
-    return NGHTTP2_ERR_FLOW_CONTROL;
+  if(*recv_window_size_ptr >= local_window_size ||
+     *recv_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta) {
+    return -1;
   }
   *recv_window_size_ptr += delta;
   return 0;
@@ -3018,10 +3025,11 @@ static int nghttp2_session_update_recv_stream_window_size
  int32_t delta_size)
 {
   int rv;
-  rv = adjust_recv_window_size(&stream->recv_window_size, delta_size);
+  rv = adjust_recv_window_size(&stream->recv_window_size, delta_size,
+                               stream->local_window_size);
   if(rv != 0) {
     return nghttp2_session_add_rst_stream(session, stream->stream_id,
-                                          NGHTTP2_ERR_FLOW_CONTROL);
+                                          NGHTTP2_FLOW_CONTROL_ERROR);
   }
   if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {
     /* We have to use local_settings here because it is the constraint
@@ -3059,9 +3067,10 @@ static int nghttp2_session_update_recv_connection_window_size
  int32_t delta_size)
 {
   int rv;
-  rv = adjust_recv_window_size(&session->recv_window_size, delta_size);
+  rv = adjust_recv_window_size(&session->recv_window_size, delta_size,
+                               session->local_window_size);
   if(rv != 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_ERR_FLOW_CONTROL);
+    return nghttp2_session_fail_session(session, NGHTTP2_FLOW_CONTROL_ERROR);
   }
   if(!(session->opt_flags &
        NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE)) {
