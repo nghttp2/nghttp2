@@ -309,22 +309,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     }
     if(upstream->get_flow_control()) {
       downstream->inc_recv_window_size(len);
-      // In case that user specified initial window size is smaller
-      // than default one and avoid stream tear down for the first
-      // request due to race condition, we allow at least default
-      // initial window size.
-      if(downstream->get_recv_window_size() >
-         std::max(NGHTTP2_INITIAL_WINDOW_SIZE,
-                  upstream->get_initial_window_size())) {
-        if(LOG_ENABLED(INFO)) {
-          ULOG(INFO, upstream) << "Flow control error: recv_window_size="
-                               << downstream->get_recv_window_size()
-                               << ", initial_window_size="
-                               << upstream->get_initial_window_size();
-        }
-        upstream->rst_stream(downstream, NGHTTP2_FLOW_CONTROL_ERROR);
-        return 0;
-      }
     }
     if(flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->set_request_state(Downstream::MSG_COMPLETE);
