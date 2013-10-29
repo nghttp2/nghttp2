@@ -363,7 +363,7 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
   // Assumes that request headers have already been pushed to output
   // buffer using push_request_headers().
   if(!dconn_) {
-    DLOG(WARNING, this) << "dconn_ is NULL";
+    DLOG(INFO, this) << "dconn_ is NULL";
     return -1;
   }
   request_bodylen_ += datalen;
