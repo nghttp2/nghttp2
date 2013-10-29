@@ -96,6 +96,7 @@ struct Config {
   std::string datafile;
   size_t output_upper_thres;
   ssize_t peer_max_concurrent_streams;
+  ssize_t header_table_size;
   Config()
     : null_out(false),
       remote_name(false),
@@ -110,7 +111,8 @@ struct Config {
       window_bits(-1),
       connection_window_bits(-1),
       output_upper_thres(1024*1024),
-      peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS)
+      peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
+      header_table_size(-1)
   {}
 };
 } // namespace
@@ -361,6 +363,11 @@ size_t populate_settings(nghttp2_settings_entry *iv)
   if(config.no_flow_control) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
     iv[niv].value = 1;
+    ++niv;
+  }
+  if(config.header_table_size >= 0) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+    iv[niv].value = config.header_table_size;
     ++niv;
   }
   return niv;
@@ -1610,6 +1617,8 @@ void print_help(std::ostream& out)
       << "                       value of remote endpoint as if it is\n"
       << "                       received in SETTINGS frame. The default\n"
       << "                       is large enough as it is seen as unlimited.\n"
+      << "    -c, --header-table-size=<N>\n"
+      << "                       Specify decoder header table size.\n"
       << std::endl;
 }
 } // namespace
@@ -1637,11 +1646,13 @@ int main(int argc, char **argv)
       {"upgrade", no_argument, nullptr, 'u'},
       {"pri", required_argument, nullptr, 'p'},
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
+      {"header-table-size", required_argument, nullptr, 'c'},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oad:fm:np:hH:vst:uw:W:", long_options,
+    int c = getopt_long(argc, argv, "M:Oac:d:fm:np:hH:vst:uw:W:", long_options,
                         &option_index);
+    char *end;
     if(c == -1) {
       break;
     }
@@ -1743,6 +1754,13 @@ int main(int argc, char **argv)
       break;
     case 'm':
       config.multiply = strtoul(optarg, nullptr, 10);
+      break;
+    case 'c':
+      config.header_table_size = strtol(optarg, &end, 10);
+      if(errno == ERANGE || *end != '\0') {
+        std::cerr << "-c: Bad option value: " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
       break;
     case '?':
       exit(EXIT_FAILURE);
