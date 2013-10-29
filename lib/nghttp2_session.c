@@ -3596,6 +3596,21 @@ int32_t nghttp2_session_get_stream_effective_local_window_size
   return stream->local_window_size;
 }
 
+int32_t nghttp2_session_get_effective_recv_data_length
+(nghttp2_session *session)
+{
+  if(session->local_flow_control == 0) {
+    return 0;
+  }
+  return session->recv_window_size;
+}
+
+int32_t nghttp2_session_get_effective_local_window_size
+(nghttp2_session *session)
+{
+  return session->local_window_size;
+}
+
 int nghttp2_session_set_option(nghttp2_session *session,
                                int optname, void *optval, size_t optlen)
 {

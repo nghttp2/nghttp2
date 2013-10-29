@@ -70,12 +70,13 @@ public:
 
   int submit_rst_stream(int32_t stream_id, nghttp2_error_code error_code);
 
+  // To send WINDOW_UPDATE for a connection, specify nullptr to
+  // |dconn|.
   int submit_window_update(SpdyDownstreamConnection *dconn, int32_t amount);
 
   int32_t get_initial_window_size() const;
 
-  int32_t get_stream_effective_recv_data_length(int32_t stream_id);
-  int32_t get_stream_effective_local_window_size(int32_t stream_id);
+  nghttp2_session* get_session() const;
 
   bool get_flow_control() const;
 

@@ -333,6 +333,27 @@ void build_http1_headers_from_norm_headers
   }
 }
 
+int32_t determine_window_update_transmission(nghttp2_session *session,
+                                             int32_t stream_id)
+{
+  int32_t recv_length, window_size;
+  if(stream_id == 0) {
+    recv_length = nghttp2_session_get_effective_recv_data_length(session);
+    window_size = nghttp2_session_get_effective_local_window_size(session);
+  } else {
+    recv_length = nghttp2_session_get_stream_effective_recv_data_length
+      (session, stream_id);
+    window_size = nghttp2_session_get_stream_effective_local_window_size
+      (session, stream_id);
+  }
+  if(recv_length != -1 && window_size != -1) {
+    if(recv_length >= window_size / 2) {
+      return recv_length;
+    }
+  }
+  return -1;
+}
+
 } // namespace http2
 
 } // namespace nghttp2

@@ -437,24 +437,30 @@ int SpdyDownstreamConnection::end_upload_data()
 
 int SpdyDownstreamConnection::resume_read(IOCtrlReason reason)
 {
-  int rv;
+  int rv1 = 0, rv2 = 0;
   if(spdy_->get_state() == SpdySession::CONNECTED &&
-     spdy_->get_flow_control() &&
-     downstream_ && downstream_->get_downstream_stream_id() != -1) {
-    int32_t recv_length, window_size;
-    recv_length = spdy_->get_stream_effective_recv_data_length
-      (downstream_->get_stream_id());
-    window_size = spdy_->get_stream_effective_local_window_size
-      (downstream_->get_stream_id());
-    if(recv_length >= window_size / 2) {
-      rv = spdy_->submit_window_update(this, recv_length);
-      if(rv == -1) {
-        return -1;
+     spdy_->get_flow_control()) {
+    int32_t window_size_increment;
+    window_size_increment = http2::determine_window_update_transmission
+      (spdy_->get_session(), 0);
+    if(window_size_increment != -1) {
+      rv1 = spdy_->submit_window_update(nullptr, window_size_increment);
+      if(rv1 == 0) {
+        spdy_->notify();
       }
-      spdy_->notify();
+    }
+    if(downstream_ && downstream_->get_downstream_stream_id() != -1) {
+      window_size_increment = http2::determine_window_update_transmission
+        (spdy_->get_session(), downstream_->get_downstream_stream_id());
+      if(window_size_increment != -1) {
+        rv2 = spdy_->submit_window_update(this, window_size_increment);
+        if(rv2 == 0) {
+          spdy_->notify();
+        }
+      }
     }
   }
-  return 0;
+  return (rv1 == 0 && rv2 == 0) ? 0 : -1;
 }
 
 int SpdyDownstreamConnection::on_read()

@@ -602,7 +602,12 @@ int SpdySession::submit_window_update(SpdyDownstreamConnection *dconn,
 {
   assert(state_ == CONNECTED);
   int rv;
-  auto stream_id = dconn->get_downstream()->get_downstream_stream_id();
+  int32_t stream_id;
+  if(dconn) {
+    stream_id = dconn->get_downstream()->get_downstream_stream_id();
+  } else {
+    stream_id = 0;
+  }
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
                                     stream_id, amount);
   if(rv < NGHTTP2_ERR_FATAL) {
@@ -618,16 +623,9 @@ int32_t SpdySession::get_initial_window_size() const
   return (1 << get_config()->spdy_downstream_window_bits) - 1;
 }
 
-int32_t SpdySession::get_stream_effective_recv_data_length(int32_t stream_id)
+nghttp2_session* SpdySession::get_session() const
 {
-  return nghttp2_session_get_stream_effective_recv_data_length
-    (session_, stream_id);
-}
-
-int32_t SpdySession::get_stream_effective_local_window_size(int32_t stream_id)
-{
-  return nghttp2_session_get_stream_effective_local_window_size
-    (session_, stream_id);
+  return session_;
 }
 
 bool SpdySession::get_flow_control() const
@@ -1077,6 +1075,10 @@ int SpdySession::on_connect()
                                   NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
                                   &val, sizeof(val));
   assert(rv == 0);
+  rv = nghttp2_session_set_option(session_,
+                                  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
+                                  &val, sizeof(val));
+  assert(rv == 0);
 
   nghttp2_settings_entry entry[2];
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
@@ -1087,13 +1089,6 @@ int SpdySession::on_connect()
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry,
                                sizeof(entry)/sizeof(nghttp2_settings_entry));
-  if(rv != 0) {
-    return -1;
-  }
-  // Set large connection-level window size to effectively disable
-  // connection-level flow control.
-  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
-                                    0, 1000000007);
   if(rv != 0) {
     return -1;
   }

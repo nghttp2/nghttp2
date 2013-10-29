@@ -428,6 +428,10 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                                   NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
                                   &val, sizeof(val));
   assert(rv == 0);
+  rv = nghttp2_session_set_option(session_,
+                                  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
+                                  &val, sizeof(val));
+  assert(rv == 0);
 
   // TODO Maybe call from outside?
   nghttp2_settings_entry entry[2];
@@ -440,11 +444,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE,
                                entry,
                                sizeof(entry)/sizeof(nghttp2_settings_entry));
-  assert(rv == 0);
-  // Set large connection-level window size to effectively disable
-  // connection-level flow control.
-  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
-                                    0, 1000000007);
   assert(rv == 0);
 }
 
@@ -725,7 +724,8 @@ int Http2Upstream::window_update(Downstream *downstream,
 {
   int rv;
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
-                                    downstream->get_stream_id(),
+                                    downstream ?
+                                    downstream->get_stream_id() : 0,
                                     window_size_increment);
   if(rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_window_update() failed: "
@@ -959,15 +959,16 @@ void Http2Upstream::pause_read(IOCtrlReason reason)
 int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 {
   if(get_flow_control()) {
-    int32_t recv_length, window_size;
-    recv_length = nghttp2_session_get_stream_effective_recv_data_length
+    int32_t window_size_increment;
+    window_size_increment = http2::determine_window_update_transmission
+      (session_, 0);
+    if(window_size_increment != -1) {
+      window_update(nullptr, window_size_increment);
+    }
+    window_size_increment = http2::determine_window_update_transmission
       (session_, downstream->get_stream_id());
-    window_size = nghttp2_session_get_stream_effective_local_window_size
-      (session_, downstream->get_stream_id());
-    if(recv_length != -1 && window_size != -1) {
-      if(recv_length >= window_size / 2) {
-        window_update(downstream, recv_length);
-      }
+    if(window_size_increment != -1) {
+      window_update(downstream, window_size_increment);
     }
   }
   return send();
