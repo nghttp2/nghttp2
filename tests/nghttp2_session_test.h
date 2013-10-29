@@ -87,6 +87,7 @@ void test_nghttp2_session_on_request_recv_callback(void);
 void test_nghttp2_session_on_stream_close(void);
 void test_nghttp2_session_on_ctrl_not_send(void);
 void test_nghttp2_session_get_outbound_queue_size(void);
+void test_nghttp2_session_get_effective_local_window_size(void);
 void test_nghttp2_session_set_option(void);
 void test_nghttp2_session_data_backoff_by_high_pri_frame(void);
 void test_nghttp2_pack_settings_payload(void);

@@ -3482,6 +3482,79 @@ void test_nghttp2_session_get_outbound_queue_size(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_get_effective_local_window_size(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, NULL));
+
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENED, NULL);
+
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE ==
+            nghttp2_session_get_effective_local_window_size(session));
+  CU_ASSERT(0 == nghttp2_session_get_effective_recv_data_length(session));
+
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE ==
+            nghttp2_session_get_stream_effective_local_window_size
+            (session, 1));
+  CU_ASSERT(0 ==
+            nghttp2_session_get_stream_effective_recv_data_length(session, 1));
+
+  /* Check connection flow control */
+  session->recv_window_size = 100;
+  nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0, 1100);
+
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_effective_local_window_size(session));
+  CU_ASSERT(0 == nghttp2_session_get_effective_recv_data_length(session));
+
+  nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0, -50);
+  /* Now session->recv_window_size = -50 */
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 950 ==
+            nghttp2_session_get_effective_local_window_size(session));
+  CU_ASSERT(0 == nghttp2_session_get_effective_recv_data_length(session));
+
+  session->recv_window_size += 50;
+  /* Now session->recv_window_size = 0 */
+  nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0, 100);
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1050 ==
+            nghttp2_session_get_effective_local_window_size(session));
+  CU_ASSERT(50 == nghttp2_session_get_effective_recv_data_length(session));
+
+  /* Check stream flow control */
+  stream->recv_window_size = 100;
+  nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 1, 1100);
+
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_stream_effective_local_window_size
+            (session, 1));
+  CU_ASSERT(0 == nghttp2_session_get_stream_effective_recv_data_length
+            (session, 1));
+
+  nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 1, -50);
+  /* Now stream->recv_window_size = -50 */
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 950 ==
+            nghttp2_session_get_stream_effective_local_window_size
+            (session, 1));
+  CU_ASSERT(0 == nghttp2_session_get_stream_effective_recv_data_length
+            (session, 1));
+
+  stream->recv_window_size += 50;
+  /* Now stream->recv_window_size = 0 */
+  nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 1, 100);
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 1050 ==
+            nghttp2_session_get_stream_effective_local_window_size
+            (session, 1));
+  CU_ASSERT(50 ==
+            nghttp2_session_get_stream_effective_recv_data_length
+            (session, 1));
+}
+
 void test_nghttp2_session_set_option(void)
 {
   nghttp2_session* session;

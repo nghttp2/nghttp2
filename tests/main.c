@@ -193,6 +193,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_on_ctrl_not_send) ||
       !CU_add_test(pSuite, "session_get_outbound_queue_size",
                    test_nghttp2_session_get_outbound_queue_size) ||
+      !CU_add_test(pSuite, "session_get_effective_local_window_size",
+                   test_nghttp2_session_get_effective_local_window_size) ||
       !CU_add_test(pSuite, "session_set_option",
                    test_nghttp2_session_set_option) ||
       !CU_add_test(pSuite, "session_data_backoff_by_high_pri_frame",

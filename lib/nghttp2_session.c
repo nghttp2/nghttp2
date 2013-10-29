@@ -3582,7 +3582,7 @@ int32_t nghttp2_session_get_stream_effective_recv_data_length
   if(stream->local_flow_control == 0) {
     return 0;
   }
-  return stream->recv_window_size;
+  return stream->recv_window_size < 0 ? 0 : stream->recv_window_size;
 }
 
 int32_t nghttp2_session_get_stream_effective_local_window_size
@@ -3602,7 +3602,7 @@ int32_t nghttp2_session_get_effective_recv_data_length
   if(session->local_flow_control == 0) {
     return 0;
   }
-  return session->recv_window_size;
+  return session->recv_window_size < 0 ? 0 : session->recv_window_size;
 }
 
 int32_t nghttp2_session_get_effective_local_window_size
