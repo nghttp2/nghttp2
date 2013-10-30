@@ -1965,20 +1965,8 @@ contains a pointer to the name string and <tt class="docutils literal"><span cla
 pointer to the value string. The one beyond last value must be
 <tt class="docutils literal"><span class="pre">NULL</span></tt>. That is, if the <em>nv</em> contains N name/value pairs,
 <tt class="docutils literal"><span class="pre">nv[2*N]</span></tt> must be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
-<p>The <em>nv</em> must include following name/value pairs:</p>
-<dl class="docutils">
-<dt><tt class="docutils literal"><span class="pre">:method</span></tt></dt>
-<dd>HTTP method (e.g., <tt class="docutils literal"><span class="pre">GET</span></tt>, <tt class="docutils literal"><span class="pre">POST</span></tt>, <tt class="docutils literal"><span class="pre">HEAD</span></tt>, etc)</dd>
-<dt><tt class="docutils literal"><span class="pre">:scheme</span></tt></dt>
-<dd>URI scheme (e.g., <tt class="docutils literal"><span class="pre">https</span></tt>)</dd>
-<dt><tt class="docutils literal"><span class="pre">:path</span></tt></dt>
-<dd>Absolute path and parameters of this request (e.g., <tt class="docutils literal"><span class="pre">/foo</span></tt>,
-<tt class="docutils literal"><span class="pre">/foo;bar;haz?h=j&amp;y=123</span></tt>)</dd>
-<dt><tt class="docutils literal"><span class="pre">:host</span></tt></dt>
-<dd>The hostport portion of the URI for this request (e.g.,
-<tt class="docutils literal"><span class="pre">example.org:443</span></tt>). This is the same as the HTTP &#8220;Host&#8221; header
-field.</dd>
-</dl>
+<p>HTTP/2.0 specification has requirement about header fields in the
+request HEADERS. See the specification for more details.</p>
 <p>This function creates copies of all name/value pairs in <em>nv</em>.  It
 also lower-cases all names in <em>nv</em>.</p>
 <p>The string in <em>nv</em> must be NULL-terminated. Use
@@ -2045,11 +2033,8 @@ contains a pointer to the name string and <tt class="docutils literal"><span cla
 pointer to the value string. The one beyond last value must be
 <tt class="docutils literal"><span class="pre">NULL</span></tt>. That is, if the <em>nv</em> contains N name/value pairs,
 <tt class="docutils literal"><span class="pre">nv[2*N]</span></tt> must be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
-<p>The <em>nv</em> must include following name/value pairs:</p>
-<dl class="docutils">
-<dt><tt class="docutils literal"><span class="pre">:status</span></tt></dt>
-<dd>HTTP status code (e.g., <tt class="docutils literal"><span class="pre">200</span></tt> or <tt class="docutils literal"><span class="pre">200</span> <span class="pre">OK</span></tt>)</dd>
-</dl>
+<p>HTTP/2.0 specification has requirement about header fields in the
+response HEADERS. See the specification for more details.</p>
 <p>This function creates copies of all name/value pairs in <em>nv</em>.  It
 also lower-cases all names in <em>nv</em>.</p>
 <p>If <em>data_prd</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>, it provides data which will be sent

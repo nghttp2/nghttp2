@@ -1783,19 +1783,8 @@
 <span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
 <span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |nv| must include following name/value pairs:</span>
-<span class="cm"> *</span>
-<span class="cm"> * ``:method``</span>
-<span class="cm"> *     HTTP method (e.g., ``GET``, ``POST``, ``HEAD``, etc)</span>
-<span class="cm"> * ``:scheme``</span>
-<span class="cm"> *     URI scheme (e.g., ``https``)</span>
-<span class="cm"> * ``:path``</span>
-<span class="cm"> *     Absolute path and parameters of this request (e.g., ``/foo``,</span>
-<span class="cm"> *     ``/foo;bar;haz?h=j&amp;y=123``)</span>
-<span class="cm"> * ``:host``</span>
-<span class="cm"> *     The hostport portion of the URI for this request (e.g.,</span>
-<span class="cm"> *     ``example.org:443``). This is the same as the HTTP &quot;Host&quot; header</span>
-<span class="cm"> *     field.</span>
+<span class="cm"> * HTTP/2.0 specification has requirement about header fields in the</span>
+<span class="cm"> * request HEADERS. See the specification for more details.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
 <span class="cm"> * also lower-cases all names in |nv|.</span>
@@ -1876,10 +1865,8 @@
 <span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
 <span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |nv| must include following name/value pairs:</span>
-<span class="cm"> *</span>
-<span class="cm"> * ``:status``</span>
-<span class="cm"> *     HTTP status code (e.g., ``200`` or ``200 OK``)</span>
+<span class="cm"> * HTTP/2.0 specification has requirement about header fields in the</span>
+<span class="cm"> * response HEADERS. See the specification for more details.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
 <span class="cm"> * also lower-cases all names in |nv|.</span>
