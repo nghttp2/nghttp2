@@ -25,7 +25,10 @@ SUBDIRS = testdata
 if HAVE_CUNIT
 
 check_PROGRAMS = main
-# failmalloc
+
+if ENABLE_FAILMALLOC
+check_PROGRAMS += failmalloc
+endif # ENABLE_FAILMALLOC
 
 OBJECTS = main.c nghttp2_pq_test.c nghttp2_map_test.c nghttp2_queue_test.c \
 	nghttp2_buffer_test.c \
@@ -49,17 +52,22 @@ main_SOURCES = $(HFILES) $(OBJECTS)
 main_LDADD = ${top_builddir}/lib/libnghttp2.la
 main_LDFLAGS = -static @CUNIT_LIBS@ @TESTS_LIBS@
 
-# failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
-# 	malloc_wrapper.c malloc_wrapper.h \
-# 	nghttp2_test_helper.c nghttp2_test_helper.h
-# failmalloc_LDADD = $(main_LDADD)
-# failmalloc_LDFLAGS = $(main_LDFLAGS)
+if ENABLE_FAILMALLOC
+failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \
+	malloc_wrapper.c malloc_wrapper.h \
+	nghttp2_test_helper.c nghttp2_test_helper.h
+failmalloc_LDADD = $(main_LDADD)
+failmalloc_LDFLAGS = $(main_LDFLAGS)
+endif # ENABLE_FAILMALLOC
 
 AM_CFLAGS = -Wall -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_builddir}/lib/includes \
 	@CUNIT_CFLAGS@ @DEFS@
 
 TESTS = main
-# failmalloc
+
+if ENABLE_FAILMALLOC
+TESTS += failmalloc
+endif # ENABLE_FAILMALLOC
 
 if ENABLE_SRC
 

@@ -63,6 +63,11 @@ AC_ARG_ENABLE([examples],
                     [Build example programs])],
     [request_examples=$enableval], [request_examples=yes])
 
+AC_ARG_ENABLE([failmalloc],
+    [AS_HELP_STRING([--enable-failmalloc],
+                    [Build failmalloc test program])],
+    [request_failmalloc=$enableval], [request_failmalloc=no])
+
 AC_ARG_WITH([libxml2],
     [AS_HELP_STRING([--without-libxml2],
                     [disable support for libxml2])],
@@ -241,6 +246,9 @@ fi
 
 AM_CONDITIONAL([ENABLE_HDTEST], [ test "x${enable_hdtest}" = "xyes" ])
 
+# failmalloc tests
+AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
+
 # Checks for header files.
 AC_CHECK_HEADERS([ \
   arpa/inet.h \
@@ -344,4 +352,5 @@ AC_MSG_NOTICE([summary of build options:
     Src:            ${enable_src}
     Examples:       ${enable_examples}
     Hdtest:         ${enable_hdtest}
+    Failmalloc:     ${request_failmalloc}
 ])
