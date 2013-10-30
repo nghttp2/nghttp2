@@ -259,6 +259,9 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
     return rv;
   }
 
+  context->emit_set = NULL;
+  context->buf_track = NULL;
+
   if(role == NGHTTP2_HD_ROLE_INFLATE) {
     context->emit_set = malloc(sizeof(nghttp2_hd_entry*)*
                                NGHTTP2_INITIAL_EMIT_SET_SIZE);
