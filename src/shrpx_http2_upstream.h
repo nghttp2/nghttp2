@@ -61,6 +61,7 @@ public:
   // To send WINDOW_UPDATE for a connection, specify nullptr to
   // |downstream|.
   int window_update(Downstream *downstream, int32_t window_size_increment);
+  int fail_session(nghttp2_error_code error_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);
@@ -77,6 +78,8 @@ public:
   // takes ownership of the |upstream|. This function returns 0 if it
   // succeeds, or -1.
   int upgrade_upstream(HttpsUpstream *upstream);
+  int start_settings_timer();
+  void stop_settings_timer();
 private:
   ClientHandler *handler_;
   nghttp2_session *session_;
@@ -84,6 +87,7 @@ private:
   int32_t initial_window_size_;
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;
+  event *settings_timerev_;
 };
 
 } // namespace shrpx

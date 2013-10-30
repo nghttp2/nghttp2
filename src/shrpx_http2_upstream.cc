@@ -173,6 +173,51 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
 }
 
 namespace {
+void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
+{
+  auto upstream = reinterpret_cast<Http2Upstream*>(arg);
+  ULOG(INFO, upstream) << "SETTINGS timeout";
+  if(upstream->fail_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
+    delete upstream->get_client_handler();
+    return;
+  }
+  if(upstream->send() != 0) {
+    delete upstream->get_client_handler();
+  }
+}
+} // namespace
+
+int Http2Upstream::start_settings_timer()
+{
+  int rv;
+  // We submit SETTINGS only once
+  if(settings_timerev_) {
+    return 0;
+  }
+  settings_timerev_ = evtimer_new(handler_->get_evbase(), settings_timeout_cb,
+                                  this);
+  if(settings_timerev_ == nullptr) {
+    return -1;
+  }
+  // SETTINGS ACK timeout is 10 seconds for now
+  timeval settings_timeout = { 10, 0 };
+  rv = evtimer_add(settings_timerev_, &settings_timeout);
+  if(rv == -1) {
+    return -1;
+  }
+  return 0;
+}
+
+void Http2Upstream::stop_settings_timer()
+{
+  if(settings_timerev_ == nullptr) {
+    return;
+  }
+  event_free(settings_timerev_);
+  settings_timerev_ = nullptr;
+}
+
+namespace {
 int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -287,6 +332,12 @@ int on_frame_recv_callback
     }
     break;
   }
+  case NGHTTP2_SETTINGS:
+    if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+      break;
+    }
+    upstream->stop_settings_timer();
+    break;
   default:
     break;
   }
@@ -322,6 +373,21 @@ int on_data_recv_callback(nghttp2_session *session,
   if(downstream && (flags & NGHTTP2_FLAG_END_STREAM)) {
     downstream->end_upload_data();
     downstream->set_request_state(Downstream::MSG_COMPLETE);
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_frame_send_callback(nghttp2_session* session,
+                           const nghttp2_frame *frame, void *user_data)
+{
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  if(frame->hd.type == NGHTTP2_SETTINGS &&
+     (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+    if(upstream->start_settings_timer() != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
   return 0;
 }
@@ -398,7 +464,8 @@ nghttp2_error_code infer_upstream_rst_stream_error_code
 
 Http2Upstream::Http2Upstream(ClientHandler *handler)
   : handler_(handler),
-    session_(nullptr)
+    session_(nullptr),
+    settings_timerev_(nullptr)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
@@ -412,6 +479,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_data_recv_callback = on_data_recv_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
   callbacks.on_frame_recv_parse_error_callback =
     on_frame_recv_parse_error_callback;
@@ -450,6 +518,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 Http2Upstream::~Http2Upstream()
 {
   nghttp2_session_del(session_);
+  if(settings_timerev_) {
+    event_free(settings_timerev_);
+  }
 }
 
 int Http2Upstream::on_read()
@@ -731,6 +802,16 @@ int Http2Upstream::window_update(Downstream *downstream,
     ULOG(FATAL, this) << "nghttp2_submit_window_update() failed: "
                       << nghttp2_strerror(rv);
     DIE();
+  }
+  return 0;
+}
+
+int Http2Upstream::fail_session(nghttp2_error_code error_code)
+{
+  int rv;
+  rv = nghttp2_session_fail_session(session_, error_code);
+  if(rv != 0) {
+    return -1;
   }
   return 0;
 }
