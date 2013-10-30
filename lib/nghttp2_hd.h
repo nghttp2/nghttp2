@@ -93,18 +93,22 @@ typedef struct {
   /* The header table size for decoding. If the context is initialized
      as encoder, this value is advertised by remote endpoint
      decoder. */
+  size_t hd_table_bufsize;
+  /* If inflate/deflate error occurred, this value is set to 1 and
+     further invocation of inflate/deflate will fail with
+     NGHTTP2_ERR_HEADER_COMP. */
   size_t hd_table_bufsize_max;
   /* The current effective header table size for encoding. This value
-     is meaningful iff this context is initialized as
-     encoder. |deflate_hd_table_bufsize| <= |hd_table_bufsize| must be
+     is always equal to |hd_table_bufsize| on decoder
+     context. |deflate_hd_table_bufsize| <= |hd_table_bufsize| must be
      hold. */
   size_t deflate_hd_table_bufsize;
   /* The maximum effective header table for encoding. Although header
      table size is bounded by |hd_table_bufsize_max|, the encoder can
      use smaller buffer by not retaining the header name/values beyond
      the |deflate_hd_table_bufsize_max| and not referencing those
-     entries. This value is meaningful iff this context is initialized
-     as encoder. */
+     entries. This value is always equal to |hd_table_bufsize_max| on
+     decoder context. */
   size_t deflate_hd_table_bufsize_max;
   /* The number of effective entry in |hd_table|. */
   size_t deflate_hd_tablelen;
@@ -118,10 +122,6 @@ typedef struct {
   /* Abstract buffer size of hd_table as described in the spec. This
      is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
-  size_t hd_table_bufsize;
-  /* If inflate/deflate error occurred, this value is set to 1 and
-     further invocation of inflate/deflate will fail with
-     NGHTTP2_ERR_HEADER_COMP. */
   uint8_t bad;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
