@@ -118,7 +118,8 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
         *recv_window_size_ptr += recv_reduction_diff;
       } else {
         /* If *recv_window_size_ptr > 0, then those bytes are
-           considered to be backed to the remote peer, so it is
+           considered to be backed to the remote peer (by
+           WINDOW_UPDATE with the adjusted *delta_ptr), so it is
            effectively 0 now. */
         *recv_window_size_ptr = recv_reduction_diff;
       }
@@ -142,6 +143,7 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
     *local_window_size_ptr += *delta_ptr;
     *recv_window_size_ptr += *delta_ptr;
     *recv_reduction_ptr -= *delta_ptr;
+    *delta_ptr = 0;
   }
   return 0;
 }

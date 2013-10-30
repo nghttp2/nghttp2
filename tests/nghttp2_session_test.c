@@ -2508,23 +2508,21 @@ void test_nghttp2_submit_window_update_local_window_size(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   /* Let's decrement local window size */
-  stream->recv_window_size = 65536;
+  stream->recv_window_size = 4096;
   CU_ASSERT(0 == nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 2,
                                               -stream->local_window_size / 2));
   CU_ASSERT(32768 == stream->local_window_size);
-  CU_ASSERT(0 == stream->recv_window_size);
+  CU_ASSERT(-28672 == stream->recv_window_size);
   CU_ASSERT(32768 == stream->recv_reduction);
 
   item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
-  CU_ASSERT(32768 == OB_CTRL(item)->window_update.window_size_increment);
-  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(item == NULL);
 
   /* Increase local window size */
   CU_ASSERT(0 == nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 2,
                                               16384));
   CU_ASSERT(49152 == stream->local_window_size);
-  CU_ASSERT(16384 == stream->recv_window_size);
+  CU_ASSERT(-12288 == stream->recv_window_size);
   CU_ASSERT(16384 == stream->recv_reduction);
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 
@@ -2548,22 +2546,20 @@ void test_nghttp2_submit_window_update_local_window_size(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   /* Go decrement part */
-  session->recv_window_size = 65536;
+  session->recv_window_size = 4096;
   CU_ASSERT(0 == nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0,
                                               -session->local_window_size/2));
   CU_ASSERT(32768 == session->local_window_size);
-  CU_ASSERT(0 == session->recv_window_size);
+  CU_ASSERT(-28672 == session->recv_window_size);
   CU_ASSERT(32768 == session->recv_reduction);
   item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
-  CU_ASSERT(32768 == OB_CTRL(item)->window_update.window_size_increment);
-  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(item == NULL);
 
   /* Increase local window size */
   CU_ASSERT(0 == nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0,
                                               16384));
   CU_ASSERT(49152 == session->local_window_size);
-  CU_ASSERT(16384 == session->recv_window_size);
+  CU_ASSERT(-12288 == session->recv_window_size);
   CU_ASSERT(16384 == session->recv_reduction);
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 

@@ -171,7 +171,8 @@ struct nghttp2_session {
      current initial window size of remote endpoint. */
   int32_t remote_window_size;
   /* Keep track of the number of bytes received without
-     WINDOW_UPDATE. */
+     WINDOW_UPDATE. This could be negative after submitting negative
+     value to WINDOW_UPDATE. */
   int32_t recv_window_size;
   /* The amount of recv_window_size cut using submitting negative
      value to WINDOW_UPDATE */

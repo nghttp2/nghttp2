@@ -269,14 +269,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
     if(rv != 0) {
       return rv;
     }
-    if(!(session->opt_flags &
-         NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE) &&
-       window_size_increment < 0 &&
-       nghttp2_should_send_window_update(session->local_window_size,
-                                         session->recv_window_size)) {
-      window_size_increment = session->recv_window_size;
-      session->recv_window_size = 0;
-    }
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
     if(stream) {
@@ -289,14 +281,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
                                             &window_size_increment);
       if(rv != 0) {
         return rv;
-      }
-      if(!(session->opt_flags &
-           NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE) &&
-         window_size_increment < 0 &&
-         nghttp2_should_send_window_update(stream->local_window_size,
-                                           stream->recv_window_size)) {
-        window_size_increment = stream->recv_window_size;
-        stream->recv_window_size = 0;
       }
     } else {
       return NGHTTP2_ERR_STREAM_CLOSED;
