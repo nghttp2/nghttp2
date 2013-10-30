@@ -1727,19 +1727,8 @@ const char* nghttp2_strerror(int lib_error_code);
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
  * ``nv[2*N]`` must be ``NULL``.
  *
- * The |nv| must include following name/value pairs:
- *
- * ``:method``
- *     HTTP method (e.g., ``GET``, ``POST``, ``HEAD``, etc)
- * ``:scheme``
- *     URI scheme (e.g., ``https``)
- * ``:path``
- *     Absolute path and parameters of this request (e.g., ``/foo``,
- *     ``/foo;bar;haz?h=j&y=123``)
- * ``:host``
- *     The hostport portion of the URI for this request (e.g.,
- *     ``example.org:443``). This is the same as the HTTP "Host" header
- *     field.
+ * HTTP/2.0 specification has requirement about header fields in the
+ * request HEADERS. See the specification for more details.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
@@ -1820,10 +1809,8 @@ int nghttp2_submit_request2(nghttp2_session *session, int32_t pri,
  * ``NULL``. That is, if the |nv| contains N name/value pairs,
  * ``nv[2*N]`` must be ``NULL``.
  *
- * The |nv| must include following name/value pairs:
- *
- * ``:status``
- *     HTTP status code (e.g., ``200`` or ``200 OK``)
+ * HTTP/2.0 specification has requirement about header fields in the
+ * response HEADERS. See the specification for more details.
  *
  * This function creates copies of all name/value pairs in |nv|.  It
  * also lower-cases all names in |nv|.
