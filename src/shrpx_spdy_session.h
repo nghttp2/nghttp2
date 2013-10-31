@@ -74,6 +74,8 @@ public:
   // |dconn|.
   int submit_window_update(SpdyDownstreamConnection *dconn, int32_t amount);
 
+  int fail_session(nghttp2_error_code error_code);
+
   int32_t get_initial_window_size() const;
 
   nghttp2_session* get_session() const;
@@ -98,6 +100,9 @@ public:
 
   int get_state() const;
   void set_state(int state);
+
+  int start_settings_timer();
+  void stop_settings_timer();
 
   enum {
     // Disconnected
@@ -134,6 +139,7 @@ private:
   bool flow_control_;
   // Used to parse the response from HTTP proxy
   std::unique_ptr<http_parser> proxy_htp_;
+  event *settings_timerev_;
 };
 
 } // namespace shrpx

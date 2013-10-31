@@ -59,7 +59,8 @@ SpdySession::SpdySession(event_base *evbase, SSL_CTX *ssl_ctx)
     notified_(false),
     wrbev_(nullptr),
     rdbev_(nullptr),
-    flow_control_(false)
+    flow_control_(false),
+    settings_timerev_(nullptr)
 {}
 
 SpdySession::~SpdySession()
@@ -74,6 +75,11 @@ int SpdySession::disconnect()
   }
   nghttp2_session_del(session_);
   session_ = nullptr;
+
+  if(settings_timerev_) {
+    event_free(settings_timerev_);
+    settings_timerev_ = nullptr;
+  }
 
   if(ssl_) {
     SSL_shutdown(ssl_);
@@ -747,6 +753,50 @@ int on_stream_close_callback
 } // namespace
 
 namespace {
+void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
+{
+  auto spdy = reinterpret_cast<SpdySession*>(arg);
+  SSLOG(INFO, spdy) << "SETTINGS timeout";
+  if(spdy->fail_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
+    spdy->disconnect();
+    return;
+  }
+  if(spdy->send() != 0) {
+    spdy->disconnect();
+  }
+}
+} // namespace
+
+int SpdySession::start_settings_timer()
+{
+  int rv;
+  // We submit SETTINGS only once
+  if(settings_timerev_) {
+    return 0;
+  }
+  settings_timerev_ = evtimer_new(evbase_, settings_timeout_cb, this);
+  if(settings_timerev_ == nullptr) {
+    return -1;
+  }
+  // SETTINGS ACK timeout is 10 seconds for now
+  timeval settings_timeout = { 10, 0 };
+  rv = evtimer_add(settings_timerev_, &settings_timeout);
+  if(rv == -1) {
+    return -1;
+  }
+  return 0;
+}
+
+void SpdySession::stop_settings_timer()
+{
+  if(settings_timerev_ == nullptr) {
+    return;
+  }
+  event_free(settings_timerev_);
+  settings_timerev_ = nullptr;
+}
+
+namespace {
 int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -898,6 +948,12 @@ int on_frame_recv_callback
     }
     break;
   }
+  case NGHTTP2_SETTINGS:
+    if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+      break;
+    }
+    spdy->stop_settings_timer();
+    break;
   case NGHTTP2_PUSH_PROMISE:
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, spdy) << "Received downstream PUSH_PROMISE stream_id="
@@ -963,6 +1019,21 @@ int before_frame_send_callback(nghttp2_session *session,
       downstream->set_downstream_stream_id(frame->hd.stream_id);
     } else {
       spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
+    }
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_frame_send_callback(nghttp2_session* session,
+                           const nghttp2_frame *frame, void *user_data)
+{
+  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  if(frame->hd.type == NGHTTP2_SETTINGS &&
+     (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+    if(spdy->start_settings_timer() != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
   return 0;
@@ -1059,6 +1130,7 @@ int SpdySession::on_connect()
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.before_frame_send_callback = before_frame_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
   callbacks.on_frame_recv_parse_error_callback =
     on_frame_recv_parse_error_callback;
@@ -1188,6 +1260,16 @@ int SpdySession::get_state() const
 void SpdySession::set_state(int state)
 {
   state_ = state;
+}
+
+int SpdySession::fail_session(nghttp2_error_code error_code)
+{
+  int rv;
+  rv = nghttp2_session_fail_session(session_, error_code);
+  if(rv != 0) {
+    return -1;
+  }
+  return 0;
 }
 
 } // namespace shrpx
