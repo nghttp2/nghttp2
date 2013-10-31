@@ -41,8 +41,6 @@ ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
                                    nghttp2_hd_context *inflater,
                                    const uint8_t *in, size_t len);
 
-char* strcopy(const char* s);
-
 int strmemeq(const char *a, const uint8_t *b, size_t bn);
 
 int nvnameeq(const char *a, nghttp2_nv *nv);

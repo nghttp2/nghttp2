@@ -59,15 +59,6 @@ ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
   return rv;
 }
 
-char* strcopy(const char* s)
-{
-  size_t len = strlen(s);
-  char *dest = malloc(len+1);
-  memcpy(dest, s, len);
-  dest[len] = '\0';
-  return dest;
-}
-
 int strmemeq(const char *a, const uint8_t *b, size_t bn)
 {
   const uint8_t *c;
