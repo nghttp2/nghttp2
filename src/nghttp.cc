@@ -1619,12 +1619,14 @@ void print_help(std::ostream& out)
       << "                       is large enough as it is seen as unlimited.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
+      << "    --color            Force colored log output.\n"
       << std::endl;
 }
 } // namespace
 
 int main(int argc, char **argv)
 {
+  bool color = false;
   while(1) {
     int flag = 0;
     static option long_options[] = {
@@ -1636,8 +1638,6 @@ int main(int argc, char **argv)
       {"connection-window-bits", required_argument, nullptr, 'W'},
       {"get-assets", no_argument, nullptr, 'a'},
       {"stat", no_argument, nullptr, 's'},
-      {"cert", required_argument, &flag, 1},
-      {"key", required_argument, &flag, 2},
       {"help", no_argument, nullptr, 'h'},
       {"header", required_argument, nullptr, 'H'},
       {"data", required_argument, nullptr, 'd'},
@@ -1647,6 +1647,9 @@ int main(int argc, char **argv)
       {"pri", required_argument, nullptr, 'p'},
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
       {"header-table-size", required_argument, nullptr, 'c'},
+      {"cert", required_argument, &flag, 1},
+      {"key", required_argument, &flag, 2},
+      {"color", no_argument, &flag, 3},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -1774,6 +1777,10 @@ int main(int argc, char **argv)
         // key option
         config.keyfile = optarg;
         break;
+      case 3:
+        // color option
+        color = true;
+        break;
       }
       break;
     default:
@@ -1781,7 +1788,7 @@ int main(int argc, char **argv)
     }
   }
 
-  set_color_output(isatty(fileno(stdout)));
+  set_color_output(color || isatty(fileno(stdout)));
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));

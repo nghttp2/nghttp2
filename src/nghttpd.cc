@@ -76,6 +76,7 @@ void print_help(std::ostream& out)
       << "    -f, --no-flow-control\n"
       << "                       Disables connection and stream level flow\n"
       << "                       controls.\n"
+      << "    --color            Force colored log output.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -84,6 +85,7 @@ void print_help(std::ostream& out)
 int main(int argc, char **argv)
 {
   Config config;
+  bool color = false;
   while(1) {
     int flag = 0;
     static option long_options[] = {
@@ -92,8 +94,9 @@ int main(int argc, char **argv)
       {"help", no_argument, nullptr, 'h'},
       {"verbose", no_argument, nullptr, 'v'},
       {"verify-client", no_argument, nullptr, 'V'},
-      {"no-tls", no_argument, &flag, 1},
       {"no-flow-control", no_argument, nullptr, 'f'},
+      {"no-tls", no_argument, &flag, 1},
+      {"color", no_argument, &flag, 2},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
@@ -127,6 +130,10 @@ int main(int argc, char **argv)
       case 1:
         // no-tls option
         config.no_tls = true;
+        break;
+      case 2:
+        // color option
+        color = true;
         break;
       }
       break;
@@ -162,7 +169,7 @@ int main(int argc, char **argv)
     config.htdocs = "./";
   }
 
-  set_color_output(isatty(fileno(stdout)));
+  set_color_output(color || isatty(fileno(stdout)));
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
