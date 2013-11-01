@@ -73,9 +73,14 @@ int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
 namespace {
 int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 {
-  // We don't verify the client certificate. Just request it for the
-  // testing purpose.
-  return 1;
+  if(!preverify_ok) {
+    int err = X509_STORE_CTX_get_error(ctx);
+    int depth = X509_STORE_CTX_get_error_depth(ctx);
+    LOG(ERROR) << "client certificate verify error:num=" << err << ":"
+               << X509_verify_cert_error_string(err)
+               << ":depth=" << depth;
+  }
+  return preverify_ok;
 }
 } // namespace
 
@@ -213,6 +218,19 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
     DIE();
   }
   if(get_config()->verify_client) {
+    if(SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
+      LOG(WARNING) << "Could not load system trusted ca certificates: "
+                   << ERR_error_string(ERR_get_error(), nullptr);
+    }
+    if(get_config()->cacert) {
+      if(SSL_CTX_load_verify_locations(ssl_ctx, get_config()->cacert, nullptr)
+         != 1) {
+        LOG(FATAL) << "Could not load trusted ca certificates from "
+                   << get_config()->cacert << ": "
+                   << ERR_error_string(ERR_get_error(), nullptr);
+        DIE();
+      }
+    }
     SSL_CTX_set_verify(ssl_ctx,
                        SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
                        SSL_VERIFY_FAIL_IF_NO_PEER_CERT,

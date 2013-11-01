@@ -91,6 +91,7 @@ extern const char SHRPX_OPT_READ_BURST[];
 extern const char SHRPX_OPT_WRITE_RATE[];
 extern const char SHRPX_OPT_WRITE_BURST[];
 extern const char SHRPX_OPT_NPN_LIST[];
+extern const char SHRPX_OPT_VERIFY_CLIENT[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -184,6 +185,8 @@ struct Config {
   char **npn_list;
   // The number of elements in npn_list
   size_t npn_list_len;
+  // The list of (private key file, certificate file) pair
+  std::vector<std::pair<std::string, std::string>> subcerts;
 };
 
 const Config* get_config();

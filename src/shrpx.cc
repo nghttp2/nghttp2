@@ -417,6 +417,7 @@ void fill_default_config()
   mod_config()->write_rate = 0;
   mod_config()->write_burst = 0;
   mod_config()->npn_list = nullptr;
+  mod_config()->verify_client = false;
 }
 } // namespace
 
@@ -593,6 +594,7 @@ void print_help(std::ostream& out)
       << "                       comma only and any white spaces are treated\n"
       << "                       as a part of protocol string.\n"
       << "                       Default: " << DEFAULT_NPN_LIST << "\n"
+      << "    --verify-client    Require and verify client certificate.\n"
       << "\n"
       << "  HTTP/2.0 and SPDY:\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
@@ -730,6 +732,7 @@ int main(int argc, char **argv)
       {"write-rate", required_argument, &flag, 36},
       {"write-burst", required_argument, &flag, 37},
       {"npn-list", required_argument, &flag, 38},
+      {"verify-client", no_argument, &flag, 39},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -933,6 +936,10 @@ int main(int argc, char **argv)
         // --npn-list
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_NPN_LIST, optarg));
         break;
+      case 39:
+        // --verify-client
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_VERIFY_CLIENT, "yes"));
+        break;
       default:
         break;
       }
@@ -973,6 +980,20 @@ int main(int argc, char **argv)
 
   if(!get_config()->npn_list) {
     parse_config_npn_list(DEFAULT_NPN_LIST);
+  }
+
+  if(!get_config()->subcerts.empty()) {
+    mod_config()->cert_tree = ssl::cert_lookup_tree_new();
+  }
+
+  for(auto& keycert : get_config()->subcerts) {
+    auto ssl_ctx = ssl::create_ssl_context(keycert.first.c_str(),
+                                           keycert.second.c_str());
+    if(ssl::cert_lookup_tree_add_cert_from_file
+       (get_config()->cert_tree, ssl_ctx, keycert.second.c_str()) == -1) {
+      LOG(FATAL) << "Failed to add sub certificate.";
+      exit(EXIT_FAILURE);
+    }
   }
 
   if(get_config()->cert_file && get_config()->private_key_file) {
