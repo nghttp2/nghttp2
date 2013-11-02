@@ -336,7 +336,6 @@ void fill_default_config()
 
   mod_config()->verbose = false;
   mod_config()->daemon = false;
-  mod_config()->verify_client = false;
 
   mod_config()->server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
   set_config_str(&mod_config()->host, "0.0.0.0");
@@ -418,6 +417,7 @@ void fill_default_config()
   mod_config()->write_burst = 0;
   mod_config()->npn_list = nullptr;
   mod_config()->verify_client = false;
+  mod_config()->verify_client_cacert = nullptr;
 }
 } // namespace
 
@@ -595,6 +595,11 @@ void print_help(std::ostream& out)
       << "                       as a part of protocol string.\n"
       << "                       Default: " << DEFAULT_NPN_LIST << "\n"
       << "    --verify-client    Require and verify client certificate.\n"
+      << "    --verify-client-cacert=<PATH>\n"
+      << "                       Path to file that contains CA certificates\n"
+      << "                       to verify client certificate.\n"
+      << "                       The file must be in PEM format. It can\n"
+      << "                       contain multiple certificates.\n"
       << "\n"
       << "  HTTP/2.0 and SPDY:\n"
       << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
@@ -733,6 +738,7 @@ int main(int argc, char **argv)
       {"write-burst", required_argument, &flag, 37},
       {"npn-list", required_argument, &flag, 38},
       {"verify-client", no_argument, &flag, 39},
+      {"verify-client-cacert", required_argument, &flag, 40},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -939,6 +945,11 @@ int main(int argc, char **argv)
       case 39:
         // --verify-client
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_VERIFY_CLIENT, "yes"));
+        break;
+      case 40:
+        // --verify-client-cacert
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_VERIFY_CLIENT_CACERT,
+                                         optarg));
         break;
       default:
         break;

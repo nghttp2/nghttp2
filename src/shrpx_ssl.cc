@@ -218,15 +218,12 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
     DIE();
   }
   if(get_config()->verify_client) {
-    if(SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
-      LOG(WARNING) << "Could not load system trusted ca certificates: "
-                   << ERR_error_string(ERR_get_error(), nullptr);
-    }
-    if(get_config()->cacert) {
-      if(SSL_CTX_load_verify_locations(ssl_ctx, get_config()->cacert, nullptr)
-         != 1) {
+    if(get_config()->verify_client_cacert) {
+      if(SSL_CTX_load_verify_locations(ssl_ctx,
+                                       get_config()->verify_client_cacert,
+                                       nullptr) != 1) {
         LOG(FATAL) << "Could not load trusted ca certificates from "
-                   << get_config()->cacert << ": "
+                   << get_config()->verify_client_cacert << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }

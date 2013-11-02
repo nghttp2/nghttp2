@@ -101,6 +101,7 @@ const char SHRPX_OPT_WRITE_RATE[] = "write-rate";
 const char SHRPX_OPT_WRITE_BURST[] = "write-burst";
 const char SHRPX_OPT_NPN_LIST[] = "npn-list";
 const char SHRPX_OPT_VERIFY_CLIENT[] = "verify-client";
+const char SHRPX_OPT_VERIFY_CLIENT_CACERT[] = "verify-client-cacert";
 
 namespace {
 Config *config = nullptr;
@@ -409,6 +410,8 @@ int parse_config(const char *opt, const char *optarg)
     parse_config_npn_list(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT)) {
     mod_config()->verify_client = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT_CACERT)) {
+    set_config_str(&mod_config()->verify_client_cacert, optarg);
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {
