@@ -1152,12 +1152,14 @@ int SpdySession::on_connect()
                                   &val, sizeof(val));
   assert(rv == 0);
 
-  nghttp2_settings_entry entry[2];
-  entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = get_config()->spdy_max_concurrent_streams;
+  nghttp2_settings_entry entry[3];
+  entry[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+  entry[0].value = 0;
+  entry[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  entry[1].value = get_config()->spdy_max_concurrent_streams;
 
-  entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = get_initial_window_size();
+  entry[2].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  entry[2].value = get_initial_window_size();
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry,
                                sizeof(entry)/sizeof(nghttp2_settings_entry));
