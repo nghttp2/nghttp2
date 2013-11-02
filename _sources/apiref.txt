@@ -221,6 +221,10 @@ Enums
         (``-527``) 
         There are too many in-flight SETTING frame and no more
         transmission of SETTINGS is allowed.
+    .. macro:: NGHTTP2_ERR_PUSH_DISABLED
+
+        (``-528``) 
+        The server push is disabled.
     .. macro:: NGHTTP2_ERR_FATAL
 
         (``-900``) 
