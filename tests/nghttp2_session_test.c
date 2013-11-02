@@ -3597,6 +3597,8 @@ void test_nghttp2_session_get_effective_local_window_size(void)
   CU_ASSERT(50 ==
             nghttp2_session_get_stream_effective_recv_data_length
             (session, 1));
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_set_option(void)
