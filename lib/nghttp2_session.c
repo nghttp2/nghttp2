@@ -162,6 +162,18 @@ static void nghttp2_inbound_frame_reset(nghttp2_session *session)
   iframe->error_code = 0;
 }
 
+static void init_settings(uint32_t *settings)
+{
+  settings[NGHTTP2_SETTINGS_HEADER_TABLE_SIZE] =
+    NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
+  settings[NGHTTP2_SETTINGS_ENABLE_PUSH] = 1;
+  settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
+    NGHTTP2_INITIAL_WINDOW_SIZE;
+  settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS] = 0;
+}
+
 static int nghttp2_session_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data,
@@ -236,17 +248,11 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
 
   memset((*session_ptr)->remote_settings, 0,
          sizeof((*session_ptr)->remote_settings));
-  (*session_ptr)->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
-    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
-  (*session_ptr)->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
-    NGHTTP2_INITIAL_WINDOW_SIZE;
-
   memset((*session_ptr)->local_settings, 0,
          sizeof((*session_ptr)->local_settings));
-  (*session_ptr)->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
-    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
-  (*session_ptr)->local_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
-    NGHTTP2_INITIAL_WINDOW_SIZE;
+
+  init_settings((*session_ptr)->remote_settings);
+  init_settings((*session_ptr)->local_settings);
 
   (*session_ptr)->callbacks = *callbacks;
   (*session_ptr)->user_data = user_data;
