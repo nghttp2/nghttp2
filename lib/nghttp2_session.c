@@ -865,6 +865,8 @@ static int nghttp2_session_predicate_priority_send
  * NGHTTP2_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
  *     with END_STREAM flag set has already sent)
+ * NGHTTP2_ERR_PUSH_DISABLED
+ *     The remote peer disabled reception of PUSH_PROMISE.
  */
 static int nghttp2_session_predicate_push_promise_send
 (nghttp2_session *session, int32_t stream_id)
@@ -880,6 +882,9 @@ static int nghttp2_session_predicate_push_promise_send
   rv = nghttp2_predicate_stream_for_send(stream);
   if(rv != 0) {
     return rv;
+  }
+  if(session->remote_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] == 0) {
+    return NGHTTP2_ERR_PUSH_DISABLED;
   }
   if(stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
@@ -2487,6 +2492,10 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   if((frame->hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_INTERNAL_ERROR);
+  }
+  if(session->local_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] == 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   if(session->goaway_flags) {
     /* We just dicard PUSH_PROMISE after GOAWAY is sent or

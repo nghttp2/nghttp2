@@ -275,6 +275,10 @@ typedef enum {
    */
   NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS = -527,
   /**
+   * The server push is disabled.
+   */
+  NGHTTP2_ERR_PUSH_DISABLED = -528,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).

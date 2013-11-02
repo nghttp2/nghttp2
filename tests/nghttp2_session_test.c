@@ -1304,6 +1304,28 @@ void test_nghttp2_session_on_push_promise_received(void)
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
 
   nghttp2_session_del(session);
+
+  /* Disable PUSH */
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+
+  session->local_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] = 0;
+
+  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
+  nghttp2_frame_push_promise_init(&frame.push_promise,
+                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, 2,
+                                  nva, nvlen);
+
+  user_data.frame_recv_cb_called = 0;
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(0 == nghttp2_session_on_push_promise_received(session, &frame));
+
+  CU_ASSERT(0 == user_data.frame_recv_cb_called);
+  CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_ping_received(void)
@@ -1637,11 +1659,14 @@ void test_nghttp2_session_send_push_promise(void)
   nghttp2_stream *stream;
   nghttp2_nv *nva;
   ssize_t nvlen;
+  nghttp2_settings_entry iv;
+  my_user_data ud;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
 
-  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_session_server_new(&session, &callbacks, &ud);
   nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_NONE,
                               NGHTTP2_PRI_DEFAULT, NGHTTP2_STREAM_OPENING,
                               NULL);
@@ -1655,10 +1680,33 @@ void test_nghttp2_session_send_push_promise(void)
   stream = nghttp2_session_get_stream(session, 2);
   CU_ASSERT(NGHTTP2_STREAM_RESERVED == stream->state);
 
+  /* Received ENABLE_PUSH = 0 */
+  iv.settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+  iv.value = 0;
+  frame = malloc(sizeof(nghttp2_frame));
+  nghttp2_frame_settings_init(&frame->settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(&iv, 1), 1);
+  nghttp2_session_on_settings_received(session, frame, 1);
+  nghttp2_frame_settings_free(&frame->settings);
+  free(frame);
+
+  frame = malloc(sizeof(nghttp2_frame));
+  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
+  nghttp2_frame_push_promise_init(&frame->push_promise,
+                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, -1,
+                                  nva, nvlen);
+  nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+  ud.frame_not_send_cb_called = 0;
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(1 == ud.frame_not_send_cb_called);
+  CU_ASSERT(NGHTTP2_PUSH_PROMISE == ud.not_sent_frame_type);
+  CU_ASSERT(NGHTTP2_ERR_PUSH_DISABLED == ud.not_sent_error);
+
   nghttp2_session_del(session);
 
   /* PUSH_PROMISE from client is error */
-  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_session_client_new(&session, &callbacks, &ud);
   nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_NONE,
                               NGHTTP2_PRI_DEFAULT, NGHTTP2_STREAM_OPENING,
                               NULL);
