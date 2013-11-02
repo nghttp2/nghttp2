@@ -20,7 +20,7 @@ Features                   HTTP-draft-07/2.0
 :authority                 Done
 HPACK-draft-04             Done
 SETTINGS_HEADER_TABLE_SIZE Done
-SETTINGS_ENABLE_PUSH
+SETTINGS_ENABLE_PUSH       Done
 FRAME_SIZE_ERROR           Done
 SETTINGS with ACK          Done
 Header Continuation
