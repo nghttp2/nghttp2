@@ -460,7 +460,7 @@ static int emit_indname_header(nghttp2_hd_context *context,
   if(rv != 0) {
     return rv;
   }
-  if(NGHTTP2_HD_FLAG_VALUE_GIFT) {
+  if(flags & NGHTTP2_HD_FLAG_VALUE_GIFT) {
     return track_decode_buf(context, value);
   }
   return 0;
