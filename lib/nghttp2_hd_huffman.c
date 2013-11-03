@@ -128,11 +128,12 @@ static size_t huff_encode_sym(uint8_t **dest_ptr, size_t bitoff,
                               const nghttp2_huff_sym *sym)
 {
   size_t b = 0;
+  if(bitoff == 0) **dest_ptr = 0;
   **dest_ptr |= huff_get_lsb_aligned(sym, b, 8 - bitoff);
   b += 8 - bitoff;
   ++*dest_ptr;
   for(; b < sym->nbits; b += 8, ++*dest_ptr) {
-    **dest_ptr |= huff_get_lsb_aligned(sym, b, 8);
+    **dest_ptr = huff_get_lsb_aligned(sym, b, 8);
   }
   bitoff = 8 - (b - sym->nbits);
   if(bitoff > 0) {
@@ -174,7 +175,6 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
   } else {
     huff_sym_table = res_huff_sym_table;
   }
-  memset(dest, 0, destlen);
   for(i = 0; i < srclen; ++i) {
     const nghttp2_huff_sym *sym = &huff_sym_table[src[i]];
     bitoff = huff_encode_sym(&dest, bitoff, sym);
