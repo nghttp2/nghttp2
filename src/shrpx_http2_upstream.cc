@@ -45,7 +45,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const size_t SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES = 64*1024;
+const size_t SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES = 64*1024;
 } // namespace
 
 namespace {
@@ -59,7 +59,7 @@ ssize_t send_callback(nghttp2_session *session,
   auto bev = handler->get_bev();
   auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(evbuffer_get_length(output) > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+  if(evbuffer_get_length(output) > SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
     return NGHTTP2_ERR_WOULDBLOCK;
   }
 
@@ -539,7 +539,7 @@ int Http2Upstream::on_read()
        nghttp2_session_want_write(session_) == 0 &&
        evbuffer_get_length(bufferevent_get_output(handler_->get_bev())) == 0) {
       if(LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "No more read/write for this SPDY session";
+        ULOG(INFO, this) << "No more read/write for this HTTP2 session";
       }
       rv = -1;
     }
@@ -565,7 +565,7 @@ int Http2Upstream::send()
        nghttp2_session_want_write(session_) == 0 &&
        evbuffer_get_length(bufferevent_get_output(handler_->get_bev())) == 0) {
       if(LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "No more read/write for this SPDY session";
+        ULOG(INFO, this) << "No more read/write for this HTTP2 session";
       }
       rv = -1;
     }
@@ -590,7 +590,7 @@ void downstream_readcb(bufferevent *bev, void *ptr)
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If upstream SPDY stream was closed, we just close downstream,
+    // If upstream HTTP2 stream was closed, we just close downstream,
     // because there is no consumer now. Downstream connection is also
     // closed in this case.
     upstream->remove_downstream(downstream);
@@ -1005,7 +1005,7 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
   nghttp2_session_resume_data(session_, downstream->get_stream_id());
 
   size_t bodylen = evbuffer_get_length(body);
-  if(bodylen > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+  if(bodylen > SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
     downstream->pause_read(SHRPX_NO_BUFFER);
   }
 

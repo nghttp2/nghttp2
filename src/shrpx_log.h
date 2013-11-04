@@ -64,9 +64,9 @@ namespace shrpx {
 #define DCLOG(SEVERITY, DCONN)                                          \
   (Log(SEVERITY, __FILE__, __LINE__) << "[DCONN:" << DCONN << "] ")
 
-// Downstream SPDY session log
-#define SSLOG(SEVERITY, SPDY)                                           \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[DSPDY:" << SPDY << "] ")
+// Downstream HTTP2 session log
+#define SSLOG(SEVERITY, HTTP2)                                           \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[DHTTP2:" << HTTP2 << "] ")
 
 enum SeverityLevel {
   INFO, WARNING, ERROR, FATAL

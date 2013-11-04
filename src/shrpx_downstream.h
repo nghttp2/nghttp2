@@ -58,7 +58,7 @@ public:
   void pause_read(IOCtrlReason reason);
   int resume_read(IOCtrlReason reason);
   void force_resume_read();
-  // Set stream ID for downstream SPDY connection.
+  // Set stream ID for downstream HTTP2 connection.
   void set_downstream_stream_id(int32_t stream_id);
   int32_t get_downstream_stream_id() const;
 
@@ -213,9 +213,9 @@ private:
   Headers response_headers_;
   bool response_header_key_prev_;
   // This buffer is used to temporarily store downstream response
-  // body. Spdylay reads data from this in the callback.
+  // body. nghttp2 library reads data from this in the callback.
   evbuffer *response_body_buf_;
-  // RST_STREAM error_code from downstream SPDY connection
+  // RST_STREAM error_code from downstream HTTP2 connection
   nghttp2_error_code response_rst_stream_error_code_;
   int32_t recv_window_size_;
 };

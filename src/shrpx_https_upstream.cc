@@ -422,8 +422,8 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
           }
         }
       } else if(downstream->get_upgraded()) {
-        // This path is effectively only taken for SPDY downstream
-        // because only SPDY downstream sets response_state to
+        // This path is effectively only taken for HTTP2 downstream
+        // because only HTTP2 downstream sets response_state to
         // MSG_COMPLETE and this function. For HTTP downstream, EOF
         // from tunnel connection is handled on
         // https_downstream_eventcb.

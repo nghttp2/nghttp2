@@ -84,7 +84,7 @@ private:
   bool should_close_after_write_;
   std::set<DownstreamConnection*> dconn_pool_;
   // Shared HTTP2 session for each thread. NULL if backend is not
-  // SPDY. Not deleted by this object.
+  // HTTP2. Not deleted by this object.
   Http2Session *http2session_;
   // The number of bytes of HTTP/2.0 client connection header to read
   size_t left_connhd_len_;

@@ -94,7 +94,8 @@ std::chrono::steady_clock::time_point get_time();
 void print_timer();
 
 // Setting true will print characters with ANSI color escape codes
-// when printing SPDY frames. This function changes a static variable.
+// when printing HTTP2 frames. This function changes a static
+// variable.
 void set_color_output(bool f);
 
 } // namespace nghttp2
