@@ -319,8 +319,8 @@ HTTP-draft-07/2.0, SPDY and HTTP/1.1. It has several operation modes:
 Mode option        Frontend                       Backend        Note
 ================== ============================== ============== =============
 default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
-``--spdy``         HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       SPDY proxy
-``--spdy-bridge``  HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/2.0 (TLS)
+``--http2-proxy``  HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       SPDY proxy
+``--http2-bridge`` HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/2.0 (TLS)
 ``--client``       HTTP/2.0, HTTP/1.1             HTTP/2.0 (TLS)
 ``--client-proxy`` HTTP/2.0, HTTP/1.1             HTTP/2.0 (TLS) Forward proxy
 ================== ============================== ============== =============
@@ -329,32 +329,28 @@ The interesting mode at the moment is the default mode. It works like
 a reverse proxy and listens HTTP-draft-07/2.0, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.
 
-The default mode, ``--spdy`` and ``--spdy-bridge`` modes use SSL/TLS
-in the frontend connection by default. To disable SSL/TLS, use
+The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
+SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
 ``--frontend-no-tls`` option. If that option is used, SPDY is disabled
 in the frontend and incoming HTTP/1.1 connection can be upgraded to
 HTTP/2.0 through HTTP Upgrade.
 
-The ``--spdy-bridge``, ``--client`` and ``--client-proxy`` modes use
+The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
 SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
 ``--backend-no-tls`` option.
 
 The ``nghttpx`` supports configuration file. See ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
 
-The ``nghttpx`` is ported from ``shrpx`` in spdylay project, and it
-still has SPDY color in option names. They will be fixed as the
-development goes.
-
-In the default mode, (without any of ``--spdy``, ``--spdy-bridge``,
-``--client-proxy`` and ``--client`` options), ``nghttpx`` works as
-reverse proxy to the backend server::
+In the default mode, (without any of ``--http2-proxy``,
+``--http2-bridge``, ``--client-proxy`` and ``--client`` options),
+``nghttpx`` works as reverse proxy to the backend server::
 
     Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Web Server
                                           [reverse proxy]
 
-With ``--spdy`` option, it works as so called secure proxy (aka SPDY
-proxy)::
+With ``--http2-proxy`` option, it works as so called secure proxy (aka
+SPDY proxy)::
 
     Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
                                            [secure proxy]            (e.g., Squid)
@@ -378,7 +374,7 @@ Then run chrome with the following arguments::
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
-With ``--spdy-bridge``, it accepts HTTP/2.0, SPDY and HTTP/1.1
+With ``--http2-bridge``, it accepts HTTP/2.0, SPDY and HTTP/1.1
 connections and communicates with backend in HTTP/2.0::
 
     Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --> Web or HTTP/2.0 Proxy etc
@@ -408,7 +404,7 @@ For the operation modes which talk to the backend in HTTP/2.0 over
 SSL/TLS, the backend connections can be tunneled though HTTP
 proxy. The proxy is specified using ``--backend-http-proxy-uri``
 option. The following figure illustrates the example of
-``--spdy-bridge`` and ``--backend-http-proxy-uri`` option to talk to
+``--http2-bridge`` and ``--backend-http-proxy-uri`` option to talk to
 the outside HTTP/2.0 proxy through HTTP proxy::
 
     Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --
