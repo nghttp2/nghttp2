@@ -104,7 +104,7 @@ union sockaddr_union {
 };
 
 enum shrpx_proto {
-  PROTO_SPDY,
+  PROTO_HTTP2,
   PROTO_HTTP
 };
 

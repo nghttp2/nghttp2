@@ -293,7 +293,7 @@ int event_loop()
 
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
-  } else if(get_config()->downstream_proto == PROTO_SPDY) {
+  } else if(get_config()->downstream_proto == PROTO_HTTP2) {
     listener_handler->create_http2_session();
   }
 
@@ -1061,7 +1061,7 @@ int main(int argc, char **argv)
   }
 
   if(get_config()->client_mode || get_config()->http2_bridge) {
-    mod_config()->downstream_proto = PROTO_SPDY;
+    mod_config()->downstream_proto = PROTO_HTTP2;
   } else {
     mod_config()->downstream_proto = PROTO_HTTP;
   }

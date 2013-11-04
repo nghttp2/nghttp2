@@ -90,7 +90,7 @@ void Worker::run()
     return;
   }
   std::unique_ptr<Http2Session> http2session;
-  if(get_config()->downstream_proto == PROTO_SPDY) {
+  if(get_config()->downstream_proto == PROTO_HTTP2) {
     http2session = util::make_unique<Http2Session>(evbase.get(), cl_ssl_ctx_);
     if(http2session->init_notification() == -1) {
       DIE();
