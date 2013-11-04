@@ -475,7 +475,9 @@ int SpdySession::initiate_connection()
     bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
     bufferevent_enable(bev_, EV_READ);
     bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
-    // No timeout for SPDY session
+    // Set timeout for SPDY session
+    bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
+                             &get_config()->downstream_write_timeout);
 
     // We have been already connected when no TLS and proxy is used.
     if(state_ != CONNECTED) {
