@@ -288,8 +288,8 @@ int on_frame_recv_callback
       // :authority or host for methods.
       if(!http2::non_empty_value(method) ||
          !http2::non_empty_value(scheme) ||
-         (get_config()->spdy_proxy && !having_authority) ||
-         (!get_config()->spdy_proxy && !having_authority && !having_host) ||
+         (get_config()->http2_proxy && !having_authority) ||
+         (!get_config()->http2_proxy && !having_authority && !having_host) ||
          !http2::non_empty_value(path)) {
         upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
@@ -467,7 +467,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     session_(nullptr),
     settings_timerev_(nullptr)
 {
-  handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
+  handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
                                  &get_config()->upstream_write_timeout);
 
   nghttp2_session_callbacks callbacks;
@@ -490,7 +490,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   int val = 1;
   flow_control_ = true;
-  initial_window_size_ = (1 << get_config()->spdy_upstream_window_bits) - 1;
+  initial_window_size_ = (1 << get_config()->http2_upstream_window_bits) - 1;
   rv = nghttp2_session_set_option(session_,
                                   NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
                                   &val, sizeof(val));
@@ -503,7 +503,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   // TODO Maybe call from outside?
   nghttp2_settings_entry entry[2];
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = get_config()->spdy_max_concurrent_streams;
+  entry[0].value = get_config()->http2_max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = initial_window_size_;

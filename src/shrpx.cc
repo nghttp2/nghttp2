@@ -262,7 +262,7 @@ int event_loop()
   } else {
     sv_ssl_ctx = get_config()->upstream_no_tls ?
       nullptr : get_config()->default_ssl_ctx;
-    cl_ssl_ctx = get_config()->spdy_bridge &&
+    cl_ssl_ctx = get_config()->http2_bridge &&
       !get_config()->downstream_no_tls ?
       ssl::create_ssl_client_context() : nullptr;
   }
@@ -345,8 +345,8 @@ void fill_default_config()
   mod_config()->cert_file = 0;
 
   // Read timeout for SPDY upstream connection
-  mod_config()->spdy_upstream_read_timeout.tv_sec = 180;
-  mod_config()->spdy_upstream_read_timeout.tv_usec = 0;
+  mod_config()->http2_upstream_read_timeout.tv_sec = 180;
+  mod_config()->http2_upstream_read_timeout.tv_usec = 0;
 
   // Read timeout for non-SPDY upstream connection
   mod_config()->upstream_read_timeout.tv_sec = 180;
@@ -368,8 +368,8 @@ void fill_default_config()
   // window bits for HTTP/2.0 and SPDY upstream/downstream
   // connection. 2**16-1 = 64KiB-1, which is HTTP/2.0 default. Please
   // note that SPDY/3 default is 64KiB.
-  mod_config()->spdy_upstream_window_bits = 16;
-  mod_config()->spdy_downstream_window_bits = 16;
+  mod_config()->http2_upstream_window_bits = 16;
+  mod_config()->http2_downstream_window_bits = 16;
 
   mod_config()->upstream_no_tls = false;
   mod_config()->downstream_no_tls = false;
@@ -380,7 +380,7 @@ void fill_default_config()
   mod_config()->downstream_addrlen = 0;
 
   mod_config()->num_worker = 1;
-  mod_config()->spdy_max_concurrent_streams = 100;
+  mod_config()->http2_max_concurrent_streams = 100;
   mod_config()->add_x_forwarded_for = false;
   mod_config()->no_via = false;
   mod_config()->accesslog = false;
@@ -392,8 +392,8 @@ void fill_default_config()
   mod_config()->backlog = 256;
   mod_config()->ciphers = 0;
   mod_config()->honor_cipher_order = false;
-  mod_config()->spdy_proxy = false;
-  mod_config()->spdy_bridge = false;
+  mod_config()->http2_proxy = false;
+  mod_config()->http2_bridge = false;
   mod_config()->client_proxy = false;
   mod_config()->client = false;
   mod_config()->client_mode = false;
@@ -513,10 +513,10 @@ void print_help(std::ostream& out)
       << get_config()->write_burst << "\n"
       << "\n"
       << "  Timeout:\n"
-      << "    --frontend-spdy-read-timeout=<SEC>\n"
+      << "    --frontend-http2-read-timeout=<SEC>\n"
       << "                       Specify read timeout for HTTP/2.0 and SPDY frontend\n"
       << "                       connection. Default: "
-      << get_config()->spdy_upstream_read_timeout.tv_sec << "\n"
+      << get_config()->http2_upstream_read_timeout.tv_sec << "\n"
       << "    --frontend-read-timeout=<SEC>\n"
       << "                       Specify read timeout for HTTP/1.1 frontend\n"
       << "                       connection. Default: "
@@ -611,22 +611,22 @@ void print_help(std::ostream& out)
       << "                       authentication.\n"
       << "\n"
       << "  HTTP/2.0 and SPDY:\n"
-      << "    -c, --spdy-max-concurrent-streams=<NUM>\n"
+      << "    -c, --http2-max-concurrent-streams=<NUM>\n"
       << "                       Set the maximum number of the concurrent\n"
       << "                       streams in one HTTP/2.0 and SPDY session.\n"
       << "                       Default: "
-      << get_config()->spdy_max_concurrent_streams << "\n"
-      << "    --frontend-spdy-window-bits=<N>\n"
+      << get_config()->http2_max_concurrent_streams << "\n"
+      << "    --frontend-http2-window-bits=<N>\n"
       << "                       Sets the initial window size of HTTP/2.0 and SPDY\n"
       << "                       frontend connection to 2**<N>-1.\n"
       << "                       Default: "
-      << get_config()->spdy_upstream_window_bits << "\n"
+      << get_config()->http2_upstream_window_bits << "\n"
       << "    --frontend-no-tls  Disable SSL/TLS on frontend connections.\n"
-      << "    --backend-spdy-window-bits=<N>\n"
+      << "    --backend-http2-window-bits=<N>\n"
       << "                       Sets the initial window size of HTTP/2.0 and SPDY\n"
       << "                       backend connection to 2**<N>-1.\n"
       << "                       Default: "
-      << get_config()->spdy_downstream_window_bits << "\n"
+      << get_config()->http2_downstream_window_bits << "\n"
       << "    --backend-no-tls   Disable SSL/TLS on backend connections.\n"
       << "\n"
       << "  Mode:\n"
@@ -636,8 +636,8 @@ void print_help(std::ostream& out)
       << "                       HTTP/1.1 connection can be upgraded to\n"
       << "                       HTTP/2.0 through HTTP Upgrade.\n"
       << "                       The protocol to the backend is HTTP/1.1.\n"
-      << "    -s, --spdy-proxy   Like default mode, but enable secure proxy mode.\n"
-      << "    --spdy-bridge      Like default mode, but communicate with the\n"
+      << "    -s, --http2-proxy  Like default mode, but enable secure proxy mode.\n"
+      << "    --http2-bridge     Like default mode, but communicate with the\n"
       << "                       backend in HTTP/2.0 over SSL/TLS. Thus the\n"
       << "                       incoming all connections are converted\n"
       << "                       to HTTP/2.0 connection and relayed to\n"
@@ -702,23 +702,23 @@ int main(int argc, char **argv)
       {"daemon", no_argument, nullptr, 'D'},
       {"log-level", required_argument, nullptr, 'L'},
       {"backend", required_argument, nullptr, 'b'},
-      {"spdy-max-concurrent-streams", required_argument, nullptr, 'c'},
+      {"http2-max-concurrent-streams", required_argument, nullptr, 'c'},
       {"frontend", required_argument, nullptr, 'f'},
       {"help", no_argument, nullptr, 'h'},
       {"insecure", no_argument, nullptr, 'k'},
       {"workers", required_argument, nullptr, 'n'},
       {"client-proxy", no_argument, nullptr, 'p'},
-      {"spdy-proxy", no_argument, nullptr, 's'},
+      {"http2-proxy", no_argument, nullptr, 's'},
       {"version", no_argument, nullptr, 'v'},
       {"add-x-forwarded-for", no_argument, &flag, 1},
-      {"frontend-spdy-read-timeout", required_argument, &flag, 2},
+      {"frontend-http2-read-timeout", required_argument, &flag, 2},
       {"frontend-read-timeout", required_argument, &flag, 3},
       {"frontend-write-timeout", required_argument, &flag, 4},
       {"backend-read-timeout", required_argument, &flag, 5},
       {"backend-write-timeout", required_argument, &flag, 6},
       {"accesslog", no_argument, &flag, 7},
       {"backend-keep-alive-timeout", required_argument, &flag, 8},
-      {"frontend-spdy-window-bits", required_argument, &flag, 9},
+      {"frontend-http2-window-bits", required_argument, &flag, 9},
       {"pid-file", required_argument, &flag, 10},
       {"user", required_argument, &flag, 11},
       {"conf", required_argument, &flag, 12},
@@ -727,14 +727,14 @@ int main(int argc, char **argv)
       {"backlog", required_argument, &flag, 15},
       {"ciphers", required_argument, &flag, 16},
       {"client", no_argument, &flag, 17},
-      {"backend-spdy-window-bits", required_argument, &flag, 18},
+      {"backend-http2-window-bits", required_argument, &flag, 18},
       {"cacert", required_argument, &flag, 19},
       {"backend-ipv4", no_argument, &flag, 20},
       {"backend-ipv6", no_argument, &flag, 21},
       {"private-key-passwd-file", required_argument, &flag, 22},
       {"no-via", no_argument, &flag, 23},
       {"subcert", required_argument, &flag, 24},
-      {"spdy-bridge", no_argument, &flag, 25},
+      {"http2-bridge", no_argument, &flag, 25},
       {"backend-http-proxy-uri", required_argument, &flag, 26},
       {"backend-no-tls", no_argument, &flag, 27},
       {"frontend-no-tls", no_argument, &flag, 29},
@@ -770,7 +770,7 @@ int main(int argc, char **argv)
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND, optarg));
       break;
     case 'c':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS,
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS,
                                        optarg));
       break;
     case 'f':
@@ -789,7 +789,7 @@ int main(int argc, char **argv)
       cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_PROXY, "yes"));
       break;
     case 's':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_PROXY, "yes"));
+      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HTTP2_PROXY, "yes"));
       break;
     case 'v':
       print_version(std::cout);
@@ -804,8 +804,8 @@ int main(int argc, char **argv)
                                          "yes"));
         break;
       case 2:
-        // --frontend-spdy-read-timeout
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT,
+        // --frontend-http2-read-timeout
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT,
                                          optarg));
         break;
       case 3:
@@ -837,8 +837,8 @@ int main(int argc, char **argv)
                                          optarg));
         break;
       case 9:
-        // --frontend-spdy-window-bits
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS,
+        // --frontend-http2-window-bits
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS,
                                          optarg));
         break;
       case 10:
@@ -872,8 +872,8 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT, "yes"));
         break;
       case 18:
-        // --backend-spdy-window-bits
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS,
+        // --backend-http2-window-bits
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS,
                                          optarg));
         break;
       case 19:
@@ -902,8 +902,8 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SUBCERT, optarg));
         break;
       case 25:
-        // --spdy-bridge
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SPDY_BRIDGE, "yes"));
+        // --http2-bridge
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HTTP2_BRIDGE, "yes"));
         break;
       case 26:
         // --backend-http-proxy-uri
@@ -1049,9 +1049,9 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
-  if(get_config()->spdy_proxy + get_config()->spdy_bridge +
+  if(get_config()->http2_proxy + get_config()->http2_bridge +
      get_config()->client_proxy + get_config()->client > 1) {
-    LOG(FATAL) << "--spdy-proxy, --spdy-bridge, --client-proxy and --client "
+    LOG(FATAL) << "--http2-proxy, --http2-bridge, --client-proxy and --client "
                << "cannot be used at the same time.";
     exit(EXIT_FAILURE);
   }
@@ -1060,7 +1060,7 @@ int main(int argc, char **argv)
     mod_config()->client_mode = true;
   }
 
-  if(get_config()->client_mode || get_config()->spdy_bridge) {
+  if(get_config()->client_mode || get_config()->http2_bridge) {
     mod_config()->downstream_proto = PROTO_SPDY;
   } else {
     mod_config()->downstream_proto = PROTO_HTTP;

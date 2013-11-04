@@ -127,7 +127,7 @@ int HttpDownstreamConnection::push_request_headers()
     } else {
       hdrs += downstream_->get_request_path();
     }
-  } else if(get_config()->spdy_proxy &&
+  } else if(get_config()->http2_proxy &&
      !downstream_->get_request_http2_scheme().empty() &&
      !downstream_->get_request_http2_authority().empty() &&
      downstream_->get_request_path().c_str()[0] == '/') {

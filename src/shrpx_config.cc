@@ -60,16 +60,16 @@ const char SHRPX_OPT_BACKEND[] = "backend";
 const char SHRPX_OPT_FRONTEND[] = "frontend";
 const char SHRPX_OPT_WORKERS[] = "workers";
 const char
-SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS[] = "spdy-max-concurrent-streams";
+SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS[] = "http2-max-concurrent-streams";
 const char SHRPX_OPT_LOG_LEVEL[] = "log-level";
 const char SHRPX_OPT_DAEMON[] = "daemon";
-const char SHRPX_OPT_SPDY_PROXY[] = "spdy-proxy";
-const char SHRPX_OPT_SPDY_BRIDGE[] = "spdy-bridge";
+const char SHRPX_OPT_HTTP2_PROXY[] = "http2-proxy";
+const char SHRPX_OPT_HTTP2_BRIDGE[] = "http2-bridge";
 const char SHRPX_OPT_CLIENT_PROXY[] = "client-proxy";
 const char SHRPX_OPT_ADD_X_FORWARDED_FOR[] = "add-x-forwarded-for";
 const char SHRPX_OPT_NO_VIA[] = "no-via";
 const char
-SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT[] = "frontend-spdy-read-timeout";
+SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT[] = "frontend-http2-read-timeout";
 const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[] = "frontend-read-timeout";
 const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[] = "frontend-write-timeout";
 const char SHRPX_OPT_BACKEND_READ_TIMEOUT[] = "backend-read-timeout";
@@ -77,8 +77,9 @@ const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[] = "backend-write-timeout";
 const char SHRPX_OPT_ACCESSLOG[] = "accesslog";
 const char
 SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] = "backend-keep-alive-timeout";
-const char SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS[] = "frontend-spdy-window-bits";
-const char SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS[] = "backend-spdy-window-bits";
+const char
+SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS[] = "frontend-http2-window-bits";
+const char SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS[] = "backend-http2-window-bits";
 const char SHRPX_OPT_FRONTEND_NO_TLS[] = "frontend-no-tls";
 const char SHRPX_OPT_BACKEND_NO_TLS[] = "backend-no-tls";
 const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[] = "backend-tls-sni-field";
@@ -244,8 +245,8 @@ int parse_config(const char *opt, const char *optarg)
     }
   } else if(util::strieq(opt, SHRPX_OPT_WORKERS)) {
     mod_config()->num_worker = strtol(optarg, nullptr, 10);
-  } else if(util::strieq(opt, SHRPX_OPT_SPDY_MAX_CONCURRENT_STREAMS)) {
-    mod_config()->spdy_max_concurrent_streams = strtol(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS)) {
+    mod_config()->http2_max_concurrent_streams = strtol(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_LOG_LEVEL)) {
     if(Log::set_severity_level_by_name(optarg) == -1) {
       LOG(ERROR) << "Invalid severity level: " << optarg;
@@ -253,19 +254,19 @@ int parse_config(const char *opt, const char *optarg)
     }
   } else if(util::strieq(opt, SHRPX_OPT_DAEMON)) {
     mod_config()->daemon = util::strieq(optarg, "yes");
-  } else if(util::strieq(opt, SHRPX_OPT_SPDY_PROXY)) {
-    mod_config()->spdy_proxy = util::strieq(optarg, "yes");
-  } else if(util::strieq(opt, SHRPX_OPT_SPDY_BRIDGE)) {
-    mod_config()->spdy_bridge = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_HTTP2_PROXY)) {
+    mod_config()->http2_proxy = util::strieq(optarg, "yes");
+  } else if(util::strieq(opt, SHRPX_OPT_HTTP2_BRIDGE)) {
+    mod_config()->http2_bridge = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_CLIENT_PROXY)) {
     mod_config()->client_proxy = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_ADD_X_FORWARDED_FOR)) {
     mod_config()->add_x_forwarded_for = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_NO_VIA)) {
     mod_config()->no_via = util::strieq(optarg, "yes");
-  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_READ_TIMEOUT)) {
+  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT)) {
     timeval tv = {strtol(optarg, nullptr, 10), 0};
-    mod_config()->spdy_upstream_read_timeout = tv;
+    mod_config()->http2_upstream_read_timeout = tv;
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_READ_TIMEOUT)) {
     timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->upstream_read_timeout = tv;
@@ -283,16 +284,16 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT)) {
     timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->downstream_idle_read_timeout = tv;
-  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS) ||
-            util::strieq(opt, SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS)) {
+  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS) ||
+            util::strieq(opt, SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS)) {
     size_t *resp;
     const char *optname;
-    if(util::strieq(opt, SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS)) {
-      resp = &mod_config()->spdy_upstream_window_bits;
-      optname = SHRPX_OPT_FRONTEND_SPDY_WINDOW_BITS;
+    if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS)) {
+      resp = &mod_config()->http2_upstream_window_bits;
+      optname = SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS;
     } else {
-      resp = &mod_config()->spdy_downstream_window_bits;
-      optname = SHRPX_OPT_BACKEND_SPDY_WINDOW_BITS;
+      resp = &mod_config()->http2_downstream_window_bits;
+      optname = SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS;
     }
     errno = 0;
     unsigned long int n = strtoul(optarg, nullptr, 10);

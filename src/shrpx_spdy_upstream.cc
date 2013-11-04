@@ -357,7 +357,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
     session_(0)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
-  handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
+  handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
                                  &get_config()->upstream_write_timeout);
 
   spdylay_session_callbacks callbacks;
@@ -380,7 +380,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   if(version == SPDYLAY_PROTO_SPDY3) {
     int val = 1;
     flow_control_ = true;
-    initial_window_size_ = (1 << get_config()->spdy_upstream_window_bits) - 1;
+    initial_window_size_ = (1 << get_config()->http2_upstream_window_bits) - 1;
     rv = spdylay_session_set_option(session_,
                                     SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
                                     sizeof(val));
@@ -392,7 +392,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   // TODO Maybe call from outside?
   spdylay_settings_entry entry[2];
   entry[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = get_config()->spdy_max_concurrent_streams;
+  entry[0].value = get_config()->http2_max_concurrent_streams;
   entry[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
   entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
