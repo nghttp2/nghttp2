@@ -467,7 +467,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     session_(nullptr),
     settings_timerev_(nullptr)
 {
-  //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->spdy_upstream_read_timeout,
                                  &get_config()->upstream_write_timeout);
 
@@ -585,7 +584,7 @@ ClientHandler* Http2Upstream::get_client_handler() const
 }
 
 namespace {
-void spdy_downstream_readcb(bufferevent *bev, void *ptr)
+void downstream_readcb(bufferevent *bev, void *ptr)
 {
   auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
@@ -641,7 +640,7 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
 } // namespace
 
 namespace {
-void spdy_downstream_writecb(bufferevent *bev, void *ptr)
+void downstream_writecb(bufferevent *bev, void *ptr)
 {
   if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     return;
@@ -654,7 +653,7 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
 } // namespace
 
 namespace {
-void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
+void downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
   auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
@@ -695,9 +694,9 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
         downstream->set_response_state(Downstream::MSG_COMPLETE);
 
         // For tunneled connection, MSG_COMPLETE signals
-        // spdy_data_read_callback to send RST_STREAM after pending
-        // response body is sent. This is needed to ensure that
-        // RST_STREAM is sent after all pending data are sent.
+        // downstream_data_read_callback to send RST_STREAM after
+        // pending response body is sent. This is needed to ensure
+        // that RST_STREAM is sent after all pending data are sent.
         upstream->on_downstream_body_complete(downstream);
       } else if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
         // If stream was not closed, then we set MSG_COMPLETE and let
@@ -817,12 +816,12 @@ int Http2Upstream::fail_session(nghttp2_error_code error_code)
 }
 
 namespace {
-ssize_t spdy_data_read_callback(nghttp2_session *session,
-                                int32_t stream_id,
-                                uint8_t *buf, size_t length,
-                                int *eof,
-                                nghttp2_data_source *source,
-                                void *user_data)
+ssize_t downstream_data_read_callback(nghttp2_session *session,
+                                      int32_t stream_id,
+                                      uint8_t *buf, size_t length,
+                                      int *eof,
+                                      nghttp2_data_source *source,
+                                      void *user_data)
 {
   auto downstream = reinterpret_cast<Downstream*>(source->ptr);
   auto body = downstream->get_response_body_buf();
@@ -867,7 +866,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
   nghttp2_data_provider data_prd;
   data_prd.source.ptr = downstream;
-  data_prd.read_callback = spdy_data_read_callback;
+  data_prd.read_callback = downstream_data_read_callback;
 
   auto content_length = util::utos(html.size());
   auto status_code_str = util::utos(status_code);
@@ -895,17 +894,17 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
 bufferevent_data_cb Http2Upstream::get_downstream_readcb()
 {
-  return spdy_downstream_readcb;
+  return downstream_readcb;
 }
 
 bufferevent_data_cb Http2Upstream::get_downstream_writecb()
 {
-  return spdy_downstream_writecb;
+  return downstream_writecb;
 }
 
 bufferevent_event_cb Http2Upstream::get_downstream_eventcb()
 {
-  return spdy_downstream_eventcb;
+  return downstream_eventcb;
 }
 
 void Http2Upstream::add_downstream(Downstream *downstream)
@@ -923,7 +922,7 @@ Downstream* Http2Upstream::find_downstream(int32_t stream_id)
   return downstream_queue_.find(stream_id);
 }
 
-nghttp2_session* Http2Upstream::get_spdy_session()
+nghttp2_session* Http2Upstream::get_http2_session()
 {
   return session_;
 }
@@ -975,7 +974,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   }
   nghttp2_data_provider data_prd;
   data_prd.source.ptr = downstream;
-  data_prd.read_callback = spdy_data_read_callback;
+  data_prd.read_callback = downstream_data_read_callback;
 
   int rv;
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),

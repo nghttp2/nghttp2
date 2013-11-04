@@ -37,7 +37,7 @@ namespace shrpx {
 
 class Upstream;
 class DownstreamConnection;
-class SpdySession;
+class Http2Session;
 class HttpsUpstream;
 
 class ClientHandler {
@@ -63,8 +63,8 @@ public:
   DownstreamConnection* get_downstream_connection();
   size_t get_pending_write_length();
   SSL* get_ssl() const;
-  void set_spdy_session(SpdySession *spdy);
-  SpdySession* get_spdy_session() const;
+  void set_http2_session(Http2Session *http2session);
+  Http2Session* get_http2_session() const;
   size_t get_left_connhd_len() const;
   void set_left_connhd_len(size_t left);
   // Call this function when HTTP/2.0 connection header is received at
@@ -83,9 +83,9 @@ private:
   std::string ipaddr_;
   bool should_close_after_write_;
   std::set<DownstreamConnection*> dconn_pool_;
-  // Shared SPDY session for each thread. NULL if backend is not
+  // Shared HTTP2 session for each thread. NULL if backend is not
   // SPDY. Not deleted by this object.
-  SpdySession *spdy_;
+  Http2Session *http2session_;
   // The number of bytes of HTTP/2.0 client connection header to read
   size_t left_connhd_len_;
 };

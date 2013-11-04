@@ -55,7 +55,7 @@ public:
   void remove_downstream(Downstream *downstream);
   Downstream* find_downstream(int32_t stream_id);
 
-  nghttp2_session* get_spdy_session();
+  nghttp2_session* get_http2_session();
 
   int rst_stream(Downstream *downstream, nghttp2_error_code error_code);
   // To send WINDOW_UPDATE for a connection, specify nullptr to

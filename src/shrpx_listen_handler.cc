@@ -37,7 +37,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
 #include "shrpx_config.h"
-#include "shrpx_spdy_session.h"
+#include "shrpx_http2_session.h"
 
 namespace shrpx {
 
@@ -49,7 +49,7 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
     worker_round_robin_cnt_(0),
     workers_(nullptr),
     num_worker_(0),
-    spdy_(nullptr)
+    http2session_(nullptr)
 {}
 
 ListenHandler::~ListenHandler()
@@ -110,7 +110,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
       LLOG(ERROR, this) << "ClientHandler creation failed";
       return 0;
     }
-    client->set_spdy_session(spdy_);
+    client->set_http2_session(http2session_);
   } else {
     size_t idx = worker_round_robin_cnt_ % num_worker_;
     ++worker_round_robin_cnt_;
@@ -133,11 +133,11 @@ event_base* ListenHandler::get_evbase() const
   return evbase_;
 }
 
-int ListenHandler::create_spdy_session()
+int ListenHandler::create_http2_session()
 {
   int rv;
-  spdy_ = new SpdySession(evbase_, cl_ssl_ctx_);
-  rv = spdy_->init_notification();
+  http2session_ = new Http2Session(evbase_, cl_ssl_ctx_);
+  rv = http2session_->init_notification();
   return rv;
 }
 

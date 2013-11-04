@@ -31,7 +31,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
 #include "shrpx_downstream_connection.h"
-#include "shrpx_spdy_downstream_connection.h"
+#include "shrpx_http2_downstream_connection.h"
 #include "shrpx_http.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"

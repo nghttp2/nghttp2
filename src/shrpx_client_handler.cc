@@ -32,7 +32,7 @@
 #include "shrpx_https_upstream.h"
 #include "shrpx_config.h"
 #include "shrpx_http_downstream_connection.h"
-#include "shrpx_spdy_downstream_connection.h"
+#include "shrpx_http2_downstream_connection.h"
 #include "shrpx_accesslog.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
@@ -218,7 +218,7 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     ssl_(ssl),
     ipaddr_(ipaddr),
     should_close_after_write_(false),
-    spdy_(nullptr),
+    http2session_(nullptr),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN)
 {
   bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
@@ -376,8 +376,8 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
       CLOG(INFO, this) << "Downstream connection pool is empty."
                        << " Create new one";
     }
-    if(spdy_) {
-      return new SpdyDownstreamConnection(this);
+    if(http2session_) {
+      return new Http2DownstreamConnection(this);
     } else {
       return new HttpDownstreamConnection(this);
     }
@@ -403,14 +403,14 @@ SSL* ClientHandler::get_ssl() const
   return ssl_;
 }
 
-void ClientHandler::set_spdy_session(SpdySession *spdy)
+void ClientHandler::set_http2_session(Http2Session *http2session)
 {
-  spdy_ = spdy;
+  http2session_ = http2session;
 }
 
-SpdySession* ClientHandler::get_spdy_session() const
+Http2Session* ClientHandler::get_http2_session() const
 {
-  return spdy_;
+  return http2session_;
 }
 
 size_t ClientHandler::get_left_connhd_len() const

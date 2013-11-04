@@ -294,7 +294,7 @@ int event_loop()
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
   } else if(get_config()->downstream_proto == PROTO_SPDY) {
-    listener_handler->create_spdy_session();
+    listener_handler->create_http2_session();
   }
 
   if(LOG_ENABLED(INFO)) {

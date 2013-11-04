@@ -29,13 +29,14 @@
 #include "shrpx_ssl.h"
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
-#include "shrpx_spdy_session.h"
+#include "shrpx_http2_session.h"
 
 namespace shrpx {
 
-ThreadEventReceiver::ThreadEventReceiver(SSL_CTX *ssl_ctx, SpdySession *spdy)
+ThreadEventReceiver::ThreadEventReceiver(SSL_CTX *ssl_ctx,
+                                         Http2Session *http2session)
   : ssl_ctx_(ssl_ctx),
-    spdy_(spdy)
+    http2session_(http2session)
 {}
 
 ThreadEventReceiver::~ThreadEventReceiver()
@@ -63,7 +64,7 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
                                             &wev.client_addr.sa,
                                             wev.client_addrlen);
     if(client_handler) {
-      client_handler->set_spdy_session(spdy_);
+      client_handler->set_http2_session(http2session_);
       if(LOG_ENABLED(INFO)) {
         TLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created";
       }

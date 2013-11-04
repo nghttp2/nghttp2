@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_SPDY_SESSION_H
-#define SHRPX_SPDY_SESSION_H
+#ifndef SHRPX_HTTP2_SESSION_H
+#define SHRPX_HTTP2_SESSION_H
 
 #include "shrpx.h"
 
@@ -41,16 +41,16 @@
 
 namespace shrpx {
 
-class SpdyDownstreamConnection;
+class Http2DownstreamConnection;
 
 struct StreamData {
-  SpdyDownstreamConnection *dconn;
+  Http2DownstreamConnection *dconn;
 };
 
-class SpdySession {
+class Http2Session {
 public:
-  SpdySession(event_base *evbase, SSL_CTX *ssl_ctx);
-  ~SpdySession();
+  Http2Session(event_base *evbase, SSL_CTX *ssl_ctx);
+  ~Http2Session();
 
   int init_notification();
 
@@ -59,12 +59,12 @@ public:
   int disconnect();
   int initiate_connection();
 
-  void add_downstream_connection(SpdyDownstreamConnection *dconn);
-  void remove_downstream_connection(SpdyDownstreamConnection *dconn);
+  void add_downstream_connection(Http2DownstreamConnection *dconn);
+  void remove_downstream_connection(Http2DownstreamConnection *dconn);
 
   void remove_stream_data(StreamData *sd);
 
-  int submit_request(SpdyDownstreamConnection *dconn,
+  int submit_request(Http2DownstreamConnection *dconn,
                      uint8_t pri, const char **nv,
                      const nghttp2_data_provider *data_prd);
 
@@ -72,7 +72,7 @@ public:
 
   // To send WINDOW_UPDATE for a connection, specify nullptr to
   // |dconn|.
-  int submit_window_update(SpdyDownstreamConnection *dconn, int32_t amount);
+  int submit_window_update(Http2DownstreamConnection *dconn, int32_t amount);
 
   int fail_session(nghttp2_error_code error_code);
 
@@ -82,7 +82,7 @@ public:
 
   bool get_flow_control() const;
 
-  int resume_data(SpdyDownstreamConnection *dconn);
+  int resume_data(Http2DownstreamConnection *dconn);
 
   int on_connect();
 
@@ -130,7 +130,7 @@ private:
   int fd_;
   nghttp2_session *session_;
   bufferevent *bev_;
-  std::set<SpdyDownstreamConnection*> dconns_;
+  std::set<Http2DownstreamConnection*> dconns_;
   std::set<StreamData*> streams_;
   int state_;
   bool notified_;
@@ -144,4 +144,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_SPDY_SESSION_H
+#endif // SHRPX_HTTP2_SESSION_H

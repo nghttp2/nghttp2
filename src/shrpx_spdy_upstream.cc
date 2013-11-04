@@ -800,7 +800,7 @@ Downstream* SpdyUpstream::find_downstream(int32_t stream_id)
   return downstream_queue_.find(stream_id);
 }
 
-spdylay_session* SpdyUpstream::get_spdy_session()
+spdylay_session* SpdyUpstream::get_http2_session()
 {
   return session_;
 }

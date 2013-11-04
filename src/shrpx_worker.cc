@@ -35,7 +35,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_thread_event_receiver.h"
 #include "shrpx_log.h"
-#include "shrpx_spdy_session.h"
+#include "shrpx_http2_session.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -89,15 +89,15 @@ void Worker::run()
     LOG(ERROR) << "bufferevent_socket_new() failed";
     return;
   }
-  std::unique_ptr<SpdySession> spdy;
+  std::unique_ptr<Http2Session> http2session;
   if(get_config()->downstream_proto == PROTO_SPDY) {
-    spdy = util::make_unique<SpdySession>(evbase.get(), cl_ssl_ctx_);
-    if(spdy->init_notification() == -1) {
+    http2session = util::make_unique<Http2Session>(evbase.get(), cl_ssl_ctx_);
+    if(http2session->init_notification() == -1) {
       DIE();
     }
   }
   auto receiver = util::make_unique<ThreadEventReceiver>(sv_ssl_ctx_,
-                                                         spdy.get());
+                                                         http2session.get());
   bufferevent_enable(bev.get(), EV_READ);
   bufferevent_setcb(bev.get(), readcb, nullptr, eventcb, receiver.get());
 

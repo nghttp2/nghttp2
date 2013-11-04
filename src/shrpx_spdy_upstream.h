@@ -52,7 +52,7 @@ public:
   void remove_downstream(Downstream *downstream);
   Downstream* find_downstream(int32_t stream_id);
 
-  spdylay_session* get_spdy_session();
+  spdylay_session* get_http2_session();
 
   int rst_stream(Downstream *downstream, int status_code);
   int window_update(Downstream *downstream);

@@ -43,7 +43,7 @@ struct WorkerInfo {
   bufferevent *bev;
 };
 
-class SpdySession;
+class Http2Session;
 
 class ListenHandler {
 public:
@@ -52,7 +52,7 @@ public:
   int accept_connection(evutil_socket_t fd, sockaddr *addr, int addrlen);
   void create_worker_thread(size_t num);
   event_base* get_evbase() const;
-  int create_spdy_session();
+  int create_http2_session();
 private:
   event_base *evbase_;
   // The frontend server SSL_CTX
@@ -62,9 +62,9 @@ private:
   unsigned int worker_round_robin_cnt_;
   WorkerInfo *workers_;
   size_t num_worker_;
-  // Shared backend SPDY session. NULL if multi-threaded. In
+  // Shared backend HTTP2 session. NULL if multi-threaded. In
   // multi-threaded case, see shrpx_worker.cc.
-  SpdySession *spdy_;
+  Http2Session *http2session_;
 };
 
 } // namespace shrpx

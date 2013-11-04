@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_spdy_downstream_connection.h"
+#include "shrpx_http2_downstream_connection.h"
 
 #include <unistd.h>
 
@@ -38,7 +38,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_http.h"
-#include "shrpx_spdy_session.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 
@@ -46,15 +46,15 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-SpdyDownstreamConnection::SpdyDownstreamConnection
+Http2DownstreamConnection::Http2DownstreamConnection
 (ClientHandler *client_handler)
   : DownstreamConnection(client_handler),
-    spdy_(client_handler->get_spdy_session()),
+    http2session_(client_handler->get_http2_session()),
     request_body_buf_(0),
     sd_(0)
 {}
 
-SpdyDownstreamConnection::~SpdyDownstreamConnection()
+Http2DownstreamConnection::~Http2DownstreamConnection()
 {
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Deleting";
@@ -64,10 +64,10 @@ SpdyDownstreamConnection::~SpdyDownstreamConnection()
   }
   if(downstream_) {
     if(submit_rst_stream(downstream_) == 0) {
-      spdy_->notify();
+      http2session_->notify();
     }
   }
-  spdy_->remove_downstream_connection(this);
+  http2session_->remove_downstream_connection(this);
   // Downstream and DownstreamConnection may be deleted
   // asynchronously.
   if(downstream_) {
@@ -78,7 +78,7 @@ SpdyDownstreamConnection::~SpdyDownstreamConnection()
   }
 }
 
-int SpdyDownstreamConnection::init_request_body_buf()
+int Http2DownstreamConnection::init_request_body_buf()
 {
   int rv;
   if(request_body_buf_) {
@@ -97,7 +97,7 @@ int SpdyDownstreamConnection::init_request_body_buf()
   return 0;
 }
 
-int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
+int Http2DownstreamConnection::attach_downstream(Downstream *downstream)
 {
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
@@ -105,22 +105,22 @@ int SpdyDownstreamConnection::attach_downstream(Downstream *downstream)
   if(init_request_body_buf() == -1) {
     return -1;
   }
-  spdy_->add_downstream_connection(this);
-  if(spdy_->get_state() == SpdySession::DISCONNECTED) {
-    spdy_->notify();
+  http2session_->add_downstream_connection(this);
+  if(http2session_->get_state() == Http2Session::DISCONNECTED) {
+    http2session_->notify();
   }
   downstream->set_downstream_connection(this);
   downstream_ = downstream;
   return 0;
 }
 
-void SpdyDownstreamConnection::detach_downstream(Downstream *downstream)
+void Http2DownstreamConnection::detach_downstream(Downstream *downstream)
 {
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   if(submit_rst_stream(downstream) == 0) {
-    spdy_->notify();
+    http2session_->notify();
   }
   downstream->set_downstream_connection(0);
   downstream_ = 0;
@@ -128,10 +128,10 @@ void SpdyDownstreamConnection::detach_downstream(Downstream *downstream)
   client_handler_->pool_downstream_connection(this);
 }
 
-int SpdyDownstreamConnection::submit_rst_stream(Downstream *downstream)
+int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream)
 {
   int rv = -1;
-  if(spdy_->get_state() == SpdySession::CONNECTED &&
+  if(http2session_->get_state() == Http2Session::CONNECTED &&
      downstream->get_downstream_stream_id() != -1) {
     switch(downstream->get_response_state()) {
     case Downstream::MSG_RESET:
@@ -143,36 +143,35 @@ int SpdyDownstreamConnection::submit_rst_stream(Downstream *downstream)
                           << downstream << ", stream_id="
                           << downstream->get_downstream_stream_id();
       }
-      rv = spdy_->submit_rst_stream(downstream->get_downstream_stream_id(),
-                                    NGHTTP2_INTERNAL_ERROR);
+      rv = http2session_->submit_rst_stream
+        (downstream->get_downstream_stream_id(),
+         NGHTTP2_INTERNAL_ERROR);
     }
   }
   return rv;
 }
 
 namespace {
-ssize_t spdy_data_read_callback(nghttp2_session *session,
-                                int32_t stream_id,
-                                uint8_t *buf, size_t length,
-                                int *eof,
-                                nghttp2_data_source *source,
-                                void *user_data)
+ssize_t http2_data_read_callback(nghttp2_session *session,
+                                 int32_t stream_id,
+                                 uint8_t *buf, size_t length,
+                                 int *eof,
+                                 nghttp2_data_source *source,
+                                 void *user_data)
 {
-  StreamData *sd;
-  sd = reinterpret_cast<StreamData*>
+  auto sd = reinterpret_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
     return NGHTTP2_ERR_DEFERRED;
   }
-  SpdyDownstreamConnection *dconn;
-  dconn = reinterpret_cast<SpdyDownstreamConnection*>(source->ptr);
-  Downstream *downstream = dconn->get_downstream();
+  auto dconn = reinterpret_cast<Http2DownstreamConnection*>(source->ptr);
+  auto downstream = dconn->get_downstream();
   if(!downstream) {
     // In this case, RST_STREAM should have been issued. But depending
     // on the priority, DATA frame may come first.
     return NGHTTP2_ERR_DEFERRED;
   }
-  evbuffer *body = dconn->get_request_body_buf();
+  auto body = dconn->get_request_body_buf();
   int nread = 0;
   for(;;) {
     nread = evbuffer_remove(body, buf, length);
@@ -216,12 +215,13 @@ ssize_t spdy_data_read_callback(nghttp2_session *session,
 }
 } // namespace
 
-int SpdyDownstreamConnection::push_request_headers()
+int Http2DownstreamConnection::push_request_headers()
 {
   int rv;
-  if(spdy_->get_state() != SpdySession::CONNECTED) {
-    // The SPDY session to the backend has not been established.  This
-    // function will be called again just after it is established.
+  if(http2session_->get_state() != Http2Session::CONNECTED) {
+    // The HTTP2 session to the backend has not been established.
+    // This function will be called again just after it is
+    // established.
     return 0;
   }
   if(!downstream_) {
@@ -288,7 +288,7 @@ int SpdyDownstreamConnection::push_request_headers()
     }
     nv.push_back(":scheme");
     if(scheme.empty()) {
-      // The default scheme is http. For SPDY upstream, the path must
+      // The default scheme is http. For HTTP2 upstream, the path must
       // be absolute URI, so scheme should be provided.
       nv.push_back("http");
     } else {
@@ -391,20 +391,20 @@ int SpdyDownstreamConnection::push_request_headers()
     // Request-body is expected.
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
-    data_prd.read_callback = spdy_data_read_callback;
-    rv = spdy_->submit_request(this, 0, nv.data(), &data_prd);
+    data_prd.read_callback = http2_data_read_callback;
+    rv = http2session_->submit_request(this, 0, nv.data(), &data_prd);
   } else {
-    rv = spdy_->submit_request(this, 0, nv.data(), nullptr);
+    rv = http2session_->submit_request(this, 0, nv.data(), nullptr);
   }
   if(rv != 0) {
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";
     return -1;
   }
-  spdy_->notify();
+  http2session_->notify();
   return 0;
 }
 
-int SpdyDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
+int Http2DownstreamConnection::push_upload_data_chunk(const uint8_t *data,
                                                      size_t datalen)
 {
   int rv = evbuffer_add(request_body_buf_, data, datalen);
@@ -413,49 +413,49 @@ int SpdyDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
     return -1;
   }
   if(downstream_->get_downstream_stream_id() != -1) {
-    rv = spdy_->resume_data(this);
+    rv = http2session_->resume_data(this);
     if(rv != 0) {
       return -1;
     }
-    spdy_->notify();
+    http2session_->notify();
   }
   return 0;
 }
 
-int SpdyDownstreamConnection::end_upload_data()
+int Http2DownstreamConnection::end_upload_data()
 {
   int rv;
   if(downstream_->get_downstream_stream_id() != -1) {
-    rv = spdy_->resume_data(this);
+    rv = http2session_->resume_data(this);
     if(rv != 0) {
       return -1;
     }
-    spdy_->notify();
+    http2session_->notify();
   }
   return 0;
 }
 
-int SpdyDownstreamConnection::resume_read(IOCtrlReason reason)
+int Http2DownstreamConnection::resume_read(IOCtrlReason reason)
 {
   int rv1 = 0, rv2 = 0;
-  if(spdy_->get_state() == SpdySession::CONNECTED &&
-     spdy_->get_flow_control()) {
+  if(http2session_->get_state() == Http2Session::CONNECTED &&
+     http2session_->get_flow_control()) {
     int32_t window_size_increment;
     window_size_increment = http2::determine_window_update_transmission
-      (spdy_->get_session(), 0);
+      (http2session_->get_session(), 0);
     if(window_size_increment != -1) {
-      rv1 = spdy_->submit_window_update(nullptr, window_size_increment);
+      rv1 = http2session_->submit_window_update(nullptr, window_size_increment);
       if(rv1 == 0) {
-        spdy_->notify();
+        http2session_->notify();
       }
     }
     if(downstream_ && downstream_->get_downstream_stream_id() != -1) {
       window_size_increment = http2::determine_window_update_transmission
-        (spdy_->get_session(), downstream_->get_downstream_stream_id());
+        (http2session_->get_session(), downstream_->get_downstream_stream_id());
       if(window_size_increment != -1) {
-        rv2 = spdy_->submit_window_update(this, window_size_increment);
+        rv2 = http2session_->submit_window_update(this, window_size_increment);
         if(rv2 == 0) {
-          spdy_->notify();
+          http2session_->notify();
         }
       }
     }
@@ -463,22 +463,22 @@ int SpdyDownstreamConnection::resume_read(IOCtrlReason reason)
   return (rv1 == 0 && rv2 == 0) ? 0 : -1;
 }
 
-int SpdyDownstreamConnection::on_read()
+int Http2DownstreamConnection::on_read()
 {
   return 0;
 }
 
-int SpdyDownstreamConnection::on_write()
+int Http2DownstreamConnection::on_write()
 {
   return 0;
 }
 
-evbuffer* SpdyDownstreamConnection::get_request_body_buf() const
+evbuffer* Http2DownstreamConnection::get_request_body_buf() const
 {
   return request_body_buf_;
 }
 
-void SpdyDownstreamConnection::attach_stream_data(StreamData *sd)
+void Http2DownstreamConnection::attach_stream_data(StreamData *sd)
 {
   // It is possible sd->dconn is not NULL. sd is detached when
   // on_stream_close_callback. Before that, after MSG_COMPLETE is set
@@ -490,7 +490,7 @@ void SpdyDownstreamConnection::attach_stream_data(StreamData *sd)
   sd_->dconn = this;
 }
 
-StreamData* SpdyDownstreamConnection::detach_stream_data()
+StreamData* Http2DownstreamConnection::detach_stream_data()
 {
   if(sd_) {
     StreamData *sd = sd_;
@@ -502,7 +502,7 @@ StreamData* SpdyDownstreamConnection::detach_stream_data()
   }
 }
 
-bool SpdyDownstreamConnection::get_output_buffer_full()
+bool Http2DownstreamConnection::get_output_buffer_full()
 {
   if(request_body_buf_) {
     return

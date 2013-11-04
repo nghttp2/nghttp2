@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_SPDY_DOWNSTREAM_CONNECTION_H
-#define SHRPX_SPDY_DOWNSTREAM_CONNECTION_H
+#ifndef SHRPX_HTTP2_DOWNSTREAM_CONNECTION_H
+#define SHRPX_HTTP2_DOWNSTREAM_CONNECTION_H
 
 #include "shrpx.h"
 
@@ -36,12 +36,12 @@
 namespace shrpx {
 
 struct StreamData;
-class SpdySession;
+class Http2Session;
 
-class SpdyDownstreamConnection : public DownstreamConnection {
+class Http2DownstreamConnection : public DownstreamConnection {
 public:
-  SpdyDownstreamConnection(ClientHandler *client_handler);
-  virtual ~SpdyDownstreamConnection();
+  Http2DownstreamConnection(ClientHandler *client_handler);
+  virtual ~Http2DownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
 
@@ -70,11 +70,11 @@ public:
 
   int submit_rst_stream(Downstream *downstream);
 private:
-  SpdySession *spdy_;
+  Http2Session *http2session_;
   evbuffer *request_body_buf_;
   StreamData *sd_;
 };
 
 } // namespace shrpx
 
-#endif // SHRPX_SPDY_DOWNSTREAM_CONNECTION_H
+#endif // SHRPX_HTTP2_DOWNSTREAM_CONNECTION_H

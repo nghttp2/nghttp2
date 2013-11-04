@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_spdy_session.h"
+#include "shrpx_http2_session.h"
 
 #include <netinet/tcp.h>
 #include <unistd.h>
@@ -36,7 +36,7 @@
 #include "shrpx_downstream.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
-#include "shrpx_spdy_downstream_connection.h"
+#include "shrpx_http2_downstream_connection.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
@@ -48,7 +48,7 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-SpdySession::SpdySession(event_base *evbase, SSL_CTX *ssl_ctx)
+Http2Session::Http2Session(event_base *evbase, SSL_CTX *ssl_ctx)
   : evbase_(evbase),
     ssl_ctx_(ssl_ctx),
     ssl_(nullptr),
@@ -63,12 +63,12 @@ SpdySession::SpdySession(event_base *evbase, SSL_CTX *ssl_ctx)
     settings_timerev_(nullptr)
 {}
 
-SpdySession::~SpdySession()
+Http2Session::~Http2Session()
 {
   disconnect();
 }
 
-int SpdySession::disconnect()
+int Http2Session::disconnect()
 {
   if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Disconnecting";
@@ -121,12 +121,12 @@ int SpdySession::disconnect()
   state_ = DISCONNECTED;
 
   // Delete all client handler associated to Downstream. When deleting
-  // SpdyDownstreamConnection, it calls this object's
+  // Http2DownstreamConnection, it calls this object's
   // remove_downstream_connection(). The multiple
-  // SpdyDownstreamConnection objects belong to the same ClientHandler
+  // Http2DownstreamConnection objects belong to the same ClientHandler
   // object. So first dump ClientHandler objects and delete them once
   // and for all.
-  std::vector<SpdyDownstreamConnection*> vec(dconns_.begin(), dconns_.end());
+  std::vector<Http2DownstreamConnection*> vec(dconns_.begin(), dconns_.end());
   std::set<ClientHandler*> handlers;
   for(size_t i = 0; i < vec.size(); ++i) {
     handlers.insert(vec[i]->get_client_handler());
@@ -147,20 +147,21 @@ namespace {
 void notify_readcb(bufferevent *bev, void *arg)
 {
   int rv;
-  auto spdy = reinterpret_cast<SpdySession*>(arg);
-  spdy->clear_notify();
-  switch(spdy->get_state()) {
-  case SpdySession::DISCONNECTED:
-    rv = spdy->initiate_connection();
+  auto http2session = reinterpret_cast<Http2Session*>(arg);
+  http2session->clear_notify();
+  switch(http2session->get_state()) {
+  case Http2Session::DISCONNECTED:
+    rv = http2session->initiate_connection();
     if(rv != 0) {
-      SSLOG(FATAL, spdy) << "Could not initiate notification connection";
+      SSLOG(FATAL, http2session)
+        << "Could not initiate notification connection";
       DIE();
     }
     break;
-  case SpdySession::CONNECTED:
-    rv = spdy->send();
+  case Http2Session::CONNECTED:
+    rv = http2session->send();
     if(rv != 0) {
-      spdy->disconnect();
+      http2session->disconnect();
     }
     break;
   }
@@ -170,21 +171,21 @@ void notify_readcb(bufferevent *bev, void *arg)
 namespace {
 void notify_eventcb(bufferevent *bev, short events, void *arg)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(arg);
+  auto http2session = reinterpret_cast<Http2Session*>(arg);
   // TODO should DIE()?
   if(events & BEV_EVENT_EOF) {
-    SSLOG(ERROR, spdy) << "Notification connection lost: EOF";
+    SSLOG(ERROR, http2session) << "Notification connection lost: EOF";
   }
   if(events & BEV_EVENT_TIMEOUT) {
-    SSLOG(ERROR, spdy) << "Notification connection lost: timeout";
+    SSLOG(ERROR, http2session) << "Notification connection lost: timeout";
   }
   if(events & BEV_EVENT_ERROR) {
-    SSLOG(ERROR, spdy) << "Notification connection lost: network error";
+    SSLOG(ERROR, http2session) << "Notification connection lost: network error";
   }
 }
 } // namespace
 
-int SpdySession::init_notification()
+int Http2Session::init_notification()
 {
   int rv;
   int sockpair[2];
@@ -220,10 +221,10 @@ namespace {
 void readcb(bufferevent *bev, void *ptr)
 {
   int rv;
-  auto spdy = reinterpret_cast<SpdySession*>(ptr);
-  rv = spdy->on_read();
+  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  rv = http2session->on_read();
   if(rv != 0) {
-    spdy->disconnect();
+    http2session->disconnect();
   }
 }
 } // namespace
@@ -235,10 +236,10 @@ void writecb(bufferevent *bev, void *ptr)
     return;
   }
   int rv;
-  auto spdy = reinterpret_cast<SpdySession*>(ptr);
-  rv = spdy->on_write();
+  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  rv = http2session->on_write();
   if(rv != 0) {
-    spdy->disconnect();
+    http2session->disconnect();
   }
 }
 } // namespace
@@ -246,39 +247,39 @@ void writecb(bufferevent *bev, void *ptr)
 namespace {
 void eventcb(bufferevent *bev, short events, void *ptr)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(ptr);
+  auto http2session = reinterpret_cast<Http2Session*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, spdy) << "Connection established";
+      SSLOG(INFO, http2session) << "Connection established";
     }
-    spdy->set_state(SpdySession::CONNECTED);
+    http2session->set_state(Http2Session::CONNECTED);
     if((!get_config()->downstream_no_tls &&
-        !get_config()->insecure && spdy->check_cert() != 0) ||
-       spdy->on_connect() != 0) {
-      spdy->disconnect();
+        !get_config()->insecure && http2session->check_cert() != 0) ||
+       http2session->on_connect() != 0) {
+      http2session->disconnect();
       return;
     }
     int fd = bufferevent_getfd(bev);
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
-      SSLOG(WARNING, spdy) << "Setting option TCP_NODELAY failed: errno="
-                           << errno;
+      SSLOG(WARNING, http2session)
+        << "Setting option TCP_NODELAY failed: errno=" << errno;
     }
   } else if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, spdy) << "EOF";
+      SSLOG(INFO, http2session) << "EOF";
     }
-    spdy->disconnect();
+    http2session->disconnect();
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
-        SSLOG(INFO, spdy) << "Network error";
+        SSLOG(INFO, http2session) << "Network error";
       } else {
-        SSLOG(INFO, spdy) << "Timeout";
+        SSLOG(INFO, http2session) << "Timeout";
       }
     }
-    spdy->disconnect();
+    http2session->disconnect();
   }
 }
 } // namespace
@@ -286,24 +287,24 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 namespace {
 void proxy_readcb(bufferevent *bev, void *ptr)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(ptr);
-  if(spdy->on_read_proxy() == 0) {
-    switch(spdy->get_state()) {
-    case SpdySession::PROXY_CONNECTED:
+  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  if(http2session->on_read_proxy() == 0) {
+    switch(http2session->get_state()) {
+    case Http2Session::PROXY_CONNECTED:
       // The current bufferevent is no longer necessary, so delete it
       // here. But we keep fd_ inside it.
-      spdy->unwrap_free_bev();
+      http2session->unwrap_free_bev();
       // Initiate SSL/TLS handshake through established tunnel.
-      if(spdy->initiate_connection() != 0) {
-        spdy->disconnect();
+      if(http2session->initiate_connection() != 0) {
+        http2session->disconnect();
       }
       break;
-    case SpdySession::PROXY_FAILED:
-      spdy->disconnect();
+    case Http2Session::PROXY_FAILED:
+      http2session->disconnect();
       break;
     }
   } else {
-    spdy->disconnect();
+    http2session->disconnect();
   }
 }
 } // namespace
@@ -311,10 +312,10 @@ void proxy_readcb(bufferevent *bev, void *ptr)
 namespace {
 void proxy_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(ptr);
+  auto http2session = reinterpret_cast<Http2Session*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, spdy) << "Connected to the proxy";
+      SSLOG(INFO, http2session) << "Connected to the proxy";
     }
     std::string req = "CONNECT ";
     req += get_config()->downstream_hostport;
@@ -330,36 +331,36 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr)
     }
     req += "\r\n";
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, spdy) << "HTTP proxy request headers\n" << req;
+      SSLOG(INFO, http2session) << "HTTP proxy request headers\n" << req;
     }
     if(bufferevent_write(bev, req.c_str(), req.size()) != 0) {
-      SSLOG(ERROR, spdy) << "bufferevent_write() failed";
-      spdy->disconnect();
+      SSLOG(ERROR, http2session) << "bufferevent_write() failed";
+      http2session->disconnect();
     }
   } else if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, spdy) << "Proxy EOF";
+      SSLOG(INFO, http2session) << "Proxy EOF";
     }
-    spdy->disconnect();
+    http2session->disconnect();
   } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
-        SSLOG(INFO, spdy) << "Network error";
+        SSLOG(INFO, http2session) << "Network error";
       } else {
-        SSLOG(INFO, spdy) << "Timeout";
+        SSLOG(INFO, http2session) << "Timeout";
       }
     }
-    spdy->disconnect();
+    http2session->disconnect();
   }
 }
 } // namespace
 
-int SpdySession::check_cert()
+int Http2Session::check_cert()
 {
   return ssl::check_cert(ssl_);
 }
 
-int SpdySession::initiate_connection()
+int Http2Session::initiate_connection()
 {
   int rv = 0;
   if(get_config()->downstream_http_proxy_host && state_ == DISCONNECTED) {
@@ -475,7 +476,7 @@ int SpdySession::initiate_connection()
     bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
     bufferevent_enable(bev_, EV_READ);
     bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
-    // Set timeout for SPDY session
+    // Set timeout for HTTP2 session
     bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
                              &get_config()->downstream_write_timeout);
 
@@ -490,7 +491,7 @@ int SpdySession::initiate_connection()
   return 0;
 }
 
-void SpdySession::unwrap_free_bev()
+void Http2Session::unwrap_free_bev()
 {
   assert(fd_ == -1);
   fd_ = bufferevent_getfd(bev_);
@@ -501,16 +502,16 @@ void SpdySession::unwrap_free_bev()
 namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(htp->data);
+  auto http2session = reinterpret_cast<Http2Session*>(htp->data);
   // We just check status code here
   if(htp->status_code == 200) {
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, spdy) << "Tunneling success";
+      SSLOG(INFO, http2session) << "Tunneling success";
     }
-    spdy->set_state(SpdySession::PROXY_CONNECTED);
+    http2session->set_state(Http2Session::PROXY_CONNECTED);
   } else {
-    SSLOG(WARNING, spdy) << "Tunneling failed";
-    spdy->set_state(SpdySession::PROXY_FAILED);
+    SSLOG(WARNING, http2session) << "Tunneling failed";
+    http2session->set_state(Http2Session::PROXY_FAILED);
   }
   return 0;
 }
@@ -529,7 +530,7 @@ http_parser_settings htp_hooks = {
 };
 } // namespace
 
-int SpdySession::on_read_proxy()
+int Http2Session::on_read_proxy()
 {
   auto input = bufferevent_get_input(bev_);
   auto mem = evbuffer_pullup(input, -1);
@@ -547,18 +548,19 @@ int SpdySession::on_read_proxy()
   }
 }
 
-void SpdySession::add_downstream_connection(SpdyDownstreamConnection *dconn)
+void Http2Session::add_downstream_connection(Http2DownstreamConnection *dconn)
 {
   dconns_.insert(dconn);
 }
 
-void SpdySession::remove_downstream_connection(SpdyDownstreamConnection *dconn)
+void Http2Session::remove_downstream_connection
+(Http2DownstreamConnection *dconn)
 {
   dconns_.erase(dconn);
   dconn->detach_stream_data();
 }
 
-void SpdySession::remove_stream_data(StreamData *sd)
+void Http2Session::remove_stream_data(StreamData *sd)
 {
   streams_.erase(sd);
   if(sd->dconn) {
@@ -567,7 +569,7 @@ void SpdySession::remove_stream_data(StreamData *sd)
   delete sd;
 }
 
-int SpdySession::submit_request(SpdyDownstreamConnection *dconn,
+int Http2Session::submit_request(Http2DownstreamConnection *dconn,
                                 uint8_t pri, const char **nv,
                                 const nghttp2_data_provider *data_prd)
 {
@@ -585,7 +587,7 @@ int SpdySession::submit_request(SpdyDownstreamConnection *dconn,
   return 0;
 }
 
-int SpdySession::submit_rst_stream(int32_t stream_id,
+int Http2Session::submit_rst_stream(int32_t stream_id,
                                    nghttp2_error_code error_code)
 {
   assert(state_ == CONNECTED);
@@ -605,7 +607,7 @@ int SpdySession::submit_rst_stream(int32_t stream_id,
   return 0;
 }
 
-int SpdySession::submit_window_update(SpdyDownstreamConnection *dconn,
+int Http2Session::submit_window_update(Http2DownstreamConnection *dconn,
                                       int32_t amount)
 {
   assert(state_ == CONNECTED);
@@ -626,22 +628,22 @@ int SpdySession::submit_window_update(SpdyDownstreamConnection *dconn,
   return 0;
 }
 
-int32_t SpdySession::get_initial_window_size() const
+int32_t Http2Session::get_initial_window_size() const
 {
   return (1 << get_config()->spdy_downstream_window_bits) - 1;
 }
 
-nghttp2_session* SpdySession::get_session() const
+nghttp2_session* Http2Session::get_session() const
 {
   return session_;
 }
 
-bool SpdySession::get_flow_control() const
+bool Http2Session::get_flow_control() const
 {
   return flow_control_;
 }
 
-int SpdySession::resume_data(SpdyDownstreamConnection *dconn)
+int Http2Session::resume_data(Http2DownstreamConnection *dconn)
 {
   assert(state_ == CONNECTED);
   auto downstream = dconn->get_downstream();
@@ -659,12 +661,12 @@ int SpdySession::resume_data(SpdyDownstreamConnection *dconn)
 }
 
 namespace {
-void call_downstream_readcb(SpdySession *spdy, Downstream *downstream)
+void call_downstream_readcb(Http2Session *http2session, Downstream *downstream)
 {
   auto upstream = downstream->get_upstream();
   if(upstream) {
     (upstream->get_downstream_readcb())
-      (spdy->get_bev(),
+      (http2session->get_bev(),
        downstream->get_downstream_connection());
   }
 }
@@ -676,8 +678,8 @@ ssize_t send_callback(nghttp2_session *session,
                       void *user_data)
 {
   int rv;
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
-  auto bev = spdy->get_bev();
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto bev = http2session->get_bev();
   auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
   if(evbuffer_get_length(output) > Downstream::OUTPUT_UPPER_THRES) {
@@ -686,7 +688,7 @@ ssize_t send_callback(nghttp2_session *session,
 
   rv = evbuffer_add(output, data, len);
   if(rv == -1) {
-    SSLOG(FATAL, spdy) << "evbuffer_add() failed";
+    SSLOG(FATAL, http2session) << "evbuffer_add() failed";
     return NGHTTP2_ERR_CALLBACK_FAILURE;
   } else {
     return len;
@@ -698,8 +700,8 @@ namespace {
 ssize_t recv_callback(nghttp2_session *session,
                       uint8_t *data, size_t len, int flags, void *user_data)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
-  auto bev = spdy->get_bev();
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto bev = http2session->get_bev();
   auto input = bufferevent_get_input(bev);
   int nread = evbuffer_remove(input, data, len);
   if(nread == -1) {
@@ -718,10 +720,10 @@ int on_stream_close_callback
  void *user_data)
 {
   int rv;
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
   if(LOG_ENABLED(INFO)) {
-    SSLOG(INFO, spdy) << "Stream stream_id=" << stream_id
-                      << " is being closed";
+    SSLOG(INFO, http2session) << "Stream stream_id=" << stream_id
+                              << " is being closed";
   }
   auto sd = reinterpret_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, stream_id));
@@ -744,12 +746,12 @@ int on_stream_close_callback
       } else {
         downstream->set_response_state(Downstream::MSG_RESET);
       }
-      call_downstream_readcb(spdy, downstream);
+      call_downstream_readcb(http2session, downstream);
       // dconn may be deleted
     }
   }
   // The life time of StreamData ends here
-  spdy->remove_stream_data(sd);
+  http2session->remove_stream_data(sd);
   return 0;
 }
 } // namespace
@@ -757,19 +759,19 @@ int on_stream_close_callback
 namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(arg);
-  SSLOG(INFO, spdy) << "SETTINGS timeout";
-  if(spdy->fail_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
-    spdy->disconnect();
+  auto http2session = reinterpret_cast<Http2Session*>(arg);
+  SSLOG(INFO, http2session) << "SETTINGS timeout";
+  if(http2session->fail_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
+    http2session->disconnect();
     return;
   }
-  if(spdy->send() != 0) {
-    spdy->disconnect();
+  if(http2session->send() != 0) {
+    http2session->disconnect();
   }
 }
 } // namespace
 
-int SpdySession::start_settings_timer()
+int Http2Session::start_settings_timer()
 {
   int rv;
   // We submit SETTINGS only once
@@ -789,7 +791,7 @@ int SpdySession::start_settings_timer()
   return 0;
 }
 
-void SpdySession::stop_settings_timer()
+void Http2Session::stop_settings_timer()
 {
   if(settings_timerev_ == nullptr) {
     return;
@@ -803,7 +805,7 @@ int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   int rv;
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
     if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
@@ -812,13 +814,15 @@ int on_frame_recv_callback
     auto sd = reinterpret_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd || !sd->dconn) {
-      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_INTERNAL_ERROR);
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_INTERNAL_ERROR);
       break;
     }
     auto downstream = sd->dconn->get_downstream();
     if(!downstream ||
        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_INTERNAL_ERROR);
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_INTERNAL_ERROR);
       break;
     }
     auto nva = frame->headers.nva;
@@ -826,9 +830,10 @@ int on_frame_recv_callback
 
     // Assuming that nva is sorted by name.
     if(!http2::check_http2_headers(nva, nvlen)) {
-      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
-      call_downstream_readcb(spdy, downstream);
+      call_downstream_readcb(http2session, downstream);
       return 0;
     }
 
@@ -841,9 +846,10 @@ int on_frame_recv_callback
 
     auto status = http2::get_unique_header(nva, nvlen, ":status");
     if(!status || http2::value_lws(status)) {
-      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
-      call_downstream_readcb(spdy, downstream);
+      call_downstream_readcb(http2session, downstream);
       return 0;
     }
     downstream->set_response_http_status
@@ -869,7 +875,7 @@ int on_frame_recv_callback
           downstream->set_response_connection_close(true);
         } else {
           // Otherwise, use chunked encoding to keep upstream
-          // connection open.  In SPDY, we are supporsed not to
+          // connection open.  In HTTP2, we are supporsed not to
           // receive transfer-encoding.
           downstream->add_response_header("transfer-encoding", "chunked");
         }
@@ -885,9 +891,9 @@ int on_frame_recv_callback
         ss.write(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
         ss << "\n";
       }
-      SSLOG(INFO, spdy) << "HTTP response headers. stream_id="
-                        << frame->hd.stream_id
-                        << "\n" << ss.str();
+      SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
+                                << frame->hd.stream_id
+                                << "\n" << ss.str();
     }
 
     auto upstream = downstream->get_upstream();
@@ -903,8 +909,8 @@ int on_frame_recv_callback
       }
       downstream->set_request_state(Downstream::HEADER_COMPLETE);
       if(LOG_ENABLED(INFO)) {
-        SSLOG(INFO, spdy) << "HTTP upgrade success. stream_id="
-                          << frame->hd.stream_id;
+        SSLOG(INFO, http2session) << "HTTP upgrade success. stream_id="
+                                  << frame->hd.stream_id;
       }
     } else if(downstream->get_request_method() == "CONNECT") {
       // If request is CONNECT, terminate request body to avoid for
@@ -913,10 +919,11 @@ int on_frame_recv_callback
     }
     rv = upstream->on_downstream_header_complete(downstream);
     if(rv != 0) {
-      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
     }
-    call_downstream_readcb(spdy, downstream);
+    call_downstream_readcb(http2session, downstream);
     break;
   }
   case NGHTTP2_RST_STREAM: {
@@ -932,9 +939,9 @@ int on_frame_recv_callback
           // upstream *after* whole response body is sent. We just set
           // MSG_COMPLETE here. Upstream will take care of that.
           if(LOG_ENABLED(INFO)) {
-            SSLOG(INFO, spdy) << "RST_STREAM against tunneled stream "
-                              << "stream_id="
-                              << frame->hd.stream_id;
+            SSLOG(INFO, http2session) << "RST_STREAM against tunneled stream "
+                                      << "stream_id="
+                                      << frame->hd.stream_id;
           }
           downstream->get_upstream()->on_downstream_body_complete(downstream);
           downstream->set_response_state(Downstream::MSG_COMPLETE);
@@ -945,7 +952,7 @@ int on_frame_recv_callback
         }
         downstream->set_response_rst_stream_error_code
           (frame->rst_stream.error_code);
-        call_downstream_readcb(spdy, downstream);
+        call_downstream_readcb(http2session, downstream);
       }
     }
     break;
@@ -954,15 +961,17 @@ int on_frame_recv_callback
     if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
       break;
     }
-    spdy->stop_settings_timer();
+    http2session->stop_settings_timer();
     break;
   case NGHTTP2_PUSH_PROMISE:
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, spdy) << "Received downstream PUSH_PROMISE stream_id="
-                        << frame->hd.stream_id;
+      SSLOG(INFO, http2session)
+        << "Received downstream PUSH_PROMISE stream_id="
+        << frame->hd.stream_id;
     }
     // We just respond with RST_STREAM.
-    spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_REFUSED_STREAM);
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_REFUSED_STREAM);
     break;
   default:
     break;
@@ -978,26 +987,26 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
                                 void *user_data)
 {
   int rv;
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
   auto sd = reinterpret_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
-    spdy->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
+    http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
   if(!downstream || downstream->get_downstream_stream_id() != stream_id) {
-    spdy->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
+    http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
     return 0;
   }
 
   auto upstream = downstream->get_upstream();
   rv = upstream->on_downstream_body(downstream, data, len);
   if(rv != 0) {
-    spdy->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
+    http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
   }
-  call_downstream_readcb(spdy, downstream);
+  call_downstream_readcb(http2session, downstream);
   return 0;
 }
 } // namespace
@@ -1007,20 +1016,20 @@ int before_frame_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame,
                                void *user_data)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     auto sd = reinterpret_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd || !sd->dconn) {
-      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
+      http2session->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
       return 0;
     }
     auto downstream = sd->dconn->get_downstream();
     if(downstream) {
       downstream->set_downstream_stream_id(frame->hd.stream_id);
     } else {
-      spdy->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
+      http2session->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
     }
   }
   return 0;
@@ -1031,10 +1040,10 @@ namespace {
 int on_frame_send_callback(nghttp2_session* session,
                            const nghttp2_frame *frame, void *user_data)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
   if(frame->hd.type == NGHTTP2_SETTINGS &&
      (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
-    if(spdy->start_settings_timer() != 0) {
+    if(http2session->start_settings_timer() != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
@@ -1047,11 +1056,11 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame,
                                int lib_error_code, void *user_data)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
-  SSLOG(WARNING, spdy) << "Failed to send control frame type="
-                       << frame->hd.type << ", "
-                       << "lib_error_code=" << lib_error_code << ":"
-                       << nghttp2_strerror(lib_error_code);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  SSLOG(WARNING, http2session) << "Failed to send control frame type="
+                               << frame->hd.type << ", "
+                               << "lib_error_code=" << lib_error_code << ":"
+                               << nghttp2_strerror(lib_error_code);
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     // To avoid stream hanging around, flag Downstream::MSG_RESET and
@@ -1068,9 +1077,9 @@ int on_frame_not_send_callback(nghttp2_session *session,
         return 0;
       }
       downstream->set_response_state(Downstream::MSG_RESET);
-      call_downstream_readcb(spdy, downstream);
+      call_downstream_readcb(http2session, downstream);
     }
-    spdy->remove_stream_data(sd);
+    http2session->remove_stream_data(sd);
   }
   return 0;
 }
@@ -1084,12 +1093,13 @@ int on_frame_recv_parse_error_callback(nghttp2_session *session,
                                        size_t payloadlen, int lib_error_code,
                                        void *user_data)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
   if(LOG_ENABLED(INFO)) {
-    SSLOG(INFO, spdy) << "Failed to parse received control frame. type="
-                      << type
-                      << ", lib_error_code=" << lib_error_code << ":"
-                      << nghttp2_strerror(lib_error_code);
+    SSLOG(INFO, http2session)
+      << "Failed to parse received control frame. type="
+      << type
+      << ", lib_error_code=" << lib_error_code << ":"
+      << nghttp2_strerror(lib_error_code);
   }
   return 0;
 }
@@ -1101,15 +1111,15 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
                                    const uint8_t *payload, size_t payloadlen,
                                    void *user_data)
 {
-  auto spdy = reinterpret_cast<SpdySession*>(user_data);
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
   if(LOG_ENABLED(INFO)) {
-    SSLOG(INFO, spdy) << "Received unknown control frame";
+    SSLOG(INFO, http2session) << "Received unknown control frame";
   }
   return 0;
 }
 } // namespace
 
-int SpdySession::on_connect()
+int Http2Session::on_connect()
 {
   int rv;
   const unsigned char *next_proto = nullptr;
@@ -1186,7 +1196,7 @@ int SpdySession::on_connect()
   return 0;
 }
 
-int SpdySession::on_read()
+int Http2Session::on_read()
 {
   int rv = 0;
   if((rv = nghttp2_session_recv(session_)) < 0) {
@@ -1211,12 +1221,12 @@ int SpdySession::on_read()
   return rv;
 }
 
-int SpdySession::on_write()
+int Http2Session::on_write()
 {
   return send();
 }
 
-int SpdySession::send()
+int Http2Session::send()
 {
   int rv = 0;
   if((rv = nghttp2_session_send(session_)) < 0) {
@@ -1236,14 +1246,14 @@ int SpdySession::send()
   return rv;
 }
 
-void SpdySession::clear_notify()
+void Http2Session::clear_notify()
 {
   auto input = bufferevent_get_output(rdbev_);
   evbuffer_drain(input, evbuffer_get_length(input));
   notified_ = false;
 }
 
-void SpdySession::notify()
+void Http2Session::notify()
 {
   if(!notified_) {
     bufferevent_write(wrbev_, "1", 1);
@@ -1251,22 +1261,22 @@ void SpdySession::notify()
   }
 }
 
-bufferevent* SpdySession::get_bev() const
+bufferevent* Http2Session::get_bev() const
 {
   return bev_;
 }
 
-int SpdySession::get_state() const
+int Http2Session::get_state() const
 {
   return state_;
 }
 
-void SpdySession::set_state(int state)
+void Http2Session::set_state(int state)
 {
   state_ = state;
 }
 
-int SpdySession::fail_session(nghttp2_error_code error_code)
+int Http2Session::fail_session(nghttp2_error_code error_code)
 {
   int rv;
   rv = nghttp2_session_fail_session(session_, error_code);
