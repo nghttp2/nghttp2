@@ -26,7 +26,5 @@ stamp-h1
 .deps/
 INSTALL
 .DS_STORE
-tests/main
-tests/failmalloc
 compile
 test-driver

@@ -1,3 +1,7 @@
 test-suite.log
+failmalloc
+failmalloc.log
+failmalloc.trs
+main
 main.log
 main.trs
