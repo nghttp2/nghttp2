@@ -100,20 +100,21 @@ static uint8_t huff_get_lsb_aligned(const nghttp2_huff_sym *sym,
                                     size_t codebitoff,
                                     size_t nbits)
 {
-  uint8_t a = sym->code[codebitoff/8];
+  size_t codeidx = codebitoff / 8;
+  uint8_t a = sym->code[codeidx];
   size_t localbitoff = codebitoff & 0x7;
   size_t bitleft = 8 - localbitoff;
 
   if(bitleft >= nbits) {
     return (a >> (bitleft - nbits)) & ((1 << nbits) - 1);
   } else {
-    uint8_t b = 0;
+    size_t right = nbits - bitleft;
     a &= ((1 << bitleft) - 1);
-    a <<= nbits - bitleft;
-    if((sym->nbits + 7) / 8 > codebitoff / 8 + 1) {
-      b = sym->code[codebitoff / 8 + 1] >> (8 - (nbits - bitleft));
+    a <<= right;
+    if((sym->nbits + 7) / 8 > codeidx + 1) {
+      a |= sym->code[codeidx + 1] >> (8 - right);
     }
-    return a | b;
+    return a;
   }
 }
 
