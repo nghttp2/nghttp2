@@ -534,10 +534,10 @@ deflateSize
 maxDeflateSize
     The maximum header table size encoder uses. This can be smaller
     than ``maxSize``. In this case, encoder only uses up to first
-    ``maxSize`` buffer. Since the header table size is still
-    ``maxSize``, the encoder keeps track of entries ouside the
-    ``maxDeflateSize`` but inside the ``maxSize``, but it makes sure
-    that they are no longer referenced.
+    ``maxDeflateSize`` buffer. Since the header table size is still
+    ``maxSize``, the encoder has to keep track of entries ouside the
+    ``maxDeflateSize`` but inside the ``maxSize`` and make sure that
+    they are no longer referenced.
 
 Example::
 
