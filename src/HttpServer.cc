@@ -73,7 +73,8 @@ Config::Config()
     verify_client(false),
     no_tls(false),
     no_flow_control(false),
-    output_upper_thres(1024*1024)
+    output_upper_thres(1024*1024),
+    header_table_size(-1)
 {}
 
 Request::Request(int32_t stream_id)
@@ -362,13 +363,18 @@ int Http2Handler::on_connect()
   if(r != 0) {
     return r;
   }
-  nghttp2_settings_entry entry[2];
+  nghttp2_settings_entry entry[3];
   size_t niv = 1;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = 100;
   if(sessions_->get_config()->no_flow_control) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
     entry[niv].value = 1;
+    ++niv;
+  }
+  if(config.header_table_size >= 0) {
+    entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+    entry[niv].value = config.header_table_size;
     ++niv;
   }
   r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry, niv);

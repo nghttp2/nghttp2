@@ -76,6 +76,8 @@ void print_help(std::ostream& out)
       << "    -f, --no-flow-control\n"
       << "                       Disables connection and stream level flow\n"
       << "                       controls.\n"
+      << "    -c, --header-table-size=<N>\n"
+      << "                       Specify decoder header table size.\n"
       << "    --color            Force colored log output.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
@@ -95,12 +97,14 @@ int main(int argc, char **argv)
       {"verbose", no_argument, nullptr, 'v'},
       {"verify-client", no_argument, nullptr, 'V'},
       {"no-flow-control", no_argument, nullptr, 'f'},
+      {"header-table-size", required_argument, nullptr, 'c'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVd:fhv", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVc:d:fhv", long_options, &option_index);
+    char *end;
     if(c == -1) {
       break;
     }
@@ -122,6 +126,13 @@ int main(int argc, char **argv)
       exit(EXIT_SUCCESS);
     case 'v':
       config.verbose = true;
+      break;
+    case 'c':
+      config.header_table_size = strtol(optarg, &end, 10);
+      if(errno == ERANGE || *end != '\0') {
+        std::cerr << "-c: Bad option value: " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
       break;
     case '?':
       exit(EXIT_FAILURE);

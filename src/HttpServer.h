@@ -60,6 +60,7 @@ struct Config {
   bool no_tls;
   bool no_flow_control;
   size_t output_upper_thres;
+  ssize_t header_table_size;
   Config();
 };
 
