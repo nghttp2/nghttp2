@@ -55,7 +55,6 @@
 namespace nghttp2 {
 
 namespace {
-Config config;
 const std::string STATUS_200 = "200";
 const std::string STATUS_304 = "304";
 const std::string STATUS_400 = "400";
@@ -372,9 +371,9 @@ int Http2Handler::on_connect()
     entry[niv].value = 1;
     ++niv;
   }
-  if(config.header_table_size >= 0) {
+  if(sessions_->get_config()->header_table_size >= 0) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-    entry[niv].value = config.header_table_size;
+    entry[niv].value = sessions_->get_config()->header_table_size;
     ++niv;
   }
   r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry, niv);
