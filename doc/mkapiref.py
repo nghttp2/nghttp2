@@ -128,7 +128,7 @@ def process_enum(infile):
             member_name = items[0]
             if len(items) >= 3:
                 member_content.insert(0, '(``{}``) '\
-                                          .format(items[2].rstrip(',')))
+                                      .format(' '.join(items[2:]).rstrip(',')))
             members.append((member_name, member_content))
         elif line.startswith('}'):
             enum_name = line.rstrip().split()[1]
