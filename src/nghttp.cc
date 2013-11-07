@@ -665,14 +665,11 @@ struct HttpClient {
     if(!need_upgrade()) {
       record_handshake_time();
     }
-    rv = nghttp2_session_client_new(&session, callbacks, this);
-    if(rv != 0) {
-      return -1;
-    }
-    rv = nghttp2_session_set_option(session,
-                                    NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
-                                    &config.peer_max_concurrent_streams,
-                                    sizeof(config.peer_max_concurrent_streams));
+    nghttp2_opt_set opt_set;
+    opt_set.peer_max_concurrent_streams = config.peer_max_concurrent_streams;
+    rv = nghttp2_session_client_new2(&session, callbacks, this,
+                                     NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
+                                     &opt_set);
     if(rv != 0) {
       return -1;
     }

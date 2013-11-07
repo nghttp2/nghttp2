@@ -1148,21 +1148,19 @@ int Http2Session::on_connect()
     on_frame_recv_parse_error_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
 
-  rv = nghttp2_session_client_new(&session_, &callbacks, this);
+  nghttp2_opt_set opt_set;
+  opt_set.no_auto_stream_window_update = 1;
+  opt_set.no_auto_connection_window_update = 1;
+  uint32_t opt_set_mask =
+    NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE |
+    NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE;
+  rv = nghttp2_session_client_new2(&session_, &callbacks, this,
+                                   opt_set_mask, &opt_set);
   if(rv != 0) {
     return -1;
   }
 
-  int val = 1;
   flow_control_ = true;
-  rv = nghttp2_session_set_option(session_,
-                                  NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
-                                  &val, sizeof(val));
-  assert(rv == 0);
-  rv = nghttp2_session_set_option(session_,
-                                  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
-                                  &val, sizeof(val));
-  assert(rv == 0);
 
   nghttp2_settings_entry entry[3];
   entry[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;

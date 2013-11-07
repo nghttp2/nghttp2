@@ -3605,73 +3605,36 @@ void test_nghttp2_session_set_option(void)
 {
   nghttp2_session* session;
   nghttp2_session_callbacks callbacks;
-  int intval;
-  char charval;
-  ssize_t sszval;
+  nghttp2_opt_set opt_set;
+
+  opt_set.no_auto_stream_window_update = 1;
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  nghttp2_session_client_new(&session, &callbacks, NULL);
-
-  intval = 1;
-  CU_ASSERT(0 ==
-            nghttp2_session_set_option
-            (session,
-             NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
-             &intval, sizeof(intval)));
+  nghttp2_session_client_new2(&session, &callbacks, NULL,
+                              NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
+                              &opt_set);
   CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE);
+  CU_ASSERT(!(session->opt_flags &
+              NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE));
+  nghttp2_session_del(session);
 
-  intval = 0;
-  CU_ASSERT(0 ==
-            nghttp2_session_set_option
-            (session,
-             NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
-             &intval, sizeof(intval)));
-  CU_ASSERT((session->opt_flags &
-             NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE) == 0);
-
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_session_set_option(session, 0, /* 0 is invalid optname */
-                                       &intval, sizeof(intval)));
-
-  charval = 1;
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_session_set_option
-            (session,
-             NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
-             &charval, sizeof(charval)));
-
-  intval = 1;
-  CU_ASSERT(0 ==
-            nghttp2_session_set_option
-            (session,
-             NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
-             &intval, sizeof(intval)));
+  opt_set.no_auto_stream_window_update = 0;
+  opt_set.no_auto_connection_window_update = 1;
+  nghttp2_session_server_new2(&session, &callbacks, NULL,
+                              NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
+                              &opt_set);
+  CU_ASSERT(!(session->opt_flags &
+              NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE));
   CU_ASSERT(session->opt_flags &
             NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE);
+  nghttp2_session_del(session);
 
-  sszval = 100;
-  CU_ASSERT(0 ==
-            nghttp2_session_set_option
-            (session,
-             NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
-             &sszval, sizeof(sszval)));
-  CU_ASSERT(sszval ==
-            (ssize_t)session->
+  opt_set.peer_max_concurrent_streams = 100;
+  nghttp2_session_client_new2(&session, &callbacks, NULL,
+                              NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
+                              &opt_set);
+  CU_ASSERT(100 ==
+            session->
             remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
-
-  sszval = 0;
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_session_set_option
-            (session,
-             NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
-             &sszval, sizeof(sszval)));
-
-  charval = 100;
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_session_set_option
-            (session,
-             NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
-             &charval, sizeof(charval)));
-
   nghttp2_session_del(session);
 }
 

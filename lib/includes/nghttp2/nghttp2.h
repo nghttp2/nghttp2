@@ -1237,14 +1237,6 @@ int nghttp2_session_server_new(nghttp2_session **session_ptr,
                                void *user_data);
 
 /**
- * @function
- *
- * Frees any resources allocated for |session|. If |session| is
- * ``NULL``, this function does nothing.
- */
-void nghttp2_session_del(nghttp2_session *session);
-
-/**
  * @enum
  *
  * Configuration options for :type:`nghttp2_session`.
@@ -1252,18 +1244,22 @@ void nghttp2_session_del(nghttp2_session *session);
 typedef enum {
   /**
    * This option prevents the library from sending WINDOW_UPDATE for a
-   * stream automatically. If this option is set, the application is
-   * responsible for sending WINDOW_UPDATE using
-   * `nghttp2_submit_window_update`.
+   * stream automatically. If this option is set to nonzero, the
+   * library won't send WINDOW_UPDATE for a stream and the application
+   * is responsible for sending WINDOW_UPDATE using
+   * `nghttp2_submit_window_update`. By default, this option is set to
+   * zero.
    */
   NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE = 1,
   /**
    * This option prevents the library from sending WINDOW_UPDATE for a
-   * connection automatically. If this option is set, the application
-   * is responsible for sending WINDOW_UPDATE with stream ID 0 using
-   * `nghttp2_submit_window_update`.
+   * connection automatically. If this option is set to nonzero, the
+   * library won't send WINDOW_UPDATE for a connection and the
+   * application is responsible for sending WINDOW_UPDATE with stream
+   * ID 0 using `nghttp2_submit_window_update`. By default, this
+   * option is set to zero.
    */
-  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE = 2,
+  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1,
   /**
    * This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of
    * remote endpoint as if it is received in SETTINGS frame. Without
@@ -1277,47 +1273,90 @@ typedef enum {
    * will be overwritten if the local endpoint receives
    * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
    */
-  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 3
+  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 2
 } nghttp2_opt;
+
+/**
+ * @struct
+ *
+ * Struct to store option values for nghttp2_session.
+ */
+typedef struct {
+  /**
+   * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`
+   */
+  uint8_t no_auto_stream_window_update;
+  /**
+   * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
+   */
+  uint8_t no_auto_connection_window_update;
+  /**
+   * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`
+   */
+  uint32_t peer_max_concurrent_streams;
+} nghttp2_opt_set;
 
 /**
  * @function
  *
- * Sets the configuration option for the |session|.  The |optname| is
- * one of :type:`nghttp2_opt`. The |optval| is the pointer to the
- * option value and the |optlen| is the size of |*optval|. The
- * required type of |optval| varies depending on the |optname|. See
- * below.
+ * Like `nghttp2_session_client_new()`, but with additional options
+ * specified in the |opt_set|. The caller must set bitwise-OR of
+ * :enum:`nghttp2_opt` for given options.  For example, if it
+ * specifies :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` and
+ * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS` in the |opt_set|,
+ * the |opt_set_mask| should be
+ * ``NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE |
+ * NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS``.
  *
- * The following |optname| are supported:
- *
- * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`
- *     The |optval| must be a pointer to ``int``. If the |*optval| is
- *     nonzero, the library will not send WINDOW_UPDATE for a stream
- *     automatically.  Therefore, the application is responsible for
- *     sending WINDOW_UPDATE using
- *     `nghttp2_submit_window_update`. This option defaults to 0.
- *
- * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
- *     The |optval| must be a pointer to ``int``. If the |*optval| is
- *     nonzero, the library will not send WINDOW_UPDATE for connection
- *     automatically.  Therefore, the application is responsible for
- *     sending WINDOW_UPDATE using
- *     `nghttp2_submit_window_update`. This option defaults to 0.
- *
- * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`
- *     The |optval| must be a pointer to ``ssize_t``. It is an error
- *     if |*optval| is 0 or negative.
+ * If the |opt_set_mask| is 0, the |opt_set| could be ``NULL`` safely
+ * and the call is equivalent to `nghttp2_session_client_new()`.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |optname| is not supported; or the |optval| and/or the
- *     |optlen| are invalid.
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
  */
-int nghttp2_session_set_option(nghttp2_session *session,
-                               int optname, void *optval, size_t optlen);
+int nghttp2_session_client_new2(nghttp2_session **session_ptr,
+                                const nghttp2_session_callbacks *callbacks,
+                                void *user_data,
+                                uint32_t opt_set_mask,
+                                const nghttp2_opt_set *opt_set);
+
+/**
+ * @function
+ *
+ * Like `nghttp2_session_server_new()`, but with additional options
+ * specified in the |opt_set|. The caller must set bitwise-OR of
+ * :enum:`nghttp2_opt` for given options.  For example, if it
+ * specifies :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` and
+ * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS` in the |opt_set|,
+ * the |opt_set_mask| should be
+ * ``NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE |
+ * NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS``.
+ *
+ * If the |opt_set_mask| is 0, the |opt_set| could be ``NULL`` safely
+ * and the call is equivalent to `nghttp2_session_server_new()`.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_session_server_new2(nghttp2_session **session_ptr,
+                                const nghttp2_session_callbacks *callbacks,
+                                void *user_data,
+                                uint32_t opt_set_mask,
+                                const nghttp2_opt_set *opt_set);
+
+/**
+ * @function
+ *
+ * Frees any resources allocated for |session|. If |session| is
+ * ``NULL``, this function does nothing.
+ */
+void nghttp2_session_del(nghttp2_session *session);
 
 /**
  * @function

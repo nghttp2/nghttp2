@@ -177,7 +177,9 @@ static void init_settings(uint32_t *settings)
 static int nghttp2_session_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data,
-                               int server)
+                               int server,
+                               uint32_t opt_set_mask,
+                               const nghttp2_opt_set *opt_set)
 {
   int r;
   nghttp2_hd_side side_deflate, side_inflate;
@@ -192,6 +194,16 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
      nghttp2_session_client_new or nghttp2_session_server_new */
 
   (*session_ptr)->next_seq = 0;
+
+  if((opt_set_mask & NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE) &&
+     opt_set->no_auto_stream_window_update) {
+    (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE;
+  }
+  if((opt_set_mask & NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE) &&
+     opt_set->no_auto_connection_window_update) {
+    (*session_ptr)->opt_flags |=
+      NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
+  }
 
   (*session_ptr)->remote_flow_control = 1;
   (*session_ptr)->local_flow_control = 1;
@@ -254,6 +266,11 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   init_settings((*session_ptr)->remote_settings);
   init_settings((*session_ptr)->local_settings);
 
+  if(opt_set_mask & NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS) {
+    (*session_ptr)->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+      opt_set->peer_max_concurrent_streams;
+  }
+
   (*session_ptr)->callbacks = *callbacks;
   (*session_ptr)->user_data = user_data;
 
@@ -291,9 +308,20 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data)
 {
+  return nghttp2_session_client_new2(session_ptr, callbacks, user_data,
+                                     0, NULL);
+}
+
+int nghttp2_session_client_new2(nghttp2_session **session_ptr,
+                                const nghttp2_session_callbacks *callbacks,
+                                void *user_data,
+                                uint32_t opt_set_mask,
+                                const nghttp2_opt_set *opt_set)
+{
   int r;
   /* For client side session, header compression is disabled. */
-  r = nghttp2_session_new(session_ptr, callbacks, user_data, 0);
+  r = nghttp2_session_new(session_ptr, callbacks, user_data, 0,
+                          opt_set_mask, opt_set);
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 1;
@@ -306,9 +334,20 @@ int nghttp2_session_server_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data)
 {
+  return nghttp2_session_server_new2(session_ptr, callbacks, user_data,
+                                     0, NULL);
+}
+
+int nghttp2_session_server_new2(nghttp2_session **session_ptr,
+                                const nghttp2_session_callbacks *callbacks,
+                                void *user_data,
+                                uint32_t opt_set_mask,
+                                const nghttp2_opt_set *opt_set)
+{
   int r;
   /* Enable header compression on server side. */
-  r = nghttp2_session_new(session_ptr, callbacks, user_data, 1);
+  r = nghttp2_session_new(session_ptr, callbacks, user_data, 1,
+                          opt_set_mask, opt_set);
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 2;
@@ -3624,49 +3663,6 @@ int32_t nghttp2_session_get_effective_local_window_size
 (nghttp2_session *session)
 {
   return session->local_window_size;
-}
-
-int nghttp2_session_set_option(nghttp2_session *session,
-                               int optname, void *optval, size_t optlen)
-{
-  switch(optname) {
-  case NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE:
-  case NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE: {
-    int flag;
-    if(optname == NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE) {
-      flag = NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE;
-    } else {
-      flag = NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
-    }
-    if(optlen == sizeof(int)) {
-      int intval = *(int*)optval;
-      if(intval) {
-        session->opt_flags |= flag;
-      } else {
-        session->opt_flags &= ~flag;
-      }
-    } else {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-    break;
-  }
-  case NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS: {
-    ssize_t sszval;
-    if(optlen != sizeof(ssize_t)) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-    sszval = *(ssize_t*)optval;
-    if(sszval <= 0) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-    session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
-      sszval;
-    break;
-  }
-  default:
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-  return 0;
 }
 
 int nghttp2_session_upgrade(nghttp2_session *session,

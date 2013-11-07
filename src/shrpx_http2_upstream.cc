@@ -484,21 +484,19 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     on_frame_recv_parse_error_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
 
+  nghttp2_opt_set opt_set;
+  opt_set.no_auto_stream_window_update = 1;
+  opt_set.no_auto_connection_window_update = 1;
+  uint32_t opt_set_mask =
+    NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE |
+    NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE;
   int rv;
-  rv = nghttp2_session_server_new(&session_, &callbacks, this);
+  rv = nghttp2_session_server_new2(&session_, &callbacks, this,
+                                   opt_set_mask, &opt_set);
   assert(rv == 0);
 
-  int val = 1;
   flow_control_ = true;
   initial_window_size_ = (1 << get_config()->http2_upstream_window_bits) - 1;
-  rv = nghttp2_session_set_option(session_,
-                                  NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
-                                  &val, sizeof(val));
-  assert(rv == 0);
-  rv = nghttp2_session_set_option(session_,
-                                  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
-                                  &val, sizeof(val));
-  assert(rv == 0);
 
   // TODO Maybe call from outside?
   nghttp2_settings_entry entry[2];
