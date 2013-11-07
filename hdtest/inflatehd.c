@@ -101,7 +101,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
   return 0;
 }
 
-static int perform()
+static int perform(void)
 {
   nghttp2_hd_context inflater;
   size_t i;

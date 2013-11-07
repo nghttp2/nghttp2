@@ -24,7 +24,7 @@
  */
 #include "comp_helper.h"
 
-void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len)
+static void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len)
 {
   if(val == NULL) {
     json_object_set_new(jent, key, json_string("**DEALLOCATED**"));

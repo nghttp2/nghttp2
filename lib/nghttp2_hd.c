@@ -97,7 +97,7 @@ static nghttp2_hd_entry static_table[] = {
   /* 58 */ MAKE_NV("www-authenticate", "")
 };
 
-const static size_t STATIC_TABLE_LENGTH =
+static const size_t STATIC_TABLE_LENGTH =
   sizeof(static_table)/sizeof(static_table[0]);
 
 typedef struct {
