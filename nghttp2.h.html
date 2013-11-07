@@ -1293,14 +1293,6 @@
                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * Frees any resources allocated for |session|. If |session| is</span>
-<span class="cm"> * ``NULL``, this function does nothing.</span>
-<span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_del</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
-
-<span class="cm">/**</span>
 <span class="cm"> * @enum</span>
 <span class="cm"> *</span>
 <span class="cm"> * Configuration options for :type:`nghttp2_session`.</span>
@@ -1308,18 +1300,22 @@
 <span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
   <span class="cm">/**</span>
 <span class="cm">   * This option prevents the library from sending WINDOW_UPDATE for a</span>
-<span class="cm">   * stream automatically. If this option is set, the application is</span>
-<span class="cm">   * responsible for sending WINDOW_UPDATE using</span>
-<span class="cm">   * `nghttp2_submit_window_update`.</span>
+<span class="cm">   * stream automatically. If this option is set to nonzero, the</span>
+<span class="cm">   * library won&#39;t send WINDOW_UPDATE for a stream and the application</span>
+<span class="cm">   * is responsible for sending WINDOW_UPDATE using</span>
+<span class="cm">   * `nghttp2_submit_window_update`. By default, this option is set to</span>
+<span class="cm">   * zero.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * This option prevents the library from sending WINDOW_UPDATE for a</span>
-<span class="cm">   * connection automatically. If this option is set, the application</span>
-<span class="cm">   * is responsible for sending WINDOW_UPDATE with stream ID 0 using</span>
-<span class="cm">   * `nghttp2_submit_window_update`.</span>
+<span class="cm">   * connection automatically. If this option is set to nonzero, the</span>
+<span class="cm">   * library won&#39;t send WINDOW_UPDATE for a connection and the</span>
+<span class="cm">   * application is responsible for sending WINDOW_UPDATE with stream</span>
+<span class="cm">   * ID 0 using `nghttp2_submit_window_update`. By default, this</span>
+<span class="cm">   * option is set to zero.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="n">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of</span>
 <span class="cm">   * remote endpoint as if it is received in SETTINGS frame. Without</span>
@@ -1333,47 +1329,90 @@
 <span class="cm">   * will be overwritten if the local endpoint receives</span>
 <span class="cm">   * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mi">3</span>
+  <span class="n">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">2</span>
 <span class="p">}</span> <span class="n">nghttp2_opt</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * Struct to store option values for nghttp2_session.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="n">no_auto_stream_window_update</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`</span>
+<span class="cm">   */</span>
+  <span class="kt">uint8_t</span> <span class="n">no_auto_connection_window_update</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`</span>
+<span class="cm">   */</span>
+  <span class="kt">uint32_t</span> <span class="n">peer_max_concurrent_streams</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_opt_set</span><span class="p">;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Sets the configuration option for the |session|.  The |optname| is</span>
-<span class="cm"> * one of :type:`nghttp2_opt`. The |optval| is the pointer to the</span>
-<span class="cm"> * option value and the |optlen| is the size of |*optval|. The</span>
-<span class="cm"> * required type of |optval| varies depending on the |optname|. See</span>
-<span class="cm"> * below.</span>
+<span class="cm"> * Like `nghttp2_session_client_new()`, but with additional options</span>
+<span class="cm"> * specified in the |opt_set|. The caller must set bitwise-OR of</span>
+<span class="cm"> * :enum:`nghttp2_opt` for given options.  For example, if it</span>
+<span class="cm"> * specifies :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` and</span>
+<span class="cm"> * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS` in the |opt_set|,</span>
+<span class="cm"> * the |opt_set_mask| should be</span>
+<span class="cm"> * ``NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE |</span>
+<span class="cm"> * NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS``.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The following |optname| are supported:</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`</span>
-<span class="cm"> *     The |optval| must be a pointer to ``int``. If the |*optval| is</span>
-<span class="cm"> *     nonzero, the library will not send WINDOW_UPDATE for a stream</span>
-<span class="cm"> *     automatically.  Therefore, the application is responsible for</span>
-<span class="cm"> *     sending WINDOW_UPDATE using</span>
-<span class="cm"> *     `nghttp2_submit_window_update`. This option defaults to 0.</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`</span>
-<span class="cm"> *     The |optval| must be a pointer to ``int``. If the |*optval| is</span>
-<span class="cm"> *     nonzero, the library will not send WINDOW_UPDATE for connection</span>
-<span class="cm"> *     automatically.  Therefore, the application is responsible for</span>
-<span class="cm"> *     sending WINDOW_UPDATE using</span>
-<span class="cm"> *     `nghttp2_submit_window_update`. This option defaults to 0.</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`</span>
-<span class="cm"> *     The |optval| must be a pointer to ``ssize_t``. It is an error</span>
-<span class="cm"> *     if |*optval| is 0 or negative.</span>
+<span class="cm"> * If the |opt_set_mask| is 0, the |opt_set| could be ``NULL`` safely</span>
+<span class="cm"> * and the call is equivalent to `nghttp2_session_client_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |optname| is not supported; or the |optval| and/or the</span>
-<span class="cm"> *     |optlen| are invalid.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_session_set_option</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
-                               <span class="kt">int</span> <span class="n">optname</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">optval</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">optlen</span><span class="p">);</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_client_new2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span>
+                                <span class="kt">uint32_t</span> <span class="n">opt_set_mask</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_opt_set</span> <span class="o">*</span><span class="n">opt_set</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Like `nghttp2_session_server_new()`, but with additional options</span>
+<span class="cm"> * specified in the |opt_set|. The caller must set bitwise-OR of</span>
+<span class="cm"> * :enum:`nghttp2_opt` for given options.  For example, if it</span>
+<span class="cm"> * specifies :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` and</span>
+<span class="cm"> * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS` in the |opt_set|,</span>
+<span class="cm"> * the |opt_set_mask| should be</span>
+<span class="cm"> * ``NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE |</span>
+<span class="cm"> * NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If the |opt_set_mask| is 0, the |opt_set| could be ``NULL`` safely</span>
+<span class="cm"> * and the call is equivalent to `nghttp2_session_server_new()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_server_new2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span>
+                                <span class="kt">uint32_t</span> <span class="n">opt_set_mask</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_opt_set</span> <span class="o">*</span><span class="n">opt_set</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Frees any resources allocated for |session|. If |session| is</span>
+<span class="cm"> * ``NULL``, this function does nothing.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_del</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>

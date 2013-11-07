@@ -705,25 +705,29 @@ which is analogous to HEADERS in SPDY.</p>
 <tt class="descname">NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE</tt><a class="headerlink" href="#NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">1</span></tt>)
 This option prevents the library from sending WINDOW_UPDATE for a
-stream automatically. If this option is set, the application is
-responsible for sending WINDOW_UPDATE using
-<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>.</p>
+stream automatically. If this option is set to nonzero, the
+library won&#8217;t send WINDOW_UPDATE for a stream and the application
+is responsible for sending WINDOW_UPDATE using
+<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. By default, this option is set to
+zero.</p>
 </dd></dl>
 
 <dl class="macro">
 <dt id="NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE">
 <tt class="descname">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</tt><a class="headerlink" href="#NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">2</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">1</span> <span class="pre">&lt;&lt;</span> <span class="pre">1</span></tt>)
 This option prevents the library from sending WINDOW_UPDATE for a
-connection automatically. If this option is set, the application
-is responsible for sending WINDOW_UPDATE with stream ID 0 using
-<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>.</p>
+connection automatically. If this option is set to nonzero, the
+library won&#8217;t send WINDOW_UPDATE for a connection and the
+application is responsible for sending WINDOW_UPDATE with stream
+ID 0 using <a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. By default, this
+option is set to zero.</p>
 </dd></dl>
 
 <dl class="macro">
 <dt id="NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS">
 <tt class="descname">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</tt><a class="headerlink" href="#NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">3</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">1</span> <span class="pre">&lt;&lt;</span> <span class="pre">2</span></tt>)
 This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of
 remote endpoint as if it is received in SETTINGS frame. Without
 specifying this option, before the local endpoint receives
@@ -1515,6 +1519,30 @@ unknown.</p>
 </dd></dl>
 
 <dl class="type">
+<dt id="nghttp2_opt_set">
+<tt class="descname">nghttp2_opt_set</tt><a class="headerlink" href="#nghttp2_opt_set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Struct to store option values for nghttp2_session.</p>
+<dl class="member">
+<dt id="nghttp2_opt_set.no_auto_stream_window_update">
+uint8_t <tt class="descname">no_auto_stream_window_update</tt><a class="headerlink" href="#nghttp2_opt_set.no_auto_stream_window_update" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE" title="NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE</span></tt></a></p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_opt_set.no_auto_connection_window_update">
+uint8_t <tt class="descname">no_auto_connection_window_update</tt><a class="headerlink" href="#nghttp2_opt_set.no_auto_connection_window_update" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE" title="NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span></tt></a></p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_opt_set.peer_max_concurrent_streams">
+uint32_t <tt class="descname">peer_max_concurrent_streams</tt><a class="headerlink" href="#nghttp2_opt_set.peer_max_concurrent_streams" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS" title="NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span></tt></a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
 <dt id="nghttp2_gzip">
 <tt class="descname">nghttp2_gzip</tt><a class="headerlink" href="#nghttp2_gzip" title="Permalink to this definition">¶</a></dt>
 <dd><p>The gzip stream to inflate data. The details of this structure are
@@ -1563,45 +1591,52 @@ negative error codes:</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="nghttp2_session_client_new2">
+int <tt class="descname">nghttp2_session_client_new2</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;**session_ptr</em>, const <a class="reference internal" href="#nghttp2_session_callbacks" title="nghttp2_session_callbacks">nghttp2_session_callbacks</a><em>&nbsp;*callbacks</em>, void<em>&nbsp;*user_data</em>, uint32_t<em>&nbsp;opt_set_mask</em>, const <a class="reference internal" href="#nghttp2_opt_set" title="nghttp2_opt_set">nghttp2_opt_set</a><em>&nbsp;*opt_set</em><big>)</big><a class="headerlink" href="#nghttp2_session_client_new2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a>, but with additional options
+specified in the <em>opt_set</em>. The caller must set bitwise-OR of
+<a class="reference internal" href="#nghttp2_opt" title="nghttp2_opt"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_opt</span></tt></a> for given options.  For example, if it
+specifies <a class="reference internal" href="#NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE" title="NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span></tt></a> and
+<a class="reference internal" href="#NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS" title="NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span></tt></a> in the <em>opt_set</em>,
+the <em>opt_set_mask</em> should be
+<tt class="docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span> <span class="pre">|</span>
+<span class="pre">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span></tt>.</p>
+<p>If the <em>opt_set_mask</em> is 0, the <em>opt_set</em> could be <tt class="docutils literal"><span class="pre">NULL</span></tt> safely
+and the call is equivalent to <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a>.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_session_server_new2">
+int <tt class="descname">nghttp2_session_server_new2</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;**session_ptr</em>, const <a class="reference internal" href="#nghttp2_session_callbacks" title="nghttp2_session_callbacks">nghttp2_session_callbacks</a><em>&nbsp;*callbacks</em>, void<em>&nbsp;*user_data</em>, uint32_t<em>&nbsp;opt_set_mask</em>, const <a class="reference internal" href="#nghttp2_opt_set" title="nghttp2_opt_set">nghttp2_opt_set</a><em>&nbsp;*opt_set</em><big>)</big><a class="headerlink" href="#nghttp2_session_server_new2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>, but with additional options
+specified in the <em>opt_set</em>. The caller must set bitwise-OR of
+<a class="reference internal" href="#nghttp2_opt" title="nghttp2_opt"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_opt</span></tt></a> for given options.  For example, if it
+specifies <a class="reference internal" href="#NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE" title="NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span></tt></a> and
+<a class="reference internal" href="#NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS" title="NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span></tt></a> in the <em>opt_set</em>,
+the <em>opt_set_mask</em> should be
+<tt class="docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span> <span class="pre">|</span>
+<span class="pre">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span></tt>.</p>
+<p>If the <em>opt_set_mask</em> is 0, the <em>opt_set</em> could be <tt class="docutils literal"><span class="pre">NULL</span></tt> safely
+and the call is equivalent to <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="nghttp2_session_del">
 void <tt class="descname">nghttp2_session_del</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em><big>)</big><a class="headerlink" href="#nghttp2_session_del" title="Permalink to this definition">¶</a></dt>
 <dd><p>Frees any resources allocated for <em>session</em>. If <em>session</em> is
 <tt class="docutils literal"><span class="pre">NULL</span></tt>, this function does nothing.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="nghttp2_session_set_option">
-int <tt class="descname">nghttp2_session_set_option</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int<em>&nbsp;optname</em>, void<em>&nbsp;*optval</em>, size_t<em>&nbsp;optlen</em><big>)</big><a class="headerlink" href="#nghttp2_session_set_option" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the configuration option for the <em>session</em>.  The <em>optname</em> is
-one of <a class="reference internal" href="#nghttp2_opt" title="nghttp2_opt"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_opt</span></tt></a>. The <em>optval</em> is the pointer to the
-option value and the <em>optlen</em> is the size of <em>*optval</em>. The
-required type of <em>optval</em> varies depending on the <em>optname</em>. See
-below.</p>
-<p>The following <em>optname</em> are supported:</p>
-<dl class="docutils">
-<dt><a class="reference internal" href="#NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE" title="NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE</span></tt></a></dt>
-<dd>The <em>optval</em> must be a pointer to <tt class="docutils literal"><span class="pre">int</span></tt>. If the <em>*optval</em> is
-nonzero, the library will not send WINDOW_UPDATE for a stream
-automatically.  Therefore, the application is responsible for
-sending WINDOW_UPDATE using
-<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. This option defaults to 0.</dd>
-<dt><a class="reference internal" href="#NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE" title="NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span></tt></a></dt>
-<dd>The <em>optval</em> must be a pointer to <tt class="docutils literal"><span class="pre">int</span></tt>. If the <em>*optval</em> is
-nonzero, the library will not send WINDOW_UPDATE for connection
-automatically.  Therefore, the application is responsible for
-sending WINDOW_UPDATE using
-<a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>. This option defaults to 0.</dd>
-<dt><a class="reference internal" href="#NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS" title="NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS</span></tt></a></dt>
-<dd>The <em>optval</em> must be a pointer to <tt class="docutils literal"><span class="pre">ssize_t</span></tt>. It is an error
-if <em>*optval</em> is 0 or negative.</dd>
-</dl>
-<p>This function returns 0 if it succeeds, or one of the following
-negative error codes:</p>
-<dl class="docutils">
-<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>optname</em> is not supported; or the <em>optval</em> and/or the
-<em>optlen</em> are invalid.</dd>
-</dl>
 </dd></dl>
 
 <dl class="function">
