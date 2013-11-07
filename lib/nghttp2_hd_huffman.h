@@ -40,4 +40,4 @@ typedef struct {
   uint8_t code[4];
 } nghttp2_huff_sym;
 
-#endif // NGHTTP2_HD_HUFFMAN_H
+#endif /* NGHTTP2_HD_HUFFMAN_H */
