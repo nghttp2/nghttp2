@@ -71,4 +71,15 @@ void test_util_inp_strlower(void)
   CU_ASSERT("" == a);
 }
 
+void test_util_to_base64(void)
+{
+  std::string x = "AAA--B_";
+  util::to_base64(x);
+  CU_ASSERT("AAA++B/=" == x);
+
+  x = "AAA--B_B";
+  util::to_base64(x);
+  CU_ASSERT("AAA++B/B" == x);
+}
+
 } // namespace shrpx

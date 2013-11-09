@@ -29,6 +29,7 @@ namespace shrpx {
 
 void test_util_streq(void);
 void test_util_inp_strlower(void);
+void test_util_to_base64(void);
 
 } // namespace shrpx
 

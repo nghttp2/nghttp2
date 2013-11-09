@@ -283,7 +283,9 @@ void to_base64(std::string& token68str)
       break;
     }
   }
-  token68str += std::string(4 - token68str.size() % 4, '=');
+  if(token68str.size() & 0x3) {
+    token68str.append(4 - (token68str.size() & 0x3), '=');
+  }
   return;
 }
 

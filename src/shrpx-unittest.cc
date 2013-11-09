@@ -93,7 +93,9 @@ int main(int argc, char* argv[])
                    shrpx::test_downstream_get_norm_response_header) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_inp_strlower",
-                   shrpx::test_util_inp_strlower)) {
+                   shrpx::test_util_inp_strlower) ||
+      !CU_add_test(pSuite, "util_to_base64",
+                   shrpx::test_util_to_base64)) {
      CU_cleanup_registry();
      return CU_get_error();
    }
