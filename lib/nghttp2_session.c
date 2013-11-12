@@ -1005,23 +1005,18 @@ static int nghttp2_session_predicate_settings_send(nghttp2_session *session,
 static size_t nghttp2_session_next_data_read(nghttp2_session *session,
                                              nghttp2_stream *stream)
 {
-  int32_t session_window_size;
-  int32_t stream_window_size;
-  int32_t window_size;
+  int32_t window_size = NGHTTP2_DATA_PAYLOAD_LENGTH;
   /* Take into account both connection-level flow control here */
-  if(session->remote_flow_control == 0 && stream->remote_flow_control == 0) {
-    return NGHTTP2_DATA_PAYLOAD_LENGTH;
+  if(session->remote_flow_control) {
+    window_size = nghttp2_min(window_size, session->remote_window_size);
   }
-  session_window_size =
-    session->remote_flow_control ? session->remote_window_size : INT32_MAX;
-  stream_window_size =
-    stream->remote_flow_control ? stream->remote_window_size : INT32_MAX;
-  window_size = nghttp2_min(session_window_size, stream_window_size);
+  if(stream->remote_flow_control) {
+    window_size = nghttp2_min(window_size, stream->remote_window_size);
+  }
   if(window_size > 0) {
-    return nghttp2_min(window_size, NGHTTP2_DATA_PAYLOAD_LENGTH);
-  } else {
-    return 0;
+    return window_size;
   }
+  return 0;
 }
 
 /*
