@@ -2678,7 +2678,9 @@ static int session_on_connection_window_update_received
   if(session->remote_window_size > 0) {
     rv = nghttp2_session_push_back_deferred_data(session);
     if(rv != 0) {
-      return 0;
+      /* FATAL */
+      assert(rv < NGHTTP2_ERR_FATAL);
+      return rv;
     }
   }
   return nghttp2_session_call_on_frame_received(session, frame);
