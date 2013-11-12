@@ -3294,8 +3294,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
        session->iframe.state == NGHTTP2_RECV_PAYLOAD_IGN) {
       size_t rempayloadlen;
       size_t bufavail, readlen;
-      int32_t data_stream_id = 0;
-      uint8_t data_flags = NGHTTP2_FLAG_NONE;
 
       rempayloadlen = session->iframe.payloadlen - session->iframe.off;
       bufavail = inlimit - inmark;
@@ -3303,19 +3301,20 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
       readlen =  nghttp2_min(bufavail, rempayloadlen);
-      if(!nghttp2_frame_is_data_frame(session->iframe.headbuf)) {
-        if(session->iframe.state != NGHTTP2_RECV_PAYLOAD_IGN) {
-          memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
-        }
-      } else {
-        data_stream_id = nghttp2_get_uint32(&session->iframe.headbuf[4]) &
-          NGHTTP2_STREAM_ID_MASK;
-        data_flags = session->iframe.headbuf[3];
+      if(!nghttp2_frame_is_data_frame(session->iframe.headbuf) &&
+         session->iframe.state != NGHTTP2_RECV_PAYLOAD_IGN) {
+        memcpy(session->iframe.buf+session->iframe.off, inmark, readlen);
       }
       session->iframe.off += readlen;
       inmark += readlen;
 
       if(nghttp2_frame_is_data_frame(session->iframe.headbuf) && readlen > 0) {
+        uint32_t data_stream_id;
+        uint8_t data_flags;
+
+        data_stream_id = nghttp2_get_uint32(&session->iframe.headbuf[4]) &
+          NGHTTP2_STREAM_ID_MASK;
+        data_flags = session->iframe.headbuf[3];
         if(session->local_flow_control) {
           /* Update connection-level flow control window for ignored
              DATA frame too */
