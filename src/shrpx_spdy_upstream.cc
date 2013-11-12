@@ -932,11 +932,6 @@ bool SpdyUpstream::get_flow_control() const
   return flow_control_;
 }
 
-int32_t SpdyUpstream::get_initial_window_size() const
-{
-  return initial_window_size_;
-}
-
 void SpdyUpstream::pause_read(IOCtrlReason reason)
 {}
 

@@ -496,7 +496,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   assert(rv == 0);
 
   flow_control_ = true;
-  initial_window_size_ = (1 << get_config()->http2_upstream_window_bits) - 1;
 
   // TODO Maybe call from outside?
   nghttp2_settings_entry entry[2];
@@ -504,7 +503,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   entry[0].value = get_config()->http2_max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = initial_window_size_;
+  entry[1].value = (1 << get_config()->http2_upstream_window_bits) - 1;
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE,
                                entry,
@@ -1024,11 +1023,6 @@ int Http2Upstream::on_downstream_body_complete(Downstream *downstream)
 bool Http2Upstream::get_flow_control() const
 {
   return flow_control_;
-}
-
-int32_t Http2Upstream::get_initial_window_size() const
-{
-  return initial_window_size_;
 }
 
 void Http2Upstream::pause_read(IOCtrlReason reason)

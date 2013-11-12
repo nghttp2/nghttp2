@@ -73,7 +73,6 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   bool get_flow_control() const;
-  int32_t get_initial_window_size() const;
   // Perform HTTP/2.0 upgrade from |upstream|. On success, this object
   // takes ownership of the |upstream|. This function returns 0 if it
   // succeeds, or -1.
@@ -84,7 +83,6 @@ private:
   ClientHandler *handler_;
   nghttp2_session *session_;
   bool flow_control_;
-  int32_t initial_window_size_;
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;
   event *settings_timerev_;

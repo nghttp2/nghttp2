@@ -628,11 +628,6 @@ int Http2Session::submit_window_update(Http2DownstreamConnection *dconn,
   return 0;
 }
 
-int32_t Http2Session::get_initial_window_size() const
-{
-  return (1 << get_config()->http2_downstream_window_bits) - 1;
-}
-
 nghttp2_session* Http2Session::get_session() const
 {
   return session_;
@@ -1169,7 +1164,7 @@ int Http2Session::on_connect()
   entry[1].value = get_config()->http2_max_concurrent_streams;
 
   entry[2].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[2].value = get_initial_window_size();
+  entry[2].value = (1 << get_config()->http2_downstream_window_bits) - 1;
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry,
                                sizeof(entry)/sizeof(nghttp2_settings_entry));

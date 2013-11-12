@@ -76,8 +76,6 @@ public:
 
   int fail_session(nghttp2_error_code error_code);
 
-  int32_t get_initial_window_size() const;
-
   nghttp2_session* get_session() const;
 
   bool get_flow_control() const;
