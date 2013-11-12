@@ -61,8 +61,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     response_connection_close_(false),
     response_header_key_prev_(false),
     response_body_buf_(nullptr),
-    response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
-    recv_window_size_(0)
+    response_rst_stream_error_code_(NGHTTP2_NO_ERROR)
 {}
 
 Downstream::~Downstream()
@@ -529,21 +528,6 @@ evbuffer* Downstream::get_response_body_buf()
 void Downstream::set_priority(int pri)
 {
   priority_ = pri;
-}
-
-int32_t Downstream::get_recv_window_size() const
-{
-  return recv_window_size_;
-}
-
-void Downstream::inc_recv_window_size(int32_t amount)
-{
-  recv_window_size_ += amount;
-}
-
-void Downstream::set_recv_window_size(int32_t new_size)
-{
-  recv_window_size_ = new_size;
 }
 
 void Downstream::check_upgrade_fulfilled()

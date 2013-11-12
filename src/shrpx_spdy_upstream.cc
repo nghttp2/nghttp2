@@ -254,14 +254,32 @@ void on_data_chunk_recv_callback(spdylay_session *session,
       return;
     }
     if(upstream->get_flow_control()) {
-      downstream->inc_recv_window_size(len);
-      if(downstream->get_recv_window_size() >
-         std::max(65536, upstream->get_initial_window_size())) {
+      // If connection-level window control is not enabled (e.g,
+      // spdy/3), spdylay_session_get_recv_data_length() is always
+      // returns 0.
+      if(spdylay_session_get_recv_data_length(session) >
+         std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
+                  spdylay_session_get_local_window_size(session))) {
         if(LOG_ENABLED(INFO)) {
-          ULOG(INFO, upstream) << "Flow control error: recv_window_size="
-                               << downstream->get_recv_window_size()
-                               << ", initial_window_size="
-                               << upstream->get_initial_window_size();
+          ULOG(INFO, upstream)
+            << "Flow control error on connection: "
+            << "recv_window_size="
+            << spdylay_session_get_recv_data_length(session)
+            << ", initial_window_size="
+            << spdylay_session_get_local_window_size(session);
+        }
+        spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
+        return;
+      }
+      if(spdylay_session_get_stream_recv_data_length(session, stream_id) >
+         std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
+                  spdylay_session_get_stream_local_window_size(session))) {
+        if(LOG_ENABLED(INFO)) {
+          ULOG(INFO, upstream)
+            << "Flow control error: recv_window_size="
+            << spdylay_session_get_stream_recv_data_length(session, stream_id)
+            << ", initial_window_size="
+            << spdylay_session_get_stream_local_window_size(session);
         }
         upstream->rst_stream(downstream, SPDYLAY_FLOW_CONTROL_ERROR);
         return;
@@ -679,12 +697,13 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
   return 0;
 }
 
-int SpdyUpstream::window_update(Downstream *downstream)
+int SpdyUpstream::window_update(Downstream *downstream, int32_t delta)
 {
   int rv;
-  rv = spdylay_submit_window_update(session_, downstream->get_stream_id(),
-                                    downstream->get_recv_window_size());
-  downstream->set_recv_window_size(0);
+  rv = spdylay_submit_window_update(session_,
+                                    downstream ?
+                                    downstream->get_stream_id() : 0,
+                                    delta);
   if(rv < SPDYLAY_ERR_FATAL) {
     ULOG(FATAL, this) << "spdylay_submit_window_update() failed: "
                       << spdylay_strerror(rv);
@@ -921,11 +940,40 @@ int32_t SpdyUpstream::get_initial_window_size() const
 void SpdyUpstream::pause_read(IOCtrlReason reason)
 {}
 
+namespace {
+int32_t determine_window_update_transmission(spdylay_session *session,
+                                             int32_t stream_id)
+{
+  int32_t recv_length, window_size;
+  if(stream_id == 0) {
+    recv_length = spdylay_session_get_recv_data_length(session);
+    window_size = spdylay_session_get_local_window_size(session);
+  } else {
+    recv_length = spdylay_session_get_stream_recv_data_length
+      (session, stream_id);
+    window_size = spdylay_session_get_stream_local_window_size(session);
+  }
+  if(recv_length != -1 && window_size != -1) {
+    if(recv_length >= window_size / 2) {
+      return recv_length;
+    }
+  }
+  return -1;
+}
+} // namespace
+
 int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 {
   if(get_flow_control()) {
-    if(downstream->get_recv_window_size() >= get_initial_window_size()/2) {
-      window_update(downstream);
+    int32_t delta;
+    delta = determine_window_update_transmission(session_, 0);
+    if(delta != -1) {
+      window_update(0, delta);
+    }
+    delta = determine_window_update_transmission
+      (session_, downstream->get_stream_id());
+    if(delta != -1) {
+      window_update(downstream, delta);
     }
   }
   return send();

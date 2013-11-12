@@ -55,7 +55,7 @@ public:
   spdylay_session* get_http2_session();
 
   int rst_stream(Downstream *downstream, int status_code);
-  int window_update(Downstream *downstream);
+  int window_update(Downstream *downstream, int32_t delta);
   int error_reply(Downstream *downstream, unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);

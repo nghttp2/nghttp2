@@ -67,9 +67,6 @@ public:
   // Returns true if output buffer is full. If underlying dconn_ is
   // NULL, this function always returns false.
   bool get_output_buffer_full();
-  int32_t get_recv_window_size() const;
-  void inc_recv_window_size(int32_t amount);
-  void set_recv_window_size(int32_t new_size);
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
   void check_upgrade_fulfilled();
   // Checks request headers whether the request is upgrade request or
@@ -217,7 +214,6 @@ private:
   evbuffer *response_body_buf_;
   // RST_STREAM error_code from downstream HTTP2 connection
   nghttp2_error_code response_rst_stream_error_code_;
-  int32_t recv_window_size_;
 };
 
 } // namespace shrpx
