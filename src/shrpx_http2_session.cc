@@ -820,11 +820,10 @@ int on_frame_recv_callback
                                       NGHTTP2_INTERNAL_ERROR);
       break;
     }
-    auto nva = frame->headers.nva;
-    auto nvlen = frame->headers.nvlen;
+    // nva is no longer sorted
+    auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
 
-    // Assuming that nva is sorted by name.
-    if(!http2::check_http2_headers(nva, nvlen)) {
+    if(!http2::check_http2_headers(nva)) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
@@ -832,14 +831,14 @@ int on_frame_recv_callback
       return 0;
     }
 
-    for(size_t i = 0; i < nvlen; ++i) {
-      if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-        downstream->add_response_header(http2::name_to_str(&nva[i]),
-                                        http2::value_to_str(&nva[i]));
+    for(auto nv : nva) {
+      if(nv->namelen > 0 && nv->name[0] != ':') {
+        downstream->add_response_header(http2::name_to_str(nv),
+                                        http2::value_to_str(nv));
       }
     }
 
-    auto status = http2::get_unique_header(nva, nvlen, ":status");
+    auto status = http2::get_unique_header(nva, ":status");
     if(!status || http2::value_lws(status)) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_PROTOCOL_ERROR);
@@ -855,7 +854,7 @@ int on_frame_recv_callback
     downstream->set_response_major(1);
     downstream->set_response_minor(1);
 
-    auto content_length = http2::get_header(nva, nvlen, "content-length");
+    auto content_length = http2::get_header(nva, "content-length");
     if(!content_length && downstream->get_request_method() != "HEAD" &&
        downstream->get_request_method() != "CONNECT") {
       unsigned int status;
@@ -879,11 +878,11 @@ int on_frame_recv_callback
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
-      for(size_t i = 0; i < frame->headers.nvlen; ++i) {
+      for(auto nv : nva) {
         ss << TTY_HTTP_HD;
-        ss.write(reinterpret_cast<char*>(nva[i].name), nva[i].namelen);
+        ss.write(reinterpret_cast<char*>(nv->name), nv->namelen);
         ss << TTY_RST << ": ";
-        ss.write(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
+        ss.write(reinterpret_cast<char*>(nv->value), nv->valuelen);
         ss << "\n";
       }
       SSLOG(INFO, http2session) << "HTTP response headers. stream_id="

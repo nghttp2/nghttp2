@@ -38,6 +38,7 @@
 static void assert_nv_equal(nghttp2_nv *a, nghttp2_nv *b, size_t len)
 {
   size_t i;
+  nghttp2_nv_array_sort(b, len);
   for(i = 0; i < len; ++i, ++a, ++b) {
     CU_ASSERT(nghttp2_nv_equal(a, b));
   }

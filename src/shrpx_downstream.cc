@@ -156,7 +156,7 @@ void normalize_headers(Headers& headers)
   for(auto& kv : headers) {
     util::inp_strlower(kv.first);
   }
-  std::sort(std::begin(headers), std::end(headers), name_less);
+  std::stable_sort(std::begin(headers), std::end(headers), name_less);
 }
 } // namespace
 

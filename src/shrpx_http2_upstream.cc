@@ -237,16 +237,16 @@ int on_frame_recv_callback
     upstream->add_downstream(downstream);
     downstream->init_response_body_buf();
 
-    auto nva = frame->headers.nva;
-    auto nvlen = frame->headers.nvlen;
+    // nva is no longer sorted
+    auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
-      for(size_t i = 0; i < frame->headers.nvlen; ++i) {
+      for(auto nv : nva) {
         ss << TTY_HTTP_HD;
-        ss.write(reinterpret_cast<char*>(nva[i].name), nva[i].namelen);
+        ss.write(reinterpret_cast<char*>(nv->name), nv->namelen);
         ss << TTY_RST << ": ";
-        ss.write(reinterpret_cast<char*>(nva[i].value), nva[i].valuelen);
+        ss.write(reinterpret_cast<char*>(nv->value), nv->valuelen);
         ss << "\n";
       }
       ULOG(INFO, upstream) << "HTTP request headers. stream_id="
@@ -254,24 +254,23 @@ int on_frame_recv_callback
                            << "\n" << ss.str();
     }
 
-    // Assuming that nva is sorted by name.
-    if(!http2::check_http2_headers(nva, nvlen)) {
+    if(!http2::check_http2_headers(nva)) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return 0;
     }
 
-    for(size_t i = 0; i < nvlen; ++i) {
-      if(nva[i].namelen > 0 && nva[i].name[0] != ':') {
-        downstream->add_request_header(http2::name_to_str(&nva[i]),
-                                       http2::value_to_str(&nva[i]));
+    for(auto nv : nva) {
+      if(nv->namelen > 0 && nv->name[0] != ':') {
+        downstream->add_request_header(http2::name_to_str(nv),
+                                       http2::value_to_str(nv));
       }
     }
 
-    auto host = http2::get_unique_header(nva, nvlen, "host");
-    auto authority = http2::get_unique_header(nva, nvlen, ":authority");
-    auto path = http2::get_unique_header(nva, nvlen, ":path");
-    auto method = http2::get_unique_header(nva, nvlen, ":method");
-    auto scheme = http2::get_unique_header(nva, nvlen, ":scheme");
+    auto host = http2::get_unique_header(nva, "host");
+    auto authority = http2::get_unique_header(nva, ":authority");
+    auto path = http2::get_unique_header(nva, ":path");
+    auto method = http2::get_unique_header(nva, ":method");
+    auto scheme = http2::get_unique_header(nva, ":scheme");
     bool is_connect = method &&
       util::streq("CONNECT", method->value, method->valuelen);
     bool having_host = http2::non_empty_value(host);
@@ -297,7 +296,7 @@ int on_frame_recv_callback
     }
     if(!is_connect &&
        (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-      auto content_length = http2::get_header(nva, nvlen, "content-length");
+      auto content_length = http2::get_header(nva, "content-length");
       if(!content_length || http2::value_lws(content_length)) {
         // If content-length is missing,
         // Downstream::push_upload_data_chunk will fail and

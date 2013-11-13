@@ -707,13 +707,12 @@ void prepare_response(Request *req, Http2Handler *hd)
 } // namespace
 
 namespace {
-void append_nv(Request *req, nghttp2_nv *nva, size_t nvlen)
+void append_nv(Request *req, const std::vector<const nghttp2_nv*>& nva)
 {
-  for(size_t i = 0; i < nvlen; ++i) {
-    req->headers.push_back({
-        std::string(nva[i].name, nva[i].name + nva[i].namelen),
-          std::string(nva[i].value, nva[i].value + nva[i].valuelen)
-          });
+  for(auto nv : nva) {
+    req->headers.push_back(std::make_pair
+                           (std::string(nv->name, nv->name + nv->namelen),
+                            std::string(nv->value, nv->value + nv->valuelen)));
   }
 }
 } // namespace
@@ -738,16 +737,14 @@ int hd_on_frame_recv_callback
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST: {
       int32_t stream_id = frame->hd.stream_id;
-      if(!http2::check_http2_headers(frame->headers.nva,
-                                     frame->headers.nvlen)) {
+      auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
+      if(!http2::check_http2_headers(nva)) {
         nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
                                   NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
       for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
-        if(!http2::get_unique_header(frame->headers.nva,
-                                     frame->headers.nvlen,
-                                     REQUIRED_HEADERS[i])) {
+        if(!http2::get_unique_header(nva, REQUIRED_HEADERS[i])) {
           nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
           return 0;
@@ -756,18 +753,14 @@ int hd_on_frame_recv_callback
       // intermediary translating from HTTP/1 request to HTTP/2 may
       // not produce :authority header field. In this case, it should
       // provide host HTTP/1.1 header field.
-      if(!http2::get_unique_header(frame->headers.nva,
-                                   frame->headers.nvlen,
-                                   ":authority") &&
-         !http2::get_unique_header(frame->headers.nva,
-                                   frame->headers.nvlen,
-                                   "host")) {
+      if(!http2::get_unique_header(nva, ":authority") &&
+         !http2::get_unique_header(nva, "host")) {
         nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
                                   NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
       auto req = util::make_unique<Request>(stream_id);
-      append_nv(req.get(), frame->headers.nva, frame->headers.nvlen);
+      append_nv(req.get(), nva);
       hd->add_stream(stream_id, std::move(req));
       break;
     }

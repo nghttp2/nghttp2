@@ -1352,7 +1352,6 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       goto fail;
     }
   }
-  nghttp2_nv_array_sort(nva_out.nva, nva_out.nvlen);
   *nva_ptr = nva_out.nva;
   return nva_out.nvlen;
  fail:

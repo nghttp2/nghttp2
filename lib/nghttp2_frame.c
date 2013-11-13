@@ -621,20 +621,20 @@ void nghttp2_nv_array_del(nghttp2_nv *nva)
   free(nva);
 }
 
-static int nghttp2_nv_name_compar(const void *lhs, const void *rhs)
+static int bytes_compar(const uint8_t *a, size_t alen,
+                        const uint8_t *b, size_t blen)
 {
-  nghttp2_nv *a = (nghttp2_nv*)lhs, *b = (nghttp2_nv*)rhs;
-  if(a->namelen == b->namelen) {
-    return memcmp(a->name, b->name, a->namelen);
-  } else if(a->namelen < b->namelen) {
-    int rv = memcmp(a->name, b->name, a->namelen);
+  if(alen == blen) {
+    return memcmp(a, b, alen);
+  } else if(alen < blen) {
+    int rv = memcmp(a, b, alen);
     if(rv == 0) {
       return -1;
     } else {
       return rv;
     }
   } else {
-    int rv = memcmp(a->name, b->name, b->namelen);
+    int rv = memcmp(a, b, blen);
     if(rv == 0) {
       return 1;
     } else {
@@ -645,12 +645,24 @@ static int nghttp2_nv_name_compar(const void *lhs, const void *rhs)
 
 int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs)
 {
-  return nghttp2_nv_name_compar(lhs, rhs);
+  return bytes_compar(lhs->name, lhs->namelen, rhs->name, rhs->namelen);
+}
+
+static int nv_compar(const void *lhs, const void *rhs)
+{
+  const nghttp2_nv *a = (const nghttp2_nv*)lhs;
+  const nghttp2_nv *b = (const nghttp2_nv*)rhs;
+  int rv;
+  rv = bytes_compar(a->name, a->namelen, b->name, b->namelen);
+  if(rv == 0) {
+    return bytes_compar(a->value, a->valuelen, b->value, b->valuelen);
+  }
+  return rv;
 }
 
 void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen)
 {
-  qsort(nva, nvlen, sizeof(nghttp2_nv), nghttp2_nv_name_compar);
+  qsort(nva, nvlen, sizeof(nghttp2_nv), nv_compar);
 }
 
 ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
@@ -694,7 +706,6 @@ ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
     data += len;
     ++p;
   }
-  nghttp2_nv_array_sort(*nva_ptr, nvlen);
   return nvlen;
 }
 
@@ -737,7 +748,6 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
     data += nva[i].valuelen;
     ++p;
   }
-  nghttp2_nv_array_sort(*nva_ptr, nvlen);
   return nvlen;
 }
 

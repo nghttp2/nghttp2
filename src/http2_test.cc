@@ -24,6 +24,7 @@
  */
 #include "http2_test.h"
 
+#include <cstring>
 #include <iostream>
 
 #include <CUnit/CUnit.h>
@@ -38,22 +39,53 @@ using namespace nghttp2;
 
 namespace shrpx {
 
+namespace {
+template<typename cstr1, typename cstr2>
+int bstrcmp(cstr1 *a, cstr2 *b)
+{
+  return strcmp((const char*)a, (const char*)b);
+}
+} // namespace
+
+void test_http2_sort_nva(void)
+{
+  nghttp2_nv nv[] = {MAKE_NV("alpha", "1"),
+                     MAKE_NV("bravo", "9"),
+                     MAKE_NV("bravo", "8"),
+                     MAKE_NV("charlie", "5"),
+                     MAKE_NV("bravo", "3"),
+                     MAKE_NV("bravo", "4")};
+  auto nvlen = sizeof(nv)/sizeof(nv[0]);
+  auto nva = http2::sort_nva(nv, nvlen);
+  CU_ASSERT(nvlen == nva.size());
+  CU_ASSERT(0 == bstrcmp("alpha", nva[0]->name));
+  CU_ASSERT(0 == bstrcmp("bravo", nva[1]->name));
+  CU_ASSERT(0 == bstrcmp("9", nva[1]->value));
+  CU_ASSERT(0 == bstrcmp("bravo", nva[2]->name));
+  CU_ASSERT(0 == bstrcmp("8", nva[2]->value));
+  CU_ASSERT(0 == bstrcmp("bravo", nva[3]->name));
+  CU_ASSERT(0 == bstrcmp("3", nva[3]->value));
+  CU_ASSERT(0 == bstrcmp("bravo", nva[4]->name));
+  CU_ASSERT(0 == bstrcmp("4", nva[4]->value));
+  CU_ASSERT(0 == bstrcmp("charlie", nva[5]->name));
+}
+
 void test_http2_check_http2_headers(void)
 {
   nghttp2_nv nv1[] = {MAKE_NV("alpha", "1"),
                       MAKE_NV("bravo", "2"),
                       MAKE_NV("upgrade", "http2")};
-  CU_ASSERT(!http2::check_http2_headers(nv1, 3));
+  CU_ASSERT(!http2::check_http2_headers(http2::sort_nva(nv1, 3)));
 
   nghttp2_nv nv2[] = {MAKE_NV("connection", "1"),
                       MAKE_NV("delta", "2"),
                       MAKE_NV("echo", "3")};
-  CU_ASSERT(!http2::check_http2_headers(nv2, 3));
+  CU_ASSERT(!http2::check_http2_headers(http2::sort_nva(nv2, 3)));
 
   nghttp2_nv nv3[] = {MAKE_NV("alpha", "1"),
                       MAKE_NV("bravo", "2"),
                       MAKE_NV("te2", "3")};
-  CU_ASSERT(http2::check_http2_headers(nv3, 3));
+  CU_ASSERT(http2::check_http2_headers(http2::sort_nva(nv3, 3)));
 }
 
 void test_http2_get_unique_header(void)
@@ -65,15 +97,16 @@ void test_http2_get_unique_header(void)
                      MAKE_NV("delta", "5"),
                      MAKE_NV("echo", "6"),};
   size_t nvlen = sizeof(nv)/sizeof(nv[0]);
+  auto nva = http2::sort_nva(nv, nvlen);
   const nghttp2_nv *rv;
-  rv = http2::get_unique_header(nv, nvlen, "delta");
+  rv = http2::get_unique_header(nva, "delta");
   CU_ASSERT(rv != nullptr);
   CU_ASSERT(util::streq("delta", rv->name, rv->namelen));
 
-  rv = http2::get_unique_header(nv, nvlen, "bravo");
+  rv = http2::get_unique_header(nva, "bravo");
   CU_ASSERT(rv == nullptr);
 
-  rv = http2::get_unique_header(nv, nvlen, "foxtrot");
+  rv = http2::get_unique_header(nva, "foxtrot");
   CU_ASSERT(rv == nullptr);
 }
 
@@ -86,16 +119,17 @@ void test_http2_get_header(void)
                      MAKE_NV("delta", "5"),
                      MAKE_NV("echo", "6"),};
   size_t nvlen = sizeof(nv)/sizeof(nv[0]);
+  auto nva = http2::sort_nva(nv, nvlen);
   const nghttp2_nv *rv;
-  rv = http2::get_header(nv, nvlen, "delta");
+  rv = http2::get_header(nva, "delta");
   CU_ASSERT(rv != nullptr);
   CU_ASSERT(util::streq("delta", rv->name, rv->namelen));
 
-  rv = http2::get_header(nv, nvlen, "bravo");
+  rv = http2::get_header(nva, "bravo");
   CU_ASSERT(rv != nullptr);
   CU_ASSERT(util::streq("bravo", rv->name, rv->namelen));
 
-  rv = http2::get_header(nv, nvlen, "foxtrot");
+  rv = http2::get_header(nva, "foxtrot");
   CU_ASSERT(rv == nullptr);
 }
 

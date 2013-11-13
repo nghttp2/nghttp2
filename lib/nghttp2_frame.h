@@ -523,8 +523,8 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
 int nghttp2_frame_nv_check_null(const char **nv);
 
 /*
- * Sorts the |nva| in ascending order of name. The relative order of
- * the same name pair is undefined.
+ * Sorts the |nva| in ascending order of name and value. If names are
+ * equivalent, sort them by value.
  */
 void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
 

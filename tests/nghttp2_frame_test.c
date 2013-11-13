@@ -118,6 +118,7 @@ void test_nghttp2_frame_pack_headers()
                      NGHTTP2_FLAG_PRIORITY,
                      1000000007, &oframe.hd);
   CU_ASSERT(1 << 20 == oframe.pri);
+  nghttp2_nv_array_sort(oframe.nva, oframe.nvlen);
   CU_ASSERT(nvnameeq("method", &oframe.nva[0]));
 
   free(buf);
