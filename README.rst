@@ -36,8 +36,8 @@ the earlier draft versions are not supporeted.
 
 * https://106.186.112.116 (TLS + NPN)
 
-  NPN offers ``HTTP-draft-07/2.0``, ``spdy/3``, ``spdy/2`` and
-  ``http/1.1``.
+  NPN offers ``HTTP-draft-07/2.0``, ``spdy/3.1``, ``spdy/3``,
+  ``spdy/2`` and ``http/1.1``.
 
   Note: certificate is self-signed and a browser will show alert
 
