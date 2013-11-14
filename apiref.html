@@ -1657,16 +1657,16 @@ which tells when each callback is invoked:</p>
 <li>If the control frame cannot be sent because some preconditions
 are not met (e.g., request HEADERS cannot be sent after
 GOAWAY),
-<tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_ctrl_not_send_callback</span></tt> is
+<a class="reference internal" href="#nghttp2_session_callbacks.on_frame_not_send_callback" title="nghttp2_session_callbacks.on_frame_not_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_not_send_callback</span></tt></a> is
 invoked. Abort the following steps.</li>
 <li>If the frame is request HEADERS, the stream is opened
 here.</li>
-<li><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_ctrl_send_callback</span></tt> is
+<li><a class="reference internal" href="#nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
 invoked.</li>
 <li><a class="reference internal" href="#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> is invoked one
 or more times to send the frame.</li>
 <li>If the frame is a control frame,
-<tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_ctrl_send_callback</span></tt> is
+<a class="reference internal" href="#nghttp2_session_callbacks.on_frame_send_callback" title="nghttp2_session_callbacks.on_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_send_callback</span></tt></a> is
 invoked.</li>
 <li>If the frame is a DATA frame,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_data_send_callback" title="nghttp2_session_callbacks.on_data_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_data_send_callback</span></tt></a> is
@@ -1725,7 +1725,7 @@ is invoked.</dd>
 <dt>3.1. <a class="reference internal" href="#nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> is invoked</dt>
 <dd>one or more times to receive whole frame.</dd>
 <dt>3.2. If the received frame is valid,</dt>
-<dd><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_ctrl_recv_callback</span></tt> is
+<dd><a class="reference internal" href="#nghttp2_session_callbacks.on_frame_recv_callback" title="nghttp2_session_callbacks.on_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_callback</span></tt></a> is
 invoked.  If the frame is the final frame of the request,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_request_recv_callback" title="nghttp2_session_callbacks.on_request_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_request_recv_callback</span></tt></a>
 is invoked.  If the reception of the frame triggers the
@@ -1734,13 +1734,13 @@ closure of the stream,
 is invoked.</dd>
 <dt>3.3. If the received frame is unpacked but is interpreted as</dt>
 <dd>invalid,
-<tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_invalid_ctrl_recv_callback</span></tt>
+<a class="reference internal" href="#nghttp2_session_callbacks.on_invalid_frame_recv_callback" title="nghttp2_session_callbacks.on_invalid_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_invalid_frame_recv_callback</span></tt></a>
 is invoked.</dd>
 <dt>3.4. If the received frame could not be unpacked correctly,</dt>
-<dd><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_ctrl_recv_parse_error_callback</span></tt>
+<dd><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_parse_error_callback</span></tt>
 is invoked.</dd>
 <dt>3.5. If the received frame type is unknown,</dt>
-<dd><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_unknown_ctrl_recv_callback</span></tt>
+<dd><a class="reference internal" href="#nghttp2_session_callbacks.on_unknown_frame_recv_callback" title="nghttp2_session_callbacks.on_unknown_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_unknown_frame_recv_callback</span></tt></a>
 is invoked.</dd>
 </dl>
 </div></blockquote>
@@ -1847,10 +1847,10 @@ drop the connection.</p>
 void* <tt class="descname">nghttp2_session_get_stream_user_data</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em><big>)</big><a class="headerlink" href="#nghttp2_session_get_stream_user_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns stream_user_data for the stream <em>stream_id</em>. The
 stream_user_data is provided by <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or
-<tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_syn_stream()</span></tt>.  If the stream is initiated by the
+<a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>.  If the stream is initiated by the
 remote endpoint, stream_user_data is always <tt class="docutils literal"><span class="pre">NULL</span></tt>. If the stream
 is initiated by the local endpoint and <tt class="docutils literal"><span class="pre">NULL</span></tt> is given in
-<a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or <tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_syn_stream()</span></tt>, then
+<a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or <a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>, then
 this function returns <tt class="docutils literal"><span class="pre">NULL</span></tt>. If the stream does not exist, this
 function returns <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
 </dd></dl>
@@ -2030,7 +2030,7 @@ prioritized one first and the HTTP/2.0 specification requires the
 stream ID must be strictly increasing, the stream ID of this
 request cannot be known until it is about to sent.  To know the
 stream ID of the request, the application can use
-<tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_ctrl_send_callback</span></tt>. This
+<a class="reference internal" href="#nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a>. This
 callback is called just before the frame is sent. For HEADERS
 frame, the argument frame has the stream ID assigned. Also since
 the stream is already opened,
