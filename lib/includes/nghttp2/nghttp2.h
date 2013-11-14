@@ -1377,16 +1377,16 @@ void nghttp2_session_del(nghttp2_session *session);
  * 3. If the control frame cannot be sent because some preconditions
  *    are not met (e.g., request HEADERS cannot be sent after
  *    GOAWAY),
- *    :member:`nghttp2_session_callbacks.on_ctrl_not_send_callback` is
+ *    :member:`nghttp2_session_callbacks.on_frame_not_send_callback` is
  *    invoked. Abort the following steps.
  * 4. If the frame is request HEADERS, the stream is opened
  *    here.
- * 5. :member:`nghttp2_session_callbacks.before_ctrl_send_callback` is
+ * 5. :member:`nghttp2_session_callbacks.before_frame_send_callback` is
  *    invoked.
  * 6. :member:`nghttp2_session_callbacks.send_callback` is invoked one
  *    or more times to send the frame.
  * 7. If the frame is a control frame,
- *    :member:`nghttp2_session_callbacks.on_ctrl_send_callback` is
+ *    :member:`nghttp2_session_callbacks.on_frame_send_callback` is
  *    invoked.
  * 8. If the frame is a DATA frame,
  *    :member:`nghttp2_session_callbacks.on_data_send_callback` is
@@ -1440,7 +1440,7 @@ int nghttp2_session_send(nghttp2_session *session);
  *   3.1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
  *        one or more times to receive whole frame.
  *   3.2. If the received frame is valid,
- *        :member:`nghttp2_session_callbacks.on_ctrl_recv_callback` is
+ *        :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
  *        invoked.  If the frame is the final frame of the request,
  *        :member:`nghttp2_session_callbacks.on_request_recv_callback`
  *        is invoked.  If the reception of the frame triggers the
@@ -1449,13 +1449,13 @@ int nghttp2_session_send(nghttp2_session *session);
  *        is invoked.
  *   3.3. If the received frame is unpacked but is interpreted as
  *        invalid,
- *        :member:`nghttp2_session_callbacks.on_invalid_ctrl_recv_callback`
+ *        :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`
  *        is invoked.
  *   3.4. If the received frame could not be unpacked correctly,
- *        :member:`nghttp2_session_callbacks.on_ctrl_recv_parse_error_callback`
+ *        :member:`nghttp2_session_callbacks.on_frame_recv_parse_error_callback`
  *        is invoked.
  *   3.5. If the received frame type is unknown,
- *        :member:`nghttp2_session_callbacks.on_unknown_ctrl_recv_callback`
+ *        :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`
  *        is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -1575,10 +1575,10 @@ int nghttp2_session_want_write(nghttp2_session *session);
  *
  * Returns stream_user_data for the stream |stream_id|. The
  * stream_user_data is provided by `nghttp2_submit_request()` or
- * `nghttp2_submit_syn_stream()`.  If the stream is initiated by the
+ * `nghttp2_submit_headers()`.  If the stream is initiated by the
  * remote endpoint, stream_user_data is always ``NULL``. If the stream
  * is initiated by the local endpoint and ``NULL`` is given in
- * `nghttp2_submit_request()` or `nghttp2_submit_syn_stream()`, then
+ * `nghttp2_submit_request()` or `nghttp2_submit_headers()`, then
  * this function returns ``NULL``. If the stream does not exist, this
  * function returns ``NULL``.
  */
@@ -1797,7 +1797,7 @@ const char* nghttp2_strerror(int lib_error_code);
  * stream ID must be strictly increasing, the stream ID of this
  * request cannot be known until it is about to sent.  To know the
  * stream ID of the request, the application can use
- * :member:`nghttp2_session_callbacks.before_ctrl_send_callback`. This
+ * :member:`nghttp2_session_callbacks.before_frame_send_callback`. This
  * callback is called just before the frame is sent. For HEADERS
  * frame, the argument frame has the stream ID assigned. Also since
  * the stream is already opened,
