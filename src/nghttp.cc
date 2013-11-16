@@ -92,7 +92,7 @@ struct Config {
   std::string keyfile;
   int window_bits;
   int connection_window_bits;
-  std::map<std::string, std::string> headers;
+  std::vector<std::pair<std::string, std::string>> headers;
   std::string datafile;
   size_t output_upper_thres;
   ssize_t peer_max_concurrent_streams;
@@ -399,9 +399,10 @@ struct HttpClient;
 } // namespace
 
 namespace {
-int submit_request(HttpClient *client,
-                   const std::map<std::string, std::string>& headers,
-                   Request *req);
+int submit_request
+(HttpClient *client,
+ const std::vector<std::pair<std::string, std::string>>& headers,
+ Request *req);
 } // namespace
 
 namespace {
@@ -494,8 +495,13 @@ struct HttpClient {
       // If the user overrode the host header, use that value for the
       // SNI extension
       const char *host_string = nullptr;
-      auto i = config.headers.find( "Host" );
-      if ( i != config.headers.end() ) {
+      auto i = std::find_if(std::begin(config.headers),
+                            std::end(config.headers),
+                            [](const std::pair<std::string, std::string>& nv)
+                            {
+                              return util::strieq("host", nv.first.c_str());
+                            });
+      if ( i != std::end(config.headers) ) {
         host_string = (*i).second.c_str();
       } else {
         host_string = host.c_str();
@@ -897,9 +903,10 @@ http_parser_settings htp_hooks = {
 } // namespace
 
 namespace {
-int submit_request(HttpClient *client,
-                   const std::map<std::string, std::string>& headers,
-                   Request *req)
+int submit_request
+(HttpClient *client,
+ const std::vector<std::pair<std::string, std::string>>& headers,
+ Request *req)
 {
   enum eStaticHeaderPosition
   {
@@ -934,9 +941,6 @@ int submit_request(HttpClient *client,
 
   memcpy(nv.get(), static_nv, hardcoded_entry_count * sizeof(*static_nv));
 
-  auto i = std::begin(headers);
-  auto end = std::end(headers);
-
   int pos = hardcoded_entry_count;
 
   std::string content_length_str;
@@ -945,9 +949,9 @@ int submit_request(HttpClient *client,
     nv[pos++] = "content-length";
     nv[pos++] = content_length_str.c_str();
   }
-  while( i != end ) {
-    auto key = (*i).first.c_str();
-    auto value = (*i).second.c_str();
+  for(auto& kv : headers) {
+    auto key = kv.first.c_str();
+    auto value = kv.second.c_str();
     if ( util::strieq( key, "accept" ) ) {
       nv[POS_ACCEPT*2+1] = value;
     }
@@ -962,7 +966,6 @@ int submit_request(HttpClient *client,
       nv[pos+1] = value;
       pos += 2;
     }
-    ++i;
   }
   nv[pos] = nullptr;
 
@@ -1734,7 +1737,7 @@ int main(int argc, char **argv)
       }
       // Note that there is no processing currently to handle multiple
       // message-header fields with the same field name
-      config.headers.insert(std::pair<std::string,std::string>(header, value));
+      config.headers.emplace_back(header, value);
       break;
     }
     case 'a':
