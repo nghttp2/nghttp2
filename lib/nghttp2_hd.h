@@ -123,6 +123,9 @@ typedef struct {
      further invocation of inflate/deflate will fail with
      NGHTTP2_ERR_HEADER_COMP. */
   uint8_t bad;
+  /* Set to this nonzero to clear reference set on each deflation each
+     time. */
+  uint8_t no_refset;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
   /* NGHTTP2_HD_SIDE_REQUEST for processing request, otherwise
@@ -179,6 +182,9 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
  * for header table even if the larger value is specified later in
  * nghttp2_hd_change_table_size().
  *
+ * If nonzero is given in the |no_refset|, the encoder first clears
+ * the reference set each time on deflation.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -187,7 +193,8 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
  */
 int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
                              nghttp2_hd_side side,
-                             size_t deflate_hd_table_bufsize_max);
+                             size_t deflate_hd_table_bufsize_max,
+                             uint8_t no_refset);
 
 /*
  * Initializes |inflater| for inflating name/values pairs.
