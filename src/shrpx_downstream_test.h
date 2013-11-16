@@ -31,6 +31,8 @@ void test_downstream_normalize_request_headers(void);
 void test_downstream_normalize_response_headers(void);
 void test_downstream_get_norm_request_header(void);
 void test_downstream_get_norm_response_header(void);
+void test_downstream_crumble_request_cookie(void);
+void test_downstream_assemble_request_cookie(void);
 
 } // namespace shrpx
 

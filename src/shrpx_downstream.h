@@ -82,6 +82,9 @@ public:
   bool http2_upgrade_request() const;
   // downstream request API
   const Headers& get_request_headers() const;
+  void crumble_request_cookie();
+  void assemble_request_cookie();
+  const std::string& get_assembled_request_cookie() const;
   // Makes key lowercase and sort headers by name using <
   void normalize_request_headers();
   // Returns iterator pointing to the request header with the name
@@ -197,6 +200,7 @@ private:
   bool chunked_request_;
   bool request_connection_close_;
   bool request_expect_100_continue_;
+  std::string assembled_request_cookie_;
   Headers request_headers_;
   bool request_header_key_prev_;
   // the length of request body

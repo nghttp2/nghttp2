@@ -178,6 +178,69 @@ const Headers& Downstream::get_request_headers() const
   return request_headers_;
 }
 
+void Downstream::assemble_request_cookie()
+{
+  std::string& cookie = assembled_request_cookie_;
+  cookie = "";
+  for(auto& kv : request_headers_) {
+    if(util::strieq("cookie", kv.first.c_str())) {
+      auto end = kv.second.find_last_not_of(" ;");
+      if(end == std::string::npos) {
+        cookie += kv.second;
+      } else {
+        cookie.append(std::begin(kv.second), std::begin(kv.second) + end + 1);
+      }
+      cookie += "; ";
+    }
+  }
+  if(cookie.size() >= 2) {
+    cookie.erase(cookie.size() - 2);
+  }
+}
+
+void Downstream::crumble_request_cookie()
+{
+  Headers cookie_hdrs;
+  for(auto& kv : request_headers_) {
+    if(util::strieq("cookie", kv.first.c_str())) {
+      size_t last = kv.second.size();
+      size_t num = 0;
+      std::string rep_cookie;
+
+      for(size_t j = 0; j < last;) {
+        j = kv.second.find_first_not_of("\t ;", j);
+        if(j == std::string::npos) {
+          break;
+        }
+        auto first = j;
+
+        j = kv.second.find(';', j);
+        if(j == std::string::npos) {
+          j = last;
+        }
+
+        if(num == 0) {
+          rep_cookie = kv.second.substr(first, j - first);
+        } else {
+          cookie_hdrs.push_back
+            (std::make_pair("cookie", kv.second.substr(first, j - first)));
+        }
+        ++num;
+      }
+      if(num > 0) {
+        kv.second = std::move(rep_cookie);
+      }
+    }
+  }
+  request_headers_.insert(std::end(request_headers_),
+                          std::begin(cookie_hdrs), std::end(cookie_hdrs));
+}
+
+const std::string& Downstream::get_assembled_request_cookie() const
+{
+  return assembled_request_cookie_;
+}
+
 void Downstream::normalize_request_headers()
 {
   normalize_headers(request_headers_);

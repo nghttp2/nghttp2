@@ -116,6 +116,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 
 int HttpDownstreamConnection::push_request_headers()
 {
+  downstream_->assemble_request_cookie();
   downstream_->normalize_request_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
   // Assume that method and request path do not contain \r\n.
@@ -151,6 +152,12 @@ int HttpDownstreamConnection::push_request_headers()
   }
   http2::build_http1_headers_from_norm_headers
     (hdrs, downstream_->get_request_headers());
+
+  if(!downstream_->get_assembled_request_cookie().empty()) {
+    hdrs += "Cookie: ";
+    hdrs += downstream_->get_assembled_request_cookie();
+    hdrs += "\r\n";
+  }
 
   if(downstream_->get_request_connection_close()) {
     hdrs += "Connection: close\r\n";

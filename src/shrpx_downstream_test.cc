@@ -110,4 +110,40 @@ void test_downstream_get_norm_response_header(void)
   CU_ASSERT(i == std::end(d.get_response_headers()));
 }
 
+void test_downstream_crumble_request_cookie(void)
+{
+  Downstream d(nullptr, 0, 0);
+  d.add_request_header(":method", "get");
+  d.add_request_header(":path", "/");
+  d.add_request_header("cookie", "alpha; bravo; ; ;; charlie;;");
+  d.add_request_header("cookie", ";delta");
+  d.add_request_header("cookie", "echo");
+  d.crumble_request_cookie();
+  Headers ans = {
+    std::make_pair(":method", "get"),
+    std::make_pair(":path", "/"),
+    std::make_pair("cookie", "alpha"),
+    std::make_pair("cookie", "delta"),
+    std::make_pair("cookie", "echo"),
+    std::make_pair("cookie", "bravo"),
+    std::make_pair("cookie", "charlie")
+  };
+  CU_ASSERT(ans == d.get_request_headers());
+}
+
+void test_downstream_assemble_request_cookie(void)
+{
+  Downstream d(nullptr, 0, 0);
+  d.add_request_header(":method", "get");
+  d.add_request_header(":path", "/");
+  d.add_request_header("cookie", "alpha");
+  d.add_request_header("cookie", "bravo;");
+  d.add_request_header("cookie", "charlie; ");
+  d.add_request_header("cookie", "delta;;");
+  d.assemble_request_cookie();
+  CU_ASSERT("alpha; bravo; charlie; delta" ==
+            d.get_assembled_request_cookie());
+
+}
+
 } // namespace shrpx

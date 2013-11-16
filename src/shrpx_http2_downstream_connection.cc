@@ -228,6 +228,7 @@ int Http2DownstreamConnection::push_request_headers()
     return 0;
   }
   size_t nheader = downstream_->get_request_headers().size();
+  downstream_->crumble_request_cookie();
   downstream_->normalize_request_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
   // 12 means:

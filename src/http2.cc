@@ -179,6 +179,7 @@ size_t IGN_HDLEN = sizeof(IGN_HD)/sizeof(IGN_HD[0]);
 namespace {
 const char *HTTP1_IGN_HD[] = {
   "connection",
+  "cookie",
   "expect",
   "http2-settings",
   "keep-alive",

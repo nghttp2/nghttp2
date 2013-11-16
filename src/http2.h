@@ -106,7 +106,7 @@ void copy_norm_headers_to_nv
 
 // Appends HTTP/1.1 style header lines to |hdrs| from headers in
 // |headers|. Certain headers, which requires special handling
-// (i.e. via), are not appended.
+// (i.e. via and cookie), are not appended.
 void build_http1_headers_from_norm_headers
 (std::string& hdrs,
  const std::vector<std::pair<std::string, std::string>>& headers);

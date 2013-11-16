@@ -92,6 +92,10 @@ int main(int argc, char* argv[])
                    shrpx::test_downstream_get_norm_request_header) ||
       !CU_add_test(pSuite, "downstream_get_norm_response_header",
                    shrpx::test_downstream_get_norm_response_header) ||
+      !CU_add_test(pSuite, "downstream_crumble_request_cookie",
+                   shrpx::test_downstream_crumble_request_cookie) ||
+      !CU_add_test(pSuite, "downstream_assemble_request_cookie",
+                   shrpx::test_downstream_assemble_request_cookie) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_inp_strlower",
                    shrpx::test_util_inp_strlower) ||
