@@ -90,13 +90,13 @@ typedef struct {
 typedef struct {
   /* dynamic header table */
   nghttp2_hd_ringbuf hd_table;
+  /* Abstract buffer size of hd_table as described in the spec. This
+     is the sum of length of name/value in hd_table +
+     NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
+  size_t hd_table_bufsize;
   /* The header table size for decoding. If the context is initialized
      as encoder, this value is advertised by remote endpoint
      decoder. */
-  size_t hd_table_bufsize;
-  /* If inflate/deflate error occurred, this value is set to 1 and
-     further invocation of inflate/deflate will fail with
-     NGHTTP2_ERR_HEADER_COMP. */
   size_t hd_table_bufsize_max;
   /* The current effective header table size for encoding. This value
      is always equal to |hd_table_bufsize| on decoder
@@ -119,9 +119,9 @@ typedef struct {
   uint16_t emit_set_capacity;
   /* The number of entry the |emit_set| contains */
   uint16_t emit_setlen;
-  /* Abstract buffer size of hd_table as described in the spec. This
-     is the sum of length of name/value in hd_table +
-     NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
+  /* If inflate/deflate error occurred, this value is set to 1 and
+     further invocation of inflate/deflate will fail with
+     NGHTTP2_ERR_HEADER_COMP. */
   uint8_t bad;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
