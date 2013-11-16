@@ -43,7 +43,7 @@ json_t* dump_header_table(nghttp2_hd_context *context)
   for(i = 0; i < context->hd_table.len; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_table_get(context, i);
     json_t *outent = json_object();
-    json_object_set_new(outent, "index", json_integer(i));
+    json_object_set_new(outent, "index", json_integer(i + 1));
     dump_val(outent, "name", ent->nv.name, ent->nv.namelen);
     dump_val(outent, "value", ent->nv.value, ent->nv.valuelen);
     json_object_set_new(outent, "referenced",

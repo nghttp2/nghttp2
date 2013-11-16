@@ -36,65 +36,66 @@
       1, NGHTTP2_HD_FLAG_NONE }
 
 static nghttp2_hd_entry static_table[] = {
-  /* 0 */ MAKE_NV(":authority", ""),
-  /* 1 */ MAKE_NV(":method", "GET"),
-  /* 2 */ MAKE_NV(":method", "POST"),
-  /* 3 */ MAKE_NV(":path", "/"),
-  /* 4 */ MAKE_NV(":path", "/index.html"),
-  /* 5 */ MAKE_NV(":scheme", "http"),
-  /* 6 */ MAKE_NV(":scheme", "https"),
-  /* 7 */ MAKE_NV(":status", "200"),
-  /* 8 */ MAKE_NV(":status", "500"),
-  /* 9 */ MAKE_NV(":status", "404"),
-  /* 10 */ MAKE_NV(":status", "403"),
-  /* 11 */ MAKE_NV(":status", "400"),
-  /* 12 */ MAKE_NV(":status", "401"),
-  /* 13 */ MAKE_NV("accept-charset", ""),
-  /* 14 */ MAKE_NV("accept-encoding", ""),
-  /* 15 */ MAKE_NV("accept-language", ""),
-  /* 16 */ MAKE_NV("accept-ranges", ""),
-  /* 17 */ MAKE_NV("accept", ""),
-  /* 18 */ MAKE_NV("access-control-allow-origin", ""),
-  /* 19 */ MAKE_NV("age", ""),
-  /* 20 */ MAKE_NV("allow", ""),
-  /* 21 */ MAKE_NV("authorization", ""),
-  /* 22 */ MAKE_NV("cache-control", ""),
-  /* 23 */ MAKE_NV("content-disposition", ""),
-  /* 24 */ MAKE_NV("content-encoding", ""),
-  /* 25 */ MAKE_NV("content-language", ""),
-  /* 26 */ MAKE_NV("content-length", ""),
-  /* 27 */ MAKE_NV("content-location", ""),
-  /* 28 */ MAKE_NV("content-range", ""),
-  /* 29 */ MAKE_NV("content-type", ""),
-  /* 30 */ MAKE_NV("cookie", ""),
-  /* 31 */ MAKE_NV("date", ""),
-  /* 32 */ MAKE_NV("etag", ""),
-  /* 33 */ MAKE_NV("expect", ""),
-  /* 34 */ MAKE_NV("expires", ""),
-  /* 35 */ MAKE_NV("from", ""),
-  /* 36 */ MAKE_NV("if-match", ""),
-  /* 37 */ MAKE_NV("if-modified-since", ""),
-  /* 38 */ MAKE_NV("if-none-match", ""),
-  /* 39 */ MAKE_NV("if-range", ""),
-  /* 40 */ MAKE_NV("if-unmodified-since", ""),
-  /* 41 */ MAKE_NV("last-modified", ""),
-  /* 42 */ MAKE_NV("link", ""),
-  /* 43 */ MAKE_NV("location", ""),
-  /* 44 */ MAKE_NV("max-forwards", ""),
-  /* 45 */ MAKE_NV("proxy-authenticate", ""),
-  /* 46 */ MAKE_NV("proxy-authorization", ""),
-  /* 47 */ MAKE_NV("range", ""),
-  /* 48 */ MAKE_NV("referer", ""),
-  /* 49 */ MAKE_NV("refresh", ""),
-  /* 50 */ MAKE_NV("retry-after", ""),
-  /* 51 */ MAKE_NV("server", ""),
-  /* 52 */ MAKE_NV("set-cookie", ""),
-  /* 53 */ MAKE_NV("strict-transport-security", ""),
-  /* 54 */ MAKE_NV("transfer-encoding", ""),
-  /* 55 */ MAKE_NV("user-agent", ""),
-  /* 56 */ MAKE_NV("vary", ""),
-  /* 57 */ MAKE_NV("via", ""),
-  /* 58 */ MAKE_NV("www-authenticate", "")
+  /* 1 */ MAKE_NV(":authority", ""),
+  /* 2 */ MAKE_NV(":method", "GET"),
+  /* 3 */ MAKE_NV(":method", "POST"),
+  /* 4 */ MAKE_NV(":path", "/"),
+  /* 5 */ MAKE_NV(":path", "/index.html"),
+  /* 6 */ MAKE_NV(":scheme", "http"),
+  /* 7 */ MAKE_NV(":scheme", "https"),
+  /* 8 */ MAKE_NV(":status", "200"),
+  /* 9 */ MAKE_NV(":status", "500"),
+  /* 10 */ MAKE_NV(":status", "404"),
+  /* 11 */ MAKE_NV(":status", "403"),
+  /* 12 */ MAKE_NV(":status", "400"),
+  /* 13 */ MAKE_NV(":status", "401"),
+  /* 14 */ MAKE_NV("accept-charset", ""),
+  /* 15 */ MAKE_NV("accept-encoding", ""),
+  /* 16 */ MAKE_NV("accept-language", ""),
+  /* 17 */ MAKE_NV("accept-ranges", ""),
+  /* 18 */ MAKE_NV("accept", ""),
+  /* 19 */ MAKE_NV("access-control-allow-origin", ""),
+  /* 20 */ MAKE_NV("age", ""),
+  /* 21 */ MAKE_NV("allow", ""),
+  /* 22 */ MAKE_NV("authorization", ""),
+  /* 23 */ MAKE_NV("cache-control", ""),
+  /* 24 */ MAKE_NV("content-disposition", ""),
+  /* 25 */ MAKE_NV("content-encoding", ""),
+  /* 26 */ MAKE_NV("content-language", ""),
+  /* 27 */ MAKE_NV("content-length", ""),
+  /* 28 */ MAKE_NV("content-location", ""),
+  /* 29 */ MAKE_NV("content-range", ""),
+  /* 30 */ MAKE_NV("content-type", ""),
+  /* 31 */ MAKE_NV("cookie", ""),
+  /* 32 */ MAKE_NV("date", ""),
+  /* 33 */ MAKE_NV("etag", ""),
+  /* 34 */ MAKE_NV("expect", ""),
+  /* 35 */ MAKE_NV("expires", ""),
+  /* 36 */ MAKE_NV("from", ""),
+  /* 37 */ MAKE_NV("host", ""),
+  /* 38 */ MAKE_NV("if-match", ""),
+  /* 39 */ MAKE_NV("if-modified-since", ""),
+  /* 40 */ MAKE_NV("if-none-match", ""),
+  /* 41 */ MAKE_NV("if-range", ""),
+  /* 42 */ MAKE_NV("if-unmodified-since", ""),
+  /* 43 */ MAKE_NV("last-modified", ""),
+  /* 44 */ MAKE_NV("link", ""),
+  /* 45 */ MAKE_NV("location", ""),
+  /* 46 */ MAKE_NV("max-forwards", ""),
+  /* 47 */ MAKE_NV("proxy-authenticate", ""),
+  /* 48 */ MAKE_NV("proxy-authorization", ""),
+  /* 49 */ MAKE_NV("range", ""),
+  /* 50 */ MAKE_NV("referer", ""),
+  /* 51 */ MAKE_NV("refresh", ""),
+  /* 52 */ MAKE_NV("retry-after", ""),
+  /* 53 */ MAKE_NV("server", ""),
+  /* 54 */ MAKE_NV("set-cookie", ""),
+  /* 55 */ MAKE_NV("strict-transport-security", ""),
+  /* 56 */ MAKE_NV("transfer-encoding", ""),
+  /* 57 */ MAKE_NV("user-agent", ""),
+  /* 58 */ MAKE_NV("vary", ""),
+  /* 59 */ MAKE_NV("via", ""),
+  /* 60 */ MAKE_NV("www-authenticate", "")
 };
 
 static const size_t STATIC_TABLE_LENGTH =
@@ -578,14 +579,14 @@ static int emit_indexed_block(uint8_t **buf_ptr, size_t *buflen_ptr,
 {
   int rv;
   uint8_t *bufp;
-  size_t blocklen = count_encoded_length(index, 7);
+  size_t blocklen = count_encoded_length(index + 1, 7);
   rv = ensure_write_buffer(buf_ptr, buflen_ptr, *offset_ptr, blocklen);
   if(rv != 0) {
     return rv;
   }
   bufp = *buf_ptr + *offset_ptr;
   *bufp = 0x80u;
-  encode_length(bufp, index, 7);
+  encode_length(bufp, index + 1, 7);
   *offset_ptr += blocklen;
   return 0;
 }
@@ -1135,10 +1136,11 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       ssize_t index;
       nghttp2_hd_entry *ent;
       in = decode_length(&index, in, last, 7);
-      if(index < 0) {
+      if(index <= 0) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
+      --index;
       if(!check_index_range(inflater, index)) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -1270,7 +1272,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       int value_huffman;
       uint8_t *decoded_huffman_value = NULL;
       in = decode_length(&index, in, last, 6);
-      if(index < 0) {
+      if(index <= 0) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
