@@ -392,9 +392,11 @@ int Http2DownstreamConnection::push_request_headers()
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
     data_prd.read_callback = http2_data_read_callback;
-    rv = http2session_->submit_request(this, 0, nv.data(), &data_prd);
+    rv = http2session_->submit_request(this, downstream_->get_priorty(),
+                                       nv.data(), &data_prd);
   } else {
-    rv = http2session_->submit_request(this, 0, nv.data(), nullptr);
+    rv = http2session_->submit_request(this, downstream_->get_priorty(),
+                                       nv.data(), nullptr);
   }
   if(rv != 0) {
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";

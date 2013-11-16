@@ -525,9 +525,14 @@ evbuffer* Downstream::get_response_body_buf()
   return response_body_buf_;
 }
 
-void Downstream::set_priority(int pri)
+void Downstream::set_priority(int32_t pri)
 {
   priority_ = pri;
+}
+
+int32_t Downstream::get_priorty() const
+{
+  return priority_;
 }
 
 void Downstream::check_upgrade_fulfilled()

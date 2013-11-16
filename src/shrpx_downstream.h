@@ -54,7 +54,8 @@ public:
   Upstream* get_upstream() const;
   void set_stream_id(int32_t stream_id);
   int32_t get_stream_id() const;
-  void set_priority(int pri);
+  void set_priority(int32_t pri);
+  int32_t get_priorty() const;
   void pause_read(IOCtrlReason reason);
   int resume_read(IOCtrlReason reason);
   void force_resume_read();
@@ -177,7 +178,7 @@ private:
   Upstream *upstream_;
   DownstreamConnection *dconn_;
   int32_t stream_id_;
-  int priority_;
+  int32_t priority_;
   // stream ID in backend connection
   int32_t downstream_stream_id_;
   // true if the request contains upgrade token (HTTP Upgrade or
