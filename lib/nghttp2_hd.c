@@ -263,30 +263,10 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
   }
 
   context->emit_set = NULL;
+  context->emit_set_capacity = 0;
   context->buf_track = NULL;
+  context->buf_track_capacity = 0;
 
-  if(role == NGHTTP2_HD_ROLE_INFLATE) {
-    context->emit_set = malloc(sizeof(nghttp2_hd_entry*)*
-                               NGHTTP2_INITIAL_EMIT_SET_SIZE);
-    if(context->emit_set == NULL) {
-      goto fail;
-    }
-    memset(context->emit_set, 0, sizeof(nghttp2_hd_entry*)*
-           NGHTTP2_INITIAL_EMIT_SET_SIZE);
-    context->emit_set_capacity = NGHTTP2_INITIAL_EMIT_SET_SIZE;
-
-    context->buf_track = malloc(sizeof(uint8_t*)*
-                                NGHTTP2_INITIAL_BUF_TRACK_SIZE);
-    if(context->buf_track == NULL) {
-      goto fail;
-    }
-    context->buf_track_capacity = NGHTTP2_INITIAL_BUF_TRACK_SIZE;
-  } else {
-    context->emit_set = NULL;
-    context->emit_set_capacity = 0;
-    context->buf_track = NULL;
-    context->buf_track_capacity = 0;
-  }
   context->deflate_hd_table_bufsize_max = deflate_hd_table_bufsize_max;
   context->deflate_hd_table_bufsize = 0;
   context->deflate_hd_tablelen = 0;
@@ -294,11 +274,6 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
   context->buf_tracklen = 0;
   context->hd_table_bufsize = 0;
   return 0;
- fail:
-  free(context->buf_track);
-  free(context->emit_set);
-  nghttp2_hd_ringbuf_free(&context->hd_table);
-  return NGHTTP2_ERR_NOMEM;
 }
 
 int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater, nghttp2_hd_side side)
@@ -359,19 +334,63 @@ static size_t entry_room(size_t namelen, size_t valuelen)
   return NGHTTP2_HD_ENTRY_OVERHEAD + namelen + valuelen;
 }
 
+/*
+ * Ensures that buffer size is at least |reqmemb| * |size| bytes. The
+ * currnet buffer size is given in the |nmemb| * |size|. If the
+ * requested buffer size is strictly larger than |maxmemb| * |size|,
+ * returns NGHTTP2_ERR_HEADER_COMP. If the |nmemb| is 0, the |inimemb|
+ * is used as initial value and doubles it until it is greater than or
+ * equal to the requested buffer size.
+ *
+ * This function returns the new number of members after buffer
+ * expansion. If no expansion is required, |nmemb| is returned.
+ */
+static ssize_t ensure_buffer(void **buf_ptr,
+                             size_t size,
+                             size_t nmemb,
+                             size_t reqmemb,
+                             size_t maxmemb,
+                             size_t inimemb)
+{
+  size_t new_nmemb;
+  void *new_buf;
+  assert(inimemb >= 2);
+  if(nmemb >= reqmemb) {
+    return nmemb;
+  }
+  if(reqmemb > maxmemb) {
+    return NGHTTP2_ERR_HEADER_COMP;
+  }
+  if(nmemb == 0) {
+    new_nmemb = inimemb;
+  } else {
+    new_nmemb = nmemb;
+    for(; new_nmemb < reqmemb; new_nmemb *= 2);
+  }
+  new_buf = realloc(*buf_ptr, new_nmemb * size);
+  if(new_buf == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  *buf_ptr = new_buf;
+  return new_nmemb;
+}
+
 static int add_nva(nghttp2_nva_out *nva_out_ptr,
                    uint8_t *name, uint16_t namelen,
                    uint8_t *value, uint16_t valuelen)
 {
   nghttp2_nv *nv;
   if(nva_out_ptr->nvacap == nva_out_ptr->nvlen) {
-    size_t newcap = nva_out_ptr->nvacap == 0 ? 16 : nva_out_ptr->nvacap * 2;
-    nghttp2_nv *new_nva = realloc(nva_out_ptr->nva, sizeof(nghttp2_nv)*newcap);
-    if(new_nva == NULL) {
-      return NGHTTP2_ERR_NOMEM;
+    ssize_t new_cap = ensure_buffer((void**)&nva_out_ptr->nva,
+                                    sizeof(nghttp2_nv),
+                                    nva_out_ptr->nvacap,
+                                    nva_out_ptr->nvlen + 1,
+                                    NGHTTP2_MAX_NVA_LENGTH,
+                                    NGHTTP2_INITIAL_NVA_LENGTH);
+    if(new_cap == -1) {
+      return NGHTTP2_ERR_HEADER_COMP;
     }
-    nva_out_ptr->nva = new_nva;
-    nva_out_ptr->nvacap = newcap;
+    nva_out_ptr->nvacap = new_cap;
   }
   nv = &nva_out_ptr->nva[nva_out_ptr->nvlen++];
   nv->name = name;
@@ -384,7 +403,16 @@ static int add_nva(nghttp2_nva_out *nva_out_ptr,
 static int track_decode_buf(nghttp2_hd_context *context, uint8_t *buf)
 {
   if(context->buf_tracklen == context->buf_track_capacity) {
-    return NGHTTP2_ERR_HEADER_COMP;
+    ssize_t new_cap = ensure_buffer((void**)&context->buf_track,
+                                    sizeof(uint8_t*),
+                                    context->buf_track_capacity,
+                                    context->buf_tracklen + 1,
+                                    NGHTTP2_MAX_BUF_TRACK_LENGTH,
+                                    NGHTTP2_INITIAL_BUF_TRACK_LENGTH);
+    if(new_cap == -1) {
+      return NGHTTP2_ERR_HEADER_COMP;
+    }
+    context->buf_track_capacity = new_cap;
   }
   context->buf_track[context->buf_tracklen++] = buf;
   return 0;
@@ -394,7 +422,16 @@ static int track_decode_buf2(nghttp2_hd_context *context,
                              uint8_t *buf1, uint8_t *buf2)
 {
   if(context->buf_tracklen + 2 > context->buf_track_capacity) {
-    return NGHTTP2_ERR_HEADER_COMP;
+    ssize_t new_cap = ensure_buffer((void**)&context->buf_track,
+                                    sizeof(uint8_t*),
+                                    context->buf_track_capacity,
+                                    context->buf_tracklen + 2,
+                                    NGHTTP2_MAX_BUF_TRACK_LENGTH,
+                                    NGHTTP2_INITIAL_BUF_TRACK_LENGTH);
+    if(new_cap == -1) {
+      return NGHTTP2_ERR_HEADER_COMP;
+    }
+    context->buf_track_capacity = new_cap;
   }
   context->buf_track[context->buf_tracklen++] = buf1;
   context->buf_track[context->buf_tracklen++] = buf2;
@@ -404,7 +441,16 @@ static int track_decode_buf2(nghttp2_hd_context *context,
 static int add_emit_set(nghttp2_hd_context *context, nghttp2_hd_entry *ent)
 {
   if(context->emit_setlen == context->emit_set_capacity) {
-    return NGHTTP2_ERR_HEADER_COMP;
+    ssize_t new_cap = ensure_buffer((void**)&context->emit_set,
+                                    sizeof(nghttp2_hd_entry*),
+                                    context->emit_set_capacity,
+                                    context->emit_setlen + 1,
+                                    NGHTTP2_MAX_EMIT_SET_LENGTH,
+                                    NGHTTP2_INITIAL_EMIT_SET_LENGTH);
+    if(new_cap == -1) {
+      return NGHTTP2_ERR_HEADER_COMP;
+    }
+    context->emit_set_capacity = new_cap;
   }
   context->emit_set[context->emit_setlen++] = ent;
   ++ent->ref;
