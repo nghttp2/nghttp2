@@ -47,6 +47,9 @@ typedef struct {
 
 static deflate_config config;
 
+static size_t input_sum;
+static size_t output_sum;
+
 static void to_hex(char *dest, const uint8_t *src, size_t len)
 {
   size_t i;
@@ -94,6 +97,8 @@ static void deflate_hd(nghttp2_hd_context *deflater,
     fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
     exit(EXIT_FAILURE);
   }
+  input_sum += inputlen;
+  output_sum += rv;
   output_to_json(deflater, buf, rv, inputlen, seq);
   nghttp2_hd_end_headers(deflater);
   free(buf);
@@ -379,6 +384,8 @@ int main(int argc, char **argv)
   } else {
     perform(&deflater);
   }
+  fprintf(stderr, "Overall: input=%zu output=%zu ratio=%.02f\n",
+          input_sum, output_sum, (double)output_sum / input_sum);
   nghttp2_hd_deflate_free(&deflater);
   return 0;
 }
