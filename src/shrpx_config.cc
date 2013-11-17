@@ -109,6 +109,7 @@ const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[] =
   "frontend-http2-dump-request-header";
 const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[] =
   "frontend-http2-dump-response-header";
+const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[] = "http2-no-cookie-crumbling";
 
 namespace {
 Config *config = nullptr;
@@ -447,6 +448,8 @@ int parse_config(const char *opt, const char *optarg)
       return -1;
     }
     mod_config()->http2_upstream_dump_response_header = f;
+  } else if(util::strieq(opt, SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING)) {
+    mod_config()->http2_no_cookie_crumbling = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {

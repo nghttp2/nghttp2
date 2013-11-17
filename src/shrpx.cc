@@ -422,6 +422,7 @@ void fill_default_config()
   mod_config()->client_cert_file = nullptr;
   mod_config()->http2_upstream_dump_request_header = nullptr;
   mod_config()->http2_upstream_dump_response_header = nullptr;
+  mod_config()->http2_no_cookie_crumbling = false;
 }
 } // namespace
 
@@ -630,6 +631,8 @@ void print_help(std::ostream& out)
       << "                       Default: "
       << get_config()->http2_downstream_window_bits << "\n"
       << "    --backend-no-tls   Disable SSL/TLS on backend connections.\n"
+      << "    --http2-no-cookie-crumbling\n"
+      << "                       Don't crumble cookie header field.\n"
       << "\n"
       << "  Mode:\n"
       << "    (default mode)     Accept HTTP/2.0, SPDY and HTTP/1.1 over\n"
@@ -770,6 +773,7 @@ int main(int argc, char **argv)
       {"client-cert-file", required_argument, &flag, 42},
       {"frontend-http2-dump-request-header", required_argument, &flag, 43},
       {"frontend-http2-dump-response-header", required_argument, &flag, 44},
+      {"http2-no-cookie-crumbling", no_argument, &flag, 45},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1003,6 +1007,11 @@ int main(int argc, char **argv)
         cmdcfgs.push_back(std::make_pair
                           (SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
                            optarg));
+        break;
+      case 45:
+        // --http2-no-cookie-crumbling
+        cmdcfgs.push_back(std::make_pair
+                          (SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, "yes"));
         break;
       default:
         break;

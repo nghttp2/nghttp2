@@ -98,6 +98,7 @@ extern const char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[];
 extern const char SHRPX_OPT_CLIENT_CERT_FILE[];
 extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[];
 extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[];
+extern const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -200,6 +201,7 @@ struct Config {
   char *client_cert_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
+  bool http2_no_cookie_crumbling;
 };
 
 const Config* get_config();
