@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <cstdio>
 #include <vector>
 
 #include <event.h>
@@ -95,6 +96,8 @@ extern const char SHRPX_OPT_VERIFY_CLIENT[];
 extern const char SHRPX_OPT_VERIFY_CLIENT_CACERT[];
 extern const char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[];
 extern const char SHRPX_OPT_CLIENT_CERT_FILE[];
+extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[];
+extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -195,6 +198,8 @@ struct Config {
   char *verify_client_cacert;
   char *client_private_key_file;
   char *client_cert_file;
+  FILE *http2_upstream_dump_request_header;
+  FILE *http2_upstream_dump_response_header;
 };
 
 const Config* get_config();

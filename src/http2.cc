@@ -374,6 +374,31 @@ int32_t determine_window_update_transmission(nghttp2_session *session,
   return -1;
 }
 
+void dump_nv(FILE *out, const char **nv)
+{
+  for(size_t i = 0; nv[i]; i += 2) {
+    fwrite(nv[i], strlen(nv[i]), 1, out);
+    fwrite(": ", 2, 1, out);
+    fwrite(nv[i+1], strlen(nv[i+1]), 1, out);
+    fwrite("\n", 1, 1, out);
+  }
+  fwrite("\n", 1, 1, out);
+  fflush(out);
+}
+
+void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen)
+{
+  for(size_t i = 0; i < nvlen; ++i) {
+    auto nv = &nva[i];
+    fwrite(nv->name, nv->namelen, 1, out);
+    fwrite(": ", 2, 1, out);
+    fwrite(nv->value, nv->valuelen, 1, out);
+    fwrite("\n", 1, 1, out);
+  }
+  fwrite("\n", 1, 1, out);
+  fflush(out);
+}
+
 } // namespace http2
 
 } // namespace nghttp2

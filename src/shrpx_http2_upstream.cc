@@ -254,6 +254,11 @@ int on_frame_recv_callback
                            << "\n" << ss.str();
     }
 
+    if(get_config()->http2_upstream_dump_request_header) {
+      http2::dump_nv(get_config()->http2_upstream_dump_request_header,
+                     frame->headers.nva, frame->headers.nvlen);
+    }
+
     if(!http2::check_http2_headers(nva)) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return 0;
@@ -968,6 +973,12 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
                      << downstream->get_stream_id() << "\n"
                      << ss.str();
   }
+
+  if(get_config()->http2_upstream_dump_response_header) {
+    http2::dump_nv(get_config()->http2_upstream_dump_response_header,
+                   nv.data());
+  }
+
   nghttp2_data_provider data_prd;
   data_prd.source.ptr = downstream;
   data_prd.read_callback = downstream_data_read_callback;

@@ -420,6 +420,8 @@ void fill_default_config()
   mod_config()->verify_client_cacert = nullptr;
   mod_config()->client_private_key_file = nullptr;
   mod_config()->client_cert_file = nullptr;
+  mod_config()->http2_upstream_dump_request_header = nullptr;
+  mod_config()->http2_upstream_dump_response_header = nullptr;
 }
 } // namespace
 
@@ -675,6 +677,22 @@ void print_help(std::ostream& out)
       << "    --no-via           Don't append to Via header field. If Via\n"
       << "                       header field is received, it is left\n"
       << "                       unaltered.\n"
+      << "    --frontend-http2-dump-request-header=<PATH>\n"
+      << "                       Dumps request headers received by HTTP/2.0\n"
+      << "                       frontend to the file denoted in PATH.\n"
+      << "                       The output is done in HTTP/1 header field\n"
+      << "                       format and each header block is followed by\n"
+      << "                       an empty line.\n"
+      << "                       This option is not thread safe and MUST NOT\n"
+      << "                       be used with option -n=N, where N >= 2.\n"
+      << "    --frontend-http2-dump-response-header=<PATH>\n"
+      << "                       Dumps response headers sent from HTTP/2.0\n"
+      << "                       frontend to the file denoted in PATH.\n"
+      << "                       The output is done in HTTP/1 header field\n"
+      << "                       format and each header block is followed by\n"
+      << "                       an empty line.\n"
+      << "                       This option is not thread safe and MUST NOT\n"
+      << "                       be used with option -n=N, where N >= 2.\n"
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
       << "    --pid-file=<PATH>  Set path to save PID of this program.\n"
@@ -750,6 +768,8 @@ int main(int argc, char **argv)
       {"verify-client-cacert", required_argument, &flag, 40},
       {"client-private-key-file", required_argument, &flag, 41},
       {"client-cert-file", required_argument, &flag, 42},
+      {"frontend-http2-dump-request-header", required_argument, &flag, 43},
+      {"frontend-http2-dump-response-header", required_argument, &flag, 44},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -971,6 +991,18 @@ int main(int argc, char **argv)
       case 42:
         // --client-cert-file
         cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_CERT_FILE, optarg));
+        break;
+      case 43:
+        // --frontend-http2-dump-request-header
+        cmdcfgs.push_back(std::make_pair
+                          (SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
+                           optarg));
+        break;
+      case 44:
+        // --frontend-http2-dump-response-header
+        cmdcfgs.push_back(std::make_pair
+                          (SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
+                           optarg));
         break;
       default:
         break;

@@ -105,6 +105,10 @@ const char SHRPX_OPT_VERIFY_CLIENT[] = "verify-client";
 const char SHRPX_OPT_VERIFY_CLIENT_CACERT[] = "verify-client-cacert";
 const char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[] = "client-private-key-file";
 const char SHRPX_OPT_CLIENT_CERT_FILE[] = "client-cert-file";
+const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[] =
+  "frontend-http2-dump-request-header";
+const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[] =
+  "frontend-http2-dump-response-header";
 
 namespace {
 Config *config = nullptr;
@@ -169,6 +173,18 @@ bool is_secure(const char *filename)
   }
 
   return false;
+}
+} // namespace
+
+namespace {
+FILE* open_file_for_write(const char *filename)
+{
+  auto f = fopen(filename, "wb");
+  if(f == NULL) {
+    LOG(ERROR) << "Failed to open " << filename << " for writing. Cause: "
+               << strerror(errno);
+  }
+  return f;
 }
 } // namespace
 
@@ -419,6 +435,18 @@ int parse_config(const char *opt, const char *optarg)
     set_config_str(&mod_config()->client_private_key_file, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_CLIENT_CERT_FILE)) {
     set_config_str(&mod_config()->client_cert_file, optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER)) {
+    auto f = open_file_for_write(optarg);
+    if(f == NULL) {
+      return -1;
+    }
+    mod_config()->http2_upstream_dump_request_header = f;
+  } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER)) {
+    auto f = open_file_for_write(optarg);
+    if(f == NULL) {
+      return -1;
+    }
+    mod_config()->http2_upstream_dump_response_header = f;
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {
