@@ -225,14 +225,18 @@ static int perform_from_http1text(nghttp2_hd_context *deflater)
       inputlen += nv->namelen + nv->valuelen;
     }
 
-    deflate_hd(deflater, nva, nvlen, inputlen, seq);
+    if(!end) {
+      if(seq > 0) {
+        printf(",\n");
+      }
+      deflate_hd(deflater, nva, nvlen, inputlen, seq);
+    }
 
     for(i = 0; i < nvlen; ++i) {
       free(nva[i].name);
       free(nva[i].value);
     }
     if(end) break;
-    printf(",\n");
     ++seq;
   }
   printf("]\n");
@@ -272,7 +276,8 @@ static void print_help(void)
          "]\n"
          "\n"
          "With -t option, the program can accept more familiar HTTP/1 style\n"
-         "header field block. Each header set is delimited by empty line:\n"
+         "header field block. Each header set must be followed by one empty\n"
+         "line:\n"
          "\n"
          "Example:\n"
          ":method: GET\n"
