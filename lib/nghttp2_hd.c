@@ -984,6 +984,24 @@ nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
   }
 }
 
+#define name_match(NV, NAME)                            \
+  (nv->namelen == sizeof(NAME) - 1 &&                   \
+   memcmp(nv->name, NAME, sizeof(NAME) - 1) == 0)
+
+static int should_indexing(const nghttp2_nv *nv)
+{
+#ifdef NGHTTP2_XHD
+  return !name_match(nv, NGHTTP2_XHD);
+#else /* !NGHTTP2_XHD */
+  return
+    !name_match(nv, "set-cookie") &&
+    !name_match(nv, "content-length") &&
+    !name_match(nv, "location") &&
+    !name_match(nv, "etag") &&
+    !name_match(nv, ":path");
+#endif /* !NGHTTP2_XHD */
+}
+
 static int deflate_nv(nghttp2_hd_context *deflater,
                       uint8_t **buf_ptr, size_t *buflen_ptr,
                       size_t *offset_ptr,
@@ -1064,7 +1082,8 @@ static int deflate_nv(nghttp2_hd_context *deflater,
     if(rv != -1) {
       index = rv;
     }
-    if(entry_room(nv->namelen, nv->valuelen) <= NGHTTP2_HD_MAX_ENTRY_SIZE) {
+    if(should_indexing(nv) &&
+       entry_room(nv->namelen, nv->valuelen) <= NGHTTP2_HD_MAX_ENTRY_SIZE) {
       nghttp2_hd_entry *new_ent;
       if(index >= (ssize_t)deflater->hd_table.len) {
         nghttp2_nv nv_indname;
