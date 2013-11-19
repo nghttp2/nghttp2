@@ -1563,7 +1563,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       /* If priority of this stream is higher or equal to other stream
          waiting at the top of the queue, we continue to send this
          data. */
-      if(next_item == NULL || session->aob.item->pri <= next_item->pri) {
+      if(next_item == NULL || session->aob.item->pri < next_item->pri) {
         size_t next_readmax;
         nghttp2_stream *stream;
         stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
@@ -1607,6 +1607,9 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           session->aob.framebufoff = 0;
         }
       } else {
+        /* Update seq to interleave other streams with the same
+           priority. */
+        session->aob.item->seq = session->next_seq++;
         r = nghttp2_pq_push(&session->ob_pq, session->aob.item);
         if(r == 0) {
           session->aob.item = NULL;
