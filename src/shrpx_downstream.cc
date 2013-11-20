@@ -417,6 +417,10 @@ bool Downstream::get_output_buffer_full()
 // Downstream. Otherwise, the program will crash.
 int Downstream::push_request_headers()
 {
+  if(!dconn_) {
+    DLOG(INFO, this) << "dconn_ is NULL";
+    return -1;
+  }
   return dconn_->push_request_headers();
 }
 
@@ -434,6 +438,10 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
 
 int Downstream::end_upload_data()
 {
+  if(!dconn_) {
+    DLOG(INFO, this) << "dconn_ is NULL";
+    return -1;
+  }
   return dconn_->end_upload_data();
 }
 
@@ -546,6 +554,10 @@ void Downstream::set_response_connection_close(bool f)
 
 int Downstream::on_read()
 {
+  if(!dconn_) {
+    DLOG(INFO, this) << "dconn_ is NULL";
+    return -1;
+  }
   return dconn_->on_read();
 }
 
