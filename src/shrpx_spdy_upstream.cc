@@ -259,27 +259,27 @@ void on_data_chunk_recv_callback(spdylay_session *session,
       // returns 0.
       if(spdylay_session_get_recv_data_length(session) >
          std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
-                  spdylay_session_get_local_window_size(session))) {
+                  1 << get_config()->http2_upstream_connection_window_bits)) {
         if(LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream)
             << "Flow control error on connection: "
             << "recv_window_size="
             << spdylay_session_get_recv_data_length(session)
-            << ", initial_window_size="
-            << spdylay_session_get_local_window_size(session);
+            << ", window_size="
+            << (1 << get_config()->http2_upstream_connection_window_bits);
         }
         spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
         return;
       }
       if(spdylay_session_get_stream_recv_data_length(session, stream_id) >
          std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
-                  spdylay_session_get_stream_local_window_size(session))) {
+                  1 << get_config()->http2_upstream_window_bits)) {
         if(LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream)
             << "Flow control error: recv_window_size="
             << spdylay_session_get_stream_recv_data_length(session, stream_id)
             << ", initial_window_size="
-            << spdylay_session_get_stream_local_window_size(session);
+            << (1 << get_config()->http2_upstream_window_bits);
         }
         upstream->rst_stream(downstream, SPDYLAY_FLOW_CONTROL_ERROR);
         return;
@@ -395,10 +395,10 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   rv = spdylay_session_server_new(&session_, version, &callbacks, this);
   assert(rv == 0);
 
-  if(version == SPDYLAY_PROTO_SPDY3) {
+  if(version >= SPDYLAY_PROTO_SPDY3) {
     int val = 1;
     flow_control_ = true;
-    initial_window_size_ = (1 << get_config()->http2_upstream_window_bits) - 1;
+    initial_window_size_ = 1 << get_config()->http2_upstream_window_bits;
     rv = spdylay_session_set_option(session_,
                                     SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
                                     sizeof(val));
@@ -421,6 +421,15 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
     (session_, SPDYLAY_FLAG_SETTINGS_NONE,
      entry, sizeof(entry)/sizeof(spdylay_settings_entry));
   assert(rv == 0);
+
+  if(version >= SPDYLAY_PROTO_SPDY3_1 &&
+     get_config()->http2_upstream_connection_window_bits > 16) {
+    int32_t delta = (1 << get_config()->http2_upstream_connection_window_bits)
+      - SPDYLAY_INITIAL_WINDOW_SIZE;
+    rv = spdylay_submit_window_update(session_, 0, delta);
+    assert(rv == 0);
+  }
+
   // TODO Maybe call from outside?
   send();
 }
@@ -942,16 +951,14 @@ int32_t determine_window_update_transmission(spdylay_session *session,
   int32_t recv_length, window_size;
   if(stream_id == 0) {
     recv_length = spdylay_session_get_recv_data_length(session);
-    window_size = spdylay_session_get_local_window_size(session);
+    window_size = 1 << get_config()->http2_upstream_connection_window_bits;
   } else {
     recv_length = spdylay_session_get_stream_recv_data_length
       (session, stream_id);
-    window_size = spdylay_session_get_stream_local_window_size(session);
+    window_size = 1 << get_config()->http2_upstream_window_bits;
   }
-  if(recv_length != -1 && window_size != -1) {
-    if(recv_length >= window_size / 2) {
-      return recv_length;
-    }
+  if(recv_length != -1 && recv_length >= window_size / 2) {
+    return recv_length;
   }
   return -1;
 }

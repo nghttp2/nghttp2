@@ -1170,6 +1170,16 @@ int Http2Session::on_connect()
     return -1;
   }
 
+  if(get_config()->http2_downstream_connection_window_bits > 16) {
+    int32_t delta =
+      (1 << get_config()->http2_downstream_connection_window_bits) - 1
+      - NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
+    rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
+    if(rv != 0) {
+      return -1;
+    }
+  }
+
   bufferevent_write(bev_, NGHTTP2_CLIENT_CONNECTION_HEADER,
                     NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
 

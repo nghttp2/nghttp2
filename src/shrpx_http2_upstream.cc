@@ -513,6 +513,13 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                                entry,
                                sizeof(entry)/sizeof(nghttp2_settings_entry));
   assert(rv == 0);
+
+  if(get_config()->http2_upstream_connection_window_bits > 16) {
+    int32_t delta = (1 << get_config()->http2_upstream_connection_window_bits)
+      - 1 - NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
+    rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
+    assert(rv == 0);
+  }
 }
 
 Http2Upstream::~Http2Upstream()

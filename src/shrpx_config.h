@@ -71,6 +71,8 @@ extern const char SHRPX_OPT_ACCESSLOG[];
 extern const char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS[];
 extern const char SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS[];
+extern const char SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS[];
+extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS[];
 extern const char SHRPX_OPT_FRONTEND_NO_TLS[];
 extern const char SHRPX_OPT_BACKEND_NO_TLS[];
 extern const char SHRPX_OPT_PID_FILE[];
@@ -146,6 +148,8 @@ struct Config {
   bool accesslog;
   size_t http2_upstream_window_bits;
   size_t http2_downstream_window_bits;
+  size_t http2_upstream_connection_window_bits;
+  size_t http2_downstream_connection_window_bits;
   bool upstream_no_tls;
   bool downstream_no_tls;
   char *backend_tls_sni_name;

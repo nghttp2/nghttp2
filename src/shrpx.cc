@@ -365,11 +365,16 @@ void fill_default_config()
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout.tv_sec = 60;
 
-  // window bits for HTTP/2.0 and SPDY upstream/downstream
-  // connection. 2**16-1 = 64KiB-1, which is HTTP/2.0 default. Please
+  // window bits for HTTP/2.0 and SPDY upstream/downstream connection
+  // per stream. 2**16-1 = 64KiB-1, which is HTTP/2.0 default. Please
   // note that SPDY/3 default is 64KiB.
   mod_config()->http2_upstream_window_bits = 16;
   mod_config()->http2_downstream_window_bits = 16;
+
+  // HTTP/2.0 SPDY/3.1 has connection-level flow control. The default
+  // window size for HTTP/2 is 64KiB - 1. SPDY/3's default is 64KiB
+  mod_config()->http2_upstream_connection_window_bits = 16;
+  mod_config()->http2_downstream_connection_window_bits = 16;
 
   mod_config()->upstream_no_tls = false;
   mod_config()->downstream_no_tls = false;
@@ -620,16 +625,28 @@ void print_help(std::ostream& out)
       << "                       Default: "
       << get_config()->http2_max_concurrent_streams << "\n"
       << "    --frontend-http2-window-bits=<N>\n"
-      << "                       Sets the initial window size of HTTP/2.0 and SPDY\n"
-      << "                       frontend connection to 2**<N>-1.\n"
+      << "                       Sets the per-stream initial window size of HTTP/2.0\n"
+      << "                       SPDY frontend connection. For HTTP/2.0, the size is\n"
+      << "                       2**<N>-1. For SPDY, the size is 2**<N>\n"
       << "                       Default: "
       << get_config()->http2_upstream_window_bits << "\n"
+      << "    --frontend-http2-connection-window-bits=<N>\n"
+      << "                       Sets the per-connection window size of HTTP/2.0 and\n"
+      << "                       SPDY frontend connection. For HTTP/2.0, the size is\n"
+      << "                       2**<N>-1. For SPDY, the size is 2**<N>.\n"
+      << "                       Default: "
+      << get_config()->http2_upstream_connection_window_bits << "\n"
       << "    --frontend-no-tls  Disable SSL/TLS on frontend connections.\n"
       << "    --backend-http2-window-bits=<N>\n"
-      << "                       Sets the initial window size of HTTP/2.0 and SPDY\n"
-      << "                       backend connection to 2**<N>-1.\n"
+      << "                       Sets the initial window size of HTTP/2.0 backend\n"
+      << "                       connection to 2**<N>-1.\n"
       << "                       Default: "
       << get_config()->http2_downstream_window_bits << "\n"
+      << "    --backend-http2-connection-window-bits=<N>\n"
+      << "                       Sets the per-connection window size of HTTP/2.0\n"
+      << "                       backend connection to 2**<N>-1.\n"
+      << "                       Default: "
+      << get_config()->http2_downstream_connection_window_bits << "\n"
       << "    --backend-no-tls   Disable SSL/TLS on backend connections.\n"
       << "    --http2-no-cookie-crumbling\n"
       << "                       Don't crumble cookie header field.\n"
@@ -774,6 +791,8 @@ int main(int argc, char **argv)
       {"frontend-http2-dump-request-header", required_argument, &flag, 43},
       {"frontend-http2-dump-response-header", required_argument, &flag, 44},
       {"http2-no-cookie-crumbling", no_argument, &flag, 45},
+      {"frontend-http2-connection-window-bits", required_argument, &flag, 46},
+      {"backend-http2-connection-window-bits", required_argument, &flag, 47},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1012,6 +1031,18 @@ int main(int argc, char **argv)
         // --http2-no-cookie-crumbling
         cmdcfgs.push_back(std::make_pair
                           (SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, "yes"));
+        break;
+      case 46:
+        // --frontend-http2-connection-window-bits
+        cmdcfgs.push_back(std::make_pair
+                          (SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
+                           optarg));
+        break;
+      case 47:
+        // --backend-http2-connection-window-bits
+        cmdcfgs.push_back(std::make_pair
+                          (SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
+                           optarg));
         break;
       default:
         break;

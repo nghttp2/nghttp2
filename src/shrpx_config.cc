@@ -80,6 +80,10 @@ SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] = "backend-keep-alive-timeout";
 const char
 SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS[] = "frontend-http2-window-bits";
 const char SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS[] = "backend-http2-window-bits";
+const char SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS[] =
+  "frontend-http2-connection-window-bits";
+const char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS[] =
+  "backend-http2-connection-window-bits";
 const char SHRPX_OPT_FRONTEND_NO_TLS[] = "frontend-no-tls";
 const char SHRPX_OPT_BACKEND_NO_TLS[] = "backend-no-tls";
 const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[] = "backend-tls-sni-field";
@@ -319,6 +323,28 @@ int parse_config(const char *opt, const char *optarg)
     } else {
       LOG(ERROR) << "--" << optname
                  << " specify the integer in the range [0, 30], inclusive";
+      return -1;
+    }
+  } else if(util::strieq(opt,
+                         SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS) ||
+            util::strieq(opt,
+                         SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS)) {
+    size_t *resp;
+    const char *optname;
+    if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS)) {
+      resp = &mod_config()->http2_upstream_connection_window_bits;
+      optname = SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS;
+    } else {
+      resp = &mod_config()->http2_downstream_connection_window_bits;
+      optname = SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS;
+    }
+    errno = 0;
+    unsigned long int n = strtoul(optarg, 0, 10);
+    if(errno == 0 && n >= 16 && n < 31) {
+      *resp = n;
+    } else {
+      LOG(ERROR) << "--" << optname
+                 << " specify the integer in the range [16, 30], inclusive";
       return -1;
     }
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_NO_TLS)) {
