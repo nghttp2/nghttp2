@@ -98,7 +98,7 @@ installed:
 * libjansson-dev
 
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
-http://spdylay.sourceforge.net/
+http://tatsuhiro-t.github.io/spdylay/
 
 Build from git
 --------------
