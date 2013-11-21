@@ -58,8 +58,8 @@
 version 2.0.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
-<p>We started to implement HTTP-draft-07/2.0
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-07">http://tools.ietf.org/html/draft-ietf-httpbis-http2-07</a>) and the
+<p>We started to implement HTTP-draft-08/2.0
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-08">http://tools.ietf.org/html/draft-ietf-httpbis-http2-08</a>) and the
 header compression
 (<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04</a>).</p>
 <p>The nghttp2 code base was forked from spdylay project.</p>
@@ -70,7 +70,7 @@ header compression
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Features</th>
-<th class="head">HTTP-draft-07/2.0</th>
+<th class="head">HTTP-draft-08/2.0</th>
 </tr>
 </thead>
 <tbody valign="top">
@@ -170,7 +170,7 @@ installed:</p>
 <li>libjansson-dev</li>
 </ul>
 <p>spdylay is not packaged in Ubuntu, so you need to build it yourself:
-<a class="reference external" href="http://spdylay.sourceforge.net/">http://spdylay.sourceforge.net/</a></p>
+<a class="reference external" href="http://tatsuhiro-t.github.io/spdylay/">http://tatsuhiro-t.github.io/spdylay/</a></p>
 </div>
 <div class="section" id="build-from-git">
 <h2>Build from git<a class="headerlink" href="#build-from-git" title="Permalink to this headline">¶</a></h2>
@@ -370,7 +370,7 @@ IPv6: listen on port 8080
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
-HTTP-draft-07/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
+HTTP-draft-08/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="24%" />
@@ -414,7 +414,7 @@ HTTP-draft-07/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-07/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens HTTP-draft-08/2.0, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
