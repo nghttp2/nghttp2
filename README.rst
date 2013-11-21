@@ -7,15 +7,15 @@ version 2.0.
 Development Status
 ------------------
 
-We started to implement HTTP-draft-07/2.0
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-07) and the
+We started to implement HTTP-draft-08/2.0
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-08) and the
 header compression
 (http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04).
 
 The nghttp2 code base was forked from spdylay project.
 
 ========================== =================
-Features                   HTTP-draft-07/2.0
+Features                   HTTP-draft-08/2.0
 ========================== =================
 :authority                 Done
 HPACK-draft-04             Done
@@ -313,7 +313,7 @@ nghttpx - proxy
 +++++++++++++++
 
 The ``nghttpx`` is a multi-threaded reverse proxy for
-HTTP-draft-07/2.0, SPDY and HTTP/1.1. It has several operation modes:
+HTTP-draft-08/2.0, SPDY and HTTP/1.1. It has several operation modes:
 
 ================== ============================== ============== =============
 Mode option        Frontend                       Backend        Note
@@ -326,7 +326,7 @@ default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================== ============== =============
 
 The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-07/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens HTTP-draft-08/2.0, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
