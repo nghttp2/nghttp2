@@ -50,8 +50,8 @@ Http2DownstreamConnection::Http2DownstreamConnection
 (ClientHandler *client_handler)
   : DownstreamConnection(client_handler),
     http2session_(client_handler->get_http2_session()),
-    request_body_buf_(0),
-    sd_(0)
+    request_body_buf_(nullptr),
+    sd_(nullptr)
 {}
 
 Http2DownstreamConnection::~Http2DownstreamConnection()
@@ -71,7 +71,7 @@ Http2DownstreamConnection::~Http2DownstreamConnection()
   // Downstream and DownstreamConnection may be deleted
   // asynchronously.
   if(downstream_) {
-    downstream_->set_downstream_connection(0);
+    downstream_->set_downstream_connection(nullptr);
   }
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Deleted";
@@ -89,10 +89,10 @@ int Http2DownstreamConnection::init_request_body_buf()
     }
   } else {
     request_body_buf_ = evbuffer_new();
-    if(request_body_buf_ == 0) {
+    if(request_body_buf_ == nullptr) {
       return -1;
     }
-    evbuffer_setcb(request_body_buf_, 0, this);
+    evbuffer_setcb(request_body_buf_, nullptr, this);
   }
   return 0;
 }
@@ -122,8 +122,8 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream)
   if(submit_rst_stream(downstream) == 0) {
     http2session_->notify();
   }
-  downstream->set_downstream_connection(0);
-  downstream_ = 0;
+  downstream->set_downstream_connection(nullptr);
+  downstream_ = nullptr;
 
   client_handler_->pool_downstream_connection(this);
 }
@@ -195,7 +195,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
         }
         // Check dconn is still alive because Upstream::resume_read()
         // may delete downstream which will delete dconn.
-        if(sd->dconn == 0) {
+        if(sd->dconn == nullptr) {
           return NGHTTP2_ERR_DEFERRED;
         }
         if(evbuffer_get_length(body) == 0) {
@@ -498,12 +498,12 @@ void Http2DownstreamConnection::attach_stream_data(StreamData *sd)
 StreamData* Http2DownstreamConnection::detach_stream_data()
 {
   if(sd_) {
-    StreamData *sd = sd_;
-    sd_ = 0;
-    sd->dconn = 0;
+    auto sd = sd_;
+    sd_ = nullptr;
+    sd->dconn = nullptr;
     return sd;
   } else {
-    return 0;
+    return nullptr;
   }
 }
 

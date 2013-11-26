@@ -35,9 +35,8 @@ DownstreamQueue::DownstreamQueue()
 
 DownstreamQueue::~DownstreamQueue()
 {
-  for(std::map<int32_t, Downstream*>::iterator i = downstreams_.begin();
-      i != downstreams_.end(); ++i) {
-    delete (*i).second;
+  for(auto& kv : downstreams_) {
+    delete kv.second;
   }
 }
 
@@ -53,11 +52,11 @@ void DownstreamQueue::remove(Downstream *downstream)
 
 Downstream* DownstreamQueue::find(int32_t stream_id)
 {
-  std::map<int32_t, Downstream*>::iterator i = downstreams_.find(stream_id);
-  if(i == downstreams_.end()) {
-    return 0;
+  auto kv = downstreams_.find(stream_id);
+  if(kv == std::end(downstreams_)) {
+    return nullptr;
   } else {
-    return (*i).second;
+    return (*kv).second;
   }
 }
 

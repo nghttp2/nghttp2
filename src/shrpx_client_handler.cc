@@ -46,7 +46,7 @@ namespace shrpx {
 namespace {
 void upstream_readcb(bufferevent *bev, void *arg)
 {
-  ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = reinterpret_cast<ClientHandler*>(arg);
   int rv = handler->on_read();
   if(rv != 0) {
     delete handler;
@@ -57,7 +57,7 @@ void upstream_readcb(bufferevent *bev, void *arg)
 namespace {
 void upstream_writecb(bufferevent *bev, void *arg)
 {
-  ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = reinterpret_cast<ClientHandler*>(arg);
   // We actually depend on write low-warter mark == 0.
   if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     // Possibly because of deferred callback, we may get this callback
@@ -67,7 +67,7 @@ void upstream_writecb(bufferevent *bev, void *arg)
   if(handler->get_should_close_after_write()) {
     delete handler;
   } else {
-    Upstream *upstream = handler->get_upstream();
+    auto upstream = handler->get_upstream();
     int rv = upstream->on_write();
     if(rv != 0) {
       delete handler;
@@ -79,7 +79,7 @@ void upstream_writecb(bufferevent *bev, void *arg)
 namespace {
 void upstream_eventcb(bufferevent *bev, short events, void *arg)
 {
-  ClientHandler *handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = reinterpret_cast<ClientHandler*>(arg);
   bool finish = false;
   if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
@@ -252,9 +252,8 @@ ClientHandler::~ClientHandler()
   }
   shutdown(fd_, SHUT_WR);
   close(fd_);
-  for(std::set<DownstreamConnection*>::iterator i = dconn_pool_.begin();
-      i != dconn_pool_.end(); ++i) {
-    delete *i;
+  for(auto dconn : dconn_pool_) {
+    delete dconn;
   }
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Deleted";
@@ -382,7 +381,7 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
       return new HttpDownstreamConnection(this);
     }
   } else {
-    DownstreamConnection *dconn = *dconn_pool_.begin();
+    auto dconn = *std::begin(dconn_pool_);
     dconn_pool_.erase(dconn);
     if(LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "Reuse downstream connection DCONN:" << dconn
@@ -394,7 +393,7 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
 
 size_t ClientHandler::get_pending_write_length()
 {
-  evbuffer *output = bufferevent_get_output(bev_);
+  auto output = bufferevent_get_output(bev_);
   return evbuffer_get_length(output);
 }
 
