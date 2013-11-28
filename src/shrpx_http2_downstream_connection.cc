@@ -233,35 +233,36 @@ int Http2DownstreamConnection::push_request_headers()
   }
   downstream_->normalize_request_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
-  // 12 means:
+  // 6 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
   // 4. :authority (optional)
   // 5. via (optional)
   // 6. x-forwarded-for (optional)
-  auto nv = std::vector<const char*>();
-  nv.reserve(nheader * 2 + 10 + 1);
+  auto nva = std::vector<nghttp2_nv>();
+  nva.reserve(nheader + 6);
   std::string via_value;
   std::string xff_value;
   std::string scheme, authority, path, query;
   if(downstream_->get_request_method() == "CONNECT") {
     // The upstream may be HTTP/2 or HTTP/1
-    nv.push_back(":authority");
     if(!downstream_->get_request_http2_authority().empty()) {
-      nv.push_back(downstream_->get_request_http2_authority().c_str());
+      nva.push_back(MAKE_NV_LS(":authority",
+                               downstream_->get_request_http2_authority()));
     } else {
-      nv.push_back(downstream_->get_request_path().c_str());
+      nva.push_back(MAKE_NV_LS(":authority",
+                               downstream_->get_request_path()));
     }
   } else if(!downstream_->get_request_http2_scheme().empty()) {
     // Here the upstream is HTTP/2
-    nv.push_back(":scheme");
-    nv.push_back(downstream_->get_request_http2_scheme().c_str());
-    nv.push_back(":path");
-    nv.push_back(downstream_->get_request_path().c_str());
+    nva.push_back(MAKE_NV_LS(":scheme",
+                             downstream_->get_request_http2_scheme()));
+    nva.push_back(MAKE_NV_LS(":path",
+                             downstream_->get_request_path()));
     if(!downstream_->get_request_http2_authority().empty()) {
-      nv.push_back(":authority");
-      nv.push_back(downstream_->get_request_http2_authority().c_str());
+      nva.push_back(MAKE_NV_LS(":authority",
+                               downstream_->get_request_http2_authority()));
     } else if(downstream_->get_norm_request_header("host") == end_headers) {
       if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "host header field missing";
@@ -289,19 +290,17 @@ int Http2DownstreamConnection::push_request_headers()
         path += query;
       }
     }
-    nv.push_back(":scheme");
     if(scheme.empty()) {
       // The default scheme is http. For HTTP2 upstream, the path must
       // be absolute URI, so scheme should be provided.
-      nv.push_back("http");
+      nva.push_back(MAKE_NV_LS_LS(":scheme", "http"));
     } else {
-      nv.push_back(scheme.c_str());
+      nva.push_back(MAKE_NV_LS(":scheme", scheme));
     }
-    nv.push_back(":path");
     if(path.empty()) {
-      nv.push_back(downstream_->get_request_path().c_str());
+      nva.push_back(MAKE_NV_LS(":path", downstream_->get_request_path()));
     } else {
-      nv.push_back(path.c_str());
+      nva.push_back(MAKE_NV_LS(":path", path));
     }
     if(!authority.empty()) {
       // TODO properly check IPv6 numeric address
@@ -313,8 +312,7 @@ int Http2DownstreamConnection::push_request_headers()
         authority += ":";
         authority += util::utos(u.port);
       }
-      nv.push_back(":authority");
-      nv.push_back(authority.c_str());
+      nva.push_back(MAKE_NV_LS(":authority", authority));
     } else if(downstream_->get_norm_request_header("host") == end_headers) {
       if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "host header field missing";
@@ -323,10 +321,9 @@ int Http2DownstreamConnection::push_request_headers()
     }
   }
 
-  nv.push_back(":method");
-  nv.push_back(downstream_->get_request_method().c_str());
+  nva.push_back(MAKE_NV_LS(":method", downstream_->get_request_method()));
 
-  http2::copy_norm_headers_to_nv(nv, downstream_->get_request_headers());
+  http2::copy_norm_headers_to_nva(nva, downstream_->get_request_headers());
 
   bool content_length = false;
   if(downstream_->get_norm_request_header("content-length") != end_headers) {
@@ -336,8 +333,7 @@ int Http2DownstreamConnection::push_request_headers()
   auto expect = downstream_->get_norm_request_header("expect");
   if(expect != end_headers &&
      !util::strifind((*expect).second.c_str(), "100-continue")) {
-    nv.push_back("expect");
-    nv.push_back((*expect).second.c_str());
+    nva.push_back(MAKE_NV_LS("expect", (*expect).second));
   }
 
   bool chunked_encoding = false;
@@ -350,24 +346,21 @@ int Http2DownstreamConnection::push_request_headers()
 
   auto xff = downstream_->get_norm_request_header("x-forwarded-for");
   if(get_config()->add_x_forwarded_for) {
-    nv.push_back("x-forwarded-for");
     if(xff != end_headers) {
       xff_value = (*xff).second;
       xff_value += ", ";
     }
     xff_value += downstream_->get_upstream()->get_client_handler()->
       get_ipaddr();
-    nv.push_back(xff_value.c_str());
+    nva.push_back(MAKE_NV_LS("x-forwarded-for", xff_value));
   } else if(xff != end_headers) {
-    nv.push_back("x-forwarded-for");
-    nv.push_back((*xff).second.c_str());
+    nva.push_back(MAKE_NV_LS("x-forwarded-for", (*xff).second));
   }
 
   auto via = downstream_->get_norm_request_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
-      nv.push_back("via");
-      nv.push_back((*via).second.c_str());
+      nva.push_back(MAKE_NV_LS("via", (*via).second));
     }
   } else {
     if(via != end_headers) {
@@ -376,15 +369,17 @@ int Http2DownstreamConnection::push_request_headers()
     }
     via_value += http::create_via_header_value
       (downstream_->get_request_major(), downstream_->get_request_minor());
-    nv.push_back("via");
-    nv.push_back(via_value.c_str());
+    nva.push_back(MAKE_NV_LS("via", via_value));
   }
-  nv.push_back(nullptr);
 
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
-    for(size_t i = 0; nv[i]; i += 2) {
-      ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i+1] << "\n";
+    for(auto& nv : nva) {
+      ss << TTY_HTTP_HD;
+      ss.write(reinterpret_cast<const char*>(nv.name), nv.namelen);
+      ss << TTY_RST << ": ";
+      ss.write(reinterpret_cast<const char*>(nv.value), nv.valuelen);
+      ss << "\n";
     }
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }
@@ -396,10 +391,10 @@ int Http2DownstreamConnection::push_request_headers()
     data_prd.source.ptr = this;
     data_prd.read_callback = http2_data_read_callback;
     rv = http2session_->submit_request(this, downstream_->get_priorty(),
-                                       nv.data(), &data_prd);
+                                       nva.data(), nva.size(), &data_prd);
   } else {
     rv = http2session_->submit_request(this, downstream_->get_priorty(),
-                                       nv.data(), nullptr);
+                                       nva.data(), nva.size(), nullptr);
   }
   if(rv != 0) {
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";

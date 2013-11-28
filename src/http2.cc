@@ -298,16 +298,24 @@ bool non_empty_value(const nghttp2_nv* nv)
   return nv && !http2::value_lws(nv) && http2::check_header_value(nv);
 }
 
-void copy_norm_headers_to_nv
-(std::vector<const char*>& nv,
+nghttp2_nv make_nv(const std::string& name, const std::string& value)
+{
+  return {
+    (uint8_t*)name.c_str(),
+      (uint8_t*)value.c_str(),
+      (uint16_t)name.size(), (uint16_t)value.size()
+      };
+}
+
+void copy_norm_headers_to_nva
+(std::vector<nghttp2_nv>& nva,
  const std::vector<std::pair<std::string, std::string>>& headers)
 {
   size_t i, j;
   for(i = 0, j = 0; i < headers.size() && j < IGN_HDLEN;) {
     int rv = strcmp(headers[i].first.c_str(), IGN_HD[j]);
     if(rv < 0) {
-      nv.push_back(headers[i].first.c_str());
-      nv.push_back(headers[i].second.c_str());
+      nva.push_back(make_nv(headers[i].first, headers[i].second));
       ++i;
     } else if(rv > 0) {
       ++j;
@@ -316,8 +324,7 @@ void copy_norm_headers_to_nv
     }
   }
   for(; i < headers.size(); ++i) {
-    nv.push_back(headers[i].first.c_str());
-    nv.push_back(headers[i].second.c_str());
+    nva.push_back(make_nv(headers[i].first, headers[i].second));
   }
 }
 

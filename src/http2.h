@@ -39,6 +39,18 @@ namespace nghttp2 {
 
 namespace http2 {
 
+// Create nghttp2_nv from string literal |NAME| and std::string
+// |VALUE|.
+#define MAKE_NV_LS(NAME, VALUE)                                 \
+  { (uint8_t*)NAME, (uint8_t*)VALUE.c_str(),                    \
+      (uint16_t)(sizeof(NAME) - 1), (uint16_t)VALUE.size() }
+
+// Create nghttp2_nv from string literal |NAME| and |VALUE|.
+#define MAKE_NV_LS_LS(NAME, VALUE)                                      \
+  { (uint8_t*)NAME, (uint8_t*)VALUE,                                    \
+      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(sizeof(VALUE) - 1) }
+
+
 std::string get_status_string(unsigned int status_code);
 
 void capitalize(std::string& s, size_t offset);
@@ -98,11 +110,16 @@ bool value_lws(const nghttp2_nv *nv);
 // and not contain illegal characters.
 bool non_empty_value(const nghttp2_nv* nv);
 
+// Creates nghttp2_nv using |name| and |value| and returns it. The
+// returned value only references the data pointer to name.c_str() and
+// value.c_str().
+nghttp2_nv make_nv(const std::string& name, const std::string& value);
+
 // Appends headers in |headers| to |nv|. Certain headers, including
 // disallowed headers in HTTP/2.0 spec and headers which require
 // special handling (i.e. via), are not copied.
-void copy_norm_headers_to_nv
-(std::vector<const char*>& nv,
+void copy_norm_headers_to_nva
+(std::vector<nghttp2_nv>& nva,
  const std::vector<std::pair<std::string, std::string>>& headers);
 
 // Appends HTTP/1.1 style header lines to |hdrs| from headers in

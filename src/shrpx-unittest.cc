@@ -78,8 +78,8 @@ int main(int argc, char* argv[])
                    shrpx::test_http2_get_header) ||
       !CU_add_test(pSuite, "http2_value_lws",
                    shrpx::test_http2_value_lws) ||
-      !CU_add_test(pSuite, "http2_copy_norm_headers_to_nv",
-                   shrpx::test_http2_copy_norm_headers_to_nv) ||
+      !CU_add_test(pSuite, "http2_copy_norm_headers_to_nva",
+                   shrpx::test_http2_copy_norm_headers_to_nva) ||
       !CU_add_test(pSuite, "http2_build_http1_headers_from_norm_headers",
                    shrpx::test_http2_build_http1_headers_from_norm_headers) ||
       !CU_add_test(pSuite, "http2_check_header_value",

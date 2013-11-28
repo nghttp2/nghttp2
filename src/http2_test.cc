@@ -164,23 +164,26 @@ auto headers = std::vector<std::pair<std::string, std::string>>
    {"zulu", "12"}};
 } // namespace
 
-void test_http2_copy_norm_headers_to_nv(void)
+namespace {
+void check_nv(const std::pair<std::string, std::string>& a,
+              const nghttp2_nv *b)
 {
-  std::vector<const char*> nv;
-  http2::copy_norm_headers_to_nv(nv, headers);
-  CU_ASSERT(12 == nv.size());
-  CU_ASSERT(strcmp(nv[0], "alpha") == 0);
-  CU_ASSERT(strcmp(nv[1], "0") == 0);
-  CU_ASSERT(strcmp(nv[2], "bravo") == 0);
-  CU_ASSERT(strcmp(nv[3], "1") == 0);
-  CU_ASSERT(strcmp(nv[4], "delta") == 0);
-  CU_ASSERT(strcmp(nv[5], "4") == 0);
-  CU_ASSERT(strcmp(nv[6], "foxtrot") == 0);
-  CU_ASSERT(strcmp(nv[7], "6") == 0);
-  CU_ASSERT(strcmp(nv[8], "tango") == 0);
-  CU_ASSERT(strcmp(nv[9], "7") == 0);
-  CU_ASSERT(strcmp(nv[10], "zulu") == 0);
-  CU_ASSERT(strcmp(nv[11], "12") == 0);
+  CU_ASSERT(a.first.size() == b->namelen);
+  CU_ASSERT(a.second.size() == b->valuelen);
+  CU_ASSERT(memcmp(a.first.c_str(), b->name, b->namelen) == 0);
+  CU_ASSERT(memcmp(a.second.c_str(), b->value, b->valuelen) == 0);
+}
+} // namespace
+
+void test_http2_copy_norm_headers_to_nva(void)
+{
+  std::vector<nghttp2_nv> nva;
+  http2::copy_norm_headers_to_nva(nva, headers);
+  CU_ASSERT(6 == nva.size());
+  auto ans = std::vector<int>{0, 1, 4, 6, 7, 12};
+  for(size_t i = 0; i < ans.size(); ++i) {
+    check_nv(headers[ans[i]], &nva[i]);
+  }
 }
 
 void test_http2_build_http1_headers_from_norm_headers(void)

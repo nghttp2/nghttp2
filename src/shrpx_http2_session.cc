@@ -569,12 +569,14 @@ void Http2Session::remove_stream_data(StreamData *sd)
 }
 
 int Http2Session::submit_request(Http2DownstreamConnection *dconn,
-                                uint8_t pri, const char **nv,
-                                const nghttp2_data_provider *data_prd)
+                                 uint8_t pri,
+                                 const nghttp2_nv *nva, size_t nvlen,
+                                 const nghttp2_data_provider *data_prd)
 {
   assert(state_ == CONNECTED);
   auto sd = util::make_unique<StreamData>();
-  int rv = nghttp2_submit_request(session_, pri, nv, data_prd, sd.get());
+  int rv = nghttp2_submit_request2(session_, pri, nva, nvlen,
+                                   data_prd, sd.get());
   if(rv == 0) {
     dconn->attach_stream_data(sd.get());
     streams_.insert(sd.release());
