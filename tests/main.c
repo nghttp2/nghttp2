@@ -139,6 +139,10 @@ int main(int argc, char* argv[])
                    test_nghttp2_submit_request2_with_data) ||
       !CU_add_test(pSuite, "submit_request2_without_data",
                    test_nghttp2_submit_request2_without_data) ||
+      !CU_add_test(pSuite, "submit_response2_with_data",
+                   test_nghttp2_submit_response2_with_data) ||
+      !CU_add_test(pSuite, "submit_response2_without_data",
+                   test_nghttp2_submit_response2_without_data) ||
       !CU_add_test(pSuite, "submit_headers_start_stream",
                    test_nghttp2_submit_headers_start_stream) ||
       !CU_add_test(pSuite, "submit_headers_reply",
