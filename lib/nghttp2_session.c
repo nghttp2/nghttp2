@@ -190,8 +190,8 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   }
   memset(*session_ptr, 0, sizeof(nghttp2_session));
 
-  /* next_stream_id and last_recv_stream_id are initialized in either
-     nghttp2_session_client_new or nghttp2_session_server_new */
+  /* next_stream_id is initialized in either
+     nghttp2_session_client_new2 or nghttp2_session_server_new2 */
 
   (*session_ptr)->next_seq = 0;
 
@@ -325,7 +325,6 @@ int nghttp2_session_client_new2(nghttp2_session **session_ptr,
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 1;
-    (*session_ptr)->last_recv_stream_id = 0;
   }
   return r;
 }
@@ -351,7 +350,6 @@ int nghttp2_session_server_new2(nghttp2_session **session_ptr,
   if(r == 0) {
     /* IDs for use in client */
     (*session_ptr)->next_stream_id = 2;
-    (*session_ptr)->last_recv_stream_id = 0;
   }
   return r;
 }
@@ -1919,6 +1917,7 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   if(!stream) {
     return NGHTTP2_ERR_NOMEM;
   }
+  session->last_proc_stream_id = session->last_recv_stream_id;
   rv = nghttp2_session_call_on_frame_received(session, frame);
   if(rv != 0) {
     return rv;
@@ -2588,6 +2587,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   if(!promised_stream) {
     return NGHTTP2_ERR_NOMEM;
   }
+  session->last_proc_stream_id = session->last_recv_stream_id;
   return nghttp2_session_call_on_frame_received(session, frame);
 }
 
@@ -3723,6 +3723,7 @@ int nghttp2_session_upgrade(nghttp2_session *session,
   if(session->server) {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     session->last_recv_stream_id = 1;
+    session->last_proc_stream_id = 1;
   } else {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
     session->next_stream_id += 2;

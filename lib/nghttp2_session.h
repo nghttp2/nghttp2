@@ -118,7 +118,12 @@ struct nghttp2_session {
   uint8_t server;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
   uint32_t next_stream_id;
+  /* The largest stream ID received so far */
   int32_t last_recv_stream_id;
+  /* The largest stream ID which has been processed in some way. This
+     value will be used as last-stream-id when sending GOAWAY
+     frame. */
+  int32_t last_proc_stream_id;
   /* Counter of unique ID of PING. Wraps when it exceeds
      NGHTTP2_MAX_UNIQUE_ID */
   uint32_t next_unique_id;
@@ -156,7 +161,7 @@ struct nghttp2_session {
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
      composed by bitwise OR-ing nghttp2_goaway_flag. */
   uint8_t goaway_flags;
-  /* This is the value in GOAWAY frame sent by remote endpoint. */
+  /* This is the value in GOAWAY frame received from remote endpoint. */
   int32_t last_stream_id;
 
   /* Non-zero indicates connection-level flow control on remote side
