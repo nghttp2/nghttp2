@@ -1935,6 +1935,28 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
+<span class="cm"> * Just like `nghttp2_submit_response()`, but this function takes the</span>
+<span class="cm"> * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,</span>
+<span class="cm"> * as name/value pairs. This function is useful if name/value pairs</span>
+<span class="cm"> * are not NULL-terminated strings.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |pri| is invalid; or the |nva| includes empty name or</span>
+<span class="cm"> *     name which contains invalid characters.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_response2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                             <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                             <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
+                             <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
 <span class="cm"> * Submits HEADERS frame. The |flags| is bitwise OR of the</span>
 <span class="cm"> * following values:</span>
 <span class="cm"> *</span>

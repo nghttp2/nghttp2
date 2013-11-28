@@ -2095,6 +2095,24 @@ negative error codes:</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="nghttp2_submit_response2">
+int <tt class="descname">nghttp2_submit_response2</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em><big>)</big><a class="headerlink" href="#nghttp2_submit_response2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Just like <a class="reference internal" href="#nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a>, but this function takes the
+<em>nva</em>, which is an array of <tt class="docutils literal"><span class="pre">nghttp2_nv</span></tt> with <em>nvlen</em> elements,
+as name/value pairs. This function is useful if name/value pairs
+are not NULL-terminated strings.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
+<dd>The <em>pri</em> is invalid; or the <em>nva</em> includes empty name or
+name which contains invalid characters.</dd>
+<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="nghttp2_submit_headers">
 int <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;pri</em>, const char<em>&nbsp;**nv</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_headers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame. The <em>flags</em> is bitwise OR of the
