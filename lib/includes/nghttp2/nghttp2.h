@@ -1879,6 +1879,28 @@ int nghttp2_submit_response(nghttp2_session *session,
 /**
  * @function
  *
+ * Just like `nghttp2_submit_response()`, but this function takes the
+ * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,
+ * as name/value pairs. This function is useful if name/value pairs
+ * are not NULL-terminated strings.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |pri| is invalid; or the |nva| includes empty name or
+ *     name which contains invalid characters.
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_submit_response2(nghttp2_session *session,
+                             int32_t stream_id,
+                             const nghttp2_nv *nva, size_t nvlen,
+                             const nghttp2_data_provider *data_prd);
+
+/**
+ * @function
+ *
  * Submits HEADERS frame. The |flags| is bitwise OR of the
  * following values:
  *

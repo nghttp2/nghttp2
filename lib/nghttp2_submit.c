@@ -326,17 +326,34 @@ int nghttp2_submit_request2(nghttp2_session *session, int32_t pri,
                                            data_prd, stream_user_data);
 }
 
-int nghttp2_submit_response(nghttp2_session *session,
-                            int32_t stream_id, const char **nv,
-                            const nghttp2_data_provider *data_prd)
+static uint8_t set_response_flags(const nghttp2_data_provider *data_prd)
 {
   uint8_t flags = NGHTTP2_FLAG_NONE;
   if(data_prd == NULL || data_prd->read_callback == NULL) {
     flags |= NGHTTP2_FLAG_END_STREAM;
   }
+  return flags;
+}
+
+int nghttp2_submit_response(nghttp2_session *session,
+                            int32_t stream_id, const char **nv,
+                            const nghttp2_data_provider *data_prd)
+{
+  uint8_t flags = set_response_flags(data_prd);
   return nghttp2_submit_headers_shared_nv(session, flags, stream_id,
                                           NGHTTP2_PRI_DEFAULT, nv, data_prd,
                                           NULL);
+}
+
+int nghttp2_submit_response2(nghttp2_session *session,
+                             int32_t stream_id,
+                             const nghttp2_nv *nva, size_t nvlen,
+                             const nghttp2_data_provider *data_prd)
+{
+  uint8_t flags = set_response_flags(data_prd);
+  return nghttp2_submit_headers_shared_nva(session, flags, stream_id,
+                                           NGHTTP2_PRI_DEFAULT, nva, nvlen,
+                                           data_prd, NULL);
 }
 
 int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
