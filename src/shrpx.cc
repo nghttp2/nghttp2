@@ -456,7 +456,7 @@ void print_usage(std::ostream& out)
       << "               [-f <HOST,PORT>] [-n <CORES>] [-c <NUM>] [-L <LEVEL>]\n"
       << "               [OPTIONS...] [<PRIVATE_KEY> <CERT>]\n"
       << "\n"
-      << "A reverse proxy for HTTP/2.0, SPDY/HTTPS.\n"
+      << "A reverse proxy for HTTP/2, HTTP/1 and SPDY.\n"
       << std::endl;
 }
 } // namespace
