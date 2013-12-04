@@ -24,227 +24,135 @@
  */
 #include "nghttp2_map.h"
 
-void nghttp2_map_init(nghttp2_map *map)
+#include <string.h>
+
+#define INITIAL_TABLE_LENGTH 16
+
+#define LOAD_FACTOR 75
+
+int nghttp2_map_init(nghttp2_map *map)
 {
-  map->root = NULL;
+  map->tablelen = INITIAL_TABLE_LENGTH;
+  map->table = malloc(sizeof(nghttp2_map_entry*) * map->tablelen);
+  if(map->table == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  memset(map->table, 0, sizeof(nghttp2_map_entry*) * map->tablelen);
   map->size = 0;
+  return 0;
 }
 
 void nghttp2_map_free(nghttp2_map *map)
 {
-  map->root = NULL;
-}
-
-/* Find left most node, which is not necessarily a leaf. */
-static nghttp2_map_entry* find_left_most(nghttp2_map_entry *entry)
-{
-  while(entry->left) {
-    entry = entry->left;
-  }
-  return entry;
-}
-
-/* Find left most leaf. */
-static nghttp2_map_entry* find_left_most_leaf(nghttp2_map_entry *entry)
-{
-  for(;;) {
-    entry = find_left_most(entry);
-    if(entry->right) {
-      entry = entry->right;
-    } else {
-      break;
-    }
-  }
-  return entry;
-}
-
-/* Returns next node in postorder traversal. Returns NULL if there is
-   no next node. */
-static nghttp2_map_entry* traverse_postorder(nghttp2_map_entry *parent,
-                                             nghttp2_map_entry *entry)
-{
-  if(!parent) {
-    return NULL;
-  }
-  if(parent->left == entry) {
-    if(parent->right) {
-      return find_left_most_leaf(parent->right);
-    } else {
-      return parent;
-    }
-  } else {
-    return parent;
-  }
+  free(map->table);
 }
 
 void nghttp2_map_each_free(nghttp2_map *map,
                            int (*func)(nghttp2_map_entry *entry, void *ptr),
                            void *ptr)
 {
-  nghttp2_map_entry *entry;
-  if(!map->root) {
-    return;
+  size_t i;
+  for(i = 0; i < map->tablelen; ++i) {
+    nghttp2_map_entry *entry;
+    for(entry = map->table[i]; entry;) {
+      nghttp2_map_entry *next = entry->next;
+      func(entry, ptr);
+      entry = next;
+    }
+    map->table[i] = NULL;
   }
-  entry = find_left_most_leaf(map->root);
-  while(entry) {
-    nghttp2_map_entry *parent = entry->parent;
-    /* Ignore return value. */
-    func(entry, ptr);
-    /* entry has been deleted. */
-    entry = traverse_postorder(parent, entry);
-  }
-  map->root = NULL;
-}
-
-/* Returns next node in inorder traversal. Returns NULL if there is no
-   next node. */
-static nghttp2_map_entry* traverse_inorder(nghttp2_map_entry *entry)
-{
-  nghttp2_map_entry *parent;
-  if(entry->right) {
-    return find_left_most(entry->right);
-  }
-  parent = entry->parent;
-  while(parent && parent->right == entry) {
-    entry = entry->parent;
-    parent = parent->parent;
-  }
-  return parent;
 }
 
 int nghttp2_map_each(nghttp2_map *map,
                      int (*func)(nghttp2_map_entry *entry, void *ptr),
                      void *ptr)
 {
-  nghttp2_map_entry *entry;
-  if(!map->root) {
-    return 0;
-  }
-  entry = find_left_most(map->root);
-  while(entry) {
-    int rv = func(entry, ptr);
-    if(rv != 0) {
-      return rv;
+  int rv;
+  size_t i;
+  for(i = 0; i < map->tablelen; ++i) {
+    nghttp2_map_entry *entry;
+    for(entry = map->table[i]; entry; entry = entry->next) {
+      rv = func(entry, ptr);
+      if(rv != 0) {
+        return rv;
+      }
     }
-    entry = traverse_inorder(entry);
   }
   return 0;
-}
-
-/*
- * 32 bit Mix Functions by Thomas Wang
- *
- * http://www.concentric.net/~Ttwang/tech/inthash.htm
- */
-static uint32_t hash32shift(uint32_t key)
-{
-  key = ~key + (key << 15); /* key = (key << 15) - key - 1; */
-  key = key ^ (key >> 12);
-  key = key + (key << 2);
-  key = key ^ (key >> 4);
-  key = key * 2057; /* key = (key + (key << 3)) + (key << 11); */
-  key = key ^ (key >> 16);
-  return key;
 }
 
 void nghttp2_map_entry_init(nghttp2_map_entry *entry, key_type key)
 {
   entry->key = key;
-  entry->parent = entry->left = entry->right = NULL;
-  entry->priority = hash32shift(key);
+  entry->next = NULL;
 }
 
-static nghttp2_map_entry* rotate_left(nghttp2_map_entry *entry)
+/* Same hash function in openjdk HashMap source code. */
+/* The |mod| must be power of 2 */
+static int32_t hash(int32_t h, int32_t mod)
 {
-  nghttp2_map_entry *root = entry->right;
-  entry->right = root->left;
-  root->left = entry;
-
-  root->parent = entry->parent;
-  entry->parent = root;
-  if(root->parent) {
-    if(root->parent->left == entry) {
-      root->parent->left = root;
-    } else {
-      root->parent->right = root;
-    }
-  }
-  if(entry->right) {
-    entry->right->parent = entry;
-  }
-  return root;
+  h ^= (h >> 20) ^ (h >> 12);
+  return (h ^ (h >> 7) ^ (h >> 4)) & (mod - 1);
 }
 
-static nghttp2_map_entry* rotate_right(nghttp2_map_entry* entry)
+static int insert(nghttp2_map_entry **table, size_t tablelen,
+                  nghttp2_map_entry *entry)
 {
-  nghttp2_map_entry *root = entry->left;
-  entry->left = root->right;
-  root->right = entry;
+  int32_t h = hash(entry->key, tablelen);
+  if(table[h] == NULL) {
+    table[h] = entry;
+  } else {
+    nghttp2_map_entry *p;
+    /* We won't allow duplicated key, so check it out. */
+    for(p = table[h]; p; p = p->next) {
+      if(p->key == entry->key) {
+        return NGHTTP2_ERR_INVALID_ARGUMENT;
+      }
+    }
+    entry->next = table[h];
+    table[h] = entry;
+  }
+  return 0;
+}
 
-  root->parent = entry->parent;
-  entry->parent = root;
-  if(root->parent) {
-    if(root->parent->left == entry) {
-      root->parent->left = root;
-    } else {
-      root->parent->right = root;
+/* new_tablelen must be power of 2 */
+static int resize(nghttp2_map *map, size_t new_tablelen)
+{
+  size_t i;
+  nghttp2_map_entry **new_table;
+  new_table = malloc(sizeof(nghttp2_map_entry*) * new_tablelen);
+  if(new_table == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+  memset(new_table, 0, sizeof(nghttp2_map_entry*) * new_tablelen);
+  for(i = 0; i < map->tablelen; ++i) {
+    nghttp2_map_entry *entry;
+    for(entry = map->table[i]; entry;) {
+      nghttp2_map_entry *next = entry->next;
+      entry->next = NULL;
+      /* This function must succeed */
+      insert(new_table, new_tablelen, entry);
+      entry = next;
     }
   }
-  if(entry->left) {
-    entry->left->parent = entry;
-  }
-  return root;
+  free(map->table);
+  map->tablelen = new_tablelen;
+  map->table = new_table;
+  return 0;
 }
 
 int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_entry *new_entry)
 {
-  nghttp2_map_entry *entry = map->root, *parent = NULL;
-  if(map->root == NULL) {
-    map->root = new_entry;
-    map->size = 1;
-    return 0;
-  }
-  /* Find position to insert. */
-  while(1) {
-    if(new_entry->key == entry->key) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    } else {
-      if(new_entry->key < entry->key) {
-        if(entry->left) {
-          entry = entry->left;
-        } else {
-          parent = entry;
-          parent->left = new_entry;
-          break;
-        }
-      } else {
-        if(entry->right) {
-          entry = entry->right;
-        } else {
-          parent = entry;
-          parent->right = new_entry;
-          break;
-        }
-      }
+  int rv;
+  if(100 * (map->size + 1) > map->tablelen * LOAD_FACTOR) {
+    rv = resize(map, map->tablelen * 2);
+    if(rv != 0) {
+      return rv;
     }
   }
-  new_entry->parent = parent;
-
-  /* Rotate tree to satisfy heap property. */
-  for(entry = parent; ; entry = entry->parent) {
-    if(entry->left && entry->priority > entry->left->priority) {
-      entry = rotate_right(entry);
-    } else if(entry->right && entry->priority > entry->right->priority) {
-      entry = rotate_left(entry);
-    } else {
-      /* At this point, tree forms heap. */
-      break;
-    }
-    /* If no parent is assigned, then it is a root node. */
-    if(!entry->parent) {
-      map->root = entry;
-      break;
-    }
+  rv = insert(map->table, map->tablelen, new_entry);
+  if(rv != 0) {
+    return rv;
   }
   ++map->size;
   return 0;
@@ -252,13 +160,11 @@ int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_entry *new_entry)
 
 nghttp2_map_entry* nghttp2_map_find(nghttp2_map *map, key_type key)
 {
-  nghttp2_map_entry *entry = map->root;
-  while(entry != NULL) {
-    if(key < entry->key) {
-      entry = entry->left;
-    } else if(key > entry->key) {
-      entry = entry->right;
-    } else {
+  int32_t h;
+  nghttp2_map_entry *entry;
+  h = hash(key, map->tablelen);
+  for(entry = map->table[h]; entry; entry = entry->next) {
+    if(entry->key == key) {
       return entry;
     }
   }
@@ -267,67 +173,23 @@ nghttp2_map_entry* nghttp2_map_find(nghttp2_map *map, key_type key)
 
 int nghttp2_map_remove(nghttp2_map *map, key_type key)
 {
-  nghttp2_map_entry *entry = map->root;
-
-  if(map->root == NULL) {
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-  /* Locate entry to delete. */
-  while(entry) {
-    if(key < entry->key) {
-      entry = entry->left;
-    } else if(key > entry->key) {
-      entry = entry->right;
-    } else {
-      break;
-    }
-  }
-  if(!entry) {
-    /* Not found */
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-  /* Rotate and bubble down to satisfy heap property. */
-  for(;;) {
-    if(!entry->left) {
-      if(!entry->parent) {
-        map->root = entry->right;
-      } else if(entry->parent->left == entry) {
-        entry->parent->left = entry->right;
+  int32_t h;
+  nghttp2_map_entry *entry, *prev;
+  h = hash(key, map->tablelen);
+  prev = NULL;
+  for(entry = map->table[h]; entry; entry = entry->next) {
+    if(entry->key == key) {
+      if(prev == NULL) {
+        map->table[h] = entry->next;
       } else {
-        entry->parent->right = entry->right;
+        prev->next = entry->next;
       }
-      if(entry->right) {
-        entry->right->parent = entry->parent;
-      }
-      break;
-    } else if(!entry->right) {
-      if(!entry->parent) {
-        map->root = entry->left;
-      } else if(entry->parent->left == entry) {
-        entry->parent->left = entry->left;
-      } else {
-        entry->parent->right = entry->left;
-      }
-      if(entry->left) {
-        entry->left->parent = entry->parent;
-      }
-      break;
-    } else if(entry->left->priority < entry->right->priority) {
-      entry = rotate_right(entry);
-      if(!entry->parent) {
-        map->root = entry;
-      }
-      entry = entry->right;
-    } else {
-      entry = rotate_left(entry);
-      if(!entry->parent) {
-        map->root = entry;
-      }
-      entry = entry->left;
+      --map->size;
+      return 0;
     }
+    prev = entry;
   }
-  --map->size;
-  return 0;
+  return NGHTTP2_ERR_INVALID_ARGUMENT;
 }
 
 size_t nghttp2_map_size(nghttp2_map *map)

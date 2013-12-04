@@ -32,26 +32,31 @@
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_int.h"
 
-/* Implementation of ordered map */
+/* Implementation of unordered map */
 
 typedef uint32_t key_type;
-typedef uint32_t pri_type;
 
 typedef struct nghttp2_map_entry {
   key_type key;
-  struct nghttp2_map_entry *parent, *left, *right;
-  pri_type priority;
+  struct nghttp2_map_entry *next;
 } nghttp2_map_entry;
 
 typedef struct {
-  nghttp2_map_entry *root;
+  nghttp2_map_entry **table;
+  size_t tablelen;
   size_t size;
 } nghttp2_map;
 
 /*
  * Initializes the map |map|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *   Out of memory
  */
-void nghttp2_map_init(nghttp2_map *map);
+int nghttp2_map_init(nghttp2_map *map);
 
 /*
  * Deallocates any resources allocated for |map|. The stored entries
@@ -80,10 +85,12 @@ void nghttp2_map_entry_init(nghttp2_map_entry *entry, key_type key);
  * Inserts the new |entry| with the key |entry->key| to the map |map|.
  *
  * This function returns 0 if it succeeds, or one of the following
- * negative error code:
+ * negative error codes:
  *
  * NGHTTP2_ERR_INVALID_ARGUMENT
  *     The item associated by |key| already exists.
+ * NGHTTP2_ERR_NOMEM
+ *   Out of memory
  */
 int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_entry *entry);
 

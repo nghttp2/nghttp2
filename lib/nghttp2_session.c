@@ -233,7 +233,10 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   if(r != 0) {
     goto fail_hd_inflater;
   }
-  nghttp2_map_init(&(*session_ptr)->streams);
+  r = nghttp2_map_init(&(*session_ptr)->streams);
+  if(r != 0) {
+    goto fail_map;
+  }
   r = nghttp2_pq_init(&(*session_ptr)->ob_pq, nghttp2_outbound_item_compar);
   if(r != 0) {
     goto fail_ob_pq;
@@ -294,7 +297,8 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
  fail_ob_ss_pq:
   nghttp2_pq_free(&(*session_ptr)->ob_pq);
  fail_ob_pq:
-  /* No need to free (*session_ptr)->streams) here. */
+  nghttp2_map_free(&(*session_ptr)->streams);
+ fail_map:
   nghttp2_hd_inflate_free(&(*session_ptr)->hd_inflater);
  fail_hd_inflater:
   nghttp2_hd_deflate_free(&(*session_ptr)->hd_deflater);
@@ -389,6 +393,7 @@ void nghttp2_session_del(nghttp2_session *session)
   free(session->inflight_iv);
   nghttp2_inbound_frame_reset(session);
   nghttp2_map_each_free(&session->streams, nghttp2_free_streams, NULL);
+  nghttp2_map_free(&session->streams);
   nghttp2_session_ob_pq_free(&session->ob_pq);
   nghttp2_session_ob_pq_free(&session->ob_ss_pq);
   nghttp2_hd_deflate_free(&session->hd_deflater);
@@ -397,7 +402,7 @@ void nghttp2_session_del(nghttp2_session *session)
   free(session->aob.framebuf);
   free(session->nvbuf);
   free(session->iframe.buf);
-   free(session);
+  free(session);
 }
 
 static int outbound_item_update_pri
