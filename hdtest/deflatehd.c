@@ -43,6 +43,7 @@ typedef struct {
   size_t deflate_table_size;
   int http1text;
   int dump_header_table;
+  int no_refset;
 } deflate_config;
 
 static deflate_config config;
@@ -310,7 +311,8 @@ static void print_help(void)
          "                      buffer.\n"
          "                      Default: 4096\n"
          "    -d, --dump-header-table\n"
-         "                      Output dynamic header table.\n");
+         "                      Output dynamic header table.\n"
+         "    -c, --no-refset   Don't use reference set.\n");
 }
 
 static struct option long_options[] = {
@@ -319,6 +321,7 @@ static struct option long_options[] = {
   {"table-size", required_argument, NULL, 's'},
   {"deflate-table-size", required_argument, NULL, 'S'},
   {"dump-header-table", no_argument, NULL, 'd'},
+  {"no-refset", no_argument, NULL, 'c'},
   {NULL, 0, NULL, 0 }
 };
 
@@ -332,9 +335,10 @@ int main(int argc, char **argv)
   config.deflate_table_size = NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE;
   config.http1text = 0;
   config.dump_header_table = 0;
+  config.no_refset = 0;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "S:dhrs:t", long_options, &option_index);
+    int c = getopt_long(argc, argv, "S:cdhrs:t", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -370,6 +374,10 @@ int main(int argc, char **argv)
       /* --dump-header-table */
       config.dump_header_table = 1;
       break;
+    case 'c':
+      /* --no-refset */
+      config.no_refset = 1;
+      break;
     case '?':
       exit(EXIT_FAILURE);
     default:
@@ -377,7 +385,7 @@ int main(int argc, char **argv)
     }
   }
   nghttp2_hd_deflate_init2(&deflater, config.side, config.deflate_table_size,
-                           0);
+                           config.no_refset);
   nghttp2_hd_change_table_size(&deflater, config.table_size);
   if(config.http1text) {
     perform_from_http1text(&deflater);
