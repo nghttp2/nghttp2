@@ -80,22 +80,25 @@ bool check_http2_allowed_header(const char *name);
 // Checks that headers |nva| including |nvlen| entries do not contain
 // disallowed header fields in HTTP/2.0 spec. This function returns
 // true if |nva| does not contains such headers.
-bool check_http2_headers(const std::vector<const nghttp2_nv*>& nva);
+bool check_http2_headers(const std::vector<nghttp2_nv>& nva);
 
-// Returns sorted |nva| with |nvlen| elements. This sort is stable
-// sort.
-std::vector<const nghttp2_nv*> sort_nva(const nghttp2_nv *nva, size_t nvlen);
+// Returns sorted |nva| with |nvlen| elements. The headers are sorted
+// by name only and not necessarily stable. In addition to the
+// sorting, this function splits values concatenated with NULL. The
+// ordering of the concatenated values are preserved. The element of
+// the returned vector refers to the memory pointed by |nva|.
+std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen);
 
 // Returns the pointer to the entry in |nva| which has name |name| and
 // the |name| is uinque in the |nva|. If no such entry exist, returns
 // nullptr.
-const nghttp2_nv* get_unique_header(const std::vector<const nghttp2_nv*>& nva,
+const nghttp2_nv* get_unique_header(const std::vector<nghttp2_nv>& nva,
                                     const char *name);
 
 // Returns the poiter to the entry in |nva| which has name |name|. If
 // more than one entries which have the name |name|, first occurrence
 // in |nva| is returned. If no such entry exist, returns nullptr.
-const nghttp2_nv* get_header(const std::vector<const nghttp2_nv*>& nva,
+const nghttp2_nv* get_header(const std::vector<nghttp2_nv>& nva,
                              const char *name);
 
 // Returns std::string version of nv->name with nv->namelen bytes.

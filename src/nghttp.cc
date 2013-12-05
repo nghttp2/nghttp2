@@ -68,6 +68,7 @@
 #include "HtmlParser.h"
 #include "util.h"
 #include "base64.h"
+#include "http2.h"
 
 #ifndef O_BINARY
 # define O_BINARY (0)
@@ -1125,14 +1126,14 @@ void check_response_header
     // Server-pushed stream does not have stream user data
     return;
   }
+  auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
   bool gzip = false;
-  for(size_t i = 0; i < frame->headers.nvlen; ++i) {
-    auto nv = &frame->headers.nva[i];
-    if(util::strieq("content-encoding", nv->name, nv->namelen)) {
-      gzip = util::strieq("gzip", nv->value, nv->valuelen) ||
-        util::strieq("deflate", nv->value, nv->valuelen);
-    } else if(util::strieq(":status", nv->name, nv->namelen)) {
-      req->status.assign(nv->value, nv->value + nv->valuelen);
+  for(auto& nv : nva) {
+    if(util::strieq("content-encoding", nv.name, nv.namelen)) {
+      gzip = util::strieq("gzip", nv.value, nv.valuelen) ||
+        util::strieq("deflate", nv.value, nv.valuelen);
+    } else if(util::strieq(":status", nv.name, nv.namelen)) {
+      req->status.assign(nv.value, nv.value + nv.valuelen);
     }
   }
   if(gzip) {

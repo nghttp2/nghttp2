@@ -707,12 +707,12 @@ void prepare_response(Request *req, Http2Handler *hd)
 } // namespace
 
 namespace {
-void append_nv(Request *req, const std::vector<const nghttp2_nv*>& nva)
+void append_nv(Request *req, const std::vector<nghttp2_nv>& nva)
 {
-  for(auto nv : nva) {
+  for(auto& nv : nva) {
     req->headers.push_back(std::make_pair
-                           (std::string(nv->name, nv->name + nv->namelen),
-                            std::string(nv->value, nv->value + nv->valuelen)));
+                           (std::string(nv.name, nv.name + nv.namelen),
+                            std::string(nv.value, nv.value + nv.valuelen)));
   }
 }
 } // namespace

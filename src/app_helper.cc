@@ -45,6 +45,7 @@
 
 #include "app_helper.h"
 #include "util.h"
+#include "http2.h"
 
 namespace nghttp2 {
 
@@ -163,13 +164,12 @@ const char* ansi_escend()
 
 void print_nv(nghttp2_nv *nva, size_t nvlen)
 {
-  size_t i;
-  for(i = 0; i < nvlen; ++i) {
+  for(auto& nv : http2::sort_nva(nva, nvlen)) {
     print_frame_attr_indent();
     printf("%s", ansi_esc("\033[1;34m"));
-    fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+    fwrite(nv.name, nv.namelen, 1, stdout);
     printf("%s: ", ansi_escend());
-    fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+    fwrite(nv.value, nv.valuelen, 1, stdout);
     printf("\n");
   }
 }

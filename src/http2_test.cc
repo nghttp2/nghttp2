@@ -24,6 +24,7 @@
  */
 #include "http2_test.h"
 
+#include <cassert>
 #include <cstring>
 #include <iostream>
 
@@ -35,39 +36,38 @@
 using namespace nghttp2;
 
 #define MAKE_NV(K, V) {(uint8_t*)K, (uint8_t*)V,        \
-      (uint16_t)strlen(K), (uint16_t)strlen(V)}
+      (uint16_t)(sizeof(K)-1), (uint16_t)(sizeof(V)-1)}
 
 namespace shrpx {
 
 namespace {
-template<typename cstr1, typename cstr2>
-int bstrcmp(cstr1 *a, cstr2 *b)
+void check_nv(const std::pair<std::string, std::string>& a,
+              const nghttp2_nv *b)
 {
-  return strcmp((const char*)a, (const char*)b);
+  CU_ASSERT(a.first.size() == b->namelen);
+  CU_ASSERT(a.second.size() == b->valuelen);
+  CU_ASSERT(memcmp(a.first.c_str(), b->name, b->namelen) == 0);
+  CU_ASSERT(memcmp(a.second.c_str(), b->value, b->valuelen) == 0);
 }
 } // namespace
 
 void test_http2_sort_nva(void)
 {
+  // Last 0 is stripped in MAKE_NV
+  const uint8_t concatval[] = { '4', 0x00, 0x00, '6', 0x00, '5', 0x00 };
   nghttp2_nv nv[] = {MAKE_NV("alpha", "1"),
-                     MAKE_NV("bravo", "9"),
-                     MAKE_NV("bravo", "8"),
-                     MAKE_NV("charlie", "5"),
-                     MAKE_NV("bravo", "3"),
-                     MAKE_NV("bravo", "4")};
+                     MAKE_NV("charlie", "3"),
+                     MAKE_NV("bravo", "2"),
+                     MAKE_NV("delta", concatval)};
   auto nvlen = sizeof(nv)/sizeof(nv[0]);
   auto nva = http2::sort_nva(nv, nvlen);
-  CU_ASSERT(nvlen == nva.size());
-  CU_ASSERT(0 == bstrcmp("alpha", nva[0]->name));
-  CU_ASSERT(0 == bstrcmp("bravo", nva[1]->name));
-  CU_ASSERT(0 == bstrcmp("9", nva[1]->value));
-  CU_ASSERT(0 == bstrcmp("bravo", nva[2]->name));
-  CU_ASSERT(0 == bstrcmp("8", nva[2]->value));
-  CU_ASSERT(0 == bstrcmp("bravo", nva[3]->name));
-  CU_ASSERT(0 == bstrcmp("3", nva[3]->value));
-  CU_ASSERT(0 == bstrcmp("bravo", nva[4]->name));
-  CU_ASSERT(0 == bstrcmp("4", nva[4]->value));
-  CU_ASSERT(0 == bstrcmp("charlie", nva[5]->name));
+  CU_ASSERT(6 == nva.size());
+  check_nv({"alpha", "1"}, &nva[0]);
+  check_nv({"bravo", "2"}, &nva[1]);
+  check_nv({"charlie", "3"}, &nva[2]);
+  check_nv({"delta", "4"}, &nva[3]);
+  check_nv({"delta", "6"}, &nva[4]);
+  check_nv({"delta", "5"}, &nva[5]);
 }
 
 void test_http2_check_http2_headers(void)
@@ -162,17 +162,6 @@ auto headers = std::vector<std::pair<std::string, std::string>>
    {"x-forwarded-proto", "10"},
    {"x-forwarded-proto", "11"},
    {"zulu", "12"}};
-} // namespace
-
-namespace {
-void check_nv(const std::pair<std::string, std::string>& a,
-              const nghttp2_nv *b)
-{
-  CU_ASSERT(a.first.size() == b->namelen);
-  CU_ASSERT(a.second.size() == b->valuelen);
-  CU_ASSERT(memcmp(a.first.c_str(), b->name, b->namelen) == 0);
-  CU_ASSERT(memcmp(a.second.c_str(), b->value, b->valuelen) == 0);
-}
 } // namespace
 
 void test_http2_copy_norm_headers_to_nva(void)

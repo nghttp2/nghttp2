@@ -242,11 +242,11 @@ int on_frame_recv_callback
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
-      for(auto nv : nva) {
+      for(auto& nv : nva) {
         ss << TTY_HTTP_HD;
-        ss.write(reinterpret_cast<char*>(nv->name), nv->namelen);
+        ss.write(reinterpret_cast<char*>(nv.name), nv.namelen);
         ss << TTY_RST << ": ";
-        ss.write(reinterpret_cast<char*>(nv->value), nv->valuelen);
+        ss.write(reinterpret_cast<char*>(nv.value), nv.valuelen);
         ss << "\n";
       }
       ULOG(INFO, upstream) << "HTTP request headers. stream_id="
@@ -256,7 +256,7 @@ int on_frame_recv_callback
 
     if(get_config()->http2_upstream_dump_request_header) {
       http2::dump_nv(get_config()->http2_upstream_dump_request_header,
-                     frame->headers.nva, frame->headers.nvlen);
+                     nva.data(), nva.size());
     }
 
     if(!http2::check_http2_headers(nva)) {
@@ -264,10 +264,10 @@ int on_frame_recv_callback
       return 0;
     }
 
-    for(auto nv : nva) {
-      if(nv->namelen > 0 && nv->name[0] != ':') {
-        downstream->add_request_header(http2::name_to_str(nv),
-                                       http2::value_to_str(nv));
+    for(auto& nv : nva) {
+      if(nv.namelen > 0 && nv.name[0] != ':') {
+        downstream->add_request_header(http2::name_to_str(&nv),
+                                       http2::value_to_str(&nv));
       }
     }
 

@@ -196,69 +196,81 @@ size_t HTTP1_IGN_HDLEN = sizeof(HTTP1_IGN_HD)/sizeof(HTTP1_IGN_HD[0]);
 } // namespace
 
 namespace {
-auto nv_name_less = [](const nghttp2_nv *lhs, const nghttp2_nv *rhs)
+auto nv_name_less = [](const nghttp2_nv& lhs, const nghttp2_nv& rhs)
 {
-  return nghttp2_nv_compare_name(lhs, rhs) < 0;
+  return nghttp2_nv_compare_name(&lhs, &rhs) < 0;
 };
 } // namespace
 
-bool check_http2_headers(const std::vector<const nghttp2_nv*>& nva)
+bool check_http2_headers(const std::vector<nghttp2_nv>& nva)
 {
   for(size_t i = 0; i < DISALLOWED_HDLEN; ++i) {
     nghttp2_nv nv = {(uint8_t*)DISALLOWED_HD[i], nullptr,
                      (uint16_t)strlen(DISALLOWED_HD[i]), 0};
-    if(std::binary_search(std::begin(nva), std::end(nva), &nv, nv_name_less)) {
+    if(std::binary_search(std::begin(nva), std::end(nva), nv, nv_name_less)) {
       return false;
     }
   }
   return true;
 }
 
-std::vector<const nghttp2_nv*> sort_nva(const nghttp2_nv *nva, size_t nvlen)
+std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen)
 {
-  auto res = std::vector<const nghttp2_nv*>();
+  auto v = std::vector<nghttp2_nv>(&nva[0], &nva[nvlen]);
+  std::sort(std::begin(v), std::end(v), nv_name_less);
+  auto res = std::vector<nghttp2_nv>();
   res.reserve(nvlen);
   for(size_t i = 0; i < nvlen; ++i) {
-    res.push_back(&nva[i]);
+    if(v[i].valuelen == 0) {
+      res.push_back(v[i]);
+      continue;
+    }
+    auto j = v[i].value;
+    auto end = v[i].value + v[i].valuelen;
+    for(;;) {
+      // Skip 0 length value
+      j = std::find_if_not(j, end,
+                           [](uint8_t c)
+                           {
+                             return c == '\0';
+                           });
+      if(j == end) {
+        break;
+      }
+      auto l = std::find(j, end, '\0');
+      res.push_back({v[i].name, j, v[i].namelen, static_cast<uint16_t>(l-j)});
+      j = l;
+    }
   }
-  std::sort(std::begin(res), std::end(res),
-            [](const nghttp2_nv *lhs, const nghttp2_nv *rhs)
-            {
-              auto rv = nghttp2_nv_compare_name(lhs, rhs);
-              if(rv == 0) {
-                return lhs < rhs;
-              }
-              return rv < 0;
-            });
   return res;
 }
 
-const nghttp2_nv* get_unique_header(const std::vector<const nghttp2_nv*>& nva,
+const nghttp2_nv* get_unique_header(const std::vector<nghttp2_nv>& nva,
                                     const char *name)
 {
   size_t namelen = strlen(name);
   nghttp2_nv nv = {(uint8_t*)name, nullptr, (uint16_t)namelen, 0};
-  auto i = std::lower_bound(std::begin(nva), std::end(nva), &nv, nv_name_less);
-  if(i != std::end(nva) && util::streq((*i)->name, (*i)->namelen,
+  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, nv_name_less);
+  if(i != std::end(nva) && util::streq((*i).name, (*i).namelen,
                                        (const uint8_t*)name, namelen)) {
     auto j = i + 1;
-    if(j == std::end(nva) || !util::streq((*j)->name, (*j)->namelen,
+    if(j == std::end(nva) || !util::streq((*j).name, (*j).namelen,
                                           (const uint8_t*)name, namelen)) {
-      return *i;
+      return &(*i);
     }
   }
   return nullptr;
 }
 
-const nghttp2_nv* get_header(const std::vector<const nghttp2_nv*>& nva,
+const nghttp2_nv* get_header(const std::vector<nghttp2_nv>& nva,
                              const char *name)
 {
   size_t namelen = strlen(name);
   nghttp2_nv nv = {(uint8_t*)name, nullptr, (uint16_t)namelen, 0};
-  auto i = std::lower_bound(std::begin(nva), std::end(nva), &nv, nv_name_less);
-  if(i != std::end(nva) && util::streq((*i)->name, (*i)->namelen,
+  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, nv_name_less);
+  if(i != std::end(nva) && util::streq((*i).name, (*i).namelen,
                                        (const uint8_t*)name, namelen)) {
-    return *i;
+    return &(*i);
   }
   return nullptr;
 }
