@@ -28,8 +28,6 @@
 
 #define INITIAL_TABLE_LENGTH 16
 
-#define LOAD_FACTOR 75
-
 int nghttp2_map_init(nghttp2_map *map)
 {
   map->tablelen = INITIAL_TABLE_LENGTH;
@@ -144,7 +142,8 @@ static int resize(nghttp2_map *map, size_t new_tablelen)
 int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_entry *new_entry)
 {
   int rv;
-  if(100 * (map->size + 1) > map->tablelen * LOAD_FACTOR) {
+  /* Load factor is 0.75 */
+  if((map->size + 1) * 4 > map->tablelen * 3) {
     rv = resize(map, map->tablelen * 2);
     if(rv != 0) {
       return rv;
