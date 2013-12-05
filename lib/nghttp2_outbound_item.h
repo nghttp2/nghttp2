@@ -48,7 +48,12 @@ typedef struct {
   nghttp2_frame_category frame_cat;
   void *frame;
   void *aux_data;
-  int pri;
+  /* The priority used in priority comparion */
+  int32_t pri;
+  /* The initial priority */
+  int32_t inipri;
+  /* The amount of priority decrement in next time */
+  uint32_t pri_decay;
   int64_t seq;
 } nghttp2_outbound_item;
 

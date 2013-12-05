@@ -1869,13 +1869,13 @@ void test_nghttp2_session_reprioritize_stream(void)
   nghttp2_session_reprioritize_stream(session, stream, 120);
 
   CU_ASSERT(session->aob.item != NULL);
-  CU_ASSERT(120 == session->aob.item->pri);
+  CU_ASSERT(120 == session->aob.item->inipri);
   CU_ASSERT(120 == stream->pri);
   CU_ASSERT(5000 == nghttp2_session_get_stream(session, 1)->pri);
   item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(120 == item->pri);
+  CU_ASSERT(5000 == item->inipri);
   CU_ASSERT(NGHTTP2_HEADERS == OB_CTRL_TYPE(item));
-  CU_ASSERT(3 == OB_CTRL(item)->hd.stream_id);
+  CU_ASSERT(1 == OB_CTRL(item)->hd.stream_id);
 
   nghttp2_session_del(session);
 
