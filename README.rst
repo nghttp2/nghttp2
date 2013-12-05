@@ -7,18 +7,18 @@ version 2.0.
 Development Status
 ------------------
 
-We started to implement HTTP-draft-08/2.0
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-08) and the
+We started to implement HTTP-draft-09/2.0
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-09) and the
 header compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-04).
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-05).
 
 The nghttp2 code base was forked from spdylay project.
 
 ========================== =================
-Features                   HTTP-draft-08/2.0
+Features                   HTTP-draft-09/2.0
 ========================== =================
 :authority                 Done
-HPACK-draft-04             Done
+HPACK-draft-05             Done
 SETTINGS_HEADER_TABLE_SIZE Done
 SETTINGS_ENABLE_PUSH       Done
 FRAME_SIZE_ERROR           Done
@@ -31,12 +31,12 @@ Public Test Server
 ------------------
 
 The following endpoints are available to try out nghttp2
-implementation.  These endpoints supports ``HTTP-draft-07/2.0`` and
+implementation.  These endpoints supports ``HTTP-draft-09/2.0`` and
 the earlier draft versions are not supporeted.
 
 * https://106.186.112.116 (TLS + NPN)
 
-  NPN offers ``HTTP-draft-07/2.0``, ``spdy/3.1``, ``spdy/3``,
+  NPN offers ``HTTP-draft-09/2.0``, ``spdy/3.1``, ``spdy/3``,
   ``spdy/2`` and ``http/1.1``.
 
   Note: certificate is self-signed and a browser will show alert
@@ -146,11 +146,11 @@ output from ``nghttp`` client::
 
     $ src/nghttp -vn https://localhost:8443
     [  0.003] NPN select next protocol: the remote server offers:
-	      * HTTP-draft-07/2.0
+	      * HTTP-draft-09/2.0
 	      * spdy/3
 	      * spdy/2
 	      * http/1.1
-	      NPN selected the protocol: HTTP-draft-07/2.0
+	      NPN selected the protocol: HTTP-draft-09/2.0
     [  0.005] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
 	      (niv=2)
 	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
@@ -204,7 +204,7 @@ The HTTP Upgrade is performed like this::
     GET / HTTP/1.1
     Host: localhost:8080
     Connection: Upgrade, HTTP2-Settings
-    Upgrade: HTTP-draft-07/2.0
+    Upgrade: HTTP-draft-09/2.0
     HTTP2-Settings: AAAABAAAAGQAAAAHAAD__w
     Accept: */*
     User-Agent: nghttp2/0.1.0-DEV
@@ -213,7 +213,7 @@ The HTTP Upgrade is performed like this::
     [  0.000] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
-    Upgrade: HTTP-draft-07/2.0
+    Upgrade: HTTP-draft-09/2.0
 
 
     [  0.001] HTTP Upgrade success
@@ -313,7 +313,7 @@ nghttpx - proxy
 +++++++++++++++
 
 The ``nghttpx`` is a multi-threaded reverse proxy for
-HTTP-draft-08/2.0, SPDY and HTTP/1.1. It has several operation modes:
+HTTP-draft-09/2.0, SPDY and HTTP/1.1. It has several operation modes:
 
 ================== ============================== ============== =============
 Mode option        Frontend                       Backend        Note
@@ -326,7 +326,7 @@ default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================== ============== =============
 
 The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-08/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens HTTP-draft-09/2.0, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
