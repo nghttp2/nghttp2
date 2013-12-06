@@ -9,6 +9,8 @@ nghttp2 - HTTP/2.0 C Library
 This is an experimental implementation of Hypertext Transfer Protocol
 version 2.0.
 
+The project is hosted at `github.com/tatsuhiro-t/nghttp2 <https://github.com/tatsuhiro-t/nghttp2>`_.
+
 Contents:
 
 .. toctree::
