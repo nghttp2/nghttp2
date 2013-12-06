@@ -598,15 +598,15 @@ Types (structs, unions and typedefs)
     .. member::   nghttp2_frame_hd hd
 
         The frame header.
-    .. member::   int32_t pri
-
-        The priority.
     .. member::   nghttp2_nv *nva
 
         The name/value pairs.
     .. member::   size_t nvlen
 
         The number of name/value pairs in *nva*.
+    .. member::   int32_t pri
+
+        The priority.
 
 
 .. type:: nghttp2_priority
@@ -667,15 +667,15 @@ Types (structs, unions and typedefs)
     .. member::   nghttp2_frame_hd hd
 
         The frame header.
-    .. member::   int32_t promised_stream_id
-
-        The promised stream ID
     .. member::   nghttp2_nv *nva
 
         The name/value pairs.
     .. member::   size_t nvlen
 
         The number of name/value pairs in *nva*.
+    .. member::   int32_t promised_stream_id
+
+        The promised stream ID
 
 
 .. type:: nghttp2_ping
@@ -1061,15 +1061,15 @@ Types (structs, unions and typedefs)
     
     Struct to store option values for nghttp2_session.
 
+    .. member::   uint32_t peer_max_concurrent_streams
+
+        :macro:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`
     .. member::   uint8_t no_auto_stream_window_update
 
         :macro:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`
     .. member::   uint8_t no_auto_connection_window_update
 
         :macro:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
-    .. member::   uint32_t peer_max_concurrent_streams
-
-        :macro:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`
 
 
 .. type:: nghttp2_gzip
