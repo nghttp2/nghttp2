@@ -943,6 +943,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
   downstream->normalize_response_headers();
+  downstream->concat_norm_response_headers();
   auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();

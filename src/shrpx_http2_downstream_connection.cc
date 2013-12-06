@@ -232,7 +232,9 @@ int Http2DownstreamConnection::push_request_headers()
     downstream_->crumble_request_cookie();
   }
   downstream_->normalize_request_headers();
+  downstream_->concat_norm_response_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
+
   // 6 means:
   // 1. :method
   // 2. :scheme
@@ -328,12 +330,6 @@ int Http2DownstreamConnection::push_request_headers()
   bool content_length = false;
   if(downstream_->get_norm_request_header("content-length") != end_headers) {
     content_length = true;
-  }
-
-  auto expect = downstream_->get_norm_request_header("expect");
-  if(expect != end_headers &&
-     !util::strifind((*expect).second.c_str(), "100-continue")) {
-    nva.push_back(MAKE_NV_LS("expect", (*expect).second));
   }
 
   bool chunked_encoding = false;

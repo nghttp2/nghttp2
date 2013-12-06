@@ -32,6 +32,7 @@
 #include "shrpx_error.h"
 #include "shrpx_downstream_connection.h"
 #include "util.h"
+#include "http2.h"
 
 using namespace nghttp2;
 
@@ -453,6 +454,11 @@ const Headers& Downstream::get_response_headers() const
 void Downstream::normalize_response_headers()
 {
   normalize_headers(response_headers_);
+}
+
+void Downstream::concat_norm_response_headers()
+{
+  response_headers_ = http2::concat_norm_headers(std::move(response_headers_));
 }
 
 Headers::const_iterator Downstream::get_norm_response_header

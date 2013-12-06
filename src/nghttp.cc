@@ -926,57 +926,47 @@ int submit_request
   };
   auto path = req->make_reqpath();
   auto scheme = get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
-  const char *static_nv[] = {
-    ":method", req->data_prd ? "POST" : "GET",
-    ":path", path.c_str(),
-    ":scheme", scheme.c_str(),
-    ":authority", client->hostport.c_str(),
-    "accept", "*/*",
-    "accept-encoding", "gzip, deflate",
-    "user-agent", "nghttp2/" NGHTTP2_VERSION
-  };
+  auto build_headers = std::vector<std::pair<std::string, std::string>>
+    {{":method", req->data_prd ? "POST" : "GET"},
+     {":path", path},
+     {":scheme", scheme},
+     {":authority", client->hostport},
+     {"accept", "*/*"},
+     {"accept-encoding", "gzip, deflate"},
+     {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
 
-  int hardcoded_entry_count = sizeof(static_nv) / sizeof(*static_nv);
-  int header_count          = headers.size();
-  int total_entry_count     = hardcoded_entry_count + header_count * 2;
   if(req->data_prd) {
-    total_entry_count += 2;
-  }
-
-  auto nv = util::make_unique<const char*[]>(total_entry_count + 1);
-
-  memcpy(nv.get(), static_nv, hardcoded_entry_count * sizeof(*static_nv));
-
-  int pos = hardcoded_entry_count;
-
-  std::string content_length_str;
-  if(req->data_prd) {
-    content_length_str = util::utos(req->data_length);
-    nv[pos++] = "content-length";
-    nv[pos++] = content_length_str.c_str();
+    build_headers.emplace_back("content-length", util::utos(req->data_length));
   }
   for(auto& kv : headers) {
     auto key = kv.first.c_str();
-    auto value = kv.second.c_str();
     if ( util::strieq( key, "accept" ) ) {
-      nv[POS_ACCEPT*2+1] = value;
+      build_headers[POS_ACCEPT].second = kv.second;
     }
     else if ( util::strieq( key, "user-agent" ) ) {
-      nv[POS_USERAGENT*2+1] = value;
+      build_headers[POS_USERAGENT].second = kv.second;
     }
     else if ( util::strieq( key, ":authority" ) ) {
-      nv[POS_AUTHORITY*2+1] = value;
+      build_headers[POS_AUTHORITY].second = kv.second;
     }
     else {
-      nv[pos] = key;
-      nv[pos+1] = value;
-      pos += 2;
+      build_headers.push_back(kv);
     }
   }
-  nv[pos] = nullptr;
-
-  int rv = nghttp2_submit_request(client->session, req->pri,
-                                 nv.get(), req->data_prd, req);
+  std::stable_sort(std::begin(build_headers), std::end(build_headers),
+                   [](const std::pair<std::string, std::string>& lhs,
+                      const std::pair<std::string, std::string>& rhs)
+                   {
+                     return lhs.first < rhs.first;
+                   });
+  build_headers = http2::concat_norm_headers(std::move(build_headers));
+  auto nva = std::vector<nghttp2_nv>();
+  nva.reserve(build_headers.size());
+  for(auto& kv : build_headers) {
+    nva.push_back(http2::make_nv(kv.first, kv.second));
+  }
+  int rv = nghttp2_submit_request2(client->session, req->pri,
+                                   nva.data(), nva.size(), req->data_prd, req);
   if(rv != 0) {
     std::cerr << "nghttp2_submit_request() returned error: "
               << nghttp2_strerror(rv) << std::endl;
@@ -1744,6 +1734,7 @@ int main(int argc, char **argv)
       // Note that there is no processing currently to handle multiple
       // message-header fields with the same field name
       config.headers.emplace_back(header, value);
+      util::inp_strlower(config.headers.back().first);
       break;
     }
     case 'a':

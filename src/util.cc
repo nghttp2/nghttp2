@@ -152,6 +152,7 @@ bool endsWith(const std::string& a, const std::string& b)
 {
   return endsWith(a.begin(), a.end(), b.begin(), b.end());
 }
+
 bool strieq(const char *a, const char *b)
 {
   if(!a || !b) {

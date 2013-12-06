@@ -164,6 +164,18 @@ auto headers = std::vector<std::pair<std::string, std::string>>
    {"zulu", "12"}};
 } // namespace
 
+void test_http2_concat_norm_headers(void)
+{
+  auto hds = headers;
+  hds.emplace_back("cookie", "foo");
+  hds.emplace_back("cookie", "bar");
+  hds.emplace_back("set-cookie", "baz");
+  hds.emplace_back("set-cookie", "buzz");
+  auto res = http2::concat_norm_headers(hds);
+  CU_ASSERT(14 == res.size());
+  CU_ASSERT(std::string("2") + '\0' + std::string("3") == res[2].second);
+}
+
 void test_http2_copy_norm_headers_to_nva(void)
 {
   std::vector<nghttp2_nv> nva;

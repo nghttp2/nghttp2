@@ -113,6 +113,14 @@ bool value_lws(const nghttp2_nv *nv);
 // and not contain illegal characters.
 bool non_empty_value(const nghttp2_nv* nv);
 
+// Concatenates field with same value by NULL as delimiter and returns
+// new vector containing the resulting header fields. cookie and
+// set-cookie header fields won't be concatenated. This function
+// assumes that the |headers| is sorted by name.
+std::vector<std::pair<std::string, std::string>>
+concat_norm_headers
+(std::vector<std::pair<std::string, std::string>> headers);
+
 // Creates nghttp2_nv using |name| and |value| and returns it. The
 // returned value only references the data pointer to name.c_str() and
 // value.c_str().

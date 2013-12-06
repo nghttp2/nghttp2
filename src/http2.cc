@@ -319,6 +319,26 @@ nghttp2_nv make_nv(const std::string& name, const std::string& value)
       };
 }
 
+std::vector<std::pair<std::string, std::string>>
+concat_norm_headers
+(std::vector<std::pair<std::string, std::string>> headers)
+{
+  auto res = std::vector<std::pair<std::string, std::string>>();
+  res.reserve(headers.size());
+  for(auto& kv : headers) {
+    if(!res.empty() && res.back().first == kv.first &&
+       kv.first != "cookie" && kv.first != "set-cookie") {
+      if(!kv.second.empty()) {
+        res.back().second.append(1, '\0');
+        res.back().second += kv.second;
+      }
+    } else {
+      res.push_back(std::move(kv));
+    }
+  }
+  return res;
+}
+
 void copy_norm_headers_to_nva
 (std::vector<nghttp2_nv>& nva,
  const std::vector<std::pair<std::string, std::string>>& headers)
@@ -407,11 +427,12 @@ void dump_nv(FILE *out, const char **nv)
 
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen)
 {
-  for(size_t i = 0; i < nvlen; ++i) {
-    auto nv = &nva[i];
-    fwrite(nv->name, nv->namelen, 1, out);
+  // |nva| may have NULL-concatenated header fields
+  auto v = sort_nva(nva, nvlen);
+  for(auto& nv : v) {
+    fwrite(nv.name, nv.namelen, 1, out);
     fwrite(": ", 2, 1, out);
-    fwrite(nv->value, nv->valuelen, 1, out);
+    fwrite(nv.value, nv.valuelen, 1, out);
     fwrite("\n", 1, 1, out);
   }
   fwrite("\n", 1, 1, out);
