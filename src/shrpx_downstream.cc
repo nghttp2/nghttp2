@@ -38,30 +38,30 @@ using namespace nghttp2;
 namespace shrpx {
 
 Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
-  : upstream_(upstream),
+  : request_bodylen_(0),
+    upstream_(upstream),
     dconn_(nullptr),
+    response_body_buf_(nullptr),
     stream_id_(stream_id),
     priority_(priority),
     downstream_stream_id_(-1),
-    upgrade_request_(false),
-    upgraded_(false),
+    response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
     request_state_(INITIAL),
     request_major_(1),
     request_minor_(1),
-    chunked_request_(false),
-    request_connection_close_(false),
-    request_expect_100_continue_(false),
-    request_header_key_prev_(false),
-    request_bodylen_(0),
     response_state_(INITIAL),
     response_http_status_(0),
     response_major_(1),
     response_minor_(1),
+    upgrade_request_(false),
+    upgraded_(false),
+    chunked_request_(false),
+    request_connection_close_(false),
+    request_expect_100_continue_(false),
+    request_header_key_prev_(false),
     chunked_response_(false),
     response_connection_close_(false),
-    response_header_key_prev_(false),
-    response_body_buf_(nullptr),
-    response_rst_stream_error_code_(NGHTTP2_NO_ERROR)
+    response_header_key_prev_(false)
 {}
 
 Downstream::~Downstream()

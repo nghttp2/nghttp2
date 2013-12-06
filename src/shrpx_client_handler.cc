@@ -213,13 +213,13 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 
 ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
                              const char *ipaddr)
-  : bev_(bev),
-    fd_(fd),
-    ssl_(ssl),
-    ipaddr_(ipaddr),
-    should_close_after_write_(false),
+  : ipaddr_(ipaddr),
+    bev_(bev),
     http2session_(nullptr),
-    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN)
+    ssl_(ssl),
+    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN),
+    fd_(fd),
+    should_close_after_write_(false)
 {
   bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
   bufferevent_enable(bev_, EV_READ | EV_WRITE);

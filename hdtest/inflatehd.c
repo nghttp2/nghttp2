@@ -38,8 +38,8 @@
 #include "comp_helper.h"
 
 typedef struct {
-  nghttp2_hd_side side;
   size_t table_size;
+  nghttp2_hd_side side;
   int dump_header_table;
 } inflate_config;
 

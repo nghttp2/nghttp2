@@ -37,10 +37,10 @@
 namespace shrpx {
 
 struct WorkerInfo {
-  int sv[2];
   SSL_CTX *sv_ssl_ctx;
   SSL_CTX *cl_ssl_ctx;
   bufferevent *bev;
+  int sv[2];
 };
 
 class Http2Session;
@@ -59,12 +59,12 @@ private:
   SSL_CTX *sv_ssl_ctx_;
   // The backend server SSL_CTX
   SSL_CTX *cl_ssl_ctx_;
-  unsigned int worker_round_robin_cnt_;
   WorkerInfo *workers_;
-  size_t num_worker_;
   // Shared backend HTTP2 session. NULL if multi-threaded. In
   // multi-threaded case, see shrpx_worker.cc.
   Http2Session *http2session_;
+  size_t num_worker_;
+  unsigned int worker_round_robin_cnt_;
 };
 
 } // namespace shrpx

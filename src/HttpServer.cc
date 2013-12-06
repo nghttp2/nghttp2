@@ -64,16 +64,16 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 } // namespace
 
 Config::Config()
-  : verbose(false),
-    daemon(false),
-    port(0),
+  : data_ptr(nullptr),
     on_request_recv_callback(nullptr),
-    data_ptr(nullptr),
+    output_upper_thres(1024*1024),
+    header_table_size(-1),
+    port(0),
+    verbose(false),
+    daemon(false),
     verify_client(false),
     no_tls(false),
-    no_flow_control(false),
-    output_upper_thres(1024*1024),
-    header_table_size(-1)
+    no_flow_control(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -175,10 +175,14 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config);
 
 Http2Handler::Http2Handler(Sessions *sessions,
                            int fd, SSL *ssl, int64_t session_id)
-  : session_(nullptr), sessions_(sessions), bev_(nullptr), fd_(fd), ssl_(ssl),
-    session_id_(session_id),
+  : session_id_(session_id),
+    session_(nullptr),
+    sessions_(sessions),
+    bev_(nullptr),
+    ssl_(ssl),
+    settings_timerev_(nullptr),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN),
-    settings_timerev_(nullptr)
+    fd_(fd)
 {}
 
 Http2Handler::~Http2Handler()

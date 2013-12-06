@@ -88,10 +88,10 @@ public:
     return severity >= severity_thres_;
   }
 private:
-  int severity_;
-  const char *filename_;
-  int linenum_;
   std::stringstream stream_;
+  const char *filename_;
+  int severity_;
+  int linenum_;
   static int severity_thres_;
 };
 

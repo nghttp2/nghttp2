@@ -64,8 +64,9 @@ struct Connection {
 };
 
 struct Request {
+  /* The gzip stream inflater for the compressed response. */
+  nghttp2_gzip *inflater;
   char *host;
-  uint16_t port;
   /* In this program, path contains query component as well. */
   char *path;
   /* This is the concatenation of host and port with ":" in
@@ -73,19 +74,18 @@ struct Request {
   char *hostport;
   /* Stream ID for this request. */
   int32_t stream_id;
-  /* The gzip stream inflater for the compressed response. */
-  nghttp2_gzip *inflater;
+  uint16_t port;
 };
 
 struct URI {
   const char *host;
-  size_t hostlen;
-  uint16_t port;
   /* In this program, path contains query component as well. */
   const char *path;
   size_t pathlen;
   const char *hostport;
+  size_t hostlen;
   size_t hostportlen;
+  uint16_t port;
 };
 
 /*

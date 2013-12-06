@@ -83,8 +83,8 @@ int severity_to_syslog_level(int severity)
 }
 
 Log::Log(int severity, const char *filename, int linenum)
-  : severity_(severity),
-    filename_(filename),
+  : filename_(filename),
+    severity_(severity),
     linenum_(linenum)
 {}
 

@@ -115,89 +115,41 @@ enum shrpx_proto {
 };
 
 struct Config {
-  bool verbose;
-  bool daemon;
-  char *host;
-  uint16_t port;
-  char *private_key_file;
-  char *private_key_passwd;
-  char *cert_file;
-  char *dh_param_file;
-  SSL_CTX *default_ssl_ctx;
-  ssl::CertLookupTree *cert_tree;
-  bool verify_client;
-  const char *server_name;
-  char *downstream_host;
-  uint16_t downstream_port;
-  char *downstream_hostport;
+  // The list of (private key file, certificate file) pair
+  std::vector<std::pair<std::string, std::string>> subcerts;
   sockaddr_union downstream_addr;
-  size_t downstream_addrlen;
+  // binary form of http proxy host and port
+  sockaddr_union downstream_http_proxy_addr;
   timeval http2_upstream_read_timeout;
   timeval upstream_read_timeout;
   timeval upstream_write_timeout;
   timeval downstream_read_timeout;
   timeval downstream_write_timeout;
   timeval downstream_idle_read_timeout;
-  size_t num_worker;
-  size_t http2_max_concurrent_streams;
-  bool http2_proxy;
-  bool http2_bridge;
-  bool client_proxy;
-  bool add_x_forwarded_for;
-  bool no_via;
-  bool accesslog;
-  size_t http2_upstream_window_bits;
-  size_t http2_downstream_window_bits;
-  size_t http2_upstream_connection_window_bits;
-  size_t http2_downstream_connection_window_bits;
-  bool upstream_no_tls;
-  bool downstream_no_tls;
+  char *host;
+  char *private_key_file;
+  char *private_key_passwd;
+  char *cert_file;
+  char *dh_param_file;
+  SSL_CTX *default_ssl_ctx;
+  ssl::CertLookupTree *cert_tree;
+  const char *server_name;
+  char *downstream_host;
+  char *downstream_hostport;
   char *backend_tls_sni_name;
   char *pid_file;
-  uid_t uid;
-  gid_t gid;
   char *conf_path;
-  bool syslog;
-  int syslog_facility;
-  // This member finally decides syslog is used or not
-  bool use_syslog;
-  int backlog;
   char *ciphers;
-  bool honor_cipher_order;
-  bool client;
-  // true if --client or --client-proxy are enabled.
-  bool client_mode;
-  // downstream protocol; this will be determined by given options.
-  shrpx_proto downstream_proto;
-  bool insecure;
   char *cacert;
-  bool backend_ipv4;
-  bool backend_ipv6;
-  // true if stderr refers to a terminal.
-  bool tty;
   // userinfo in http proxy URI, not percent-encoded form
   char *downstream_http_proxy_userinfo;
   // host in http proxy URI
   char *downstream_http_proxy_host;
-  // port in http proxy URI
-  uint16_t downstream_http_proxy_port;
-  // binary form of http proxy host and port
-  sockaddr_union downstream_http_proxy_addr;
-  // actual size of downstream_http_proxy_addr
-  size_t downstream_http_proxy_addrlen;
   // Rate limit configuration
   ev_token_bucket_cfg *rate_limit_cfg;
-  size_t read_rate;
-  size_t read_burst;
-  size_t write_rate;
-  size_t write_burst;
   // Comma delimited list of NPN protocol strings in the order of
   // preference.
   char **npn_list;
-  // The number of elements in npn_list
-  size_t npn_list_len;
-  // The list of (private key file, certificate file) pair
-  std::vector<std::pair<std::string, std::string>> subcerts;
   // Path to file containing CA certificate solely used for client
   // certificate validation
   char *verify_client_cacert;
@@ -205,6 +157,54 @@ struct Config {
   char *client_cert_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
+  size_t downstream_addrlen;
+  size_t num_worker;
+  size_t http2_max_concurrent_streams;
+  size_t http2_upstream_window_bits;
+  size_t http2_downstream_window_bits;
+  size_t http2_upstream_connection_window_bits;
+  size_t http2_downstream_connection_window_bits;
+  // actual size of downstream_http_proxy_addr
+  size_t downstream_http_proxy_addrlen;
+  size_t read_rate;
+  size_t read_burst;
+  size_t write_rate;
+  size_t write_burst;
+  // The number of elements in npn_list
+  size_t npn_list_len;
+  // downstream protocol; this will be determined by given options.
+  shrpx_proto downstream_proto;
+  int syslog_facility;
+  int backlog;
+  uid_t uid;
+  gid_t gid;
+  uint16_t port;
+  uint16_t downstream_port;
+  // port in http proxy URI
+  uint16_t downstream_http_proxy_port;
+  bool verbose;
+  bool daemon;
+  bool verify_client;
+  bool http2_proxy;
+  bool http2_bridge;
+  bool client_proxy;
+  bool add_x_forwarded_for;
+  bool no_via;
+  bool accesslog;
+  bool upstream_no_tls;
+  bool downstream_no_tls;
+  bool syslog;
+  // This member finally decides syslog is used or not
+  bool use_syslog;
+  bool honor_cipher_order;
+  bool client;
+  // true if --client or --client-proxy are enabled.
+  bool client_mode;
+  bool insecure;
+  bool backend_ipv4;
+  bool backend_ipv6;
+  // true if stderr refers to a terminal.
+  bool tty;
   bool http2_no_cookie_crumbling;
 };
 

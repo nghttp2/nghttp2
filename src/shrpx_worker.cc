@@ -43,9 +43,9 @@ using namespace nghttp2;
 namespace shrpx {
 
 Worker::Worker(WorkerInfo *info)
-  : fd_(info->sv[1]),
-    sv_ssl_ctx_(info->sv_ssl_ctx),
-    cl_ssl_ctx_(info->cl_ssl_ctx)
+  : sv_ssl_ctx_(info->sv_ssl_ctx),
+    cl_ssl_ctx_(info->cl_ssl_ctx),
+    fd_(info->sv[1])
 {}
 
 Worker::~Worker()

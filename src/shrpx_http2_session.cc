@@ -52,15 +52,15 @@ Http2Session::Http2Session(event_base *evbase, SSL_CTX *ssl_ctx)
   : evbase_(evbase),
     ssl_ctx_(ssl_ctx),
     ssl_(nullptr),
-    fd_(-1),
     session_(nullptr),
     bev_(nullptr),
-    state_(DISCONNECTED),
-    notified_(false),
     wrbev_(nullptr),
     rdbev_(nullptr),
-    flow_control_(false),
-    settings_timerev_(nullptr)
+    settings_timerev_(nullptr),
+    fd_(-1),
+    state_(DISCONNECTED),
+    notified_(false),
+    flow_control_(false)
 {}
 
 Http2Session::~Http2Session()

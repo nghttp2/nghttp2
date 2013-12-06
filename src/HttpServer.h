@@ -48,29 +48,29 @@ namespace nghttp2 {
 
 struct Config {
   std::string htdocs;
-  bool verbose;
-  bool daemon;
   std::string host;
-  uint16_t port;
   std::string private_key_file;
   std::string cert_file;
-  nghttp2_on_request_recv_callback on_request_recv_callback;
   void *data_ptr;
+  nghttp2_on_request_recv_callback on_request_recv_callback;
+  size_t output_upper_thres;
+  ssize_t header_table_size;
+  uint16_t port;
+  bool verbose;
+  bool daemon;
   bool verify_client;
   bool no_tls;
   bool no_flow_control;
-  size_t output_upper_thres;
-  ssize_t header_table_size;
   Config();
 };
 
 class Sessions;
 
 struct Request {
-  int32_t stream_id;
   std::vector<std::pair<std::string, std::string>> headers;
-  int file;
   std::pair<std::string, size_t> response_body;
+  int32_t stream_id;
+  int file;
   Request(int32_t stream_id);
   ~Request();
 };
@@ -118,15 +118,15 @@ public:
   void remove_settings_timer();
   void submit_goaway(nghttp2_error_code error_code);
 private:
+  std::map<int32_t, std::unique_ptr<Request>> id2req_;
+  int64_t session_id_;
   nghttp2_session *session_;
   Sessions *sessions_;
   bufferevent *bev_;
-  int fd_;
   SSL* ssl_;
-  int64_t session_id_;
-  std::map<int32_t, std::unique_ptr<Request>> id2req_;
-  size_t left_connhd_len_;
   event *settings_timerev_;
+  size_t left_connhd_len_;
+  int fd_;
 };
 
 class HttpServer {

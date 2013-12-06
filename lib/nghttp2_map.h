@@ -37,8 +37,8 @@
 typedef uint32_t key_type;
 
 typedef struct nghttp2_map_entry {
-  key_type key;
   struct nghttp2_map_entry *next;
+  key_type key;
 } nghttp2_map_entry;
 
 typedef struct {

@@ -38,9 +38,9 @@
 #include "comp_helper.h"
 
 typedef struct {
-  nghttp2_hd_side side;
   size_t table_size;
   size_t deflate_table_size;
+  nghttp2_hd_side side;
   int http1text;
   int dump_header_table;
   int no_refset;

@@ -81,19 +81,33 @@ typedef enum {
 typedef struct {
   /* Intrusive Map */
   nghttp2_map_entry map_entry;
-  /* stream ID */
-  int32_t stream_id;
-  nghttp2_stream_state state;
-  /* Use same value in SYN_STREAM frame */
-  uint8_t flags;
-  /* Use same value in SYN_STREAM frame */
-  int32_t pri;
-  /* Bitwise OR of zero or more nghttp2_shut_flag values */
-  uint8_t shut_flags;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
   /* Deferred DATA frame */
   nghttp2_outbound_item *deferred_data;
+  /* stream ID */
+  int32_t stream_id;
+  /* Use same value in SYN_STREAM frame */
+  int32_t pri;
+  /* Current remote window size. This value is computed against the
+     current initial window size of remote endpoint. */
+  int32_t remote_window_size;
+  /* Keep track of the number of bytes received without
+     WINDOW_UPDATE. This could be negative after submitting negative
+     value to WINDOW_UPDATE */
+  int32_t recv_window_size;
+  /* The amount of recv_window_size cut using submitting negative
+     value to WINDOW_UPDATE */
+  int32_t recv_reduction;
+  /* window size for local flow control. It is initially set to
+     NGHTTP2_INITIAL_WINDOW_SIZE and could be increased/decreased by
+     submitting WINDOW_UPDATE. See nghttp2_submit_window_update(). */
+  int32_t local_window_size;
+  nghttp2_stream_state state;
+  /* Use same value in SYN_STREAM frame */
+  uint8_t flags;
+  /* Bitwise OR of zero or more nghttp2_shut_flag values */
+  uint8_t shut_flags;
   /* The flags for defered DATA. Bitwise OR of zero or more
      nghttp2_deferred_flag values */
   uint8_t deferred_flags;
@@ -109,20 +123,6 @@ typedef struct {
      flow control options off or sending WINDOW_UPDATE with
      END_FLOW_CONTROL bit set. */
   uint8_t local_flow_control;
-  /* Current remote window size. This value is computed against the
-     current initial window size of remote endpoint. */
-  int32_t remote_window_size;
-  /* Keep track of the number of bytes received without
-     WINDOW_UPDATE. This could be negative after submitting negative
-     value to WINDOW_UPDATE */
-  int32_t recv_window_size;
-  /* The amount of recv_window_size cut using submitting negative
-     value to WINDOW_UPDATE */
-  int32_t recv_reduction;
-  /* window size for local flow control. It is initially set to
-     NGHTTP2_INITIAL_WINDOW_SIZE and could be increased/decreased by
-     submitting WINDOW_UPDATE. See nghttp2_submit_window_update(). */
-  int32_t local_window_size;
 } nghttp2_stream;
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,

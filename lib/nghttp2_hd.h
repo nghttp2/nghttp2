@@ -118,13 +118,24 @@ typedef struct {
   size_t deflate_hd_table_bufsize_max;
   /* The number of effective entry in |hd_table|. */
   size_t deflate_hd_tablelen;
+  /* The number of entry the |buf_track| contains. */
+  size_t buf_tracklen;
   /* Holding emitted entry in deflating header block to retain
      reference count. */
   nghttp2_hd_entry **emit_set;
+  /* Keep track of allocated buffers in inflation */
+  uint8_t **buf_track;
+  /* Role of this context; deflate or infalte */
+  nghttp2_hd_role role;
+  /* NGHTTP2_HD_SIDE_REQUEST for processing request, otherwise
+     response. */
+  nghttp2_hd_side side;
   /* The capacity of the |emit_set| */
   uint16_t emit_set_capacity;
   /* The number of entry the |emit_set| contains */
   uint16_t emit_setlen;
+  /* The capacity of |buf_track| */
+  uint16_t buf_track_capacity;
   /* If inflate/deflate error occurred, this value is set to 1 and
      further invocation of inflate/deflate will fail with
      NGHTTP2_ERR_HEADER_COMP. */
@@ -132,17 +143,6 @@ typedef struct {
   /* Set to this nonzero to clear reference set on each deflation each
      time. */
   uint8_t no_refset;
-  /* Role of this context; deflate or infalte */
-  nghttp2_hd_role role;
-  /* NGHTTP2_HD_SIDE_REQUEST for processing request, otherwise
-     response. */
-  nghttp2_hd_side side;
-  /* Keep track of allocated buffers in inflation */
-  uint8_t **buf_track;
-  /* The capacity of |buf_track| */
-  uint16_t buf_track_capacity;
-  /* The number of entry the |buf_track| contains. */
-  size_t buf_tracklen;
 } nghttp2_hd_context;
 
 /*

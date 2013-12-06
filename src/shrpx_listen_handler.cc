@@ -46,10 +46,10 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
   : evbase_(evbase),
     sv_ssl_ctx_(sv_ssl_ctx),
     cl_ssl_ctx_(cl_ssl_ctx),
-    worker_round_robin_cnt_(0),
     workers_(nullptr),
+    http2session_(nullptr),
     num_worker_(0),
-    http2session_(nullptr)
+    worker_round_robin_cnt_(0)
 {}
 
 ListenHandler::~ListenHandler()

@@ -78,6 +78,19 @@ namespace nghttp2 {
 
 namespace {
 struct Config {
+  std::vector<std::pair<std::string, std::string>> headers;
+  std::string certfile;
+  std::string keyfile;
+  std::string datafile;
+  size_t output_upper_thres;
+  ssize_t peer_max_concurrent_streams;
+  ssize_t header_table_size;
+  int32_t pri;
+  int multiply;
+  // milliseconds
+  int timeout;
+  int window_bits;
+  int connection_window_bits;
   bool null_out;
   bool remote_name;
   bool verbose;
@@ -85,35 +98,22 @@ struct Config {
   bool stat;
   bool no_flow_control;
   bool upgrade;
-  int32_t pri;
-  int multiply;
-  // milliseconds
-  int timeout;
-  std::string certfile;
-  std::string keyfile;
-  int window_bits;
-  int connection_window_bits;
-  std::vector<std::pair<std::string, std::string>> headers;
-  std::string datafile;
-  size_t output_upper_thres;
-  ssize_t peer_max_concurrent_streams;
-  ssize_t header_table_size;
   Config()
-    : null_out(false),
-      remote_name(false),
-      verbose(false),
-      get_assets(false),
-      stat(false),
-      no_flow_control(false),
-      upgrade(false),
+    : output_upper_thres(1024*1024),
+      peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
+      header_table_size(-1),
       pri(NGHTTP2_PRI_DEFAULT),
       multiply(1),
       timeout(-1),
       window_bits(-1),
       connection_window_bits(-1),
-      output_upper_thres(1024*1024),
-      peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
-      header_table_size(-1)
+      null_out(false),
+      remote_name(false),
+      verbose(false),
+      get_assets(false),
+      stat(false),
+      no_flow_control(false),
+      upgrade(false)
   {}
 };
 } // namespace
@@ -248,23 +248,28 @@ namespace {
 struct Request {
   // URI without fragment
   std::string uri;
+  std::string status;
   http_parser_url u;
+  RequestStat stat;
+  int64_t data_length;
+  int64_t data_offset;
   nghttp2_gzip *inflater;
   HtmlParser *html_parser;
   const nghttp2_data_provider *data_prd;
-  int64_t data_length;
-  int64_t data_offset;
   int32_t pri;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
-  RequestStat stat;
-  std::string status;
   Request(const std::string& uri, const http_parser_url &u,
           const nghttp2_data_provider *data_prd, int64_t data_length,
           int32_t pri, int level = 0)
-    : uri(uri), u(u),
-      inflater(nullptr), html_parser(nullptr), data_prd(data_prd),
-      data_length(data_length), data_offset(0), pri(pri),
+    : uri(uri),
+      u(u),
+      data_length(data_length),
+      data_offset(0),
+      inflater(nullptr),
+      html_parser(nullptr),
+      data_prd(data_prd),
+      pri(pri),
       level(level)
   {}
 
@@ -422,6 +427,17 @@ enum client_state {
 
 namespace {
 struct HttpClient {
+  std::vector<std::unique_ptr<Request>> reqvec;
+  // Map from stream ID to Request object.
+  std::map<int32_t, Request*> streams;
+  // Insert path already added in reqvec to prevent multiple request
+  // for 1 resource.
+  std::set<std::string> path_cache;
+  std::string scheme;
+  std::string hostport;
+  // Used for parse the HTTP upgrade response from server
+  std::unique_ptr<http_parser> htp;
+  SessionStat stat;
   nghttp2_session *session;
   const nghttp2_session_callbacks *callbacks;
   event_base *evbase;
@@ -430,29 +446,18 @@ struct HttpClient {
   SSL *ssl;
   bufferevent *bev;
   event *settings_timerev;
-  client_state state;
-  std::vector<std::unique_ptr<Request>> reqvec;
-  // Map from stream ID to Request object.
-  std::map<int32_t, Request*> streams;
-  // Insert path already added in reqvec to prevent multiple request
-  // for 1 resource.
-  std::set<std::string> path_cache;
   // The number of completed requests, including failed ones.
   size_t complete;
-  std::string scheme;
-  std::string hostport;
-  SessionStat stat;
-  // Used for parse the HTTP upgrade response from server
-  std::unique_ptr<http_parser> htp;
+  // The length of settings_payload
+  size_t settings_payloadlen;
+  client_state state;
+  // The HTTP status code of the response message of HTTP Upgrade.
+  unsigned int upgrade_response_status_code;
   // true if the response message of HTTP Upgrade request is fully
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
-  // The HTTP status code of the response message of HTTP Upgrade.
-  unsigned int upgrade_response_status_code;
   // SETTINGS payload sent as token68 in HTTP Upgrade
   uint8_t settings_payload[16];
-  // The length of settings_payload
-  size_t settings_payloadlen;
 
   HttpClient(const nghttp2_session_callbacks* callbacks,
              event_base *evbase, SSL_CTX *ssl_ctx)
@@ -464,11 +469,11 @@ struct HttpClient {
       ssl(nullptr),
       bev(nullptr),
       settings_timerev(nullptr),
-      state(STATE_IDLE),
       complete(0),
-      upgrade_response_complete(false),
+      settings_payloadlen(0),
+      state(STATE_IDLE),
       upgrade_response_status_code(0),
-      settings_payloadlen(0)
+      upgrade_response_complete(false)
   {}
 
   ~HttpClient()

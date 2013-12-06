@@ -80,12 +80,12 @@ public:
   int start_settings_timer();
   void stop_settings_timer();
 private:
-  ClientHandler *handler_;
-  nghttp2_session *session_;
-  bool flow_control_;
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;
+  ClientHandler *handler_;
+  nghttp2_session *session_;
   event *settings_timerev_;
+  bool flow_control_;
 };
 
 } // namespace shrpx

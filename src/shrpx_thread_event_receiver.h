@@ -38,9 +38,9 @@ namespace shrpx {
 class Http2Session;
 
 struct WorkerEvent {
-  evutil_socket_t client_fd;
   sockaddr_union client_addr;
   size_t client_addrlen;
+  evutil_socket_t client_fd;
 };
 
 class ThreadEventReceiver {

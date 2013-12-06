@@ -67,15 +67,15 @@ typedef enum {
 typedef struct {
   nghttp2_frame_hd hd;
   /**
+   * The data to be sent for this DATA frame.
+   */
+  nghttp2_data_provider data_prd;
+  /**
    * The flag to indicate whether EOF was reached or not. Initially
    * |eof| is 0. It becomes 1 after all data were read. This is used
    * exclusively by nghttp2 library and not in the spec.
    */
   uint8_t eof;
-  /**
-   * The data to be sent for this DATA frame.
-   */
-  nghttp2_data_provider data_prd;
 } nghttp2_data;
 
 int nghttp2_frame_is_data_frame(uint8_t *head);

@@ -81,12 +81,10 @@ typedef enum {
 
 typedef struct {
   nghttp2_frame frame;
-  nghttp2_inbound_state state;
-  uint8_t headbuf[NGHTTP2_FRAME_HEAD_LENGTH];
-  /* How many bytes are filled in headbuf */
-  size_t headbufoff;
   /* Payload for non-DATA frames. */
   uint8_t *buf;
+  /* How many bytes are filled in headbuf */
+  size_t headbufoff;
   /* Capacity of buf */
   size_t bufmax;
   /* For frames without name/value header block, this is how many
@@ -100,8 +98,10 @@ typedef struct {
   /* How many bytes are received for this frame. off <= payloadlen
      must be fulfilled. */
   size_t off;
+  nghttp2_inbound_state state;
   /* Error code */
   int error_code;
+  uint8_t headbuf[NGHTTP2_FRAME_HEAD_LENGTH];
 } nghttp2_inbound_frame;
 
 typedef enum {
@@ -115,7 +115,37 @@ typedef enum {
 } nghttp2_goaway_flag;
 
 struct nghttp2_session {
-  uint8_t server;
+  nghttp2_map /* <nghttp2_stream*> */ streams;
+  /* Queue for outbound frames other than stream-creating HEADERS */
+  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
+  /* Queue for outbound stream-creating HEADERS frame */
+  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_ss_pq;
+  nghttp2_active_outbound_item aob;
+  nghttp2_inbound_frame iframe;
+  nghttp2_hd_context hd_deflater;
+  nghttp2_hd_context hd_inflater;
+  nghttp2_session_callbacks callbacks;
+  /* Sequence number of outbound frame to maintain the order of
+     enqueue if priority is equal. */
+  int64_t next_seq;
+  /* Buffer used to store inflated name/value pairs in wire format
+     temporarily on pack/unpack. */
+  uint8_t *nvbuf;
+  void *user_data;
+  /* In-flight SETTINGS values. NULL does not necessarily mean there
+     is no in-flight SETTINGS. */
+  nghttp2_settings_entry *inflight_iv;
+  /* The number of entries in |inflight_iv|. -1 if there is no
+     in-flight SETTINGS. */
+  ssize_t inflight_niv;
+  /* The number of outgoing streams. This will be capped by
+     remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]. */
+  size_t num_outgoing_streams;
+  /* The number of incoming streams. This will be capped by
+     local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]. */
+  size_t num_incoming_streams;
+  /* The number of bytes allocated for nvbuf */
+  size_t nvbuflen;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
   uint32_t next_stream_id;
   /* The largest stream ID received so far */
@@ -127,51 +157,8 @@ struct nghttp2_session {
   /* Counter of unique ID of PING. Wraps when it exceeds
      NGHTTP2_MAX_UNIQUE_ID */
   uint32_t next_unique_id;
-
-  /* Sequence number of outbound frame to maintain the order of
-     enqueue if priority is equal. */
-  int64_t next_seq;
-
-  nghttp2_map /* <nghttp2_stream*> */ streams;
-  /* The number of outgoing streams. This will be capped by
-     remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]. */
-  size_t num_outgoing_streams;
-  /* The number of incoming streams. This will be capped by
-     local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]. */
-  size_t num_incoming_streams;
-
-  /* Queue for outbound frames other than stream-creating HEADERS */
-  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
-  /* Queue for outbound stream-creating HEADERS frame */
-  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_ss_pq;
-
-  nghttp2_active_outbound_item aob;
-
-  nghttp2_inbound_frame iframe;
-
-  /* Buffer used to store inflated name/value pairs in wire format
-     temporarily on pack/unpack. */
-  uint8_t *nvbuf;
-  /* The number of bytes allocated for nvbuf */
-  size_t nvbuflen;
-
-  nghttp2_hd_context hd_deflater;
-  nghttp2_hd_context hd_inflater;
-
-  /* Flags indicating GOAWAY is sent and/or recieved. The flags are
-     composed by bitwise OR-ing nghttp2_goaway_flag. */
-  uint8_t goaway_flags;
   /* This is the value in GOAWAY frame received from remote endpoint. */
   int32_t last_stream_id;
-
-  /* Non-zero indicates connection-level flow control on remote side
-     is in effect. This will be disabled when WINDOW_UPDATE with
-     END_FLOW_CONTROL bit set is received. */
-  uint8_t remote_flow_control;
-  /* Non-zero indicates connection-level flow control on local side is
-     in effect. This will be disabled when WINDOW_UPDATE with
-     END_FLOW_CONTROL bit set is sent. */
-  uint8_t local_flow_control;
   /* Current sender window size. This value is computed against the
      current initial window size of remote endpoint. */
   int32_t remote_window_size;
@@ -187,25 +174,26 @@ struct nghttp2_session {
      increased/decreased by submitting WINDOW_UPDATE. See
      nghttp2_submit_window_update(). */
   int32_t local_window_size;
-
   /* Settings value received from the remote endpoint. We just use ID
      as index. The index = 0 is unused. */
   uint32_t remote_settings[NGHTTP2_SETTINGS_MAX+1];
   /* Settings value of the local endpoint. */
   uint32_t local_settings[NGHTTP2_SETTINGS_MAX+1];
-
-  /* In-flight SETTINGS values. NULL does not necessarily mean there
-     is no in-flight SETTINGS. */
-  nghttp2_settings_entry *inflight_iv;
-  /* The number of entries in |inflight_iv|. -1 if there is no
-     in-flight SETTINGS. */
-  ssize_t inflight_niv;
-
   /* Option flags. This is bitwise-OR of 0 or more of nghttp2_optmask. */
   uint32_t opt_flags;
-
-  nghttp2_session_callbacks callbacks;
-  void *user_data;
+  /* Nonzero if the session is server side. */
+  uint8_t server;
+  /* Flags indicating GOAWAY is sent and/or recieved. The flags are
+     composed by bitwise OR-ing nghttp2_goaway_flag. */
+  uint8_t goaway_flags;
+  /* Non-zero indicates connection-level flow control on remote side
+     is in effect. This will be disabled when WINDOW_UPDATE with
+     END_FLOW_CONTROL bit set is received. */
+  uint8_t remote_flow_control;
+  /* Non-zero indicates connection-level flow control on local side is
+     in effect. This will be disabled when WINDOW_UPDATE with
+     END_FLOW_CONTROL bit set is sent. */
+  uint8_t local_flow_control;
 };
 
 /* Struct used when updating initial window size of each active

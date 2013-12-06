@@ -68,11 +68,11 @@ public:
 
   bool get_flow_control() const;
 private:
+  DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;
-  bool flow_control_;
   int32_t initial_window_size_;
-  DownstreamQueue downstream_queue_;
+  bool flow_control_;
 };
 
 } // namespace shrpx

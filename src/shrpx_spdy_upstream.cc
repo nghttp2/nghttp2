@@ -372,7 +372,7 @@ uint32_t infer_upstream_rst_stream_status_code
 
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   : handler_(handler),
-    session_(0)
+    session_(nullptr)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,

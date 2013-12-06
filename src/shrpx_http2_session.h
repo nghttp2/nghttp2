@@ -117,27 +117,27 @@ public:
     CONNECTED
   };
 private:
+  std::set<Http2DownstreamConnection*> dconns_;
+  std::set<StreamData*> streams_;
+  // Used to parse the response from HTTP proxy
+  std::unique_ptr<http_parser> proxy_htp_;
   event_base *evbase_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
   SSL *ssl_;
+  nghttp2_session *session_;
+  bufferevent *bev_;
+  bufferevent *wrbev_;
+  bufferevent *rdbev_;
+  event *settings_timerev_;
   // fd_ is used for proxy connection and no TLS connection. For
   // direct or TLS connection, it may be -1 even after connection is
   // established. Use bufferevent_getfd(bev_) to get file descriptor
   // in these cases.
   int fd_;
-  nghttp2_session *session_;
-  bufferevent *bev_;
-  std::set<Http2DownstreamConnection*> dconns_;
-  std::set<StreamData*> streams_;
   int state_;
   bool notified_;
-  bufferevent *wrbev_;
-  bufferevent *rdbev_;
   bool flow_control_;
-  // Used to parse the response from HTTP proxy
-  std::unique_ptr<http_parser> proxy_htp_;
-  event *settings_timerev_;
 };
 
 } // namespace shrpx

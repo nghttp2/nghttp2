@@ -76,18 +76,18 @@ public:
   int perform_http2_upgrade(HttpsUpstream *http);
   bool get_http2_upgrade_allowed() const;
 private:
-  bufferevent *bev_;
-  int fd_;
-  SSL *ssl_;
+  std::set<DownstreamConnection*> dconn_pool_;
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;
-  bool should_close_after_write_;
-  std::set<DownstreamConnection*> dconn_pool_;
+  bufferevent *bev_;
   // Shared HTTP2 session for each thread. NULL if backend is not
   // HTTP2. Not deleted by this object.
   Http2Session *http2session_;
+  SSL *ssl_;
   // The number of bytes of HTTP/2.0 client connection header to read
   size_t left_connhd_len_;
+  int fd_;
+  bool should_close_after_write_;
 };
 
 } // namespace shrpx

@@ -178,47 +178,54 @@ public:
 
   static const size_t OUTPUT_UPPER_THRES = 64*1024;
 private:
+  Headers request_headers_;
+  Headers response_headers_;
+
+  std::string request_method_;
+  std::string request_path_;
+  std::string request_http2_scheme_;
+  std::string request_http2_authority_;
+  std::string assembled_request_cookie_;
+  // the length of request body
+  int64_t request_bodylen_;
+
   Upstream *upstream_;
   DownstreamConnection *dconn_;
+  // This buffer is used to temporarily store downstream response
+  // body. nghttp2 library reads data from this in the callback.
+  evbuffer *response_body_buf_;
+
   int32_t stream_id_;
   int32_t priority_;
   // stream ID in backend connection
   int32_t downstream_stream_id_;
+
+  // RST_STREAM error_code from downstream HTTP2 connection
+  nghttp2_error_code response_rst_stream_error_code_;
+
+  int request_state_;
+  int request_major_;
+  int request_minor_;
+
+  int response_state_;
+  unsigned int response_http_status_;
+  int response_major_;
+  int response_minor_;
+
   // true if the request contains upgrade token (HTTP Upgrade or
   // CONNECT)
   bool upgrade_request_;
   // true if the connection is upgraded (HTTP Upgrade or CONNECT)
   bool upgraded_;
 
-  int request_state_;
-  std::string request_method_;
-  std::string request_path_;
-  std::string request_http2_scheme_;
-  std::string request_http2_authority_;
-  int request_major_;
-  int request_minor_;
   bool chunked_request_;
   bool request_connection_close_;
   bool request_expect_100_continue_;
-  std::string assembled_request_cookie_;
-  Headers request_headers_;
   bool request_header_key_prev_;
-  // the length of request body
-  int64_t request_bodylen_;
 
-  int response_state_;
-  unsigned int response_http_status_;
-  int response_major_;
-  int response_minor_;
   bool chunked_response_;
   bool response_connection_close_;
-  Headers response_headers_;
   bool response_header_key_prev_;
-  // This buffer is used to temporarily store downstream response
-  // body. nghttp2 library reads data from this in the callback.
-  evbuffer *response_body_buf_;
-  // RST_STREAM error_code from downstream HTTP2 connection
-  nghttp2_error_code response_rst_stream_error_code_;
 };
 
 } // namespace shrpx

@@ -40,10 +40,10 @@ public:
   ~Worker();
   void run();
 private:
-  // Channel to the main thread
-  int fd_;
   SSL_CTX *sv_ssl_ctx_;
   SSL_CTX *cl_ssl_ctx_;
+  // Channel to the main thread
+  int fd_;
 };
 
 void start_threaded_worker(WorkerInfo *info);

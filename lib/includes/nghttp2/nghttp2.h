@@ -617,10 +617,6 @@ typedef struct {
    */
   nghttp2_frame_hd hd;
   /**
-   * The priority.
-   */
-  int32_t pri;
-  /**
    * The name/value pairs.
    */
   nghttp2_nv *nva;
@@ -628,6 +624,10 @@ typedef struct {
    * The number of name/value pairs in |nva|.
    */
   size_t nvlen;
+  /**
+   * The priority.
+   */
+  int32_t pri;
   nghttp2_headers_category cat;
 } nghttp2_headers;
 
@@ -705,10 +705,6 @@ typedef struct {
    */
   nghttp2_frame_hd hd;
   /**
-   * The promised stream ID
-   */
-  int32_t promised_stream_id;
-  /**
    * The name/value pairs.
    */
   nghttp2_nv *nva;
@@ -716,6 +712,10 @@ typedef struct {
    * The number of name/value pairs in |nva|.
    */
   size_t nvlen;
+  /**
+   * The promised stream ID
+   */
+  int32_t promised_stream_id;
 } nghttp2_push_promise;
 
 /**
@@ -1283,6 +1283,10 @@ typedef enum {
  */
 typedef struct {
   /**
+   * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`
+   */
+  uint32_t peer_max_concurrent_streams;
+  /**
    * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE`
    */
   uint8_t no_auto_stream_window_update;
@@ -1290,10 +1294,6 @@ typedef struct {
    * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
    */
   uint8_t no_auto_connection_window_update;
-  /**
-   * :enum:`NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS`
-   */
-  uint32_t peer_max_concurrent_streams;
 } nghttp2_opt_set;
 
 /**

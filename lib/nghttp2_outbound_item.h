@@ -43,18 +43,18 @@ typedef struct {
 } nghttp2_headers_aux_data;
 
 typedef struct {
+  int64_t seq;
+  void *frame;
+  void *aux_data;
   /* Type of |frame|. NGHTTP2_CTRL: nghttp2_frame*, NGHTTP2_DATA:
      nghttp2_data* */
   nghttp2_frame_category frame_cat;
-  void *frame;
-  void *aux_data;
   /* The priority used in priority comparion */
   int32_t pri;
   /* The initial priority */
   int32_t inipri;
   /* The amount of priority decrement in next time */
   uint32_t pri_decay;
-  int64_t seq;
 } nghttp2_outbound_item;
 
 /*
