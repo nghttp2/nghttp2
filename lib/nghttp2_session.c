@@ -1398,9 +1398,13 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
  */
 static void adjust_pri(nghttp2_outbound_item *item)
 {
-  if(item->pri >= (int32_t)(NGHTTP2_PRI_LOWEST - (item->pri_decay - 1))) {
+  if(item->pri == NGHTTP2_PRI_LOWEST) {
     item->pri = item->inipri;
     item->pri_decay = 1;
+    return;
+  }
+  if(item->pri > (int32_t)(NGHTTP2_PRI_LOWEST - (item->pri_decay - 1))) {
+    item->pri = NGHTTP2_PRI_LOWEST;
     return;
   }
   item->pri += (int32_t)(item->pri_decay - 1);
