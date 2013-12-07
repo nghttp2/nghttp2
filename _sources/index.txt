@@ -20,6 +20,8 @@ Contents:
    apiref
    nghttp2.h
    nghttp2ver.h
+   Source <https://github.com/tatsuhiro-t/nghttp2>
+   Issues <https://github.com/tatsuhiro-t/nghttp2/issues>
 
 Released Versions
 =================
