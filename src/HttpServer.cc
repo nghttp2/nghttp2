@@ -826,21 +826,33 @@ int htdocs_on_request_recv_callback
 }
 
 namespace {
+int hd_before_frame_send_callback
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
+{
+  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+    auto stream_id = frame->push_promise.promised_stream_id;
+    auto req = util::make_unique<Request>(stream_id);
+    auto nva = http2::sort_nva(frame->push_promise.nva,
+                               frame->push_promise.nvlen);
+    append_nv(req.get(), nva);
+    hd->add_stream(stream_id, std::move(req));
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
 int hd_on_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame,
  void *user_data)
 {
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
   if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
-    auto req = util::make_unique<Request>
-      (frame->push_promise.promised_stream_id);
-    auto nva = http2::sort_nva(frame->push_promise.nva,
-                               frame->push_promise.nvlen);
-    append_nv(req.get(), nva);
-    auto req_ptr = req.get();
-    auto stream_id = req->stream_id;
-    hd->add_stream(stream_id, std::move(req));
-    prepare_response(req_ptr, hd, /*allow_push */ false);
+    auto stream = hd->get_stream(frame->push_promise.promised_stream_id);
+    if(stream) {
+      prepare_response(stream, hd, /*allow_push */ false);
+    }
   }
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
@@ -914,6 +926,7 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.recv_callback = hd_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = hd_on_frame_recv_callback;
+  callbacks.before_frame_send_callback = hd_before_frame_send_callback;
   callbacks.on_frame_send_callback = hd_on_frame_send_callback;
   callbacks.on_data_recv_callback = hd_on_data_recv_callback;
   callbacks.on_data_send_callback = hd_on_data_send_callback;
