@@ -515,35 +515,10 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
                                               size_t niv);
 
 /*
- * Checks names are not empty string and do not contain control
- * characters and values are not NULL.
- *
- * This function returns nonzero if it succeeds, or 0.
- */
-int nghttp2_frame_nv_check_null(const char **nv);
-
-/*
  * Sorts the |nva| in ascending order of name and value. If names are
  * equivalent, sort them by value.
  */
 void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
-
-/*
- * Copies name/value pairs from |nv| to |*nva_ptr|, which is
- * dynamically allocated so that all items can be stored.
- *
- * The |*nva_ptr| must be freed using nghttp2_nv_array_del().
- *
- * This function returns the number of name/value pairs in |*nva_ptr|,
- * or one of the following negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- * NGHTTP2_ERR_INVALID_ARGUMENT
- *     The length of name or value in |nv| is strictly larger than
- *     NGHTTP2_MAX_HD_VALUE_LENGTH.
- */
-ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv);
 
 /*
  * Copies name/value pairs from |nva|, which contains |nvlen| pairs,

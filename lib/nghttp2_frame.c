@@ -585,19 +585,6 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
   return iv_copy;
 }
 
-int nghttp2_frame_nv_check_null(const char **nv)
-{
-  size_t i;
-  for(i = 0; nv[i]; i += 2) {
-    if(nv[i+1] == NULL ||
-       !nghttp2_check_header_name_nocase((const uint8_t*)nv[i],
-                                         strlen(nv[i]))) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
 int nghttp2_nv_array_check_null(const nghttp2_nv *nva, size_t nvlen)
 {
   size_t i;
@@ -663,50 +650,6 @@ static int nv_compar(const void *lhs, const void *rhs)
 void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen)
 {
   qsort(nva, nvlen, sizeof(nghttp2_nv), nv_compar);
-}
-
-ssize_t nghttp2_nv_array_from_cstr(nghttp2_nv **nva_ptr, const char **nv)
-{
-  int i;
-  uint8_t *data;
-  size_t buflen = 0, nvlen = 0;
-  nghttp2_nv *p;
-  for(i = 0; nv[i]; ++i) {
-    size_t len = strlen(nv[i]);
-    if(len > NGHTTP2_MAX_HD_VALUE_LENGTH) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-    buflen += len;
-  }
-  nvlen = i/2;
-  /* If all name/value pair is 0-length, remove them */
-  if(nvlen == 0 || buflen == 0) {
-    *nva_ptr = NULL;
-    return 0;
-  }
-  buflen += sizeof(nghttp2_nv)*nvlen;
-  *nva_ptr = malloc(buflen);
-  if(*nva_ptr == NULL) {
-    return NGHTTP2_ERR_NOMEM;
-  }
-  p = *nva_ptr;
-  data = (uint8_t*)(*nva_ptr) + sizeof(nghttp2_nv)*nvlen;
-
-  for(i = 0; nv[i]; i += 2) {
-    size_t len = strlen(nv[i]);
-    memcpy(data, nv[i], len);
-    p->name = data;
-    p->namelen = len;
-    nghttp2_downcase(p->name, p->namelen);
-    data += len;
-    len = strlen(nv[i+1]);
-    memcpy(data, nv[i+1], len);
-    p->value = data;
-    p->valuelen = len;
-    data += len;
-    ++p;
-  }
-  return nvlen;
 }
 
 ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,

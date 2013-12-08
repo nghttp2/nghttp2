@@ -50,6 +50,10 @@ namespace http2 {
   { (uint8_t*)NAME, (uint8_t*)VALUE,                                    \
       (uint16_t)(sizeof(NAME) - 1), (uint16_t)(sizeof(VALUE) - 1) }
 
+// Create nghttp2_nv from string literal |NAME| and c-string |VALUE|.
+#define MAKE_NV_LS_CS(NAME, VALUE)                                      \
+  { (uint8_t*)NAME, (uint8_t*)VALUE,                                    \
+      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(strlen(VALUE)) }
 
 std::string get_status_string(unsigned int status_code);
 

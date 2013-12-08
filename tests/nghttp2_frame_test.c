@@ -33,28 +33,29 @@
 #include "nghttp2_helper.h"
 #include "nghttp2_test_helper.h"
 
-static const char *headers[] = {
-  "method", "GET",
-  "scheme", "https",
-  "url", "/",
-  "x-head", "foo",
-  "x-head", "bar",
-  "version", "HTTP/1.1",
-  "x-empty", "",
-  NULL
-};
-
-void test_nghttp2_frame_nv_check_null(void)
+static nghttp2_nv make_nv(const char *name, const char *value)
 {
-  const char *headers1[] = { "path", "/", "host", "a", NULL };
-  const char *headers2[] = { "", "/", "host", "a", NULL };
-  const char *headers3[] = { "path", "/", "host\x01", "a", NULL };
-  const char *headers4[] = { "PATH", "/", "host", NULL, NULL };
+  nghttp2_nv nv;
+  nv.name = (uint8_t*)name;
+  nv.value = (uint8_t*)value;
+  nv.namelen = strlen(name);
+  nv.valuelen = strlen(value);
+  return nv;
+}
 
-  CU_ASSERT(nghttp2_frame_nv_check_null(headers1));
-  CU_ASSERT(0 == nghttp2_frame_nv_check_null(headers2));
-  CU_ASSERT(0 == nghttp2_frame_nv_check_null(headers3));
-  CU_ASSERT(0 == nghttp2_frame_nv_check_null(headers4));
+#define HEADERS_LENGTH 7
+
+static nghttp2_nv* headers(void)
+{
+  nghttp2_nv *nva = malloc(sizeof(nghttp2_nv) * HEADERS_LENGTH);
+  nva[0] = make_nv("method", "GET");
+  nva[1] = make_nv("scheme", "https");
+  nva[2] = make_nv("url", "/");
+  nva[3] = make_nv("x-head", "foo");
+  nva[4] = make_nv("x-head", "bar");
+  nva[5] = make_nv("version", "HTTP/1.1");
+  nva[6] = make_nv("x-empty", "");
+  return nva;
 }
 
 static void check_frame_header(uint16_t length, uint8_t type, uint8_t flags,
@@ -79,7 +80,8 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
-  nvlen = nghttp2_nv_array_from_cstr(&nva, headers);
+  nva = headers();
+  nvlen = HEADERS_LENGTH;
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
                              1000000007,
@@ -138,19 +140,20 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   nghttp2_nv *nva;
   ssize_t nvlen;
   size_t big_vallen = NGHTTP2_MAX_HD_VALUE_LENGTH;
-  char *big_hds[17];
-  size_t big_hdslen = sizeof(big_hds)/sizeof(big_hds[0]) - 1;
+  nghttp2_nv big_hds[8];
+  size_t big_hdslen = ARRLEN(big_hds);
   size_t i;
 
-  for(i = 0; i < big_hdslen; i += 2) {
-    big_hds[i] = (char*)"header";
-    big_hds[i+1] = malloc(big_vallen+1);
-    memset(big_hds[i+1], '0'+i, big_vallen);
-    big_hds[i+1][big_vallen] = '\0';
+  for(i = 0; i < big_hdslen; ++i) {
+    big_hds[i].name = (uint8_t*)"header";
+    big_hds[i].value = malloc(big_vallen+1);
+    memset(big_hds[i].value, '0'+i, big_vallen);
+    big_hds[i].value[big_vallen] = '\0';
+    big_hds[i].namelen = strlen((char*)big_hds[i].name);
+    big_hds[i].valuelen = big_vallen;
   }
-  big_hds[big_hdslen] = NULL;
 
-  nvlen = nghttp2_nv_array_from_cstr(&nva, (const char**)big_hds);
+  nvlen = nghttp2_nv_array_copy(&nva, big_hds, big_hdslen);
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
@@ -161,8 +164,8 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
 
   nghttp2_frame_headers_free(&frame);
   free(buf);
-  for(i = 0; i < big_hdslen; i += 2) {
-    free(big_hds[i+1]);
+  for(i = 0; i < big_hdslen; ++i) {
+    free(big_hds[i].value);
   }
   nghttp2_hd_deflate_free(&deflater);
 }
@@ -260,7 +263,8 @@ void test_nghttp2_frame_pack_push_promise()
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_RESPONSE);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_RESPONSE);
 
-  nvlen = nghttp2_nv_array_from_cstr(&nva, headers);
+  nva = headers();
+  nvlen = HEADERS_LENGTH;
   nghttp2_frame_push_promise_init(&frame, NGHTTP2_FLAG_END_PUSH_PROMISE,
                                   1000000007, (1U << 31) - 1, nva, nvlen);
   framelen = nghttp2_frame_pack_push_promise(&buf, &buflen, &frame, &deflater);
@@ -371,48 +375,6 @@ void test_nghttp2_nv_array_check_null(void)
   CU_ASSERT(0 == nghttp2_nv_array_check_null(nva2, ARRLEN(nva2)));
   CU_ASSERT(0 == nghttp2_nv_array_check_null(nva3, ARRLEN(nva3)));
   CU_ASSERT(nghttp2_nv_array_check_null(nva4, ARRLEN(nva4)));
-}
-
-void test_nghttp2_nv_array_from_cstr(void)
-{
-  const char *empty[] = {NULL};
-  const char *emptynv[] = {"", "", "", "", NULL};
-  const char *nv[] = {"alpha", "bravo", "charlie", "delta", NULL};
-  const char *bignv[] = {"echo", NULL, NULL};
-  size_t bigvallen = 64*1024;
-  char *bigval = malloc(bigvallen+1);
-  nghttp2_nv *nva;
-  ssize_t rv;
-
-  memset(bigval, '0', bigvallen);
-  bigval[bigvallen] = '\0';
-  bignv[1] = bigval;
-
-  rv = nghttp2_nv_array_from_cstr(&nva, empty);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(NULL == nva);
-
-  rv = nghttp2_nv_array_from_cstr(&nva, emptynv);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(NULL == nva);
-
-  rv = nghttp2_nv_array_from_cstr(&nva, nv);
-  CU_ASSERT(2 == rv);
-  CU_ASSERT(nva[0].namelen == 5);
-  CU_ASSERT(0 == memcmp("alpha", nva[0].name, 5));
-  CU_ASSERT(nva[0].valuelen = 5);
-  CU_ASSERT(0 == memcmp("bravo", nva[0].value, 5));
-  CU_ASSERT(nva[1].namelen == 7);
-  CU_ASSERT(0 == memcmp("charlie", nva[1].name, 7));
-  CU_ASSERT(nva[1].valuelen == 5);
-  CU_ASSERT(0 == memcmp("delta", nva[1].value, 5));
-
-  nghttp2_nv_array_del(nva);
-
-  rv = nghttp2_nv_array_from_cstr(&nva, bignv);
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
-
-  free(bigval);
 }
 
 void test_nghttp2_nv_array_copy(void)

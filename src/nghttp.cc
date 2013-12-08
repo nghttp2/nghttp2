@@ -965,8 +965,8 @@ int submit_request
   for(auto& kv : build_headers) {
     nva.push_back(http2::make_nv(kv.first, kv.second));
   }
-  int rv = nghttp2_submit_request2(client->session, req->pri,
-                                   nva.data(), nva.size(), req->data_prd, req);
+  int rv = nghttp2_submit_request(client->session, req->pri,
+                                  nva.data(), nva.size(), req->data_prd, req);
   if(rv != 0) {
     std::cerr << "nghttp2_submit_request() returned error: "
               << nghttp2_strerror(rv) << std::endl;

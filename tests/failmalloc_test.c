@@ -114,9 +114,10 @@ static void run_nghttp2_session_send(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  const char *nv[] = { ":host", "example.org",
-                       ":scheme", "https",
-                       NULL };
+  nghttp2_nv nv[] = {
+    MAKE_NV(":host", "example.org"),
+    MAKE_NV(":scheme", "https")
+  };
   nghttp2_data_provider data_prd;
   nghttp2_settings_entry iv[2];
   my_user_data ud;
@@ -136,12 +137,12 @@ static void run_nghttp2_session_send(void)
   if(rv != 0) {
     goto client_new_fail;
   }
-  rv = nghttp2_submit_request(session, 3, nv, &data_prd, NULL);
+  rv = nghttp2_submit_request(session, 3, nv, ARRLEN(nv), &data_prd, NULL);
   if(rv != 0) {
     goto fail;
   }
   rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1,
-                              NGHTTP2_PRI_DEFAULT, nv, NULL);
+                              NGHTTP2_PRI_DEFAULT, nv, ARRLEN(nv), NULL);
   if(rv != 0) {
     goto fail;
   }
@@ -152,7 +153,7 @@ static void run_nghttp2_session_send(void)
   /* The HEADERS submitted by the previous nghttp2_submit_headers will
      have stream ID 3. Send HEADERS to that stream. */
   rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3,
-                              NGHTTP2_PRI_DEFAULT, nv, NULL);
+                              NGHTTP2_PRI_DEFAULT, nv, ARRLEN(nv), NULL);
   if(rv != 0) {
     goto fail;
   }
@@ -175,7 +176,7 @@ static void run_nghttp2_session_send(void)
   }
   /* Sending against half-closed stream */
   rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3,
-                              NGHTTP2_PRI_DEFAULT, nv, NULL);
+                              NGHTTP2_PRI_DEFAULT, nv, ARRLEN(nv), NULL);
   if(rv != 0) {
     goto fail;
   }
@@ -224,9 +225,10 @@ static void run_nghttp2_session_recv(void)
   uint8_t *buf = NULL;
   size_t buflen = 0;
   ssize_t framelen;
-  const char *nv[] = { ":authority", "example.org",
-                       ":scheme", "https",
-                       NULL };
+  nghttp2_nv nv[] = {
+    MAKE_NV(":authority", "example.org"),
+    MAKE_NV(":scheme", "https")
+  };
   nghttp2_settings_entry iv[2];
   my_user_data ud;
   data_feed df;
@@ -239,13 +241,13 @@ static void run_nghttp2_session_recv(void)
   ud.df = &df;
 
   nghttp2_failmalloc_pause();
+  nvlen = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv));
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
   nghttp2_session_server_new(&session, &callbacks, &ud);
   nghttp2_failmalloc_unpause();
 
   /* HEADERS */
   nghttp2_failmalloc_pause();
-  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM,
                              1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framelen = nghttp2_frame_pack_headers(&buf, &buflen, &frame.headers,
@@ -319,9 +321,10 @@ static void run_nghttp2_frame_pack_headers(void)
   uint8_t *buf = NULL;
   size_t buflen = 0;
   ssize_t framelen;
-  const char *nv[] = { ":host", "example.org",
-                       ":scheme", "https",
-                       NULL };
+  nghttp2_nv nv[] = {
+    MAKE_NV(":host", "example.org"),
+    MAKE_NV(":scheme", "https")
+  };
   int rv;
   nghttp2_nv *nva;
   ssize_t nvlen;
@@ -334,7 +337,7 @@ static void run_nghttp2_frame_pack_headers(void)
   if(rv != 0) {
     goto inflate_init_fail;
   }
-  nvlen = nghttp2_nv_array_from_cstr(&nva, nv);
+  nvlen = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv));
   if(nvlen < 0) {
     goto nv_copy_fail;
   }

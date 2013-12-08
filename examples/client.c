@@ -51,6 +51,14 @@ enum {
   WANT_WRITE
 };
 
+#define MAKE_NV(NAME, VALUE)                                            \
+  {(uint8_t*)NAME, (uint8_t*)VALUE,                                     \
+      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(sizeof(VALUE) - 1) }
+
+#define MAKE_NV_CS(NAME, VALUE)                                         \
+  {(uint8_t*)NAME, (uint8_t*)VALUE,                                     \
+      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(strlen(VALUE)) }
+
 struct Connection {
   SSL *ssl;
   nghttp2_session *session;
@@ -515,16 +523,17 @@ static void submit_request(struct Connection *connection, struct Request *req)
 {
   int pri = 0;
   int rv;
-  const char *nv[13];
-  /* Make sure that the last item is NULL */
-  nv[0] = ":method";     nv[1] = "GET";
-  nv[2] = ":path";       nv[3] = req->path;
-  nv[4] = ":scheme";     nv[5] = "https";
-  nv[6] = ":host";       nv[7] = req->hostport;
-  nv[8] = "accept";     nv[9] = "*/*";
-  nv[10] = "user-agent"; nv[11] = "nghttp2/"NGHTTP2_VERSION;
-  nv[12] = NULL;
-  rv = nghttp2_submit_request(connection->session, pri, nv, NULL, req);
+  const nghttp2_nv nva[] = {
+    /* Make sure that the last item is NULL */
+    MAKE_NV(":method", "GET"),
+    MAKE_NV_CS(":path", req->path),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV_CS(":host", req->hostport),
+    MAKE_NV("accept", "*/*"),
+    MAKE_NV("user-agent", "nghttp2/"NGHTTP2_VERSION)
+  };
+  rv = nghttp2_submit_request(connection->session, pri,
+                              nva, sizeof(nva)/sizeof(nva[0]), NULL, req);
   if(rv != 0) {
     diec("nghttp2_submit_request", rv);
   }

@@ -878,16 +878,15 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
   auto content_length = util::utos(html.size());
   auto status_code_str = util::utos(status_code);
-  const char *nv[] = {
-    ":status", status_code_str.c_str(),
-    "content-type", "text/html; charset=UTF-8",
-    "server", get_config()->server_name,
-    "content-length", content_length.c_str(),
-    nullptr
+  auto nva = std::vector<nghttp2_nv>{
+    MAKE_NV_LS(":status", status_code_str),
+    MAKE_NV_LS_LS("content-type", "text/html; charset=UTF-8"),
+    MAKE_NV_LS_CS("server", get_config()->server_name),
+    MAKE_NV_LS("content-length", content_length)
   };
 
-  rv = nghttp2_submit_response(session_, downstream->get_stream_id(), nv,
-                               &data_prd);
+  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
+                               nva.data(), nva.size(), &data_prd);
   if(rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_response() failed: "
                       << nghttp2_strerror(rv);
@@ -992,8 +991,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   data_prd.read_callback = downstream_data_read_callback;
 
   int rv;
-  rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
-                                nva.data(), nva.size(), &data_prd);
+  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
+                               nva.data(), nva.size(), &data_prd);
   if(rv != 0) {
     ULOG(FATAL, this) << "nghttp2_submit_response() failed";
     return -1;

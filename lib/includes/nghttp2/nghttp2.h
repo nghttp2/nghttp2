@@ -1764,27 +1764,20 @@ const char* nghttp2_strerror(int lib_error_code);
  * The |pri| is priority of this request. 0 is the highest priority
  * value and :macro:`NGHTTP2_PRI_LOWEST` is the lowest value.
  *
- * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
- * contains a pointer to the name string and ``nv[2*i+1]`` contains a
- * pointer to the value string. The one beyond last value must be
- * ``NULL``. That is, if the |nv| contains N name/value pairs,
- * ``nv[2*N]`` must be ``NULL``.
+ * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
+ * |nvlen| elements.
  *
  * HTTP/2.0 specification has requirement about header fields in the
  * request HEADERS. See the specification for more details.
  *
- * This function creates copies of all name/value pairs in |nv|.  It
- * also lower-cases all names in |nv|.
- *
- * The string in |nv| must be NULL-terminated. Use
- * `nghttp2_submit_request2()` if name/value pairs are not
- * NULL-terminated strings.
+ * This function creates copies of all name/value pairs in |nva|.  It
+ * also lower-cases all names in |nva|.
  *
  * If |data_prd| is not ``NULL``, it provides data which will be sent
  * in subsequent DATA frames. In this case, a method that allows
  * request message bodies
  * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must
- * be specified with ``:method`` key in |nv| (e.g. ``POST``). This
+ * be specified with ``:method`` key in |nva| (e.g. ``POST``). This
  * function does not take ownership of the |data_prd|. The function
  * copies the members of the |data_prd|. If |data_prd| is ``NULL``,
  * HEADERS have END_STREAM set. The |stream_user_data| is data
@@ -1808,37 +1801,15 @@ const char* nghttp2_strerror(int lib_error_code);
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |nv| includes empty name or
- *     ``NULL`` value.
+ *     The |pri| is invalid; or the |nva| includes empty name, or name
+ *     which contains invalid characters.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
 int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
-                           const char **nv,
+                           const nghttp2_nv *nva, size_t nvlen,
                            const nghttp2_data_provider *data_prd,
                            void *stream_user_data);
-
-/**
- * @function
- *
- * Just like `nghttp2_submit_request()`, but this function takes the
- * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,
- * as name/value pairs. This function is useful if name/value pairs
- * are not NULL-terminated strings.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |nva| includes empty name or
- *     name which contains invalid characters.
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- */
-int nghttp2_submit_request2(nghttp2_session *session, int32_t pri,
-                            const nghttp2_nv *nva, size_t nvlen,
-                            const nghttp2_data_provider *data_prd,
-                            void *stream_user_data);
 
 /**
  * @function
@@ -1846,17 +1817,14 @@ int nghttp2_submit_request2(nghttp2_session *session, int32_t pri,
  * Submits response HEADERS frame and optionally one or more DATA
  * frames against the stream |stream_id|.
  *
- * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
- * contains a pointer to the name string and ``nv[2*i+1]`` contains a
- * pointer to the value string. The one beyond last value must be
- * ``NULL``. That is, if the |nv| contains N name/value pairs,
- * ``nv[2*N]`` must be ``NULL``.
+ * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
+ * |nvlen| elements.
  *
  * HTTP/2.0 specification has requirement about header fields in the
  * response HEADERS. See the specification for more details.
  *
- * This function creates copies of all name/value pairs in |nv|.  It
- * also lower-cases all names in |nv|.
+ * This function creates copies of all name/value pairs in |nva|.  It
+ * also lower-cases all names in |nva|.
  *
  * If |data_prd| is not ``NULL``, it provides data which will be sent
  * in subsequent DATA frames.  This function does not take ownership
@@ -1868,35 +1836,15 @@ int nghttp2_submit_request2(nghttp2_session *session, int32_t pri,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nv| includes empty name or ``NULL`` value.
+ *     The |nva| includes empty name or name which contains invalid
+ *     characters.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
 int nghttp2_submit_response(nghttp2_session *session,
-                            int32_t stream_id, const char **nv,
+                            int32_t stream_id,
+                            const nghttp2_nv *nva, size_t nvlen,
                             const nghttp2_data_provider *data_prd);
-
-/**
- * @function
- *
- * Just like `nghttp2_submit_response()`, but this function takes the
- * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,
- * as name/value pairs. This function is useful if name/value pairs
- * are not NULL-terminated strings.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |nva| includes empty name or
- *     name which contains invalid characters.
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- */
-int nghttp2_submit_response2(nghttp2_session *session,
-                             int32_t stream_id,
-                             const nghttp2_nv *nva, size_t nvlen,
-                             const nghttp2_data_provider *data_prd);
 
 /**
  * @function
@@ -1921,14 +1869,11 @@ int nghttp2_submit_response2(nghttp2_session *session,
  *
  * The |pri| is priority of this request.
  *
- * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
- * contains a pointer to the name string and ``nv[2*i+1]`` contains a
- * pointer to the value string. The one beyond last value must be
- * ``NULL``. That is, if the |nv| contains N name/value pairs,
- * ``nv[2*N]`` must be ``NULL``.
+ * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
+ * |nvlen| elements.
  *
- * This function creates copies of all name/value pairs in |nv|.  It
- * also lower-cases all names in |nv|.
+ * This function creates copies of all name/value pairs in |nva|.  It
+ * also lower-cases all names in |nva|.
  *
  * The |stream_user_data| is a pointer to an arbitrary data which is
  * associated to the stream this frame will open. Therefore it is only
@@ -1943,13 +1888,14 @@ int nghttp2_submit_response2(nghttp2_session *session,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |nv| includes empty name or
- *     ``NULL`` value.
+ *     The |pri| is invalid; or the |nva| includes empty name, or name
+ *     which contains invalid characters.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
 int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
-                           int32_t stream_id, int32_t pri, const char **nv,
+                           int32_t stream_id, int32_t pri,
+                           const nghttp2_nv *nva, size_t nvlen,
                            void *stream_user_data);
 
 /**
@@ -2059,14 +2005,11 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  *
  * The |stream_id| must be client initiated stream ID.
  *
- * The |nv| contains the name/value pairs. For i >= 0, ``nv[2*i]``
- * contains a pointer to the name string and ``nv[2*i+1]`` contains a
- * pointer to the value string. The one beyond last value must be
- * ``NULL``. That is, if the |nv| contains N name/value pairs,
- * ``nv[2*N]`` must be ``NULL``.
+ * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
+ * |nvlen| elements.
  *
- * This function creates copies of all name/value pairs in |nv|.  It
- * also lower-cases all names in |nv|.
+ * This function creates copies of all name/value pairs in |nva|.  It
+ * also lower-cases all names in |nva|.
  *
  * Since the library reorders the frames and tries to send the highest
  * prioritized one first and the HTTP/2.0 specification requires the
@@ -2081,14 +2024,16 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nv| includes empty name or ``NULL`` value.
+ *     The |nva| includes empty name, or name which contains invalid
+ *     characters.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream is already closed or does not exist.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
 int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
-                                int32_t stream_id, const char **nv);
+                                int32_t stream_id,
+                                const nghttp2_nv *nva, size_t nvlen);
 
 /**
  * @function

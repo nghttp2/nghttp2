@@ -454,21 +454,19 @@ int Http2Handler::submit_file_response(const std::string& status,
   std::string date_str = util::http_date(time(0));
   std::string content_length = util::to_str(file_length);
   std::string last_modified_str;
-  const char *nv[] = {
-    ":status", status.c_str(),
-    "server", NGHTTPD_SERVER.c_str(),
-    "content-length", content_length.c_str(),
-    "cache-control", "max-age=3600",
-    "date", date_str.c_str(),
-    nullptr, nullptr,
-    nullptr
+  auto nva = std::vector<nghttp2_nv>{
+    MAKE_NV_LS(":status", status),
+    MAKE_NV_LS("server", NGHTTPD_SERVER),
+    MAKE_NV_LS("content-length", content_length),
+    MAKE_NV_LS_LS("cache-control", "max-age=3600"),
+    MAKE_NV_LS("date", date_str),
   };
   if(last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
-    nv[10] = "last-modified";
-    nv[11] = last_modified_str.c_str();
+    nva.push_back(MAKE_NV_LS("last-modified", last_modified_str));
   }
-  return nghttp2_submit_response(session_, stream_id, nv, data_prd);
+  return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
+                                 data_prd);
 }
 
 int Http2Handler::submit_response
@@ -478,21 +476,16 @@ int Http2Handler::submit_response
  nghttp2_data_provider *data_prd)
 {
   std::string date_str = util::http_date(time(0));
-  const size_t static_size = 6;
-  auto nv = std::vector<const char*>();
-  nv.reserve(static_size + headers.size() * 2 + 1);
-  nv.push_back(":status");
-  nv.push_back(status.c_str());
-  nv.push_back("server");
-  nv.push_back(NGHTTPD_SERVER.c_str());
-  nv.push_back("date");
-  nv.push_back(date_str.c_str());
+  auto nva = std::vector<nghttp2_nv>{
+    MAKE_NV_LS(":status", status),
+    MAKE_NV_LS("server", NGHTTPD_SERVER),
+    MAKE_NV_LS("date", date_str)
+  };
   for(size_t i = 0; i < headers.size(); ++i) {
-    nv.push_back(headers[i].first.c_str());
-    nv.push_back(headers[i].second.c_str());
+    nva.push_back(http2::make_nv(headers[i].first, headers[i].second));
   }
-  nv.push_back(nullptr);
-  int r = nghttp2_submit_response(session_, stream_id, nv.data(), data_prd);
+  int r = nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
+                                  data_prd);
   return r;
 }
 
@@ -500,12 +493,12 @@ int Http2Handler::submit_response(const std::string& status,
                                   int32_t stream_id,
                                   nghttp2_data_provider *data_prd)
 {
-  const char *nv[] = {
-    ":status", status.c_str(),
-    "server", NGHTTPD_SERVER.c_str(),
-    nullptr
+  auto nva = std::vector<nghttp2_nv>{
+    MAKE_NV_LS(":status", status),
+    MAKE_NV_LS("server", NGHTTPD_SERVER)
   };
-  return nghttp2_submit_response(session_, stream_id, nv, data_prd);
+  return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
+                                 data_prd);
 }
 
 void Http2Handler::add_stream(int32_t stream_id, std::unique_ptr<Request> req)
