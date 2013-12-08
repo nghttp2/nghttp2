@@ -264,6 +264,8 @@ disable it.
 ``nghttpd`` only accept the HTTP/2.0 connection via NPN or direct
 HTTP/2.0 connection. No HTTP Upgrade is supported.
 
+``-p`` option allows users to configure server push.
+
 Just like ``nghttp``, it has verbose output mode for framing
 information. Here is sample output from ``nghttpd`` server::
 
