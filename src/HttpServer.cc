@@ -501,6 +501,32 @@ int Http2Handler::submit_response(const std::string& status,
                                  data_prd);
 }
 
+int Http2Handler::submit_push_promise(Request *req,
+                                      const std::string& push_path)
+{
+  std::string authority;
+  auto itr = std::lower_bound(std::begin(req->headers),
+                              std::end(req->headers),
+                              std::make_pair(std::string(":authority"),
+                                             std::string("")));
+  if(itr == std::end(req->headers) || (*itr).first != ":authority") {
+    itr = std::lower_bound(std::begin(req->headers),
+                           std::end(req->headers),
+                           std::make_pair(std::string("host"),
+                                          std::string("")));
+  }
+  auto nva = std::vector<nghttp2_nv>{
+    http2::make_nv_ll(":method", "GET"),
+    http2::make_nv_ls(":path", push_path),
+    get_config()->no_tls ?
+    http2::make_nv_ll(":scheme", "http") :
+    http2::make_nv_ll(":scheme", "https"),
+    http2::make_nv_ls(":authority", (*itr).second)
+  };
+  return nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_PUSH_PROMISE,
+                                     req->stream_id, nva.data(), nva.size());
+}
+
 void Http2Handler::add_stream(int32_t stream_id, std::unique_ptr<Request> req)
 {
   id2req_[stream_id] = std::move(req);
@@ -644,8 +670,9 @@ void prepare_status_response(Request *req, Http2Handler *hd,
 } // namespace
 
 namespace {
-void prepare_response(Request *req, Http2Handler *hd)
+void prepare_response(Request *req, Http2Handler *hd, bool allow_push = true)
 {
+  int rv;
   auto url = (*std::lower_bound(std::begin(req->headers),
                                 std::end(req->headers),
                                 std::make_pair(std::string(":path"),
@@ -674,6 +701,16 @@ void prepare_response(Request *req, Http2Handler *hd)
   if(!check_url(url)) {
     prepare_status_response(req, hd, STATUS_404);
     return;
+  }
+  auto push_itr = hd->get_config()->push.find(url);
+  if(push_itr != std::end(hd->get_config()->push)) {
+    for(auto& push_path : (*push_itr).second) {
+      rv = hd->submit_push_promise(req, push_path);
+      if(rv != 0) {
+        std::cerr << "nghttp2_submit_push_promise() returned error: "
+                  << nghttp2_strerror(rv) << std::endl;
+      }
+    }
   }
   std::string path = hd->get_config()->htdocs+url;
   if(path[path.size()-1] == '/') {
@@ -783,7 +820,7 @@ int htdocs_on_request_recv_callback
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
   auto stream = hd->get_stream(stream_id);
   if(stream) {
-    prepare_response(hd->get_stream(stream_id), hd);
+    prepare_response(stream, hd);
   }
   return 0;
 }
@@ -794,6 +831,17 @@ int hd_on_frame_send_callback
  void *user_data)
 {
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+    auto req = util::make_unique<Request>
+      (frame->push_promise.promised_stream_id);
+    auto nva = http2::sort_nva(frame->push_promise.nva,
+                               frame->push_promise.nvlen);
+    append_nv(req.get(), nva);
+    auto req_ptr = req.get();
+    auto stream_id = req->stream_id;
+    hd->add_stream(stream_id, std::move(req));
+    prepare_response(req_ptr, hd, /*allow_push */ false);
+  }
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
     on_frame_send_callback(session, frame, user_data);

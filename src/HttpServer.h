@@ -47,6 +47,7 @@
 namespace nghttp2 {
 
 struct Config {
+  std::map<std::string, std::vector<std::string>> push;
   std::string htdocs;
   std::string host;
   std::string private_key_file;
@@ -106,6 +107,8 @@ public:
    int32_t stream_id,
    const std::vector<std::pair<std::string, std::string>>& headers,
    nghttp2_data_provider *data_prd);
+
+  int submit_push_promise(Request *req, const std::string& push_path);
 
   void add_stream(int32_t stream_id, std::unique_ptr<Request> req);
   void remove_stream(int32_t stream_id);

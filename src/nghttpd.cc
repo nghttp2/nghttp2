@@ -43,6 +43,33 @@
 namespace nghttp2 {
 
 namespace {
+int parse_push_config(Config& config, const char *optarg)
+{
+  const char *eq = strchr(optarg, '=');
+  if(eq == NULL) {
+    return -1;
+  }
+  auto paths = std::vector<std::string>();
+  auto optarg_end = optarg + strlen(optarg);
+  const char *i = eq + 1;
+  for(;;) {
+    const char *j = strchr(i, ',');
+    if(j == NULL) {
+      j = optarg_end;
+    }
+    paths.emplace_back(i, j);
+    if(j == optarg_end) {
+      break;
+    }
+    i = j;
+    ++i;
+  }
+  config.push[std::string(optarg, eq)] = std::move(paths);
+  return 0;
+}
+} // namespace
+
+namespace {
 void print_usage(std::ostream& out)
 {
   out << "Usage: nghttpd [-DVfhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
@@ -79,6 +106,14 @@ void print_help(std::ostream& out)
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
       << "    --color            Force colored log output.\n"
+      << "    -p, --push=<PATH>=<PUSH_PATH,...>\n"
+      << "                       Push resources PUSH_PATHs when PATH is\n"
+      << "                       requested. This option can be used\n"
+      << "                       repeatedly to specify multiple push\n"
+      << "                       configurations. For example,\n"
+      << "                         -p/=/foo.png -p/doc=/bar.css\n"
+      << "                       PATH and PUSH_PATHs are relative to document\n"
+      << "                       root. See --htdocs option.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -98,12 +133,13 @@ int main(int argc, char **argv)
       {"verify-client", no_argument, nullptr, 'V'},
       {"no-flow-control", no_argument, nullptr, 'f'},
       {"header-table-size", required_argument, nullptr, 'c'},
+      {"push", required_argument, nullptr, 'p'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVc:d:fhv", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVc:d:fhp:v", long_options, &option_index);
     char *end;
     if(c == -1) {
       break;
@@ -132,6 +168,11 @@ int main(int argc, char **argv)
       if(errno == ERANGE || *end != '\0') {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
+      }
+      break;
+    case 'p':
+      if(parse_push_config(config, optarg) != 0) {
+        std::cerr << "-p: Bad option value: " << optarg << std::endl;
       }
       break;
     case '?':
