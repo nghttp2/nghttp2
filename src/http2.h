@@ -28,6 +28,7 @@
 #include "nghttp2_config.h"
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -38,22 +39,6 @@
 namespace nghttp2 {
 
 namespace http2 {
-
-// Create nghttp2_nv from string literal |NAME| and std::string
-// |VALUE|.
-#define MAKE_NV_LS(NAME, VALUE)                                 \
-  { (uint8_t*)NAME, (uint8_t*)VALUE.c_str(),                    \
-      (uint16_t)(sizeof(NAME) - 1), (uint16_t)VALUE.size() }
-
-// Create nghttp2_nv from string literal |NAME| and |VALUE|.
-#define MAKE_NV_LS_LS(NAME, VALUE)                                      \
-  { (uint8_t*)NAME, (uint8_t*)VALUE,                                    \
-      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(sizeof(VALUE) - 1) }
-
-// Create nghttp2_nv from string literal |NAME| and c-string |VALUE|.
-#define MAKE_NV_LS_CS(NAME, VALUE)                                      \
-  { (uint8_t*)NAME, (uint8_t*)VALUE,                                    \
-      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(strlen(VALUE)) }
 
 std::string get_status_string(unsigned int status_code);
 
@@ -129,6 +114,31 @@ concat_norm_headers
 // returned value only references the data pointer to name.c_str() and
 // value.c_str().
 nghttp2_nv make_nv(const std::string& name, const std::string& value);
+
+// Create nghttp2_nv from string literal |name| and |value|.
+template<size_t N, size_t M>
+nghttp2_nv make_nv_ll(const char(&name)[N], const char(&value)[M])
+{
+  return { (uint8_t*)name, (uint8_t*)value,
+      (uint16_t)(N - 1), (uint16_t)(M - 1) };
+}
+
+// Create nghttp2_nv from string literal |name| and c-string |value|.
+template<size_t N>
+nghttp2_nv make_nv_lc(const char(&name)[N], const char *value)
+{
+  return { (uint8_t*)name, (uint8_t*)value,
+      (uint16_t)(N - 1), (uint16_t)strlen(value) };
+}
+
+// Create nghttp2_nv from string literal |name| and std::string
+// |value|.
+template<size_t N>
+nghttp2_nv make_nv_ls(const char(&name)[N], const std::string& value)
+{
+  return { (uint8_t*)name, (uint8_t*)value.c_str(),
+      (uint16_t)(N - 1), (uint16_t)value.size() };
+}
 
 // Appends headers in |headers| to |nv|. Certain headers, including
 // disallowed headers in HTTP/2.0 spec and headers which require

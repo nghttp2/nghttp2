@@ -250,21 +250,23 @@ int Http2DownstreamConnection::push_request_headers()
   if(downstream_->get_request_method() == "CONNECT") {
     // The upstream may be HTTP/2 or HTTP/1
     if(!downstream_->get_request_http2_authority().empty()) {
-      nva.push_back(MAKE_NV_LS(":authority",
-                               downstream_->get_request_http2_authority()));
+      nva.push_back(http2::make_nv_ls
+                    (":authority",
+                     downstream_->get_request_http2_authority()));
     } else {
-      nva.push_back(MAKE_NV_LS(":authority",
-                               downstream_->get_request_path()));
+      nva.push_back(http2::make_nv_ls(":authority",
+                                      downstream_->get_request_path()));
     }
   } else if(!downstream_->get_request_http2_scheme().empty()) {
     // Here the upstream is HTTP/2
-    nva.push_back(MAKE_NV_LS(":scheme",
-                             downstream_->get_request_http2_scheme()));
-    nva.push_back(MAKE_NV_LS(":path",
-                             downstream_->get_request_path()));
+    nva.push_back(http2::make_nv_ls(":scheme",
+                                    downstream_->get_request_http2_scheme()));
+    nva.push_back(http2::make_nv_ls(":path",
+                                    downstream_->get_request_path()));
     if(!downstream_->get_request_http2_authority().empty()) {
-      nva.push_back(MAKE_NV_LS(":authority",
-                               downstream_->get_request_http2_authority()));
+      nva.push_back(http2::make_nv_ls
+                    (":authority",
+                     downstream_->get_request_http2_authority()));
     } else if(downstream_->get_norm_request_header("host") == end_headers) {
       if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "host header field missing";
@@ -295,14 +297,15 @@ int Http2DownstreamConnection::push_request_headers()
     if(scheme.empty()) {
       // The default scheme is http. For HTTP2 upstream, the path must
       // be absolute URI, so scheme should be provided.
-      nva.push_back(MAKE_NV_LS_LS(":scheme", "http"));
+      nva.push_back(http2::make_nv_ll(":scheme", "http"));
     } else {
-      nva.push_back(MAKE_NV_LS(":scheme", scheme));
+      nva.push_back(http2::make_nv_ls(":scheme", scheme));
     }
     if(path.empty()) {
-      nva.push_back(MAKE_NV_LS(":path", downstream_->get_request_path()));
+      nva.push_back(http2::make_nv_ls(":path",
+                                      downstream_->get_request_path()));
     } else {
-      nva.push_back(MAKE_NV_LS(":path", path));
+      nva.push_back(http2::make_nv_ls(":path", path));
     }
     if(!authority.empty()) {
       // TODO properly check IPv6 numeric address
@@ -314,7 +317,7 @@ int Http2DownstreamConnection::push_request_headers()
         authority += ":";
         authority += util::utos(u.port);
       }
-      nva.push_back(MAKE_NV_LS(":authority", authority));
+      nva.push_back(http2::make_nv_ls(":authority", authority));
     } else if(downstream_->get_norm_request_header("host") == end_headers) {
       if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "host header field missing";
@@ -323,7 +326,8 @@ int Http2DownstreamConnection::push_request_headers()
     }
   }
 
-  nva.push_back(MAKE_NV_LS(":method", downstream_->get_request_method()));
+  nva.push_back(http2::make_nv_ls(":method",
+                                  downstream_->get_request_method()));
 
   http2::copy_norm_headers_to_nva(nva, downstream_->get_request_headers());
 
@@ -348,15 +352,15 @@ int Http2DownstreamConnection::push_request_headers()
     }
     xff_value += downstream_->get_upstream()->get_client_handler()->
       get_ipaddr();
-    nva.push_back(MAKE_NV_LS("x-forwarded-for", xff_value));
+    nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
   } else if(xff != end_headers) {
-    nva.push_back(MAKE_NV_LS("x-forwarded-for", (*xff).second));
+    nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).second));
   }
 
   auto via = downstream_->get_norm_request_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
-      nva.push_back(MAKE_NV_LS("via", (*via).second));
+      nva.push_back(http2::make_nv_ls("via", (*via).second));
     }
   } else {
     if(via != end_headers) {
@@ -365,7 +369,7 @@ int Http2DownstreamConnection::push_request_headers()
     }
     via_value += http::create_via_header_value
       (downstream_->get_request_major(), downstream_->get_request_minor());
-    nva.push_back(MAKE_NV_LS("via", via_value));
+    nva.push_back(http2::make_nv_ls("via", via_value));
   }
 
   if(LOG_ENABLED(INFO)) {

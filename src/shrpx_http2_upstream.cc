@@ -879,10 +879,10 @@ int Http2Upstream::error_reply(Downstream *downstream,
   auto content_length = util::utos(html.size());
   auto status_code_str = util::utos(status_code);
   auto nva = std::vector<nghttp2_nv>{
-    MAKE_NV_LS(":status", status_code_str),
-    MAKE_NV_LS_LS("content-type", "text/html; charset=UTF-8"),
-    MAKE_NV_LS_CS("server", get_config()->server_name),
-    MAKE_NV_LS("content-length", content_length)
+    http2::make_nv_ls(":status", status_code_str),
+    http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
+    http2::make_nv_lc("server", get_config()->server_name),
+    http2::make_nv_ls("content-length", content_length)
   };
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
@@ -950,13 +950,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   nva.reserve(nheader + 2);
   std::string via_value;
   auto response_status = util::utos(downstream->get_response_http_status());
-  nva.push_back(MAKE_NV_LS(":status", response_status));
+  nva.push_back(http2::make_nv_ls(":status", response_status));
 
   http2::copy_norm_headers_to_nva(nva, downstream->get_response_headers());
   auto via = downstream->get_norm_response_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
-      nva.push_back(MAKE_NV_LS("via", (*via).second));
+      nva.push_back(http2::make_nv_ls("via", (*via).second));
     }
   } else {
     if(via != end_headers) {
@@ -965,7 +965,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     }
     via_value += http::create_via_header_value
       (downstream->get_response_major(), downstream->get_response_minor());
-    nva.push_back(MAKE_NV_LS("via", via_value));
+    nva.push_back(http2::make_nv_ls("via", via_value));
   }
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;

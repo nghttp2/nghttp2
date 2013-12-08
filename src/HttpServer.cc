@@ -455,15 +455,15 @@ int Http2Handler::submit_file_response(const std::string& status,
   std::string content_length = util::to_str(file_length);
   std::string last_modified_str;
   auto nva = std::vector<nghttp2_nv>{
-    MAKE_NV_LS(":status", status),
-    MAKE_NV_LS("server", NGHTTPD_SERVER),
-    MAKE_NV_LS("content-length", content_length),
-    MAKE_NV_LS_LS("cache-control", "max-age=3600"),
-    MAKE_NV_LS("date", date_str),
+    http2::make_nv_ls(":status", status),
+    http2::make_nv_ls("server", NGHTTPD_SERVER),
+    http2::make_nv_ls("content-length", content_length),
+    http2::make_nv_ll("cache-control", "max-age=3600"),
+    http2::make_nv_ls("date", date_str),
   };
   if(last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
-    nva.push_back(MAKE_NV_LS("last-modified", last_modified_str));
+    nva.push_back(http2::make_nv_ls("last-modified", last_modified_str));
   }
   return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
                                  data_prd);
@@ -477,9 +477,9 @@ int Http2Handler::submit_response
 {
   std::string date_str = util::http_date(time(0));
   auto nva = std::vector<nghttp2_nv>{
-    MAKE_NV_LS(":status", status),
-    MAKE_NV_LS("server", NGHTTPD_SERVER),
-    MAKE_NV_LS("date", date_str)
+    http2::make_nv_ls(":status", status),
+    http2::make_nv_ls("server", NGHTTPD_SERVER),
+    http2::make_nv_ls("date", date_str)
   };
   for(size_t i = 0; i < headers.size(); ++i) {
     nva.push_back(http2::make_nv(headers[i].first, headers[i].second));
@@ -494,8 +494,8 @@ int Http2Handler::submit_response(const std::string& status,
                                   nghttp2_data_provider *data_prd)
 {
   auto nva = std::vector<nghttp2_nv>{
-    MAKE_NV_LS(":status", status),
-    MAKE_NV_LS("server", NGHTTPD_SERVER)
+    http2::make_nv_ls(":status", status),
+    http2::make_nv_ls("server", NGHTTPD_SERVER)
   };
   return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
                                  data_prd);
