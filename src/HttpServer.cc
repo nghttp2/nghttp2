@@ -703,7 +703,7 @@ void prepare_response(Request *req, Http2Handler *hd, bool allow_push = true)
     return;
   }
   auto push_itr = hd->get_config()->push.find(url);
-  if(push_itr != std::end(hd->get_config()->push)) {
+  if(allow_push && push_itr != std::end(hd->get_config()->push)) {
     for(auto& push_path : (*push_itr).second) {
       rv = hd->submit_push_promise(req, push_path);
       if(rv != 0) {
