@@ -1422,41 +1422,41 @@ int nghttp2_session_send(nghttp2_session *session);
  *    or more times to receive frame header.
  * 2. If the frame is DATA frame:
  *
- *   2.1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
- *        to receive DATA payload. For each chunk of data,
- *        :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`
- *        is invoked.
- *   2.2. If one DATA frame is completely received,
- *        :member:`nghttp2_session_callbacks.on_data_recv_callback` is
- *        invoked.  If the frame is the final frame of the request,
- *        :member:`nghttp2_session_callbacks.on_request_recv_callback`
- *        is invoked.  If the reception of the frame triggers the
- *        closure of the stream,
- *        :member:`nghttp2_session_callbacks.on_stream_close_callback`
- *        is invoked.
+ *    1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
+ *       to receive DATA payload. For each chunk of data,
+ *       :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`
+ *       is invoked.
+ *    2. If one DATA frame is completely received,
+ *       :member:`nghttp2_session_callbacks.on_data_recv_callback` is
+ *       invoked.  If the frame is the final frame of the request,
+ *       :member:`nghttp2_session_callbacks.on_request_recv_callback`
+ *       is invoked.  If the reception of the frame triggers the
+ *       closure of the stream,
+ *       :member:`nghttp2_session_callbacks.on_stream_close_callback`
+ *       is invoked.
  *
  * 3. If the frame is the control frame:
  *
- *   3.1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
- *        one or more times to receive whole frame.
- *   3.2. If the received frame is valid,
- *        :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
- *        invoked.  If the frame is the final frame of the request,
- *        :member:`nghttp2_session_callbacks.on_request_recv_callback`
- *        is invoked.  If the reception of the frame triggers the
- *        closure of the stream,
- *        :member:`nghttp2_session_callbacks.on_stream_close_callback`
- *        is invoked.
- *   3.3. If the received frame is unpacked but is interpreted as
- *        invalid,
- *        :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`
- *        is invoked.
- *   3.4. If the received frame could not be unpacked correctly,
- *        :member:`nghttp2_session_callbacks.on_frame_recv_parse_error_callback`
- *        is invoked.
- *   3.5. If the received frame type is unknown,
- *        :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`
- *        is invoked.
+ *    1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
+ *       one or more times to receive whole frame.
+ *    2. If the received frame is valid,
+ *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
+ *       invoked.  If the frame is the final frame of the request,
+ *       :member:`nghttp2_session_callbacks.on_request_recv_callback`
+ *       is invoked.  If the reception of the frame triggers the
+ *       closure of the stream,
+ *       :member:`nghttp2_session_callbacks.on_stream_close_callback`
+ *       is invoked.
+ *    3. If the received frame is unpacked but is interpreted as
+ *       invalid,
+ *       :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`
+ *       is invoked.
+ *    4. If the received frame could not be unpacked correctly,
+ *       :member:`nghttp2_session_callbacks.on_frame_recv_parse_error_callback`
+ *       is invoked.
+ *    5. If the received frame type is unknown,
+ *       :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`
+ *       is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
