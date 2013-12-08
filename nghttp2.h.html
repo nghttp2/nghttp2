@@ -1551,41 +1551,41 @@
 <span class="cm"> *    or more times to receive frame header.</span>
 <span class="cm"> * 2. If the frame is DATA frame:</span>
 <span class="cm"> *</span>
-<span class="cm"> *   2.1. :member:`nghttp2_session_callbacks.recv_callback` is invoked</span>
-<span class="cm"> *        to receive DATA payload. For each chunk of data,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`</span>
-<span class="cm"> *        is invoked.</span>
-<span class="cm"> *   2.2. If one DATA frame is completely received,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_data_recv_callback` is</span>
-<span class="cm"> *        invoked.  If the frame is the final frame of the request,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_request_recv_callback`</span>
-<span class="cm"> *        is invoked.  If the reception of the frame triggers the</span>
-<span class="cm"> *        closure of the stream,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_stream_close_callback`</span>
-<span class="cm"> *        is invoked.</span>
+<span class="cm"> *    1. :member:`nghttp2_session_callbacks.recv_callback` is invoked</span>
+<span class="cm"> *       to receive DATA payload. For each chunk of data,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`</span>
+<span class="cm"> *       is invoked.</span>
+<span class="cm"> *    2. If one DATA frame is completely received,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_data_recv_callback` is</span>
+<span class="cm"> *       invoked.  If the frame is the final frame of the request,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_request_recv_callback`</span>
+<span class="cm"> *       is invoked.  If the reception of the frame triggers the</span>
+<span class="cm"> *       closure of the stream,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_stream_close_callback`</span>
+<span class="cm"> *       is invoked.</span>
 <span class="cm"> *</span>
 <span class="cm"> * 3. If the frame is the control frame:</span>
 <span class="cm"> *</span>
-<span class="cm"> *   3.1. :member:`nghttp2_session_callbacks.recv_callback` is invoked</span>
-<span class="cm"> *        one or more times to receive whole frame.</span>
-<span class="cm"> *   3.2. If the received frame is valid,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_frame_recv_callback` is</span>
-<span class="cm"> *        invoked.  If the frame is the final frame of the request,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_request_recv_callback`</span>
-<span class="cm"> *        is invoked.  If the reception of the frame triggers the</span>
-<span class="cm"> *        closure of the stream,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_stream_close_callback`</span>
-<span class="cm"> *        is invoked.</span>
-<span class="cm"> *   3.3. If the received frame is unpacked but is interpreted as</span>
-<span class="cm"> *        invalid,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`</span>
-<span class="cm"> *        is invoked.</span>
-<span class="cm"> *   3.4. If the received frame could not be unpacked correctly,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_frame_recv_parse_error_callback`</span>
-<span class="cm"> *        is invoked.</span>
-<span class="cm"> *   3.5. If the received frame type is unknown,</span>
-<span class="cm"> *        :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`</span>
-<span class="cm"> *        is invoked.</span>
+<span class="cm"> *    1. :member:`nghttp2_session_callbacks.recv_callback` is invoked</span>
+<span class="cm"> *       one or more times to receive whole frame.</span>
+<span class="cm"> *    2. If the received frame is valid,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is</span>
+<span class="cm"> *       invoked.  If the frame is the final frame of the request,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_request_recv_callback`</span>
+<span class="cm"> *       is invoked.  If the reception of the frame triggers the</span>
+<span class="cm"> *       closure of the stream,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_stream_close_callback`</span>
+<span class="cm"> *       is invoked.</span>
+<span class="cm"> *    3. If the received frame is unpacked but is interpreted as</span>
+<span class="cm"> *       invalid,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`</span>
+<span class="cm"> *       is invoked.</span>
+<span class="cm"> *    4. If the received frame could not be unpacked correctly,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_frame_recv_parse_error_callback`</span>
+<span class="cm"> *       is invoked.</span>
+<span class="cm"> *    5. If the received frame type is unknown,</span>
+<span class="cm"> *       :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`</span>
+<span class="cm"> *       is invoked.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
@@ -1893,27 +1893,20 @@
 <span class="cm"> * The |pri| is priority of this request. 0 is the highest priority</span>
 <span class="cm"> * value and :macro:`NGHTTP2_PRI_LOWEST` is the lowest value.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
-<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
-<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
-<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
-<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> * The |nva| is an array of name/value pair :type:`nghttp2_nv` with</span>
+<span class="cm"> * |nvlen| elements.</span>
 <span class="cm"> *</span>
 <span class="cm"> * HTTP/2.0 specification has requirement about header fields in the</span>
 <span class="cm"> * request HEADERS. See the specification for more details.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
-<span class="cm"> * also lower-cases all names in |nv|.</span>
-<span class="cm"> *</span>
-<span class="cm"> * The string in |nv| must be NULL-terminated. Use</span>
-<span class="cm"> * `nghttp2_submit_request2()` if name/value pairs are not</span>
-<span class="cm"> * NULL-terminated strings.</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nva|.  It</span>
+<span class="cm"> * also lower-cases all names in |nva|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If |data_prd| is not ``NULL``, it provides data which will be sent</span>
 <span class="cm"> * in subsequent DATA frames. In this case, a method that allows</span>
 <span class="cm"> * request message bodies</span>
 <span class="cm"> * (http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9) must</span>
-<span class="cm"> * be specified with ``:method`` key in |nv| (e.g. ``POST``). This</span>
+<span class="cm"> * be specified with ``:method`` key in |nva| (e.g. ``POST``). This</span>
 <span class="cm"> * function does not take ownership of the |data_prd|. The function</span>
 <span class="cm"> * copies the members of the |data_prd|. If |data_prd| is ``NULL``,</span>
 <span class="cm"> * HEADERS have END_STREAM set. The |stream_user_data| is data</span>
@@ -1937,37 +1930,15 @@
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri| is invalid; or the |nv| includes empty name or</span>
-<span class="cm"> *     ``NULL`` value.</span>
+<span class="cm"> *     The |pri| is invalid; or the |nva| includes empty name, or name</span>
+<span class="cm"> *     which contains invalid characters.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
                            <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">,</span>
                            <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * Just like `nghttp2_submit_request()`, but this function takes the</span>
-<span class="cm"> * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,</span>
-<span class="cm"> * as name/value pairs. This function is useful if name/value pairs</span>
-<span class="cm"> * are not NULL-terminated strings.</span>
-<span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri| is invalid; or the |nva| includes empty name or</span>
-<span class="cm"> *     name which contains invalid characters.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
-<span class="cm"> *     Out of memory.</span>
-<span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_request2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">,</span>
-                            <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1975,17 +1946,14 @@
 <span class="cm"> * Submits response HEADERS frame and optionally one or more DATA</span>
 <span class="cm"> * frames against the stream |stream_id|.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
-<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
-<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
-<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
-<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> * The |nva| is an array of name/value pair :type:`nghttp2_nv` with</span>
+<span class="cm"> * |nvlen| elements.</span>
 <span class="cm"> *</span>
 <span class="cm"> * HTTP/2.0 specification has requirement about header fields in the</span>
 <span class="cm"> * response HEADERS. See the specification for more details.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
-<span class="cm"> * also lower-cases all names in |nv|.</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nva|.  It</span>
+<span class="cm"> * also lower-cases all names in |nva|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If |data_prd| is not ``NULL``, it provides data which will be sent</span>
 <span class="cm"> * in subsequent DATA frames.  This function does not take ownership</span>
@@ -1997,35 +1965,15 @@
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |nv| includes empty name or ``NULL`` value.</span>
+<span class="cm"> *     The |nva| includes empty name or name which contains invalid</span>
+<span class="cm"> *     characters.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_response</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
-                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">,</span>
+                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                            <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
                             <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">);</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * Just like `nghttp2_submit_response()`, but this function takes the</span>
-<span class="cm"> * |nva|, which is an array of ``nghttp2_nv`` with |nvlen| elements,</span>
-<span class="cm"> * as name/value pairs. This function is useful if name/value pairs</span>
-<span class="cm"> * are not NULL-terminated strings.</span>
-<span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri| is invalid; or the |nva| includes empty name or</span>
-<span class="cm"> *     name which contains invalid characters.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
-<span class="cm"> *     Out of memory.</span>
-<span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_response2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
-                             <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                             <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
-                             <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2050,14 +1998,11 @@
 <span class="cm"> *</span>
 <span class="cm"> * The |pri| is priority of this request.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
-<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
-<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
-<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
-<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> * The |nva| is an array of name/value pair :type:`nghttp2_nv` with</span>
+<span class="cm"> * |nvlen| elements.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
-<span class="cm"> * also lower-cases all names in |nv|.</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nva|.  It</span>
+<span class="cm"> * also lower-cases all names in |nva|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |stream_user_data| is a pointer to an arbitrary data which is</span>
 <span class="cm"> * associated to the stream this frame will open. Therefore it is only</span>
@@ -2072,13 +2017,14 @@
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri| is invalid; or the |nv| includes empty name or</span>
-<span class="cm"> *     ``NULL`` value.</span>
+<span class="cm"> *     The |pri| is invalid; or the |nva| includes empty name, or name</span>
+<span class="cm"> *     which contains invalid characters.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                           <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">,</span>
+                           <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
                            <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
@@ -2188,14 +2134,11 @@
 <span class="cm"> *</span>
 <span class="cm"> * The |stream_id| must be client initiated stream ID.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |nv| contains the name/value pairs. For i &gt;= 0, ``nv[2*i]``</span>
-<span class="cm"> * contains a pointer to the name string and ``nv[2*i+1]`` contains a</span>
-<span class="cm"> * pointer to the value string. The one beyond last value must be</span>
-<span class="cm"> * ``NULL``. That is, if the |nv| contains N name/value pairs,</span>
-<span class="cm"> * ``nv[2*N]`` must be ``NULL``.</span>
+<span class="cm"> * The |nva| is an array of name/value pair :type:`nghttp2_nv` with</span>
+<span class="cm"> * |nvlen| elements.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function creates copies of all name/value pairs in |nv|.  It</span>
-<span class="cm"> * also lower-cases all names in |nv|.</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nva|.  It</span>
+<span class="cm"> * also lower-cases all names in |nva|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * Since the library reorders the frames and tries to send the highest</span>
 <span class="cm"> * prioritized one first and the HTTP/2.0 specification requires the</span>
@@ -2210,14 +2153,16 @@
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |nv| includes empty name or ``NULL`` value.</span>
+<span class="cm"> *     The |nva| includes empty name, or name which contains invalid</span>
+<span class="cm"> *     characters.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
 <span class="cm"> *     The stream is already closed or does not exist.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                                <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">**</span><span class="n">nv</span><span class="p">);</span>
+                                <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>

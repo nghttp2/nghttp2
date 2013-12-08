@@ -395,6 +395,7 @@ multiplexes connections using non-blocking socket.</p>
 disable it.</p>
 <p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accept the HTTP/2.0 connection via NPN or direct
 HTTP/2.0 connection. No HTTP Upgrade is supported.</p>
+<p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
 information. Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
 <div class="highlight-c"><pre>$ src/nghttpd --no-tls -v 8080

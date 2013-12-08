@@ -1772,51 +1772,45 @@ callback is invoked:</p>
 <ol class="arabic simple">
 <li><a class="reference internal" href="#nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> is invoked one
 or more times to receive frame header.</li>
-<li>If the frame is DATA frame:</li>
-</ol>
-<blockquote>
-<div><dl class="docutils">
-<dt>2.1. <a class="reference internal" href="#nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> is invoked</dt>
-<dd>to receive DATA payload. For each chunk of data,
+<li>If the frame is DATA frame:<ol class="arabic">
+<li><a class="reference internal" href="#nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> is invoked
+to receive DATA payload. For each chunk of data,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_data_chunk_recv_callback" title="nghttp2_session_callbacks.on_data_chunk_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_data_chunk_recv_callback</span></tt></a>
-is invoked.</dd>
-<dt>2.2. If one DATA frame is completely received,</dt>
-<dd><a class="reference internal" href="#nghttp2_session_callbacks.on_data_recv_callback" title="nghttp2_session_callbacks.on_data_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_data_recv_callback</span></tt></a> is
+is invoked.</li>
+<li>If one DATA frame is completely received,
+<a class="reference internal" href="#nghttp2_session_callbacks.on_data_recv_callback" title="nghttp2_session_callbacks.on_data_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_data_recv_callback</span></tt></a> is
 invoked.  If the frame is the final frame of the request,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_request_recv_callback" title="nghttp2_session_callbacks.on_request_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_request_recv_callback</span></tt></a>
 is invoked.  If the reception of the frame triggers the
 closure of the stream,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_stream_close_callback" title="nghttp2_session_callbacks.on_stream_close_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_stream_close_callback</span></tt></a>
-is invoked.</dd>
-</dl>
-</div></blockquote>
-<ol class="arabic simple" start="3">
-<li>If the frame is the control frame:</li>
+is invoked.</li>
 </ol>
-<blockquote>
-<div><dl class="docutils">
-<dt>3.1. <a class="reference internal" href="#nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> is invoked</dt>
-<dd>one or more times to receive whole frame.</dd>
-<dt>3.2. If the received frame is valid,</dt>
-<dd><a class="reference internal" href="#nghttp2_session_callbacks.on_frame_recv_callback" title="nghttp2_session_callbacks.on_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_callback</span></tt></a> is
+</li>
+<li>If the frame is the control frame:<ol class="arabic">
+<li><a class="reference internal" href="#nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> is invoked
+one or more times to receive whole frame.</li>
+<li>If the received frame is valid,
+<a class="reference internal" href="#nghttp2_session_callbacks.on_frame_recv_callback" title="nghttp2_session_callbacks.on_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_callback</span></tt></a> is
 invoked.  If the frame is the final frame of the request,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_request_recv_callback" title="nghttp2_session_callbacks.on_request_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_request_recv_callback</span></tt></a>
 is invoked.  If the reception of the frame triggers the
 closure of the stream,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_stream_close_callback" title="nghttp2_session_callbacks.on_stream_close_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_stream_close_callback</span></tt></a>
-is invoked.</dd>
-<dt>3.3. If the received frame is unpacked but is interpreted as</dt>
-<dd>invalid,
+is invoked.</li>
+<li>If the received frame is unpacked but is interpreted as
+invalid,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_invalid_frame_recv_callback" title="nghttp2_session_callbacks.on_invalid_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_invalid_frame_recv_callback</span></tt></a>
-is invoked.</dd>
-<dt>3.4. If the received frame could not be unpacked correctly,</dt>
-<dd><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_parse_error_callback</span></tt>
-is invoked.</dd>
-<dt>3.5. If the received frame type is unknown,</dt>
-<dd><a class="reference internal" href="#nghttp2_session_callbacks.on_unknown_frame_recv_callback" title="nghttp2_session_callbacks.on_unknown_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_unknown_frame_recv_callback</span></tt></a>
-is invoked.</dd>
-</dl>
-</div></blockquote>
+is invoked.</li>
+<li>If the received frame could not be unpacked correctly,
+<tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_parse_error_callback</span></tt>
+is invoked.</li>
+<li>If the received frame type is unknown,
+<a class="reference internal" href="#nghttp2_session_callbacks.on_unknown_frame_recv_callback" title="nghttp2_session_callbacks.on_unknown_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_unknown_frame_recv_callback</span></tt></a>
+is invoked.</li>
+</ol>
+</li>
+</ol>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -2071,27 +2065,21 @@ const char* <tt class="descname">nghttp2_strerror</tt><big>(</big>int<em>&nbsp;l
 
 <dl class="function">
 <dt id="nghttp2_submit_request">
-int <tt class="descname">nghttp2_submit_request</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;pri</em>, const char<em>&nbsp;**nv</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_request" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_request</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;pri</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_request" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame and optionally one or more DATA frames.</p>
 <p>The <em>pri</em> is priority of this request. 0 is the highest priority
 value and <a class="reference internal" href="#NGHTTP2_PRI_LOWEST" title="NGHTTP2_PRI_LOWEST"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRI_LOWEST</span></tt></a> is the lowest value.</p>
-<p>The <em>nv</em> contains the name/value pairs. For i &gt;= 0, <tt class="docutils literal"><span class="pre">nv[2*i]</span></tt>
-contains a pointer to the name string and <tt class="docutils literal"><span class="pre">nv[2*i+1]</span></tt> contains a
-pointer to the value string. The one beyond last value must be
-<tt class="docutils literal"><span class="pre">NULL</span></tt>. That is, if the <em>nv</em> contains N name/value pairs,
-<tt class="docutils literal"><span class="pre">nv[2*N]</span></tt> must be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
+<p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
+<em>nvlen</em> elements.</p>
 <p>HTTP/2.0 specification has requirement about header fields in the
 request HEADERS. See the specification for more details.</p>
-<p>This function creates copies of all name/value pairs in <em>nv</em>.  It
-also lower-cases all names in <em>nv</em>.</p>
-<p>The string in <em>nv</em> must be NULL-terminated. Use
-<a class="reference internal" href="#nghttp2_submit_request2" title="nghttp2_submit_request2"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request2()</span></tt></a> if name/value pairs are not
-NULL-terminated strings.</p>
+<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
+also lower-cases all names in <em>nva</em>.</p>
 <p>If <em>data_prd</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>, it provides data which will be sent
 in subsequent DATA frames. In this case, a method that allows
 request message bodies
 (<a class="reference external" href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9">http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9</a>) must
-be specified with <tt class="docutils literal"><span class="pre">:method</span></tt> key in <em>nv</em> (e.g. <tt class="docutils literal"><span class="pre">POST</span></tt>). This
+be specified with <tt class="docutils literal"><span class="pre">:method</span></tt> key in <em>nva</em> (e.g. <tt class="docutils literal"><span class="pre">POST</span></tt>). This
 function does not take ownership of the <em>data_prd</em>. The function
 copies the members of the <em>data_prd</em>. If <em>data_prd</em> is <tt class="docutils literal"><span class="pre">NULL</span></tt>,
 HEADERS have END_STREAM set. The <em>stream_user_data</em> is data
@@ -2113,26 +2101,8 @@ the stream is already opened,
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri</em> is invalid; or the <em>nv</em> includes empty name or
-<tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
-<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
-<dd>Out of memory.</dd>
-</dl>
-</dd></dl>
-
-<dl class="function">
-<dt id="nghttp2_submit_request2">
-int <tt class="descname">nghttp2_submit_request2</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;pri</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_request2" title="Permalink to this definition">¶</a></dt>
-<dd><p>Just like <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>, but this function takes the
-<em>nva</em>, which is an array of <tt class="docutils literal"><span class="pre">nghttp2_nv</span></tt> with <em>nvlen</em> elements,
-as name/value pairs. This function is useful if name/value pairs
-are not NULL-terminated strings.</p>
-<p>This function returns 0 if it succeeds, or one of the following
-negative error codes:</p>
-<dl class="docutils">
-<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri</em> is invalid; or the <em>nva</em> includes empty name or
-name which contains invalid characters.</dd>
+<dd>The <em>pri</em> is invalid; or the <em>nva</em> includes empty name, or name
+which contains invalid characters.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -2140,18 +2110,15 @@ name which contains invalid characters.</dd>
 
 <dl class="function">
 <dt id="nghttp2_submit_response">
-int <tt class="descname">nghttp2_submit_response</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, const char<em>&nbsp;**nv</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em><big>)</big><a class="headerlink" href="#nghttp2_submit_response" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_response</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em><big>)</big><a class="headerlink" href="#nghttp2_submit_response" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits response HEADERS frame and optionally one or more DATA
 frames against the stream <em>stream_id</em>.</p>
-<p>The <em>nv</em> contains the name/value pairs. For i &gt;= 0, <tt class="docutils literal"><span class="pre">nv[2*i]</span></tt>
-contains a pointer to the name string and <tt class="docutils literal"><span class="pre">nv[2*i+1]</span></tt> contains a
-pointer to the value string. The one beyond last value must be
-<tt class="docutils literal"><span class="pre">NULL</span></tt>. That is, if the <em>nv</em> contains N name/value pairs,
-<tt class="docutils literal"><span class="pre">nv[2*N]</span></tt> must be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
+<p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
+<em>nvlen</em> elements.</p>
 <p>HTTP/2.0 specification has requirement about header fields in the
 response HEADERS. See the specification for more details.</p>
-<p>This function creates copies of all name/value pairs in <em>nv</em>.  It
-also lower-cases all names in <em>nv</em>.</p>
+<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
+also lower-cases all names in <em>nva</em>.</p>
 <p>If <em>data_prd</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>, it provides data which will be sent
 in subsequent DATA frames.  This function does not take ownership
 of the <em>data_prd</em>. The function copies the members of the
@@ -2161,25 +2128,8 @@ END_STREAM flag set.</p>
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>nv</em> includes empty name or <tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
-<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
-<dd>Out of memory.</dd>
-</dl>
-</dd></dl>
-
-<dl class="function">
-<dt id="nghttp2_submit_response2">
-int <tt class="descname">nghttp2_submit_response2</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em><big>)</big><a class="headerlink" href="#nghttp2_submit_response2" title="Permalink to this definition">¶</a></dt>
-<dd><p>Just like <a class="reference internal" href="#nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a>, but this function takes the
-<em>nva</em>, which is an array of <tt class="docutils literal"><span class="pre">nghttp2_nv</span></tt> with <em>nvlen</em> elements,
-as name/value pairs. This function is useful if name/value pairs
-are not NULL-terminated strings.</p>
-<p>This function returns 0 if it succeeds, or one of the following
-negative error codes:</p>
-<dl class="docutils">
-<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri</em> is invalid; or the <em>nva</em> includes empty name or
-name which contains invalid characters.</dd>
+<dd>The <em>nva</em> includes empty name or name which contains invalid
+characters.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -2187,7 +2137,7 @@ name which contains invalid characters.</dd>
 
 <dl class="function">
 <dt id="nghttp2_submit_headers">
-int <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;pri</em>, const char<em>&nbsp;**nv</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_headers" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;pri</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_submit_headers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame. The <em>flags</em> is bitwise OR of the
 following values:</p>
 <ul class="simple">
@@ -2205,13 +2155,10 @@ request HEADERS frame which opens new stream). In this case, the
 actual stream ID is assigned just before the frame is sent. For
 response, specify stream ID in <em>stream_id</em>.</p>
 <p>The <em>pri</em> is priority of this request.</p>
-<p>The <em>nv</em> contains the name/value pairs. For i &gt;= 0, <tt class="docutils literal"><span class="pre">nv[2*i]</span></tt>
-contains a pointer to the name string and <tt class="docutils literal"><span class="pre">nv[2*i+1]</span></tt> contains a
-pointer to the value string. The one beyond last value must be
-<tt class="docutils literal"><span class="pre">NULL</span></tt>. That is, if the <em>nv</em> contains N name/value pairs,
-<tt class="docutils literal"><span class="pre">nv[2*N]</span></tt> must be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
-<p>This function creates copies of all name/value pairs in <em>nv</em>.  It
-also lower-cases all names in <em>nv</em>.</p>
+<p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
+<em>nvlen</em> elements.</p>
+<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
+also lower-cases all names in <em>nva</em>.</p>
 <p>The <em>stream_user_data</em> is a pointer to an arbitrary data which is
 associated to the stream this frame will open. Therefore it is only
 used if this frame opens streams, in other words, it changes stream
@@ -2223,8 +2170,8 @@ specify flags directly. For usual HTTP request,
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri</em> is invalid; or the <em>nv</em> includes empty name or
-<tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
+<dd>The <em>pri</em> is invalid; or the <em>nva</em> includes empty name, or name
+which contains invalid characters.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -2311,19 +2258,16 @@ flow control).</dd>
 
 <dl class="function">
 <dt id="nghttp2_submit_push_promise">
-int <tt class="descname">nghttp2_submit_push_promise</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const char<em>&nbsp;**nv</em><big>)</big><a class="headerlink" href="#nghttp2_submit_push_promise" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_push_promise</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em><big>)</big><a class="headerlink" href="#nghttp2_submit_push_promise" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits PUSH_PROMISE frame. The <em>flags</em> is currently ignored and
 the resulting PUSH_PROMISE frame always has
 <a class="reference internal" href="#NGHTTP2_FLAG_END_PUSH_PROMISE" title="NGHTTP2_FLAG_END_PUSH_PROMISE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_PUSH_PROMISE</span></tt></a> flag set due to the lack of
 header continuation support in the library.</p>
 <p>The <em>stream_id</em> must be client initiated stream ID.</p>
-<p>The <em>nv</em> contains the name/value pairs. For i &gt;= 0, <tt class="docutils literal"><span class="pre">nv[2*i]</span></tt>
-contains a pointer to the name string and <tt class="docutils literal"><span class="pre">nv[2*i+1]</span></tt> contains a
-pointer to the value string. The one beyond last value must be
-<tt class="docutils literal"><span class="pre">NULL</span></tt>. That is, if the <em>nv</em> contains N name/value pairs,
-<tt class="docutils literal"><span class="pre">nv[2*N]</span></tt> must be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
-<p>This function creates copies of all name/value pairs in <em>nv</em>.  It
-also lower-cases all names in <em>nv</em>.</p>
+<p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
+<em>nvlen</em> elements.</p>
+<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
+also lower-cases all names in <em>nva</em>.</p>
 <p>Since the library reorders the frames and tries to send the highest
 prioritized one first and the HTTP/2.0 specification requires the
 stream ID must be strictly increasing, the promised stream ID
@@ -2336,7 +2280,8 @@ frame, the argument frame has the promised stream ID assigned.</p>
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>nv</em> includes empty name or <tt class="docutils literal"><span class="pre">NULL</span></tt> value.</dd>
+<dd>The <em>nva</em> includes empty name, or name which contains invalid
+characters.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
 <dd>The stream is already closed or does not exist.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
