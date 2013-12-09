@@ -457,7 +457,7 @@ struct HttpClient {
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
   // SETTINGS payload sent as token68 in HTTP Upgrade
-  uint8_t settings_payload[16];
+  uint8_t settings_payload[128];
 
   HttpClient(const nghttp2_session_callbacks* callbacks,
              event_base *evbase, SSL_CTX *ssl_ctx)
