@@ -53,8 +53,6 @@ typedef struct {
   int32_t pri;
   /* The initial priority */
   int32_t inipri;
-  /* The amount of priority decrement in next time */
-  uint32_t pri_decay;
 } nghttp2_outbound_item;
 
 /*

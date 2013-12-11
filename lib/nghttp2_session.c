@@ -474,7 +474,6 @@ int nghttp2_session_add_frame(nghttp2_session *session,
   item->seq = session->next_seq++;
   /* Set priority to the default value at the moment. */
   item->pri = NGHTTP2_PRI_DEFAULT;
-  item->pri_decay = 1;
   if(frame_cat == NGHTTP2_CAT_CTRL) {
     nghttp2_frame *frame = (nghttp2_frame*)abs_frame;
     nghttp2_stream *stream = NULL;
@@ -1390,25 +1389,24 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
   }
 }
 
+#define NGHTTP2_PRI_DECAY (1 << 26)
 /*
  * Adjust priority of the |item|. In order to prevent the low priority
- * streams from starving, lower the priority of the |item| by
- * item->pri_decay. If the resulting priority exceeds
+ * streams from starving, lower the priority of the |item| by a
+ * constant value. If the resulting priority exceeds
  * NGHTTP2_PRI_DEFAULT, back to the original priority.
  */
 static void adjust_pri(nghttp2_outbound_item *item)
 {
   if(item->pri == NGHTTP2_PRI_LOWEST) {
     item->pri = item->inipri;
-    item->pri_decay = 1;
     return;
   }
-  if(item->pri > (int32_t)(NGHTTP2_PRI_LOWEST - (item->pri_decay - 1))) {
+  if(item->pri > (int32_t)(NGHTTP2_PRI_LOWEST - NGHTTP2_PRI_DECAY)) {
     item->pri = NGHTTP2_PRI_LOWEST;
     return;
   }
-  item->pri += (int32_t)(item->pri_decay - 1);
-  item->pri_decay <<= 1;
+  item->pri += NGHTTP2_PRI_DECAY;
 }
 
 /*
