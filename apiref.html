@@ -2124,6 +2124,11 @@ in subsequent DATA frames.  This function does not take ownership
 of the <em>data_prd</em>. The function copies the members of the
 <em>data_prd</em>.  If <em>data_prd</em> is <tt class="docutils literal"><span class="pre">NULL</span></tt>, HEADERS will have
 END_STREAM flag set.</p>
+<p>This method can be used as normal HTTP response and server-push
+response. When pushing a resource using this function, the
+<em>session</em> must be configured using <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>
+or its variants and the target stream denoted by the <em>stream_id</em>
+must be reserved using <a class="reference internal" href="#nghttp2_submit_push_promise" title="nghttp2_submit_push_promise"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_push_promise()</span></tt></a>.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
