@@ -1832,6 +1832,12 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  * |data_prd|.  If |data_prd| is ``NULL``, HEADERS will have
  * END_STREAM flag set.
  *
+ * This method can be used as normal HTTP response and server-push
+ * response. When pushing a resource using this function, the
+ * |session| must be configured using `nghttp2_session_server_new()`
+ * or its variants and the target stream denoted by the |stream_id|
+ * must be reserved using `nghttp2_submit_push_promise()`.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
