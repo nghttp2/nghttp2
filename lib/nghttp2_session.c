@@ -1389,24 +1389,27 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
   }
 }
 
-#define NGHTTP2_PRI_DECAY (1 << 26)
 /*
- * Adjust priority of the |item|. In order to prevent the low priority
- * streams from starving, lower the priority of the |item| by a
- * constant value. If the resulting priority exceeds
- * NGHTTP2_PRI_DEFAULT, back to the original priority.
+ * Adjust priority of the DATA frame |item|. In order to prevent the
+ * low priority streams from starving, lower the priority of the
+ * |item|.  If the resulting priority exceeds NGHTTP2_PRI_DEFAULT,
+ * back to the original priority.
  */
-static void adjust_pri(nghttp2_outbound_item *item)
+static void adjust_data_pri(nghttp2_outbound_item *item)
 {
   if(item->pri == NGHTTP2_PRI_LOWEST) {
     item->pri = item->inipri;
     return;
   }
-  if(item->pri > (int32_t)(NGHTTP2_PRI_LOWEST - NGHTTP2_PRI_DECAY)) {
+  if(item->pri & 0x40000000) {
     item->pri = NGHTTP2_PRI_LOWEST;
     return;
   }
-  item->pri += NGHTTP2_PRI_DECAY;
+  if(item->pri == 0) {
+    item->pri = 1;
+  } else {
+    item->pri <<= 1;
+  }
 }
 
 /*
@@ -1587,7 +1590,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     } else {
       nghttp2_outbound_item* next_item;
       next_item = nghttp2_session_get_next_ob_item(session);
-      adjust_pri(session->aob.item);
+      adjust_data_pri(session->aob.item);
       /* If priority of this stream is higher or equal to other stream
          waiting at the top of the queue, we continue to send this
          data. */
