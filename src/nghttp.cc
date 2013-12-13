@@ -1003,7 +1003,7 @@ void update_html_parser(HttpClient *client, Request *req,
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
        fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
        porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
-      int32_t pri = adjust_pri(req->pri, p.second * (1 << 26));
+      int32_t pri = adjust_pri(req->pri, p.second);
       // No POST data for assets
       if ( client->add_request(uri, nullptr, 0, pri, req->level+1) ) {
         submit_request(client, config.headers,
