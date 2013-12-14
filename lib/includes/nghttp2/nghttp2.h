@@ -1765,7 +1765,11 @@ const char* nghttp2_strerror(int lib_error_code);
  * value and :macro:`NGHTTP2_PRI_LOWEST` is the lowest value.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.
+ * |nvlen| elements. The value is opaque sequence of bytes and
+ * therefore can contain NULL byte (0x0). If the application requires
+ * that the ordering of values for a single header field name
+ * appearing in different header fields, it has to concatenate them
+ * using NULL byte (0x0) before passing them to this function.
  *
  * HTTP/2.0 specification has requirement about header fields in the
  * request HEADERS. See the specification for more details.
@@ -1818,7 +1822,11 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  * frames against the stream |stream_id|.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.
+ * |nvlen| elements. The value is opaque sequence of bytes and
+ * therefore can contain NULL byte (0x0). If the application requires
+ * that the ordering of values for a single header field name
+ * appearing in different header fields, it has to concatenate them
+ * using NULL byte (0x0) before passing them to this function.
  *
  * HTTP/2.0 specification has requirement about header fields in the
  * response HEADERS. See the specification for more details.
@@ -1876,7 +1884,11 @@ int nghttp2_submit_response(nghttp2_session *session,
  * The |pri| is priority of this request.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.
+ * |nvlen| elements. The value is opaque sequence of bytes and
+ * therefore can contain NULL byte (0x0). If the application requires
+ * that the ordering of values for a single header field name
+ * appearing in different header fields, it has to concatenate them
+ * using NULL byte (0x0) before passing them to this function.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.
@@ -2012,7 +2024,11 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * The |stream_id| must be client initiated stream ID.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.
+ * |nvlen| elements. The value is opaque sequence of bytes and
+ * therefore can contain NULL byte (0x0). If the application requires
+ * that the ordering of values for a single header field name
+ * appearing in different header fields, it has to concatenate them
+ * using NULL byte (0x0) before passing them to this function.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.
