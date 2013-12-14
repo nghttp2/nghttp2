@@ -276,3 +276,8 @@ const char* nghttp2_strerror(int error_code)
     return "Unknown error code";
   }
 }
+
+void nghttp2_free(void *ptr)
+{
+  free(ptr);
+}

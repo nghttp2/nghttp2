@@ -133,4 +133,12 @@ int nghttp2_check_header_name(const uint8_t *name, size_t len);
  */
 int nghttp2_check_header_name_nocase(const uint8_t *name, size_t len);
 
+/*
+ * Deallocates memory space pointed by |ptr|. This function exists for
+ * the application to free the memory space allocated by the library
+ * functions. Currently this function is hidden from the public API,
+ * but may be exposed as public API.
+ */
+void nghttp2_free(void *ptr);
+
 #endif /* NGHTTP2_HELPER_H */
