@@ -246,14 +246,13 @@ static void nghttp2_hd_ringbuf_pop_back(nghttp2_hd_ringbuf *ringbuf)
 static int nghttp2_hd_context_init(nghttp2_hd_context *context,
                                    nghttp2_hd_role role,
                                    nghttp2_hd_side side,
-                                   size_t deflate_hd_table_bufsize_max,
-                                   uint8_t no_refset)
+                                   size_t deflate_hd_table_bufsize_max)
 {
   int rv;
   context->role = role;
   context->side = side;
   context->bad = 0;
-  context->no_refset = no_refset;
+  context->no_refset = 0;
   context->hd_table_bufsize_max = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   rv = nghttp2_hd_ringbuf_init
     (&context->hd_table,
@@ -279,24 +278,20 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
 int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater, nghttp2_hd_side side)
 {
   return nghttp2_hd_context_init(deflater, NGHTTP2_HD_ROLE_DEFLATE, side,
-                                 NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE,
-                                 0);
+                                 NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE);
 }
 
 int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
                              nghttp2_hd_side side,
-                             size_t deflate_hd_table_bufsize_max,
-                             uint8_t no_refset)
+                             size_t deflate_hd_table_bufsize_max)
 {
   return nghttp2_hd_context_init(deflater, NGHTTP2_HD_ROLE_DEFLATE, side,
-                                 deflate_hd_table_bufsize_max,
-                                 no_refset);
+                                 deflate_hd_table_bufsize_max);
 }
 
 int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater, nghttp2_hd_side side)
 {
-  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side, 0,
-                                 0);
+  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side, 0);
 }
 
 static void nghttp2_hd_context_free(nghttp2_hd_context *context)
@@ -327,6 +322,12 @@ void nghttp2_hd_deflate_free(nghttp2_hd_context *deflater)
 void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater)
 {
   nghttp2_hd_context_free(inflater);
+}
+
+void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_context *deflater,
+                                      uint8_t no_refset)
+{
+  deflater->no_refset = no_refset;
 }
 
 static size_t entry_room(size_t namelen, size_t valuelen)

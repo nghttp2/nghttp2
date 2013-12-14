@@ -384,8 +384,8 @@ int main(int argc, char **argv)
       break;
     }
   }
-  nghttp2_hd_deflate_init2(&deflater, config.side, config.deflate_table_size,
-                           config.no_refset);
+  nghttp2_hd_deflate_init2(&deflater, config.side, config.deflate_table_size);
+  nghttp2_hd_deflate_set_no_refset(&deflater, config.no_refset);
   nghttp2_hd_change_table_size(&deflater, config.table_size);
   if(config.http1text) {
     perform_from_http1text(&deflater);

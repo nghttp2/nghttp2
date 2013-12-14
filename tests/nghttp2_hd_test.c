@@ -278,7 +278,7 @@ void test_nghttp2_hd_deflate_deflate_buffer(void)
   /* Check the case where entry from static table is inserted to
      dynamic header table. And it is out of deflate header table
      size. */
-  nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST, 32, 0);
+  nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST, 32);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0,
                                    nva4, ARRLEN(nva4));
@@ -310,7 +310,7 @@ void test_nghttp2_hd_deflate_deflate_buffer(void)
   nghttp2_hd_inflate_free(&inflater);
 
   /* 156 buffer size can hold all headers in deflate region */
-  nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST, 156, 0);
+  nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST, 156);
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0,
                                    nva1, ARRLEN(nva1));
   CU_ASSERT(blocklen > 0);
@@ -344,7 +344,7 @@ void test_nghttp2_hd_deflate_deflate_buffer(void)
   nghttp2_hd_deflate_free(&deflater);
 
   /* Check more complex use case */
-  nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST, 155, 0);
+  nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST, 155);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0,
                                    nva1, ARRLEN(nva1));
@@ -452,7 +452,8 @@ void test_nghttp2_hd_deflate_clear_refset(void)
   size_t i;
 
   nghttp2_hd_deflate_init2(&deflater, NGHTTP2_HD_SIDE_REQUEST,
-                           NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE, 1);
+                           NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE);
+  nghttp2_hd_deflate_set_no_refset(&deflater, 1);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
   for(i = 0; i < 2; ++i) {

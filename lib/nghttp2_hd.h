@@ -188,9 +188,6 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
  * for header table even if the larger value is specified later in
  * nghttp2_hd_change_table_size().
  *
- * If nonzero is given in the |no_refset|, the encoder first clears
- * the reference set each time on deflation.
- *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -199,8 +196,7 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
  */
 int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
                              nghttp2_hd_side side,
-                             size_t deflate_hd_table_bufsize_max,
-                             uint8_t no_refset);
+                             size_t deflate_hd_table_bufsize_max);
 
 /*
  * Initializes |inflater| for inflating name/values pairs.
@@ -224,6 +220,14 @@ void nghttp2_hd_deflate_free(nghttp2_hd_context *deflater);
  */
 void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
 
+/*
+ * Sets the availability of reference set in the |deflater|. If
+ * |no_refset| is nonzero, the deflater will first emit index=0 in the
+ * each invocation of nghttp2_hd_deflate_hd() to clear up reference
+ * set. By default, the deflater uses reference set.
+ */
+void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_context *deflater,
+                                      uint8_t no_refset);
 
 /*
  * Changes header table size in |context|. This may trigger eviction
