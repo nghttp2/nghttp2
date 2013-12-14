@@ -233,6 +233,8 @@ void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_context *deflater,
  * Changes header table size in |context|. This may trigger eviction
  * in the dynamic table.
  *
+ * This function can be used for deflater and inflater.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
