@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2.0 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2013 Tatsuhiro Tsujikawa
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,10 +20,18 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib src examples hdtest python tests doc
+from distutils.core import setup
+from distutils.extension import Extension
 
-ACLOCAL_AMFLAGS = -I m4
-
-dist_doc_DATA = README.rst
-
-EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make
+setup(
+    name = 'python-nghttp2',
+    description = 'Python HTTP/2.0 library on top of nghttp2',
+    author = 'Tatsuhiro Tsujikawa',
+    author_email = 'tatsuhiro.t@gmail.com',
+    url = 'http://tatsuhiro-t.github.io/nghttp2/',
+    keywords = [],
+    ext_modules = [Extension("nghttp2",
+                             ["nghttp2.c"],
+                             libraries=['nghttp2'])],
+    long_description='TBD'
+    )

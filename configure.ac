@@ -324,6 +324,7 @@ AC_CONFIG_FILES([
   src/Makefile
   examples/Makefile
   hdtest/Makefile
+  python/Makefile
   doc/Makefile
   doc/conf.py
 ])

@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2.0 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2013 Tatsuhiro Tsujikawa
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,10 +20,15 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib src examples hdtest python tests doc
 
-ACLOCAL_AMFLAGS = -I m4
+PYSETUP_INCLUDE_DIRS=$(top_srcdir)/lib/includes:$(top_srcdir)/lib
+PYSETUP_LIBDIRS=$(top_builddir)/lib/.libs
 
-dist_doc_DATA = README.rst
+nghttp2.c: nghttp2.pyx cnghttp2.pxd
+	cython nghttp2.pyx
 
-EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make
+.PHONY: build_ext
+
+build_ext: nghttp2.c
+	python setup.py build_ext --include-dirs=$(PYSETUP_INCLUDE_DIRS) \
+	    --library-dirs=$(PYSETUP_LIBDIRS)
