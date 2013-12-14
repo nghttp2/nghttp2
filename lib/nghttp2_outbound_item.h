@@ -51,8 +51,6 @@ typedef struct {
   nghttp2_frame_category frame_cat;
   /* The priority used in priority comparion */
   int32_t pri;
-  /* The initial priority */
-  int32_t inipri;
 } nghttp2_outbound_item;
 
 /*

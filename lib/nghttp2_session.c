@@ -424,8 +424,7 @@ static int outbound_item_update_pri
       return 0;
     }
   }
-  /* We only update initial priority */
-  item->inipri = stream->pri;
+  item->pri = stream->pri;
   return 1;
 }
 
@@ -448,7 +447,7 @@ void nghttp2_session_reprioritize_stream
   nghttp2_pq_update(&session->ob_pq, update_stream_pri, stream);
   nghttp2_pq_update(&session->ob_ss_pq, update_stream_pri, stream);
   if(stream->deferred_data) {
-    stream->deferred_data->inipri = pri;
+    stream->deferred_data->pri = pri;
   }
   if(session->aob.item) {
     outbound_item_update_pri(session->aob.item, stream);
@@ -549,7 +548,6 @@ int nghttp2_session_add_frame(nghttp2_session *session,
     free(item);
     return r;
   }
-  item->inipri = item->pri;
   return 0;
 }
 
@@ -1390,29 +1388,6 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
 }
 
 /*
- * Adjust priority of the DATA frame |item|. In order to prevent the
- * low priority streams from starving, lower the priority of the
- * |item|.  If the resulting priority exceeds NGHTTP2_PRI_DEFAULT,
- * back to the original priority.
- */
-static void adjust_data_pri(nghttp2_outbound_item *item)
-{
-  if(item->pri == NGHTTP2_PRI_LOWEST) {
-    item->pri = item->inipri;
-    return;
-  }
-  if(item->pri & 0x40000000) {
-    item->pri = NGHTTP2_PRI_LOWEST;
-    return;
-  }
-  if(item->pri == 0) {
-    item->pri = 1;
-  } else {
-    item->pri <<= 1;
-  }
-}
-
-/*
  * Called after a frame is sent.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -1590,7 +1565,6 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     } else {
       nghttp2_outbound_item* next_item;
       next_item = nghttp2_session_get_next_ob_item(session);
-      adjust_data_pri(session->aob.item);
       /* If priority of this stream is higher or equal to other stream
          waiting at the top of the queue, we continue to send this
          data. */
