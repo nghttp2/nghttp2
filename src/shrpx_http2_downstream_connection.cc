@@ -267,11 +267,15 @@ int Http2DownstreamConnection::push_request_headers()
       nva.push_back(http2::make_nv_ls
                     (":authority",
                      downstream_->get_request_http2_authority()));
-    } else if(downstream_->get_norm_request_header("host") == end_headers) {
-      if(LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "host header field missing";
+    } else {
+      auto host = downstream_->get_norm_request_header("host");
+      if(host == end_headers) {
+        if(LOG_ENABLED(INFO)) {
+          DCLOG(INFO, this) << "host header field missing";
+        }
+        return -1;
       }
-      return -1;
+      nva.push_back(http2::make_nv_ls("host", (*host).second));
     }
   } else {
     // The upstream is HTTP/1
@@ -318,11 +322,15 @@ int Http2DownstreamConnection::push_request_headers()
         authority += util::utos(u.port);
       }
       nva.push_back(http2::make_nv_ls(":authority", authority));
-    } else if(downstream_->get_norm_request_header("host") == end_headers) {
-      if(LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "host header field missing";
+    } else {
+      auto host = downstream_->get_norm_request_header("host");
+      if(host == end_headers) {
+        if(LOG_ENABLED(INFO)) {
+          DCLOG(INFO, this) << "host header field missing";
+        }
+        return -1;
       }
-      return -1;
+      nva.push_back(http2::make_nv_ls("host", (*host).second));
     }
   }
 
