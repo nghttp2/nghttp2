@@ -2988,8 +2988,14 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
        5.4.2) of type STREAM_CLOSED.
     */
     if(stream->state != NGHTTP2_STREAM_CLOSING) {
-      return nghttp2_session_add_rst_stream(session, stream_id,
-                                            NGHTTP2_STREAM_CLOSED);
+      /* return nghttp2_session_add_rst_stream(session, stream_id, */
+      /*                                       NGHTTP2_STREAM_CLOSED); */
+
+      /* The spec says this is stream error situation, but if the peer
+         is broken, it may send lots of DATA frames and we will send
+         RST_STREAM for each of them, which is bad. So we just close
+         the connection here. */
+      return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
     }
     return 0;
   }
@@ -3002,8 +3008,14 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
         }
       }
     } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
-      return nghttp2_session_add_rst_stream(session, stream_id,
-                                            NGHTTP2_PROTOCOL_ERROR);
+      /* return nghttp2_session_add_rst_stream(session, stream_id, */
+      /*                                       NGHTTP2_PROTOCOL_ERROR); */
+
+      /* This situation may be handled as stream error, but if the
+         peer is broken, it may send lots of DATA frames and we will
+         send RST_STREAM for each of them, which is bad. So we just
+         close the connection here. */
+      return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
     }
   } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
     /* It is OK if this is remote peer initiated stream and we did
