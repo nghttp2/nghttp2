@@ -21,6 +21,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+EXTRA_DIST = README.rst cnghttp2.pxd nghttp2.pyx setup.py
+
 PYSETUP_INCLUDE_DIRS=$(top_srcdir)/lib/includes:$(top_srcdir)/lib
 PYSETUP_LIBDIRS=$(top_builddir)/lib/.libs
 
