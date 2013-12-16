@@ -26,9 +26,11 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "nghttp2_frame.h"
 #include "nghttp2_helper.h"
+#include "nghttp2_int.h"
 
 /* Make scalar initialization form of nghttp2_nv */
 #define MAKE_NV(N, V)                                           \
@@ -463,6 +465,11 @@ static int emit_indexed_header(nghttp2_hd_context *context,
                                nghttp2_hd_entry *ent)
 {
   int rv;
+  DEBUGF(fprintf(stderr, "Header emission:\n"));
+  DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
+  DEBUGF(fprintf(stderr, ": "));
+  DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
+  DEBUGF(fprintf(stderr, "\n"));
   /* ent->ref may be 0. This happens if the careless stupid encoder
      emits literal block larger than header table capacity with
      indexing. */
@@ -482,6 +489,11 @@ static int emit_newname_header(nghttp2_hd_context *context,
                                uint8_t flags)
 {
   int rv;
+  DEBUGF(fprintf(stderr, "Header emission:\n"));
+  DEBUGF(fwrite(nv->name, nv->namelen, 1, stderr));
+  DEBUGF(fprintf(stderr, ": "));
+  DEBUGF(fwrite(nv->value, nv->valuelen, 1, stderr));
+  DEBUGF(fprintf(stderr, "\n"));
   rv = add_nva(nva_out_ptr,
                nv->name, nv->namelen, nv->value, nv->valuelen);
   if(rv != 0) {
@@ -506,6 +518,11 @@ static int emit_indname_header(nghttp2_hd_context *context,
                                uint8_t flags)
 {
   int rv;
+  DEBUGF(fprintf(stderr, "Header emission:\n"));
+  DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
+  DEBUGF(fprintf(stderr, ": "));
+  DEBUGF(fwrite(value, valuelen, 1, stderr));
+  DEBUGF(fprintf(stderr, "\n"));
   rv = add_emit_set(context, ent);
   if(rv != 0) {
     return rv;
@@ -791,6 +808,11 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
         }
       }
     }
+    DEBUGF(fprintf(stderr, "Remove item from header table:\n"));
+    DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
+    DEBUGF(fprintf(stderr, ": "));
+    DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
+    DEBUGF(fprintf(stderr, "\n"));
     nghttp2_hd_ringbuf_pop_back(&context->hd_table);
     if(--ent->ref == 0) {
       nghttp2_hd_entry_free(ent);
@@ -1225,6 +1247,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
   int rv = 0;
   uint8_t *last = in + inlen;
   nghttp2_nva_out nva_out;
+  DEBUGF(fprintf(stderr, "infalte_hd start\n"));
   memset(&nva_out, 0, sizeof(nva_out));
   if(inflater->bad) {
     return NGHTTP2_ERR_HEADER_COMP;
@@ -1237,16 +1260,20 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       ssize_t index;
       nghttp2_hd_entry *ent;
       in = decode_length(&index, in, last, 7);
+      DEBUGF(fprintf(stderr, "Indexed repr index=%zd\n", index));
       if(index < 0) {
+        DEBUGF(fprintf(stderr, "Index out of range index=%zd\n", index));
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
       if(index == 0) {
+        DEBUGF(fprintf(stderr, "Clearing reference set\n"));
         clear_refset(inflater);
         continue;
       }
       --index;
       if(!check_index_range(inflater, index)) {
+        DEBUGF(fprintf(stderr, "Index out of range index=%zd\n", index));
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
@@ -1266,6 +1293,12 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
         if(ent->flags & NGHTTP2_HD_FLAG_REFSET) {
           rv = emit_indexed_header(inflater, &nva_out, ent);
+        } else {
+          DEBUGF(fprintf(stderr, "Toggle off item:\n"));
+          DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
+          DEBUGF(fprintf(stderr, ": "));
+          DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
+          DEBUGF(fprintf(stderr, "\n"));
         }
       }
       if(rv != 0) {
@@ -1277,6 +1310,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       ssize_t namelen, valuelen;
       int name_huffman, value_huffman;
       uint8_t *decoded_huffman_name = NULL, *decoded_huffman_value = NULL;
+      DEBUGF(fprintf(stderr, "Literal header repr - new name\n"));
       if(++in == last) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -1284,12 +1318,14 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       name_huffman = *in & (1 << 7);
       in = decode_length(&namelen, in, last, 7);
       if(namelen < 0 || in + namelen > last) {
+        DEBUGF(fprintf(stderr, "Invalid namelen=%zd\n", namelen));
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
       if(name_huffman) {
         rv = inflate_decode(&nv.name, in, namelen, inflater->side);
         if(rv < 0) {
+          DEBUGF(fprintf(stderr, "Name huffman decoding failed\n"));
           goto fail;
         }
         decoded_huffman_name = nv.name;
@@ -1307,6 +1343,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       }
 
       if(in == last) {
+        DEBUGF(fprintf(stderr, "No value found\n"));
         free(decoded_huffman_name);
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -1314,6 +1351,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       value_huffman = *in & (1 << 7);
       in = decode_length(&valuelen, in, last, 7);
       if(valuelen < 0 || in + valuelen > last) {
+        DEBUGF(fprintf(stderr, "Invalid valuelen=%zd\n", valuelen));
         free(decoded_huffman_name);
         rv =  NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -1321,6 +1359,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       if(value_huffman) {
         rv = inflate_decode(&nv.value, in, valuelen, inflater->side);
         if(rv < 0) {
+          DEBUGF(fprintf(stderr, "Value huffman decoding failed\n"));
           free(decoded_huffman_name);
           goto fail;
         }
@@ -1376,30 +1415,36 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       ssize_t valuelen, index;
       int value_huffman;
       uint8_t *decoded_huffman_value = NULL;
+      DEBUGF(fprintf(stderr, "Literal header repr - indexed name\n"));
       in = decode_length(&index, in, last, 6);
       if(index <= 0) {
+        DEBUGF(fprintf(stderr, "Index out of range index=%zd\n", index));
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
       --index;
       if(!check_index_range(inflater, index)) {
+        DEBUGF(fprintf(stderr, "Index out of range index=%zd\n", index));
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
       ent = nghttp2_hd_table_get(inflater, index);
       if(in == last) {
+        DEBUGF(fprintf(stderr, "No value found\n"));
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
       value_huffman = *in & (1 << 7);
       in = decode_length(&valuelen, in , last, 7);
       if(valuelen < 0 || in + valuelen > last) {
+        DEBUGF(fprintf(stderr, "Invalid valuelen=%zd\n", valuelen));
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
       if(value_huffman) {
         rv = inflate_decode(&value, in, valuelen, inflater->side);
         if(rv < 0) {
+          DEBUGF(fprintf(stderr, "Value huffman decoding failed\n"));
           goto fail;
         }
         decoded_huffman_value = value;
@@ -1459,6 +1504,20 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       goto fail;
     }
   }
+#ifdef DEBUGBUILD
+  DEBUGF(fprintf(stderr, "Header table:\n"));
+  for(i = 0; i < inflater->hd_table.len; ++i) {
+    nghttp2_hd_entry *ent = nghttp2_hd_table_get(inflater, i);
+    DEBUGF(fprintf(stderr, "[%zu] (s=%zu) (%c) ",
+                   i + 1,
+                   entry_room(ent->nv.namelen, ent->nv.valuelen),
+                   (ent->flags & NGHTTP2_HD_FLAG_REFSET) ? 'R' : ' '));
+    DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
+    DEBUGF(fprintf(stderr, ": "));
+    DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
+    DEBUGF(fprintf(stderr, "\n"));
+  }
+#endif /* DEBUGBUILD */
   *nva_ptr = nva_out.nva;
   return nva_out.nvlen;
  fail:

@@ -33,6 +33,12 @@
 
 /* Macros, types and constants for internal use */
 
+#ifdef DEBUGBUILD
+#define DEBUGF(x) x
+#else
+#define DEBUGF(x) do { } while(0)
+#endif
+
 typedef int (*nghttp2_compar)(const void *lhs, const void *rhs);
 
 /* Internal error code. They must be in the range [-499, -100],
