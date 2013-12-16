@@ -73,6 +73,9 @@ AC_ARG_WITH([libxml2],
                     [disable support for libxml2])],
     [], [with_libxml2=yes])
 
+dnl Define variables
+AC_ARG_VAR([CYTHON], [the Cython executable])
+
 dnl Checks for programs
 AC_PROG_CC
 AC_PROG_CXX
@@ -82,6 +85,7 @@ AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG([0.20])
 AM_PATH_PYTHON([2.6],, [:])
+AC_CHECK_PROGS([CYTHON], [cython.py cython])
 
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 
@@ -354,4 +358,6 @@ AC_MSG_NOTICE([summary of build options:
     Examples:       ${enable_examples}
     Hdtest:         ${enable_hdtest}
     Failmalloc:     ${request_failmalloc}
+    Python:         ${PYTHON} ${PYTHON_VERSION}
+    Cython:         ${CYTHON}
 ])
