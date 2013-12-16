@@ -247,6 +247,8 @@ int Http2DownstreamConnection::push_request_headers()
   std::string via_value;
   std::string xff_value;
   std::string scheme, authority, path, query;
+  // To reconstruct HTTP/1 status line and headers, proxy should
+  // preserve host header field. See draft-09 section 8.1.3.1.
   if(downstream_->get_request_method() == "CONNECT") {
     // The upstream may be HTTP/2 or HTTP/1
     if(!downstream_->get_request_http2_authority().empty()) {
