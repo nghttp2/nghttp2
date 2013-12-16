@@ -160,7 +160,6 @@ namespace {
 const char *IGN_HD[] = {
   "connection",
   "expect",
-  "host",
   "http2-settings",
   "keep-alive",
   "proxy-connection",
