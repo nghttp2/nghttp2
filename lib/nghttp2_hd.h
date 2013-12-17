@@ -116,7 +116,8 @@ typedef struct {
      entries. This value is always equal to |hd_table_bufsize_max| on
      decoder context. */
   size_t deflate_hd_table_bufsize_max;
-  /* The number of effective entry in |hd_table|. */
+  /* The number of effective entry in |hd_table|. This value is always
+     equal to hd_table.len on decoder side. */
   size_t deflate_hd_tablelen;
   /* The number of entry the |buf_track| contains. */
   size_t buf_tracklen;

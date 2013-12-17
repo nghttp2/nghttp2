@@ -293,7 +293,8 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
 
 int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater, nghttp2_hd_side side)
 {
-  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side, 0);
+  return nghttp2_hd_context_init(inflater, NGHTTP2_HD_ROLE_INFLATE, side,
+                                 NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE);
 }
 
 static void nghttp2_hd_context_free(nghttp2_hd_context *context)
@@ -901,9 +902,9 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     --new_ent->ref;
   } else {
     context->hd_table_bufsize += room;
-    new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
     nghttp2_hd_ringbuf_push_front(&context->hd_table, new_ent);
     if(room <= context->deflate_hd_table_bufsize_max) {
+      new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
       context->deflate_hd_table_bufsize += room;
       ++context->deflate_hd_tablelen;
     }
@@ -1195,7 +1196,7 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
       goto fail;
     }
   }
-  for(i = 0; i < deflater->hd_table.len; ++i) {
+  for(i = 0; i < deflater->deflate_hd_tablelen; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&deflater->hd_table, i);
     rv = deflate_post_process_hd_entry(ent, i, buf_ptr, buflen_ptr, &offset);
     if(rv != 0) {
