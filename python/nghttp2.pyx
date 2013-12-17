@@ -31,6 +31,18 @@ HD_SIDE_RESPONSE = cnghttp2.NGHTTP2_HD_SIDE_RESPONSE
 
 HD_DEFLATE_HD_TABLE_BUFSIZE_MAX = 4096
 
+HD_ENTRY_OVERHEAD = cnghttp2.NGHTTP2_HD_ENTRY_OVERHEAD
+
+class HDTableEntry:
+
+    def __init__(self, name, value, ref):
+        self.name = name
+        self.value = value
+        self.ref = ref
+
+    def space(self):
+        return len(self.name) + len(self.value) + HD_ENTRY_OVERHEAD
+
 cdef class _HDContextBase:
 
     cdef cnghttp2.nghttp2_hd_context _ctx
@@ -49,6 +61,18 @@ cdef class _HDContextBase:
                                                    hd_table_bufsize_max)
         if rv != 0:
             raise Exception(_strerror(rv))
+
+    def get_hd_table(self):
+        '''Returns copy of current dynamic header table.'''
+        cdef int length = self._ctx.deflate_hd_tablelen
+        cdef cnghttp2.nghttp2_hd_entry *entry
+        res = []
+        for i in range(length):
+            entry = cnghttp2.nghttp2_hd_table_get(&self._ctx, i)
+            res.append(HDTableEntry(entry.nv.name[:entry.nv.namelen],
+                                    entry.nv.value[:entry.nv.valuelen],
+                                    (entry.flags & cnghttp2.NGHTTP2_HD_FLAG_REFSET) != 0))
+        return res
 
 cdef class HDDeflater(_HDContextBase):
     '''Performs header compression. The header compression algorithm has
@@ -178,3 +202,20 @@ cdef class HDInflater(_HDContextBase):
 
 cdef _strerror(int liberror_code):
     return cnghttp2.nghttp2_strerror(liberror_code).decode('utf-8')
+
+def print_hd_table(hdtable):
+    '''Convenient function to print |hdtable| to the standard output. This
+    function does not work if header name/value cannot be decoded using
+    UTF-8 encoding.
+
+    s=N means the entry occupies N bytes in header table. if r=y, then
+    the entry is in the reference set.
+
+    '''
+    idx = 0
+    for entry in hdtable:
+        idx += 1
+        print('[{}] (s={}) (r={}) {}: {}'.format(idx, entry.space(),
+                                                 'y' if entry.ref else 'n',
+                                                 entry.name.decode('utf-8'),
+                                                 entry.value.decode('utf-8')))

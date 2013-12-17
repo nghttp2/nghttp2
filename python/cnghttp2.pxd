@@ -42,12 +42,22 @@ cdef extern from 'nghttp2_frame.h':
 
 cdef extern from 'nghttp2_hd.h':
 
+    # This is macro
+    int NGHTTP2_HD_ENTRY_OVERHEAD
+
     ctypedef enum nghttp2_hd_side:
         NGHTTP2_HD_SIDE_REQUEST
         NGHTTP2_HD_SIDE_RESPONSE
 
+    ctypedef enum nghttp2_hd_flags:
+        NGHTTP2_HD_FLAG_REFSET
+
+    ctypedef struct nghttp2_hd_entry:
+        nghttp2_nv nv
+        uint8_t flags
+
     ctypedef struct nghttp2_hd_context:
-        pass
+        size_t deflate_hd_tablelen
 
     int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
                                  nghttp2_hd_side side,
@@ -77,3 +87,6 @@ cdef extern from 'nghttp2_hd.h':
                                   uint8_t *input, size_t inlen)
 
     int nghttp2_hd_end_headers(nghttp2_hd_context *deflater_or_inflater)
+
+    nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
+                                           size_t index)
