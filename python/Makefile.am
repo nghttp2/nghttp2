@@ -25,8 +25,6 @@ EXTRA_DIST = README.rst cnghttp2.pxd nghttp2.pyx setup.py
 
 PYSETUP_INCLUDE_DIRS=$(top_srcdir)/lib/includes:$(top_srcdir)/lib
 PYSETUP_LIBDIRS=$(top_builddir)/lib/.libs
-CYTHON = @CYTHON@
-PYTHON = @PYTHON@
 
 .PHONY: help build_ext
 
