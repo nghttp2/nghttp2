@@ -2070,7 +2070,11 @@ int <tt class="descname">nghttp2_submit_request</tt><big>(</big><a class="refere
 <p>The <em>pri</em> is priority of this request. 0 is the highest priority
 value and <a class="reference internal" href="#NGHTTP2_PRI_LOWEST" title="NGHTTP2_PRI_LOWEST"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRI_LOWEST</span></tt></a> is the lowest value.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.</p>
+<em>nvlen</em> elements. The value is opaque sequence of bytes and
+therefore can contain NULL byte (0x0). If the application requires
+that the ordering of values for a single header field name
+appearing in different header fields, it has to concatenate them
+using NULL byte (0x0) before passing them to this function.</p>
 <p>HTTP/2.0 specification has requirement about header fields in the
 request HEADERS. See the specification for more details.</p>
 <p>This function creates copies of all name/value pairs in <em>nva</em>.  It
@@ -2114,7 +2118,11 @@ int <tt class="descname">nghttp2_submit_response</tt><big>(</big><a class="refer
 <dd><p>Submits response HEADERS frame and optionally one or more DATA
 frames against the stream <em>stream_id</em>.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.</p>
+<em>nvlen</em> elements. The value is opaque sequence of bytes and
+therefore can contain NULL byte (0x0). If the application requires
+that the ordering of values for a single header field name
+appearing in different header fields, it has to concatenate them
+using NULL byte (0x0) before passing them to this function.</p>
 <p>HTTP/2.0 specification has requirement about header fields in the
 response HEADERS. See the specification for more details.</p>
 <p>This function creates copies of all name/value pairs in <em>nva</em>.  It
@@ -2161,7 +2169,11 @@ actual stream ID is assigned just before the frame is sent. For
 response, specify stream ID in <em>stream_id</em>.</p>
 <p>The <em>pri</em> is priority of this request.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.</p>
+<em>nvlen</em> elements. The value is opaque sequence of bytes and
+therefore can contain NULL byte (0x0). If the application requires
+that the ordering of values for a single header field name
+appearing in different header fields, it has to concatenate them
+using NULL byte (0x0) before passing them to this function.</p>
 <p>This function creates copies of all name/value pairs in <em>nva</em>.  It
 also lower-cases all names in <em>nva</em>.</p>
 <p>The <em>stream_user_data</em> is a pointer to an arbitrary data which is
@@ -2270,7 +2282,11 @@ the resulting PUSH_PROMISE frame always has
 header continuation support in the library.</p>
 <p>The <em>stream_id</em> must be client initiated stream ID.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.</p>
+<em>nvlen</em> elements. The value is opaque sequence of bytes and
+therefore can contain NULL byte (0x0). If the application requires
+that the ordering of values for a single header field name
+appearing in different header fields, it has to concatenate them
+using NULL byte (0x0) before passing them to this function.</p>
 <p>This function creates copies of all name/value pairs in <em>nva</em>.  It
 also lower-cases all names in <em>nva</em>.</p>
 <p>Since the library reorders the frames and tries to send the highest
