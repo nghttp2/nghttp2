@@ -344,6 +344,8 @@ SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
 The ``nghttpx`` supports configuration file. See ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
 
+The ``nghttpx`` does not support server push.
+
 In the default mode, (without any of ``--http2-proxy``,
 ``--http2-bridge``, ``--client-proxy`` and ``--client`` options),
 ``nghttpx`` works as reverse proxy to the backend server::
