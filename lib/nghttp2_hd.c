@@ -912,43 +912,55 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
   return new_ent;
 }
 
-static ssize_t find_in_hd_table(nghttp2_hd_context *context, nghttp2_nv *nv)
+static int name_eq(const nghttp2_nv *a, const nghttp2_nv *b)
 {
-  size_t i;
-  for(i = 0; i < context->deflate_hd_tablelen; ++i) {
-    nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&context->hd_table, i);
-    if(nghttp2_nv_equal(&ent->nv, nv)) {
-      return i;
-    }
-  }
-  for(i = 0; i < STATIC_TABLE_LENGTH; ++i) {
-    nghttp2_hd_entry *ent = &static_table[i];
-    if(nghttp2_nv_equal(&ent->nv, nv)) {
-      return context->hd_table.len + i;
-    }
-  }
-  return -1;
+  return a->namelen == b->namelen && memcmp(a->name, b->name, a->namelen) == 0;
 }
 
-static ssize_t find_name_in_hd_table(nghttp2_hd_context *context,
+static int value_eq(const nghttp2_nv *a, const nghttp2_nv *b)
+{
+  return a->valuelen == b->valuelen &&
+    memcmp(a->value, b->value, a->valuelen) == 0;
+}
+
+typedef struct {
+  ssize_t index;
+  /* Nonzero if both name and value are matched. */
+  uint8_t name_value_match;
+} search_result;
+
+static search_result search_hd_table(nghttp2_hd_context *context,
                                      nghttp2_nv *nv)
 {
+  search_result res = { -1, 0 };
   size_t i;
   for(i = 0; i < context->deflate_hd_tablelen; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&context->hd_table, i);
-    if(ent->nv.namelen == nv->namelen &&
-       memcmp(ent->nv.name, nv->name, nv->namelen) == 0) {
-      return i;
+    if(name_eq(&ent->nv, nv)) {
+      if(res.index == -1) {
+        res.index = i;
+      }
+      if(value_eq(&ent->nv, nv)) {
+        res.index = i;
+        res.name_value_match = 1;
+        return res;
+      }
     }
   }
   for(i = 0; i < STATIC_TABLE_LENGTH; ++i) {
     nghttp2_hd_entry *ent = &static_table[i];
-    if(ent->nv.namelen == nv->namelen &&
-       memcmp(ent->nv.name, nv->name, nv->namelen) == 0) {
-      return context->hd_table.len + i;
+    if(name_eq(&ent->nv, nv)) {
+      if(res.index == -1) {
+        res.index = context->hd_table.len + i;
+      }
+      if(value_eq(&ent->nv, nv)) {
+        res.index = context->hd_table.len + i;
+        res.name_value_match = 1;
+        return res;
+      }
     }
   }
-  return -1;
+  return res;
 }
 
 int nghttp2_hd_change_table_size(nghttp2_hd_context *context,
@@ -1033,9 +1045,10 @@ static int deflate_nv(nghttp2_hd_context *deflater,
 {
   int rv;
   nghttp2_hd_entry *ent;
-  rv = find_in_hd_table(deflater, nv);
-  if(rv != -1) {
-    size_t index = rv;
+  search_result res;
+  res = search_hd_table(deflater, nv);
+  if(res.index != -1 && res.name_value_match) {
+    size_t index = res.index;
     ent = nghttp2_hd_table_get(deflater, index);
     if(index >= deflater->hd_table.len) {
       nghttp2_hd_entry *new_ent;
@@ -1102,9 +1115,8 @@ static int deflate_nv(nghttp2_hd_context *deflater,
   } else {
     ssize_t index = -1;
     int incidx = 0;
-    rv = find_name_in_hd_table(deflater, nv);
-    if(rv != -1) {
-      index = rv;
+    if(res.index != -1) {
+      index = res.index;
     }
     if(should_indexing(nv) &&
        entry_room(nv->namelen, nv->valuelen) <= NGHTTP2_HD_MAX_ENTRY_SIZE) {
