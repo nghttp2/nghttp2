@@ -199,9 +199,9 @@ def transform_content(content):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate API reference")
-    parser.add_argument('--header', type=argparse.FileType('rb', 0),
+    parser.add_argument('--header', type=argparse.FileType('r'),
                         help='header inserted at the top of the page')
-    parser.add_argument('files', nargs='+', type=argparse.FileType('rb', 0),
+    parser.add_argument('files', nargs='+', type=argparse.FileType('r'),
                         help='source file')
     args = parser.parse_args()
     if args.header:
