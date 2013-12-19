@@ -6,9 +6,9 @@ header compressor and decompressor are implemented in extension using
 cython.
 
 This is experimental and adds some dependencies which is a bit hard to
-check, so this extension module does not built with usual ``make
-install`` in the top directory. Instead, a user has to run ``make
-build_ext`` in this directory.
+check, so this extension module does not built with usual ``make`` in
+the top directory. Instead, a user has to run ``make build_ext`` in
+this directory.
 
 The build extension module is called ``nghttp2``.
 
@@ -37,3 +37,6 @@ decompressor::
     data = deflater.deflate([(b'foo', b'bar'),
 			     (b'baz', b'buz')])
     print(binascii.b2a_hex(data))
+
+    hdrs = inflater.inflate(data)
+    print(hdrs)
