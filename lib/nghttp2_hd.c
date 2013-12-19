@@ -1240,7 +1240,12 @@ static int inflater_post_process_hd_entry(nghttp2_hd_context *inflater,
 static ssize_t inflate_decode(uint8_t **dest_ptr, uint8_t *in, size_t inlen,
                               nghttp2_hd_side side)
 {
-  ssize_t declen = nghttp2_hd_huff_decode_count(in, inlen, side);
+  ssize_t declen;
+  if(inlen == 0) {
+    *dest_ptr = NULL;
+    return 0;
+  }
+  declen = nghttp2_hd_huff_decode_count(in, inlen, side);
   if(declen == -1) {
     return NGHTTP2_ERR_HEADER_COMP;
   }

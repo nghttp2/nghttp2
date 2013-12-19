@@ -689,6 +689,31 @@ void test_nghttp2_hd_inflate_clearall_inc(void)
   nghttp2_hd_inflate_free(&inflater);
 }
 
+void test_nghttp2_hd_inflate_zero_length_huffman(void)
+{
+  nghttp2_hd_context inflater;
+  uint8_t buf[4];
+  nghttp2_nv *resnva;
+
+  /* Literal header without indexing - new name */
+  buf[0] = 0x40;
+  buf[1] = 1;
+  buf[2] = 'x';
+  buf[3] = 0x80;
+
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
+  CU_ASSERT(1 == nghttp2_hd_inflate_hd(&inflater, &resnva, buf, 4));
+
+  CU_ASSERT(1 == resnva[0].namelen);
+  CU_ASSERT('x' == resnva[0].name[0]);
+  CU_ASSERT(NULL == resnva[0].value);
+  CU_ASSERT(0 == resnva[0].valuelen);
+
+  nghttp2_nv_array_del(resnva);
+  nghttp2_hd_end_headers(&inflater);
+  nghttp2_hd_inflate_free(&inflater);
+}
+
 void test_nghttp2_hd_change_table_size(void)
 {
   nghttp2_hd_context deflater;
