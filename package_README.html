@@ -663,8 +663,8 @@ bytes). The <tt class="docutils literal"><span class="pre">index</span></tt> cor
 The <tt class="docutils literal"><span class="pre">name</span></tt> is the header field name and the <tt class="docutils literal"><span class="pre">value</span></tt> is the
 header field value. They may be displayed as <tt class="docutils literal"><span class="pre">**DEALLOCATED**</span></tt>,
 which means that the memory for that string is freed and not
-available. This will happen when specifying smaller value in
-<tt class="docutils literal"><span class="pre">-S</span></tt> than <tt class="docutils literal"><span class="pre">-s</span></tt>.</dd>
+available. This will happen when the value has 0 length or
+specifying smaller value in <tt class="docutils literal"><span class="pre">-S</span></tt> than <tt class="docutils literal"><span class="pre">-s</span></tt>.</dd>
 <dt>size</dt>
 <dd>The sum of the spaces entries occupied, this includes the
 entry overhead.</dd>
