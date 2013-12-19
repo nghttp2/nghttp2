@@ -522,8 +522,8 @@ entries
     The ``name`` is the header field name and the ``value`` is the
     header field value. They may be displayed as ``**DEALLOCATED**``,
     which means that the memory for that string is freed and not
-    available. This will happen when specifying smaller value in
-    ``-S`` than ``-s``.
+    available. This will happen when the value has 0 length or
+    specifying smaller value in ``-S`` than ``-s``.
 
 size
     The sum of the spaces entries occupied, this includes the
