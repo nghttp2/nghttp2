@@ -35,9 +35,9 @@ typedef int16_t huff_decode_table_type[256];
 
 typedef struct {
   /* The number of bits in this code */
-  size_t nbits;
-  /* Code sequence padded with 0 */
-  uint8_t code[4];
+  uint32_t nbits;
+  /* Huffman code aligned to LSB */
+  uint32_t code;
 } nghttp2_huff_sym;
 
 #endif /* NGHTTP2_HD_HUFFMAN_H */

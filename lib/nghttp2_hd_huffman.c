@@ -26,6 +26,7 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "nghttp2_hd.h"
 
@@ -44,14 +45,12 @@ extern const int16_t res_huff_decode_table[][256];
 static uint8_t get_prefix_byte(const uint8_t *in, size_t len, size_t bitoff)
 {
   uint8_t b;
-  size_t bitleft;
   if(bitoff == 0) {
     return *in;
   }
-  bitleft = 8 - bitoff;
-  b = (*in & ((1 << bitleft) - 1)) << bitoff;
+  b = *in << bitoff;
   if(len > 1) {
-    b |= *(in + 1) >> bitleft;
+    b |= *(in + 1) >> (8 - bitoff);
   }
   return b;
 }
@@ -90,57 +89,33 @@ static int huff_decode(const uint8_t *in, size_t len, size_t bitoff,
   }
   return rv;
 }
-
 /*
- * Returns next LSB aligned |nbits| bits from huffman symbol |sym|,
- * starting |codebitoff| bit offset (from beginning of code sequence,
- * so it could be more than 8).
+ * Encodes huffman code |sym| into |*dest_ptr|, whose least |rembits|
+ * bits are not filled yet.  The |rembits| must be in range [1, 8],
+ * inclusive.  At the end of the process, the |*dest_ptr| is updated
+ * and points where next output should be placed. The number of
+ * unfilled bits in the pointed location is returned.
  */
-static uint8_t huff_get_lsb_aligned(const nghttp2_huff_sym *sym,
-                                    size_t codebitoff,
-                                    size_t nbits)
-{
-  size_t codeidx = codebitoff / 8;
-  uint8_t a = sym->code[codeidx];
-  size_t localbitoff = codebitoff & 0x7;
-  size_t bitleft = 8 - localbitoff;
-
-  if(bitleft >= nbits) {
-    return (a >> (bitleft - nbits)) & ((1 << nbits) - 1);
-  } else {
-    size_t right = nbits - bitleft;
-    a &= ((1 << bitleft) - 1);
-    a <<= right;
-    if((sym->nbits + 7) / 8 > codeidx + 1) {
-      a |= sym->code[codeidx + 1] >> (8 - right);
-    }
-    return a;
-  }
-}
-
-/*
- * Encodes huffman code |sym| into |*dest_ptr|,starting |bitoff|
- * offset. The |bitoff| must be strictly less than 8. At the end of
- * the process, the |*dest_ptr| is updated and points where next
- * output should be placed. The bit offset of the pointed location is
- * returned.
- */
-static size_t huff_encode_sym(uint8_t **dest_ptr, size_t bitoff,
+static size_t huff_encode_sym(uint8_t **dest_ptr, size_t rembits,
                               const nghttp2_huff_sym *sym)
 {
-  size_t b = 0;
-  if(bitoff == 0) **dest_ptr = 0;
-  **dest_ptr |= huff_get_lsb_aligned(sym, b, 8 - bitoff);
-  b += 8 - bitoff;
-  ++*dest_ptr;
-  for(; b < sym->nbits; b += 8, ++*dest_ptr) {
-    **dest_ptr = huff_get_lsb_aligned(sym, b, 8);
+  size_t nbits = sym->nbits;
+  for(;;) {
+    if(rembits > nbits) {
+      **dest_ptr |= sym->code << (rembits - nbits);
+      rembits -= nbits;
+      break;
+    }
+    **dest_ptr |= sym->code >> (nbits - rembits);
+    ++*dest_ptr;
+    nbits -= rembits;
+    rembits = 8;
+    if(nbits == 0) {
+      break;
+    }
+    **dest_ptr = 0;
   }
-  bitoff = 8 - (b - sym->nbits);
-  if(bitoff > 0) {
-    --*dest_ptr;
-  }
-  return bitoff;
+  return rembits;
 }
 
 size_t nghttp2_hd_huff_encode_count(const uint8_t *src, size_t len,
@@ -166,7 +141,7 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
                                const uint8_t *src, size_t srclen,
                                nghttp2_hd_side side)
 {
-  int bitoff = 0;
+  int rembits = 8;
   uint8_t *dest_first = dest;
   size_t i;
   const nghttp2_huff_sym *huff_sym_table;
@@ -178,13 +153,18 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
   }
   for(i = 0; i < srclen; ++i) {
     const nghttp2_huff_sym *sym = &huff_sym_table[src[i]];
-    bitoff = huff_encode_sym(&dest, bitoff, sym);
+    if(rembits == 8) {
+      *dest = 0;
+    }
+    rembits = huff_encode_sym(&dest, rembits, sym);
   }
   /* 256 is special terminal symbol, pad with its prefix */
-  if(bitoff > 0) {
-    *dest |= huff_sym_table[256].code[0] >> bitoff;
+  if(rembits < 8) {
+    const nghttp2_huff_sym *sym = &huff_sym_table[256];
+    *dest |= sym->code >> (sym->nbits - rembits);
+    ++dest;
   }
-  return dest - dest_first + (bitoff > 0);
+  return dest - dest_first;
 }
 
 static int check_last_byte(const uint8_t *src, size_t srclen, size_t idx,

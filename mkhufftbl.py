@@ -44,23 +44,25 @@ root = Node(0)
 nodes.append(root)
 
 for line in sys.stdin:
-    m = re.match(r'.*\(\s*(\d+)\) ([|01]+) \[(\d+)\] .*', line)
+    m = re.match(r'.*\(\s*(\d+)\) ([|01]+) \[(\d+)\]\s+(\S+).*', line)
     if m:
         #print m.group(1), m.group(2), m.group(3)
+        if len(m.group(4)) > 8:
+            raise Error('Code is more than 4 bytes long')
         sym = int(m.group(1))
         pat = re.sub(r'\|', '', m.group(2))
         nbits = int(m.group(3))
         assert(len(pat) == nbits)
         binpat = to_bin(pat)
         assert(len(binpat) == (nbits+7)/8)
-        symbol_tbl[sym] = (binpat, nbits)
+        symbol_tbl[sym] = (binpat, nbits, m.group(4))
         #print "Inserting", sym
         insert(root, sym, binpat, nbits, 0)
 
 print '''\
 typedef struct {
-  size_t nbits;
-  uint8_t code[4];
+  uint32_t nbits;
+  uint32_t code;
 } nghttp2_huff_sym;
 '''
 
@@ -70,9 +72,8 @@ for i in range(257):
     pat = list(symbol_tbl[i][0])
     pat += [0]*(4 - len(pat))
     print '''\
-  {{ {}, {{ {} }} }}{}\
-'''.format(symbol_tbl[i][1], ', '.join([str(k) for k in pat]),
-           ',' if i < 256 else '')
+  {{ {}, 0x{}u }}{}\
+'''.format(symbol_tbl[i][1], symbol_tbl[i][2], ',' if i < 256 else '')
 print '};'
 print ''
 
