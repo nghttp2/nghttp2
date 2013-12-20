@@ -44,7 +44,7 @@ ThreadEventReceiver::~ThreadEventReceiver()
 
 void ThreadEventReceiver::on_read(bufferevent *bev)
 {
-  evbuffer *input = bufferevent_get_input(bev);
+  auto input = bufferevent_get_input(bev);
   while(evbuffer_get_length(input) >= sizeof(WorkerEvent)) {
     WorkerEvent wev;
     int nread = evbuffer_remove(input, &wev, sizeof(wev));
@@ -61,12 +61,11 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
       TLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
                        << ", addrlen=" << wev.client_addrlen;
     }
-    event_base *evbase = bufferevent_get_base(bev);
-    ClientHandler *client_handler;
-    client_handler = ssl::accept_connection(evbase, ssl_ctx_,
-                                            wev.client_fd,
-                                            &wev.client_addr.sa,
-                                            wev.client_addrlen);
+    auto evbase = bufferevent_get_base(bev);
+    auto client_handler = ssl::accept_connection(evbase, ssl_ctx_,
+                                                 wev.client_fd,
+                                                 &wev.client_addr.sa,
+                                                 wev.client_addrlen);
     if(client_handler) {
       client_handler->set_http2_session(http2session_);
       if(LOG_ENABLED(INFO)) {

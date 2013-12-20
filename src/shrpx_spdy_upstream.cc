@@ -54,10 +54,10 @@ ssize_t send_callback(spdylay_session *session,
                       void *user_data)
 {
   int rv;
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  ClientHandler *handler = upstream->get_client_handler();
-  bufferevent *bev = handler->get_bev();
-  evbuffer *output = bufferevent_get_output(bev);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto handler = upstream->get_client_handler();
+  auto bev = handler->get_bev();
+  auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
   if(evbuffer_get_length(output) > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
     return SPDYLAY_ERR_WOULDBLOCK;
@@ -77,10 +77,10 @@ namespace {
 ssize_t recv_callback(spdylay_session *session,
                       uint8_t *data, size_t len, int flags, void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  ClientHandler *handler = upstream->get_client_handler();
-  bufferevent *bev = handler->get_bev();
-  evbuffer *input = bufferevent_get_input(bev);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto handler = upstream->get_client_handler();
+  auto bev = handler->get_bev();
+  auto input = bufferevent_get_input(bev);
   int nread = evbuffer_remove(input, data, len);
   if(nread == -1) {
     return SPDYLAY_ERR_CALLBACK_FAILURE;
@@ -97,12 +97,12 @@ void on_stream_close_callback
 (spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
  void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Stream stream_id=" << stream_id
                          << " is being closed";
   }
-  Downstream *downstream = upstream->find_downstream(stream_id);
+  auto downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
       upstream->remove_downstream(downstream);
@@ -114,8 +114,7 @@ void on_stream_close_callback
         if(!downstream->get_upgraded() &&
            !downstream->get_response_connection_close()) {
           // Keep-alive
-          DownstreamConnection *dconn;
-          dconn = downstream->get_downstream_connection();
+          auto dconn = downstream->get_downstream_connection();
           if(dconn) {
             dconn->detach_downstream(downstream);
           }
@@ -246,8 +245,8 @@ void on_data_chunk_recv_callback(spdylay_session *session,
                                  const uint8_t *data, size_t len,
                                  void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
-  Downstream *downstream = upstream->find_downstream(stream_id);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->push_upload_data_chunk(data, len) != 0) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -308,14 +307,14 @@ void on_ctrl_not_send_callback(spdylay_session *session,
                                spdylay_frame *frame,
                                int error_code, void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   ULOG(WARNING, upstream) << "Failed to send control frame type=" << type
                           << ", error_code=" << error_code << ":"
                           << spdylay_strerror(error_code);
   if(type == SPDYLAY_SYN_REPLY) {
     // To avoid stream hanging around, issue RST_STREAM.
-    int32_t stream_id = frame->syn_reply.stream_id;
-    Downstream *downstream = upstream->find_downstream(stream_id);
+    auto stream_id = frame->syn_reply.stream_id;
+    auto downstream = upstream->find_downstream(stream_id);
     if(downstream) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
     }
@@ -331,7 +330,7 @@ void on_ctrl_recv_parse_error_callback(spdylay_session *session,
                                        size_t payloadlen, int error_code,
                                        void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Failed to parse received control frame. type="
                          << type
@@ -347,7 +346,7 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
                                    const uint8_t *payload, size_t payloadlen,
                                    void *user_data)
 {
-  SpdyUpstream *upstream = reinterpret_cast<SpdyUpstream*>(user_data);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Received unknown control frame.";
   }
@@ -503,10 +502,9 @@ ClientHandler* SpdyUpstream::get_client_handler() const
 namespace {
 void spdy_downstream_readcb(bufferevent *bev, void *ptr)
 {
-  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
-  Downstream *downstream = dconn->get_downstream();
-  SpdyUpstream *upstream;
-  upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto downstream = dconn->get_downstream();
+  auto upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
   if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
     // If upstream SPDY stream was closed, we just close downstream,
     // because there is no consumer now. Downstream connection is also
@@ -563,10 +561,9 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
   if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     return;
   }
-  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
-  Downstream *downstream = dconn->get_downstream();
-  SpdyUpstream *upstream;
-  upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto downstream = dconn->get_downstream();
+  auto upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
   upstream->resume_read(SHRPX_NO_BUFFER, downstream);
 }
 } // namespace
@@ -574,10 +571,9 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
 namespace {
 void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  DownstreamConnection *dconn = reinterpret_cast<DownstreamConnection*>(ptr);
-  Downstream *downstream = dconn->get_downstream();
-  SpdyUpstream *upstream;
-  upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto downstream = dconn->get_downstream();
+  auto upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Connection established. stream_id="
@@ -729,9 +725,9 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
                                 spdylay_data_source *source,
                                 void *user_data)
 {
-  Downstream *downstream = reinterpret_cast<Downstream*>(source->ptr);
+  auto downstream = reinterpret_cast<Downstream*>(source->ptr);
   auto upstream = reinterpret_cast<SpdyUpstream*>(downstream->get_upstream());
-  evbuffer *body = downstream->get_response_body_buf();
+  auto body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
   if(nread == -1) {
@@ -762,9 +758,9 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
 int SpdyUpstream::error_reply(Downstream *downstream, unsigned int status_code)
 {
   int rv;
-  std::string html = http::create_error_html(status_code);
+  auto html = http::create_error_html(status_code);
   downstream->init_response_body_buf();
-  evbuffer *body = downstream->get_response_body_buf();
+  auto body = downstream->get_response_body_buf();
   rv = evbuffer_add(body, html.c_str(), html.size());
   if(rv == -1) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
@@ -784,7 +780,7 @@ int SpdyUpstream::error_reply(Downstream *downstream, unsigned int status_code)
     "content-type", "text/html; charset=UTF-8",
     "server", get_config()->server_name,
     "content-length", content_length.c_str(),
-    0
+    nullptr
   };
 
   rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,
@@ -854,19 +850,18 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   nv[hdidx++] = status_string.c_str();
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
-  for(Headers::const_iterator i = downstream->get_response_headers().begin();
-      i != downstream->get_response_headers().end(); ++i) {
-    if(util::strieq((*i).first.c_str(), "transfer-encoding") ||
-       util::strieq((*i).first.c_str(), "keep-alive") || // HTTP/1.0?
-       util::strieq((*i).first.c_str(), "connection") ||
-       util:: strieq((*i).first.c_str(), "proxy-connection")) {
+  for(auto& hd : downstream->get_response_headers()) {
+    if(util::strieq(hd.first.c_str(), "transfer-encoding") ||
+       util::strieq(hd.first.c_str(), "keep-alive") || // HTTP/1.0?
+       util::strieq(hd.first.c_str(), "connection") ||
+       util::strieq(hd.first.c_str(), "proxy-connection")) {
       // These are ignored
     } else if(!get_config()->no_via &&
-              util::strieq((*i).first.c_str(), "via")) {
-      via_value = (*i).second;
+              util::strieq(hd.first.c_str(), "via")) {
+      via_value = hd.second;
     } else {
-      nv[hdidx++] = (*i).first.c_str();
-      nv[hdidx++] = (*i).second.c_str();
+      nv[hdidx++] = hd.first.c_str();
+      nv[hdidx++] = hd.second.c_str();
     }
   }
   if(!get_config()->no_via) {
@@ -912,7 +907,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 int SpdyUpstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len)
 {
-  evbuffer *body = downstream->get_response_body_buf();
+  auto body = downstream->get_response_body_buf();
   int rv = evbuffer_add(body, data, len);
   if(rv != 0) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
