@@ -764,7 +764,7 @@ int hd_on_frame_recv_callback
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
-    on_frame_recv_callback(session, frame, user_data);
+    verbose_on_frame_recv_callback(session, frame, user_data);
   }
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
@@ -856,7 +856,7 @@ int hd_on_frame_send_callback
   }
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
-    on_frame_send_callback(session, frame, user_data);
+    verbose_on_frame_send_callback(session, frame, user_data);
   }
   return 0;
 }
@@ -881,7 +881,8 @@ int hd_on_data_recv_callback
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
-    on_data_recv_callback(session, length, flags, stream_id, user_data);
+    verbose_on_data_recv_callback(session, length, flags, stream_id,
+                                  user_data);
   }
   return 0;
 }
@@ -895,7 +896,8 @@ int hd_on_data_send_callback
   auto hd = reinterpret_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
-    on_data_send_callback(session, length, flags, stream_id, user_data);
+    verbose_on_data_send_callback(session, length, flags, stream_id,
+                                  user_data);
   }
   return 0;
 }
@@ -931,10 +933,12 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.on_data_recv_callback = hd_on_data_recv_callback;
   callbacks.on_data_send_callback = hd_on_data_send_callback;
   if(config->verbose) {
-    callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
+    callbacks.on_invalid_frame_recv_callback =
+      verbose_on_invalid_frame_recv_callback;
     callbacks.on_frame_recv_parse_error_callback =
-      on_frame_recv_parse_error_callback;
-    callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
+      verbose_on_frame_recv_parse_error_callback;
+    callbacks.on_unknown_frame_recv_callback =
+      verbose_on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_request_recv_callback = config->on_request_recv_callback;

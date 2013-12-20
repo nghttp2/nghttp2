@@ -1097,17 +1097,6 @@ int before_frame_send_callback
 } // namespace
 
 namespace {
-int on_frame_send_callback2
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
-  if(config.verbose) {
-    on_frame_send_callback(session, frame, user_data);
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
 void check_response_header
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -1169,7 +1158,7 @@ int on_frame_recv_callback2
     }
   }
   if(config.verbose) {
-    on_frame_recv_callback(session, frame, user_data);
+    verbose_on_frame_recv_callback(session, frame, user_data);
   }
   return 0;
 }
@@ -1480,15 +1469,17 @@ int run(char **uris, int n)
   callbacks.recv_callback = client_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback2;
-  callbacks.on_frame_send_callback = on_frame_send_callback2;
   callbacks.before_frame_send_callback = before_frame_send_callback;
   if(config.verbose) {
-    callbacks.on_data_recv_callback = on_data_recv_callback;
-    callbacks.on_data_send_callback = on_data_send_callback;
-    callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
+    callbacks.on_frame_send_callback = verbose_on_frame_send_callback;
+    callbacks.on_data_recv_callback = verbose_on_data_recv_callback;
+    callbacks.on_data_send_callback = verbose_on_data_send_callback;
+    callbacks.on_invalid_frame_recv_callback =
+      verbose_on_invalid_frame_recv_callback;
     callbacks.on_frame_recv_parse_error_callback =
-      on_frame_recv_parse_error_callback;
-    callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
+      verbose_on_frame_recv_parse_error_callback;
+    callbacks.on_unknown_frame_recv_callback =
+      verbose_on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   std::string prev_scheme;
