@@ -48,6 +48,10 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
   while(evbuffer_get_length(input) >= sizeof(WorkerEvent)) {
     WorkerEvent wev;
     int nread = evbuffer_remove(input, &wev, sizeof(wev));
+    if(nread == -1) {
+      TLOG(FATAL, this) << "evbuffer_remove() failed";
+      continue;
+    }
     if(nread != sizeof(wev)) {
       TLOG(FATAL, this) << "evbuffer_remove() removed fewer bytes. Expected:"
                         << sizeof(wev) << " Actual:" << nread;

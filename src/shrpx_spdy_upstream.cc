@@ -730,17 +730,20 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
                                 void *user_data)
 {
   Downstream *downstream = reinterpret_cast<Downstream*>(source->ptr);
+  auto upstream = reinterpret_cast<SpdyUpstream*>(downstream->get_upstream());
   evbuffer *body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
+  if(nread == -1) {
+    ULOG(FATAL, upstream) << "evbuffer_remove() failed";
+    return SPDYLAY_ERR_CALLBACK_FAILURE;
+  }
   if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     if(!downstream->get_upgraded()) {
       *eof = 1;
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
-      SpdyUpstream *upstream;
-      upstream = reinterpret_cast<SpdyUpstream*>(downstream->get_upstream());
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
                              << stream_id;

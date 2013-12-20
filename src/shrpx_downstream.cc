@@ -593,7 +593,7 @@ int Downstream::init_response_body_buf()
 {
   if(!response_body_buf_) {
     response_body_buf_ = evbuffer_new();
-    if(response_body_buf_ == 0) {
+    if(response_body_buf_ == nullptr) {
       DIE();
     }
     evbuffer_setcb(response_body_buf_, body_buf_cb, this);

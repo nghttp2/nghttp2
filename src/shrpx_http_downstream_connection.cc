@@ -484,14 +484,23 @@ int HttpDownstreamConnection::on_read()
     int rv;
     rv = downstream_->get_upstream()->on_downstream_body
       (downstream_, reinterpret_cast<const uint8_t*>(mem), inputlen);
-    evbuffer_drain(input, inputlen);
-    return rv;
+    if(rv != 0) {
+      return rv;
+    }
+    if(evbuffer_drain(input, inputlen) != 0) {
+      DCLOG(FATAL, this) << "evbuffer_drain() failed";
+      return -1;
+    }
+    return 0;
   }
   size_t nread = http_parser_execute(&response_htp_, &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      inputlen);
 
-  evbuffer_drain(input, nread);
+  if(evbuffer_drain(input, nread) != 0) {
+    DCLOG(FATAL, this) << "evbuffer_drain() failed";
+    return -1;
+  }
   auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
   if(htperr == HPE_OK) {
     return 0;

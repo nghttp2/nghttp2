@@ -175,6 +175,10 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
   int nread = 0;
   for(;;) {
     nread = evbuffer_remove(body, buf, length);
+    if(nread == -1) {
+      DCLOG(FATAL, dconn) << "evbuffer_remove() failed";
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
     if(nread == 0) {
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         if(!downstream->get_upgrade_request() ||

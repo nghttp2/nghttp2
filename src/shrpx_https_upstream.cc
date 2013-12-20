@@ -262,8 +262,11 @@ int HttpsUpstream::on_read()
   if(downstream && downstream->get_upgraded()) {
     int rv = downstream->push_upload_data_chunk
       (reinterpret_cast<const uint8_t*>(mem), inputlen);
-    evbuffer_drain(input, inputlen);
     if(rv != 0) {
+      return -1;
+    }
+    if(evbuffer_drain(input, inputlen) != 0) {
+      ULOG(FATAL, this) << "evbuffer_drain() failed";
       return -1;
     }
     if(downstream->get_output_buffer_full()) {
@@ -278,7 +281,10 @@ int HttpsUpstream::on_read()
   size_t nread = http_parser_execute(&htp_, &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      inputlen);
-  evbuffer_drain(input, nread);
+  if(evbuffer_drain(input, nread) != 0) {
+    ULOG(FATAL, this) << "evbuffer_drain() failed";
+    return -1;
+  }
   // Well, actually header length + some body bytes
   current_header_length_ += nread;
   // Get downstream again because it may be initialized in http parser

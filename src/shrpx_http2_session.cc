@@ -538,7 +538,10 @@ int Http2Session::on_read_proxy()
                                      reinterpret_cast<const char*>(mem),
                                      evbuffer_get_length(input));
 
-  evbuffer_drain(input, nread);
+  if(evbuffer_drain(input, nread) != 0) {
+    SSLOG(FATAL, this) << "evbuffer_drain() failed";
+    return -1;
+  }
   auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
   if(htperr == HPE_OK) {
     return 0;
@@ -1182,8 +1185,12 @@ int Http2Session::on_connect()
     }
   }
 
-  bufferevent_write(bev_, NGHTTP2_CLIENT_CONNECTION_HEADER,
-                    NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+  rv = bufferevent_write(bev_, NGHTTP2_CLIENT_CONNECTION_HEADER,
+                         NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+  if(rv != 0) {
+    SSLOG(FATAL, this) << "bufferevent_write() failed";
+    return -1;
+  }
 
   rv = send();
   if(rv != 0) {
@@ -1252,14 +1259,18 @@ int Http2Session::send()
 void Http2Session::clear_notify()
 {
   auto input = bufferevent_get_output(rdbev_);
-  evbuffer_drain(input, evbuffer_get_length(input));
+  if(evbuffer_drain(input, evbuffer_get_length(input)) != 0) {
+    SSLOG(FATAL, this) << "evbuffer_drain() failed";
+  }
   notified_ = false;
 }
 
 void Http2Session::notify()
 {
   if(!notified_) {
-    bufferevent_write(wrbev_, "1", 1);
+    if(bufferevent_write(wrbev_, "1", 1) != 0) {
+      SSLOG(FATAL, this) << "bufferevent_write failed";
+    }
     notified_ = true;
   }
 }

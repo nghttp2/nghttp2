@@ -832,17 +832,20 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
                                       void *user_data)
 {
   auto downstream = reinterpret_cast<Downstream*>(source->ptr);
+  auto upstream = reinterpret_cast<Http2Upstream*>(downstream->get_upstream());
   auto body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
+  if(nread == -1) {
+    ULOG(FATAL, upstream) << "evbuffer_remove() failed";
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
   if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     if(!downstream->get_upgraded()) {
       *eof = 1;
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
-      auto upstream = reinterpret_cast<Http2Upstream*>
-        (downstream->get_upstream());
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
                              << stream_id;

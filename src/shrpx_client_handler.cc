@@ -221,7 +221,11 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     fd_(fd),
     should_close_after_write_(false)
 {
-  bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
+  int rv;
+  rv = bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
+  if(rv == -1) {
+    CLOG(FATAL, this) << "bufferevent_set_rate_limit() failed";
+  }
   bufferevent_enable(bev_, EV_READ | EV_WRITE);
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
