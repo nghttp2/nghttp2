@@ -154,7 +154,7 @@ void notify_readcb(bufferevent *bev, void *arg)
     rv = http2session->initiate_connection();
     if(rv != 0) {
       SSLOG(FATAL, http2session)
-        << "Could not initiate notification connection";
+        << "Could not initiate backend connection";
     }
     break;
   case Http2Session::CONNECTED:
