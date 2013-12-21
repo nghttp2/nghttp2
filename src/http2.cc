@@ -457,27 +457,15 @@ std::string rewrite_location_uri(const std::string& uri,
   if((u.field_set & (1 << UF_HOST)) == 0) {
     return "";
   }
-  std::string host;
-  copy_url_component(host, &u, UF_HOST, uri.c_str());
-  if(u.field_set & (1 << UF_PORT)) {
-    host += ":";
-    host += util::utos(u.port);
-    if(host != request_host) {
-      // :authority or host have "host", but host in location header
-      // field may have "host:port".
-      auto field = &u.field_data[UF_HOST];
-      if(!util::streq(request_host.c_str(), request_host.size(),
-                      &uri[field->off], field->len) ||
-         downstream_port != u.port) {
-        return "";
-      }
-    }
-  } else if(host != request_host) {
+  auto field = &u.field_data[UF_HOST];
+  if(!util::startsWith(std::begin(request_host), std::end(request_host),
+                       &uri[field->off], &uri[field->off] + field->len) ||
+     (request_host.size() != field->len &&
+      request_host[field->len] != ':')) {
     return "";
   }
   std::string res = upstream_scheme;
   res += "://";
-  auto field = &u.field_data[UF_HOST];
   res.append(&uri[field->off], field->len);
   if(upstream_scheme == "http") {
     if(upstream_port != 80) {
