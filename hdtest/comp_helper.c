@@ -26,7 +26,7 @@
 
 static void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len)
 {
-  if(val == NULL) {
+  if(val == NULL && len > 0) {
     json_object_set_new(jent, key, json_string("**DEALLOCATED**"));
   } else {
     json_object_set_new(jent, key, json_pack("s#", val, len));
