@@ -160,8 +160,7 @@ public:
   // normalize_request_headers().
   void rewrite_norm_location_response_header
   (const std::string& upstream_scheme,
-   uint16_t upstream_port,
-   uint16_t downstream_port);
+   uint16_t upstream_port);
   void add_response_header(std::string name, std::string value);
   void set_last_response_header_value(std::string value);
 

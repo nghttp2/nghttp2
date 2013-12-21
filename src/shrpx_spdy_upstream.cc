@@ -841,8 +841,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   }
   downstream->normalize_response_headers();
   downstream->rewrite_norm_location_response_header
-    (get_client_handler()->get_upstream_scheme(), get_config()->port,
-     get_config()->downstream_port);
+    (get_client_handler()->get_upstream_scheme(), get_config()->port);
   size_t nheader = downstream->get_response_headers().size();
   // 6 means :status, :version and possible via header field.
   auto nv = util::make_unique<const char*[]>(nheader * 2 + 6 + 1);

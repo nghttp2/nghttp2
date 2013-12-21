@@ -175,8 +175,7 @@ void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen);
 // stores the result of parsed |uri|. The |request_host| is the host
 // or :authority header field value in the request. The
 // |upstream_scheme| is either "https" or "http" in the upstream
-// interface. The |downstream_port| is the port in the downstream
-// connection.
+// interface.
 //
 // This function returns the new rewritten URI on success. If the
 // location URI is not subject to the rewrite, this function returns
@@ -185,8 +184,7 @@ std::string rewrite_location_uri(const std::string& uri,
                                  const http_parser_url& u,
                                  const std::string& request_host,
                                  const std::string& upstream_scheme,
-                                 uint16_t upstream_port,
-                                 uint16_t downstream_port);
+                                 uint16_t upstream_port);
 
 } // namespace http2
 

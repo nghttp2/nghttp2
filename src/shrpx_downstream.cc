@@ -489,8 +489,7 @@ Headers::const_iterator Downstream::get_norm_response_header
 
 void Downstream::rewrite_norm_location_response_header
 (const std::string& upstream_scheme,
- uint16_t upstream_port,
- uint16_t downstream_port)
+ uint16_t upstream_port)
 {
   auto hd = get_norm_header(response_headers_, "location");
   if(hd == std::end(response_headers_)) {
@@ -506,8 +505,7 @@ void Downstream::rewrite_norm_location_response_header
   if(!request_http2_authority_.empty()) {
     new_uri = http2::rewrite_location_uri((*hd).second, u,
                                           request_http2_authority_,
-                                          upstream_scheme, upstream_port,
-                                          downstream_port);
+                                          upstream_scheme, upstream_port);
   }
   if(new_uri.empty()) {
     auto host = get_norm_request_header("host");
@@ -515,8 +513,7 @@ void Downstream::rewrite_norm_location_response_header
       return;
     }
     new_uri = http2::rewrite_location_uri((*hd).second, u, (*host).second,
-                                          upstream_scheme, upstream_port,
-                                          downstream_port);
+                                          upstream_scheme, upstream_port);
   }
   if(!new_uri.empty()) {
     (*hd).second = std::move(new_uri);

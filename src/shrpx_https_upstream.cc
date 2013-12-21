@@ -657,8 +657,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   hdrs += "\r\n";
   downstream->normalize_response_headers();
   downstream->rewrite_norm_location_response_header
-    (get_client_handler()->get_upstream_scheme(), get_config()->port,
-     get_config()->downstream_port);
+    (get_client_handler()->get_upstream_scheme(), get_config()->port);
   auto end_headers = std::end(downstream->get_response_headers());
   http2::build_http1_headers_from_norm_headers
     (hdrs, downstream->get_response_headers());

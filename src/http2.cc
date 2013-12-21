@@ -443,8 +443,7 @@ std::string rewrite_location_uri(const std::string& uri,
                                  const http_parser_url& u,
                                  const std::string& request_host,
                                  const std::string& upstream_scheme,
-                                 uint16_t upstream_port,
-                                 uint16_t downstream_port)
+                                 uint16_t upstream_port)
 {
   // We just rewrite host and optionally port. We don't rewrite https
   // link. Not sure it happens in practice.
