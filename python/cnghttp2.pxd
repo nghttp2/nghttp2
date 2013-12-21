@@ -56,8 +56,11 @@ cdef extern from 'nghttp2_hd.h':
         nghttp2_nv nv
         uint8_t flags
 
+    ctypedef struct nghttp2_hd_ringbuf:
+        size_t len
+
     ctypedef struct nghttp2_hd_context:
-        size_t deflate_hd_tablelen
+        nghttp2_hd_ringbuf hd_table
 
     int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
                                  nghttp2_hd_side side,

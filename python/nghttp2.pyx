@@ -35,13 +35,15 @@ HD_ENTRY_OVERHEAD = cnghttp2.NGHTTP2_HD_ENTRY_OVERHEAD
 
 class HDTableEntry:
 
-    def __init__(self, name, value, ref):
+    def __init__(self, name, namelen, value, valuelen, ref):
         self.name = name
+        self.namelen = namelen
         self.value = value
+        self.valuelen = valuelen
         self.ref = ref
 
     def space(self):
-        return len(self.name) + len(self.value) + HD_ENTRY_OVERHEAD
+        return self.namelen + self.valuelen + HD_ENTRY_OVERHEAD
 
 cdef class _HDContextBase:
 
@@ -64,15 +66,27 @@ cdef class _HDContextBase:
 
     def get_hd_table(self):
         '''Returns copy of current dynamic header table.'''
-        cdef int length = self._ctx.deflate_hd_tablelen
+        cdef int length = self._ctx.hd_table.len
         cdef cnghttp2.nghttp2_hd_entry *entry
         res = []
         for i in range(length):
             entry = cnghttp2.nghttp2_hd_table_get(&self._ctx, i)
-            res.append(HDTableEntry(entry.nv.name[:entry.nv.namelen],
-                                    entry.nv.value[:entry.nv.valuelen],
+            k = _get_pybytes(entry.nv.name, entry.nv.namelen)
+            v = _get_pybytes(entry.nv.value, entry.nv.valuelen)
+            res.append(HDTableEntry(k, entry.nv.namelen,
+                                    v, entry.nv.valuelen,
                                     (entry.flags & cnghttp2.NGHTTP2_HD_FLAG_REFSET) != 0))
         return res
+
+cdef _get_pybytes(uint8_t *b, uint16_t blen):
+    # While the |blen| is positive, the |b| could be NULL. This is
+    # because deflater may deallocate the byte strings its local table
+    # space.
+    if b == NULL and blen > 0:
+        val = None
+    else:
+        val = b[:blen]
+    return val
 
 cdef class HDDeflater(_HDContextBase):
     '''Performs header compression. The header compression algorithm has
@@ -215,7 +229,8 @@ def print_hd_table(hdtable):
     idx = 0
     for entry in hdtable:
         idx += 1
-        print('[{}] (s={}) (r={}) {}: {}'.format(idx, entry.space(),
-                                                 'y' if entry.ref else 'n',
-                                                 entry.name.decode('utf-8'),
-                                                 entry.value.decode('utf-8')))
+        print('[{}] (s={}) (r={}) {}: {}'\
+              .format(idx, entry.space(),
+                      'y' if entry.ref else 'n',
+                      '**DEALLOCATED**' if entry.name is None else entry.name.decode('utf-8'),
+                      '**DEALLOCATED**' if entry.value is None else entry.value.decode('utf-8')))
