@@ -299,9 +299,25 @@ bool strieq(const char *a, const char *b);
 
 bool strieq(const char *a, const uint8_t *b, size_t n);
 
-bool streq(const char *a, const uint8_t *b, size_t bn);
+template<typename A, typename B>
+bool streq(const A *a, const B *b, size_t bn)
+{
+  if(!a || !b) {
+    return false;
+  }
+  auto blast = b + bn;
+  for(; *a && b != blast && *a == *b; ++a, ++b);
+  return !*a && b == blast;
+}
 
-bool streq(const uint8_t *a, size_t alen, const uint8_t *b, size_t blen);
+template<typename A, typename B>
+bool streq(const A *a, size_t alen, const B *b, size_t blen)
+{
+  if(alen != blen) {
+    return false;
+  }
+  return memcmp(a, b, alen) == 0;
+}
 
 bool strifind(const char *a, const char *b);
 

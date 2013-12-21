@@ -33,6 +33,7 @@ void test_downstream_get_norm_request_header(void);
 void test_downstream_get_norm_response_header(void);
 void test_downstream_crumble_request_cookie(void);
 void test_downstream_assemble_request_cookie(void);
+void test_downstream_rewrite_norm_location_response_header(void);
 
 } // namespace shrpx
 

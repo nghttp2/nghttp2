@@ -460,4 +460,13 @@ bool ClientHandler::get_http2_upgrade_allowed() const
   return !ssl_;
 }
 
+std::string ClientHandler::get_upstream_scheme() const
+{
+  if(ssl_) {
+    return "https";
+  } else {
+    return "http";
+  }
+}
+
 } // namespace shrpx

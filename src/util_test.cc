@@ -53,7 +53,9 @@ void test_util_streq(void)
                          (const uint8_t*)"alpha", 4));
   CU_ASSERT(!util::streq((const uint8_t*)"alpha", 5,
                          (const uint8_t*)"alphA", 5));
-  CU_ASSERT(util::streq(nullptr, 0,  nullptr, 0));
+  char *a = nullptr;
+  char *b = nullptr;
+  CU_ASSERT(util::streq(a, 0,  b, 0));
 }
 
 void test_util_inp_strlower(void)

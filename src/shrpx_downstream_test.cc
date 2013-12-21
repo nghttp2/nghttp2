@@ -146,4 +146,24 @@ void test_downstream_assemble_request_cookie(void)
 
 }
 
+void test_downstream_rewrite_norm_location_response_header(void)
+{
+  {
+    Downstream d(nullptr, 0, 0);
+    d.add_request_header("host", "localhost:3000");
+    d.add_response_header("location", "http://localhost:3000/");
+    d.rewrite_norm_location_response_header("https", 443, 3000);
+    auto location = d.get_norm_response_header("location");
+    CU_ASSERT("https://localhost/" == (*location).second);
+  }
+  {
+    Downstream d(nullptr, 0, 0);
+    d.set_request_http2_authority("localhost");
+    d.add_response_header("location", "http://localhost/");
+    d.rewrite_norm_location_response_header("https", 443, 80);
+    auto location = d.get_norm_response_header("location");
+    CU_ASSERT("https://localhost/" == (*location).second);
+  }
+}
+
 } // namespace shrpx

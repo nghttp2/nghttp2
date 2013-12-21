@@ -115,7 +115,7 @@ void sanitize_header_value(std::string& s, size_t offset)
   }
 }
 
-void copy_url_component(std::string& dest, http_parser_url *u, int field,
+void copy_url_component(std::string& dest, const http_parser_url *u, int field,
                         const char* url)
 {
   if(u->field_set & (1 << field)) {
@@ -437,6 +437,74 @@ void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen)
   }
   fwrite("\n", 1, 1, out);
   fflush(out);
+}
+
+std::string rewrite_location_uri(const std::string& uri,
+                                 const http_parser_url& u,
+                                 const std::string& request_host,
+                                 const std::string& upstream_scheme,
+                                 uint16_t upstream_port,
+                                 uint16_t downstream_port)
+{
+  // We just rewrite host and optionally port. We don't rewrite https
+  // link. Not sure it happens in practice.
+  if(u.field_set & (1 << UF_SCHEMA)) {
+    auto field = &u.field_data[UF_SCHEMA];
+    if(!util::streq("http", &uri[field->off], field->len)) {
+      return "";
+    }
+  }
+  if((u.field_set & (1 << UF_HOST)) == 0) {
+    return "";
+  }
+  std::string host;
+  copy_url_component(host, &u, UF_HOST, uri.c_str());
+  if(u.field_set & (1 << UF_PORT)) {
+    host += ":";
+    host += util::utos(u.port);
+    if(host != request_host) {
+      // :authority or host have "host", but host in location header
+      // field may have "host:port".
+      auto field = &u.field_data[UF_HOST];
+      if(!util::streq(request_host.c_str(), request_host.size(),
+                      &uri[field->off], field->len) ||
+         downstream_port != u.port) {
+        return "";
+      }
+    }
+  } else if(host != request_host) {
+    return "";
+  }
+  std::string res = upstream_scheme;
+  res += "://";
+  auto field = &u.field_data[UF_HOST];
+  res.append(&uri[field->off], field->len);
+  if(upstream_scheme == "http") {
+    if(upstream_port != 80) {
+      res += ":";
+      res += util::utos(upstream_port);
+    }
+  } else if(upstream_scheme == "https") {
+    if(upstream_port != 443) {
+      res += ":";
+      res += util::utos(upstream_port);
+    }
+  }
+  if(u.field_set & (1 << UF_PATH)) {
+    field = &u.field_data[UF_PATH];
+    res.append(&uri[field->off], field->len);
+  }
+  if(u.field_set & (1 << UF_QUERY)) {
+    field = &u.field_data[UF_QUERY];
+    res += "?";
+    res.append(&uri[field->off], field->len);
+  }
+  if(u.field_set & (1 << UF_FRAGMENT)) {
+    field = &u.field_data[UF_FRAGMENT];
+    res += "#";
+    res.append(&uri[field->off], field->len);
+  }
+  return res;
 }
 
 } // namespace http2

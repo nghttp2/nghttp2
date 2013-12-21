@@ -172,24 +172,6 @@ bool strieq(const char *a, const uint8_t *b, size_t bn)
   return !*a && b == blast;
 }
 
-bool streq(const char *a, const uint8_t *b, size_t bn)
-{
-  if(!a || !b) {
-    return false;
-  }
-  const uint8_t *blast = b + bn;
-  for(; *a && b != blast && *a == *b; ++a, ++b);
-  return !*a && b == blast;
-}
-
-bool streq(const uint8_t *a, size_t alen, const uint8_t *b, size_t blen)
-{
-  if(alen != blen) {
-    return false;
-  }
-  return memcmp(a, b, alen) == 0;
-}
-
 int strcompare(const char *a, const uint8_t *b, size_t bn)
 {
   assert(a && b);

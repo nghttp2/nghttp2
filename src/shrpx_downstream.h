@@ -94,6 +94,10 @@ public:
   // called after calling normalize_request_headers().
   Headers::const_iterator get_norm_request_header
   (const std::string& name) const;
+  // Concatenates request header fields with same name by NULL as
+  // delimiter. See http2::concat_norm_headers(). This function must
+  // be called after calling normalize_request_headers().
+  void concat_norm_request_headers();
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(std::string value);
 
@@ -151,6 +155,13 @@ public:
   // called after calling normalize_response_headers().
   Headers::const_iterator get_norm_response_header
   (const std::string& name) const;
+  // Rewrites the location response header field. This function must
+  // be called after calling normalize_response_headers() and
+  // normalize_request_headers().
+  void rewrite_norm_location_response_header
+  (const std::string& upstream_scheme,
+   uint16_t upstream_port,
+   uint16_t downstream_port);
   void add_response_header(std::string name, std::string value);
   void set_last_response_header_value(std::string value);
 

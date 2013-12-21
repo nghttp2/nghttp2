@@ -86,6 +86,8 @@ int main(int argc, char* argv[])
                    shrpx::test_http2_build_http1_headers_from_norm_headers) ||
       !CU_add_test(pSuite, "http2_check_header_value",
                    shrpx::test_http2_check_header_value) ||
+      !CU_add_test(pSuite, "http2_rewrite_location_uri",
+                   shrpx::test_http2_rewrite_location_uri) ||
       !CU_add_test(pSuite, "downstream_normalize_request_headers",
                    shrpx::test_downstream_normalize_request_headers) ||
       !CU_add_test(pSuite, "downstream_normalize_response_headers",
@@ -98,6 +100,8 @@ int main(int argc, char* argv[])
                    shrpx::test_downstream_crumble_request_cookie) ||
       !CU_add_test(pSuite, "downstream_assemble_request_cookie",
                    shrpx::test_downstream_assemble_request_cookie) ||
+      !CU_add_test(pSuite, "downstream_rewrite_norm_location_response_header",
+                   shrpx::test_downstream_rewrite_norm_location_response_header) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_inp_strlower",
                    shrpx::test_util_inp_strlower) ||

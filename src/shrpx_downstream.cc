@@ -26,6 +26,8 @@
 
 #include <cassert>
 
+#include "http-parser/http_parser.h"
+
 #include "shrpx_upstream.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
@@ -174,6 +176,19 @@ Headers::const_iterator get_norm_header(const Headers& headers,
 }
 } // namespace
 
+namespace {
+Headers::iterator get_norm_header(Headers& headers,
+                                  const std::string& name)
+{
+  auto i = std::lower_bound(std::begin(headers), std::end(headers),
+                            std::make_pair(name, std::string()), name_less);
+  if(i != std::end(headers) && (*i).first == name) {
+    return i;
+  }
+  return std::end(headers);
+}
+} // namespace
+
 const Headers& Downstream::get_request_headers() const
 {
   return request_headers_;
@@ -251,6 +266,11 @@ Headers::const_iterator Downstream::get_norm_request_header
 (const std::string& name) const
 {
   return get_norm_header(request_headers_, name);
+}
+
+void Downstream::concat_norm_request_headers()
+{
+  request_headers_ = http2::concat_norm_headers(std::move(request_headers_));
 }
 
 void Downstream::add_request_header(std::string name, std::string value)
@@ -465,6 +485,42 @@ Headers::const_iterator Downstream::get_norm_response_header
 (const std::string& name) const
 {
   return get_norm_header(response_headers_, name);
+}
+
+void Downstream::rewrite_norm_location_response_header
+(const std::string& upstream_scheme,
+ uint16_t upstream_port,
+ uint16_t downstream_port)
+{
+  auto hd = get_norm_header(response_headers_, "location");
+  if(hd == std::end(response_headers_)) {
+    return;
+  }
+  http_parser_url u;
+  int rv = http_parser_parse_url((*hd).second.c_str(), (*hd).second.size(),
+                                 0, &u);
+  if(rv != 0) {
+    return;
+  }
+  std::string new_uri;
+  if(!request_http2_authority_.empty()) {
+    new_uri = http2::rewrite_location_uri((*hd).second, u,
+                                          request_http2_authority_,
+                                          upstream_scheme, upstream_port,
+                                          downstream_port);
+  }
+  if(new_uri.empty()) {
+    auto host = get_norm_request_header("host");
+    if(host == std::end(request_headers_)) {
+      return;
+    }
+    new_uri = http2::rewrite_location_uri((*hd).second, u, (*host).second,
+                                          upstream_scheme, upstream_port,
+                                          downstream_port);
+  }
+  if(!new_uri.empty()) {
+    (*hd).second = std::move(new_uri);
+  }
 }
 
 void Downstream::add_response_header(std::string name, std::string value)

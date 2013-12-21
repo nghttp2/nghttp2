@@ -55,7 +55,7 @@ void sanitize_header_value(std::string& s, size_t offset);
 // Copies the |field| component value from |u| and |url| to the
 // |dest|. If |u| does not have |field|, then this function does
 // nothing.
-void copy_url_component(std::string& dest, http_parser_url *u, int field,
+void copy_url_component(std::string& dest, const http_parser_url *u, int field,
                         const char* url);
 
 // Returns true if the header field |name| with length |namelen| bytes
@@ -169,6 +169,24 @@ void dump_nv(FILE *out, const char **nv);
 
 // Dumps name/value pairs in |nva| to |out|.
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen);
+
+// Rewrites redirection URI which usually appears in location header
+// field. The |uri| is the URI in the location header field. The |u|
+// stores the result of parsed |uri|. The |request_host| is the host
+// or :authority header field value in the request. The
+// |upstream_scheme| is either "https" or "http" in the upstream
+// interface. The |downstream_port| is the port in the downstream
+// connection.
+//
+// This function returns the new rewritten URI on success. If the
+// location URI is not subject to the rewrite, this function returns
+// emtpy string.
+std::string rewrite_location_uri(const std::string& uri,
+                                 const http_parser_url& u,
+                                 const std::string& request_host,
+                                 const std::string& upstream_scheme,
+                                 uint16_t upstream_port,
+                                 uint16_t downstream_port);
 
 } // namespace http2
 

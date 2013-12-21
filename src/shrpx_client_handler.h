@@ -75,6 +75,8 @@ public:
   // terminated. This function returns 0 if it succeeds, or -1.
   int perform_http2_upgrade(HttpsUpstream *http);
   bool get_http2_upgrade_allowed() const;
+  // Returns upstream scheme, either "http" or "https"
+  std::string get_upstream_scheme() const;
 private:
   std::set<DownstreamConnection*> dconn_pool_;
   std::unique_ptr<Upstream> upstream_;
