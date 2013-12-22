@@ -236,6 +236,9 @@ void Downstream::crumble_request_cookie()
         }
 
         if(num == 0) {
+          if(first == 0 && j == last) {
+            break;
+          }
           rep_cookie = kv.second.substr(first, j - first);
         } else {
           cookie_hdrs.push_back
