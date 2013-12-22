@@ -547,10 +547,12 @@ struct HttpClient {
 
   void disconnect()
   {
+    int fd = -1;
     state = STATE_IDLE;
     nghttp2_session_del(session);
     session = nullptr;
     if(ssl) {
+      fd = SSL_get_fd(ssl);
       SSL_shutdown(ssl);
     }
     if(bev) {
@@ -569,6 +571,10 @@ struct HttpClient {
     if(ssl) {
       SSL_free(ssl);
       ssl = nullptr;
+    }
+    if(fd != -1) {
+      shutdown(fd, SHUT_WR);
+      close(fd);
     }
   }
 
