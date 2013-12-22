@@ -625,10 +625,13 @@ typedef struct {
    */
   size_t nvlen;
   /**
+   * The category of this HEADERS frame.
+   */
+  nghttp2_headers_category cat;
+  /**
    * The priority.
    */
   int32_t pri;
-  nghttp2_headers_category cat;
 } nghttp2_headers;
 
 /**
