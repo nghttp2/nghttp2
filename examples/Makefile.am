@@ -24,13 +24,25 @@
 if ENABLE_EXAMPLES
 
 AM_CFLAGS = -Wall
-AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
-	@OPENSSL_CFLAGS@ @DEFS@
-AM_LDFLAGS = @OPENSSL_LIBS@
+AM_CPPFLAGS = \
+	-Wall \
+	-I$(srcdir)/../lib/includes \
+	-I$(builddir)/../lib/includes \
+	-I$(top_srcdir)/src \
+	@LIBEVENT_OPENSSL_CFLAGS@ \
+	@OPENSSL_CFLAGS@ \
+	@DEFS@
+AM_LDFLAGS = \
+	@LIBEVENT_OPENSSL_LIBS@ \
+	@OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libnghttp2.la
 
-noinst_PROGRAMS = client
+noinst_PROGRAMS = client libevent-client
 client_SOURCES = client.c
+
+libevent_client_SOURCES = \
+	libevent-client.c \
+	$(top_srcdir)/src/http-parser/http_parser.c
 
 endif # ENABLE_EXAMPLES
 

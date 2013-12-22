@@ -237,7 +237,8 @@ AM_CONDITIONAL([ENABLE_SRC], [ test "x${enable_src}" = "xyes" ])
 # The example programs depend on OpenSSL
 enable_examples=no
 if test "x${request_examples}" = "xyes" &&
-   test "x${have_openssl}" = "xyes"; then
+   test "x${have_openssl}" = "xyes" &&
+   test "x${have_libevent_openssl}" = "xyes"; then
     enable_examples=yes
 fi
 
