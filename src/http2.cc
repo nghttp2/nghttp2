@@ -229,11 +229,11 @@ std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen)
     auto end = v[i].value + v[i].valuelen;
     for(;;) {
       // Skip 0 length value
-      j = std::find_if_not(j, end,
-                           [](uint8_t c)
-                           {
-                             return c == '\0';
-                           });
+      j = std::find_if(j, end,
+                       [](uint8_t c)
+                       {
+                         return c != '\0';
+                       });
       if(j == end) {
         break;
       }
