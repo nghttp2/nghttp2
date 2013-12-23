@@ -24,6 +24,7 @@
  */
 #include <sys/types.h>
 #include <unistd.h>
+#include <netinet/tcp.h>
 #include <err.h>
 #include <signal.h>
 
@@ -310,7 +311,10 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr)
 {
   http2_session_data *session_data = (http2_session_data*)ptr;
   if(events & BEV_EVENT_CONNECTED) {
+    int fd = bufferevent_getfd(bev);
+    int val = 1;
     fprintf(stderr, "Connected\n");
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&val, sizeof(val));
     initialize_nghttp2_session(session_data);
     send_client_connection_header(session_data);
     submit_request(session_data);

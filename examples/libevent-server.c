@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <netinet/tcp.h>
 #include <err.h>
 
 #include <openssl/ssl.h>
@@ -154,11 +155,13 @@ static http2_session_data* create_http2_session_data(app_context *app_ctx,
   http2_session_data *session_data;
   SSL *ssl;
   char host[NI_MAXHOST];
+  int val = 1;
 
   ssl = create_ssl(app_ctx->ssl_ctx);
   session_data = malloc(sizeof(http2_session_data));
   memset(session_data, 0, sizeof(http2_session_data));
   session_data->app_ctx = app_ctx;
+  setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&val, sizeof(val));
   session_data->bev = bufferevent_openssl_socket_new
     (app_ctx->evbase, fd, ssl,
      BUFFEREVENT_SSL_ACCEPTING,
