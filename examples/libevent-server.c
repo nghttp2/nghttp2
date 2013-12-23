@@ -1,0 +1,616 @@
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <ctype.h>
+#include <err.h>
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+#include <event.h>
+#include <event2/event.h>
+#include <event2/bufferevent_ssl.h>
+#include <event2/listener.h>
+
+#include <nghttp2/nghttp2.h>
+
+#define OUTPUT_WOULDBLOCK_THRESHOLD (1 << 16)
+
+#define ARRLEN(x) (sizeof(x)/sizeof(x[0]))
+
+#define MAKE_NV(NAME, VALUE)                                            \
+  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1 }
+
+static unsigned char next_proto_list[256];
+static size_t next_proto_list_len;
+
+struct app_context;
+typedef struct app_context app_context;
+
+typedef struct http2_stream_data {
+  struct http2_stream_data *prev, *next;
+  char *request_path;
+  int32_t stream_id;
+  int fd;
+} http2_stream_data;
+
+typedef struct http2_session_data {
+  struct http2_stream_data root;
+  struct http2_session_data *prev, *next;
+  struct bufferevent *bev;
+  app_context *app_ctx;
+  nghttp2_session *session;
+  char *client_addr;
+  size_t handshake_leftlen;
+} http2_session_data;
+
+struct app_context {
+  SSL_CTX *ssl_ctx;
+  struct event_base *evbase;
+};
+
+static int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
+                         void *arg)
+{
+  *data = next_proto_list;
+  *len = next_proto_list_len;
+  return SSL_TLSEXT_ERR_OK;
+}
+
+/* Create SSL_CTX. */
+static SSL_CTX* create_ssl_ctx(const char *key_file, const char *cert_file)
+{
+  SSL_CTX *ssl_ctx;
+  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  if(!ssl_ctx) {
+    errx(1, "Could not create SSL/TLS context: %s",
+         ERR_error_string(ERR_get_error(), NULL));
+  }
+  SSL_CTX_set_options(ssl_ctx,
+                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+
+  if(SSL_CTX_use_PrivateKey_file(ssl_ctx, key_file,
+                                 SSL_FILETYPE_PEM) != 1) {
+    errx(1, "Could not read private key file %s", key_file);
+  }
+  if(SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
+    errx(1, "Could not read certificate file %s", cert_file);
+  }
+
+  next_proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
+  memcpy(&next_proto_list[1], NGHTTP2_PROTO_VERSION_ID,
+         NGHTTP2_PROTO_VERSION_ID_LEN);
+  next_proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
+
+  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, NULL);
+  return ssl_ctx;
+}
+
+/* Create SSL object */
+static SSL* create_ssl(SSL_CTX *ssl_ctx)
+{
+  SSL *ssl;
+  ssl = SSL_new(ssl_ctx);
+  if(!ssl) {
+    errx(1, "Could not create SSL/TLS session object: %s",
+         ERR_error_string(ERR_get_error(), NULL));
+  }
+  return ssl;
+}
+
+static void add_stream(http2_session_data *session_data,
+                       http2_stream_data *stream_data)
+{
+  stream_data->next = session_data->root.next;
+  session_data->root.next = stream_data;
+  stream_data->prev = &session_data->root;
+  if(stream_data->next) {
+    stream_data->next->prev = stream_data;
+  }
+}
+
+static void remove_stream(http2_session_data *session_data,
+                          http2_stream_data *stream_data)
+{
+  stream_data->prev->next = stream_data->next;
+  if(stream_data->next) {
+    stream_data->next->prev = stream_data->prev;
+  }
+}
+
+static http2_stream_data* create_http2_stream_data
+(http2_session_data *session_data, int32_t stream_id)
+{
+  http2_stream_data *stream_data;
+  stream_data = malloc(sizeof(http2_stream_data));
+  memset(stream_data, 0, sizeof(http2_stream_data));
+  stream_data->stream_id = stream_id;
+  stream_data->fd = -1;
+
+  add_stream(session_data, stream_data);
+  return stream_data;
+}
+
+static void delete_http2_stream_data(http2_stream_data *stream_data)
+{
+  if(stream_data->fd != -1) {
+    close(stream_data->fd);
+  }
+  free(stream_data->request_path);
+  free(stream_data);
+}
+
+static http2_session_data* create_http2_session_data(app_context *app_ctx,
+                                                     int fd,
+                                                     struct sockaddr *addr,
+                                                     int addrlen)
+{
+  int rv;
+  http2_session_data *session_data;
+  SSL *ssl;
+  char host[NI_MAXHOST];
+
+  ssl = create_ssl(app_ctx->ssl_ctx);
+  session_data = malloc(sizeof(http2_session_data));
+  memset(session_data, 0, sizeof(http2_session_data));
+  session_data->app_ctx = app_ctx;
+  session_data->bev = bufferevent_openssl_socket_new
+    (app_ctx->evbase, fd, ssl,
+     BUFFEREVENT_SSL_ACCEPTING,
+     BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+  session_data->handshake_leftlen = NGHTTP2_CLIENT_CONNECTION_HEADER_LEN;
+  rv = getnameinfo(addr, addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
+  if(rv != 0) {
+    session_data->client_addr = strdup("(unknown)");
+  } else {
+    session_data->client_addr = strdup(host);
+  }
+
+  return session_data;
+}
+
+static void delete_http2_session_data(http2_session_data *session_data)
+{
+  http2_stream_data *stream_data;
+
+  bufferevent_free(session_data->bev);
+  nghttp2_session_del(session_data->session);
+  for(stream_data = session_data->root.next; stream_data;) {
+    http2_stream_data *next = stream_data->next;
+    delete_http2_stream_data(stream_data);
+    stream_data = next;
+  }
+  free(session_data->client_addr);
+  free(session_data);
+}
+
+/* Serialize the frame and send (or buffer) the data to
+   bufferevent. */
+static void session_send(http2_session_data *session_data)
+{
+  nghttp2_session_send(session_data->session);
+}
+
+/* Read the data in the bufferevent and feed them into nghttp2 library
+   function. Invocation of nghttp2_session_mem_recv() may make
+   additional pending frames, so call session_send() at the end of the
+   function. */
+static void session_recv(http2_session_data *session_data)
+{
+  int rv;
+  struct evbuffer *input = bufferevent_get_input(session_data->bev);
+  size_t datalen = evbuffer_get_length(input);
+  unsigned char *data = evbuffer_pullup(input, -1);
+  rv = nghttp2_session_mem_recv(session_data->session, data, datalen);
+  if(rv < 0) {
+    warnx("Fatal error: %s", nghttp2_strerror(rv));
+    delete_http2_session_data(session_data);
+  } else {
+    evbuffer_drain(input, rv);
+  }
+  session_send(session_data);
+}
+
+static ssize_t send_callback(nghttp2_session *session,
+                             const uint8_t *data, size_t length,
+                             int flags, void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  struct bufferevent *bev = session_data->bev;
+  /* Avoid excessive buffering in server side. */
+  if(evbuffer_get_length(bufferevent_get_output(session_data->bev)) >=
+     OUTPUT_WOULDBLOCK_THRESHOLD) {
+    return NGHTTP2_ERR_WOULDBLOCK;
+  }
+  bufferevent_write(bev, data, length);
+  return length;
+}
+
+/* Returns nonzero if the string |s| ends with the substring |sub| */
+static int ends_with(const char *s, const char *sub)
+{
+  size_t slen = strlen(s);
+  size_t sublen = strlen(sub);
+  if(slen < sublen) {
+    return 0;
+  }
+  return memcmp(s + slen - sublen, sub, sublen) == 0;
+}
+
+/* Returns int value of hex string character |c| */
+static uint8_t hex_to_uint(uint8_t c)
+{
+  if('0' <= c && c <= '9') {
+    return c - '0';
+  }
+  if('A' <= c && c <= 'F') {
+    return c - 'A' + 10;
+  }
+  if('a' <= c && c <= 'f') {
+    return c - 'a' + 10;
+  }
+  return 0;
+}
+
+/* Decodes percent-encoded byte string |value| with length |valuelen|
+   and returns the decoded byte string in allocated buffer. The return
+   value is NULL terminated. The caller must free the returned
+   string. */
+static char* percent_decode(const uint8_t *value, size_t valuelen)
+{
+  char *res;
+
+  res = malloc(valuelen + 1);
+  if(valuelen > 3) {
+    size_t i, j;
+    for(i = 0, j = 0; i < valuelen - 2;) {
+      if(value[i] != '%' ||
+         !isxdigit(value[i + 1]) || !isxdigit(value[i + 2])) {
+        res[j++] = value[i++];
+        continue;
+      }
+      res[j++] = (hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]);
+      i += 3;
+    }
+    memcpy(&res[j], &value[i], 2);
+    res[j + 2] = '\0';
+  } else {
+    memcpy(res, value, valuelen);
+    res[valuelen] = '\0';
+  }
+  return res;
+}
+
+static int on_frame_recv_callback(nghttp2_session *session,
+                                  const nghttp2_frame *frame, void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  http2_stream_data *stream_data;
+  size_t i;
+  const char PATH[] = ":path";
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+      break;
+    }
+    stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
+    nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
+                                         stream_data);
+    for(i = 0; i < frame->headers.nvlen; ++i) {
+      nghttp2_nv *nv = &frame->headers.nva[i];
+      if(nv->namelen == sizeof(PATH) - 1 &&
+         memcmp(PATH, nv->name, nv->namelen) == 0) {
+        stream_data->request_path = percent_decode(nv->value, nv->valuelen);
+        break;
+      }
+    }
+    break;
+  default:
+    break;
+  }
+  return 0;
+}
+
+static ssize_t file_read_callback
+(nghttp2_session *session, int32_t stream_id,
+ uint8_t *buf, size_t length, int *eof,
+ nghttp2_data_source *source, void *user_data)
+{
+  int fd = source->fd;
+  ssize_t r;
+  while((r = read(fd, buf, length)) == -1 && errno == EINTR);
+  if(r == -1) {
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+  if(r == 0) {
+    *eof = 1;
+  }
+  return r;
+}
+
+static void send_response(nghttp2_session *session, int32_t stream_id,
+                          nghttp2_nv *nva, size_t nvlen, int fd)
+{
+  nghttp2_data_provider data_prd;
+  data_prd.source.fd = fd;
+  data_prd.read_callback = file_read_callback;
+
+  nghttp2_submit_response(session, stream_id, nva, nvlen, &data_prd);
+}
+
+const char ERROR_HTML[] = "<html><head><title>404</title></head>"
+  "<body><h1>404 Not Found</h1></body></html>";
+
+static void error_reply(nghttp2_session *session,
+                        http2_stream_data *stream_data)
+{
+  int rv;
+  int pipefd[2];
+  nghttp2_nv hdrs[] = {
+    MAKE_NV(":status", "404")
+  };
+
+  rv = pipe(pipefd);
+  if(rv != 0) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                              stream_data->stream_id,
+                              NGHTTP2_INTERNAL_ERROR);
+    return;
+  }
+  write(pipefd[1], ERROR_HTML, sizeof(ERROR_HTML) - 1);
+  close(pipefd[1]);
+  stream_data->fd = pipefd[0];
+  send_response(session, stream_data->stream_id, hdrs, ARRLEN(hdrs),
+                pipefd[0]);
+}
+
+/* Minimum check for directory traversal. Returns nonzero if it is
+   safe. */
+static int check_path(const char *path)
+{
+  /* We don't like '\' in url. */
+  return path[0] && path[0] == '/' &&
+    strchr(path, '\\') == NULL &&
+    strstr(path, "/../") == NULL &&
+    strstr(path, "/./") == NULL &&
+    !ends_with(path, "/..") && !ends_with(path, "/.");
+}
+
+static int on_request_recv_callback(nghttp2_session *session,
+                                    int32_t stream_id, void *user_data)
+{
+  int fd;
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  http2_stream_data *stream_data;
+  nghttp2_nv hdrs[] = {
+    MAKE_NV(":status", "200")
+  };
+  char *rel_path;
+
+  stream_data = (http2_stream_data*)nghttp2_session_get_stream_user_data
+    (session, stream_id);
+  if(!stream_data->request_path) {
+    error_reply(session, stream_data);
+    return 0;
+  }
+  fprintf(stderr, "%s GET %s\n", session_data->client_addr,
+          stream_data->request_path);
+  if(!check_path(stream_data->request_path)) {
+    error_reply(session, stream_data);
+    return 0;
+  }
+  for(rel_path = stream_data->request_path; *rel_path == '/'; ++rel_path);
+  fd = open(rel_path, O_RDONLY);
+  if(fd == -1) {
+    error_reply(session, stream_data);
+    return 0;
+  }
+  stream_data->fd = fd;
+
+  send_response(session, stream_id, hdrs, ARRLEN(hdrs), fd);
+  return 0;
+}
+
+static int on_stream_close_callback(nghttp2_session *session,
+                                    int32_t stream_id,
+                                    nghttp2_error_code error_code,
+                                    void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  http2_stream_data *stream_data;
+
+  stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
+  remove_stream(session_data, stream_data);
+  delete_http2_stream_data(stream_data);
+  return 0;
+}
+
+static void initialize_nghttp2_session(http2_session_data *session_data)
+{
+  nghttp2_session_callbacks callbacks = {0};
+
+  callbacks.send_callback = send_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.on_request_recv_callback = on_request_recv_callback;
+  callbacks.on_stream_close_callback = on_stream_close_callback;
+  nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
+}
+
+/* Send HTTP/2.0 client connection header, which includes 24 bytes
+   magic octets and SETTINGS frame */
+static void send_server_connection_header(http2_session_data *session_data)
+{
+  nghttp2_settings_entry iv[1] = {
+    { NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100 }
+  };
+  nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
+                          iv, ARRLEN(iv));
+}
+
+/* readcb for bufferevent after client connection header was
+   checked. */
+static void readcb(struct bufferevent *bev, void *ptr)
+{
+  session_recv((http2_session_data*)ptr);
+}
+
+/* writecb for bufferevent. To greaceful shutdown after sending or
+   receiving GOAWAY, we check the some conditions on the nghttp2
+   library and output buffer of bufferevent. If it indicates we have
+   no business to this session, tear down the connection. If the
+   connection is not going to shutdown, we call session_send() to
+   process pending data in the output buffer. This is necessary
+   because we have a threshold on the buffer size to avoid too much
+   buffering. See send_callback(). */
+static void writecb(struct bufferevent *bev, void *ptr)
+{
+  http2_session_data *session_data = (http2_session_data*)ptr;
+  if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
+    return;
+  }
+  if(nghttp2_session_want_read(session_data->session) == 0 &&
+     nghttp2_session_want_write(session_data->session) == 0) {
+    delete_http2_session_data(session_data);
+    return;
+  }
+  session_send(session_data);
+}
+
+/* eventcb for bufferevent */
+static void eventcb(struct bufferevent *bev, short events, void *ptr)
+{
+  http2_session_data *session_data = (http2_session_data*)ptr;
+  if(events & BEV_EVENT_CONNECTED) {
+    fprintf(stderr, "%s connected\n", session_data->client_addr);
+    return;
+  }
+  if(events & BEV_EVENT_EOF) {
+    fprintf(stderr, "%s disconnected\n", session_data->client_addr);
+  } else if(events & BEV_EVENT_ERROR) {
+    fprintf(stderr, "%s network error\n", session_data->client_addr);
+  } else if(events & BEV_EVENT_TIMEOUT) {
+    fprintf(stderr, "%s timeout\n", session_data->client_addr);
+  }
+  delete_http2_session_data(session_data);
+}
+
+/* readcb for bufferevent to check first 24 bytes client connection
+   header. */
+static void handshake_readcb(struct bufferevent *bev, void *ptr)
+{
+  http2_session_data *session_data = (http2_session_data*)ptr;
+  uint8_t data[24];
+  struct evbuffer *input = bufferevent_get_input(session_data->bev);
+  int readlen = evbuffer_remove(input, data, session_data->handshake_leftlen);
+  const char *conhead = NGHTTP2_CLIENT_CONNECTION_HEADER;
+
+  if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_HEADER_LEN
+            - session_data->handshake_leftlen, data, readlen) != 0) {
+    delete_http2_session_data(session_data);
+    return;
+  }
+  session_data->handshake_leftlen -= readlen;
+  if(session_data->handshake_leftlen == 0) {
+    bufferevent_setcb(session_data->bev, readcb, writecb, eventcb, ptr);
+    /* Process pending data in buffer since they are not notified
+       further */
+    initialize_nghttp2_session(session_data);
+    send_server_connection_header(session_data);
+    session_recv(session_data);
+  }
+}
+
+/* callback for evconnlistener */
+static void acceptcb(struct evconnlistener *listener, int fd,
+                     struct sockaddr *addr, int addrlen, void *arg)
+{
+  app_context *app_ctx = (app_context*)arg;
+  http2_session_data *session_data;
+
+  session_data = create_http2_session_data(app_ctx, fd, addr, addrlen);
+  bufferevent_setcb(session_data->bev, handshake_readcb, NULL, eventcb,
+                    session_data);
+}
+
+static void start_listen(struct event_base *evbase, const char *service,
+                         app_context *app_ctx)
+{
+  int rv;
+  struct addrinfo hints;
+  struct addrinfo *res, *rp;
+
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+#ifdef AI_ADDRCONFIG
+  hints.ai_flags |= AI_ADDRCONFIG;
+#endif // AI_ADDRCONFIG
+
+  rv = getaddrinfo(NULL, service, &hints, &res);
+  if(rv != 0) {
+    errx(1, NULL);
+  }
+  for(rp = res; rp; rp = rp->ai_next) {
+    struct evconnlistener *listener;
+    listener = evconnlistener_new_bind(evbase, acceptcb, app_ctx,
+                                       LEV_OPT_CLOSE_ON_FREE |
+                                       LEV_OPT_REUSEABLE, 16,
+                                       rp->ai_addr, rp->ai_addrlen);
+    if(listener) {
+      return;
+    }
+  }
+  errx(1, "Could not start listener");
+}
+
+static void initialize_app_context(app_context *app_ctx, SSL_CTX *ssl_ctx,
+                                   struct event_base *evbase)
+{
+  memset(app_ctx, 0, sizeof(app_context));
+  app_ctx->ssl_ctx = ssl_ctx;
+  app_ctx->evbase = evbase;
+}
+
+static void run(const char *service,
+                const char *key_file, const char *cert_file)
+{
+  SSL_CTX *ssl_ctx;
+  app_context app_ctx;
+  struct event_base *evbase;
+
+  ssl_ctx = create_ssl_ctx(key_file, cert_file);
+  evbase = event_base_new();
+  initialize_app_context(&app_ctx, ssl_ctx, evbase);
+  start_listen(evbase, service, &app_ctx);
+
+  event_base_loop(evbase, 0);
+
+  event_base_free(evbase);
+  SSL_CTX_free(ssl_ctx);
+}
+
+int main(int argc, char **argv)
+{
+  struct sigaction act;
+
+  if(argc < 4) {
+    fprintf(stderr, "Usage: libevent-server PORT KEY_FILE CERT_FILE\n");
+    exit(EXIT_FAILURE);
+  }
+
+  memset(&act, 0, sizeof(struct sigaction));
+  act.sa_handler = SIG_IGN;
+  sigaction(SIGPIPE, &act, NULL);
+
+  SSL_load_error_strings();
+  SSL_library_init();
+
+  run(argv[1], argv[2], argv[3]);
+  return 0;
+}

@@ -37,12 +37,14 @@ AM_LDFLAGS = \
 	@OPENSSL_LIBS@
 LDADD = $(top_builddir)/lib/libnghttp2.la
 
-noinst_PROGRAMS = client libevent-client
+noinst_PROGRAMS = client libevent-client libevent-server
 client_SOURCES = client.c
 
 libevent_client_SOURCES = \
 	libevent-client.c \
 	$(top_srcdir)/src/http-parser/http_parser.c
+
+libevent_server_SOURCES = libevent-server.c
 
 endif # ENABLE_EXAMPLES
 
