@@ -3622,6 +3622,19 @@ void* nghttp2_session_get_stream_user_data(nghttp2_session *session,
   }
 }
 
+int nghttp2_session_set_stream_user_data(nghttp2_session *session,
+                                         int32_t stream_id,
+                                         void *stream_user_data)
+{
+  nghttp2_stream *stream;
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if(!stream) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  stream->stream_user_data = stream_user_data;
+  return 0;
+}
+
 int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id)
 {
   int r;

@@ -1577,16 +1577,35 @@ int nghttp2_session_want_write(nghttp2_session *session);
  * @function
  *
  * Returns stream_user_data for the stream |stream_id|. The
- * stream_user_data is provided by `nghttp2_submit_request()` or
- * `nghttp2_submit_headers()`.  If the stream is initiated by the
- * remote endpoint, stream_user_data is always ``NULL``. If the stream
- * is initiated by the local endpoint and ``NULL`` is given in
- * `nghttp2_submit_request()` or `nghttp2_submit_headers()`, then
- * this function returns ``NULL``. If the stream does not exist, this
- * function returns ``NULL``.
+ * stream_user_data is provided by `nghttp2_submit_request()`,
+ * `nghttp2_submit_headers()` or
+ * `nghttp2_session_set_stream_user_data()`. Unless it is set using
+ * `nghttp2_session_set_stream_user_data()`, if the stream is
+ * initiated by the remote endpoint, stream_user_data is always
+ * ``NULL``. If the stream does not exist, this function returns
+ * ``NULL``.
  */
 void* nghttp2_session_get_stream_user_data(nghttp2_session *session,
                                            int32_t stream_id);
+
+/**
+ * @function
+ *
+ * Sets the |stream_user_data| to the stream denoted by the
+ * |stream_id|. If a stream user data is already set to the stream, it
+ * is replaced with the |stream_user_data|. It is valid to specify
+ * ``NULL`` in the |stream_user_data|, which nullifies the associated
+ * data pointer.
+ *
+ * This function returns 0 if it succeeds, or one of following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The stream does not exist
+ */
+int nghttp2_session_set_stream_user_data(nghttp2_session *session,
+                                         int32_t stream_id,
+                                         void *stream_user_data);
 
 /**
  * @function
