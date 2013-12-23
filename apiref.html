@@ -1005,6 +1005,12 @@ size_t <tt class="descname">nvlen</tt><a class="headerlink" href="#nghttp2_heade
 </dd></dl>
 
 <dl class="member">
+<dt id="nghttp2_headers.cat">
+<a class="reference internal" href="#nghttp2_headers_category" title="nghttp2_headers_category">nghttp2_headers_category</a> <tt class="descname">cat</tt><a class="headerlink" href="#nghttp2_headers.cat" title="Permalink to this definition">¶</a></dt>
+<dd><p>The category of this HEADERS frame.</p>
+</dd></dl>
+
+<dl class="member">
 <dt id="nghttp2_headers.pri">
 int32_t <tt class="descname">pri</tt><a class="headerlink" href="#nghttp2_headers.pri" title="Permalink to this definition">¶</a></dt>
 <dd><p>The priority.</p>
@@ -1913,13 +1919,29 @@ drop the connection.</p>
 <dt id="nghttp2_session_get_stream_user_data">
 void* <tt class="descname">nghttp2_session_get_stream_user_data</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em><big>)</big><a class="headerlink" href="#nghttp2_session_get_stream_user_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns stream_user_data for the stream <em>stream_id</em>. The
-stream_user_data is provided by <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or
-<a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>.  If the stream is initiated by the
-remote endpoint, stream_user_data is always <tt class="docutils literal"><span class="pre">NULL</span></tt>. If the stream
-is initiated by the local endpoint and <tt class="docutils literal"><span class="pre">NULL</span></tt> is given in
-<a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or <a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>, then
-this function returns <tt class="docutils literal"><span class="pre">NULL</span></tt>. If the stream does not exist, this
-function returns <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
+stream_user_data is provided by <a class="reference internal" href="#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>,
+<a class="reference internal" href="#nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a> or
+<a class="reference internal" href="#nghttp2_session_set_stream_user_data" title="nghttp2_session_set_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_set_stream_user_data()</span></tt></a>. Unless it is set using
+<a class="reference internal" href="#nghttp2_session_set_stream_user_data" title="nghttp2_session_set_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_set_stream_user_data()</span></tt></a>, if the stream is
+initiated by the remote endpoint, stream_user_data is always
+<tt class="docutils literal"><span class="pre">NULL</span></tt>. If the stream does not exist, this function returns
+<tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_session_set_stream_user_data">
+int <tt class="descname">nghttp2_session_set_stream_user_data</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#nghttp2_session_set_stream_user_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the <em>stream_user_data</em> to the stream denoted by the
+<em>stream_id</em>. If a stream user data is already set to the stream, it
+is replaced with the <em>stream_user_data</em>. It is valid to specify
+<tt class="docutils literal"><span class="pre">NULL</span></tt> in the <em>stream_user_data</em>, which nullifies the associated
+data pointer.</p>
+<p>This function returns 0 if it succeeds, or one of following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
+<dd>The stream does not exist</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
