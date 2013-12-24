@@ -119,7 +119,7 @@ public:
   size_t get_left_connhd_len() const;
   void set_left_connhd_len(size_t left);
   void remove_settings_timer();
-  void submit_goaway(nghttp2_error_code error_code);
+  void fail_session(nghttp2_error_code error_code);
 private:
   std::map<int32_t, std::unique_ptr<Request>> id2req_;
   int64_t session_id_;

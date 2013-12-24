@@ -352,7 +352,7 @@ namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
   auto hd = reinterpret_cast<Http2Handler*>(arg);
-  hd->submit_goaway(NGHTTP2_SETTINGS_TIMEOUT);
+  hd->fail_session(NGHTTP2_SETTINGS_TIMEOUT);
   hd->on_write();
 }
 } // namespace
@@ -581,9 +581,9 @@ void Http2Handler::remove_settings_timer()
   }
 }
 
-void Http2Handler::submit_goaway(nghttp2_error_code error_code)
+void Http2Handler::fail_session(nghttp2_error_code error_code)
 {
-  nghttp2_submit_goaway(session_, NGHTTP2_FLAG_NONE, error_code, NULL, 0);
+  nghttp2_session_fail_session(session_, error_code);
 }
 
 namespace {
