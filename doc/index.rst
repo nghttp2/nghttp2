@@ -17,6 +17,7 @@ Contents:
    :maxdepth: 2
 
    package_README
+   tutorial-client
    apiref
    nghttp2.h
    nghttp2ver.h
