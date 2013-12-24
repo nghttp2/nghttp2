@@ -1597,6 +1597,9 @@ void* nghttp2_session_get_stream_user_data(nghttp2_session *session,
  * ``NULL`` in the |stream_user_data|, which nullifies the associated
  * data pointer.
  *
+ * It is valid to set the |stream_user_data| to the stream reserved by
+ * PUSH_PROMISE frame.
+ *
  * This function returns 0 if it succeeds, or one of following
  * negative error codes:
  *
