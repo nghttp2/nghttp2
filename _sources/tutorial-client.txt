@@ -2,7 +2,7 @@ Tutorial: HTTP/2.0 client
 =========================
 
 In this tutorial, we are going to write very primitive HTTP/2.0
-client. The complete source code, libevent-client.c, is attached at
+client. The complete source code, `libevent-client.c`_, is attached at
 the end of this page.  It also resides in examples directory in the
 archive or repository.
 
@@ -457,3 +457,8 @@ resource we want (or the stream was reset by RST_STREAM from the
 remote peer), we call `nghttp2_session_fail_session()` to commencing
 the closure of the HTTP/2.0 session gracefully. If you have some data
 associated for the stream to be closed, you may delete it here.
+
+libevent-client.c
+-----------------
+
+.. literalinclude:: ../examples/libevent-client.c

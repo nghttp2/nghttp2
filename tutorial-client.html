@@ -81,7 +81,10 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#header-compression-test-tools">Header compression test tools</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Tutorial: HTTP/2.0 client</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Tutorial: HTTP/2.0 client</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#libevent-client-c">libevent-client.c</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
@@ -129,7 +132,7 @@
   <div class="section" id="tutorial-http-2-0-client">
 <h1>Tutorial: HTTP/2.0 client<a class="headerlink" href="#tutorial-http-2-0-client" title="Permalink to this headline">¶</a></h1>
 <p>In this tutorial, we are going to write very primitive HTTP/2.0
-client. The complete source code, libevent-client.c, is attached at
+client. The complete source code, <a class="reference internal" href="#libevent-client-c">libevent-client.c</a>, is attached at
 the end of this page.  It also resides in examples directory in the
 archive or repository.</p>
 <p>This simple client takes 1 argument, HTTPS URI, and retrieves the
@@ -569,6 +572,539 @@ resource we want (or the stream was reset by RST_STREAM from the
 remote peer), we call <a class="reference internal" href="apiref.html#nghttp2_session_fail_session" title="nghttp2_session_fail_session"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_fail_session()</span></tt></a> to commencing
 the closure of the HTTP/2.0 session gracefully. If you have some data
 associated for the stream to be closed, you may delete it here.</p>
+<div class="section" id="libevent-client-c">
+<h2>libevent-client.c<a class="headerlink" href="#libevent-client-c" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
+<span class="cm"> * nghttp2 - HTTP/2.0 C Library</span>
+<span class="cm"> *</span>
+<span class="cm"> * Copyright (c) 2013 Tatsuhiro Tsujikawa</span>
+<span class="cm"> *</span>
+<span class="cm"> * Permission is hereby granted, free of charge, to any person obtaining</span>
+<span class="cm"> * a copy of this software and associated documentation files (the</span>
+<span class="cm"> * &quot;Software&quot;), to deal in the Software without restriction, including</span>
+<span class="cm"> * without limitation the rights to use, copy, modify, merge, publish,</span>
+<span class="cm"> * distribute, sublicense, and/or sell copies of the Software, and to</span>
+<span class="cm"> * permit persons to whom the Software is furnished to do so, subject to</span>
+<span class="cm"> * the following conditions:</span>
+<span class="cm"> *</span>
+<span class="cm"> * The above copyright notice and this permission notice shall be</span>
+<span class="cm"> * included in all copies or substantial portions of the Software.</span>
+<span class="cm"> *</span>
+<span class="cm"> * THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,</span>
+<span class="cm"> * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF</span>
+<span class="cm"> * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND</span>
+<span class="cm"> * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE</span>
+<span class="cm"> * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION</span>
+<span class="cm"> * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION</span>
+<span class="cm"> * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</span>
+<span class="cm"> */</span>
+<span class="cp">#include &lt;sys/types.h&gt;</span>
+<span class="cp">#include &lt;unistd.h&gt;</span>
+<span class="cp">#include &lt;netinet/tcp.h&gt;</span>
+<span class="cp">#include &lt;err.h&gt;</span>
+<span class="cp">#include &lt;signal.h&gt;</span>
+
+<span class="cp">#include &lt;openssl/ssl.h&gt;</span>
+<span class="cp">#include &lt;openssl/err.h&gt;</span>
+
+<span class="cp">#include &lt;event.h&gt;</span>
+<span class="cp">#include &lt;event2/event.h&gt;</span>
+<span class="cp">#include &lt;event2/bufferevent_ssl.h&gt;</span>
+<span class="cp">#include &lt;event2/dns.h&gt;</span>
+
+<span class="cp">#include &lt;nghttp2/nghttp2.h&gt;</span>
+
+<span class="cp">#include &quot;http-parser/http_parser.h&quot;</span>
+
+<span class="cp">#define ARRLEN(x) (sizeof(x)/sizeof(x[0]))</span>
+
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/* The NULL-terminated URI string to retreive. */</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri</span><span class="p">;</span>
+  <span class="cm">/* Parsed result of the |uri| */</span>
+  <span class="k">struct</span> <span class="n">http_parser_url</span> <span class="o">*</span><span class="n">u</span><span class="p">;</span>
+  <span class="cm">/* The authroity portion of the |uri|, not NULL-terminated */</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">authority</span><span class="p">;</span>
+  <span class="cm">/* The path portion of the |uri|, including query, not</span>
+<span class="cm">     NULL-terminated */</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">;</span>
+  <span class="cm">/* The length of the |authority| */</span>
+  <span class="kt">size_t</span> <span class="n">authoritylen</span><span class="p">;</span>
+  <span class="cm">/* The length of the |path| */</span>
+  <span class="kt">size_t</span> <span class="n">pathlen</span><span class="p">;</span>
+  <span class="cm">/* The stream ID of this stream */</span>
+  <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">http2_stream_data</span><span class="p">;</span>
+
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">evdns_base</span> <span class="o">*</span><span class="n">dnsbase</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">;</span>
+  <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">http2_session_data</span><span class="p">;</span>
+
+<span class="k">static</span> <span class="n">http2_stream_data</span><span class="o">*</span> <span class="nf">create_http2_stream_data</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri</span><span class="p">,</span>
+                                                   <span class="k">struct</span> <span class="n">http_parser_url</span> <span class="o">*</span><span class="n">u</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">http2_stream_data</span><span class="p">));</span>
+
+  <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">uri</span> <span class="o">=</span> <span class="n">uri</span><span class="p">;</span>
+  <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">u</span> <span class="o">=</span> <span class="n">u</span><span class="p">;</span>
+  <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+
+  <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authoritylen</span> <span class="o">=</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_HOST</span><span class="p">].</span><span class="n">len</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_set</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UF_PORT</span><span class="p">))</span> <span class="p">{</span>
+    <span class="cm">/* MAX 5 digits (max 65535) + 1 &#39;:&#39; + 1 NULL (because of snprintf) */</span>
+    <span class="kt">size_t</span> <span class="n">extra</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
+    <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authority</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authoritylen</span> <span class="o">+</span> <span class="n">extra</span><span class="p">);</span>
+    <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authoritylen</span> <span class="o">+=</span>
+      <span class="n">snprintf</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authority</span> <span class="o">+</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_HOST</span><span class="p">].</span><span class="n">len</span><span class="p">,</span> <span class="n">extra</span><span class="p">,</span>
+               <span class="s">&quot;:%u&quot;</span><span class="p">,</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">port</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">memcpy</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authority</span><span class="p">,</span>
+         <span class="o">&amp;</span><span class="n">uri</span><span class="p">[</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_HOST</span><span class="p">].</span><span class="n">off</span><span class="p">],</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_HOST</span><span class="p">].</span><span class="n">len</span><span class="p">);</span>
+
+  <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">pathlen</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_set</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UF_PATH</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">pathlen</span> <span class="o">=</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_PATH</span><span class="p">].</span><span class="n">len</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_set</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UF_QUERY</span><span class="p">))</span> <span class="p">{</span>
+    <span class="cm">/* +1 for &#39;?&#39; character */</span>
+    <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">pathlen</span> <span class="o">+=</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_QUERY</span><span class="p">].</span><span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">pathlen</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">path</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">pathlen</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_set</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UF_PATH</span><span class="p">))</span> <span class="p">{</span>
+      <span class="n">memcpy</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">,</span>
+             <span class="o">&amp;</span><span class="n">uri</span><span class="p">[</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_PATH</span><span class="p">].</span><span class="n">off</span><span class="p">],</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_PATH</span><span class="p">].</span><span class="n">len</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_set</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UF_QUERY</span><span class="p">))</span> <span class="p">{</span>
+      <span class="n">memcpy</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">path</span> <span class="o">+</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_PATH</span><span class="p">].</span><span class="n">len</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+             <span class="o">&amp;</span><span class="n">uri</span><span class="p">[</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_QUERY</span><span class="p">].</span><span class="n">off</span><span class="p">],</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_QUERY</span><span class="p">].</span><span class="n">len</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">path</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">stream_data</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">delete_http2_stream_data</span><span class="p">(</span><span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">);</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authority</span><span class="p">);</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">stream_data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* Initializes |session_data| */</span>
+<span class="k">static</span> <span class="n">http2_session_data</span> <span class="o">*</span><span class="nf">create_http2_session_data</span><span class="p">(</span><span class="k">struct</span> <span class="n">event_base</span> <span class="o">*</span><span class="n">evbase</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">http2_session_data</span><span class="p">));</span>
+
+  <span class="n">memset</span><span class="p">(</span><span class="n">session_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">http2_session_data</span><span class="p">));</span>
+  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">dnsbase</span> <span class="o">=</span> <span class="n">evdns_base_new</span><span class="p">(</span><span class="n">evbase</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">session_data</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">delete_http2_session_data</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">SSL</span> <span class="o">*</span><span class="n">ssl</span> <span class="o">=</span> <span class="n">bufferevent_openssl_get_ssl</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">ssl</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">SSL_shutdown</span><span class="p">(</span><span class="n">ssl</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">bufferevent_free</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
+  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">evdns_base_free</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">dnsbase</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">dnsbase</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">nghttp2_session_del</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">);</span>
+  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">delete_http2_stream_data</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">);</span>
+    <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* Print HTTP headers to |f|. Please note that this function does not</span>
+<span class="cm">   take into account that header name and value are sequence of</span>
+<span class="cm">   octets, therefore they may contain non-printable characters. */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">print_headers</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">*</span><span class="n">f</span><span class="p">,</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">size_t</span> <span class="n">i</span><span class="p">;</span>
+  <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">nvlen</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">fwrite</span><span class="p">(</span><span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span><span class="p">,</span> <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">namelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stderr</span><span class="p">);</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;: &quot;</span><span class="p">);</span>
+    <span class="n">fwrite</span><span class="p">(</span><span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">,</span> <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">valuelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stderr</span><span class="p">);</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* nghttp2_send_callback. Here we transmit the |data|, |length| bytes,</span>
+<span class="cm">   to the network. Because we are using libevent bufferevent, we just</span>
+<span class="cm">   write those bytes into bufferevent buffer. */</span>
+<span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">send_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                             <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>
+                             <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span> <span class="o">=</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">;</span>
+  <span class="n">bufferevent_write</span><span class="p">(</span><span class="n">bev</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">length</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">length</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* nghttp2_before_frame_send_callback: Called when nghttp2 library is</span>
+<span class="cm">   about to send a frame. We use this callback to get stream ID of new</span>
+<span class="cm">   stream. Since HEADERS in HTTP/2.0 has several roles, we check that</span>
+<span class="cm">   it is a HTTP request HEADERS. */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">before_frame_send_callback</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">NGHTTP2_HEADERS</span> <span class="o">&amp;&amp;</span>
+     <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_REQUEST</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">stream_data</span> <span class="o">=</span>
+      <span class="p">(</span><span class="n">http2_stream_data</span><span class="o">*</span><span class="p">)</span><span class="n">nghttp2_session_get_stream_user_data</span>
+      <span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">stream_data</span> <span class="o">==</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">=</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* nghttp2_on_frame_recv_callback: Called when nghttp2 library</span>
+<span class="cm">   received a frame from the remote peer. */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">on_frame_recv_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                  <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="k">switch</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="n">NGHTTP2_HEADERS</span>:
+    <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">&amp;&amp;</span>
+       <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
+      <span class="cm">/* Print response headers for the initiated request. */</span>
+      <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Response headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+      <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">nva</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">nvlen</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">break</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* nghttp2_on_data_chunk_recv_callback: Called when DATA frame is</span>
+<span class="cm">   received from the remote peer. In this implementation, if the frame</span>
+<span class="cm">   is meant to the stream we initiated, print the received data in</span>
+<span class="cm">   stdout, so that the user can redirect its output to the file</span>
+<span class="cm">   easily. */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">on_data_chunk_recv_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                                       <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                                       <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">,</span>
+                                       <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">fwrite</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">len</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stdout</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* nghttp2_on_stream_close_callback: Called when a stream is about to</span>
+<span class="cm">   closed. This example program only deals with 1 HTTP request (1</span>
+<span class="cm">   stream), if it is closed, we send GOAWAY and tear down the</span>
+<span class="cm">   session */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">on_stream_close_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                    <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                                    <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span>
+                                    <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Stream %d closed with error_code=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+            <span class="n">stream_id</span><span class="p">,</span> <span class="n">error_code</span><span class="p">);</span>
+    <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_fail_session</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_NO_ERROR</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">NGHTTP2_ERR_CALLBACK_FAILURE</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* NPN TLS extension client callback. We check that server advertised</span>
+<span class="cm">   the HTTP/2.0 protocol the nghttp2 library supports. If not, exit</span>
+<span class="cm">   the program. */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">select_next_proto_cb</span><span class="p">(</span><span class="n">SSL</span><span class="o">*</span> <span class="n">ssl</span><span class="p">,</span>
+                                <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">inlen</span><span class="p">,</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">nghttp2_select_next_protocol</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">outlen</span><span class="p">,</span> <span class="n">in</span><span class="p">,</span> <span class="n">inlen</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Server did not advertise &quot;</span> <span class="n">NGHTTP2_PROTO_VERSION_ID</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">SSL_TLSEXT_ERR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* Create SSL_CTX. */</span>
+<span class="k">static</span> <span class="n">SSL_CTX</span><span class="o">*</span> <span class="nf">create_ssl_ctx</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">SSL_CTX</span> <span class="o">*</span><span class="n">ssl_ctx</span><span class="p">;</span>
+  <span class="n">ssl_ctx</span> <span class="o">=</span> <span class="n">SSL_CTX_new</span><span class="p">(</span><span class="n">SSLv23_client_method</span><span class="p">());</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">ssl_ctx</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not create SSL/TLS context: %s&quot;</span><span class="p">,</span>
+         <span class="n">ERR_error_string</span><span class="p">(</span><span class="n">ERR_get_error</span><span class="p">(),</span> <span class="nb">NULL</span><span class="p">));</span>
+  <span class="p">}</span>
+  <span class="n">SSL_CTX_set_options</span><span class="p">(</span><span class="n">ssl_ctx</span><span class="p">,</span>
+                      <span class="n">SSL_OP_ALL</span> <span class="o">|</span> <span class="n">SSL_OP_NO_SSLv2</span> <span class="o">|</span> <span class="n">SSL_OP_NO_COMPRESSION</span> <span class="o">|</span>
+                      <span class="n">SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION</span><span class="p">);</span>
+  <span class="n">SSL_CTX_set_next_proto_select_cb</span><span class="p">(</span><span class="n">ssl_ctx</span><span class="p">,</span> <span class="n">select_next_proto_cb</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">ssl_ctx</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* Create SSL object */</span>
+<span class="k">static</span> <span class="n">SSL</span><span class="o">*</span> <span class="nf">create_ssl</span><span class="p">(</span><span class="n">SSL_CTX</span> <span class="o">*</span><span class="n">ssl_ctx</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">SSL</span> <span class="o">*</span><span class="n">ssl</span><span class="p">;</span>
+  <span class="n">ssl</span> <span class="o">=</span> <span class="n">SSL_new</span><span class="p">(</span><span class="n">ssl_ctx</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">ssl</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not create SSL/TLS session object: %s&quot;</span><span class="p">,</span>
+         <span class="n">ERR_error_string</span><span class="p">(</span><span class="n">ERR_get_error</span><span class="p">(),</span> <span class="nb">NULL</span><span class="p">));</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">ssl</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">initialize_nghttp2_session</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">nghttp2_session_callbacks</span> <span class="n">callbacks</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">send_callback</span> <span class="o">=</span> <span class="n">send_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">before_frame_send_callback</span> <span class="o">=</span> <span class="n">before_frame_send_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_data_chunk_recv_callback</span> <span class="o">=</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_stream_close_callback</span> <span class="o">=</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
+  <span class="n">nghttp2_session_client_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">send_client_connection_header</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">nghttp2_settings_entry</span> <span class="n">iv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">{</span> <span class="n">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</span><span class="p">,</span> <span class="mi">100</span> <span class="p">}</span>
+  <span class="p">};</span>
+  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+
+  <span class="n">bufferevent_write</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span>
+                    <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER</span><span class="p">,</span>
+                    <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</span><span class="p">);</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_settings</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_FLAG_NONE</span><span class="p">,</span>
+                               <span class="n">iv</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">iv</span><span class="p">));</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit SETTINGS: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cp">#define MAKE_NV(NAME, VALUE, VALUELEN)                                  \</span>
+<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, VALUELEN }</span>
+
+<span class="cp">#define MAKE_NV2(NAME, VALUE)                                           \</span>
+<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1 }</span>
+
+<span class="cm">/* Send HTTP request to the remote peer */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">submit_request</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span> <span class="o">=</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">;</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri</span> <span class="o">=</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">uri</span><span class="p">;</span>
+  <span class="k">const</span> <span class="k">struct</span> <span class="n">http_parser_url</span> <span class="o">*</span><span class="n">u</span> <span class="o">=</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">u</span><span class="p">;</span>
+  <span class="n">nghttp2_nv</span> <span class="n">hdrs</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">MAKE_NV2</span><span class="p">(</span><span class="s">&quot;:method&quot;</span><span class="p">,</span> <span class="s">&quot;GET&quot;</span><span class="p">),</span>
+    <span class="n">MAKE_NV</span><span class="p">(</span><span class="s">&quot;:scheme&quot;</span><span class="p">,</span>
+            <span class="o">&amp;</span><span class="n">uri</span><span class="p">[</span><span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_SCHEMA</span><span class="p">].</span><span class="n">off</span><span class="p">],</span> <span class="n">u</span><span class="o">-&gt;</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_SCHEMA</span><span class="p">].</span><span class="n">len</span><span class="p">),</span>
+    <span class="n">MAKE_NV</span><span class="p">(</span><span class="s">&quot;:authority&quot;</span><span class="p">,</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authority</span><span class="p">,</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">authoritylen</span><span class="p">),</span>
+    <span class="n">MAKE_NV</span><span class="p">(</span><span class="s">&quot;:path&quot;</span><span class="p">,</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">,</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">pathlen</span><span class="p">)</span>
+  <span class="p">};</span>
+  <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Request headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+  <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">));</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_PRI_DEFAULT</span><span class="p">,</span>
+                              <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit HTTP request: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cm">/* Serialize the frame and send (or buffer) the data to</span>
+<span class="cm">   bufferevent. */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">session_send</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_send</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* readcb for bufferevent. Here we get the data from the input buffer</span>
+<span class="cm">   of bufferevent and feed them to nghttp2 library. This may invoke</span>
+<span class="cm">   nghttp2 callbacks. It may also queues the frame in nghttp2 session</span>
+<span class="cm">   context. To send them, we call session_send() in the end. */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">readcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">bufferevent_get_input</span><span class="p">(</span><span class="n">bev</span><span class="p">);</span>
+  <span class="kt">size_t</span> <span class="n">datalen</span> <span class="o">=</span> <span class="n">evbuffer_get_length</span><span class="p">(</span><span class="n">input</span><span class="p">);</span>
+  <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="n">evbuffer_pullup</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datalen</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+    <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="n">evbuffer_drain</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">rv</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">session_send</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cm">/* writecb for bufferevent. To greaceful shutdown after sending or</span>
+<span class="cm">   receiving GOAWAY, we check the some conditions on the nghttp2</span>
+<span class="cm">   library and output buffer of bufferevent. If it indicates we have</span>
+<span class="cm">   no business to this session, tear down the connection. */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">writecb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">nghttp2_session_want_read</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span>
+     <span class="n">nghttp2_session_want_write</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span>
+     <span class="n">evbuffer_get_length</span><span class="p">(</span><span class="n">bufferevent_get_output</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cm">/* eventcb for bufferevent. For the purpose of simplicity and</span>
+<span class="cm">   readability of the example program, we omitted the certificate and</span>
+<span class="cm">   peer verification. After SSL/TLS handshake is over, initialize</span>
+<span class="cm">   nghttp2 library session, and send client connection header. Then</span>
+<span class="cm">   send HTTP request. */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">eventcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">short</span> <span class="n">events</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_CONNECTED</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">bufferevent_getfd</span><span class="p">(</span><span class="n">bev</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">val</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Connected</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">setsockopt</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">IPPROTO_TCP</span><span class="p">,</span> <span class="n">TCP_NODELAY</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">val</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">val</span><span class="p">));</span>
+    <span class="n">initialize_nghttp2_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+    <span class="n">send_client_connection_header</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+    <span class="n">submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">session_send</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_EOF</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Disconnected from the remote host&quot;</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_ERROR</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Network error&quot;</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_TIMEOUT</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Timeout&quot;</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* Start connecting to the remote peer |host:port| */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">initiate_connection</span><span class="p">(</span><span class="k">struct</span> <span class="n">event_base</span> <span class="o">*</span><span class="n">evbase</span><span class="p">,</span>
+                                <span class="n">SSL_CTX</span> <span class="o">*</span><span class="n">ssl_ctx</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">host</span><span class="p">,</span> <span class="kt">uint16_t</span> <span class="n">port</span><span class="p">,</span>
+                                <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">;</span>
+  <span class="n">SSL</span> <span class="o">*</span><span class="n">ssl</span><span class="p">;</span>
+
+  <span class="n">ssl</span> <span class="o">=</span> <span class="n">create_ssl</span><span class="p">(</span><span class="n">ssl_ctx</span><span class="p">);</span>
+  <span class="n">bev</span> <span class="o">=</span> <span class="n">bufferevent_openssl_socket_new</span><span class="p">(</span><span class="n">evbase</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">ssl</span><span class="p">,</span>
+                                       <span class="n">BUFFEREVENT_SSL_CONNECTING</span><span class="p">,</span>
+                                       <span class="n">BEV_OPT_DEFER_CALLBACKS</span> <span class="o">|</span>
+                                       <span class="n">BEV_OPT_CLOSE_ON_FREE</span><span class="p">);</span>
+  <span class="n">bufferevent_setcb</span><span class="p">(</span><span class="n">bev</span><span class="p">,</span> <span class="n">readcb</span><span class="p">,</span> <span class="n">writecb</span><span class="p">,</span> <span class="n">eventcb</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">bufferevent_socket_connect_hostname</span><span class="p">(</span><span class="n">bev</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">dnsbase</span><span class="p">,</span>
+                                           <span class="n">AF_UNSPEC</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">);</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not connect to the remote host %s&quot;</span><span class="p">,</span> <span class="n">host</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span> <span class="o">=</span> <span class="n">bev</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* Get resource denoted by the |uri|. The debug and error messages are</span>
+<span class="cm">   printed in stderr, while the response body is printed in stdout. */</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">run</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">struct</span> <span class="n">http_parser_url</span> <span class="n">u</span><span class="p">;</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">host</span><span class="p">;</span>
+  <span class="kt">uint16_t</span> <span class="n">port</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="n">SSL_CTX</span> <span class="o">*</span><span class="n">ssl_ctx</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">event_base</span> <span class="o">*</span><span class="n">evbase</span><span class="p">;</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">;</span>
+
+  <span class="cm">/* Parse the |uri| and stores its components in |u| */</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">http_parser_parse_url</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">uri</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">u</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not parse URI %s&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="n">host</span> <span class="o">=</span> <span class="n">strndup</span><span class="p">(</span><span class="o">&amp;</span><span class="n">uri</span><span class="p">[</span><span class="n">u</span><span class="p">.</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_HOST</span><span class="p">].</span><span class="n">off</span><span class="p">],</span> <span class="n">u</span><span class="p">.</span><span class="n">field_data</span><span class="p">[</span><span class="n">UF_HOST</span><span class="p">].</span><span class="n">len</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">u</span><span class="p">.</span><span class="n">field_set</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UF_PORT</span><span class="p">)))</span> <span class="p">{</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="mi">443</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="n">u</span><span class="p">.</span><span class="n">port</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">ssl_ctx</span> <span class="o">=</span> <span class="n">create_ssl_ctx</span><span class="p">();</span>
+
+  <span class="n">evbase</span> <span class="o">=</span> <span class="n">event_base_new</span><span class="p">();</span>
+
+  <span class="n">session_data</span> <span class="o">=</span> <span class="n">create_http2_session_data</span><span class="p">(</span><span class="n">evbase</span><span class="p">);</span>
+  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span> <span class="o">=</span> <span class="n">create_http2_stream_data</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">u</span><span class="p">);</span>
+
+  <span class="n">initiate_connection</span><span class="p">(</span><span class="n">evbase</span><span class="p">,</span> <span class="n">ssl_ctx</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">host</span><span class="p">);</span>
+  <span class="n">host</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+  <span class="n">event_base_loop</span><span class="p">(</span><span class="n">evbase</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+  <span class="n">event_base_free</span><span class="p">(</span><span class="n">evbase</span><span class="p">);</span>
+  <span class="n">SSL_CTX_free</span><span class="p">(</span><span class="n">ssl_ctx</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">struct</span> <span class="n">sigaction</span> <span class="n">act</span><span class="p">;</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Usage: libevent-client HTTPS_URI</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">act</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">sigaction</span><span class="p">));</span>
+  <span class="n">act</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">SIG_IGN</span><span class="p">;</span>
+  <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGPIPE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">act</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+  <span class="n">SSL_load_error_strings</span><span class="p">();</span>
+  <span class="n">SSL_library_init</span><span class="p">();</span>
+
+  <span class="n">run</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
 </div>
 
 
