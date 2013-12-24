@@ -81,6 +81,7 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#header-compression-test-tools">Header compression test tools</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a></li>
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
@@ -1725,6 +1726,9 @@
 <span class="cm"> * is replaced with the |stream_user_data|. It is valid to specify</span>
 <span class="cm"> * ``NULL`` in the |stream_user_data|, which nullifies the associated</span>
 <span class="cm"> * data pointer.</span>
+<span class="cm"> *</span>
+<span class="cm"> * It is valid to set the |stream_user_data| to the stream reserved by</span>
+<span class="cm"> * PUSH_PROMISE frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of following</span>
 <span class="cm"> * negative error codes:</span>

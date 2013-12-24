@@ -46,7 +46,7 @@
   
     <link rel="top" title="nghttp2 0.3.0-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2.h" href="nghttp2.h.html"/>
-        <link rel="prev" title="nghttp2 - HTTP/2.0 C Library" href="package_README.html"/> 
+        <link rel="prev" title="Tutorial: HTTP/2.0 client" href="tutorial-client.html"/> 
 
   <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -81,6 +81,7 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#header-compression-test-tools">Header compression test tools</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#remarks">Remarks</a></li>
@@ -1936,6 +1937,8 @@ int <tt class="descname">nghttp2_session_set_stream_user_data</tt><big>(</big><a
 is replaced with the <em>stream_user_data</em>. It is valid to specify
 <tt class="docutils literal"><span class="pre">NULL</span></tt> in the <em>stream_user_data</em>, which nullifies the associated
 data pointer.</p>
+<p>It is valid to set the <em>stream_user_data</em> to the stream reserved by
+PUSH_PROMISE frame.</p>
 <p>This function returns 0 if it succeeds, or one of following
 negative error codes:</p>
 <dl class="docutils">
@@ -2552,7 +2555,7 @@ the version checking.</p>
         <a href="nghttp2.h.html" class="btn btn-neutral float-right" title="nghttp2.h"/>Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
-        <a href="package_README.html" class="btn btn-neutral" title="nghttp2 - HTTP/2.0 C Library"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="tutorial-client.html" class="btn btn-neutral" title="Tutorial: HTTP/2.0 client"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
