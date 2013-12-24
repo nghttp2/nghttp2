@@ -1084,8 +1084,7 @@ namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
   auto client = get_session(arg);
-  nghttp2_submit_goaway(client->session, NGHTTP2_FLAG_NONE,
-                        NGHTTP2_SETTINGS_TIMEOUT, nullptr, 0);
+  nghttp2_session_fail_session(client->session, NGHTTP2_SETTINGS_TIMEOUT);
   client->on_write();
 }
 } // namespace
@@ -1182,8 +1181,7 @@ int on_stream_close_callback
     (*itr).second->record_complete_time();
     ++client->complete;
     if(client->all_requests_processed()) {
-      nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
-                            nullptr, 0);
+      nghttp2_session_fail_session(session, NGHTTP2_NO_ERROR);
     }
   }
   return 0;
