@@ -47,9 +47,10 @@ typedef struct {
   const char *uri;
   /* Parsed result of the |uri| */
   struct http_parser_url *u;
-  /* The authroity portion of the |uri|, NULL-terminated */
+  /* The authroity portion of the |uri|, not NULL-terminated */
   char *authority;
-  /* The path portion of the |uri|, including query, NULL-terminated */
+  /* The path portion of the |uri|, including query, not
+     NULL-terminated */
   char *path;
   /* The length of the |authority| */
   size_t authoritylen;
@@ -87,6 +88,7 @@ static http2_stream_data* create_http2_stream_data(const char *uri,
   memcpy(stream_data->authority,
          &uri[u->field_data[UF_HOST].off], u->field_data[UF_HOST].len);
 
+  stream_data->pathlen = 0;
   if(u->field_set & (1 << UF_PATH)) {
     stream_data->pathlen = u->field_data[UF_PATH].len;
   }
@@ -94,11 +96,19 @@ static http2_stream_data* create_http2_stream_data(const char *uri,
     /* +1 for '?' character */
     stream_data->pathlen += u->field_data[UF_QUERY].len + 1;
   }
-  stream_data->path = malloc(stream_data->pathlen);
-  memcpy(stream_data->path,
-         &uri[u->field_data[UF_PATH].off], u->field_data[UF_PATH].len);
-  memcpy(stream_data->path + u->field_data[UF_PATH].len + 1,
-         &uri[u->field_data[UF_QUERY].off], u->field_data[UF_QUERY].len);
+  if(stream_data->pathlen > 0) {
+    stream_data->path = malloc(stream_data->pathlen);
+    if(u->field_set & (1 << UF_PATH)) {
+      memcpy(stream_data->path,
+             &uri[u->field_data[UF_PATH].off], u->field_data[UF_PATH].len);
+    }
+    if(u->field_set & (1 << UF_QUERY)) {
+      memcpy(stream_data->path + u->field_data[UF_PATH].len + 1,
+             &uri[u->field_data[UF_QUERY].off], u->field_data[UF_QUERY].len);
+    }
+  } else {
+    stream_data->path = NULL;
+  }
   return stream_data;
 }
 
@@ -234,11 +244,16 @@ static int on_stream_close_callback(nghttp2_session *session,
                                     void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
+  int rv;
+
   if(session_data->stream_data->stream_id == stream_id) {
     fprintf(stderr, "Stream %d closed with error_code=%d\n",
             stream_id, error_code);
-    nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
-                          NULL, 0);
+    rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
+                               NULL, 0);
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
   return 0;
 }
@@ -302,11 +317,16 @@ static void send_client_connection_header(http2_session_data *session_data)
   nghttp2_settings_entry iv[1] = {
     { NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100 }
   };
+  int rv;
+
   bufferevent_write(session_data->bev,
                     NGHTTP2_CLIENT_CONNECTION_HEADER,
                     NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
-  nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
-                          iv, ARRLEN(iv));
+  rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
+                               iv, ARRLEN(iv));
+  if(rv != 0) {
+    errx(1, "Could not submit SETTINGS: %s", nghttp2_strerror(rv));
+  }
 }
 
 #define MAKE_NV(NAME, VALUE, VALUELEN)                                  \
@@ -318,6 +338,7 @@ static void send_client_connection_header(http2_session_data *session_data)
 /* Send HTTP request to the remote peer */
 static void submit_request(http2_session_data *session_data)
 {
+  int rv;
   http2_stream_data *stream_data = session_data->stream_data;
   const char *uri = stream_data->uri;
   const struct http_parser_url *u = stream_data->u;
@@ -330,15 +351,25 @@ static void submit_request(http2_session_data *session_data)
   };
   fprintf(stderr, "Request headers:\n");
   print_headers(stderr, hdrs, ARRLEN(hdrs));
-  nghttp2_submit_request(session_data->session, NGHTTP2_PRI_DEFAULT,
-                         hdrs, ARRLEN(hdrs), NULL, stream_data);
+  rv = nghttp2_submit_request(session_data->session, NGHTTP2_PRI_DEFAULT,
+                              hdrs, ARRLEN(hdrs), NULL, stream_data);
+  if(rv != 0) {
+    errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(rv));
+  }
 }
 
 /* Serialize the frame and send (or buffer) the data to
    bufferevent. */
-static void session_send(http2_session_data *session_data)
+static int session_send(http2_session_data *session_data)
 {
-  nghttp2_session_send(session_data->session);
+  int rv;
+
+  rv = nghttp2_session_send(session_data->session);
+  if(rv != 0) {
+    warnx("Fatal error: %s", nghttp2_strerror(rv));
+    return -1;
+  }
+  return 0;
 }
 
 /* readcb for bufferevent. Here we get the data from the input buffer
@@ -356,10 +387,13 @@ static void readcb(struct bufferevent *bev, void *ptr)
   if(rv < 0) {
     warnx("Fatal error: %s", nghttp2_strerror(rv));
     delete_http2_session_data(session_data);
-  } else {
-    evbuffer_drain(input, rv);
+    return;
   }
-  session_send(session_data);
+  evbuffer_drain(input, rv);
+  if(session_send(session_data) != 0) {
+    delete_http2_session_data(session_data);
+    return;
+  }
 }
 
 /* writecb for bufferevent. To greaceful shutdown after sending or
@@ -392,7 +426,9 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr)
     initialize_nghttp2_session(session_data);
     send_client_connection_header(session_data);
     submit_request(session_data);
-    session_send(session_data);
+    if(session_send(session_data) != 0) {
+      delete_http2_session_data(session_data);
+    }
     return;
   }
   if(events & BEV_EVENT_EOF) {

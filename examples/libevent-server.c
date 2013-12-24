@@ -222,16 +222,22 @@ static void delete_http2_session_data(http2_session_data *session_data)
 
 /* Serialize the frame and send (or buffer) the data to
    bufferevent. */
-static void session_send(http2_session_data *session_data)
+static int session_send(http2_session_data *session_data)
 {
-  nghttp2_session_send(session_data->session);
+  int rv;
+  rv = nghttp2_session_send(session_data->session);
+  if(rv != 0) {
+    warnx("Fatal error: %s", nghttp2_strerror(rv));
+    return -1;
+  }
+  return 0;
 }
 
 /* Read the data in the bufferevent and feed them into nghttp2 library
    function. Invocation of nghttp2_session_mem_recv() may make
    additional pending frames, so call session_send() at the end of the
    function. */
-static void session_recv(http2_session_data *session_data)
+static int session_recv(http2_session_data *session_data)
 {
   int rv;
   struct evbuffer *input = bufferevent_get_input(session_data->bev);
@@ -240,11 +246,13 @@ static void session_recv(http2_session_data *session_data)
   rv = nghttp2_session_mem_recv(session_data->session, data, datalen);
   if(rv < 0) {
     warnx("Fatal error: %s", nghttp2_strerror(rv));
-    delete_http2_session_data(session_data);
-  } else {
-    evbuffer_drain(input, rv);
+    return -1;
   }
-  session_send(session_data);
+  evbuffer_drain(input, rv);
+  if(session_send(session_data) != 0) {
+    return -1;
+  }
+  return 0;
 }
 
 static ssize_t send_callback(nghttp2_session *session,
@@ -364,21 +372,27 @@ static ssize_t file_read_callback
   return r;
 }
 
-static void send_response(nghttp2_session *session, int32_t stream_id,
-                          nghttp2_nv *nva, size_t nvlen, int fd)
+static int send_response(nghttp2_session *session, int32_t stream_id,
+                         nghttp2_nv *nva, size_t nvlen, int fd)
 {
+  int rv;
   nghttp2_data_provider data_prd;
   data_prd.source.fd = fd;
   data_prd.read_callback = file_read_callback;
 
-  nghttp2_submit_response(session, stream_id, nva, nvlen, &data_prd);
+  rv = nghttp2_submit_response(session, stream_id, nva, nvlen, &data_prd);
+  if(rv != 0) {
+    warnx("Fatal error: %s", nghttp2_strerror(rv));
+    return -1;
+  }
+  return 0;
 }
 
 const char ERROR_HTML[] = "<html><head><title>404</title></head>"
   "<body><h1>404 Not Found</h1></body></html>";
 
-static void error_reply(nghttp2_session *session,
-                        http2_stream_data *stream_data)
+static int error_reply(nghttp2_session *session,
+                       http2_stream_data *stream_data)
 {
   int rv;
   int pipefd[2];
@@ -388,16 +402,25 @@ static void error_reply(nghttp2_session *session,
 
   rv = pipe(pipefd);
   if(rv != 0) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                              stream_data->stream_id,
-                              NGHTTP2_INTERNAL_ERROR);
-    return;
+    warn("Could not create pipe");
+    rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                   stream_data->stream_id,
+                                   NGHTTP2_INTERNAL_ERROR);
+    if(rv != 0) {
+      warnx("Fatal error: %s", nghttp2_strerror(rv));
+      return -1;
+    }
+    return 0;
   }
   write(pipefd[1], ERROR_HTML, sizeof(ERROR_HTML) - 1);
   close(pipefd[1]);
   stream_data->fd = pipefd[0];
-  send_response(session, stream_data->stream_id, hdrs, ARRLEN(hdrs),
-                pipefd[0]);
+  if(send_response(session, stream_data->stream_id, hdrs, ARRLEN(hdrs),
+                   pipefd[0]) != 0) {
+    close(pipefd[0]);
+    return -1;
+  }
+  return 0;
 }
 
 /* Minimum check for directory traversal. Returns nonzero if it is
@@ -426,24 +449,33 @@ static int on_request_recv_callback(nghttp2_session *session,
   stream_data = (http2_stream_data*)nghttp2_session_get_stream_user_data
     (session, stream_id);
   if(!stream_data->request_path) {
-    error_reply(session, stream_data);
+    if(error_reply(session, stream_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
     return 0;
   }
   fprintf(stderr, "%s GET %s\n", session_data->client_addr,
           stream_data->request_path);
   if(!check_path(stream_data->request_path)) {
-    error_reply(session, stream_data);
+    if(error_reply(session, stream_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
     return 0;
   }
   for(rel_path = stream_data->request_path; *rel_path == '/'; ++rel_path);
   fd = open(rel_path, O_RDONLY);
   if(fd == -1) {
-    error_reply(session, stream_data);
+    if(error_reply(session, stream_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
     return 0;
   }
   stream_data->fd = fd;
 
-  send_response(session, stream_id, hdrs, ARRLEN(hdrs), fd);
+  if(send_response(session, stream_id, hdrs, ARRLEN(hdrs), fd) != 0) {
+    close(fd);
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
   return 0;
 }
 
@@ -474,20 +506,31 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
 
 /* Send HTTP/2.0 client connection header, which includes 24 bytes
    magic octets and SETTINGS frame */
-static void send_server_connection_header(http2_session_data *session_data)
+static int send_server_connection_header(http2_session_data *session_data)
 {
   nghttp2_settings_entry iv[1] = {
     { NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100 }
   };
-  nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
-                          iv, ARRLEN(iv));
+  int rv;
+
+  rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
+                               iv, ARRLEN(iv));
+  if(rv != 0) {
+    warnx("Fatal error: %s", nghttp2_strerror(rv));
+    return -1;
+  }
+  return 0;
 }
 
 /* readcb for bufferevent after client connection header was
    checked. */
 static void readcb(struct bufferevent *bev, void *ptr)
 {
-  session_recv((http2_session_data*)ptr);
+  http2_session_data *session_data = (http2_session_data*)ptr;
+  if(session_recv(session_data) != 0) {
+    delete_http2_session_data(session_data);
+    return;
+  }
 }
 
 /* writecb for bufferevent. To greaceful shutdown after sending or
@@ -509,7 +552,10 @@ static void writecb(struct bufferevent *bev, void *ptr)
     delete_http2_session_data(session_data);
     return;
   }
-  session_send(session_data);
+  if(session_send(session_data) != 0) {
+    delete_http2_session_data(session_data);
+    return;
+  }
 }
 
 /* eventcb for bufferevent */
@@ -551,8 +597,14 @@ static void handshake_readcb(struct bufferevent *bev, void *ptr)
     /* Process pending data in buffer since they are not notified
        further */
     initialize_nghttp2_session(session_data);
-    send_server_connection_header(session_data);
-    session_recv(session_data);
+    if(send_server_connection_header(session_data) != 0) {
+      delete_http2_session_data(session_data);
+      return;
+    }
+    if(session_recv(session_data) != 0) {
+      delete_http2_session_data(session_data);
+      return;
+    }
   }
 }
 
