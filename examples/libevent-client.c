@@ -146,6 +146,7 @@ static void delete_http2_session_data(http2_session_data *session_data)
     delete_http2_stream_data(session_data->stream_data);
     session_data->stream_data = NULL;
   }
+  free(session_data);
 }
 
 /* Print HTTP headers to |f|. Please note that this function does not
@@ -249,8 +250,7 @@ static int on_stream_close_callback(nghttp2_session *session,
   if(session_data->stream_data->stream_id == stream_id) {
     fprintf(stderr, "Stream %d closed with error_code=%d\n",
             stream_id, error_code);
-    rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
-                               NULL, 0);
+    rv = nghttp2_session_fail_session(session, NGHTTP2_NO_ERROR);
     if(rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
