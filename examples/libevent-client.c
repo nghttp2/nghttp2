@@ -43,33 +43,99 @@
 #define ARRLEN(x) (sizeof(x)/sizeof(x[0]))
 
 typedef struct {
+  /* The NULL-terminated URI string to retreive. */
+  const char *uri;
+  /* Parsed result of the |uri| */
+  struct http_parser_url *u;
+  /* The authroity portion of the |uri|, NULL-terminated */
+  char *authority;
+  /* The path portion of the |uri|, including query, NULL-terminated */
+  char *path;
+  /* The length of the |authority| */
+  size_t authoritylen;
+  /* The length of the |path| */
+  size_t pathlen;
+  /* The stream ID of this stream */
+  int32_t stream_id;
+} http2_stream_data;
+
+typedef struct {
   nghttp2_session *session;
   struct evdns_base *dnsbase;
   struct bufferevent *bev;
-  const char *uri;
-  struct http_parser_url *u;
-  char *authority;
-  char *path;
-  size_t authoritylen;
-  size_t pathlen;
-  int32_t stream_id;
+  http2_stream_data *stream_data;
 } http2_session_data;
 
-static void drop_connection(http2_session_data *session_data)
+static http2_stream_data* create_http2_stream_data(const char *uri,
+                                                   struct http_parser_url *u)
 {
+  http2_stream_data *stream_data = malloc(sizeof(http2_stream_data));
+
+  stream_data->uri = uri;
+  stream_data->u = u;
+  stream_data->stream_id = -1;
+
+  stream_data->authoritylen = u->field_data[UF_HOST].len;
+  if(u->field_set & (1 << UF_PORT)) {
+    /* MAX 5 digits (max 65535) + 1 ':' + 1 NULL (because of snprintf) */
+    size_t extra = 7;
+    stream_data->authority = malloc(stream_data->authoritylen + extra);
+    stream_data->authoritylen +=
+      snprintf(stream_data->authority + u->field_data[UF_HOST].len, extra,
+               ":%u", u->port);
+  }
+  memcpy(stream_data->authority,
+         &uri[u->field_data[UF_HOST].off], u->field_data[UF_HOST].len);
+
+  if(u->field_set & (1 << UF_PATH)) {
+    stream_data->pathlen = u->field_data[UF_PATH].len;
+  }
+  if(u->field_set & (1 << UF_QUERY)) {
+    /* +1 for '?' character */
+    stream_data->pathlen += u->field_data[UF_QUERY].len + 1;
+  }
+  stream_data->path = malloc(stream_data->pathlen);
+  memcpy(stream_data->path,
+         &uri[u->field_data[UF_PATH].off], u->field_data[UF_PATH].len);
+  memcpy(stream_data->path + u->field_data[UF_PATH].len + 1,
+         &uri[u->field_data[UF_QUERY].off], u->field_data[UF_QUERY].len);
+  return stream_data;
+}
+
+static void delete_http2_stream_data(http2_stream_data *stream_data)
+{
+  free(stream_data->path);
+  free(stream_data->authority);
+  free(stream_data);
+}
+
+/* Initializes |session_data| */
+static http2_session_data *create_http2_session_data(struct event_base *evbase)
+{
+  http2_session_data *session_data = malloc(sizeof(http2_session_data));
+
+  memset(session_data, 0, sizeof(http2_session_data));
+  session_data->dnsbase = evdns_base_new(evbase, 1);
+  return session_data;
+}
+
+static void delete_http2_session_data(http2_session_data *session_data)
+{
+  SSL *ssl = bufferevent_openssl_get_ssl(session_data->bev);
+
+  if(ssl) {
+    SSL_shutdown(ssl);
+  }
   bufferevent_free(session_data->bev);
   session_data->bev = NULL;
   evdns_base_free(session_data->dnsbase, 1);
   session_data->dnsbase = NULL;
   nghttp2_session_del(session_data->session);
   session_data->session = NULL;
-  free(session_data->path);
-  session_data->path = NULL;
-  session_data->pathlen = 0;
-  free(session_data->authority);
-  session_data->authority = NULL;
-  session_data->authoritylen = 0;
-  session_data->stream_id = -1;
+  if(session_data->stream_data) {
+    delete_http2_stream_data(session_data->stream_data);
+    session_data->stream_data = NULL;
+  }
 }
 
 /* Print HTTP headers to |f|. Please note that this function does not
@@ -108,9 +174,16 @@ static int before_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
+  http2_stream_data *stream_data;
+
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    session_data->stream_id = frame->hd.stream_id;
+    stream_data =
+      (http2_stream_data*)nghttp2_session_get_stream_user_data
+      (session, frame->hd.stream_id);
+    if(stream_data == session_data->stream_data) {
+      stream_data->stream_id = frame->hd.stream_id;
+    }
   }
   return 0;
 }
@@ -124,7 +197,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
     if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
-       session_data->stream_id == frame->hd.stream_id) {
+       session_data->stream_data->stream_id == frame->hd.stream_id) {
       /* Print response headers for the initiated request. */
       fprintf(stderr, "Response headers:\n");
       print_headers(stderr, frame->headers.nva, frame->headers.nvlen);
@@ -145,7 +218,7 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
                                        void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
-  if(session_data->stream_id == stream_id) {
+  if(session_data->stream_data->stream_id == stream_id) {
     fwrite(data, len, 1, stdout);
   }
   return 0;
@@ -161,7 +234,7 @@ static int on_stream_close_callback(nghttp2_session *session,
                                     void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
-  if(session_data->stream_id == stream_id) {
+  if(session_data->stream_data->stream_id == stream_id) {
     fprintf(stderr, "Stream %d closed with error_code=%d\n",
             stream_id, error_code);
     nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
@@ -245,19 +318,20 @@ static void send_client_connection_header(http2_session_data *session_data)
 /* Send HTTP request to the remote peer */
 static void submit_request(http2_session_data *session_data)
 {
-  const char *uri = session_data->uri;
-  const struct http_parser_url *u = session_data->u;
+  http2_stream_data *stream_data = session_data->stream_data;
+  const char *uri = stream_data->uri;
+  const struct http_parser_url *u = stream_data->u;
   nghttp2_nv hdrs[] = {
     MAKE_NV2(":method", "GET"),
     MAKE_NV(":scheme",
             &uri[u->field_data[UF_SCHEMA].off], u->field_data[UF_SCHEMA].len),
-    MAKE_NV(":authority", session_data->authority, session_data->authoritylen),
-    MAKE_NV(":path", session_data->path, session_data->pathlen)
+    MAKE_NV(":authority", stream_data->authority, stream_data->authoritylen),
+    MAKE_NV(":path", stream_data->path, stream_data->pathlen)
   };
   fprintf(stderr, "Request headers:\n");
   print_headers(stderr, hdrs, ARRLEN(hdrs));
   nghttp2_submit_request(session_data->session, NGHTTP2_PRI_DEFAULT,
-                         hdrs, ARRLEN(hdrs), NULL, NULL);
+                         hdrs, ARRLEN(hdrs), NULL, stream_data);
 }
 
 /* Serialize the frame and send (or buffer) the data to
@@ -281,7 +355,7 @@ static void readcb(struct bufferevent *bev, void *ptr)
   rv = nghttp2_session_mem_recv(session_data->session, data, datalen);
   if(rv < 0) {
     warnx("Fatal error: %s", nghttp2_strerror(rv));
-    drop_connection(session_data);
+    delete_http2_session_data(session_data);
   } else {
     evbuffer_drain(input, rv);
   }
@@ -298,7 +372,7 @@ static void writecb(struct bufferevent *bev, void *ptr)
   if(nghttp2_session_want_read(session_data->session) == 0 &&
      nghttp2_session_want_write(session_data->session) == 0 &&
      evbuffer_get_length(bufferevent_get_output(session_data->bev)) == 0) {
-    drop_connection(session_data);
+    delete_http2_session_data(session_data);
   }
 }
 
@@ -328,16 +402,20 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr)
   } else if(events & BEV_EVENT_TIMEOUT) {
     warnx("Timeout");
   }
-  drop_connection(session_data);
+  delete_http2_session_data(session_data);
 }
 
 /* Start connecting to the remote peer |host:port| */
 static void initiate_connection(struct event_base *evbase,
-                                SSL *ssl, const char *host, uint16_t port,
+                                SSL_CTX *ssl_ctx,
+                                const char *host, uint16_t port,
                                 http2_session_data *session_data)
 {
   int rv;
   struct bufferevent *bev;
+  SSL *ssl;
+
+  ssl = create_ssl(ssl_ctx);
   bev = bufferevent_openssl_socket_new(evbase, -1, ssl,
                                        BUFFEREVENT_SSL_CONNECTING,
                                        BEV_OPT_DEFER_CALLBACKS |
@@ -352,44 +430,6 @@ static void initiate_connection(struct event_base *evbase,
   session_data->bev = bev;
 }
 
-/* Initializes |session_data| */
-static void initialize_session_data(http2_session_data *session_data,
-                                    struct event_base *evbase,
-                                    const char *uri,
-                                    struct http_parser_url *u)
-{
-  memset(session_data, 0, sizeof(http2_session_data));
-  session_data->dnsbase = evdns_base_new(evbase, 1);
-  session_data->uri = uri;
-  session_data->u = u;
-  session_data->stream_id = -1;
-
-  session_data->authoritylen = u->field_data[UF_HOST].len;
-  if(u->field_set & (1 << UF_PORT)) {
-    /* MAX 5 digits (max 65535) + 1 ':' + 1 NULL (because of snprintf) */
-    size_t extra = 7;
-    session_data->authority = malloc(session_data->authoritylen + extra);
-    session_data->authoritylen +=
-      snprintf(session_data->authority + u->field_data[UF_HOST].len, extra,
-               ":%u", u->port);
-  }
-  memcpy(session_data->authority,
-         &uri[u->field_data[UF_HOST].off], u->field_data[UF_HOST].len);
-
-  if(u->field_set & (1 << UF_PATH)) {
-    session_data->pathlen = u->field_data[UF_PATH].len;
-  }
-  if(u->field_set & (1 << UF_QUERY)) {
-    /* +1 for '?' character */
-    session_data->pathlen += u->field_data[UF_QUERY].len + 1;
-  }
-  session_data->path = malloc(session_data->pathlen);
-  memcpy(session_data->path,
-         &uri[u->field_data[UF_PATH].off], u->field_data[UF_PATH].len);
-  memcpy(session_data->path + u->field_data[UF_PATH].len + 1,
-         &uri[u->field_data[UF_QUERY].off], u->field_data[UF_QUERY].len);
-}
-
 /* Get resource denoted by the |uri|. The debug and error messages are
    printed in stderr, while the response body is printed in stdout. */
 static void run(const char *uri)
@@ -399,9 +439,8 @@ static void run(const char *uri)
   uint16_t port;
   int rv;
   SSL_CTX *ssl_ctx;
-  SSL *ssl;
   struct event_base *evbase;
-  http2_session_data session_data;
+  http2_session_data *session_data;
 
   /* Parse the |uri| and stores its components in |u| */
   rv = http_parser_parse_url(uri, strlen(uri), 0, &u);
@@ -416,13 +455,13 @@ static void run(const char *uri)
   }
 
   ssl_ctx = create_ssl_ctx();
-  ssl = create_ssl(ssl_ctx);
 
   evbase = event_base_new();
 
-  initialize_session_data(&session_data, evbase, uri, &u);
+  session_data = create_http2_session_data(evbase);
+  session_data->stream_data = create_http2_stream_data(uri, &u);
 
-  initiate_connection(evbase, ssl, host, port, &session_data);
+  initiate_connection(evbase, ssl_ctx, host, port, session_data);
   free(host);
   host = NULL;
 
