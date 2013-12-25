@@ -1354,12 +1354,6 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       }
       in += namelen;
 
-      if(!nghttp2_check_header_name(nv.name, nv.namelen)) {
-        free(decoded_huffman_name);
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
-      }
-
       if(in == last) {
         DEBUGF(fprintf(stderr, "No value found\n"));
         free(decoded_huffman_name);

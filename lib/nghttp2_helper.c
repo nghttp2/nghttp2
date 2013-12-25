@@ -219,6 +219,19 @@ int nghttp2_check_header_name_nocase(const uint8_t *name, size_t len)
   return check_header_name(name, len, 1);
 }
 
+int nghttp2_check_header_value(const uint8_t* value, size_t len)
+{
+  size_t i;
+  for(i = 0; i < len; ++i) {
+    /* Only allow NUL or ASCII range [0x20, 0x7e], inclusive, to match
+       HTTP/1 sematics */
+    if(value[i] != '\0' && (0x20u > value[i] || value[i] > 0x7eu)) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 const char* nghttp2_strerror(int error_code)
 {
   switch(error_code) {

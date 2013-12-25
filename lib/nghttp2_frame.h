@@ -552,13 +552,20 @@ int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b);
 void nghttp2_nv_array_del(nghttp2_nv *nva);
 
 /*
- * Checks names are not empty string and do not contain control
- * characters. This function allows captital alphabet letters in name.
+ * Checks header name/value pair is well-formed. This function allows
+ * captital alphabet letters in name.
  *
  * This function returns nonzero if it succeeds, or 0.
  */
-int nghttp2_nv_array_check_null(const nghttp2_nv *nva, size_t nvlen);
+int nghttp2_nv_array_check_nocase(const nghttp2_nv *nva, size_t nvlen);
 
+/*
+ * Checks header name/value pair is well-formed. This function does
+ * not allow captital alphabet letters in name.
+ *
+ * This function returns nonzero if it succeeds, or 0.
+ */
+int nghttp2_nv_array_check(const nghttp2_nv *nva, size_t nvlen);
 
 /*
  * Checks that the |iv|, which includes |niv| entries, does not have

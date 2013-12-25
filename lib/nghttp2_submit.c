@@ -110,7 +110,7 @@ static int nghttp2_submit_headers_shared_nva
 {
   ssize_t rv;
   nghttp2_nv *nva_copy;
-  if(!nghttp2_nv_array_check_null(nva, nvlen)) {
+  if(!nghttp2_nv_array_check_nocase(nva, nvlen)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
@@ -199,7 +199,7 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
   uint8_t flags_copy;
   int rv;
 
-  if(!nghttp2_nv_array_check_null(nva, nvlen)) {
+  if(!nghttp2_nv_array_check_nocase(nva, nvlen)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   if(nghttp2_session_get_stream(session, stream_id) == NULL) {

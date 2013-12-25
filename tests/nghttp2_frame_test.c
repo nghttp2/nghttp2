@@ -361,7 +361,7 @@ void test_nghttp2_frame_pack_window_update(void)
   nghttp2_frame_window_update_free(&frame);
 }
 
-void test_nghttp2_nv_array_check_null(void)
+void test_nghttp2_nv_array_check(void)
 {
   nghttp2_nv nva1[] = {MAKE_NV("path", "/"),
                        MAKE_NV("host", "a")};
@@ -370,11 +370,28 @@ void test_nghttp2_nv_array_check_null(void)
   nghttp2_nv nva3[] = {MAKE_NV("path", "/"),
                        MAKE_NV("host\x01", "a")};
   nghttp2_nv nva4[] = {MAKE_NV("PATH", "/")};
+  nghttp2_nv nva5[] = {MAKE_NV("path", "foo"),
+                       MAKE_NV("host", "foo\x00")};
+  nghttp2_nv nva6[] = {MAKE_NV("path", "foo"),
+                       MAKE_NV("host", "foo\x01")};
 
-  CU_ASSERT(nghttp2_nv_array_check_null(nva1, ARRLEN(nva1)));
-  CU_ASSERT(0 == nghttp2_nv_array_check_null(nva2, ARRLEN(nva2)));
-  CU_ASSERT(0 == nghttp2_nv_array_check_null(nva3, ARRLEN(nva3)));
-  CU_ASSERT(nghttp2_nv_array_check_null(nva4, ARRLEN(nva4)));
+  CU_ASSERT(nghttp2_nv_array_check(nva1, ARRLEN(nva1)));
+  CU_ASSERT(nghttp2_nv_array_check_nocase(nva1, ARRLEN(nva1)));
+
+  CU_ASSERT(0 == nghttp2_nv_array_check(nva2, ARRLEN(nva2)));
+  CU_ASSERT(0 == nghttp2_nv_array_check_nocase(nva2, ARRLEN(nva2)));
+
+  CU_ASSERT(0 == nghttp2_nv_array_check(nva3, ARRLEN(nva3)));
+  CU_ASSERT(0 == nghttp2_nv_array_check_nocase(nva3, ARRLEN(nva3)));
+
+  CU_ASSERT(0 == nghttp2_nv_array_check(nva4, ARRLEN(nva4)));
+  CU_ASSERT(nghttp2_nv_array_check_nocase(nva4, ARRLEN(nva4)));
+
+  CU_ASSERT(nghttp2_nv_array_check(nva5, ARRLEN(nva5)));
+  CU_ASSERT(nghttp2_nv_array_check_nocase(nva5, ARRLEN(nva5)));
+
+  CU_ASSERT(0 == nghttp2_nv_array_check(nva6, ARRLEN(nva6)));
+  CU_ASSERT(0 == nghttp2_nv_array_check_nocase(nva6, ARRLEN(nva6)));
 }
 
 void test_nghttp2_nv_array_copy(void)

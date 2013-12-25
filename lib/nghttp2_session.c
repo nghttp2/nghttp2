@@ -1909,6 +1909,10 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
   session->last_recv_stream_id = frame->hd.stream_id;
+  if(!nghttp2_nv_array_check(frame->headers.nva, frame->headers.nvlen)) {
+    return nghttp2_session_handle_invalid_stream(session, frame,
+                                                 NGHTTP2_PROTOCOL_ERROR);
+  }
   error_code = nghttp2_session_validate_request_headers(session,
                                                         &frame->headers);
   if(error_code != NGHTTP2_NO_ERROR) {
@@ -1965,6 +1969,10 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_stream(session, frame,
                                                  NGHTTP2_STREAM_CLOSED);
   }
+  if(!nghttp2_nv_array_check(frame->headers.nva, frame->headers.nvlen)) {
+    return nghttp2_session_handle_invalid_stream(session, frame,
+                                                 NGHTTP2_PROTOCOL_ERROR);
+  }
   stream->state = NGHTTP2_STREAM_OPENED;
   rv = nghttp2_session_call_on_frame_received(session, frame);
   if(rv != 0) {
@@ -2000,6 +2008,10 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
     return 0;
+  }
+  if(!nghttp2_nv_array_check(frame->headers.nva, frame->headers.nvlen)) {
+    return nghttp2_session_handle_invalid_stream(session, frame,
+                                                 NGHTTP2_PROTOCOL_ERROR);
   }
   rv = nghttp2_session_validate_request_headers(session, &frame->headers);
   if(rv != 0) {
@@ -2054,6 +2066,10 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
     */
     return nghttp2_session_handle_invalid_stream(session, frame,
                                                  NGHTTP2_STREAM_CLOSED);
+  }
+  if(!nghttp2_nv_array_check(frame->headers.nva, frame->headers.nvlen)) {
+    return nghttp2_session_handle_invalid_stream(session, frame,
+                                                 NGHTTP2_PROTOCOL_ERROR);
   }
   if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
     if(stream->state == NGHTTP2_STREAM_OPENED) {
@@ -2561,12 +2577,13 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
        frame->push_promise.promised_stream_id,
        NGHTTP2_REFUSED_STREAM);
   }
-
   if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
-  if(stream->shut_flags & NGHTTP2_SHUT_RD) {
+  if((stream->shut_flags & NGHTTP2_SHUT_RD) ||
+     !nghttp2_nv_array_check(frame->push_promise.nva,
+                             frame->push_promise.nvlen)) {
     if(session->callbacks.on_invalid_frame_recv_callback) {
       if(session->callbacks.on_invalid_frame_recv_callback
          (session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data) != 0) {

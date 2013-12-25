@@ -119,19 +119,26 @@ int nghttp2_should_send_window_update(int32_t local_window_size,
                                       int32_t recv_window_size);
 
 /*
- * Checks the header name in |name| with |len| bytes is valid.
+ * Checks the header name in |name| with |len| bytes is well-formed.
  *
  * This function returns nonzero if it succeeds, or 0.
  */
 int nghttp2_check_header_name(const uint8_t *name, size_t len);
 
 /*
- * Checks the header name in |name| with |len| bytes is valid. This
- * function accepts also characters in [A-Z].
+ * Checks the header name in |name| with |len| bytes is
+ * well-formed. This function accepts also characters in [A-Z].
  *
  * This function returns nonzero if it succeeds, or 0.
  */
 int nghttp2_check_header_name_nocase(const uint8_t *name, size_t len);
+
+/*
+ * Checks the header value in |value| with |len| bytes is well-formed.
+ *
+ * This function returns nonzero if it succeeds, or 0.
+ */
+int nghttp2_check_header_value(const uint8_t* value, size_t len);
 
 /*
  * Deallocates memory space pointed by |ptr|. This function exists for

@@ -27,5 +27,6 @@
 
 void test_nghttp2_adjust_local_window_size(void);
 void test_nghttp2_check_header_name(void);
+void test_nghttp2_check_header_value(void);
 
 #endif /* NGHTTP2_HELPER_TEST_H */

@@ -181,3 +181,18 @@ void test_nghttp2_check_header_name(void)
   CU_ASSERT(!check_header_name_nocase(""));
   CU_ASSERT(!check_header_name_nocase(":"));
 }
+
+#define check_header_value(S)                                   \
+  nghttp2_check_header_value((const uint8_t*)S, sizeof(S) - 1)
+
+void test_nghttp2_check_header_value(void)
+{
+  uint8_t goodval[] = { 'a', '\0', 'b' };
+  uint8_t badval1[] = { 'a', 0x1fu, 'b' };
+  uint8_t badval2[] = { 'a', 0x7fu, 'b' };
+
+  CU_ASSERT(check_header_value(" !|}~"));
+  CU_ASSERT(check_header_value(goodval));
+  CU_ASSERT(!check_header_value(badval1));
+  CU_ASSERT(!check_header_value(badval2));
+}

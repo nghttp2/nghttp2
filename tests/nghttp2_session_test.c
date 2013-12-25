@@ -794,6 +794,9 @@ void test_nghttp2_session_on_request_headers_received(void)
   nghttp2_frame frame;
   nghttp2_stream *stream;
   int32_t stream_id = 1;
+  nghttp2_nv malformed_nva[] = { MAKE_NV(":path", "\x01") };
+  nghttp2_nv *nva;
+  size_t nvlen;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
@@ -835,6 +838,22 @@ void test_nghttp2_session_on_request_headers_received(void)
   CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
   CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_session_del(session);
+
+  /* Check malformed headers */
+  nghttp2_session_server_new(&session, &callbacks, &user_data);
+  nvlen = nghttp2_nv_array_copy(&nva, malformed_nva, ARRLEN(malformed_nva));
+  nghttp2_frame_headers_init(&frame.headers,
+                             NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
+                             1, 1 << 20, nva, nvlen);
+  user_data.frame_recv_cb_called = 0;
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
+  CU_ASSERT(0 == user_data.frame_recv_cb_called);
+  CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -1137,6 +1156,9 @@ void test_nghttp2_session_on_push_promise_received(void)
   nghttp2_frame frame;
   nghttp2_stream *stream, *promised_stream;
   nghttp2_outbound_item *item;
+  nghttp2_nv malformed_nva[] = { MAKE_NV(":path", "\x01") };
+  nghttp2_nv *nva;
+  size_t nvlen;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -1255,6 +1277,7 @@ void test_nghttp2_session_on_push_promise_received(void)
   CU_ASSERT(0 == user_data.frame_recv_cb_called);
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
 
+  nghttp2_frame_push_promise_free(&frame.push_promise);
   nghttp2_session_del(session);
 
   /* Disable PUSH */
@@ -1276,6 +1299,30 @@ void test_nghttp2_session_on_push_promise_received(void)
   CU_ASSERT(0 == user_data.frame_recv_cb_called);
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
 
+  nghttp2_frame_push_promise_free(&frame.push_promise);
+  nghttp2_session_del(session);
+
+  /* Check malformed headers */
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+  nvlen = nghttp2_nv_array_copy(&nva, malformed_nva, ARRLEN(malformed_nva));
+  nghttp2_frame_push_promise_init(&frame.push_promise,
+                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, 2,
+                                  nva, nvlen);
+  user_data.frame_recv_cb_called = 0;
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(0 == nghttp2_session_on_push_promise_received(session, &frame));
+
+  CU_ASSERT(0 == user_data.frame_recv_cb_called);
+  CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(item)->rst_stream.error_code);
+  CU_ASSERT(2 == OB_CTRL(item)->hd.stream_id);
+
+  nghttp2_frame_push_promise_free(&frame.push_promise);
   nghttp2_session_del(session);
 }
 
