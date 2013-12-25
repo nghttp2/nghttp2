@@ -80,8 +80,8 @@ static int32_t nghttp2_pushed_stream_pri(nghttp2_stream *stream)
     (int32_t)NGHTTP2_PRI_LOWEST : stream->pri + 1;
 }
 
-int nghttp2_session_fail_session(nghttp2_session *session,
-                                 nghttp2_error_code error_code)
+int nghttp2_session_terminate_session(nghttp2_session *session,
+                                      nghttp2_error_code error_code)
 {
   if(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) {
     return 0;
@@ -1674,8 +1674,8 @@ int nghttp2_session_send(nghttp2_session *session)
         if(framebuflen == NGHTTP2_ERR_HEADER_COMP) {
           /* If header compression error occurred, should terminiate
              connection. */
-          framebuflen = nghttp2_session_fail_session(session,
-                                                     NGHTTP2_INTERNAL_ERROR);
+          framebuflen = nghttp2_session_terminate_session
+            (session, NGHTTP2_INTERNAL_ERROR);
         }
         if(nghttp2_is_fatal(framebuflen)) {
           return framebuflen;
@@ -1843,7 +1843,7 @@ static int nghttp2_session_handle_parse_error(nghttp2_session *session,
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
-  return nghttp2_session_fail_session(session, error_code);
+  return nghttp2_session_terminate_session(session, error_code);
 }
 
 static int nghttp2_session_handle_invalid_stream
@@ -1879,7 +1879,7 @@ static int nghttp2_session_handle_invalid_connection
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
-  return nghttp2_session_fail_session(session, error_code);
+  return nghttp2_session_terminate_session(session, error_code);
 }
 
 int nghttp2_session_on_request_headers_received(nghttp2_session *session,
@@ -2984,7 +2984,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
     /* The spec says that if a DATA frame is received whose stream ID
        is 0, the recipient MUST respond with a connection error of
        type PROTOCOL_ERROR. */
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
   }
   stream = nghttp2_session_get_stream(session, stream_id);
   if(!stream) {
@@ -2995,7 +2995,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
   }
   if(stream->state == NGHTTP2_STREAM_RESERVED) {
     /* reserved and receiving DATA is connection error */
-    return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
   }
   if(stream->shut_flags & NGHTTP2_SHUT_RD) {
     /* half closed (remote): from the spec:
@@ -3012,7 +3012,8 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
          is broken, it may send lots of DATA frames and we will send
          RST_STREAM for each of them, which is bad. So we just close
          the connection here. */
-      return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      return nghttp2_session_terminate_session(session,
+                                               NGHTTP2_PROTOCOL_ERROR);
     }
     return 0;
   }
@@ -3032,7 +3033,8 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
          peer is broken, it may send lots of DATA frames and we will
          send RST_STREAM for each of them, which is bad. So we just
          close the connection here. */
-      return nghttp2_session_fail_session(session, NGHTTP2_PROTOCOL_ERROR);
+      return nghttp2_session_terminate_session(session,
+                                               NGHTTP2_PROTOCOL_ERROR);
     }
   } else if(stream->state != NGHTTP2_STREAM_CLOSING) {
     /* It is OK if this is remote peer initiated stream and we did
@@ -3160,7 +3162,8 @@ static int nghttp2_session_update_recv_connection_window_size
   rv = adjust_recv_window_size(&session->recv_window_size, delta_size,
                                session->local_window_size);
   if(rv != 0) {
-    return nghttp2_session_fail_session(session, NGHTTP2_FLOW_CONTROL_ERROR);
+    return nghttp2_session_terminate_session(session,
+                                             NGHTTP2_FLOW_CONTROL_ERROR);
   }
   if(!(session->opt_flags &
        NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE)) {

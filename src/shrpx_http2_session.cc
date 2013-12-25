@@ -760,7 +760,7 @@ void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
   auto http2session = reinterpret_cast<Http2Session*>(arg);
   SSLOG(INFO, http2session) << "SETTINGS timeout";
-  if(http2session->fail_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
+  if(http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     http2session->disconnect();
     return;
   }
@@ -1290,10 +1290,10 @@ void Http2Session::set_state(int state)
   state_ = state;
 }
 
-int Http2Session::fail_session(nghttp2_error_code error_code)
+int Http2Session::terminate_session(nghttp2_error_code error_code)
 {
   int rv;
-  rv = nghttp2_session_fail_session(session_, error_code);
+  rv = nghttp2_session_terminate_session(session_, error_code);
   if(rv != 0) {
     return -1;
   }

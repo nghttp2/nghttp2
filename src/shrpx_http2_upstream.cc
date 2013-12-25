@@ -177,7 +177,7 @@ void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
   auto upstream = reinterpret_cast<Http2Upstream*>(arg);
   ULOG(INFO, upstream) << "SETTINGS timeout";
-  if(upstream->fail_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
+  if(upstream->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     delete upstream->get_client_handler();
     return;
   }
@@ -813,10 +813,10 @@ int Http2Upstream::window_update(Downstream *downstream,
   return 0;
 }
 
-int Http2Upstream::fail_session(nghttp2_error_code error_code)
+int Http2Upstream::terminate_session(nghttp2_error_code error_code)
 {
   int rv;
-  rv = nghttp2_session_fail_session(session_, error_code);
+  rv = nghttp2_session_terminate_session(session_, error_code);
   if(rv != 0) {
     return -1;
   }

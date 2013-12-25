@@ -250,7 +250,7 @@ static int on_stream_close_callback(nghttp2_session *session,
   if(session_data->stream_data->stream_id == stream_id) {
     fprintf(stderr, "Stream %d closed with error_code=%d\n",
             stream_id, error_code);
-    rv = nghttp2_session_fail_session(session, NGHTTP2_NO_ERROR);
+    rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
     if(rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }

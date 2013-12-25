@@ -74,7 +74,7 @@ public:
   // |dconn|.
   int submit_window_update(Http2DownstreamConnection *dconn, int32_t amount);
 
-  int fail_session(nghttp2_error_code error_code);
+  int terminate_session(nghttp2_error_code error_code);
 
   nghttp2_session* get_session() const;
 

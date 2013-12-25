@@ -61,7 +61,7 @@ public:
   // To send WINDOW_UPDATE for a connection, specify nullptr to
   // |downstream|.
   int window_update(Downstream *downstream, int32_t window_size_increment);
-  int fail_session(nghttp2_error_code error_code);
+  int terminate_session(nghttp2_error_code error_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);

@@ -1687,7 +1687,15 @@ int32_t nghttp2_session_get_effective_local_window_size
 /**
  * @function
  *
- * Submits GOAWAY frame with the given |error_code|.
+ * Signals the session so that the connection should be terminated.
+ *
+ * GOAWAY frame with the given |error_code| will be submitted if it
+ * has not been transmitted. After the transmission, both
+ * `nghttp2_session_want_read()` and `nghttp2_session_want_write()`
+ * return 0. If GOAWAY frame has already transmitted at the time when
+ * this function is invoked, `nghttp2_session_want_read()` and
+ * `nghttp2_session_want_write()` returns 0 immediately after this
+ * function succeeds.
  *
  * This function should be called when the connection should be
  * terminated after sending GOAWAY. If the remaining streams should be
@@ -1699,8 +1707,8 @@ int32_t nghttp2_session_get_effective_local_window_size
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_session_fail_session(nghttp2_session *session,
-                                 nghttp2_error_code error_code);
+int nghttp2_session_terminate_session(nghttp2_session *session,
+                                      nghttp2_error_code error_code);
 
 /**
  * @function
