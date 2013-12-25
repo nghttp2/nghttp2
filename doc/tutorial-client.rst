@@ -443,7 +443,7 @@ is about to close::
       if(session_data->stream_data->stream_id == stream_id) {
         fprintf(stderr, "Stream %d closed with error_code=%d\n",
                 stream_id, error_code);
-        rv = nghttp2_session_fail_session(session, NGHTTP2_NO_ERROR);
+        rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
         if(rv != 0) {
           return NGHTTP2_ERR_CALLBACK_FAILURE;
         }
@@ -454,9 +454,10 @@ is about to close::
 If the stream ID matches the one we initiated, it means that its
 stream is going to be closed. Since we have finished to get the
 resource we want (or the stream was reset by RST_STREAM from the
-remote peer), we call `nghttp2_session_fail_session()` to commencing
-the closure of the HTTP/2.0 session gracefully. If you have some data
-associated for the stream to be closed, you may delete it here.
+remote peer), we call `nghttp2_session_terminate_session()` to
+commencing the closure of the HTTP/2.0 session gracefully. If you have
+some data associated for the stream to be closed, you may delete it
+here.
 
 libevent-client.c
 -----------------
