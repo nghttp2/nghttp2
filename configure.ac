@@ -214,7 +214,7 @@ fi
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 
 # spdylay (for src/nghttpx)
-PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.2.0],
+PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.2.3],
                   [have_spdylay=yes], [have_spdylay=no])
 if test "x${have_spdylay}" = "xyes"; then
   AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])

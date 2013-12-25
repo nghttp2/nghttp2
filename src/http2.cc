@@ -92,27 +92,28 @@ void capitalize(std::string& s, size_t offset)
 
 bool check_header_value(const char *value)
 {
-  return strpbrk(value, "\r\n") == nullptr;
-}
-
-bool check_header_value(const nghttp2_nv* nv)
-{
-  size_t i;
-  for(i = 0; i < nv->valuelen; ++i) {
-    if(nv->value[i] == '\r' || nv->value[i] == '\n') {
-      return false;
+  for(; *value; ++value) {
+    switch(*value) {
+    case '\t':
+    case ' ':
+      continue;
+    default:
+      return true;
     }
   }
-  return true;
+  return false;
 }
 
 void sanitize_header_value(std::string& s, size_t offset)
 {
-  for(size_t i = offset, eoi = s.size(); i < eoi; ++i) {
-    if(s[i] == '\r' || s[i] == '\n') {
-      s[i] = ' ';
-    }
-  }
+  // Since both nghttp2 and spdylay do not allow \n and \r in header
+  // values, we don't have to do this anymore.
+
+  // for(size_t i = offset, eoi = s.size(); i < eoi; ++i) {
+  //   if(s[i] == '\r' || s[i] == '\n') {
+  //     s[i] = ' ';
+  //   }
+  // }
 }
 
 void copy_url_component(std::string& dest, const http_parser_url *u, int field,
@@ -307,7 +308,7 @@ bool value_lws(const nghttp2_nv *nv)
 
 bool non_empty_value(const nghttp2_nv* nv)
 {
-  return nv && !http2::value_lws(nv) && http2::check_header_value(nv);
+  return nv && !http2::value_lws(nv);
 }
 
 nghttp2_nv make_nv(const std::string& name, const std::string& value)

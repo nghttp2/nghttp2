@@ -44,11 +44,8 @@ std::string get_status_string(unsigned int status_code);
 
 void capitalize(std::string& s, size_t offset);
 
-// Returns false if |value| contains \r or \n.
+// Returns false if |value| is LWS
 bool check_header_value(const char *value);
-
-// Returns false if |nv->value| contains \r or \n.
-bool check_header_value(const nghttp2_nv *nv);
 
 void sanitize_header_value(std::string& s, size_t offset);
 
