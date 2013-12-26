@@ -394,7 +394,7 @@ void fill_default_config()
   mod_config()->syslog_facility = LOG_DAEMON;
   mod_config()->use_syslog = false;
   // Default accept() backlog
-  mod_config()->backlog = 256;
+  mod_config()->backlog = -1;
   mod_config()->ciphers = 0;
   mod_config()->honor_cipher_order = false;
   mod_config()->http2_proxy = false;
@@ -485,7 +485,8 @@ void print_help(std::ostream& out)
       << "                       Set frontend host and port.\n"
       << "                       Default: '"
       << get_config()->host << "," << get_config()->port << "'\n"
-      << "    --backlog=<NUM>    Set listen backlog size.\n"
+      << "    --backlog=<NUM>    Set listen backlog size. If -1 is given,\n"
+      << "                       libevent will choose suitable value.\n"
       << "                       Default: "
       << get_config()->backlog << "\n"
       << "    --backend-ipv4     Resolve backend hostname to IPv4 address\n"
