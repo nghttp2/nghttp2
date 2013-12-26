@@ -197,10 +197,10 @@ frame.  The transmission of client connection header is done in
       }
     }
 
-Here we specify max MAX_CONCURRENT_STREAMS to 100, which is really not
-needed for this tiny example progoram, but we are demonstrating the
-use of SETTINGS frame. To queue the SETTINGS frame for the
-transmission, we use `nghttp2_submit_settings()`. Note that
+Here we specify SETTINGS_MAX_CONCURRENT_STREAMS to 100, which is
+really not needed for this tiny example progoram, but we are
+demonstrating the use of SETTINGS frame. To queue the SETTINGS frame
+for the transmission, we use `nghttp2_submit_settings()`. Note that
 `nghttp2_submit_settings()` function only queues the frame and not
 actually send it. All ``nghttp2_submit_*()`` family functions have
 this property. To actually send the frame, `nghttp2_session_send()` is

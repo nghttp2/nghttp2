@@ -22,7 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py \
-	package_README.rst
+	package_README.rst tutorial-client.py tutorial-server.py
 
 # Makefile for Sphinx documentation
 #
