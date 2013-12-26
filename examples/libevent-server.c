@@ -50,9 +50,6 @@
 #define MAKE_NV(NAME, VALUE)                                            \
   { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1 }
 
-static unsigned char next_proto_list[256];
-static size_t next_proto_list_len;
-
 struct app_context;
 typedef struct app_context app_context;
 
@@ -65,7 +62,6 @@ typedef struct http2_stream_data {
 
 typedef struct http2_session_data {
   struct http2_stream_data root;
-  struct http2_session_data *prev, *next;
   struct bufferevent *bev;
   app_context *app_ctx;
   nghttp2_session *session;
@@ -77,6 +73,9 @@ struct app_context {
   SSL_CTX *ssl_ctx;
   struct event_base *evbase;
 };
+
+static unsigned char next_proto_list[256];
+static size_t next_proto_list_len;
 
 static int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                          void *arg)
@@ -344,7 +343,9 @@ static int on_frame_recv_callback(nghttp2_session *session,
       nghttp2_nv *nv = &frame->headers.nva[i];
       if(nv->namelen == sizeof(PATH) - 1 &&
          memcmp(PATH, nv->name, nv->namelen) == 0) {
-        stream_data->request_path = percent_decode(nv->value, nv->valuelen);
+        size_t j;
+        for(j = 0; j < nv->valuelen && nv->value[j] != '?'; ++j);
+        stream_data->request_path = percent_decode(nv->value, j);
         break;
       }
     }
