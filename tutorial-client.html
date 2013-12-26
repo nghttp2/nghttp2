@@ -45,7 +45,7 @@
 
   
     <link rel="top" title="nghttp2 0.3.0-DEV documentation" href="index.html"/>
-        <link rel="next" title="API Reference" href="apiref.html"/>
+        <link rel="next" title="Tutorial: HTTP/2.0 server" href="tutorial-server.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2.0 C Library" href="package_README.html"/> 
 
   <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -83,6 +83,10 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">Tutorial: HTTP/2.0 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#libevent-client-c">libevent-client.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2.0 server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
@@ -320,10 +324,10 @@ frame.  The transmission of client connection header is done in
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Here we specify max MAX_CONCURRENT_STREAMS to 100, which is really not
-needed for this tiny example progoram, but we are demonstrating the
-use of SETTINGS frame. To queue the SETTINGS frame for the
-transmission, we use <a class="reference internal" href="apiref.html#nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a>. Note that
+<p>Here we specify SETTINGS_MAX_CONCURRENT_STREAMS to 100, which is
+really not needed for this tiny example progoram, but we are
+demonstrating the use of SETTINGS frame. To queue the SETTINGS frame
+for the transmission, we use <a class="reference internal" href="apiref.html#nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a>. Note that
 <a class="reference internal" href="apiref.html#nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a> function only queues the frame and not
 actually send it. All <tt class="docutils literal"><span class="pre">nghttp2_submit_*()</span></tt> family functions have
 this property. To actually send the frame, <a class="reference internal" href="apiref.html#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> is
@@ -557,7 +561,7 @@ is about to close:</p>
   <span class="k">if</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Stream %d closed with error_code=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
             <span class="n">stream_id</span><span class="p">,</span> <span class="n">error_code</span><span class="p">);</span>
-    <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_fail_session</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_NO_ERROR</span><span class="p">);</span>
+    <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_terminate_session</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_NO_ERROR</span><span class="p">);</span>
     <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="n">NGHTTP2_ERR_CALLBACK_FAILURE</span><span class="p">;</span>
     <span class="p">}</span>
@@ -569,9 +573,10 @@ is about to close:</p>
 <p>If the stream ID matches the one we initiated, it means that its
 stream is going to be closed. Since we have finished to get the
 resource we want (or the stream was reset by RST_STREAM from the
-remote peer), we call <a class="reference internal" href="apiref.html#nghttp2_session_fail_session" title="nghttp2_session_fail_session"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_fail_session()</span></tt></a> to commencing
-the closure of the HTTP/2.0 session gracefully. If you have some data
-associated for the stream to be closed, you may delete it here.</p>
+remote peer), we call <a class="reference internal" href="apiref.html#nghttp2_session_terminate_session" title="nghttp2_session_terminate_session"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_terminate_session()</span></tt></a> to
+commencing the closure of the HTTP/2.0 session gracefully. If you have
+some data associated for the stream to be closed, you may delete it
+here.</p>
 <div class="section" id="libevent-client-c">
 <h2>libevent-client.c<a class="headerlink" href="#libevent-client-c" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
@@ -826,7 +831,7 @@ associated for the stream to be closed, you may delete it here.</p>
   <span class="k">if</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Stream %d closed with error_code=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
             <span class="n">stream_id</span><span class="p">,</span> <span class="n">error_code</span><span class="p">);</span>
-    <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_fail_session</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_NO_ERROR</span><span class="p">);</span>
+    <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_terminate_session</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_NO_ERROR</span><span class="p">);</span>
     <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="n">NGHTTP2_ERR_CALLBACK_FAILURE</span><span class="p">;</span>
     <span class="p">}</span>
@@ -1112,7 +1117,7 @@ associated for the stream to be closed, you may delete it here.</p>
   
     <div class="rst-footer-buttons">
       
-        <a href="apiref.html" class="btn btn-neutral float-right" title="API Reference"/>Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="tutorial-server.html" class="btn btn-neutral float-right" title="Tutorial: HTTP/2.0 server"/>Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
         <a href="package_README.html" class="btn btn-neutral" title="nghttp2 - HTTP/2.0 C Library"><span class="icon icon-circle-arrow-left"></span> Previous</a>

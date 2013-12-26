@@ -46,7 +46,7 @@
   
     <link rel="top" title="nghttp2 0.3.0-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2.h" href="nghttp2.h.html"/>
-        <link rel="prev" title="Tutorial: HTTP/2.0 client" href="tutorial-client.html"/> 
+        <link rel="prev" title="Tutorial: HTTP/2.0 server" href="tutorial-server.html"/> 
 
   <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -81,7 +81,14 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#header-compression-test-tools">Header compression test tools</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2.0 server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
+</ul>
+</li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#remarks">Remarks</a></li>
@@ -2007,9 +2014,16 @@ that and returns effective window size.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="nghttp2_session_fail_session">
-int <tt class="descname">nghttp2_session_fail_session</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em><big>)</big><a class="headerlink" href="#nghttp2_session_fail_session" title="Permalink to this definition">¶</a></dt>
-<dd><p>Submits GOAWAY frame with the given <em>error_code</em>.</p>
+<dt id="nghttp2_session_terminate_session">
+int <tt class="descname">nghttp2_session_terminate_session</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em><big>)</big><a class="headerlink" href="#nghttp2_session_terminate_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Signals the session so that the connection should be terminated.</p>
+<p>GOAWAY frame with the given <em>error_code</em> will be submitted if it
+has not been transmitted. After the transmission, both
+<a class="reference internal" href="#nghttp2_session_want_read" title="nghttp2_session_want_read"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_read()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_want_write" title="nghttp2_session_want_write"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_write()</span></tt></a>
+return 0. If GOAWAY frame has already transmitted at the time when
+this function is invoked, <a class="reference internal" href="#nghttp2_session_want_read" title="nghttp2_session_want_read"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_read()</span></tt></a> and
+<a class="reference internal" href="#nghttp2_session_want_write" title="nghttp2_session_want_write"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_write()</span></tt></a> returns 0 immediately after this
+function succeeds.</p>
 <p>This function should be called when the connection should be
 terminated after sending GOAWAY. If the remaining streams should be
 processed after GOAWAY, use <a class="reference internal" href="#nghttp2_submit_goaway" title="nghttp2_submit_goaway"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_goaway()</span></tt></a> instead.</p>
@@ -2555,7 +2569,7 @@ the version checking.</p>
         <a href="nghttp2.h.html" class="btn btn-neutral float-right" title="nghttp2.h"/>Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
-        <a href="tutorial-client.html" class="btn btn-neutral" title="Tutorial: HTTP/2.0 client"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="tutorial-server.html" class="btn btn-neutral" title="Tutorial: HTTP/2.0 server"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
