@@ -1074,8 +1074,7 @@ int start_listen(event_base *evbase, Sessions *sessions,
          evlistener_acceptcb,
          new ListenEventHandler(sessions, session_id_seed_ptr),
          LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
-         256,
-         fd);
+         -1, fd);
       evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
 
       if(sessions->get_config()->verbose) {
