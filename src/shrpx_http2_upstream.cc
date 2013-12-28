@@ -945,8 +945,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
   downstream->normalize_response_headers();
-  downstream->rewrite_norm_location_response_header
-    (get_client_handler()->get_upstream_scheme(), get_config()->port);
+  if(!get_config()->http2_proxy && !get_config()->client_proxy) {
+    downstream->rewrite_norm_location_response_header
+      (get_client_handler()->get_upstream_scheme(), get_config()->port);
+  }
   downstream->concat_norm_response_headers();
   auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();

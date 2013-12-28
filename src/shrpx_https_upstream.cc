@@ -656,8 +656,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   hdrs += http2::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
   downstream->normalize_response_headers();
-  downstream->rewrite_norm_location_response_header
-    (get_client_handler()->get_upstream_scheme(), get_config()->port);
+  if(!get_config()->http2_proxy && !get_config()->client_proxy) {
+    downstream->rewrite_norm_location_response_header
+      (get_client_handler()->get_upstream_scheme(), get_config()->port);
+  }
   auto end_headers = std::end(downstream->get_response_headers());
   http2::build_http1_headers_from_norm_headers
     (hdrs, downstream->get_response_headers());
