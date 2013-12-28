@@ -12,7 +12,7 @@ resource denoted by the URI. Its synopsis is like this::
     $ libevent-client HTTPS_URI
 
 We use libevent in this tutorial to handle networking I/O.  Please
-note that nghttp2 iteself does not depends on libevent.
+note that nghttp2 itself does not depend on libevent.
 
 First we do some setup routine for libevent and OpenSSL library in
 function ``main()`` and ``run()``, which is not so relevant to nghttp2
@@ -119,8 +119,8 @@ We set 3 callbacks for the bufferevent: ``reacb``, ``writecb`` and
 ``eventcb``.
 
 The ``eventcb()`` is invoked by libevent event loop when an event
-(e.g., connection established, timeout, etc) happens on the underlying
-network socket::
+(e.g., connection has been established, timeout, etc) happens on the
+underlying network socket::
 
     static void eventcb(struct bufferevent *bev, short events, void *ptr)
     {
@@ -281,8 +281,8 @@ frames. The ``session_send()`` function is defined as follows::
     }
 
 The `nghttp2_session_send()` function serializes the frame into wire
-format and call :member:`nghttp2_callbacks.nghttp2_send_callback` with
-it. We set ``send_callback()`` function as
+format and call :member:`nghttp2_session_callbacks.send_callback` with
+it. We set ``send_callback()`` function to
 :member:`nghttp2_session_callbacks.send_callback` in
 ``initialize_nghttp2_session()`` function described earlier. It is
 defined as follows::
@@ -332,7 +332,7 @@ conditions as well. Using these information, nghttp2 session object
 will tell whether the connection should be dropped or not. More
 specifically, both `nghttp2_session_want_read()` and
 `nghttp2_session_want_write()` return 0, we have no business in the
-connection. But since we have using bufferevent and its deferred
+connection. But since we are using bufferevent and its deferred
 callback option, the bufferevent output buffer may contain the pending
 data when the ``writecb()`` is called. To handle this situation, we
 also check whether the output buffer is empty or not. If these

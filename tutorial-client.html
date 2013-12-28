@@ -144,7 +144,7 @@ resource denoted by the URI. Its synopsis is like this:</p>
 <div class="highlight-c"><pre>$ libevent-client HTTPS_URI</pre>
 </div>
 <p>We use libevent in this tutorial to handle networking I/O.  Please
-note that nghttp2 iteself does not depends on libevent.</p>
+note that nghttp2 itself does not depend on libevent.</p>
 <p>First we do some setup routine for libevent and OpenSSL library in
 function <tt class="docutils literal"><span class="pre">main()</span></tt> and <tt class="docutils literal"><span class="pre">run()</span></tt>, which is not so relevant to nghttp2
 library use. The one thing you should look at is setup NPN callback.
@@ -248,8 +248,8 @@ the remote server:</p>
 <p>We set 3 callbacks for the bufferevent: <tt class="docutils literal"><span class="pre">reacb</span></tt>, <tt class="docutils literal"><span class="pre">writecb</span></tt> and
 <tt class="docutils literal"><span class="pre">eventcb</span></tt>.</p>
 <p>The <tt class="docutils literal"><span class="pre">eventcb()</span></tt> is invoked by libevent event loop when an event
-(e.g., connection established, timeout, etc) happens on the underlying
-network socket:</p>
+(e.g., connection has been established, timeout, etc) happens on the
+underlying network socket:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">eventcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">short</span> <span class="n">events</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
@@ -406,8 +406,8 @@ frames. The <tt class="docutils literal"><span class="pre">session_send()</span>
 </pre></div>
 </div>
 <p>The <a class="reference internal" href="apiref.html#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> function serializes the frame into wire
-format and call <tt class="xref c c-member docutils literal"><span class="pre">nghttp2_callbacks.nghttp2_send_callback</span></tt> with
-it. We set <tt class="docutils literal"><span class="pre">send_callback()</span></tt> function as
+format and call <a class="reference internal" href="apiref.html#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> with
+it. We set <tt class="docutils literal"><span class="pre">send_callback()</span></tt> function to
 <a class="reference internal" href="apiref.html#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> in
 <tt class="docutils literal"><span class="pre">initialize_nghttp2_session()</span></tt> function described earlier. It is
 defined as follows:</p>
@@ -456,7 +456,7 @@ conditions as well. Using these information, nghttp2 session object
 will tell whether the connection should be dropped or not. More
 specifically, both <a class="reference internal" href="apiref.html#nghttp2_session_want_read" title="nghttp2_session_want_read"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_read()</span></tt></a> and
 <a class="reference internal" href="apiref.html#nghttp2_session_want_write" title="nghttp2_session_want_write"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_write()</span></tt></a> return 0, we have no business in the
-connection. But since we have using bufferevent and its deferred
+connection. But since we are using bufferevent and its deferred
 callback option, the bufferevent output buffer may contain the pending
 data when the <tt class="docutils literal"><span class="pre">writecb()</span></tt> is called. To handle this situation, we
 also check whether the output buffer is empty or not. If these
