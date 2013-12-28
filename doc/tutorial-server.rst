@@ -2,10 +2,10 @@ Tutorial: HTTP/2.0 server
 =========================
 
 In this tutorial, we are going to write single-threaded, event-based
-HTTP/2.0 web server, which supports HTTPS. It can handle concurrent
-multiple requests, but only GET method is supported. The complete
-source code, `libevent-server.c`_, is attached at the end of this
-page.  It also resides in examples directory in the archive or
+HTTP/2.0 web server, which supports HTTPS only. It can handle
+concurrent multiple requests, but only GET method is supported. The
+complete source code, `libevent-server.c`_, is attached at the end of
+this page.  It also resides in examples directory in the archive or
 repository.
 
 This simple server takes 3 arguments, a port number to listen to, a
@@ -15,17 +15,17 @@ is like this::
     $ libevent-server PORT /path/to/server.key /path/to/server.crt
 
 We use libevent in this tutorial to handle networking I/O.  Please
-note that nghttp2 iteself does not depends on libevent.
+note that nghttp2 itself does not depend on libevent.
 
 First we do some setup routine for libevent and OpenSSL library in
 function ``main()`` and ``run()``, which is not so relevant to nghttp2
 library use. The one thing you should look at is setup NPN callback.
 The NPN callback is used for the server to advertise the application
 protocols the server supports to a client.  In this example program,
-when creating SSL_CTX object, we stores the application protocol name
-in the wire format of NPN in statically allocated buffer. This is safe
-because we only create 1 SSL_CTX object in the entire program life
-time::
+when creating ``SSL_CTX`` object, we stores the application protocol
+name in the wire format of NPN in statically allocated buffer. This is
+safe because we only create 1 ``SSL_CTX`` object in the entire program
+life time::
 
     static unsigned char next_proto_list[256];
     static size_t next_proto_list_len;
@@ -55,14 +55,14 @@ time::
       return ssl_ctx;
     }
 
-The wire format of NPN is array of length prefixed string. The exactly
-one byte is used to specify the length of the protocol identifier.  In
-this tutorial, we advertise the HTTP/2.0 protocol the nghttp2 library
-supports. We export its identifier in
-:macro:`NGHTTP2_PROTO_VERSION_ID`. The ``next_proto_cb()`` function is
-the server-side NPN callback. In OpenSSL implementation, We just
+The wire format of NPN is a sequence of length prefixed string. The
+exactly one byte is used to specify the length of each protocol
+identifier.  In this tutorial, we advertise the HTTP/2.0 protocol the
+nghttp2 library supports. The nghttp2 library exports its identifier
+in :macro:`NGHTTP2_PROTO_VERSION_ID`. The ``next_proto_cb()`` function
+is the server-side NPN callback. In OpenSSL implementation, we just
 assign the pointer to the NPN buffers we filled earlier. The NPN
-callback function is set to SSL_CTX object using
+callback function is set to ``SSL_CTX`` object using
 ``SSL_CTX_set_next_protos_advertised_cb()``.
 
 We use ``app_content`` structure to store the application-wide data::
@@ -100,7 +100,8 @@ object in O(1). The first element of this list is pointed by the
 ``root->next`` in ``http2_session_data``.  Initially, ``root->next``
 is ``NULL``. The ``handshake_leftlen`` member of
 ``http2_session_data`` is used to track the number of bytes remaining
-when receiving first 24 bytes magic values from the client.  We use
+when receiving first 24 bytes magic value
+(:macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`) from the client.  We use
 libevent's bufferevent structure to perform network I/O. Notice that
 bufferevent object is in ``http2_session_data`` and not in
 ``http2_stream_data``. This is because ``http2_stream_data`` is just a
@@ -161,8 +162,8 @@ connection is also initialized at this time. We specify 2 callbacks
 for the bufferevent: ``handshake_readcb`` and ``eventcb``.
 
 The ``eventcb()`` is invoked by libevent event loop when an event
-(e.g., connection established, timeout, etc) happens on the underlying
-network socket::
+(e.g., connection has been established, timeout, etc) happens on the
+underlying network socket::
 
     static void eventcb(struct bufferevent *bev, short events, void *ptr)
     {
@@ -223,13 +224,13 @@ it::
       }
     }
 
-Nothing special here, we just compare the magic byte string received
-and expected one :macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.  When
-whole magic byte string is received, the connection state is ready for
-starting HTTP/2.0 communication. First we change the callback
-functions for the bufferevent object. We use same ``eventcb`` as
-before. But we specify new ``readcb`` and ``writecb`` function to
-handle HTTP/2.0 communication. We describe these 2 functions later.
+We check that the received byte string matches
+:macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.  When they match, the
+connection state is ready for starting HTTP/2.0 communication. First
+we change the callback functions for the bufferevent object. We use
+same ``eventcb`` as before. But we specify new ``readcb`` and
+``writecb`` function to handle HTTP/2.0 communication. We describe
+these 2 functions later.
 
 We initialize nghttp2 session object which is done in
 ``initialize_nghttp2_session()``::
@@ -303,9 +304,9 @@ functions for these pending data. To process received data, we call
 In this function, we feed all unprocessed, received data to nghttp2
 session object using `nghttp2_session_mem_recv()` function. The
 `nghttp2_session_mem_recv()` processes the received data and may
-invoke nghttp2 callbacks and also queue frames. Since there may be
-pending frames, we call ``session_send()`` function to send those
-frames. The ``session_send()`` function is defined as follows::
+invoke nghttp2 callbacks and also queue outgoing frames. Since there
+may be pending frames, we call ``session_send()`` function to send
+those frames. The ``session_send()`` function is defined as follows::
 
     static int session_send(http2_session_data *session_data)
     {
@@ -319,8 +320,8 @@ frames. The ``session_send()`` function is defined as follows::
     }
 
 The `nghttp2_session_send()` function serializes the frame into wire
-format and call :member:`nghttp2_callbacks.nghttp2_send_callback` with
-it. We set ``send_callback()`` function as
+format and call :member:`nghttp2_session_callbacks.send_callback` with
+it. We set ``send_callback()`` function to
 :member:`nghttp2_session_callbacks.send_callback` in
 ``initialize_nghttp2_session()`` function described earlier. It is
 defined as follows::
@@ -397,7 +398,7 @@ frame and other error conditions as well. Using these information,
 nghttp2 session object will tell whether the connection should be
 dropped or not. More specifically, both `nghttp2_session_want_read()`
 and `nghttp2_session_want_write()` return 0, we have no business in
-the connection. But since we have using bufferevent and its deferred
+the connection. But since we are using bufferevent and its deferred
 callback option, the bufferevent output buffer may contain the pending
 data when the ``writecb()`` is called. To handle this situation, we
 also check whether the output buffer is empty or not. If these
@@ -406,7 +407,7 @@ conditions are met, we drop connection.
 Otherwise, we call ``session_send()`` to process pending output
 data. Remember that in ``send_callback()``, we may not write all data
 to bufferevent to avoid excessive buffering. We continue process
-pending data if output buffer becomes empty.
+pending data when output buffer becomes empty.
 
 We have already described about nghttp2 callback ``send_callback()``.
 Let's describe remaining nghttp2 callbacks we setup in
@@ -447,17 +448,17 @@ received from the remote peer::
       return 0;
     }
 
-We only interested HEADERS frame in this function. Since HEADERS frame
-has several roles in HTTP/2.0 protocol, we check that it is a request
-HEADERS, which opens new stream. If frame is request HEADERS, then we
-create ``http2_stream_data`` object to store stream related data. We
-associate created ``http2_stream_data`` object to the stream in
-nghttp2 session object using `nghttp2_set_stream_user_data()` in order
-to get the object without searching through doubly linked list.
+We only interested in HEADERS frame in this function. Since HEADERS
+frame has several roles in HTTP/2.0 protocol, we check that it is a
+request HEADERS, which opens new stream. If frame is request HEADERS,
+then we create ``http2_stream_data`` object to store stream related
+data. We associate created ``http2_stream_data`` object to the stream
+in nghttp2 session object using `nghttp2_set_stream_user_data()` in
+order to get the object without searching through doubly linked list.
 
-In this example server, we want to server static file relative to the
-current working directory the program was invoked. We search ``:path``
-header field in request headers and keep the requested path in
+In this example server, we want to serve files relative to the current
+working directory the program was invoked. We search ``:path`` header
+field in request headers and keep the requested path in
 ``http2_stream_data`` object. In this example program, we ignore
 ``:method`` header field and always treat the request as GET request.
 
@@ -588,7 +589,7 @@ is about to close::
     }
 
 We destroy ``http2_stream_data`` object in this function since the
-stream is about to close and we no longer to use that object.
+stream is about to close and we no longer use that object.
 
 
 libevent-server.c
