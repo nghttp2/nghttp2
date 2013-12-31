@@ -528,7 +528,7 @@ static void submit_request(struct Connection *connection, struct Request *req)
     MAKE_NV(":method", "GET"),
     MAKE_NV_CS(":path", req->path),
     MAKE_NV(":scheme", "https"),
-    MAKE_NV_CS(":host", req->hostport),
+    MAKE_NV_CS(":authority", req->hostport),
     MAKE_NV("accept", "*/*"),
     MAKE_NV("user-agent", "nghttp2/"NGHTTP2_VERSION)
   };
