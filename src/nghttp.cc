@@ -1243,7 +1243,7 @@ int client_select_next_proto_cb(SSL* ssl,
   }
   if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
     std::cerr << "Server did not advertise HTTP/2.0 protocol."
-	      << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
+              << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
               << std::endl;
   } else {
     if(config.verbose) {
