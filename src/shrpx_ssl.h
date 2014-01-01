@@ -126,6 +126,12 @@ SSL_CTX* cert_lookup_tree_lookup(CertLookupTree *lt, const char *hostname,
 int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
                                         const char *certfile);
 
+// Returns true if |proto| which has |protolen| bytes is included in
+// the protocol list |protos|, which has |len| elements. The format of
+// the |protos| is the one used in Config::npn_list.
+bool in_proto_list(char **protos, size_t len,
+                   const unsigned char *proto, size_t protolen);
+
 } // namespace ssl
 
 } // namespace shrpx

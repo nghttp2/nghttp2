@@ -831,6 +831,18 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   return 0;
 }
 
+bool in_proto_list(char **protos, size_t len,
+                   const unsigned char *proto, size_t protolen)
+{
+  for(size_t i = 0; i < len; ++i) {
+    if(strlen(protos[i]) == protolen &&
+       memcmp(protos[i], proto, protolen) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 } // namespace ssl
 
 } // namespace shrpx

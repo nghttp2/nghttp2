@@ -34,6 +34,7 @@
 #include "shrpx_http_downstream_connection.h"
 #include "shrpx_http2_downstream_connection.h"
 #include "shrpx_accesslog.h"
+#include "shrpx_ssl.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -108,7 +109,10 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
       if(LOG_ENABLED(INFO)) {
         CLOG(INFO, handler) << "SSL/TLS handleshake completed";
       }
-      handler->validate_next_proto();
+      if(handler->validate_next_proto() != 0) {
+        delete handler;
+        return;
+      }
       if(LOG_ENABLED(INFO)) {
         if(SSL_session_reused(handler->get_ssl())) {
           CLOG(INFO, handler) << "SSL/TLS session reused";
@@ -305,6 +309,11 @@ int ClientHandler::validate_next_proto()
         std::string proto(next_proto, next_proto+next_proto_len);
         CLOG(INFO, this) << "The negotiated next protocol: " << proto;
       }
+      if(!ssl::in_proto_list(get_config()->npn_list,
+                             get_config()->npn_list_len,
+                             next_proto, next_proto_len)) {
+        break;
+      }
       if(next_proto_len == NGHTTP2_PROTO_VERSION_ID_LEN &&
          memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
                 NGHTTP2_PROTO_VERSION_ID_LEN) == 0) {
@@ -320,6 +329,10 @@ int ClientHandler::validate_next_proto()
           return 0;
         }
 #endif // HAVE_SPDYLAY
+        if(next_proto_len == 8 && memcmp("http/1.1", next_proto, 8) == 0) {
+          upstream_ = util::make_unique<HttpsUpstream>(this);
+          return 0;
+        }
       }
       break;
     }
@@ -331,14 +344,15 @@ int ClientHandler::validate_next_proto()
   }
   if(!next_proto) {
     if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "No proto negotiated.";
+      CLOG(INFO, this) << "No protocol negotiated. Fallback to HTTP/1.1";
     }
+    upstream_ = util::make_unique<HttpsUpstream>(this);
+    return 0;
   }
   if(LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "Use HTTP/1.1";
+    CLOG(INFO, this) << "The negotiated protocol is not supported";
   }
-  upstream_ = util::make_unique<HttpsUpstream>(this);
-  return 0;
+  return -1;
 }
 
 int ClientHandler::on_read()

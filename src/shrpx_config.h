@@ -147,8 +147,9 @@ struct Config {
   char *downstream_http_proxy_host;
   // Rate limit configuration
   ev_token_bucket_cfg *rate_limit_cfg;
-  // Comma delimited list of NPN protocol strings in the order of
-  // preference.
+  // list of supported NPN/ALPN protocol strings in the order of
+  // preference. The each element of this list is a NULL-terminated
+  // string.
   char **npn_list;
   // Path to file containing CA certificate solely used for client
   // certificate validation

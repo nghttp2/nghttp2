@@ -602,7 +602,7 @@ void print_help(std::ostream& out)
       << "                       Path to file that contains DH parameters in\n"
       << "                       PEM format. Without this option, DHE cipher\n"
       << "                       suites are not available.\n"
-      << "    --npn-list=<LIST>  Comma delimited list of NPN protocol sorted\n"
+      << "    --npn-list=<LIST>  Comma delimited list of NPN/ALPN protocol sorted\n"
       << "                       in the order of preference. That means\n"
       << "                       most desirable protocol comes first.\n"
       << "                       The parameter must be delimited by a single\n"
