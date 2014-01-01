@@ -177,7 +177,7 @@ header compression
 <td>&nbsp;</td>
 </tr>
 <tr class="row-odd"><td>ALPN</td>
-<td>&nbsp;</td>
+<td>Done</td>
 </tr>
 </tbody>
 </table>
@@ -284,7 +284,7 @@ $ make</pre>
 <div class="section" id="nghttp-client">
 <h3>nghttp - client<a class="headerlink" href="#nghttp-client" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttp</span></tt> is a HTTP/2.0 client. It can connect to the HTTP/2.0 server
-with prior knowledge, HTTP Upgrade and NPN TLS extension.</p>
+with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 <p>It has verbose output mode for framing information. Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
 <div class="highlight-c"><pre>$ src/nghttp -vn https://localhost:8443
@@ -401,7 +401,7 @@ Upgrade: HTTP-draft-09/2.0
 multiplexes connections using non-blocking socket.</p>
 <p>By default, it uses SSL/TLS connection. Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
 disable it.</p>
-<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accept the HTTP/2.0 connection via NPN or direct
+<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accept the HTTP/2.0 connection via NPN/ALPN or direct
 HTTP/2.0 connection. No HTTP Upgrade is supported.</p>
 <p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing

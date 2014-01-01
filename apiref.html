@@ -2433,10 +2433,11 @@ is found to be greater than rhs-&gt;name; or returns 0 otherwise.</p>
 <dl class="function">
 <dt id="nghttp2_select_next_protocol">
 int <tt class="descname">nghttp2_select_next_protocol</tt><big>(</big>unsigned char<em>&nbsp;**out</em>, unsigned char<em>&nbsp;*outlen</em>, const unsigned char<em>&nbsp;*in</em>, unsigned int<em>&nbsp;inlen</em><big>)</big><a class="headerlink" href="#nghttp2_select_next_protocol" title="Permalink to this definition">¶</a></dt>
-<dd><p>A helper function for dealing with NPN in client side.  The <em>in</em>
-contains server&#8217;s protocol in preferable order.  The format of <em>in</em>
-is length-prefixed and not null-terminated.  For example,
-<tt class="docutils literal"><span class="pre">HTTP-draft-04/2.0</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt> stored in <em>in</em> like this:</p>
+<dd><p>A helper function for dealing with NPN in client side or ALPN in
+server side. The <em>in</em> contains peer&#8217;s protocol list in preferable
+order.  The format of <em>in</em> is length-prefixed and not
+null-terminated.  For example, <tt class="docutils literal"><span class="pre">HTTP-draft-04/2.0</span></tt> and
+<tt class="docutils literal"><span class="pre">http/1.1</span></tt> stored in <em>in</em> like this:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">in</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">17</span>
 <span class="n">in</span><span class="p">[</span><span class="mf">1..17</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;HTTP-draft-04/2.0&quot;</span>
 <span class="n">in</span><span class="p">[</span><span class="mi">18</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>
@@ -2446,9 +2447,9 @@ is length-prefixed and not null-terminated.  For example,
 </div>
 <p>The selection algorithm is as follows:</p>
 <ol class="arabic simple">
-<li>If server&#8217;s list contains <tt class="docutils literal"><span class="pre">HTTP-draft-04/2.0</span></tt>, it is selected
-and returns 1. The following step is not taken.</li>
-<li>If server&#8217;s list contains <tt class="docutils literal"><span class="pre">http/1.1</span></tt>, this function selects
+<li>If peer&#8217;s list contains HTTP/2.0 protocol the library supports,
+it is selected and returns 1. The following step is not taken.</li>
+<li>If peer&#8217;s list contains <tt class="docutils literal"><span class="pre">http/1.1</span></tt>, this function selects
 <tt class="docutils literal"><span class="pre">http/1.1</span></tt> and returns 0. The following step is not taken.</li>
 <li>This function selects nothing and returns -1. (So called
 non-overlap case). In this case, <em>out</em> and <em>outlen</em> are left
@@ -2459,7 +2460,7 @@ written into <em>*out</em> and its length (which is 17) is
 assigned to <em>*outlen</em>.</p>
 <p>See <a class="reference external" href="http://technotes.googlecode.com/git/nextprotoneg.html">http://technotes.googlecode.com/git/nextprotoneg.html</a> for more
 details about NPN.</p>
-<p>To use this method you should do something like:</p>
+<p>For NPN, to use this method you should do something like:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">select_next_proto_cb</span><span class="p">(</span><span class="n">SSL</span><span class="o">*</span> <span class="n">ssl</span><span class="p">,</span>
                                 <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span>
                                 <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
@@ -2478,9 +2479,6 @@ details about NPN.</p>
 <span class="n">SSL_CTX_set_next_proto_select_cb</span><span class="p">(</span><span class="n">ssl_ctx</span><span class="p">,</span> <span class="n">select_next_proto_cb</span><span class="p">,</span> <span class="n">my_obj</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>Note that the HTTP/2.0 spec does use ALPN instead of NPN. This
-function is provided for transitional period before ALPN is got
-implemented in major SSL/TLS libraries.</p>
 </dd></dl>
 
 <dl class="function">

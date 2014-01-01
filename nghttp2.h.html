@@ -2328,10 +2328,11 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * A helper function for dealing with NPN in client side.  The |in|</span>
-<span class="cm"> * contains server&#39;s protocol in preferable order.  The format of |in|</span>
-<span class="cm"> * is length-prefixed and not null-terminated.  For example,</span>
-<span class="cm"> * ``HTTP-draft-04/2.0`` and ``http/1.1`` stored in |in| like this::</span>
+<span class="cm"> * A helper function for dealing with NPN in client side or ALPN in</span>
+<span class="cm"> * server side. The |in| contains peer&#39;s protocol list in preferable</span>
+<span class="cm"> * order.  The format of |in| is length-prefixed and not</span>
+<span class="cm"> * null-terminated.  For example, ``HTTP-draft-04/2.0`` and</span>
+<span class="cm"> * ``http/1.1`` stored in |in| like this::</span>
 <span class="cm"> *</span>
 <span class="cm"> *     in[0] = 17</span>
 <span class="cm"> *     in[1..17] = &quot;HTTP-draft-04/2.0&quot;</span>
@@ -2341,10 +2342,10 @@
 <span class="cm"> *</span>
 <span class="cm"> * The selection algorithm is as follows:</span>
 <span class="cm"> *</span>
-<span class="cm"> * 1. If server&#39;s list contains ``HTTP-draft-04/2.0``, it is selected</span>
-<span class="cm"> *    and returns 1. The following step is not taken.</span>
+<span class="cm"> * 1. If peer&#39;s list contains HTTP/2.0 protocol the library supports,</span>
+<span class="cm"> *    it is selected and returns 1. The following step is not taken.</span>
 <span class="cm"> *</span>
-<span class="cm"> * 2. If server&#39;s list contains ``http/1.1``, this function selects</span>
+<span class="cm"> * 2. If peer&#39;s list contains ``http/1.1``, this function selects</span>
 <span class="cm"> *    ``http/1.1`` and returns 0. The following step is not taken.</span>
 <span class="cm"> *</span>
 <span class="cm"> * 3. This function selects nothing and returns -1. (So called</span>
@@ -2358,7 +2359,7 @@
 <span class="cm"> * See http://technotes.googlecode.com/git/nextprotoneg.html for more</span>
 <span class="cm"> * details about NPN.</span>
 <span class="cm"> *</span>
-<span class="cm"> * To use this method you should do something like::</span>
+<span class="cm"> * For NPN, to use this method you should do something like::</span>
 <span class="cm"> *</span>
 <span class="cm"> *     static int select_next_proto_cb(SSL* ssl,</span>
 <span class="cm"> *                                     unsigned char **out,</span>
@@ -2376,10 +2377,6 @@
 <span class="cm"> *     }</span>
 <span class="cm"> *     ...</span>
 <span class="cm"> *     SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, my_obj);</span>
-<span class="cm"> *</span>
-<span class="cm"> * Note that the HTTP/2.0 spec does use ALPN instead of NPN. This</span>
-<span class="cm"> * function is provided for transitional period before ALPN is got</span>
-<span class="cm"> * implemented in major SSL/TLS libraries.</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_select_next_protocol</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
