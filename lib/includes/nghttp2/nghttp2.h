@@ -2191,10 +2191,11 @@ int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs);
 /**
  * @function
  *
- * A helper function for dealing with NPN in client side.  The |in|
- * contains server's protocol in preferable order.  The format of |in|
- * is length-prefixed and not null-terminated.  For example,
- * ``HTTP-draft-04/2.0`` and ``http/1.1`` stored in |in| like this::
+ * A helper function for dealing with NPN in client side or ALPN in
+ * server side. The |in| contains peer's protocol list in preferable
+ * order.  The format of |in| is length-prefixed and not
+ * null-terminated.  For example, ``HTTP-draft-04/2.0`` and
+ * ``http/1.1`` stored in |in| like this::
  *
  *     in[0] = 17
  *     in[1..17] = "HTTP-draft-04/2.0"
@@ -2204,10 +2205,10 @@ int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs);
  *
  * The selection algorithm is as follows:
  *
- * 1. If server's list contains ``HTTP-draft-04/2.0``, it is selected
- *    and returns 1. The following step is not taken.
+ * 1. If peer's list contains HTTP/2.0 protocol the library supports,
+ *    it is selected and returns 1. The following step is not taken.
  *
- * 2. If server's list contains ``http/1.1``, this function selects
+ * 2. If peer's list contains ``http/1.1``, this function selects
  *    ``http/1.1`` and returns 0. The following step is not taken.
  *
  * 3. This function selects nothing and returns -1. (So called
@@ -2221,7 +2222,7 @@ int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs);
  * See http://technotes.googlecode.com/git/nextprotoneg.html for more
  * details about NPN.
  *
- * To use this method you should do something like::
+ * For NPN, to use this method you should do something like::
  *
  *     static int select_next_proto_cb(SSL* ssl,
  *                                     unsigned char **out,
@@ -2239,10 +2240,6 @@ int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs);
  *     }
  *     ...
  *     SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, my_obj);
- *
- * Note that the HTTP/2.0 spec does use ALPN instead of NPN. This
- * function is provided for transitional period before ALPN is got
- * implemented in major SSL/TLS libraries.
  *
  */
 int nghttp2_select_next_protocol(unsigned char **out, unsigned char *outlen,

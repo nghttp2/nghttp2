@@ -24,7 +24,7 @@ SETTINGS_ENABLE_PUSH       Done
 FRAME_SIZE_ERROR           Done
 SETTINGS with ACK          Done
 Header Continuation
-ALPN
+ALPN                       Done
 ========================== =================
 
 Public Test Server
@@ -139,7 +139,7 @@ nghttp - client
 +++++++++++++++
 
 ``nghttp`` is a HTTP/2.0 client. It can connect to the HTTP/2.0 server
-with prior knowledge, HTTP Upgrade and NPN TLS extension.
+with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
 
 It has verbose output mode for framing information. Here is sample
 output from ``nghttp`` client::
@@ -261,7 +261,7 @@ multiplexes connections using non-blocking socket.
 By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
 disable it.
 
-``nghttpd`` only accept the HTTP/2.0 connection via NPN or direct
+``nghttpd`` only accept the HTTP/2.0 connection via NPN/ALPN or direct
 HTTP/2.0 connection. No HTTP Upgrade is supported.
 
 ``-p`` option allows users to configure server push.
