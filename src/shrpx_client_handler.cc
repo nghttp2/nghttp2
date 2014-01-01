@@ -299,26 +299,37 @@ int ClientHandler::validate_next_proto()
   // First set callback for catch all cases
   set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
-  if(next_proto) {
-    std::string proto(next_proto, next_proto+next_proto_len);
-    if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "The negotiated next protocol: " << proto;
-    }
-    if(proto == NGHTTP2_PROTO_VERSION_ID) {
-      set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
-                 upstream_eventcb);
-      upstream_ = util::make_unique<Http2Upstream>(this);
-      return 0;
-    } else {
-#ifdef HAVE_SPDYLAY
-      uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
-      if(version) {
-        upstream_ = util::make_unique<SpdyUpstream>(version, this);
-        return 0;
+  for(int i = 0; i < 2; ++i) {
+    if(next_proto) {
+      if(LOG_ENABLED(INFO)) {
+        std::string proto(next_proto, next_proto+next_proto_len);
+        CLOG(INFO, this) << "The negotiated next protocol: " << proto;
       }
+      if(next_proto_len == NGHTTP2_PROTO_VERSION_ID_LEN &&
+         memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
+                NGHTTP2_PROTO_VERSION_ID_LEN) == 0) {
+        set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
+                   upstream_eventcb);
+        upstream_ = util::make_unique<Http2Upstream>(this);
+        return 0;
+      } else {
+#ifdef HAVE_SPDYLAY
+        uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
+        if(version) {
+          upstream_ = util::make_unique<SpdyUpstream>(version, this);
+          return 0;
+        }
 #endif // HAVE_SPDYLAY
+      }
+      break;
     }
-  } else {
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
+#else // OPENSSL_VERSION_NUMBER < 0x10002000L
+    break;
+#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
+  }
+  if(!next_proto) {
     if(LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "No proto negotiated.";
     }

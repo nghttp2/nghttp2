@@ -196,6 +196,7 @@ Http2Handler::~Http2Handler()
     SSL_shutdown(ssl_);
   }
   if(bev_) {
+    bufferevent_disable(bev_, EV_READ | EV_WRITE);
     bufferevent_free(bev_);
   }
   if(ssl_) {
@@ -398,19 +399,30 @@ int Http2Handler::verify_npn_result()
 {
   const unsigned char *next_proto = nullptr;
   unsigned int next_proto_len;
+  // Check the negotiated protocol in NPN or ALPN
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
-  if(next_proto) {
-    std::string proto(next_proto, next_proto+next_proto_len);
-    if(sessions_->get_config()->verbose) {
-      std::cout << "The negotiated next protocol: " << proto << std::endl;
-    }
-    if(proto == NGHTTP2_PROTO_VERSION_ID) {
-      return 0;
+  for(int i = 0; i < 2; ++i) {
+    if(next_proto) {
+      std::string proto(next_proto, next_proto+next_proto_len);
+      if(sessions_->get_config()->verbose) {
+        std::cout << "The negotiated protocol: " << proto << std::endl;
+      }
+      if(proto == NGHTTP2_PROTO_VERSION_ID) {
+        return 0;
+      }
+      break;
+    } else {
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+      SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
+#else // OPENSSL_VERSION_NUMBER < 0x10002000L
+      break;
+#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
     }
   }
-  std::cerr << "The negotiated next protocol is not supported."
+  std::cerr << "Client did not advertise HTTP/2.0 protocol."
+            << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
             << std::endl;
-  return 0;
+  return -1;
 }
 
 int Http2Handler::sendcb(const uint8_t *data, size_t len)
@@ -1094,6 +1106,33 @@ int start_listen(event_base *evbase, Sessions *sessions,
 }
 } // namespace
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+namespace {
+int alpn_select_proto_cb(SSL* ssl,
+                         const unsigned char **out, unsigned char *outlen,
+                         const unsigned char *in, unsigned int inlen,
+                         void *arg)
+{
+  auto config = reinterpret_cast<HttpServer*>(arg)->get_config();
+  if(config->verbose) {
+    std::cout << "[ALPN] client offers:" << std::endl;
+  }
+  if(config->verbose) {
+    for(unsigned int i = 0; i < inlen; i += in[i]+1) {
+      std::cout << " * ";
+      std::cout.write(reinterpret_cast<const char*>(&in[i+1]), in[i]);
+      std::cout << std::endl;
+    }
+  }
+  if(nghttp2_select_next_protocol(const_cast<unsigned char**>(out), outlen,
+                                  in, inlen) <= 0) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+  return SSL_TLSEXT_ERR_OK;
+}
+} // namespace
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
 int HttpServer::run()
 {
   SSL_CTX *ssl_ctx = nullptr;
@@ -1138,6 +1177,10 @@ int HttpServer::run()
     next_proto.second = proto_list[0] + 1;
 
     SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    // ALPN selection callback
+    SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, this);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
   }
 
   auto evbase = event_base_new();
@@ -1150,6 +1193,11 @@ int HttpServer::run()
 
   event_base_loop(evbase, 0);
   return 0;
+}
+
+const Config* HttpServer::get_config() const
+{
+  return config_;
 }
 
 } // namespace nghttp2

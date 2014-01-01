@@ -1224,6 +1224,15 @@ void print_stats(const HttpClient& client)
 } // namespace
 
 namespace {
+void print_protocol_nego_error()
+{
+  std::cerr << "Server did not select HTTP/2.0 protocol."
+            << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
+            << std::endl;
+}
+} // namespace
+
+namespace {
 int client_select_next_proto_cb(SSL* ssl,
                                 unsigned char **out, unsigned char *outlen,
                                 const unsigned char *in, unsigned int inlen,
@@ -1231,8 +1240,7 @@ int client_select_next_proto_cb(SSL* ssl,
 {
   if(config.verbose) {
     print_timer();
-    std::cout << " NPN select next protocol: the remote server offers:"
-              << std::endl;
+    std::cout << "[NPN] server offers:" << std::endl;
   }
   for(unsigned int i = 0; i < inlen; i += in[i]+1) {
     if(config.verbose) {
@@ -1242,15 +1250,8 @@ int client_select_next_proto_cb(SSL* ssl,
     }
   }
   if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
-    std::cerr << "Server did not advertise HTTP/2.0 protocol."
-              << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
-              << std::endl;
-  } else {
-    if(config.verbose) {
-      std::cout << "          NPN selected the protocol: ";
-      std::cout.write(reinterpret_cast<const char*>(*out), (size_t)*outlen);
-      std::cout << std::endl;
-    }
+    print_protocol_nego_error();
+    return SSL_TLSEXT_ERR_NOACK;
   }
   return SSL_TLSEXT_ERR_OK;
 }
@@ -1312,7 +1313,37 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     if(client->need_upgrade()) {
       rv = client->on_upgrade_connect();
     } else {
-      // TODO Check NPN result and fail fast?
+      // Check NPN or ALPN result
+      const unsigned char *next_proto = nullptr;
+      unsigned int next_proto_len;
+      SSL_get0_next_proto_negotiated(client->ssl,
+                                     &next_proto, &next_proto_len);
+      for(int i = 0; i < 2; ++i) {
+        if(next_proto) {
+          if(config.verbose) {
+            std::cout << "The negotiated protocol: ";
+            std::cout.write(reinterpret_cast<const char*>(next_proto),
+                            next_proto_len);
+            std::cout << std::endl;
+          }
+          if(NGHTTP2_PROTO_VERSION_ID_LEN != next_proto_len ||
+             memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
+                    NGHTTP2_PROTO_VERSION_ID_LEN) != 0) {
+            next_proto = nullptr;
+          }
+          break;
+        }
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+        SSL_get0_alpn_selected(client->ssl, &next_proto, &next_proto_len);
+#else // OPENSSL_VERSION_NUMBER < 0x10002000L
+        break;
+#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
+      }
+      if(!next_proto) {
+        print_protocol_nego_error();
+        client->disconnect();
+        return;
+      }
       rv = client->on_connect();
     }
     if(rv != 0) {
@@ -1404,6 +1435,14 @@ int communicate(const std::string& scheme, const std::string& host,
     }
     SSL_CTX_set_next_proto_select_cb(ssl_ctx,
                                      client_select_next_proto_cb, nullptr);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    unsigned char proto_list[255];
+    proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
+    memcpy(&proto_list[1], NGHTTP2_PROTO_VERSION_ID,
+           NGHTTP2_PROTO_VERSION_ID_LEN);
+    SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list[0] + 1);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
   }
   {
     HttpClient client{callbacks, evbase, ssl_ctx};

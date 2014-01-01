@@ -1120,15 +1120,30 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
 int Http2Session::on_connect()
 {
   int rv;
-  const unsigned char *next_proto = nullptr;
-  unsigned int next_proto_len;
   if(ssl_ctx_) {
+    const unsigned char *next_proto = nullptr;
+    unsigned int next_proto_len;
     SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
-    std::string proto(next_proto, next_proto+next_proto_len);
-    if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
+    for(int i = 0; i < 2; ++i) {
+      if(next_proto) {
+        if(LOG_ENABLED(INFO)) {
+          std::string proto(next_proto, next_proto+next_proto_len);
+          SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
+        }
+        if(next_proto_len != NGHTTP2_PROTO_VERSION_ID_LEN ||
+           memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
+                  NGHTTP2_PROTO_VERSION_ID_LEN) != 0) {
+          return -1;
+        }
+        break;
+      }
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+      SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
+#else // OPENSSL_VERSION_NUMBER < 0x10002000L
+      break;
+#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
     }
-    if(proto != NGHTTP2_PROTO_VERSION_ID) {
+    if(!next_proto) {
       return -1;
     }
   }

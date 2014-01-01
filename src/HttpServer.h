@@ -137,6 +137,7 @@ public:
   HttpServer(const Config* config);
   int listen();
   int run();
+  const Config* get_config() const;
 private:
   const Config *config_;
 };

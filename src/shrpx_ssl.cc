@@ -132,6 +132,23 @@ int servername_callback(SSL *ssl, int *al, void *arg)
 }
 } // namespace
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+namespace {
+int alpn_select_proto_cb(SSL* ssl,
+                         const unsigned char **out,
+                         unsigned char *outlen,
+                         const unsigned char *in, unsigned int inlen,
+                         void *arg)
+{
+  if(nghttp2_select_next_protocol
+     (const_cast<unsigned char**>(out), outlen, in, inlen) == -1) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+  return SSL_TLSEXT_ERR_OK;
+}
+} // namespace
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
 SSL_CTX* create_ssl_context(const char *private_key_file,
                             const char *cert_file)
 {
@@ -241,11 +258,16 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
 
+  // NPN advertisement
   auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,
                                       get_config()->npn_list_len);
   next_proto.first = proto_list;
   next_proto.second = proto_list_len;
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  // ALPN selection callback
+  SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
   return ssl_ctx;
 }
 
@@ -322,8 +344,18 @@ SSL_CTX* create_ssl_client_context()
       DIE();
     }
   }
-
+  // NPN selection callback
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, nullptr);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  // ALPN advertisement
+  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,
+                                      get_config()->npn_list_len);
+  next_proto.first = proto_list;
+  next_proto.second = proto_list_len;
+  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list[0] + 1);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
   return ssl_ctx;
 }
 
