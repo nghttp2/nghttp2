@@ -67,6 +67,8 @@ required:
 * OpenSSL >= 1.0.1
 * libevent-openssl >= 2.0.8
 
+ALPN support requires unreleased version OpenSSL >= 1.0.2.
+
 To enable SPDY protocol in the application program ``nghttpx``, the
 following packages are required:
 
@@ -80,7 +82,7 @@ resource) in ``nghttp``, the following packages are needed:
 The header compression test tools in hdtest directory require the
 following package:
 
-* jansson >= 2.5
+* jansson >= 2.4
 
 If you are using Ubuntu 12.04, you need the following packages
 installed:
