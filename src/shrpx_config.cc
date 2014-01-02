@@ -221,15 +221,13 @@ void set_config_str(char **destp, const char *val)
   *destp = strdup(val);
 }
 
-int parse_config_npn_list(const char *s)
+char** parse_config_str_list(size_t *outlen, const char *s)
 {
-  delete [] mod_config()->npn_list;
   size_t len = 1;
   for(const char *first = s, *p = nullptr; (p = strchr(first, ','));
       ++len, first = p + 1);
   auto list = new char*[len];
-  auto t = strdup(s);
-  auto first = t;
+  auto first = strdup(s);
   len = 0;
   for(;;) {
     auto p = strchr(first, ',');
@@ -241,9 +239,8 @@ int parse_config_npn_list(const char *s)
     first = p + 1;
   }
   list[len++] = first;
-  mod_config()->npn_list = list;
-  mod_config()->npn_list_len = len;
-  return 0;
+  *outlen = len;
+  return list;
 }
 
 int parse_config(const char *opt, const char *optarg)
@@ -453,7 +450,9 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_WRITE_BURST)) {
     mod_config()->write_burst = strtoul(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_NPN_LIST)) {
-    parse_config_npn_list(optarg);
+    delete [] mod_config()->npn_list;
+    mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
+                                                   optarg);
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT)) {
     mod_config()->verify_client = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT_CACERT)) {

@@ -226,13 +226,16 @@ int load_config(const char *filename);
 // Read passwd from |filename|
 std::string read_passwd_from_file(const char *filename);
 
-// Parses NPN protocol strings in |s| and stores the protocols list in
-// mod_config()->npn_list and assigns the number of elements in
-// mod_config()->npn_list_len. The |s| must be comma delimited list of
-// protocol strings. The strings must be delimited by a single command
-// and any white spaces around it are treated as a part of protocol
-// strings.  This function always succeeds and returns 0.
-int parse_config_npn_list(const char *s);
+// Parses comma delimited strings in |s| and returns the array of
+// pointers, each element points to the each substring in |s|. The
+// number of elements are stored in |*outlen|. The |s| must be comma
+// delimited list of strings. The strings must be delimited by a
+// single comma and any white spaces around it are treated as a part
+// of protocol strings. This function may modify |s| and the caller
+// must leave it as is after this call. This function allocates memory
+// to store the parsed strings and it is caller's responsibility to
+// deallocate the memory.
+char** parse_config_str_list(size_t *outlen, const char *s);
 
 // Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
 // NULL, it is freed before copying.

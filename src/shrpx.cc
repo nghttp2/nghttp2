@@ -1088,7 +1088,8 @@ int main(int argc, char **argv)
   }
 
   if(!get_config()->npn_list) {
-    parse_config_npn_list(DEFAULT_NPN_LIST);
+    mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
+                                                   DEFAULT_NPN_LIST);
   }
 
   if(!get_config()->subcerts.empty()) {
