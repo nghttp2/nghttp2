@@ -197,7 +197,7 @@ if test "x${have_libevent_openssl}" = "xno"; then
 fi
 
 # jansson (for hdtest/deflatehd and hdtest/inflatehd)
-PKG_CHECK_MODULES([JANSSON], [jansson >= 2.5],
+PKG_CHECK_MODULES([JANSSON], [jansson >= 2.4],
                   [have_jansson=yes], [have_jansson=no])
 if test "x${have_jansson}" == "xno"; then
   AC_MSG_NOTICE($JANSSON_PKG_ERRORS)
