@@ -105,6 +105,7 @@ const char SHRPX_OPT_READ_BURST[] = "read-burst";
 const char SHRPX_OPT_WRITE_RATE[] = "write-rate";
 const char SHRPX_OPT_WRITE_BURST[] = "write-burst";
 const char SHRPX_OPT_NPN_LIST[] = "npn-list";
+const char SHRPX_OPT_TLS_PROTO_LIST[] = "tls-proto-list";
 const char SHRPX_OPT_VERIFY_CLIENT[] = "verify-client";
 const char SHRPX_OPT_VERIFY_CLIENT_CACERT[] = "verify-client-cacert";
 const char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[] = "client-private-key-file";
@@ -453,6 +454,10 @@ int parse_config(const char *opt, const char *optarg)
     delete [] mod_config()->npn_list;
     mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
                                                    optarg);
+  } else if(util::strieq(opt, SHRPX_OPT_TLS_PROTO_LIST)) {
+    delete [] mod_config()->tls_proto_list;
+    mod_config()->tls_proto_list = parse_config_str_list
+      (&mod_config()->tls_proto_list_len, optarg);
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT)) {
     mod_config()->verify_client = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT_CACERT)) {

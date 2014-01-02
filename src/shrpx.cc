@@ -330,6 +330,10 @@ const char *DEFAULT_NPN_LIST = NGHTTP2_PROTO_VERSION_ID ","
 } // namespace
 
 namespace {
+const char *DEFAULT_TLS_PROTO_LIST = "TLSv1.2,TLSv1.1,TLSv1.0";
+} // namespace
+
+namespace {
 void fill_default_config()
 {
   memset(mod_config(), 0, sizeof(*mod_config()));
@@ -622,6 +626,17 @@ void print_help(std::ostream& out)
       << "                       Path to file that contains client\n"
       << "                       certificate used in backend client\n"
       << "                       authentication.\n"
+      << "    --tls-proto-list=<LIST>\n"
+      << "                       Comma delimited list of SSL/TLS protocol to\n"
+      << "                       be enabled.\n"
+      << "                       The following protocols are available:\n"
+      << "                       TLSv1.2, TLSv1.1, TLSv1.0, SSLv3\n"
+      << "                       The name matching is done in case-insensitive\n"
+      << "                       manner.\n"
+      << "                       The parameter must be delimited by a single\n"
+      << "                       comma only and any white spaces are treated\n"
+      << "                       as a part of protocol string.\n"
+      << "                       Default: " << DEFAULT_TLS_PROTO_LIST << "\n"
       << "\n"
       << "  HTTP/2.0 and SPDY:\n"
       << "    -c, --http2-max-concurrent-streams=<NUM>\n"
@@ -798,6 +813,7 @@ int main(int argc, char **argv)
       {"http2-no-cookie-crumbling", no_argument, &flag, 45},
       {"frontend-http2-connection-window-bits", required_argument, &flag, 46},
       {"backend-http2-connection-window-bits", required_argument, &flag, 47},
+      {"tls-proto-list", required_argument, &flag, 48},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1049,6 +1065,10 @@ int main(int argc, char **argv)
                           (SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
                            optarg));
         break;
+      case 48:
+        // --tls-proto-list
+        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_TLS_PROTO_LIST, optarg));
+        break;
       default:
         break;
       }
@@ -1090,6 +1110,10 @@ int main(int argc, char **argv)
   if(!get_config()->npn_list) {
     mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
                                                    DEFAULT_NPN_LIST);
+  }
+  if(!get_config()->tls_proto_list) {
+    mod_config()->tls_proto_list = parse_config_str_list
+      (&mod_config()->tls_proto_list_len, DEFAULT_TLS_PROTO_LIST);
   }
 
   if(!get_config()->subcerts.empty()) {

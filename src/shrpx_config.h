@@ -94,6 +94,7 @@ extern const char SHRPX_OPT_READ_BURST[];
 extern const char SHRPX_OPT_WRITE_RATE[];
 extern const char SHRPX_OPT_WRITE_BURST[];
 extern const char SHRPX_OPT_NPN_LIST[];
+extern const char SHRPX_OPT_TLS_PROTO_LIST[];
 extern const char SHRPX_OPT_VERIFY_CLIENT[];
 extern const char SHRPX_OPT_VERIFY_CLIENT_CACERT[];
 extern const char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[];
@@ -151,6 +152,9 @@ struct Config {
   // preference. The each element of this list is a NULL-terminated
   // string.
   char **npn_list;
+  // list of supported SSL/TLS protocol strings. The each element of
+  // this list is a NULL-terminated string.
+  char **tls_proto_list;
   // Path to file containing CA certificate solely used for client
   // certificate validation
   char *verify_client_cacert;
@@ -173,6 +177,8 @@ struct Config {
   size_t write_burst;
   // The number of elements in npn_list
   size_t npn_list_len;
+  // The number of elements in tls_proto_list
+  size_t tls_proto_list_len;
   // downstream protocol; this will be determined by given options.
   shrpx_proto downstream_proto;
   int syslog_facility;
