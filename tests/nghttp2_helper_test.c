@@ -187,7 +187,7 @@ void test_nghttp2_check_header_name(void)
 
 void test_nghttp2_check_header_value(void)
 {
-  uint8_t goodval[] = { 'a', '\0', 'b' };
+  uint8_t goodval[] = { 'a', '\0', 'b', 0x80u, 'c', 0xffu, 'd', '\t', ' ' };
   uint8_t badval1[] = { 'a', 0x1fu, 'b' };
   uint8_t badval2[] = { 'a', 0x7fu, 'b' };
 
