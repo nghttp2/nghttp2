@@ -239,13 +239,8 @@ var Search = {
   },
 
   loadIndex : function(url) {
-    $.ajax({type: "GET", url: url, data: null,
-            dataType: "script", cache: true,
-            complete: function(jqxhr, textstatus) {
-              if (textstatus != "success") {
-                document.getElementById("searchindexloader").src = url;
-              }
-            }});
+    $.ajax({type: "GET", url: url, data: null, success: null,
+            dataType: "script", cache: true});
   },
 
   setIndex : function(index) {
@@ -462,18 +457,16 @@ var Search = {
             displayNextItem();
           });
         } else if (DOCUMENTATION_OPTIONS.HAS_SOURCE) {
-          $.ajax({url: DOCUMENTATION_OPTIONS.URL_ROOT + '_sources/' + item[0] + '.txt',
-                  dataType: "text",
-                  complete: function(jqxhr, textstatus) {
-                    var data = jqxhr.responseText;
-                    if (data !== '') {
-                      listItem.append($.makeSearchSummary(data, searchterms, hlterms));
-                    }
-                    Search.output.append(listItem);
-                    listItem.slideDown(5, function() {
-                      displayNextItem();
-                    });
-                  }});
+          $.get(DOCUMENTATION_OPTIONS.URL_ROOT + '_sources/' +
+                item[0] + '.txt', function(data) {
+            if (data != '') {
+              listItem.append($.makeSearchSummary(data, searchterms, hlterms));
+              Search.output.append(listItem);
+            }
+            listItem.slideDown(5, function() {
+              displayNextItem();
+            });
+          }, "text");
         } else {
           // no source available, just display title
           Search.output.append(listItem);
