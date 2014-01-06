@@ -33,16 +33,16 @@ namespace shrpx {
 void test_shrpx_ssl_create_lookup_tree(void)
 {
   ssl::CertLookupTree* tree = ssl::cert_lookup_tree_new();
-  SSL_CTX *ctxs[] = {SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method()),
-                     SSL_CTX_new(TLSv1_method())};
+  SSL_CTX *ctxs[] = {SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method()),
+                     SSL_CTX_new(SSLv23_method())};
 
   const char *hostnames[] = { "example.com",
                               "www.example.org",
@@ -95,10 +95,10 @@ void test_shrpx_ssl_create_lookup_tree(void)
     SSL_CTX_free(ctxs[i]);
   }
 
-  SSL_CTX *ctxs2[] = {SSL_CTX_new(TLSv1_method()),
-                      SSL_CTX_new(TLSv1_method()),
-                      SSL_CTX_new(TLSv1_method()),
-                      SSL_CTX_new(TLSv1_method())};
+  SSL_CTX *ctxs2[] = {SSL_CTX_new(SSLv23_method()),
+                      SSL_CTX_new(SSLv23_method()),
+                      SSL_CTX_new(SSLv23_method()),
+                      SSL_CTX_new(SSLv23_method())};
   const char *names[] = { "rab", "zab", "zzub", "ab" };
   num = sizeof(ctxs2)/sizeof(ctxs2[0]);
   tree = ssl::cert_lookup_tree_new();
@@ -119,7 +119,7 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void)
 {
   int rv;
   ssl::CertLookupTree* tree = ssl::cert_lookup_tree_new();
-  SSL_CTX *ssl_ctx = SSL_CTX_new(TLSv1_method());
+  SSL_CTX *ssl_ctx = SSL_CTX_new(SSLv23_method());
   const char certfile[] = NGHTTP2_TESTS_DIR"/testdata/cacert.pem";
   rv = ssl::cert_lookup_tree_add_cert_from_file(tree, ssl_ctx, certfile);
   CU_ASSERT(0 == rv);
