@@ -101,6 +101,7 @@ check_PROGRAMS += nghttpx-unittest
 nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_ssl_test.cc shrpx_ssl_test.h \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
+	shrpx_config_test.cc shrpx_config_test.h \
 	http2_test.cc http2_test.h \
 	util_test.cc util_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\

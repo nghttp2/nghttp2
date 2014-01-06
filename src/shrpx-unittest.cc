@@ -30,6 +30,7 @@
 /* include test cases' include files here */
 #include "shrpx_ssl_test.h"
 #include "shrpx_downstream_test.h"
+#include "shrpx_config_test.h"
 #include "http2_test.h"
 #include "util_test.h"
 
@@ -102,6 +103,8 @@ int main(int argc, char* argv[])
                    shrpx::test_downstream_assemble_request_cookie) ||
       !CU_add_test(pSuite, "downstream_rewrite_norm_location_response_header",
                    shrpx::test_downstream_rewrite_norm_location_response_header) ||
+      !CU_add_test(pSuite, "config_parse_config_str_list",
+                   shrpx::test_shrpx_config_parse_config_str_list) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_inp_strlower",
                    shrpx::test_util_inp_strlower) ||
