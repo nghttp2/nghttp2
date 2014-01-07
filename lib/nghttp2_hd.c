@@ -1383,7 +1383,6 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
       }
       in += valuelen;
 
-      nghttp2_downcase(nv.name, nv.namelen);
       if(c == 0x40u) {
         int flags = NGHTTP2_HD_FLAG_NONE;
         if(name_huffman) {
