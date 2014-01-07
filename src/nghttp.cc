@@ -1313,36 +1313,38 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     if(client->need_upgrade()) {
       rv = client->on_upgrade_connect();
     } else {
-      // Check NPN or ALPN result
-      const unsigned char *next_proto = nullptr;
-      unsigned int next_proto_len;
-      SSL_get0_next_proto_negotiated(client->ssl,
-                                     &next_proto, &next_proto_len);
-      for(int i = 0; i < 2; ++i) {
-        if(next_proto) {
-          if(config.verbose) {
-            std::cout << "The negotiated protocol: ";
-            std::cout.write(reinterpret_cast<const char*>(next_proto),
-                            next_proto_len);
-            std::cout << std::endl;
+      if(client->ssl) {
+        // Check NPN or ALPN result
+        const unsigned char *next_proto = nullptr;
+        unsigned int next_proto_len;
+        SSL_get0_next_proto_negotiated(client->ssl,
+                                       &next_proto, &next_proto_len);
+        for(int i = 0; i < 2; ++i) {
+          if(next_proto) {
+            if(config.verbose) {
+              std::cout << "The negotiated protocol: ";
+              std::cout.write(reinterpret_cast<const char*>(next_proto),
+                              next_proto_len);
+              std::cout << std::endl;
+            }
+            if(NGHTTP2_PROTO_VERSION_ID_LEN != next_proto_len ||
+               memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
+                      NGHTTP2_PROTO_VERSION_ID_LEN) != 0) {
+              next_proto = nullptr;
+            }
+            break;
           }
-          if(NGHTTP2_PROTO_VERSION_ID_LEN != next_proto_len ||
-             memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
-                    NGHTTP2_PROTO_VERSION_ID_LEN) != 0) {
-            next_proto = nullptr;
-          }
-          break;
-        }
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-        SSL_get0_alpn_selected(client->ssl, &next_proto, &next_proto_len);
+          SSL_get0_alpn_selected(client->ssl, &next_proto, &next_proto_len);
 #else // OPENSSL_VERSION_NUMBER < 0x10002000L
-        break;
+          break;
 #endif // OPENSSL_VERSION_NUMBER < 0x10002000L
-      }
-      if(!next_proto) {
-        print_protocol_nego_error();
-        client->disconnect();
-        return;
+        }
+        if(!next_proto) {
+          print_protocol_nego_error();
+          client->disconnect();
+          return;
+        }
       }
       rv = client->on_connect();
     }
