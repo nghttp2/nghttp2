@@ -213,7 +213,7 @@ ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
   return j;
 }
 
-ssize_t nghttp2_hd_huff_decode(uint8_t *dest, size_t destlen,
+ssize_t nghttp2_hd_huff_decode(uint8_t **dest_ptr,
                                const uint8_t *src, size_t srclen,
                                nghttp2_hd_side side)
 {
@@ -221,6 +221,9 @@ ssize_t nghttp2_hd_huff_decode(uint8_t *dest, size_t destlen,
   size_t i, j;
   const nghttp2_huff_sym *huff_sym_table;
   const huff_decode_table_type *huff_decode_table;
+  uint8_t *dest = NULL;
+  size_t destlen = 0;
+  int rv;
 
   if(side == NGHTTP2_HD_SIDE_REQUEST) {
     huff_sym_table = req_huff_sym_table;
@@ -231,23 +234,39 @@ ssize_t nghttp2_hd_huff_decode(uint8_t *dest, size_t destlen,
   }
   j = 0;
   for(i = 0; i < srclen;) {
-    int rv = huff_decode(src + i, srclen - i, bitoff,
-                         huff_sym_table, huff_decode_table);
+    rv = huff_decode(src + i, srclen - i, bitoff,
+                     huff_sym_table, huff_decode_table);
     if(rv == -1) {
       if(check_last_byte(src, srclen, i, bitoff)) {
         break;
       }
-      return -1;
+      rv = NGHTTP2_ERR_HEADER_COMP;
+      goto fail;
     }
     if(rv == 256) {
       /* 256 is special terminal symbol and it should not encoded in
          byte string. */
-      return -1;
+      rv = NGHTTP2_ERR_HEADER_COMP;
+      goto fail;
+    }
+    if(j == destlen) {
+      size_t new_len = j == 0 ? 32 : j * 2;
+      uint8_t *new_dest = realloc(dest, new_len);
+      if(new_dest == NULL) {
+        rv = NGHTTP2_ERR_NOMEM;
+        goto fail;
+      }
+      dest = new_dest;
+      destlen = new_len;
     }
     dest[j++] = rv;
     bitoff += huff_sym_table[rv].nbits;
     i += bitoff / 8;
     bitoff &= 0x7;
   }
+  *dest_ptr = dest;
   return j;
+ fail:
+  free(dest);
+  return rv;
 }

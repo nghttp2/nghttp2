@@ -1237,26 +1237,6 @@ static int inflater_post_process_hd_entry(nghttp2_hd_context *inflater,
   return 0;
 }
 
-static ssize_t inflate_decode(uint8_t **dest_ptr, uint8_t *in, size_t inlen,
-                              nghttp2_hd_side side)
-{
-  ssize_t declen;
-  if(inlen == 0) {
-    *dest_ptr = NULL;
-    return 0;
-  }
-  declen = nghttp2_hd_huff_decode_count(in, inlen, side);
-  if(declen == -1) {
-    return NGHTTP2_ERR_HEADER_COMP;
-  }
-  *dest_ptr = malloc(declen);
-  if(*dest_ptr == NULL) {
-    return NGHTTP2_ERR_HEADER_COMP;
-  }
-  nghttp2_hd_huff_decode(*dest_ptr, declen, in, inlen, side);
-  return declen;
-}
-
 ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
                               nghttp2_nv **nva_ptr,
                               uint8_t *in, size_t inlen)
@@ -1341,7 +1321,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
       if(name_huffman) {
-        rv = inflate_decode(&nv.name, in, namelen, inflater->side);
+        rv = nghttp2_hd_huff_decode(&nv.name, in, namelen, inflater->side);
         if(rv < 0) {
           DEBUGF(fprintf(stderr, "Name huffman decoding failed\n"));
           goto fail;
@@ -1369,7 +1349,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
       if(value_huffman) {
-        rv = inflate_decode(&nv.value, in, valuelen, inflater->side);
+        rv = nghttp2_hd_huff_decode(&nv.value, in, valuelen, inflater->side);
         if(rv < 0) {
           DEBUGF(fprintf(stderr, "Value huffman decoding failed\n"));
           free(decoded_huffman_name);
@@ -1453,7 +1433,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
         goto fail;
       }
       if(value_huffman) {
-        rv = inflate_decode(&value, in, valuelen, inflater->side);
+        rv = nghttp2_hd_huff_decode(&value, in, valuelen, inflater->side);
         if(rv < 0) {
           DEBUGF(fprintf(stderr, "Value huffman decoding failed\n"));
           goto fail;

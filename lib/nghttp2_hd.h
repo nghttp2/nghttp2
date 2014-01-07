@@ -381,12 +381,11 @@ ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
                                      nghttp2_hd_side side);
 
 /*
- * Decodes the given data |src| with length |srclen| to the given
- * memory location pointed by |dest|, allocated at lest |destlen|
- * bytes. The given input must be padded with the prefix of terminal
- * code. The caller is responsible to specify |destlen| at least the
- * length that nghttp2_hd_huff_decode_count() returns.  If |side| is
- * NGHTTP2_HD_SIDE_REQUEST, the request huffman code table is
+ * Decodes the given data |src| with length |srclen|. This function
+ * allocates memory to store the result and assigns the its pointer to
+ * |*dest_ptr| on success. The caller is responsible to release the
+ * memory pointed by |*dest_ptr| if this function succeeds. If |side|
+ * is NGHTTP2_HD_SIDE_REQUEST, the request huffman code table is
  * used. Otherwise, the response code table is used.
  *
  * This function returns the number of written bytes.  This return
@@ -394,9 +393,15 @@ ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
  * nghttp2_hd_huff_decode_count() if it is given with the same |src|,
  * |srclen|, and |side|.
  *
- * This function returns -1 if it fails.
+ * If this function fails, it returns one of the following negative
+ * return codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_HEADER_COMP
+ *     Decoding process has failed.
  */
-ssize_t nghttp2_hd_huff_decode(uint8_t *dest, size_t destlen,
+ssize_t nghttp2_hd_huff_decode(uint8_t **dest_ptr,
                                const uint8_t *src, size_t srclen,
                                nghttp2_hd_side side);
 
