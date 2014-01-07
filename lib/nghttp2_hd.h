@@ -81,6 +81,8 @@ typedef enum {
 
 typedef struct {
   nghttp2_nv nv;
+  uint32_t name_hash;
+  uint32_t value_hash;
   /* Reference count */
   uint8_t ref;
   uint8_t flags;

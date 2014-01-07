@@ -33,71 +33,71 @@
 #include "nghttp2_int.h"
 
 /* Make scalar initialization form of nghttp2_nv */
-#define MAKE_NV(N, V)                                           \
+#define MAKE_NV(N, V, NH, VH)                                   \
   { { (uint8_t*)N, (uint8_t*)V, sizeof(N) - 1, sizeof(V) - 1 }, \
-      1, NGHTTP2_HD_FLAG_NONE }
+      NH, VH, 1, NGHTTP2_HD_FLAG_NONE }
 
 static nghttp2_hd_entry static_table[] = {
-  /* 1 */ MAKE_NV(":authority", ""),
-  /* 2 */ MAKE_NV(":method", "GET"),
-  /* 3 */ MAKE_NV(":method", "POST"),
-  /* 4 */ MAKE_NV(":path", "/"),
-  /* 5 */ MAKE_NV(":path", "/index.html"),
-  /* 6 */ MAKE_NV(":scheme", "http"),
-  /* 7 */ MAKE_NV(":scheme", "https"),
-  /* 8 */ MAKE_NV(":status", "200"),
-  /* 9 */ MAKE_NV(":status", "500"),
-  /* 10 */ MAKE_NV(":status", "404"),
-  /* 11 */ MAKE_NV(":status", "403"),
-  /* 12 */ MAKE_NV(":status", "400"),
-  /* 13 */ MAKE_NV(":status", "401"),
-  /* 14 */ MAKE_NV("accept-charset", ""),
-  /* 15 */ MAKE_NV("accept-encoding", ""),
-  /* 16 */ MAKE_NV("accept-language", ""),
-  /* 17 */ MAKE_NV("accept-ranges", ""),
-  /* 18 */ MAKE_NV("accept", ""),
-  /* 19 */ MAKE_NV("access-control-allow-origin", ""),
-  /* 20 */ MAKE_NV("age", ""),
-  /* 21 */ MAKE_NV("allow", ""),
-  /* 22 */ MAKE_NV("authorization", ""),
-  /* 23 */ MAKE_NV("cache-control", ""),
-  /* 24 */ MAKE_NV("content-disposition", ""),
-  /* 25 */ MAKE_NV("content-encoding", ""),
-  /* 26 */ MAKE_NV("content-language", ""),
-  /* 27 */ MAKE_NV("content-length", ""),
-  /* 28 */ MAKE_NV("content-location", ""),
-  /* 29 */ MAKE_NV("content-range", ""),
-  /* 30 */ MAKE_NV("content-type", ""),
-  /* 31 */ MAKE_NV("cookie", ""),
-  /* 32 */ MAKE_NV("date", ""),
-  /* 33 */ MAKE_NV("etag", ""),
-  /* 34 */ MAKE_NV("expect", ""),
-  /* 35 */ MAKE_NV("expires", ""),
-  /* 36 */ MAKE_NV("from", ""),
-  /* 37 */ MAKE_NV("host", ""),
-  /* 38 */ MAKE_NV("if-match", ""),
-  /* 39 */ MAKE_NV("if-modified-since", ""),
-  /* 40 */ MAKE_NV("if-none-match", ""),
-  /* 41 */ MAKE_NV("if-range", ""),
-  /* 42 */ MAKE_NV("if-unmodified-since", ""),
-  /* 43 */ MAKE_NV("last-modified", ""),
-  /* 44 */ MAKE_NV("link", ""),
-  /* 45 */ MAKE_NV("location", ""),
-  /* 46 */ MAKE_NV("max-forwards", ""),
-  /* 47 */ MAKE_NV("proxy-authenticate", ""),
-  /* 48 */ MAKE_NV("proxy-authorization", ""),
-  /* 49 */ MAKE_NV("range", ""),
-  /* 50 */ MAKE_NV("referer", ""),
-  /* 51 */ MAKE_NV("refresh", ""),
-  /* 52 */ MAKE_NV("retry-after", ""),
-  /* 53 */ MAKE_NV("server", ""),
-  /* 54 */ MAKE_NV("set-cookie", ""),
-  /* 55 */ MAKE_NV("strict-transport-security", ""),
-  /* 56 */ MAKE_NV("transfer-encoding", ""),
-  /* 57 */ MAKE_NV("user-agent", ""),
-  /* 58 */ MAKE_NV("vary", ""),
-  /* 59 */ MAKE_NV("via", ""),
-  /* 60 */ MAKE_NV("www-authenticate", "")
+  /* 1 */ MAKE_NV(":authority", "", 2962729033u, 0u),
+  /* 2 */ MAKE_NV(":method", "GET", 3153018267u, 70454u),
+  /* 3 */ MAKE_NV(":method", "POST", 3153018267u, 2461856u),
+  /* 4 */ MAKE_NV(":path", "/", 56997727u, 47u),
+  /* 5 */ MAKE_NV(":path", "/index.html", 56997727u, 2144181430u),
+  /* 6 */ MAKE_NV(":scheme", "http", 3322585695u, 3213448u),
+  /* 7 */ MAKE_NV(":scheme", "https", 3322585695u, 99617003u),
+  /* 8 */ MAKE_NV(":status", "200", 3338091692u, 49586u),
+  /* 9 */ MAKE_NV(":status", "500", 3338091692u, 52469u),
+  /* 10 */ MAKE_NV(":status", "404", 3338091692u, 51512u),
+  /* 11 */ MAKE_NV(":status", "403", 3338091692u, 51511u),
+  /* 12 */ MAKE_NV(":status", "400", 3338091692u, 51508u),
+  /* 13 */ MAKE_NV(":status", "401", 3338091692u, 51509u),
+  /* 14 */ MAKE_NV("accept-charset", "", 124285319u, 0u),
+  /* 15 */ MAKE_NV("accept-encoding", "", 4127597688u, 0u),
+  /* 16 */ MAKE_NV("accept-language", "", 802785917u, 0u),
+  /* 17 */ MAKE_NV("accept-ranges", "", 1397189435u, 0u),
+  /* 18 */ MAKE_NV("accept", "", 2871506184u, 0u),
+  /* 19 */ MAKE_NV("access-control-allow-origin", "", 3297999203u, 0u),
+  /* 20 */ MAKE_NV("age", "", 96511u, 0u),
+  /* 21 */ MAKE_NV("allow", "", 92906313u, 0u),
+  /* 22 */ MAKE_NV("authorization", "", 2909397113u, 0u),
+  /* 23 */ MAKE_NV("cache-control", "", 4086191634u, 0u),
+  /* 24 */ MAKE_NV("content-disposition", "", 3027699811u, 0u),
+  /* 25 */ MAKE_NV("content-encoding", "", 2095084583u, 0u),
+  /* 26 */ MAKE_NV("content-language", "", 3065240108u, 0u),
+  /* 27 */ MAKE_NV("content-length", "", 3162187450u, 0u),
+  /* 28 */ MAKE_NV("content-location", "", 2284906121u, 0u),
+  /* 29 */ MAKE_NV("content-range", "", 2878374633u, 0u),
+  /* 30 */ MAKE_NV("content-type", "", 785670158u, 0u),
+  /* 31 */ MAKE_NV("cookie", "", 2940209764u, 0u),
+  /* 32 */ MAKE_NV("date", "", 3076014u, 0u),
+  /* 33 */ MAKE_NV("etag", "", 3123477u, 0u),
+  /* 34 */ MAKE_NV("expect", "", 3005803609u, 0u),
+  /* 35 */ MAKE_NV("expires", "", 2985731892u, 0u),
+  /* 36 */ MAKE_NV("from", "", 3151786u, 0u),
+  /* 37 */ MAKE_NV("host", "", 3208616u, 0u),
+  /* 38 */ MAKE_NV("if-match", "", 34533653u, 0u),
+  /* 39 */ MAKE_NV("if-modified-since", "", 2302095846u, 0u),
+  /* 40 */ MAKE_NV("if-none-match", "", 646073760u, 0u),
+  /* 41 */ MAKE_NV("if-range", "", 39145613u, 0u),
+  /* 42 */ MAKE_NV("if-unmodified-since", "", 1454068927u, 0u),
+  /* 43 */ MAKE_NV("last-modified", "", 150043680u, 0u),
+  /* 44 */ MAKE_NV("link", "", 3321850u, 0u),
+  /* 45 */ MAKE_NV("location", "", 1901043637u, 0u),
+  /* 46 */ MAKE_NV("max-forwards", "", 1619948695u, 0u),
+  /* 47 */ MAKE_NV("proxy-authenticate", "", 3993199572u, 0u),
+  /* 48 */ MAKE_NV("proxy-authorization", "", 329532250u, 0u),
+  /* 49 */ MAKE_NV("range", "", 108280125u, 0u),
+  /* 50 */ MAKE_NV("referer", "", 1085069613u, 0u),
+  /* 51 */ MAKE_NV("refresh", "", 1085444827u, 0u),
+  /* 52 */ MAKE_NV("retry-after", "", 1933352567u, 0u),
+  /* 53 */ MAKE_NV("server", "", 3389140803u, 0u),
+  /* 54 */ MAKE_NV("set-cookie", "", 1237214767u, 0u),
+  /* 55 */ MAKE_NV("strict-transport-security", "", 1153852136u, 0u),
+  /* 56 */ MAKE_NV("transfer-encoding", "", 1274458357u, 0u),
+  /* 57 */ MAKE_NV("user-agent", "", 486342275u, 0u),
+  /* 58 */ MAKE_NV("vary", "", 3612210u, 0u),
+  /* 59 */ MAKE_NV("via", "", 116750u, 0u),
+  /* 60 */ MAKE_NV("www-authenticate", "", 4051929931u, 0u)
 };
 
 static const size_t STATIC_TABLE_LENGTH =
@@ -112,6 +112,16 @@ static int memeq(const void *s1, const void *s2, size_t n)
     --n;
   }
   return c == 0;
+}
+
+static uint32_t hash(const uint8_t *s, size_t n)
+{
+  uint32_t h = 0;
+  while(n > 0) {
+    h = h * 31 + *s++;
+    --n;
+  }
+  return h;
 }
 
 typedef struct {
@@ -158,6 +168,16 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
   ent->nv.valuelen = valuelen;
   ent->ref = 1;
   ent->flags = flags;
+  if(ent->nv.name) {
+    ent->name_hash = hash(ent->nv.name, ent->nv.namelen);
+  } else {
+    ent->name_hash = 0;
+  }
+  if(ent->nv.value) {
+    ent->value_hash = hash(ent->nv.value, ent->nv.valuelen);
+  } else {
+    ent->value_hash = 0;
+  }
   return 0;
 
  fail2:
@@ -944,13 +964,16 @@ static search_result search_hd_table(nghttp2_hd_context *context,
 {
   search_result res = { -1, 0 };
   size_t i;
+  uint32_t name_hash = hash(nv->name, nv->namelen);
+  uint32_t value_hash = hash(nv->value, nv->valuelen);
+
   for(i = 0; i < context->deflate_hd_tablelen; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&context->hd_table, i);
-    if(name_eq(&ent->nv, nv)) {
+    if(ent->name_hash == name_hash && name_eq(&ent->nv, nv)) {
       if(res.index == -1) {
         res.index = i;
       }
-      if(value_eq(&ent->nv, nv)) {
+      if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
         res.index = i;
         res.name_value_match = 1;
         return res;
@@ -959,11 +982,11 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   }
   for(i = 0; i < STATIC_TABLE_LENGTH; ++i) {
     nghttp2_hd_entry *ent = &static_table[i];
-    if(name_eq(&ent->nv, nv)) {
+    if(ent->name_hash == name_hash && name_eq(&ent->nv, nv)) {
       if(res.index == -1) {
         res.index = context->hd_table.len + i;
       }
-      if(value_eq(&ent->nv, nv)) {
+      if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
         res.index = context->hd_table.len + i;
         res.name_value_match = 1;
         return res;
