@@ -33,71 +33,80 @@
 #include "nghttp2_int.h"
 
 /* Make scalar initialization form of nghttp2_nv */
-#define MAKE_NV(N, V, NH, VH)                                   \
-  { { (uint8_t*)N, (uint8_t*)V, sizeof(N) - 1, sizeof(V) - 1 }, \
-      NH, VH, 1, NGHTTP2_HD_FLAG_NONE }
+#define MAKE_STATIC_ENT(I, N, V, NH, VH)                                \
+  { { { (uint8_t*)N, (uint8_t*)V, sizeof(N) - 1, sizeof(V) - 1 },       \
+        NH, VH, 1, NGHTTP2_HD_FLAG_NONE }, I }
 
-static nghttp2_hd_entry static_table[] = {
-  /* 1 */ MAKE_NV(":authority", "", 2962729033u, 0u),
-  /* 2 */ MAKE_NV(":method", "GET", 3153018267u, 70454u),
-  /* 3 */ MAKE_NV(":method", "POST", 3153018267u, 2461856u),
-  /* 4 */ MAKE_NV(":path", "/", 56997727u, 47u),
-  /* 5 */ MAKE_NV(":path", "/index.html", 56997727u, 2144181430u),
-  /* 6 */ MAKE_NV(":scheme", "http", 3322585695u, 3213448u),
-  /* 7 */ MAKE_NV(":scheme", "https", 3322585695u, 99617003u),
-  /* 8 */ MAKE_NV(":status", "200", 3338091692u, 49586u),
-  /* 9 */ MAKE_NV(":status", "500", 3338091692u, 52469u),
-  /* 10 */ MAKE_NV(":status", "404", 3338091692u, 51512u),
-  /* 11 */ MAKE_NV(":status", "403", 3338091692u, 51511u),
-  /* 12 */ MAKE_NV(":status", "400", 3338091692u, 51508u),
-  /* 13 */ MAKE_NV(":status", "401", 3338091692u, 51509u),
-  /* 14 */ MAKE_NV("accept-charset", "", 124285319u, 0u),
-  /* 15 */ MAKE_NV("accept-encoding", "", 4127597688u, 0u),
-  /* 16 */ MAKE_NV("accept-language", "", 802785917u, 0u),
-  /* 17 */ MAKE_NV("accept-ranges", "", 1397189435u, 0u),
-  /* 18 */ MAKE_NV("accept", "", 2871506184u, 0u),
-  /* 19 */ MAKE_NV("access-control-allow-origin", "", 3297999203u, 0u),
-  /* 20 */ MAKE_NV("age", "", 96511u, 0u),
-  /* 21 */ MAKE_NV("allow", "", 92906313u, 0u),
-  /* 22 */ MAKE_NV("authorization", "", 2909397113u, 0u),
-  /* 23 */ MAKE_NV("cache-control", "", 4086191634u, 0u),
-  /* 24 */ MAKE_NV("content-disposition", "", 3027699811u, 0u),
-  /* 25 */ MAKE_NV("content-encoding", "", 2095084583u, 0u),
-  /* 26 */ MAKE_NV("content-language", "", 3065240108u, 0u),
-  /* 27 */ MAKE_NV("content-length", "", 3162187450u, 0u),
-  /* 28 */ MAKE_NV("content-location", "", 2284906121u, 0u),
-  /* 29 */ MAKE_NV("content-range", "", 2878374633u, 0u),
-  /* 30 */ MAKE_NV("content-type", "", 785670158u, 0u),
-  /* 31 */ MAKE_NV("cookie", "", 2940209764u, 0u),
-  /* 32 */ MAKE_NV("date", "", 3076014u, 0u),
-  /* 33 */ MAKE_NV("etag", "", 3123477u, 0u),
-  /* 34 */ MAKE_NV("expect", "", 3005803609u, 0u),
-  /* 35 */ MAKE_NV("expires", "", 2985731892u, 0u),
-  /* 36 */ MAKE_NV("from", "", 3151786u, 0u),
-  /* 37 */ MAKE_NV("host", "", 3208616u, 0u),
-  /* 38 */ MAKE_NV("if-match", "", 34533653u, 0u),
-  /* 39 */ MAKE_NV("if-modified-since", "", 2302095846u, 0u),
-  /* 40 */ MAKE_NV("if-none-match", "", 646073760u, 0u),
-  /* 41 */ MAKE_NV("if-range", "", 39145613u, 0u),
-  /* 42 */ MAKE_NV("if-unmodified-since", "", 1454068927u, 0u),
-  /* 43 */ MAKE_NV("last-modified", "", 150043680u, 0u),
-  /* 44 */ MAKE_NV("link", "", 3321850u, 0u),
-  /* 45 */ MAKE_NV("location", "", 1901043637u, 0u),
-  /* 46 */ MAKE_NV("max-forwards", "", 1619948695u, 0u),
-  /* 47 */ MAKE_NV("proxy-authenticate", "", 3993199572u, 0u),
-  /* 48 */ MAKE_NV("proxy-authorization", "", 329532250u, 0u),
-  /* 49 */ MAKE_NV("range", "", 108280125u, 0u),
-  /* 50 */ MAKE_NV("referer", "", 1085069613u, 0u),
-  /* 51 */ MAKE_NV("refresh", "", 1085444827u, 0u),
-  /* 52 */ MAKE_NV("retry-after", "", 1933352567u, 0u),
-  /* 53 */ MAKE_NV("server", "", 3389140803u, 0u),
-  /* 54 */ MAKE_NV("set-cookie", "", 1237214767u, 0u),
-  /* 55 */ MAKE_NV("strict-transport-security", "", 1153852136u, 0u),
-  /* 56 */ MAKE_NV("transfer-encoding", "", 1274458357u, 0u),
-  /* 57 */ MAKE_NV("user-agent", "", 486342275u, 0u),
-  /* 58 */ MAKE_NV("vary", "", 3612210u, 0u),
-  /* 59 */ MAKE_NV("via", "", 116750u, 0u),
-  /* 60 */ MAKE_NV("www-authenticate", "", 4051929931u, 0u)
+/* Sorted by hash(name) and its table index */
+static nghttp2_hd_static_entry static_table[] = {
+  MAKE_STATIC_ENT(19, "age", "", 96511u, 0u),
+  MAKE_STATIC_ENT(58, "via", "", 116750u, 0u),
+  MAKE_STATIC_ENT(31, "date", "", 3076014u, 0u),
+  MAKE_STATIC_ENT(32, "etag", "", 3123477u, 0u),
+  MAKE_STATIC_ENT(35, "from", "", 3151786u, 0u),
+  MAKE_STATIC_ENT(36, "host", "", 3208616u, 0u),
+  MAKE_STATIC_ENT(43, "link", "", 3321850u, 0u),
+  MAKE_STATIC_ENT(57, "vary", "", 3612210u, 0u),
+  MAKE_STATIC_ENT(37, "if-match", "", 34533653u, 0u),
+  MAKE_STATIC_ENT(40, "if-range", "", 39145613u, 0u),
+  MAKE_STATIC_ENT(3, ":path", "/", 56997727u, 47u),
+  MAKE_STATIC_ENT(4, ":path", "/index.html", 56997727u, 2144181430u),
+  MAKE_STATIC_ENT(20, "allow", "", 92906313u, 0u),
+  MAKE_STATIC_ENT(48, "range", "", 108280125u, 0u),
+  MAKE_STATIC_ENT(13, "accept-charset", "", 124285319u, 0u),
+  MAKE_STATIC_ENT(42, "last-modified", "", 150043680u, 0u),
+  MAKE_STATIC_ENT(47, "proxy-authorization", "", 329532250u, 0u),
+  MAKE_STATIC_ENT(56, "user-agent", "", 486342275u, 0u),
+  MAKE_STATIC_ENT(39, "if-none-match", "", 646073760u, 0u),
+  MAKE_STATIC_ENT(29, "content-type", "", 785670158u, 0u),
+  MAKE_STATIC_ENT(15, "accept-language", "", 802785917u, 0u),
+  MAKE_STATIC_ENT(49, "referer", "", 1085069613u, 0u),
+  MAKE_STATIC_ENT(50, "refresh", "", 1085444827u, 0u),
+  MAKE_STATIC_ENT(54, "strict-transport-security", "", 1153852136u, 0u),
+  MAKE_STATIC_ENT(53, "set-cookie", "", 1237214767u, 0u),
+  MAKE_STATIC_ENT(55, "transfer-encoding", "", 1274458357u, 0u),
+  MAKE_STATIC_ENT(16, "accept-ranges", "", 1397189435u, 0u),
+  MAKE_STATIC_ENT(41, "if-unmodified-since", "", 1454068927u, 0u),
+  MAKE_STATIC_ENT(45, "max-forwards", "", 1619948695u, 0u),
+  MAKE_STATIC_ENT(44, "location", "", 1901043637u, 0u),
+  MAKE_STATIC_ENT(51, "retry-after", "", 1933352567u, 0u),
+  MAKE_STATIC_ENT(24, "content-encoding", "", 2095084583u, 0u),
+  MAKE_STATIC_ENT(27, "content-location", "", 2284906121u, 0u),
+  MAKE_STATIC_ENT(38, "if-modified-since", "", 2302095846u, 0u),
+  MAKE_STATIC_ENT(17, "accept", "", 2871506184u, 0u),
+  MAKE_STATIC_ENT(28, "content-range", "", 2878374633u, 0u),
+  MAKE_STATIC_ENT(21, "authorization", "", 2909397113u, 0u),
+  MAKE_STATIC_ENT(30, "cookie", "", 2940209764u, 0u),
+  MAKE_STATIC_ENT(0, ":authority", "", 2962729033u, 0u),
+  MAKE_STATIC_ENT(34, "expires", "", 2985731892u, 0u),
+  MAKE_STATIC_ENT(33, "expect", "", 3005803609u, 0u),
+  MAKE_STATIC_ENT(23, "content-disposition", "", 3027699811u, 0u),
+  MAKE_STATIC_ENT(25, "content-language", "", 3065240108u, 0u),
+  MAKE_STATIC_ENT(1, ":method", "GET", 3153018267u, 70454u),
+  MAKE_STATIC_ENT(2, ":method", "POST", 3153018267u, 2461856u),
+  MAKE_STATIC_ENT(26, "content-length", "", 3162187450u, 0u),
+  MAKE_STATIC_ENT(18, "access-control-allow-origin", "", 3297999203u, 0u),
+  MAKE_STATIC_ENT(5, ":scheme", "http", 3322585695u, 3213448u),
+  MAKE_STATIC_ENT(6, ":scheme", "https", 3322585695u, 99617003u),
+  MAKE_STATIC_ENT(7, ":status", "200", 3338091692u, 49586u),
+  MAKE_STATIC_ENT(8, ":status", "500", 3338091692u, 52469u),
+  MAKE_STATIC_ENT(9, ":status", "404", 3338091692u, 51512u),
+  MAKE_STATIC_ENT(10, ":status", "403", 3338091692u, 51511u),
+  MAKE_STATIC_ENT(11, ":status", "400", 3338091692u, 51508u),
+  MAKE_STATIC_ENT(12, ":status", "401", 3338091692u, 51509u),
+  MAKE_STATIC_ENT(52, "server", "", 3389140803u, 0u),
+  MAKE_STATIC_ENT(46, "proxy-authenticate", "", 3993199572u, 0u),
+  MAKE_STATIC_ENT(59, "www-authenticate", "", 4051929931u, 0u),
+  MAKE_STATIC_ENT(22, "cache-control", "", 4086191634u, 0u),
+  MAKE_STATIC_ENT(14, "accept-encoding", "", 4127597688u, 0u)
+};
+
+/* Index to the position in static_table */
+const size_t static_table_index[] = {
+  38, 43, 44, 10, 11, 47, 48, 49, 50, 51, 52, 53, 54, 14, 59, 20,
+  26, 34, 46, 0 , 12, 36, 58, 41, 31, 42, 45, 32, 35, 19, 37, 2 ,
+  3 , 40, 39, 4 , 5 , 8 , 33, 18, 9 , 27, 15, 6 , 29, 28, 56, 16,
+  13, 21, 22, 30, 55, 24, 23, 25, 17, 7 , 1 , 57
 };
 
 static const size_t STATIC_TABLE_LENGTH =
@@ -966,6 +975,7 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   size_t i;
   uint32_t name_hash = hash(nv->name, nv->namelen);
   uint32_t value_hash = hash(nv->value, nv->valuelen);
+  size_t left = 0, right = STATIC_TABLE_LENGTH;
 
   for(i = 0; i < context->deflate_hd_tablelen; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&context->hd_table, i);
@@ -980,14 +990,27 @@ static search_result search_hd_table(nghttp2_hd_context *context,
       }
     }
   }
-  for(i = 0; i < STATIC_TABLE_LENGTH; ++i) {
-    nghttp2_hd_entry *ent = &static_table[i];
-    if(ent->name_hash == name_hash && name_eq(&ent->nv, nv)) {
+
+  while(right - left > 1) {
+    size_t mid = (left + right) / 2;
+    nghttp2_hd_entry *ent = &static_table[mid].ent;
+    if(ent->name_hash < name_hash) {
+      left = mid;
+    } else {
+      right = mid;
+    }
+  }
+  for(i = right; i < STATIC_TABLE_LENGTH; ++i) {
+    nghttp2_hd_entry *ent = &static_table[i].ent;
+    if(ent->name_hash != name_hash) {
+      break;
+    }
+    if(name_eq(&ent->nv, nv)) {
       if(res.index == -1) {
-        res.index = context->hd_table.len + i;
+        res.index = context->hd_table.len + static_table[i].index;
       }
       if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
-        res.index = context->hd_table.len + i;
+        res.index = context->hd_table.len + static_table[i].index;
         res.name_value_match = 1;
         return res;
       }
@@ -1049,7 +1072,8 @@ nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
   if(index < context->hd_table.len) {
     return nghttp2_hd_ringbuf_get(&context->hd_table, index);
   } else {
-    return &static_table[index - context->hd_table.len];
+    return
+      &static_table[static_table_index[index - context->hd_table.len]].ent;
   }
 }
 
