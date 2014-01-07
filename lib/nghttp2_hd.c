@@ -103,6 +103,17 @@ static nghttp2_hd_entry static_table[] = {
 static const size_t STATIC_TABLE_LENGTH =
   sizeof(static_table)/sizeof(static_table[0]);
 
+static int memeq(const void *s1, const void *s2, size_t n)
+{
+  const uint8_t *a = (const uint8_t*)s1, *b = (const uint8_t*)s2;
+  uint8_t c = 0;
+  while(n > 0) {
+    c |= (*a++) ^ (*b++);
+    --n;
+  }
+  return c == 0;
+}
+
 typedef struct {
   nghttp2_nv *nva;
   size_t nvacap;
@@ -914,13 +925,12 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
 
 static int name_eq(const nghttp2_nv *a, const nghttp2_nv *b)
 {
-  return a->namelen == b->namelen && memcmp(a->name, b->name, a->namelen) == 0;
+  return a->namelen == b->namelen && memeq(a->name, b->name, a->namelen);
 }
 
 static int value_eq(const nghttp2_nv *a, const nghttp2_nv *b)
 {
-  return a->valuelen == b->valuelen &&
-    memcmp(a->value, b->value, a->valuelen) == 0;
+  return a->valuelen == b->valuelen && memeq(a->value, b->value, a->valuelen);
 }
 
 typedef struct {
@@ -1020,9 +1030,8 @@ nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
   }
 }
 
-#define name_match(NV, NAME)                            \
-  (nv->namelen == sizeof(NAME) - 1 &&                   \
-   memcmp(nv->name, NAME, sizeof(NAME) - 1) == 0)
+#define name_match(NV, NAME)                                            \
+  (nv->namelen == sizeof(NAME) - 1 && memeq(nv->name, NAME, sizeof(NAME) - 1))
 
 static int should_indexing(const nghttp2_nv *nv)
 {
