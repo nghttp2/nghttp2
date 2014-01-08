@@ -25,6 +25,8 @@
 #ifndef BASE64_H
 #define BASE64_H
 
+#include "nghttp2_config.h"
+
 #include <string>
 
 namespace nghttp2 {
