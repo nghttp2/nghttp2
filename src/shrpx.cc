@@ -52,6 +52,9 @@
 #include "shrpx_config.h"
 #include "shrpx_listen_handler.h"
 #include "shrpx_ssl.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -859,6 +862,7 @@ int main(int argc, char **argv)
       print_version(std::cout);
       exit(EXIT_SUCCESS);
     case '?':
+      util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
     case 0:
       switch(flag) {

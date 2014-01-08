@@ -29,6 +29,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 
 #include "timegm.h"
 
@@ -278,6 +279,77 @@ void inp_strlower(std::string& s)
     if('A' <= *i && *i <= 'Z') {
       *i = (*i) - 'A' + 'a';
     }
+  }
+}
+
+namespace {
+// Calculates Damerau–Levenshtein distance between c-string a and b
+// with given costs.  swapcost, subcost, addcost and delcost are cost
+// to swap 2 adjacent characters, substitute characters, add character
+// and delete character respectively.
+int levenshtein
+(const char* a,
+ const char* b,
+ int swapcost,
+ int subcost,
+ int addcost,
+ int delcost)
+{
+  int alen = strlen(a);
+  int blen = strlen(b);
+  auto dp = std::vector<std::vector<int>>(3, std::vector<int>(blen+1));
+  for(int i = 0; i <= blen; ++i) {
+    dp[1][i] = i;
+  }
+  for(int i = 1; i <= alen; ++i) {
+    dp[0][0] = i;
+    for(int j = 1; j <= blen; ++j) {
+      dp[0][j] = dp[1][j-1]+(a[i-1] == b[j-1] ? 0 : subcost);
+      if(i >= 2 && j >= 2 && a[i-1] != b[j-1] &&
+         a[i-2] == b[j-1] && a[i-1] == b[j-2]) {
+        dp[0][j] = std::min(dp[0][j], dp[2][j-2]+swapcost);
+      }
+      dp[0][j] = std::min(dp[0][j],
+                          std::min(dp[1][j]+delcost, dp[0][j-1]+addcost));
+    }
+    std::rotate(std::begin(dp), std::begin(dp)+2, std::end(dp));
+  }
+  return dp[1][blen];
+}
+} // namespace
+
+void show_candidates(const char *unkopt, option *options)
+{
+  for(; *unkopt == '-'; ++unkopt);
+  if(*unkopt == '\0') {
+    return;
+  }
+  auto cands = std::vector<std::pair<int, const char*>>();
+  for(size_t i = 0; options[i].name != nullptr; ++i) {
+    // Use cost 0 for prefix match
+    if(istartsWith(options[i].name, unkopt)) {
+      cands.emplace_back(0, options[i].name);
+      continue;
+    }
+    // cost values are borrowed from git, help.c.
+    int sim = levenshtein(unkopt, options[i].name, 0, 2, 1, 3);
+    cands.emplace_back(sim, options[i].name);
+  }
+  if(cands.empty()) {
+    return;
+  }
+  std::sort(std::begin(cands), std::end(cands));
+  int threshold = cands[0].first;
+  // threshold value is a magic value.
+  if(threshold > 6) {
+    return;
+  }
+  std::cerr << "\nDid you mean:\n";
+  for(auto& item : cands) {
+    if(item.first > threshold) {
+      break;
+    }
+    std::cerr << "\t--" << item.second << "\n";
   }
 }
 

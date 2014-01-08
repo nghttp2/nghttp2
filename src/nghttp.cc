@@ -1801,6 +1801,7 @@ int main(int argc, char **argv)
       }
       break;
     case '?':
+      util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
     case 0:
       switch(flag) {

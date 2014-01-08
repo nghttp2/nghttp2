@@ -27,6 +27,9 @@
 
 #include "nghttp2_config.h"
 
+#include <unistd.h>
+#include <getopt.h>
+
 #include <cstring>
 #include <vector>
 #include <string>
@@ -402,6 +405,8 @@ make_unique(size_t size)
 
 void to_token68(std::string& base64str);
 void to_base64(std::string& token68str);
+
+void show_candidates(const char *unkopt, option *options);
 
 } // namespace util
 

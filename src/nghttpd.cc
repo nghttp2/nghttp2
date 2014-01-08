@@ -41,6 +41,7 @@
 
 #include "app_helper.h"
 #include "HttpServer.h"
+#include "util.h"
 
 namespace nghttp2 {
 
@@ -178,6 +179,7 @@ int main(int argc, char **argv)
       }
       break;
     case '?':
+      util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
     case 0:
       switch(flag) {
