@@ -82,7 +82,7 @@ resource) in ``nghttp``, the following packages are needed:
 The header compression test tools in hdtest directory require the
 following package:
 
-* jansson >= 2.4
+* jansson >= 2.5
 
 If you are using Ubuntu 12.04, you need the following packages
 installed:
