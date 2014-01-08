@@ -251,7 +251,7 @@ static int perform_from_http1text(nghttp2_hd_context *deflater)
 
 static void print_help(void)
 {
-  printf("HPACK-draft-04 header compressor\n"
+  printf("HPACK HTTP/2.0 header encoder\n"
          "Usage: deflatehd [OPTIONS] < INPUT\n"
          "\n"
          "Reads JSON array or HTTP/1-style header fields from stdin and\n"

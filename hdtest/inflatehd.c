@@ -164,7 +164,7 @@ static int perform(void)
 
 static void print_help(void)
 {
-  printf("HPACK-draft-04 header decompressor\n"
+  printf("HPACK HTTP/2.0 header decoder\n"
          "Usage: inflatehd [OPTIONS] < INPUT\n"
          "\n"
          "Reads JSON array from stdin and outputs inflated name/value pairs\n"
