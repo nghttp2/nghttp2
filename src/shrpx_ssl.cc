@@ -276,6 +276,18 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
+      // It is heard that SSL_CTX_load_verify_locations() may leave
+      // error even though it returns success. See
+      // http://forum.nginx.org/read.php?29,242540
+      ERR_clear_error();
+      auto list = SSL_load_client_CA_file(get_config()->verify_client_cacert);
+      if(!list) {
+        LOG(FATAL) << "Could not load ca certificates from "
+                   << get_config()->verify_client_cacert << ": "
+                   << ERR_error_string(ERR_get_error(), nullptr);
+        DIE();
+      }
+      SSL_CTX_set_client_CA_list(ssl_ctx, list);
     }
     SSL_CTX_set_verify(ssl_ctx,
                        SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
