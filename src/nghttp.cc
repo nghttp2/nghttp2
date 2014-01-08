@@ -553,6 +553,7 @@ struct HttpClient {
     session = nullptr;
     if(ssl) {
       fd = SSL_get_fd(ssl);
+      SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
       SSL_shutdown(ssl);
     }
     if(bev) {

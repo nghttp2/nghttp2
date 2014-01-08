@@ -82,6 +82,7 @@ int Http2Session::disconnect()
   }
 
   if(ssl_) {
+    SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl_);
   }
   if(bev_) {

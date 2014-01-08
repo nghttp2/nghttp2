@@ -251,6 +251,7 @@ ClientHandler::~ClientHandler()
     CLOG(INFO, this) << "Deleting";
   }
   if(ssl_) {
+    SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl_);
   }
   bufferevent_disable(bev_, EV_READ | EV_WRITE);

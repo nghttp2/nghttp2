@@ -193,6 +193,7 @@ Http2Handler::~Http2Handler()
   }
   nghttp2_session_del(session_);
   if(ssl_) {
+    SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl_);
   }
   if(bev_) {
