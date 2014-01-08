@@ -975,7 +975,7 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   size_t i;
   uint32_t name_hash = hash(nv->name, nv->namelen);
   uint32_t value_hash = hash(nv->value, nv->valuelen);
-  size_t left = 0, right = STATIC_TABLE_LENGTH;
+  ssize_t left = -1, right = STATIC_TABLE_LENGTH;
 
   for(i = 0; i < context->deflate_hd_tablelen; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&context->hd_table, i);
@@ -992,7 +992,7 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   }
 
   while(right - left > 1) {
-    size_t mid = (left + right) / 2;
+    ssize_t mid = (left + right) / 2;
     nghttp2_hd_entry *ent = &static_table[mid].ent;
     if(ent->name_hash < name_hash) {
       left = mid;
