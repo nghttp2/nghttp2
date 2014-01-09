@@ -808,6 +808,12 @@ int on_frame_recv_callback
   auto http2session = reinterpret_cast<Http2Session*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
+    if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+      // server sends request HEADERS
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_REFUSED_STREAM);
+      break;
+    }
     if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
       break;
     }
@@ -965,11 +971,11 @@ int on_frame_recv_callback
   case NGHTTP2_PUSH_PROMISE:
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session)
-        << "Received downstream PUSH_PROMISE stream_id="
-        << frame->hd.stream_id;
+        << "Received downstream PUSH_PROMISE stream_id=" << frame->hd.stream_id
+        << ", promised_stream_id=" << frame->push_promise.promised_stream_id;
     }
     // We just respond with RST_STREAM.
-    http2session->submit_rst_stream(frame->hd.stream_id,
+    http2session->submit_rst_stream(frame->push_promise.promised_stream_id,
                                     NGHTTP2_REFUSED_STREAM);
     break;
   default:

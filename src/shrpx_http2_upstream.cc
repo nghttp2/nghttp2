@@ -221,6 +221,7 @@ namespace {
 int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
+  int rv;
   auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
@@ -318,7 +319,7 @@ int on_frame_recv_callback
     downstream->check_upgrade_request();
 
     auto dconn = upstream->get_client_handler()->get_downstream_connection();
-    int rv = dconn->attach_downstream(downstream);
+    rv = dconn->attach_downstream(downstream);
     if(rv != 0) {
       // If downstream connection fails, issue RST_STREAM.
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
@@ -341,6 +342,14 @@ int on_frame_recv_callback
       break;
     }
     upstream->stop_settings_timer();
+    break;
+  case NGHTTP2_PUSH_PROMISE:
+    rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                   frame->push_promise.promised_stream_id,
+                                   NGHTTP2_REFUSED_STREAM);
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
     break;
   default:
     break;
@@ -502,12 +511,15 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   flow_control_ = true;
 
   // TODO Maybe call from outside?
-  nghttp2_settings_entry entry[2];
+  nghttp2_settings_entry entry[3];
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = get_config()->http2_max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = (1 << get_config()->http2_upstream_window_bits) - 1;
+
+  entry[2].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+  entry[2].value = 0;
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE,
                                entry,

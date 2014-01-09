@@ -368,10 +368,12 @@ int Http2Handler::on_connect()
   if(r != 0) {
     return r;
   }
-  nghttp2_settings_entry entry[3];
-  size_t niv = 1;
+  nghttp2_settings_entry entry[4];
+  size_t niv = 2;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = 100;
+  entry[1].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+  entry[1].value = 0;
   if(sessions_->get_config()->no_flow_control) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
     entry[niv].value = 1;
@@ -819,6 +821,11 @@ int hd_on_frame_recv_callback
     if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
       hd->remove_settings_timer();
     }
+    break;
+  case NGHTTP2_PUSH_PROMISE:
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                              frame->push_promise.promised_stream_id,
+                              NGHTTP2_REFUSED_STREAM);
     break;
   default:
     break;
