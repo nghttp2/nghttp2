@@ -80,6 +80,22 @@ static int32_t nghttp2_pushed_stream_pri(nghttp2_stream *stream)
     (int32_t)NGHTTP2_PRI_LOWEST : stream->pri + 1;
 }
 
+/* Returns nonzero if the |stream| is in reserved(remote) state */
+static int state_reserved_remote(nghttp2_session *session,
+                                 nghttp2_stream *stream)
+{
+  return stream->state == NGHTTP2_STREAM_RESERVED &&
+    !nghttp2_session_is_my_stream_id(session, stream->stream_id);
+}
+
+/* Returns nonzero if the |stream| is in reserved(local) state */
+static int state_reserved_local(nghttp2_session *session,
+                                nghttp2_stream *stream)
+{
+  return stream->state == NGHTTP2_STREAM_RESERVED &&
+    nghttp2_session_is_my_stream_id(session, stream->stream_id);
+}
+
 int nghttp2_session_terminate_session(nghttp2_session *session,
                                       nghttp2_error_code error_code)
 {
@@ -883,7 +899,11 @@ static int nghttp2_session_predicate_priority_send
   if(stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
-  /* Sending PRIORITY to reserved state is OK */
+  /* PRIORITY must not be sent in reserved(local) */
+  if(state_reserved_local(session, stream)) {
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
+  }
+  /* Sending PRIORITY in reserved(remote) state is OK */
   return 0;
 }
 
@@ -2132,6 +2152,10 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
     return 0;
+  }
+  if(state_reserved_remote(session, stream)) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
   }
   /* Only update priority on server side for now */
   if(session->server) {
