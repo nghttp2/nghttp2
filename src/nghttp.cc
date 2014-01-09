@@ -1562,7 +1562,7 @@ int run(char **uris, int n)
         u.port : get_default_port(uri.c_str(), u);
       if(!fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
          !fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
-         u.port != prev_port) {
+         port != prev_port) {
         if(!requests.empty()) {
           if (communicate(prev_scheme, prev_host, prev_port,
                           std::move(requests), &callbacks) != 0) {
