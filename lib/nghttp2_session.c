@@ -1150,7 +1150,7 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         aux_data = (nghttp2_headers_aux_data*)item->aux_data;
         if(nghttp2_session_open_stream
            (session, frame->hd.stream_id,
-            frame->hd.flags,
+            NGHTTP2_STREAM_FLAG_NONE,
             frame->headers.pri,
             NGHTTP2_STREAM_INITIAL,
             aux_data ? aux_data->stream_user_data : NULL) == NULL) {
@@ -1232,7 +1232,7 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
       assert(stream);
       if(nghttp2_session_open_stream
          (session, frame->push_promise.promised_stream_id,
-          frame->hd.flags,
+          NGHTTP2_STREAM_FLAG_PUSH,
           nghttp2_pushed_stream_pri(stream),
           NGHTTP2_STREAM_RESERVED,
           NULL) == NULL) {
@@ -1941,7 +1941,7 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
 
   stream = nghttp2_session_open_stream(session,
                                        frame->hd.stream_id,
-                                       frame->hd.flags,
+                                       NGHTTP2_STREAM_FLAG_NONE,
                                        frame->headers.pri,
                                        NGHTTP2_STREAM_OPENING,
                                        NULL);
@@ -2628,7 +2628,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   promised_stream = nghttp2_session_open_stream
     (session,
      frame->push_promise.promised_stream_id,
-     frame->hd.flags,
+     NGHTTP2_STREAM_FLAG_PUSH,
      nghttp2_pushed_stream_pri(stream),
      NGHTTP2_STREAM_RESERVED,
      NULL);
@@ -3788,7 +3788,7 @@ int nghttp2_session_upgrade(nghttp2_session *session,
   if(rv != 0) {
     return rv;
   }
-  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_END_STREAM,
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                                        0, NGHTTP2_STREAM_OPENING,
                                        session->server ?
                                        NULL : stream_user_data);

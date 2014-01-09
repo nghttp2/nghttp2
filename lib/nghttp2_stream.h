@@ -73,6 +73,12 @@ typedef enum {
 } nghttp2_shut_flag;
 
 typedef enum {
+  NGHTTP2_STREAM_FLAG_NONE = 0,
+  /* Indicates that this stream is pushed stream */
+  NGHTTP2_STREAM_FLAG_PUSH = 0x01
+} nghttp2_stream_flag;
+
+typedef enum {
   NGHTTP2_DEFERRED_NONE = 0,
   /* Indicates the DATA is deferred due to flow control. */
   NGHTTP2_DEFERRED_FLOW_CONTROL = 0x01
@@ -104,7 +110,7 @@ typedef struct {
      submitting WINDOW_UPDATE. See nghttp2_submit_window_update(). */
   int32_t local_window_size;
   nghttp2_stream_state state;
-  /* Use same value in SYN_STREAM frame */
+  /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
   uint8_t flags;
   /* Bitwise OR of zero or more nghttp2_shut_flag values */
   uint8_t shut_flags;
