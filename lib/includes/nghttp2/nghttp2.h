@@ -1873,7 +1873,7 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  * |data_prd|.  If |data_prd| is ``NULL``, HEADERS will have
  * END_STREAM flag set.
  *
- * This method can be used as normal HTTP response and server-push
+ * This method can be used as normal HTTP response and push
  * response. When pushing a resource using this function, the
  * |session| must be configured using `nghttp2_session_server_new()`
  * or its variants and the target stream denoted by the |stream_id|
@@ -2074,6 +2074,9 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * :member:`nghttp2_session_callbacks.before_frame_send_callback`. This
  * callback is called just before the frame is sent. For PUSH_PROMISE
  * frame, the argument frame has the promised stream ID assigned.
+ *
+ * The client side can use this function to send PUSH_PROMISE to the
+ * server. But in normal HTTP usage, the server may treat it error.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
