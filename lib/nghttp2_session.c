@@ -1501,9 +1501,24 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       }
       break;
     }
-    case NGHTTP2_PRIORITY:
-      /* nothing to do */
+    case NGHTTP2_PRIORITY: {
+      nghttp2_stream *stream;
+      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+      if(!stream) {
+        break;
+      }
+      /* Only update priority of the stream, only if it is not pushed
+         stream and is initiated by local peer, or it is pushed stream
+         and is initiated by remote peer */
+      if(((stream->flags & NGHTTP2_STREAM_FLAG_PUSH) == 0 &&
+          nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) ||
+         ((stream->flags & NGHTTP2_STREAM_FLAG_PUSH) &&
+          !nghttp2_session_is_my_stream_id(session, frame->hd.stream_id))) {
+        nghttp2_session_reprioritize_stream(session, stream,
+                                            frame->priority.pri);
+      }
       break;
+    }
     case NGHTTP2_RST_STREAM:
       r = nghttp2_session_close_stream(session, frame->hd.stream_id,
                                        frame->rst_stream.error_code);
@@ -2157,8 +2172,13 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
-  /* Only update priority on server side for now */
-  if(session->server) {
+  /* Only update priority of the stream, only if it is not pushed
+     stream and is initiated by remote peer, or it is pushed stream
+     and is initiated by local peer */
+  if(((stream->flags & NGHTTP2_STREAM_FLAG_PUSH) == 0 &&
+      !nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) ||
+     ((stream->flags & NGHTTP2_STREAM_FLAG_PUSH) &&
+      nghttp2_session_is_my_stream_id(session, frame->hd.stream_id))) {
     nghttp2_session_reprioritize_stream(session, stream,
                                         frame->priority.pri);
   }

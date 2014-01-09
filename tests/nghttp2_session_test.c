@@ -1009,19 +1009,42 @@ void test_nghttp2_session_on_priority_received(void)
   nghttp2_session_callbacks callbacks;
   my_user_data user_data;
   nghttp2_frame frame;
+  nghttp2_stream *stream;
+
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
 
   nghttp2_session_server_new(&session, &callbacks, &user_data);
-  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                              NGHTTP2_PRI_DEFAULT,
-                              NGHTTP2_STREAM_OPENING, NULL);
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENING, NULL);
 
   nghttp2_frame_priority_init(&frame.priority, 1, 1000000007);
 
+  /* non-push and initiated by remote peer */
   CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
-  CU_ASSERT(1000000007 == nghttp2_session_get_stream(session, 1)->pri);
+  CU_ASSERT(1000000007 == stream->pri);
+
+  /* push and initiated by remote peer: no update */
+  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
+  stream->pri = NGHTTP2_PRI_DEFAULT;
+  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+  CU_ASSERT(NGHTTP2_PRI_DEFAULT == stream->pri);
+
+  stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+
+  frame.hd.stream_id = 2;
+  /* non-push and initiated by local peer: no update */
+  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+  CU_ASSERT(NGHTTP2_PRI_DEFAULT == stream->pri);
+
+  /* push and initiated by local peer */
+  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
+  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+  CU_ASSERT(1000000007 == stream->pri);
 
   nghttp2_frame_priority_free(&frame.priority);
   nghttp2_session_del(session);
@@ -2231,10 +2254,36 @@ void test_nghttp2_submit_priority(void)
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, -1));
-
+  /* non-push stream and initiated by local peer */
   CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1,
                                          1000000007));
+  CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(1000000007 == stream->pri);
+
+  /* push stream and initiated by local peer: no update */
+  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
+  stream->pri = NGHTTP2_PRI_DEFAULT;
+  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1,
+                                         1000000007));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(NGHTTP2_PRI_DEFAULT == stream->pri);
+
+  /* non-push stream and initiated by remote peer: no update */
+  stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 2,
+                                         1000000007));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(NGHTTP2_PRI_DEFAULT == stream->pri);
+
+  /* push stream and initiated by remote peer */
+  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
+  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 2,
+                                         1000000007));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(1000000007 == stream->pri);
+
 
   nghttp2_session_del(session);
 
