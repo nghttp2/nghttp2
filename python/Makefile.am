@@ -21,20 +21,26 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-EXTRA_DIST = README.rst cnghttp2.pxd nghttp2.pyx setup.py
+EXTRA_DIST = cnghttp2.pxd setup.py
 
-PYSETUP_INCLUDE_DIRS=$(top_srcdir)/lib/includes:$(top_srcdir)/lib
-PYSETUP_LIBDIRS=$(top_builddir)/lib/.libs
+if ENABLE_PYTHON_BINDINGS
 
-.PHONY: help build_ext
+distclean-local:
+	-rm -f nghttp2.c
 
-help:
-	@echo "Please use \`make <target>\` where <target> is one of"
-	@echo "  build_ext  to build Python @PYTHON_VERSION@ nghttp2 extension"
+.pyx.c:
+	$(CYTHON) -o $@ $<
 
-nghttp2.c: nghttp2.pyx cnghttp2.pxd
-	$(CYTHON) nghttp2.pyx
+pyexec_LTLIBRARIES = nghttp2.la
+nghttp2_la_SOURCES = nghttp2.pyx
+nghttp2_la_CPPFLAGS = \
+	$(PYTHON_CPPFLAGS) \
+	-I$(top_srcdir)/lib/includes \
+	-I$(build_srcdir)/lib/includes \
+	-I$(top_srcdir)/lib
+nghttp2_la_LDFLAGS = \
+	$(PYTHON_LDFLAGS) \
+	-avoid-version -module
+nghttp2_la_LIBADD = $(top_builddir)/lib/libnghttp2.la
 
-build_ext: nghttp2.c
-	$(PYTHON) setup.py build_ext --include-dirs=$(PYSETUP_INCLUDE_DIRS) \
-	    --library-dirs=$(PYSETUP_LIBDIRS)
+endif # ENABLE_PYTHON_BINDINGS

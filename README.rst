@@ -83,6 +83,11 @@ The HPACK tools require the following package:
 
 * jansson >= 2.5
 
+The Python bindings require the following packages:
+
+* cython >= 0.19
+* python >= 2.7
+
 If you are using Ubuntu 12.04, you need the following packages
 installed:
 
@@ -723,3 +728,37 @@ With ``-d`` option, the extra ``headerTable`` key is added and its
 associated value contains the state of dyanmic header table after the
 corresponding header set was processed. The format is the same as
 ``deflatehd``.
+
+Python bindings
+---------------
+
+This ``python`` directory contains nghttp2 Python bindings. The
+bindings currently only provide HPACK compressor and decompressor
+classes.
+
+The extension module is called ``nghttp2``.
+
+``make`` will build the bindings and target Python version is
+determined by configure script. If the detected Python version is not
+what you expect, specify a path to Python executable in ``PYTHON``
+variable as an argument to configure script (e.g., ``./configure
+PYTHON=/usr/bin/python3.3``).
+
+Example
++++++++
+
+The following example code illustrates basic usage of HPACK compressor
+and decompressor in Python::
+
+    import binascii
+    import nghttp2
+
+    deflater = nghttp2.HDDeflater(nghttp2.HD_SIDE_REQUEST)
+    inflater = nghttp2.HDInflater(nghttp2.HD_SIDE_REQUEST)
+
+    data = deflater.deflate([(b'foo', b'bar'),
+			     (b'baz', b'buz')])
+    print(binascii.b2a_hex(data))
+
+    hdrs = inflater.inflate(data)
+    print(hdrs)

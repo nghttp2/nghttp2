@@ -68,6 +68,11 @@ AC_ARG_ENABLE([examples],
                     [Build examples [default=check]])],
     [request_examples=$enableval], [request_examples=check])
 
+AC_ARG_ENABLE([python-bindings],
+    [AS_HELP_STRING([--enable-python-bindings],
+                    [Build Python bindings [default=check]])],
+    [request_python_bindings=$enableval], [request_python_bindings=check])
+
 AC_ARG_ENABLE([failmalloc],
     [AS_HELP_STRING([--enable-failmalloc],
                     [Build failmalloc test program [default=no]])],
@@ -77,6 +82,11 @@ AC_ARG_WITH([libxml2],
     [AS_HELP_STRING([--with-libxml2],
                     [Use libxml2 [default=check]])],
     [request_libxml2=$withval], [request_libxml2=check])
+
+AC_ARG_WITH([cython],
+    [AS_HELP_STRING([--with-cython=PATH],
+                    [Use cython in given PATH])],
+    [cython_path=$withval], [])
 
 dnl Define variables
 AC_ARG_VAR([CYTHON], [the Cython executable])
@@ -89,8 +99,15 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG([0.20])
-AM_PATH_PYTHON([2.6],, [:])
-AC_CHECK_PROGS([CYTHON], [cython.py cython])
+AM_PATH_PYTHON([2.7],, [:])
+AX_PYTHON_DEVEL([>= '2.7'])
+
+if test "x${cython_path}" = "x"; then
+  AC_CHECK_PROGS([CYTHON], [cython.py cython])
+else
+  CYTHON=${cython_path}
+  AC_SUBST([CYTHON])
+fi
 
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 
@@ -280,6 +297,22 @@ fi
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
+# Python bindings
+enable_python_bindings=no
+if test "x${request_python_bindings}" != "xno" &&
+   test "x${CYTHON}" != "x" &&
+   test "x${PYTHON}" != ":"; then
+  enable_python_bindings=yes
+fi
+
+if test "x${request_python_bindings}" = "xyes" &&
+   test "x${enable_python_bindings}" != "xyes"; then
+  AC_MSG_ERROR([python bindings were requested (--enable-python-bindings) but dependencies are not met.])
+fi
+
+AM_CONDITIONAL([ENABLE_PYTHON_BINDINGS],
+               [test "x${enable_python_bindings}" = "xyes"])
+
 # failmalloc tests
 AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
 
@@ -379,7 +412,11 @@ AC_MSG_NOTICE([summary of build options:
     CXXFLAGS:       ${CXXFLAGS}
     CXXCPP:         ${CXXCPP}
     Library types:  Shared=${enable_shared}, Static=${enable_static}
-    Python:         ${PYTHON} ${PYTHON_VERSION}
+    Python:         ${PYTHON}
+    PYTHON_VERSION: ${PYTHON_VERSION}
+    pyexecdir:      ${pyexecdir}
+    PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
+    PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
     Cython:         ${CYTHON}
     CUnit:          ${have_cunit}
     OpenSSL:        ${have_openssl}
@@ -390,5 +427,6 @@ AC_MSG_NOTICE([summary of build options:
     Applications:   ${enable_app}
     HPACK tools:    ${enable_hpack_tools}
     Examples:       ${enable_examples}
+    Python bindings:${enable_python_bindings}
     Failmalloc:     ${request_failmalloc}
 ])
