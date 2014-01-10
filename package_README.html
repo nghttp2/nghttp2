@@ -888,18 +888,19 @@ variable as an argument to configure script (e.g., <tt class="docutils literal">
 <h3>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h3>
 <p>The following example code illustrates basic usage of HPACK compressor
 and decompressor in Python:</p>
-<div class="highlight-c"><pre>import binascii
-import nghttp2
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">nghttp2</span>
 
-deflater = nghttp2.HDDeflater(nghttp2.HD_SIDE_REQUEST)
-inflater = nghttp2.HDInflater(nghttp2.HD_SIDE_REQUEST)
+<span class="n">deflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDDeflater</span><span class="p">(</span><span class="n">nghttp2</span><span class="o">.</span><span class="n">HD_SIDE_REQUEST</span><span class="p">)</span>
+<span class="n">inflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDInflater</span><span class="p">(</span><span class="n">nghttp2</span><span class="o">.</span><span class="n">HD_SIDE_REQUEST</span><span class="p">)</span>
 
-data = deflater.deflate([(b'foo', b'bar'),
-                         (b'baz', b'buz')])
-print(binascii.b2a_hex(data))
+<span class="n">data</span> <span class="o">=</span> <span class="n">deflater</span><span class="o">.</span><span class="n">deflate</span><span class="p">([(</span><span class="n">b</span><span class="s">&#39;foo&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;bar&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="n">b</span><span class="s">&#39;baz&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;buz&#39;</span><span class="p">)])</span>
+<span class="k">print</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">b2a_hex</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
 
-hdrs = inflater.inflate(data)
-print(hdrs)</pre>
+<span class="n">hdrs</span> <span class="o">=</span> <span class="n">inflater</span><span class="o">.</span><span class="n">inflate</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">hdrs</span><span class="p">)</span>
+</pre></div>
 </div>
 </div>
 </div>
