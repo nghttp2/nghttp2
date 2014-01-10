@@ -28,3 +28,4 @@ INSTALL
 .DS_STORE
 compile
 test-driver
+.dirstamp
