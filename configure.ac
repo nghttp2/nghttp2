@@ -317,6 +317,7 @@ AM_CONDITIONAL([ENABLE_PYTHON_BINDINGS],
 AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
 
 # Checks for header files.
+AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
   arpa/inet.h \
   netinet/in.h \
