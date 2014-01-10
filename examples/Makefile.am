@@ -47,5 +47,3 @@ libevent_client_SOURCES = \
 libevent_server_SOURCES = libevent-server.c
 
 endif # ENABLE_EXAMPLES
-
-EXTRA_DIST = README.rst
