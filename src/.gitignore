@@ -7,3 +7,5 @@ nghttpx-unittest.trs
 test-suite.log
 .dirstamp
 libnghttpx.a
+deflatehd
+inflatehd
