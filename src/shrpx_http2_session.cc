@@ -156,6 +156,7 @@ void notify_readcb(bufferevent *bev, void *arg)
     if(rv != 0) {
       SSLOG(FATAL, http2session)
         << "Could not initiate backend connection";
+      http2session->disconnect();
     }
     break;
   case Http2Session::CONNECTED:
@@ -389,8 +390,6 @@ int Http2Session::initiate_connection()
       SSLOG(ERROR, this) << "Failed to connect to the proxy "
                          << get_config()->downstream_http_proxy_host << ":"
                          << get_config()->downstream_http_proxy_port;
-      bufferevent_free(bev_);
-      bev_ = nullptr;
       return SHRPX_ERR_NETWORK;
     }
     proxy_htp_ = util::make_unique<http_parser>();
@@ -432,7 +431,6 @@ int Http2Session::initiate_connection()
                                             BEV_OPT_DEFER_CALLBACKS);
       if(!bev_) {
         SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
-        SSL_free(ssl_);
         return SHRPX_ERR_NETWORK;
       }
       rv = bufferevent_socket_connect
@@ -468,8 +466,6 @@ int Http2Session::initiate_connection()
       }
     }
     if(rv != 0) {
-      bufferevent_free(bev_);
-      bev_ = nullptr;
       return SHRPX_ERR_NETWORK;
     }
 
