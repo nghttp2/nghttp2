@@ -53,25 +53,30 @@ AC_ARG_ENABLE([maintainer-mode],
                     [Turn on compile time warnings])],
     [maintainer_mode=$enableval], [maintainer_mode=no])
 
-AC_ARG_ENABLE([src],
-    [AS_HELP_STRING([--enable-src],
-                    [Build installable SPDY client/server programs in src])],
-    [request_src=$enableval], [request_src=yes])
+AC_ARG_ENABLE([app],
+    [AS_HELP_STRING([--enable-app],
+                    [Build applications (nghttp, nghttpd and nghttpx) [default=check]])],
+    [request_app=$enableval], [request_app=check])
+
+AC_ARG_ENABLE([hpack-tools],
+    [AS_HELP_STRING([--enable-hpack-tools],
+                    [Build HPACK tools [default=check]])],
+    [request_hpack_tools=$enableval], [request_hpack_tools=check])
 
 AC_ARG_ENABLE([examples],
     [AS_HELP_STRING([--enable-examples],
-                    [Build example programs])],
-    [request_examples=$enableval], [request_examples=yes])
+                    [Build examples [default=check]])],
+    [request_examples=$enableval], [request_examples=check])
 
 AC_ARG_ENABLE([failmalloc],
     [AS_HELP_STRING([--enable-failmalloc],
-                    [Build failmalloc test program])],
+                    [Build failmalloc test program [default=no]])],
     [request_failmalloc=$enableval], [request_failmalloc=no])
 
 AC_ARG_WITH([libxml2],
-    [AS_HELP_STRING([--without-libxml2],
-                    [disable support for libxml2])],
-    [], [with_libxml2=yes])
+    [AS_HELP_STRING([--with-libxml2],
+                    [Use libxml2 [default=check]])],
+    [request_libxml2=$withval], [request_libxml2=check])
 
 dnl Define variables
 AC_ARG_VAR([CYTHON], [the Cython executable])
@@ -205,12 +210,18 @@ fi
 
 # libxml2 (for src/nghttp)
 have_libxml2=no
-if test "x$with_libxml2" != "xno"; then
+if test "x${request_libxml2}" != "xno"; then
   AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
   if test "x${have_libxml2}" = "xyes"; then
     AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
   fi
 fi
+
+if test "x${request_libxml2}" = "xyes" &&
+   test "x${have_libxml2}" != "xyes"; then
+  AC_MSG_ERROR([libxml2 was requested (--with-libxml2) but not found])
+fi
+
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 
 # spdylay (for src/nghttpx)
@@ -224,32 +235,50 @@ else
 fi
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
-# The programs under src depend on OpenSSL and libevent_openssl
-enable_src=no
-if test "x${request_src}" = "xyes" &&
+# The nghttp, nghttpd and nghttpx under src depend on OpenSSL and
+# libevent_openssl
+enable_app=no
+if test "x${request_app}" != "xno" &&
    test "x${have_openssl}" = "xyes" &&
    test "x${have_libevent_openssl}" = "xyes"; then
-    enable_src=yes
+  enable_app=yes
 fi
 
-AM_CONDITIONAL([ENABLE_SRC], [ test "x${enable_src}" = "xyes" ])
-
-# The example programs depend on OpenSSL
-enable_examples=no
-if test "x${request_examples}" = "xyes" &&
-   test "x${have_openssl}" = "xyes" &&
-   test "x${have_libevent_openssl}" = "xyes"; then
-    enable_examples=yes
+if test "x${request_app}" = "xyes" &&
+   test "x${enable_app}" != "xyes"; then
+  AC_MSG_ERROR([applications were requested (--enable-app) but dependencies are not met.])
 fi
 
-AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
+AM_CONDITIONAL([ENABLE_APP], [ test "x${enable_app}" = "xyes" ])
 
+enable_hpack_tools=no
 # HPACK tools requires jansson
-if test "x${have_jansson}" = "xyes"; then
-    enable_hpack_tools=yes
+if test "x${request_hpack_tools}" != "xno" &&
+   test "x${have_jansson}" = "xyes"; then
+  enable_hpack_tools=yes
+fi
+
+if test "x${request_hpack_tools}" = "xyes" &&
+   test "x${enable_hpack_tools}" != "xyes"; then
+  AC_MSG_ERROR([HPACK tools were requested (--enable-hpack-tools) but dependencies are not met.])
 fi
 
 AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
+
+# The example programs depend on OpenSSL and libevent_openssl
+enable_examples=no
+if test "x${request_examples}" != "xno" &&
+   test "x${have_openssl}" = "xyes" &&
+   test "x${have_libevent_openssl}" = "xyes"; then
+  enable_examples=yes
+fi
+
+if test "x${request_examples}" = "xyes" &&
+   test "x${enable_examples}" != "xyes"; then
+  AC_MSG_ERROR([examples were requested (--enable-examples) but dependencies are not met.])
+fi
+
+AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
 # failmalloc tests
 AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
@@ -349,16 +378,16 @@ AC_MSG_NOTICE([summary of build options:
     CXXFLAGS:       ${CXXFLAGS}
     CXXCPP:         ${CXXCPP}
     Library types:  Shared=${enable_shared}, Static=${enable_static}
+    Python:         ${PYTHON} ${PYTHON_VERSION}
+    Cython:         ${CYTHON}
     CUnit:          ${have_cunit}
     OpenSSL:        ${have_openssl}
     Libxml2:        ${have_libxml2}
     Libevent(SSL):  ${have_libevent_openssl}
     Spdylay:        ${have_spdylay}
     Jansson:        ${have_jansson}
-    Src:            ${enable_src}
-    Examples:       ${enable_examples}
+    Applications:   ${enable_app}
     HPACK tools:    ${enable_hpack_tools}
+    Examples:       ${enable_examples}
     Failmalloc:     ${request_failmalloc}
-    Python:         ${PYTHON} ${PYTHON_VERSION}
-    Cython:         ${CYTHON}
 ])

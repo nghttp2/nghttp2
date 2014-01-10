@@ -69,11 +69,11 @@ if ENABLE_FAILMALLOC
 TESTS += failmalloc
 endif # ENABLE_FAILMALLOC
 
-if ENABLE_SRC
+if ENABLE_APP
 
 # EXTRA_DIST = end_to_end.py
 # TESTS += end_to_end.py
 
-endif # ENABLE_SRC
+endif # ENABLE_APP
 
 endif # HAVE_CUNIT

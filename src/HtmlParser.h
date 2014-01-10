@@ -34,6 +34,8 @@
 
 #include <libxml/HTMLparser.h>
 
+#endif // HAVE_LIBXML2
+
 namespace nghttp2 {
 
 enum RequestPriority {
@@ -48,6 +50,8 @@ struct ParserData {
   std::vector<std::pair<std::string, RequestPriority>> links;
   ParserData(const std::string& base_uri);
 };
+
+#ifdef HAVE_LIBXML2
 
 class HtmlParser {
 public:
@@ -65,24 +69,21 @@ private:
   ParserData parser_data_;
 };
 
-} // namespace nghttp2
-
 #else // !HAVE_LIBXML2
-
-namespace nghttp2 {
 
 class HtmlParser {
 public:
   HtmlParser(const std::string& base_uri) {}
   int parse_chunk(const char *chunk, size_t size, int fin) { return 0; }
-  const std::vector<std::string>& get_links() const { return links_; }
+  const std::vector<std::pair<std::string, RequestPriority>>&
+  get_links() const { return links_; }
   void clear_links() {}
 private:
-  std::vector<std::string> links_;
+  std::vector<std::pair<std::string, RequestPriority>> links_;
 };
 
-} // namespace nghttp2
-
 #endif // !HAVE_LIBXML2
+
+} // namespace nghttp2
 
 #endif // HTML_PARSER_H

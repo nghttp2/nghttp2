@@ -25,8 +25,6 @@ bin_PROGRAMS =
 check_PROGRAMS =
 TESTS =
 
-if ENABLE_SRC
-
 AM_CPPFLAGS = \
 	-Wall \
 	-I$(top_srcdir)/lib/includes \
@@ -47,6 +45,8 @@ AM_LDFLAGS = \
 	@SRC_LIBS@
 
 LDADD = $(top_builddir)/lib/libnghttp2.la
+
+if ENABLE_APP
 
 bin_PROGRAMS += nghttp nghttpd nghttpx
 
@@ -119,6 +119,8 @@ nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS} \
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
 
+endif # ENABLE_APP
+
 if ENABLE_HPACK_TOOLS
 
 bin_PROGRAMS += inflatehd deflatehd
@@ -130,5 +132,3 @@ inflatehd_SOURCES = inflatehd.c $(HPACK_TOOLS_COMMON_SRCS)
 deflatehd_SOURCES = deflatehd.c $(HPACK_TOOLS_COMMON_SRCS)
 
 endif # ENABLE_HPACK_TOOLS
-
-endif # ENABLE_SRC
