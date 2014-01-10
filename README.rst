@@ -79,8 +79,7 @@ resource) in ``nghttp``, the following packages are needed:
 
 * libxml2 >= 2.7.7
 
-The header compression test tools in hdtest directory require the
-following package:
+The HPACK tools require the following package:
 
 * jansson >= 2.5
 
@@ -418,14 +417,14 @@ the outside HTTP/2.0 proxy through HTTP proxy::
             --===================---> HTTP/2.0 Proxy
               (HTTP proxy tunnel)     (e.g., nghttpx -s)
 
-Header compression test tools
------------------------------
+HPACK tools
+-----------
 
-The ``hdtest`` directory contains header compression test tools. The
-``deflatehd`` is command-line header compression tool. The
-``inflatehd`` is command-line header decompression tool.  Both tools
-read input from stdin and write output to stdout. The errors are
-written to stderr. They take JSON as input and output.
+The ``src`` directory contains HPACK tools. The ``deflatehd`` is
+command-line header compression tool. The ``inflatehd`` is
+command-line header decompression tool.  Both tools read input from
+stdin and write output to stdout. The errors are written to
+stderr. They take JSON as input and output.
 
 deflatehd - header compressor
 +++++++++++++++++++++++++++++

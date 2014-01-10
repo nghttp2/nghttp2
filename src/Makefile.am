@@ -27,17 +27,23 @@ TESTS =
 
 if ENABLE_SRC
 
-AM_CPPFLAGS = -Wall -I$(srcdir)/../lib/includes -I$(builddir)/../lib/includes \
+AM_CPPFLAGS = \
+	-Wall \
+	-I$(top_srcdir)/lib/includes \
+	-I$(top_builddir)/lib/includes \
+	-I$(top_srcdir)/lib \
 	@LIBSPDYLAY_CFLAGS@ \
 	@XML_CPPFLAGS@	\
 	@LIBEVENT_OPENSSL_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
+	@JANSSON_CFLAGS@ \
 	@DEFS@
 AM_LDFLAGS = \
 	@LIBSPDYLAY_LIBS@ \
 	@XML_LIBS@ \
 	@LIBEVENT_OPENSSL_LIBS@ \
 	@OPENSSL_LIBS@ \
+	@JANSSON_LIBS@ \
 	@SRC_LIBS@
 
 LDADD = $(top_builddir)/lib/libnghttp2.la
@@ -112,5 +118,17 @@ nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS} \
 
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
+
+if ENABLE_HPACK_TOOLS
+
+bin_PROGRAMS += inflatehd deflatehd
+
+HPACK_TOOLS_COMMON_SRCS = comp_helper.c comp_helper.h
+
+inflatehd_SOURCES = inflatehd.c $(HPACK_TOOLS_COMMON_SRCS)
+
+deflatehd_SOURCES = deflatehd.c $(HPACK_TOOLS_COMMON_SRCS)
+
+endif # ENABLE_HPACK_TOOLS
 
 endif # ENABLE_SRC

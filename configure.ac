@@ -244,12 +244,12 @@ fi
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
-# hdtest requires jansson
+# HPACK tools requires jansson
 if test "x${have_jansson}" = "xyes"; then
-    enable_hdtest=yes
+    enable_hpack_tools=yes
 fi
 
-AM_CONDITIONAL([ENABLE_HDTEST], [ test "x${enable_hdtest}" = "xyes" ])
+AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
 
 # failmalloc tests
 AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
@@ -328,7 +328,6 @@ AC_CONFIG_FILES([
   tests/testdata/Makefile
   src/Makefile
   examples/Makefile
-  hdtest/Makefile
   python/Makefile
   doc/Makefile
   doc/conf.py
@@ -358,7 +357,7 @@ AC_MSG_NOTICE([summary of build options:
     Jansson:        ${have_jansson}
     Src:            ${enable_src}
     Examples:       ${enable_examples}
-    Hdtest:         ${enable_hdtest}
+    HPACK tools:    ${enable_hpack_tools}
     Failmalloc:     ${request_failmalloc}
     Python:         ${PYTHON} ${PYTHON_VERSION}
     Cython:         ${CYTHON}
