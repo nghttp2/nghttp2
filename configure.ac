@@ -220,7 +220,7 @@ if test "x${have_spdylay}" = "xyes"; then
   AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])
 else
   AC_MSG_NOTICE($LIBSPDYLAY_PKG_ERRORS)
-  AC_MSG_NOTICE([The SPDY support in nghttpd will be disabled.])
+  AC_MSG_NOTICE([The SPDY support in nghttpx will be disabled.])
 fi
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
