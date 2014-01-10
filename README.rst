@@ -748,7 +748,9 @@ Example
 +++++++
 
 The following example code illustrates basic usage of HPACK compressor
-and decompressor in Python::
+and decompressor in Python:
+
+.. code-block:: python
 
     import binascii
     import nghttp2
