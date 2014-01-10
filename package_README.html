@@ -78,7 +78,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#building-documentation">Building documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#header-compression-test-tools">Header compression test tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#python-bindings">Python bindings</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a><ul>
@@ -231,10 +232,14 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 <ul class="simple">
 <li>libxml2 &gt;= 2.7.7</li>
 </ul>
-<p>The header compression test tools in hdtest directory require the
-following package:</p>
+<p>The HPACK tools require the following package:</p>
 <ul class="simple">
 <li>jansson &gt;= 2.5</li>
+</ul>
+<p>The Python bindings require the following packages:</p>
+<ul class="simple">
+<li>cython &gt;= 0.19</li>
+<li>python &gt;= 2.7</li>
 </ul>
 <p>If you are using Ubuntu 12.04, you need the following packages
 installed:</p>
@@ -577,13 +582,13 @@ the outside HTTP/2.0 proxy through HTTP proxy:</p>
 </div>
 </div>
 </div>
-<div class="section" id="header-compression-test-tools">
-<h2>Header compression test tools<a class="headerlink" href="#header-compression-test-tools" title="Permalink to this headline">¶</a></h2>
-<p>The <tt class="docutils literal"><span class="pre">hdtest</span></tt> directory contains header compression test tools. The
-<tt class="docutils literal"><span class="pre">deflatehd</span></tt> is command-line header compression tool. The
-<tt class="docutils literal"><span class="pre">inflatehd</span></tt> is command-line header decompression tool.  Both tools
-read input from stdin and write output to stdout. The errors are
-written to stderr. They take JSON as input and output.</p>
+<div class="section" id="hpack-tools">
+<h2>HPACK tools<a class="headerlink" href="#hpack-tools" title="Permalink to this headline">¶</a></h2>
+<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains HPACK tools. The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> is
+command-line header compression tool. The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> is
+command-line header decompression tool.  Both tools read input from
+stdin and write output to stdout. The errors are written to
+stderr. They take JSON as input and output.</p>
 <div class="section" id="deflatehd-header-compressor">
 <h3>deflatehd - header compressor<a class="headerlink" href="#deflatehd-header-compressor" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> reads JSON array or HTTP/1-style header fields from
@@ -866,6 +871,36 @@ field value.</dd>
 associated value contains the state of dyanmic header table after the
 corresponding header set was processed. The format is the same as
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
+</div>
+</div>
+<div class="section" id="python-bindings">
+<h2>Python bindings<a class="headerlink" href="#python-bindings" title="Permalink to this headline">¶</a></h2>
+<p>This <tt class="docutils literal"><span class="pre">python</span></tt> directory contains nghttp2 Python bindings. The
+bindings currently only provide HPACK compressor and decompressor
+classes.</p>
+<p>The extension module is called <tt class="docutils literal"><span class="pre">nghttp2</span></tt>.</p>
+<p><tt class="docutils literal"><span class="pre">make</span></tt> will build the bindings and target Python version is
+determined by configure script. If the detected Python version is not
+what you expect, specify a path to Python executable in <tt class="docutils literal"><span class="pre">PYTHON</span></tt>
+variable as an argument to configure script (e.g., <tt class="docutils literal"><span class="pre">./configure</span>
+<span class="pre">PYTHON=/usr/bin/python3.3</span></tt>).</p>
+<div class="section" id="example">
+<h3>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h3>
+<p>The following example code illustrates basic usage of HPACK compressor
+and decompressor in Python:</p>
+<div class="highlight-c"><pre>import binascii
+import nghttp2
+
+deflater = nghttp2.HDDeflater(nghttp2.HD_SIDE_REQUEST)
+inflater = nghttp2.HDInflater(nghttp2.HD_SIDE_REQUEST)
+
+data = deflater.deflate([(b'foo', b'bar'),
+                         (b'baz', b'buz')])
+print(binascii.b2a_hex(data))
+
+hdrs = inflater.inflate(data)
+print(hdrs)</pre>
+</div>
 </div>
 </div>
 </div>

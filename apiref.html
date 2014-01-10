@@ -78,7 +78,8 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="package_README.html#header-compression-test-tools">Header compression test tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a><ul>
@@ -2171,7 +2172,7 @@ in subsequent DATA frames.  This function does not take ownership
 of the <em>data_prd</em>. The function copies the members of the
 <em>data_prd</em>.  If <em>data_prd</em> is <tt class="docutils literal"><span class="pre">NULL</span></tt>, HEADERS will have
 END_STREAM flag set.</p>
-<p>This method can be used as normal HTTP response and server-push
+<p>This method can be used as normal HTTP response and push
 response. When pushing a resource using this function, the
 <em>session</em> must be configured using <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>
 or its variants and the target stream denoted by the <em>stream_id</em>
@@ -2336,6 +2337,8 @@ stream ID, the application can use
 <a class="reference internal" href="#nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a>. This
 callback is called just before the frame is sent. For PUSH_PROMISE
 frame, the argument frame has the promised stream ID assigned.</p>
+<p>The client side can use this function to send PUSH_PROMISE to the
+server. But in normal HTTP usage, the server may treat it error.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
