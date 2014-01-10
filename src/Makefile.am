@@ -30,6 +30,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib \
+	-I$(top_srcdir)/third-party \
 	@LIBSPDYLAY_CFLAGS@ \
 	@XML_CPPFLAGS@	\
 	@LIBEVENT_OPENSSL_CFLAGS@ \
@@ -44,7 +45,9 @@ AM_LDFLAGS = \
 	@JANSSON_LIBS@ \
 	@SRC_LIBS@
 
-LDADD = $(top_builddir)/lib/libnghttp2.la
+LDADD = \
+	$(top_builddir)/lib/libnghttp2.la \
+	$(top_builddir)/third-party/libhttp-parser.la
 
 if ENABLE_APP
 
@@ -61,8 +64,7 @@ HTML_PARSER_OBJECTS += HtmlParser.cc
 endif # HAVE_LIBXML2
 
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
-	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
-	http-parser/http_parser.c http-parser/http_parser.h
+	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES}
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	HttpServer.cc HttpServer.h
@@ -88,8 +90,7 @@ NGHTTPX_SRCS = \
 	shrpx_ssl.cc shrpx_ssl.h \
 	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
 	shrpx_worker.cc shrpx_worker.h \
-	shrpx_accesslog.cc shrpx_accesslog.h\
-	http-parser/http_parser.c http-parser/http_parser.h
+	shrpx_accesslog.cc shrpx_accesslog.h
 
 if HAVE_SPDYLAY
 NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h

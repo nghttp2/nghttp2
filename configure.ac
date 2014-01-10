@@ -355,6 +355,7 @@ AC_CONFIG_FILES([
   lib/includes/nghttp2/nghttp2ver.h
   tests/Makefile
   tests/testdata/Makefile
+  third-party/Makefile
   src/Makefile
   examples/Makefile
   python/Makefile

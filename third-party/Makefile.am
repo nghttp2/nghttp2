@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2.0 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2014 Tatsuhiro Tsujikawa
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,10 +20,10 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib third-party src examples python tests doc
 
-ACLOCAL_AMFLAGS = -I m4
+AM_CPPFLAGS = -Wall @DEFS@
 
-dist_doc_DATA = README.rst
-
-EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make
+noinst_LTLIBRARIES = libhttp-parser.la
+libhttp_parser_la_SOURCES = \
+	http-parser/http_parser.c \
+	http-parser/http_parser.h
