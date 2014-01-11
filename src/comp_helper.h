@@ -35,4 +35,10 @@
 
 json_t* dump_header_table(nghttp2_hd_context *context);
 
+json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen);
+
+void output_json_header(int side);
+
+void output_json_footer();
+
 #endif /* NGHTTP2_COMP_HELPER_H */

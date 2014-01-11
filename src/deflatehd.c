@@ -55,40 +55,52 @@ static deflate_config config;
 static size_t input_sum;
 static size_t output_sum;
 
+static char to_hex_digit(uint8_t n)
+{
+  if(n > 9) {
+    return n - 10 + 'a';
+  }
+  return n + '0';
+}
+
 static void to_hex(char *dest, const uint8_t *src, size_t len)
 {
   size_t i;
   for(i = 0; i < len; ++i) {
-    sprintf(dest, "%02x", src[i]);
-    dest += 2;
+    *dest++ = to_hex_digit(src[i] >> 4);
+    *dest++ = to_hex_digit(src[i] & 0xf);
   }
 }
 
 static void output_to_json(nghttp2_hd_context *deflater,
                            const uint8_t *buf, size_t len, size_t inputlen,
+                           nghttp2_nv *nva, size_t nvlen,
                            int seq)
 {
   json_t *obj;
-  char hex[16*1024];
+  char *hex = NULL;
 
-  if(len * 2 > sizeof(hex)) {
-    fprintf(stderr, "Output too large at %d\n", seq);
-    exit(EXIT_FAILURE);
+  if(len > 0) {
+    hex = malloc(len * 2);
   }
   obj = json_object();
   json_object_set_new(obj, "seq", json_integer(seq));
-  json_object_set_new(obj, "inputLen", json_integer(inputlen));
-  json_object_set_new(obj, "outputLength", json_integer(len));
-  json_object_set_new(obj, "percentageOfOriginalSize",
+  json_object_set_new(obj, "input_length", json_integer(inputlen));
+  json_object_set_new(obj, "output_length", json_integer(len));
+  json_object_set_new(obj, "percentage_of_original_size",
                       json_real((double)len / inputlen * 100));
   to_hex(hex, buf, len);
-  json_object_set_new(obj, "output", json_pack("s#", hex, len * 2));
+  json_object_set_new(obj, "wire", json_pack("s#", hex, len * 2));
+  json_object_set_new(obj, "headers", dump_headers(nva, nvlen));
+  json_object_set_new(obj, "header_table_size",
+                      json_integer(config.table_size));
   if(config.dump_header_table) {
-    json_object_set_new(obj, "headerTable", dump_header_table(deflater));
+    json_object_set_new(obj, "header_table", dump_header_table(deflater));
   }
   json_dumpf(obj, stdout, JSON_PRESERVE_ORDER | JSON_INDENT(2));
   printf("\n");
   json_decref(obj);
+  free(hex);
 }
 
 static void deflate_hd(nghttp2_hd_context *deflater,
@@ -104,7 +116,7 @@ static void deflate_hd(nghttp2_hd_context *deflater,
   }
   input_sum += inputlen;
   output_sum += rv;
-  output_to_json(deflater, buf, rv, inputlen, seq);
+  output_to_json(deflater, buf, rv, inputlen, nva, nvlen, seq);
   nghttp2_hd_end_headers(deflater);
   free(buf);
 }
@@ -119,11 +131,12 @@ static int deflate_hd_json(json_t *obj, nghttp2_hd_context *deflater, int seq)
 
   js = json_object_get(obj, "headers");
   if(js == NULL) {
-    fprintf(stderr, "headers key is missing at %d\n", seq);
+    fprintf(stderr, "'headers' key is missing at %d\n", seq);
     return -1;
   }
   if(!json_is_array(js)) {
-    fprintf(stderr, "headers value must be an array at %d\n", seq);
+    fprintf(stderr,
+            "The value of 'headers' key must be an array at %d\n", seq);
     return -1;
   }
   len = json_array_size(js);
@@ -134,70 +147,101 @@ static int deflate_hd_json(json_t *obj, nghttp2_hd_context *deflater, int seq)
   }
   for(i = 0; i < len; ++i) {
     json_t *nv_pair = json_array_get(js, i);
-    json_t *s;
-    if(!json_is_array(nv_pair) || json_array_size(nv_pair) != 2) {
-      fprintf(stderr, "bad formatted name/value pair array at %d\n", seq);
+    const char *name;
+    json_t *value;
+    if(!json_is_object(nv_pair) || json_object_size(nv_pair) != 1) {
+      fprintf(stderr, "bad formatted name/value pair object at %d\n", seq);
       return -1;
     }
-    s = json_array_get(nv_pair, 0);
-    if(!json_is_string(s)) {
-      fprintf(stderr, "bad formatted name/value pair array at %d\n", seq);
-      return -1;
-    }
-    nva[i].name = (uint8_t*)json_string_value(s);
-    nva[i].namelen = strlen(json_string_value(s));
+    json_object_foreach(nv_pair, name, value) {
+      nva[i].name = (uint8_t*)name;
+      nva[i].namelen = strlen(name);
 
-    s = json_array_get(nv_pair, 1);
-    if(!json_is_string(s)) {
-      fprintf(stderr, "bad formatted name/value pair array at %d\n", seq);
-      return -1;
+      if(!json_is_string(value)) {
+        fprintf(stderr, "value is not string at %d\n", seq);
+        return -1;
+      }
+      nva[i].value = (uint8_t*)json_string_value(value);
+      nva[i].valuelen = strlen(json_string_value(value));
     }
-    nva[i].value = (uint8_t*)json_string_value(s);
-    nva[i].valuelen = strlen(json_string_value(s));
     inputlen += nva[i].namelen + nva[i].valuelen;
   }
   deflate_hd(deflater, nva, len, inputlen, seq);
   return 0;
 }
 
-static int perform(nghttp2_hd_context *deflater)
+static void init_deflater(nghttp2_hd_context *deflater, nghttp2_hd_side side)
+{
+  nghttp2_hd_deflate_init2(deflater, side, config.deflate_table_size);
+  nghttp2_hd_deflate_set_no_refset(deflater, config.no_refset);
+  nghttp2_hd_change_table_size(deflater, config.table_size);
+}
+
+static void deinit_deflater(nghttp2_hd_context *deflater)
+{
+  nghttp2_hd_deflate_free(deflater);
+}
+
+static int perform(void)
 {
   size_t i;
-  json_t *json;
+  json_t *json, *cases;
   json_error_t error;
   size_t len;
+  nghttp2_hd_context deflater;
+  nghttp2_hd_side side;
+
   json = json_loadf(stdin, 0, &error);
   if(json == NULL) {
     fprintf(stderr, "JSON loading failed\n");
     exit(EXIT_FAILURE);
   }
-  printf("[\n");
-  len = json_array_size(json);
+  if(strcmp("request", json_string_value(json_object_get(json, "context")))
+     == 0) {
+    side = NGHTTP2_HD_SIDE_REQUEST;
+  } else {
+    side = NGHTTP2_HD_SIDE_RESPONSE;
+  }
+  cases = json_object_get(json, "cases");
+  if(cases == NULL) {
+    fprintf(stderr, "Missing 'cases' key in root object\n");
+    exit(EXIT_FAILURE);
+  }
+  if(!json_is_array(cases)) {
+    fprintf(stderr, "'cases' must be JSON array\n");
+    exit(EXIT_FAILURE);
+  }
+  init_deflater(&deflater, side);
+  output_json_header(side);
+  len = json_array_size(cases);
   for(i = 0; i < len; ++i) {
-    json_t *obj = json_array_get(json, i);
+    json_t *obj = json_array_get(cases, i);
     if(!json_is_object(obj)) {
       fprintf(stderr, "Unexpected JSON type at %zu. It should be object.\n",
               i);
       continue;
     }
-    if(deflate_hd_json(obj, deflater, i) != 0) {
+    if(deflate_hd_json(obj, &deflater, i) != 0) {
       continue;
     }
     if(i + 1 < len) {
       printf(",\n");
     }
   }
-  printf("]\n");
+  output_json_footer();
+  deinit_deflater(&deflater);
   json_decref(json);
   return 0;
 }
 
-static int perform_from_http1text(nghttp2_hd_context *deflater)
+static int perform_from_http1text(void)
 {
   char line[1 << 14];
   nghttp2_nv nva[256];
   int seq = 0;
-  printf("[\n");
+  nghttp2_hd_context deflater;
+  init_deflater(&deflater, config.side);
+  output_json_header(config.side);
   for(;;) {
     size_t nvlen = 0;
     int end = 0;
@@ -239,7 +283,7 @@ static int perform_from_http1text(nghttp2_hd_context *deflater)
       if(seq > 0) {
         printf(",\n");
       }
-      deflate_hd(deflater, nva, nvlen, inputlen, seq);
+      deflate_hd(&deflater, nva, nvlen, inputlen, seq);
     }
 
     for(i = 0; i < nvlen; ++i) {
@@ -249,7 +293,8 @@ static int perform_from_http1text(nghttp2_hd_context *deflater)
     if(end) break;
     ++seq;
   }
-  printf("]\n");
+  output_json_footer();
+  deinit_deflater(&deflater);
   return 0;
 }
 
@@ -258,32 +303,38 @@ static void print_help(void)
   printf("HPACK HTTP/2.0 header encoder\n"
          "Usage: deflatehd [OPTIONS] < INPUT\n"
          "\n"
-         "Reads JSON array or HTTP/1-style header fields from stdin and\n"
+         "Reads JSON data or HTTP/1-style header fields from stdin and\n"
          "outputs deflated header block in JSON array.\n"
          "\n"
-         "For the JSON input, the element of input array must be a JSON\n"
-         "object. Each object must have at least following key:\n"
-         "\n"
-         "    headers: a JSON array of name/value pairs. The each element is\n"
-         "             a JSON array of 2 strings. The index 0 must\n"
-         "             contain header name and the index 1 must contain\n"
-         "             header value.\n"
+         "For the JSON input, the root JSON object must contain \"context\"\n"
+         "key, which indicates which compression context is used. If it is\n"
+         "\"request\", request compression context is used. Otherwise,\n"
+         "response compression context is used. The value of \"cases\" key\n"
+         "contains the sequence of input header set. They share the same\n"
+         "compression context and are processed in the order they appear.\n"
+         "Each item in the sequence is a JSON object and it must have at\n"
+         "least \"headers\" key. Its value is an array of a JSON object\n"
+         "containing exactly one name/value pair.\n"
          "\n"
          "Example:\n"
-         "[\n"
-         "  {\n"
-         "    \"headers\": [\n"
-         "      [ \":method\", \"GET\" ],\n"
-         "      [ \":path\", \"/\" ]\n"
-         "    ]\n"
-         "  },\n"
-         "  {\n"
-         "    \"headers\": [\n"
-         "      [ \":method\", \"POST\" ],\n"
-         "      [ \":path\", \"/\" ]\n"
-         "    ]\n"
-         "  }\n"
-         "]\n"
+         "{\n"
+         "  \"context\": \"request\",\n"
+         "  \"cases\":\n"
+         "  [\n"
+         "    {\n"
+         "      \"headers\": [\n"
+         "        { \":method\": \"GET\" },\n"
+         "        { \":path\": \"/\" }\n"
+         "      ]\n"
+         "    },\n"
+         "    {\n"
+         "      \"headers\": [\n"
+         "        { \":method\": \"POST\" },\n"
+         "        { \":path\": \"/\" }\n"
+         "      ]\n"
+         "    }\n"
+         "  ]\n"
+         "}\n"
          "\n"
          "With -t option, the program can accept more familiar HTTP/1 style\n"
          "header field block. Each header set must be followed by one empty\n"
@@ -301,7 +352,9 @@ static void print_help(void)
          "\n"
          "OPTIONS:\n"
          "    -r, --response    Use response compression context instead of\n"
-         "                      request.\n"
+         "                      request if -t is used. For JSON input, it is\n"
+         "                      determined by inspecting \"context\" key in\n"
+         "                      root JSON object.\n"
          "    -t, --http1text   Use HTTP/1 style header field text as input.\n"
          "                      Each header set is delimited by single empty\n"
          "                      line.\n"
@@ -331,7 +384,6 @@ static struct option long_options[] = {
 
 int main(int argc, char **argv)
 {
-  nghttp2_hd_context deflater;
   char *end;
 
   config.side = NGHTTP2_HD_SIDE_REQUEST;
@@ -388,16 +440,12 @@ int main(int argc, char **argv)
       break;
     }
   }
-  nghttp2_hd_deflate_init2(&deflater, config.side, config.deflate_table_size);
-  nghttp2_hd_deflate_set_no_refset(&deflater, config.no_refset);
-  nghttp2_hd_change_table_size(&deflater, config.table_size);
   if(config.http1text) {
-    perform_from_http1text(&deflater);
+    perform_from_http1text();
   } else {
-    perform(&deflater);
+    perform();
   }
   fprintf(stderr, "Overall: input=%zu output=%zu ratio=%.02f\n",
           input_sum, output_sum, (double)output_sum / input_sum);
-  nghttp2_hd_deflate_free(&deflater);
   return 0;
 }

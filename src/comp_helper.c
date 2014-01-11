@@ -23,6 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "comp_helper.h"
+#include <string.h>
 
 static void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len)
 {
@@ -55,13 +56,46 @@ json_t* dump_header_table(nghttp2_hd_context *context)
   }
   json_object_set_new(obj, "entries", entries);
   json_object_set_new(obj, "size", json_integer(context->hd_table_bufsize));
-  json_object_set_new(obj, "maxSize",
+  json_object_set_new(obj, "max_size",
                       json_integer(context->hd_table_bufsize_max));
   if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-    json_object_set_new(obj, "deflateSize",
+    json_object_set_new(obj, "deflate_size",
                         json_integer(context->deflate_hd_table_bufsize));
-    json_object_set_new(obj, "maxDeflateSize",
+    json_object_set_new(obj, "max_deflate_size",
                         json_integer(context->deflate_hd_table_bufsize_max));
   }
   return obj;
+}
+
+json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen)
+{
+  json_t *headers;
+  size_t i;
+
+  headers = json_array();
+  for(i = 0; i < nvlen; ++i) {
+    json_t *nv_pair = json_object();
+    char *name = strndup((const char*)nva[i].name, nva[i].namelen);
+    name[nva[i].namelen] = '\0';
+    json_object_set_new(nv_pair, name,
+                        json_pack("s#", nva[i].value, nva[i].valuelen));
+    free(name);
+    json_array_append_new(headers, nv_pair);
+  }
+  return headers;
+}
+
+void output_json_header(int side)
+{
+  printf("{\n"
+         "  \"context\": \"%s\",\n"
+         "  \"cases\":\n"
+         "  [\n",
+         (side == NGHTTP2_HD_SIDE_REQUEST ? "request" : "response"));
+}
+
+void output_json_footer(void)
+{
+  printf("  ]\n"
+         "}\n");
 }

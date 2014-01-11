@@ -43,7 +43,6 @@
 
 typedef struct {
   size_t table_size;
-  nghttp2_hd_side side;
   int dump_header_table;
 } inflate_config;
 
@@ -69,24 +68,19 @@ static void decode_hex(uint8_t *dest, const char *src, size_t len)
 }
 
 static void nva_to_json(nghttp2_hd_context *inflater,
-                        const nghttp2_nv *nva, size_t nvlen, int seq)
+                        const nghttp2_nv *nva, size_t nvlen,
+                        json_t *wire, int seq)
 {
-  size_t i;
   json_t *obj;
-  json_t *headers;
+
   obj = json_object();
   json_object_set_new(obj, "seq", json_integer(seq));
-  headers = json_array();
-  json_object_set_new(obj, "headers", headers);
-  for(i = 0; i < nvlen; ++i) {
-    json_t *nv_pair = json_array();
-    const nghttp2_nv *nv = &nva[i];
-    json_array_append_new(nv_pair, json_pack("s#", nv->name, nv->namelen));
-    json_array_append_new(nv_pair, json_pack("s#", nv->value, nv->valuelen));
-    json_array_append_new(headers, nv_pair);
-  }
+  json_object_set(obj, "wire", wire);
+  json_object_set_new(obj, "headers", dump_headers(nva, nvlen));
+  json_object_set_new(obj, "header_table_size",
+                      json_integer(inflater->hd_table_bufsize_max));
   if(config.dump_header_table) {
-    json_object_set_new(obj, "headerTable", dump_header_table(inflater));
+    json_object_set_new(obj, "header_table", dump_header_table(inflater));
   }
   json_dumpf(obj, stdout, JSON_INDENT(2) | JSON_PRESERVE_ORDER);
   json_decref(obj);
@@ -95,27 +89,42 @@ static void nva_to_json(nghttp2_hd_context *inflater,
 
 static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
 {
-  json_t *js;
+  json_t *wire, *table_size;
   size_t inputlen;
-  uint8_t buf[16*1024];
+  uint8_t *buf;
   ssize_t resnvlen;
   nghttp2_nv *resnva;
+  int rv;
 
-  js = json_object_get(obj, "output");
-  if(js == NULL) {
-    fprintf(stderr, "output key is missing at %d\n", seq);
+  wire = json_object_get(obj, "wire");
+  if(wire == NULL) {
+    fprintf(stderr, "'wire' key is missing at %d\n", seq);
     return -1;
   }
-  inputlen = strlen(json_string_value(js));
+  table_size = json_object_get(obj, "header_table_size");
+  if(table_size) {
+    if(!json_is_integer(table_size)) {
+      fprintf(stderr,
+              "The value of 'header_table_size key' is not integer at %d\n",
+              seq);
+      return -1;
+    }
+    rv = nghttp2_hd_change_table_size(inflater,
+                                      json_integer_value(table_size));
+    if(rv != 0) {
+      fprintf(stderr,
+              "nghttp2_hd_change_table_size() failed with error %s at %d\n",
+              nghttp2_strerror(rv), seq);
+      return -1;
+    }
+  }
+  inputlen = strlen(json_string_value(wire));
   if(inputlen & 1) {
     fprintf(stderr, "Badly formatted output value at %d\n", seq);
     exit(EXIT_FAILURE);
   }
-  if(inputlen / 2 > sizeof(buf)) {
-    fprintf(stderr, "Too big input length %zu at %d\n", inputlen / 2, seq);
-    exit(EXIT_FAILURE);
-  }
-  decode_hex(buf, json_string_value(js), inputlen);
+  buf = malloc(inputlen / 2);
+  decode_hex(buf, json_string_value(wire), inputlen);
 
   resnvlen = nghttp2_hd_inflate_hd(inflater, &resnva, buf, inputlen / 2);
   if(resnvlen < 0) {
@@ -123,9 +132,10 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
             resnvlen, seq);
     exit(EXIT_FAILURE);
   }
-  nva_to_json(inflater, resnva, resnvlen, seq);
+  nva_to_json(inflater, resnva, resnvlen, wire, seq);
   nghttp2_hd_end_headers(inflater);
   nghttp2_nv_array_del(resnva);
+  free(buf);
   return 0;
 }
 
@@ -133,21 +143,38 @@ static int perform(void)
 {
   nghttp2_hd_context inflater;
   size_t i;
-  json_t *json;
+  json_t *json, *cases;
   json_error_t error;
   size_t len;
+  nghttp2_hd_side side;
 
   json = json_loadf(stdin, 0, &error);
   if(json == NULL) {
     fprintf(stderr, "JSON loading failed\n");
     exit(EXIT_FAILURE);
   }
-  nghttp2_hd_inflate_init(&inflater, config.side);
+  if(strcmp("request", json_string_value(json_object_get(json, "context")))
+     == 0) {
+    side = NGHTTP2_HD_SIDE_REQUEST;
+  } else {
+    side = NGHTTP2_HD_SIDE_RESPONSE;
+  }
+  cases = json_object_get(json, "cases");
+  if(cases == NULL) {
+    fprintf(stderr, "Missing 'cases' key in root object\n");
+    exit(EXIT_FAILURE);
+  }
+  if(!json_is_array(cases)) {
+    fprintf(stderr, "'cases' must be JSON array\n");
+    exit(EXIT_FAILURE);
+  }
+  nghttp2_hd_inflate_init(&inflater, side);
   nghttp2_hd_change_table_size(&inflater, config.table_size);
-  printf("[\n");
-  len = json_array_size(json);
+
+  output_json_header(side);
+  len = json_array_size(cases);
   for(i = 0; i < len; ++i) {
-    json_t *obj = json_array_get(json, i);
+    json_t *obj = json_array_get(cases, i);
     if(!json_is_object(obj)) {
       fprintf(stderr, "Unexpected JSON type at %zu. It should be object.\n",
               i);
@@ -160,7 +187,7 @@ static int perform(void)
       printf(",\n");
     }
   }
-  printf("]\n");
+  output_json_footer();
   nghttp2_hd_inflate_free(&inflater);
   json_decref(json);
   return 0;
@@ -171,24 +198,32 @@ static void print_help(void)
   printf("HPACK HTTP/2.0 header decoder\n"
          "Usage: inflatehd [OPTIONS] < INPUT\n"
          "\n"
-         "Reads JSON array from stdin and outputs inflated name/value pairs\n"
-         "in JSON array.\n"
-         "The element of input array must be a JSON object. Each object must\n"
-         "have at least following key:\n"
+         "Reads JSON data from stdin and outputs inflated name/value pairs\n"
+         "in JSON.\n"
          "\n"
-         "    output: deflated header block in hex-string.\n"
+         "The root JSON object must contain \"context\" key, which indicates\n"
+         "which compression context is used. If it is \"request\", request\n"
+         "compression context is used. Otherwise, response compression\n"
+         "context is used. The value of \"cases\" key contains the sequence\n"
+         "of compressed header block. They share the same compression\n"
+         "context and are processed in the order they appear. Each item in\n"
+         "the sequence is a JSON object and it must have at least \"wire\"\n"
+         "key. Its value is a string containing compressed header block in\n"
+         "hex string.\n"
          "\n"
          "Example:\n"
-         "[\n"
-         "    { \"output\": \"0284f77778ff\" },\n"
-         "    { \"output\": \"0185fafd3c3c7f81\" }\n"
-         "]\n"
+         "{\n"
+         "  \"context\": \"request\",\n"
+         "  \"cases\":\n"
+         "  [\n"
+         "    { \"wire\": \"0284f77778ff\" },\n"
+         "    { \"wire\": \"0185fafd3c3c7f81\" }\n"
+         "  ]\n"
+         "}\n"
          "\n"
          "The output of this program can be used as input for deflatehd.\n"
          "\n"
          "OPTIONS:\n"
-         "    -r, --response    Use response compression context instead of\n"
-         "                      request.\n"
          "    -s, --table-size=<N>\n"
          "                      Set dynamic table size. In the HPACK\n"
          "                      specification, this value is denoted by\n"
@@ -199,7 +234,6 @@ static void print_help(void)
 }
 
 static struct option long_options[] = {
-  {"response", no_argument, NULL, 'r'},
   {"table-size", required_argument, NULL, 's'},
   {"dump-header-table", no_argument, NULL, 'd'},
   {NULL, 0, NULL, 0 }
@@ -208,20 +242,15 @@ static struct option long_options[] = {
 int main(int argc, char **argv)
 {
   char *end;
-  config.side = NGHTTP2_HD_SIDE_REQUEST;
   config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   config.dump_header_table = 0;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "dhrs:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "dhs:", long_options, &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
-    case 'r':
-      /* --response */
-      config.side = NGHTTP2_HD_SIDE_RESPONSE;
-      break;
     case 'h':
       print_help();
       exit(EXIT_SUCCESS);
