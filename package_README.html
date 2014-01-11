@@ -533,8 +533,8 @@ SPDY proxy):</p>
 <p>At the time of this writing, Chrome is the only browser which supports
 secure proxy. The one way to configure Chrome to use secure proxy is
 create proxy.pac script like this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">function</span> <span class="nf">FindProxyForURL</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">host</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="s">&quot;HTTPS SERVERADDR:PORT&quot;</span><span class="p">;</span>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span> <span class="nx">FindProxyForURL</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="nx">host</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="s2">&quot;HTTPS SERVERADDR:PORT&quot;</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -603,20 +603,20 @@ and are processed in the order they appear.  Each item in the sequence
 is a JSON object and it must have at least <tt class="docutils literal"><span class="pre">headers</span></tt> key. Its value
 is an array of a JSON object containing exactly one name/value pair.</p>
 <p>Example:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="p">{</span>
-  <span class="s">&quot;context&quot;</span><span class="o">:</span> <span class="s">&quot;request&quot;</span><span class="p">,</span>
-  <span class="s">&quot;cases&quot;</span><span class="o">:</span>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
-        <span class="p">{</span> <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span> <span class="p">},</span>
-        <span class="p">{</span> <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span> <span class="p">}</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span> <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;GET&quot;</span> <span class="p">},</span>
+        <span class="p">{</span> <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span> <span class="p">}</span>
       <span class="p">]</span>
     <span class="p">},</span>
     <span class="p">{</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
-        <span class="p">{</span> <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;POST&quot;</span> <span class="p">},</span>
-        <span class="p">{</span> <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span> <span class="p">}</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span> <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;POST&quot;</span> <span class="p">},</span>
+        <span class="p">{</span> <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span> <span class="p">}</span>
       <span class="p">]</span>
     <span class="p">}</span>
   <span class="p">]</span>
@@ -655,60 +655,60 @@ value is an array of JSON object, which has at least following keys:</p>
 <dd>The header table size adjsuted before deflating header set.</dd>
 </dl>
 <p>Examples:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="p">{</span>
-  <span class="s">&quot;context&quot;</span><span class="o">:</span> <span class="s">&quot;request&quot;</span><span class="p">,</span>
-  <span class="s">&quot;cases&quot;</span><span class="o">:</span>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
-      <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
-      <span class="s">&quot;input_length&quot;</span><span class="o">:</span> <span class="mi">66</span><span class="p">,</span>
-      <span class="s">&quot;output_length&quot;</span><span class="o">:</span> <span class="mi">20</span><span class="p">,</span>
-      <span class="s">&quot;percentage_of_original_size&quot;</span><span class="o">:</span> <span class="mf">30.303030303030305</span><span class="p">,</span>
-      <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;01881f3468e5891afcbf83868a3d856659c62e3f&quot;</span><span class="p">,</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;seq&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="nt">&quot;input_length&quot;</span><span class="p">:</span> <span class="mi">66</span><span class="p">,</span>
+      <span class="nt">&quot;output_length&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+      <span class="nt">&quot;percentage_of_original_size&quot;</span><span class="p">:</span> <span class="mf">30.303030303030305</span><span class="p">,</span>
+      <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;01881f3468e5891afcbf83868a3d856659c62e3f&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="p">{</span>
-          <span class="s">&quot;:authority&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span>
+          <span class="nt">&quot;:authority&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span>
+          <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;GET&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span>
+          <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:scheme&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span>
+          <span class="nt">&quot;:scheme&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;user-agent&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span>
+          <span class="nt">&quot;user-agent&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span>
         <span class="p">}</span>
       <span class="p">],</span>
-      <span class="s">&quot;header_table_size&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+      <span class="nt">&quot;header_table_size&quot;</span><span class="p">:</span> <span class="mi">4096</span>
     <span class="p">}</span>
     <span class="p">,</span>
     <span class="p">{</span>
-      <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
-      <span class="s">&quot;input_length&quot;</span><span class="o">:</span> <span class="mi">74</span><span class="p">,</span>
-      <span class="s">&quot;output_length&quot;</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span>
-      <span class="s">&quot;percentage_of_original_size&quot;</span><span class="o">:</span> <span class="mf">13.513513513513514</span><span class="p">,</span>
-      <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;88448504252dd5918485&quot;</span><span class="p">,</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;seq&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="nt">&quot;input_length&quot;</span><span class="p">:</span> <span class="mi">74</span><span class="p">,</span>
+      <span class="nt">&quot;output_length&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+      <span class="nt">&quot;percentage_of_original_size&quot;</span><span class="p">:</span> <span class="mf">13.513513513513514</span><span class="p">,</span>
+      <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;88448504252dd5918485&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="p">{</span>
-          <span class="s">&quot;:authority&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span>
+          <span class="nt">&quot;:authority&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;POST&quot;</span>
+          <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;POST&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/account&quot;</span>
+          <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/account&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:scheme&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span>
+          <span class="nt">&quot;:scheme&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;user-agent&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span>
+          <span class="nt">&quot;user-agent&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span>
         <span class="p">}</span>
       <span class="p">],</span>
-      <span class="s">&quot;header_table_size&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+      <span class="nt">&quot;header_table_size&quot;</span><span class="p">:</span> <span class="mi">4096</span>
     <span class="p">}</span>
   <span class="p">]</span>
 <span class="p">}</span>
@@ -747,152 +747,152 @@ than <tt class="docutils literal"><span class="pre">max_size</span></tt>. In thi
 that they are no longer referenced.</dd>
 </dl>
 <p>Example:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="p">{</span>
-  <span class="s">&quot;context&quot;</span><span class="o">:</span> <span class="s">&quot;request&quot;</span><span class="p">,</span>
-  <span class="s">&quot;cases&quot;</span><span class="o">:</span>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
-      <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
-      <span class="s">&quot;input_length&quot;</span><span class="o">:</span> <span class="mi">66</span><span class="p">,</span>
-      <span class="s">&quot;output_length&quot;</span><span class="o">:</span> <span class="mi">20</span><span class="p">,</span>
-      <span class="s">&quot;percentage_of_original_size&quot;</span><span class="o">:</span> <span class="mf">30.303030303030305</span><span class="p">,</span>
-      <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;01881f3468e5891afcbf83868a3d856659c62e3f&quot;</span><span class="p">,</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;seq&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="nt">&quot;input_length&quot;</span><span class="p">:</span> <span class="mi">66</span><span class="p">,</span>
+      <span class="nt">&quot;output_length&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+      <span class="nt">&quot;percentage_of_original_size&quot;</span><span class="p">:</span> <span class="mf">30.303030303030305</span><span class="p">,</span>
+      <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;01881f3468e5891afcbf83868a3d856659c62e3f&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="p">{</span>
-          <span class="s">&quot;:authority&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span>
+          <span class="nt">&quot;:authority&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span>
+          <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;GET&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span>
+          <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:scheme&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span>
+          <span class="nt">&quot;:scheme&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;user-agent&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span>
+          <span class="nt">&quot;user-agent&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span>
         <span class="p">}</span>
       <span class="p">],</span>
-      <span class="s">&quot;header_table_size&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
-      <span class="s">&quot;header_table&quot;</span><span class="o">:</span> <span class="p">{</span>
-        <span class="s">&quot;entries&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;header_table_size&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">,</span>
+      <span class="nt">&quot;header_table&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;entries&quot;</span><span class="p">:</span> <span class="p">[</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;user-agent&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">49</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;user-agent&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">49</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:scheme&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">44</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:scheme&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">44</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:path&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">38</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:path&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">38</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">4</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">42</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:method&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;GET&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">42</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">5</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:authority&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">53</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:authority&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">53</span>
           <span class="p">}</span>
         <span class="p">],</span>
-        <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">226</span><span class="p">,</span>
-        <span class="s">&quot;max_size&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
-        <span class="s">&quot;deflate_size&quot;</span><span class="o">:</span> <span class="mi">226</span><span class="p">,</span>
-        <span class="s">&quot;max_deflate_size&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+        <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">226</span><span class="p">,</span>
+        <span class="nt">&quot;max_size&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">,</span>
+        <span class="nt">&quot;deflate_size&quot;</span><span class="p">:</span> <span class="mi">226</span><span class="p">,</span>
+        <span class="nt">&quot;max_deflate_size&quot;</span><span class="p">:</span> <span class="mi">4096</span>
       <span class="p">}</span>
     <span class="p">}</span>
     <span class="p">,</span>
     <span class="p">{</span>
-      <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
-      <span class="s">&quot;input_length&quot;</span><span class="o">:</span> <span class="mi">74</span><span class="p">,</span>
-      <span class="s">&quot;output_length&quot;</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span>
-      <span class="s">&quot;percentage_of_original_size&quot;</span><span class="o">:</span> <span class="mf">13.513513513513514</span><span class="p">,</span>
-      <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;88448504252dd5918485&quot;</span><span class="p">,</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;seq&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="nt">&quot;input_length&quot;</span><span class="p">:</span> <span class="mi">74</span><span class="p">,</span>
+      <span class="nt">&quot;output_length&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+      <span class="nt">&quot;percentage_of_original_size&quot;</span><span class="p">:</span> <span class="mf">13.513513513513514</span><span class="p">,</span>
+      <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;88448504252dd5918485&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="p">{</span>
-          <span class="s">&quot;:authority&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span>
+          <span class="nt">&quot;:authority&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;POST&quot;</span>
+          <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;POST&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/account&quot;</span>
+          <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/account&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:scheme&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span>
+          <span class="nt">&quot;:scheme&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;user-agent&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span>
+          <span class="nt">&quot;user-agent&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span>
         <span class="p">}</span>
       <span class="p">],</span>
-      <span class="s">&quot;header_table_size&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
-      <span class="s">&quot;header_table&quot;</span><span class="o">:</span> <span class="p">{</span>
-        <span class="s">&quot;entries&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;header_table_size&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">,</span>
+      <span class="nt">&quot;header_table&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;entries&quot;</span><span class="p">:</span> <span class="p">[</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;POST&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">43</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:method&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">43</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;user-agent&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">49</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;user-agent&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">49</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:scheme&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">44</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:scheme&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">44</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">4</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:path&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">false</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">38</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:path&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">38</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">5</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:method&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">false</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">42</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:method&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;GET&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">42</span>
           <span class="p">},</span>
           <span class="p">{</span>
-            <span class="s">&quot;index&quot;</span><span class="o">:</span> <span class="mi">6</span><span class="p">,</span>
-            <span class="s">&quot;name&quot;</span><span class="o">:</span> <span class="s">&quot;:authority&quot;</span><span class="p">,</span>
-            <span class="s">&quot;value&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span><span class="p">,</span>
-            <span class="s">&quot;referenced&quot;</span><span class="o">:</span> <span class="nb">true</span><span class="p">,</span>
-            <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">53</span>
+            <span class="nt">&quot;index&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span>
+            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;:authority&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;referenced&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">53</span>
           <span class="p">}</span>
         <span class="p">],</span>
-        <span class="s">&quot;size&quot;</span><span class="o">:</span> <span class="mi">269</span><span class="p">,</span>
-        <span class="s">&quot;max_size&quot;</span><span class="o">:</span> <span class="mi">4096</span><span class="p">,</span>
-        <span class="s">&quot;deflate_size&quot;</span><span class="o">:</span> <span class="mi">269</span><span class="p">,</span>
-        <span class="s">&quot;max_deflate_size&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+        <span class="nt">&quot;size&quot;</span><span class="p">:</span> <span class="mi">269</span><span class="p">,</span>
+        <span class="nt">&quot;max_size&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">,</span>
+        <span class="nt">&quot;deflate_size&quot;</span><span class="p">:</span> <span class="mi">269</span><span class="p">,</span>
+        <span class="nt">&quot;max_deflate_size&quot;</span><span class="p">:</span> <span class="mi">4096</span>
       <span class="p">}</span>
     <span class="p">}</span>
   <span class="p">]</span>
@@ -913,12 +913,12 @@ are processed in the order they appear. Each item in the sequence is a
 JSON object and it must have at least <tt class="docutils literal"><span class="pre">wire</span></tt> key. Its value is a
 string containing compressed header block in hex string.</p>
 <p>Example:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="p">{</span>
-  <span class="s">&quot;context&quot;</span><span class="o">:</span> <span class="s">&quot;request&quot;</span><span class="p">,</span>
-  <span class="s">&quot;cases&quot;</span><span class="o">:</span>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
-    <span class="p">{</span> <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;8285&quot;</span> <span class="p">},</span>
-    <span class="p">{</span> <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;8583&quot;</span> <span class="p">}</span>
+    <span class="p">{</span> <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;8285&quot;</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;8583&quot;</span> <span class="p">}</span>
   <span class="p">]</span>
 <span class="p">}</span>
 </pre></div>
@@ -939,54 +939,54 @@ value is an array of JSON object, which has at least following keys:</p>
 block.</dd>
 </dl>
 <p>Example:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="p">{</span>
-  <span class="s">&quot;context&quot;</span><span class="o">:</span> <span class="s">&quot;request&quot;</span><span class="p">,</span>
-  <span class="s">&quot;cases&quot;</span><span class="o">:</span>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
-      <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
-      <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;01881f3468e5891afcbf83868a3d856659c62e3f&quot;</span><span class="p">,</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;seq&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+      <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;01881f3468e5891afcbf83868a3d856659c62e3f&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="p">{</span>
-          <span class="s">&quot;:authority&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span>
+          <span class="nt">&quot;:authority&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;GET&quot;</span>
+          <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;GET&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/&quot;</span>
+          <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:scheme&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span>
+          <span class="nt">&quot;:scheme&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;user-agent&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span>
+          <span class="nt">&quot;user-agent&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span>
         <span class="p">}</span>
       <span class="p">],</span>
-      <span class="s">&quot;header_table_size&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+      <span class="nt">&quot;header_table_size&quot;</span><span class="p">:</span> <span class="mi">4096</span>
     <span class="p">}</span>
     <span class="p">,</span>
     <span class="p">{</span>
-      <span class="s">&quot;seq&quot;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
-      <span class="s">&quot;wire&quot;</span><span class="o">:</span> <span class="s">&quot;88448504252dd5918485&quot;</span><span class="p">,</span>
-      <span class="s">&quot;headers&quot;</span><span class="o">:</span> <span class="p">[</span>
+      <span class="nt">&quot;seq&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;88448504252dd5918485&quot;</span><span class="p">,</span>
+      <span class="nt">&quot;headers&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="p">{</span>
-          <span class="s">&quot;:method&quot;</span><span class="o">:</span> <span class="s">&quot;POST&quot;</span>
+          <span class="nt">&quot;:method&quot;</span><span class="p">:</span> <span class="s2">&quot;POST&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:path&quot;</span><span class="o">:</span> <span class="s">&quot;/account&quot;</span>
+          <span class="nt">&quot;:path&quot;</span><span class="p">:</span> <span class="s2">&quot;/account&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;user-agent&quot;</span><span class="o">:</span> <span class="s">&quot;nghttp2&quot;</span>
+          <span class="nt">&quot;user-agent&quot;</span><span class="p">:</span> <span class="s2">&quot;nghttp2&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:scheme&quot;</span><span class="o">:</span> <span class="s">&quot;https&quot;</span>
+          <span class="nt">&quot;:scheme&quot;</span><span class="p">:</span> <span class="s2">&quot;https&quot;</span>
         <span class="p">},</span>
         <span class="p">{</span>
-          <span class="s">&quot;:authority&quot;</span><span class="o">:</span> <span class="s">&quot;example.org&quot;</span>
+          <span class="nt">&quot;:authority&quot;</span><span class="p">:</span> <span class="s2">&quot;example.org&quot;</span>
         <span class="p">}</span>
       <span class="p">],</span>
-      <span class="s">&quot;header_table_size&quot;</span><span class="o">:</span> <span class="mi">4096</span>
+      <span class="nt">&quot;header_table_size&quot;</span><span class="p">:</span> <span class="mi">4096</span>
     <span class="p">}</span>
   <span class="p">]</span>
 <span class="p">}</span>
