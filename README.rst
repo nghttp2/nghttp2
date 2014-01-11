@@ -152,56 +152,56 @@ output from ``nghttp`` client::
 
     $ src/nghttp -vn https://localhost:8443
     [  0.003] NPN select next protocol: the remote server offers:
-	      * HTTP-draft-09/2.0
-	      * spdy/3
-	      * spdy/2
-	      * http/1.1
-	      NPN selected the protocol: HTTP-draft-09/2.0
+              * HTTP-draft-09/2.0
+              * spdy/3
+              * spdy/2
+              * http/1.1
+              NPN selected the protocol: HTTP-draft-09/2.0
     [  0.005] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
-	      (niv=2)
-	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+              (niv=2)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
     [  0.006] send HEADERS frame <length=47, flags=0x05, stream_id=1>
-	      ; END_STREAM | END_HEADERS
-	      ; Open new stream
-	      :authority: localhost:8443
-	      :method: GET
-	      :path: /
-	      :scheme: https
-	      accept: */*
-	      accept-encoding: gzip, deflate
-	      user-agent: nghttp2/0.1.0-DEV
+              ; END_STREAM | END_HEADERS
+              ; Open new stream
+              :authority: localhost:8443
+              :method: GET
+              :path: /
+              :scheme: https
+              accept: */*
+              accept-encoding: gzip, deflate
+              user-agent: nghttp2/0.1.0-DEV
     [  0.006] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-	      (niv=2)
-	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+              (niv=2)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
     [  0.006] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
-	      ; ACK
-	      (niv=0)
+              ; ACK
+              (niv=0)
     [  0.006] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
-	      (window_size_increment=1000000007)
+              (window_size_increment=1000000007)
     [  0.006] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
-	      ; ACK
-	      (niv=0)
+              ; ACK
+              (niv=0)
     [  0.006] recv HEADERS frame <length=132, flags=0x04, stream_id=1>
-	      ; END_HEADERS
-	      ; First response header
-	      :status: 200
-	      accept-ranges: bytes
-	      content-encoding: gzip
-	      content-length: 146
-	      content-type: text/html
-	      date: Sun, 27 Oct 2013 14:23:54 GMT
-	      etag: "b1-4e5535a027780-gzip"
-	      last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-	      server: Apache/2.4.6 (Debian)
-	      vary: Accept-Encoding
-	      via: 1.1 nghttpx
+              ; END_HEADERS
+              ; First response header
+              :status: 200
+              accept-ranges: bytes
+              content-encoding: gzip
+              content-length: 146
+              content-type: text/html
+              date: Sun, 27 Oct 2013 14:23:54 GMT
+              etag: "b1-4e5535a027780-gzip"
+              last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+              server: Apache/2.4.6 (Debian)
+              vary: Accept-Encoding
+              via: 1.1 nghttpx
     [  0.006] recv DATA frame <length=146, flags=0x00, stream_id=1>
     [  0.006] recv DATA frame <length=0, flags=0x01, stream_id=1>
-	      ; END_STREAM
+              ; END_STREAM
     [  0.007] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
-	      (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
 The HTTP Upgrade is performed like this::
 
@@ -224,39 +224,39 @@ The HTTP Upgrade is performed like this::
 
     [  0.001] HTTP Upgrade success
     [  0.001] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
-	      (niv=2)
-	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+              (niv=2)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
     [  0.001] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-	      (niv=2)
-	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+              (niv=2)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
     [  0.001] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
-	      (window_size_increment=1000000007)
+              (window_size_increment=1000000007)
     [  0.001] recv HEADERS frame <length=121, flags=0x04, stream_id=1>
-	      ; END_HEADERS
-	      ; First response header
-	      :status: 200
-	      accept-ranges: bytes
-	      content-length: 177
-	      content-type: text/html
-	      date: Sun, 27 Oct 2013 14:26:04 GMT
-	      etag: "b1-4e5535a027780"
-	      last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-	      server: Apache/2.4.6 (Debian)
-	      vary: Accept-Encoding
-	      via: 1.1 nghttpx
+              ; END_HEADERS
+              ; First response header
+              :status: 200
+              accept-ranges: bytes
+              content-length: 177
+              content-type: text/html
+              date: Sun, 27 Oct 2013 14:26:04 GMT
+              etag: "b1-4e5535a027780"
+              last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+              server: Apache/2.4.6 (Debian)
+              vary: Accept-Encoding
+              via: 1.1 nghttpx
     [  0.001] recv DATA frame <length=177, flags=0x00, stream_id=1>
     [  0.001] recv DATA frame <length=0, flags=0x01, stream_id=1>
-	      ; END_STREAM
+              ; END_STREAM
     [  0.001] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
-	      ; ACK
-	      (niv=0)
+              ; ACK
+              (niv=0)
     [  0.001] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
-	      (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
     [  0.001] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
-	      ; ACK
-	      (niv=0)
+              ; ACK
+              (niv=0)
 
 nghttpd - server
 ++++++++++++++++
@@ -279,42 +279,42 @@ information. Here is sample output from ``nghttpd`` server::
     IPv4: listen on port 8080
     IPv6: listen on port 8080
     [id=1] [  1.189] send SETTINGS frame <length=8, flags=0x00, stream_id=0>
-	      (niv=1)
-	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+              (niv=1)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
     [id=1] [  1.191] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-	      (niv=2)
-	      [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-	      [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
+              (niv=2)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
     [id=1] [  1.191] recv HEADERS frame <length=47, flags=0x05, stream_id=1>
-	      ; END_STREAM | END_HEADERS
-	      ; Open new stream
-	      :authority: localhost:8080
-	      :method: GET
-	      :path: /
-	      :scheme: http
-	      accept: */*
-	      accept-encoding: gzip, deflate
-	      user-agent: nghttp2/0.1.0-DEV
+              ; END_STREAM | END_HEADERS
+              ; Open new stream
+              :authority: localhost:8080
+              :method: GET
+              :path: /
+              :scheme: http
+              accept: */*
+              accept-encoding: gzip, deflate
+              user-agent: nghttp2/0.1.0-DEV
     [id=1] [  1.192] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
-	      ; ACK
-	      (niv=0)
+              ; ACK
+              (niv=0)
     [id=1] [  1.192] send HEADERS frame <length=70, flags=0x04, stream_id=1>
-	      ; END_HEADERS
-	      ; First response header
-	      :status: 404
-	      content-encoding: gzip
-	      content-type: text/html; charset=UTF-8
-	      date: Sun, 27 Oct 2013 14:27:53 GMT
-	      server: nghttpd nghttp2/0.1.0-DEV
+              ; END_HEADERS
+              ; First response header
+              :status: 404
+              content-encoding: gzip
+              content-type: text/html; charset=UTF-8
+              date: Sun, 27 Oct 2013 14:27:53 GMT
+              server: nghttpd nghttp2/0.1.0-DEV
     [id=1] [  1.192] send DATA frame <length=117, flags=0x00, stream_id=1>
     [id=1] [  1.192] send DATA frame <length=0, flags=0x01, stream_id=1>
-	      ; END_STREAM
+              ; END_STREAM
     [id=1] [  1.192] stream_id=1 closed
     [id=1] [  1.192] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
-	      ; ACK
-	      (niv=0)
+              ; ACK
+              (niv=0)
     [id=1] [  1.192] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
-	      (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+              (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
     [id=1] [  1.192] closed
 
 nghttpx - proxy
@@ -429,41 +429,45 @@ The ``src`` directory contains HPACK tools. The ``deflatehd`` is
 command-line header compression tool. The ``inflatehd`` is
 command-line header decompression tool.  Both tools read input from
 stdin and write output to stdout. The errors are written to
-stderr. They take JSON as input and output.
+stderr. They take JSON as input and output. We use the same JSON data
+format used in https://github.com/Jxck/hpack-test-case
 
 deflatehd - header compressor
 +++++++++++++++++++++++++++++
 
-The ``deflatehd`` reads JSON array or HTTP/1-style header fields from
-stdin and outputs compressed header block in JSON array.
+The ``deflatehd`` reads JSON data or HTTP/1-style header fields from
+stdin and outputs compressed header block in JSON.
 
-For the JSON input, the element of input array must be a JSON
-object. Each object must have at least following key:
-
-headers
-    A JSON array of name/value pairs. The each element is a JSON array
-    of 2 strings. The index 0 must contain header name and the index 1
-    must contain header value.
+For the JSON input, the root JSON object must contain ``context`` key,
+which indicates which compression context is used. If it is
+``request``, request compression context is used. Otherwise, response
+compression context is used. The value of ``cases`` key contains the
+sequence of input header set. They share the same compression context
+and are processed in the order they appear.  Each item in the sequence
+is a JSON object and it must have at least ``headers`` key. Its value
+is an array of a JSON object containing exactly one name/value pair.
 
 Example::
 
-    [
-      {
-	"headers": [
-	  [ ":method", "GET" ],
-	  [ ":path", "/" ]
-	]
-      },
-      {
-	"headers": [
-	  [ ":method", "POST" ],
-	  [ ":path", "/" ]
-	]
-      }
-    ]
+    {
+      "context": "request",
+      "cases":
+      [
+        {
+          "headers": [
+            { ":method": "GET" },
+            { ":path": "/" }
+          ]
+        },
+        {
+          "headers": [
+            { ":method": "POST" },
+            { ":path": "/" }
+          ]
+        }
+      ]
+    }
 
-These header sets are processed in the order they appear in the JSON
-outer most array using same compression context.
 
 With ``-t`` option, the program can accept more familiar HTTP/1 style
 header field block. Each header set is delimited by empty line:
@@ -477,46 +481,97 @@ Example::
     :method: POST
     user-agent: nghttp2
 
-The output is a JSON array and each element is JSON object, which has
-at least following keys:
+The output is JSON object. It contains ``context`` key and its value
+is ``request`` if the compression context is request, otherwise
+``response``. The root JSON object also contains ``cases`` key and its
+value is an array of JSON object, which has at least following keys:
 
 seq
     The index of header set in the input.
 
-inputLen
+input_length
     The sum of length of name/value pair in the input.
 
-outputLength
+output_length
     The length of compressed header block.
 
-percentageOfOriginalSize
-    inputLen / outputLength * 100
+percentage_of_original_size
+    ``input_length`` / ``output_length`` * 100
 
-output
+wire
     The compressed header block in hex string.
+
+headers
+    The input header set.
+
+header_table_size
+    The header table size adjsuted before deflating header set.
 
 Examples::
 
-    [
-      {
-        "seq": 0,
-        "inputLen": 66,
-        "outputLength": 20,
-        "percentageOfOriginalSize": 30.303030303030305,
-        "output": "818703881f3468e5891afcbf863c856659c62e3f"
-      },
-      {
-        "seq": 1,
-        "inputLen": 74,
-        "outputLength": 10,
-        "percentageOfOriginalSize": 13.513513513513514,
-        "output": "87038504252dd5918386"
-      }
-    ]
+    {
+      "context": "request",
+      "cases":
+      [
+        {
+          "seq": 0,
+          "input_length": 66,
+          "output_length": 20,
+          "percentage_of_original_size": 30.303030303030305,
+          "wire": "01881f3468e5891afcbf83868a3d856659c62e3f",
+          "headers": [
+            {
+              ":authority": "example.org"
+            },
+            {
+              ":method": "GET"
+            },
+            {
+              ":path": "/"
+            },
+            {
+              ":scheme": "https"
+            },
+            {
+              "user-agent": "nghttp2"
+            }
+          ],
+          "header_table_size": 4096
+        }
+        ,
+        {
+          "seq": 1,
+          "input_length": 74,
+          "output_length": 10,
+          "percentage_of_original_size": 13.513513513513514,
+          "wire": "88448504252dd5918485",
+          "headers": [
+            {
+              ":authority": "example.org"
+            },
+            {
+              ":method": "POST"
+            },
+            {
+              ":path": "/account"
+            },
+            {
+              ":scheme": "https"
+            },
+            {
+              "user-agent": "nghttp2"
+            }
+          ],
+          "header_table_size": 4096
+        }
+      ]
+    }
 
-The output can be used as the input for ``inflatehd``.
 
-With ``-d`` option, the extra ``headerTable`` key is added and its
+The output can be used as the input for ``inflatehd`` and
+``deflatehd``.
+
+With ``-d`` option, the extra ``header_table`` key is added and its
 associated value contains the state of dyanmic header table after the
 corresponding header set was processed. The value contains following
 keys:
@@ -535,196 +590,276 @@ size
     The sum of the spaces entries occupied, this includes the
     entry overhead.
 
-maxSize
+max_size
     The maximum header table size.
 
-deflateSize
-    The sum of the spaces entries occupied within ``maxDeflateSize``.
+deflate_size
+    The sum of the spaces entries occupied within
+    ``max_deflate_size``.
 
-maxDeflateSize
+max_deflate_size
     The maximum header table size encoder uses. This can be smaller
-    than ``maxSize``. In this case, encoder only uses up to first
-    ``maxDeflateSize`` buffer. Since the header table size is still
-    ``maxSize``, the encoder has to keep track of entries ouside the
-    ``maxDeflateSize`` but inside the ``maxSize`` and make sure that
-    they are no longer referenced.
+    than ``max_size``. In this case, encoder only uses up to first
+    ``max_deflate_size`` buffer. Since the header table size is still
+    ``max_size``, the encoder has to keep track of entries ouside the
+    ``max_deflate_size`` but inside the ``max_size`` and make sure
+    that they are no longer referenced.
 
 Example::
 
-    [
-      {
-	"seq": 0,
-	"inputLen": 66,
-	"outputLength": 20,
-	"percentageOfOriginalSize": 30.303030303030305,
-	"output": "818703881f3468e5891afcbf863c856659c62e3f",
-	"headerTable": {
-	  "entries": [
-	    {
-	      "index": 0,
-	      "name": "user-agent",
-	      "value": "nghttp2",
-	      "referenced": true,
-	      "size": 49
-	    },
-	    {
-	      "index": 1,
-	      "name": ":path",
-	      "value": "/",
-	      "referenced": true,
-	      "size": 38
-	    },
-	    {
-	      "index": 2,
-	      "name": ":authority",
-	      "value": "example.org",
-	      "referenced": true,
-	      "size": 53
-	    },
-	    {
-	      "index": 3,
-	      "name": ":scheme",
-	      "value": "https",
-	      "referenced": true,
-	      "size": 44
-	    },
-	    {
-	      "index": 4,
-	      "name": ":method",
-	      "value": "GET",
-	      "referenced": true,
-	      "size": 42
-	    }
-	  ],
-	  "size": 226,
-	  "maxSize": 4096,
-	  "deflateSize": 226,
-	  "maxDeflateSize": 4096
-	}
-      },
-      {
-	"seq": 1,
-	"inputLen": 74,
-	"outputLength": 10,
-	"percentageOfOriginalSize": 13.513513513513514,
-	"output": "87038504252dd5918386",
-	"headerTable": {
-	  "entries": [
-	    {
-	      "index": 0,
-	      "name": ":path",
-	      "value": "/account",
-	      "referenced": true,
-	      "size": 45
-	    },
-	    {
-	      "index": 1,
-	      "name": ":method",
-	      "value": "POST",
-	      "referenced": true,
-	      "size": 43
-	    },
-	    {
-	      "index": 2,
-	      "name": "user-agent",
-	      "value": "nghttp2",
-	      "referenced": true,
-	      "size": 49
-	    },
-	    {
-	      "index": 3,
-	      "name": ":path",
-	      "value": "/",
-	      "referenced": false,
-	      "size": 38
-	    },
-	    {
-	      "index": 4,
-	      "name": ":authority",
-	      "value": "example.org",
-	      "referenced": true,
-	      "size": 53
-	    },
-	    {
-	      "index": 5,
-	      "name": ":scheme",
-	      "value": "https",
-	      "referenced": true,
-	      "size": 44
-	    },
-	    {
-	      "index": 6,
-	      "name": ":method",
-	      "value": "GET",
-	      "referenced": false,
-	      "size": 42
-	    }
-	  ],
-	  "size": 314,
-	  "maxSize": 4096,
-	  "deflateSize": 314,
-	  "maxDeflateSize": 4096
-	}
-      }
-    ]
+    {
+      "context": "request",
+      "cases":
+      [
+        {
+          "seq": 0,
+          "input_length": 66,
+          "output_length": 20,
+          "percentage_of_original_size": 30.303030303030305,
+          "wire": "01881f3468e5891afcbf83868a3d856659c62e3f",
+          "headers": [
+            {
+              ":authority": "example.org"
+            },
+            {
+              ":method": "GET"
+            },
+            {
+              ":path": "/"
+            },
+            {
+              ":scheme": "https"
+            },
+            {
+              "user-agent": "nghttp2"
+            }
+          ],
+          "header_table_size": 4096,
+          "header_table": {
+            "entries": [
+              {
+                "index": 1,
+                "name": "user-agent",
+                "value": "nghttp2",
+                "referenced": true,
+                "size": 49
+              },
+              {
+                "index": 2,
+                "name": ":scheme",
+                "value": "https",
+                "referenced": true,
+                "size": 44
+              },
+              {
+                "index": 3,
+                "name": ":path",
+                "value": "/",
+                "referenced": true,
+                "size": 38
+              },
+              {
+                "index": 4,
+                "name": ":method",
+                "value": "GET",
+                "referenced": true,
+                "size": 42
+              },
+              {
+                "index": 5,
+                "name": ":authority",
+                "value": "example.org",
+                "referenced": true,
+                "size": 53
+              }
+            ],
+            "size": 226,
+            "max_size": 4096,
+            "deflate_size": 226,
+            "max_deflate_size": 4096
+          }
+        }
+        ,
+        {
+          "seq": 1,
+          "input_length": 74,
+          "output_length": 10,
+          "percentage_of_original_size": 13.513513513513514,
+          "wire": "88448504252dd5918485",
+          "headers": [
+            {
+              ":authority": "example.org"
+            },
+            {
+              ":method": "POST"
+            },
+            {
+              ":path": "/account"
+            },
+            {
+              ":scheme": "https"
+            },
+            {
+              "user-agent": "nghttp2"
+            }
+          ],
+          "header_table_size": 4096,
+          "header_table": {
+            "entries": [
+              {
+                "index": 1,
+                "name": ":method",
+                "value": "POST",
+                "referenced": true,
+                "size": 43
+              },
+              {
+                "index": 2,
+                "name": "user-agent",
+                "value": "nghttp2",
+                "referenced": true,
+                "size": 49
+              },
+              {
+                "index": 3,
+                "name": ":scheme",
+                "value": "https",
+                "referenced": true,
+                "size": 44
+              },
+              {
+                "index": 4,
+                "name": ":path",
+                "value": "/",
+                "referenced": false,
+                "size": 38
+              },
+              {
+                "index": 5,
+                "name": ":method",
+                "value": "GET",
+                "referenced": false,
+                "size": 42
+              },
+              {
+                "index": 6,
+                "name": ":authority",
+                "value": "example.org",
+                "referenced": true,
+                "size": 53
+              }
+            ],
+            "size": 269,
+            "max_size": 4096,
+            "deflate_size": 269,
+            "max_deflate_size": 4096
+          }
+        }
+      ]
+    }
 
 inflatehd - header decompressor
 +++++++++++++++++++++++++++++++
 
-The ``inflatehd`` reads JSON array from stdin and outputs decompressed
-name/value pairs in JSON array.  The element of input array must be a
-JSON object. Each object must have at least following key:
+The ``inflatehd`` reads JSON data from stdin and outputs decompressed
+name/value pairs in JSON.
 
-output
-    compressed header block in hex string.
+The root JSON object must contain ``context`` key, which indicates
+which compression context is used. If it is ``request``, request
+compression context is used. Otherwise, response compression context
+is used. The value of ``cases`` key contains the sequence of
+compressed header block. They share the same compression context and
+are processed in the order they appear. Each item in the sequence is a
+JSON object and it must have at least ``wire`` key. Its value is a
+string containing compressed header block in hex string.
 
 Example::
 
-    [
-      { "output": "0284f77778ff" },
-      { "output": "0185fafd3c3c7f81" }
-    ]
+    {
+      "context": "request",
+      "cases":
+      [
+        { "wire": "8285" },
+        { "wire": "8583" }
+      ]
+    }
 
-The output is a JSON array and each element is JSON object, which has
-at least following keys:
+The output is JSON object. It contains ``context`` key and its value
+is ``request`` if the compression context is request, otherwise
+``response``. The root JSON object also contains ``cases`` key and its
+value is an array of JSON object, which has at least following keys:
 
 seq
     The index of header set in the input.
 
 headers
-    The JSON array contains decompressed name/value pairs. Each
-    element is JSON aray having 2 elements. The index 0 of the array
-    contains the header field name. The index 1 contains the header
-    field value.
+    The JSON array contains decompressed name/value pairs.
+
+wire
+    The compressed header block in hex string.
+
+header_table_size
+    The header table size adjsuted before inflating compressed header
+    block.
 
 Example::
 
-    [
-      {
-	"seq": 0,
-	"headers": [
-	  [":authority", "example.org"],
-	  [":method", "GET"],
-	  [":path", "/"],
-	  [":scheme", "https"],
-	  ["user-agent", "nghttp2"]
-	]
-      },
-      {
-	"seq": 1,
-	"headers": [
-	  [":authority", "example.org"],
-	  [":method", "POST"],
-	  [":path", "/account"],
-	  [":scheme", "https"],
-	  ["user-agent", "nghttp2"]
-	]
-      }
-    ]
+    {
+      "context": "request",
+      "cases":
+      [
+        {
+          "seq": 0,
+          "wire": "01881f3468e5891afcbf83868a3d856659c62e3f",
+          "headers": [
+            {
+              ":authority": "example.org"
+            },
+            {
+              ":method": "GET"
+            },
+            {
+              ":path": "/"
+            },
+            {
+              ":scheme": "https"
+            },
+            {
+              "user-agent": "nghttp2"
+            }
+          ],
+          "header_table_size": 4096
+        }
+        ,
+        {
+          "seq": 1,
+          "wire": "88448504252dd5918485",
+          "headers": [
+            {
+              ":method": "POST"
+            },
+            {
+              ":path": "/account"
+            },
+            {
+              "user-agent": "nghttp2"
+            },
+            {
+              ":scheme": "https"
+            },
+            {
+              ":authority": "example.org"
+            }
+          ],
+          "header_table_size": 4096
+        }
+      ]
+    }
 
-The output can be used as the input for ``deflatehd``.
+The output can be used as the input for ``deflatehd`` and
+``inflatehd``.
 
-With ``-d`` option, the extra ``headerTable`` key is added and its
+With ``-d`` option, the extra ``header_table`` key is added and its
 associated value contains the state of dyanmic header table after the
 corresponding header set was processed. The format is the same as
 ``deflatehd``.
@@ -759,7 +894,7 @@ and decompressor in Python:
     inflater = nghttp2.HDInflater(nghttp2.HD_SIDE_REQUEST)
 
     data = deflater.deflate([(b'foo', b'bar'),
-			     (b'baz', b'buz')])
+                             (b'baz', b'buz')])
     print(binascii.b2a_hex(data))
 
     hdrs = inflater.inflate(data)
