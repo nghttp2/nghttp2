@@ -35,6 +35,7 @@ pyexec_LTLIBRARIES = nghttp2.la
 nghttp2_la_SOURCES = nghttp2.pyx
 nghttp2_la_CPPFLAGS = \
 	$(PYTHON_CPPFLAGS) \
+	-fno-strict-aliasing \
 	-I$(top_srcdir)/lib/includes \
 	-I$(build_srcdir)/lib/includes \
 	-I$(top_srcdir)/lib
