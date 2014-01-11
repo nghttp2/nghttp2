@@ -370,7 +370,9 @@ The ``Client`` in the above is needs to be configured to use
 
 At the time of this writing, Chrome is the only browser which supports
 secure proxy. The one way to configure Chrome to use secure proxy is
-create proxy.pac script like this::
+create proxy.pac script like this:
+
+.. code-block:: javascript
 
     function FindProxyForURL(url, host) {
         return "HTTPS SERVERADDR:PORT";
@@ -447,7 +449,9 @@ and are processed in the order they appear.  Each item in the sequence
 is a JSON object and it must have at least ``headers`` key. Its value
 is an array of a JSON object containing exactly one name/value pair.
 
-Example::
+Example:
+
+.. code-block:: json
 
     {
       "context": "request",
@@ -507,7 +511,9 @@ headers
 header_table_size
     The header table size adjsuted before deflating header set.
 
-Examples::
+Examples:
+
+.. code-block:: json
 
     {
       "context": "request",
@@ -605,7 +611,9 @@ max_deflate_size
     ``max_deflate_size`` but inside the ``max_size`` and make sure
     that they are no longer referenced.
 
-Example::
+Example:
+
+.. code-block:: json
 
     {
       "context": "request",
@@ -773,7 +781,9 @@ are processed in the order they appear. Each item in the sequence is a
 JSON object and it must have at least ``wire`` key. Its value is a
 string containing compressed header block in hex string.
 
-Example::
+Example:
+
+.. code-block:: json
 
     {
       "context": "request",
@@ -802,7 +812,9 @@ header_table_size
     The header table size adjsuted before inflating compressed header
     block.
 
-Example::
+Example:
+
+.. code-block:: json
 
     {
       "context": "request",
