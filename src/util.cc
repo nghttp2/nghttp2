@@ -326,8 +326,10 @@ void show_candidates(const char *unkopt, option *options)
   }
   auto cands = std::vector<std::pair<int, const char*>>();
   for(size_t i = 0; options[i].name != nullptr; ++i) {
-    // Use cost 0 for prefix match
-    if(istartsWith(options[i].name, unkopt)) {
+    // Use cost 0 for prefix or suffix match
+    if(istartsWith(options[i].name, unkopt) ||
+       iendsWith(options[i].name, options[i].name + strlen(options[i].name),
+                 unkopt, unkopt + strlen(unkopt))) {
       cands.emplace_back(0, options[i].name);
       continue;
     }
