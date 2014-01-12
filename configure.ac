@@ -99,8 +99,11 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG([0.20])
-AM_PATH_PYTHON([2.7],, [:])
-AX_PYTHON_DEVEL([>= '2.7'])
+
+if [test "x$request_python_bindings" != "xno"]; then
+  AM_PATH_PYTHON([2.7],, [:])
+  AX_PYTHON_DEVEL([>= '2.7'])
+fi
 
 if test "x${cython_path}" = "x"; then
   AC_CHECK_PROGS([CYTHON], [cython.py cython])
@@ -301,7 +304,8 @@ AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 enable_python_bindings=no
 if test "x${request_python_bindings}" != "xno" &&
    test "x${CYTHON}" != "x" &&
-   test "x${PYTHON}" != ":"; then
+   test "x${PYTHON}" != "x:" &&
+   test "x${have_python_dev}" = "xyes"; then
   enable_python_bindings=yes
 fi
 
@@ -416,6 +420,7 @@ AC_MSG_NOTICE([summary of build options:
     Python:         ${PYTHON}
     PYTHON_VERSION: ${PYTHON_VERSION}
     pyexecdir:      ${pyexecdir}
+    Python-dev:     ${have_python_dev}
     PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
     PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
     Cython:         ${CYTHON}

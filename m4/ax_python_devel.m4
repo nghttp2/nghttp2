@@ -81,10 +81,12 @@ AC_DEFUN([AX_PYTHON_DEVEL],[
 
 	AC_PATH_PROG([PYTHON],[python[$PYTHON_VERSION]])
 	if test -z "$PYTHON"; then
-	   AC_MSG_ERROR([Cannot find python$PYTHON_VERSION in your system path])
+	   AC_MSG_WARN([Cannot find python$PYTHON_VERSION in your system path])
 	   PYTHON_VERSION=""
+           no_python_devel=yes
 	fi
 
+AS_IF([test -z "$no_python_devel"], [
 	#
 	# Check for a version of Python >= 2.1.0
 	#
@@ -95,7 +97,7 @@ AC_DEFUN([AX_PYTHON_DEVEL],[
 	if test "$ac_supports_python_ver" != "True"; then
 		if test -z "$PYTHON_NOVERSIONCHECK"; then
 			AC_MSG_RESULT([no])
-			AC_MSG_FAILURE([
+			AC_MSG_WARN([
 This version of the AC@&t@_PYTHON_DEVEL macro
 doesn't work properly with versions of Python before
 2.1.0. You may need to re-run configure, setting the
@@ -104,13 +106,16 @@ PYTHON_EXTRA_LIBS and PYTHON_EXTRA_LDFLAGS by hand.
 Moreover, to disable this check, set PYTHON_NOVERSIONCHECK
 to something else than an empty string.
 ])
+                        no_python_devel=yes
 		else
 			AC_MSG_RESULT([skip at user request])
 		fi
 	else
 		AC_MSG_RESULT([yes])
 	fi
+]) # AS_IF
 
+AS_IF([test -z "$no_python_devel"], [
 	#
 	# if the macro parameter ``version'' is set, honour it
 	#
@@ -123,15 +128,18 @@ to something else than an empty string.
 		   AC_MSG_RESULT([yes])
 		else
 			AC_MSG_RESULT([no])
-			AC_MSG_ERROR([this package requires Python $1.
+			AC_MSG_WARN([this package requires Python $1.
 If you have it installed, but it isn't the default Python
 interpreter in your system path, please pass the PYTHON_VERSION
 variable to configure. See ``configure --help'' for reference.
 ])
 			PYTHON_VERSION=""
+                        no_python_devel=yes
 		fi
 	fi
+]) # AS_IF
 
+AS_IF([test -z "$no_python_devel"], [
 	#
 	# Check if you have distutils, else fail
 	#
@@ -141,12 +149,15 @@ variable to configure. See ``configure --help'' for reference.
 		AC_MSG_RESULT([yes])
 	else
 		AC_MSG_RESULT([no])
-		AC_MSG_ERROR([cannot import Python module "distutils".
+		AC_MSG_WARN([cannot import Python module "distutils".
 Please check your Python installation. The error was:
 $ac_distutils_result])
 		PYTHON_VERSION=""
+                no_python_devel=yes
 	fi
+]) # AS_IF
 
+AS_IF([test -z "$no_python_devel"], [
 	#
 	# Check for Python include path
 	#
@@ -238,15 +249,18 @@ EOD`
 		fi
 
 		if test -z "PYTHON_LDFLAGS"; then
-			AC_MSG_ERROR([
+			AC_MSG_WARN([
   Cannot determine location of your Python DSO. Please check it was installed with
   dynamic libraries enabled, or try setting PYTHON_LDFLAGS by hand.
 			])
+                        no_python_devel=yes
 		fi
 	fi
 	AC_MSG_RESULT([$PYTHON_LDFLAGS])
 	AC_SUBST([PYTHON_LDFLAGS])
+]) # AS_IF
 
+AS_IF([test -z "$no_python_devel"], [
 	#
 	# Check for site packages
 	#
@@ -304,7 +318,7 @@ EOD`
 	AC_MSG_RESULT([$pythonexists])
 
         if test ! "x$pythonexists" = "xyes"; then
-	   AC_MSG_FAILURE([
+	   AC_MSG_WARN([
   Could not link test program to Python. Maybe the main Python library has been
   installed in some non-standard library path. If so, pass it to configure,
   via the LDFLAGS environment variable.
@@ -316,9 +330,15 @@ EOD`
   ============================================================================
 	   ])
 	  PYTHON_VERSION=""
+          no_python_devel=yes
 	fi
 
 	#
 	# all done!
 	#
-])
+]) # AS_IF
+
+AS_IF([test -z "$no_python_devel"],
+      [have_python_dev=yes], [have_python_dev=no])
+
+]) # AS_IF
