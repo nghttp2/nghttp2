@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <err.h>
 
