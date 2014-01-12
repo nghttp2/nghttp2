@@ -103,6 +103,11 @@ typedef struct {
 typedef struct {
   /* dynamic header table */
   nghttp2_hd_ringbuf hd_table;
+  /* Holding emitted entry in deflating header block to retain
+     reference count. */
+  nghttp2_hd_entry **emit_set;
+  /* Keep track of allocated buffers in inflation */
+  uint8_t **buf_track;
   /* Abstract buffer size of hd_table as described in the spec. This
      is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
@@ -128,11 +133,6 @@ typedef struct {
   size_t deflate_hd_tablelen;
   /* The number of entry the |buf_track| contains. */
   size_t buf_tracklen;
-  /* Holding emitted entry in deflating header block to retain
-     reference count. */
-  nghttp2_hd_entry **emit_set;
-  /* Keep track of allocated buffers in inflation */
-  uint8_t **buf_track;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
   /* NGHTTP2_HD_SIDE_REQUEST for processing request, otherwise
