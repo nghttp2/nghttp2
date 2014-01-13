@@ -324,14 +324,26 @@ void show_candidates(const char *unkopt, option *options)
   if(*unkopt == '\0') {
     return;
   }
+  int prefix_match = 0;
   auto unkoptlen = strlen(unkopt);
   auto cands = std::vector<std::pair<int, const char*>>();
   for(size_t i = 0; options[i].name != nullptr; ++i) {
-    // Use cost 0 for prefix or suffix match
-    if(istartsWith(options[i].name, unkopt) ||
-       (unkoptlen >= 3 &&
-        iendsWith(options[i].name, options[i].name + strlen(options[i].name),
-                  unkopt, unkopt + unkoptlen))) {
+    auto optnamelen = strlen(options[i].name);
+    // Use cost 0 for prefix match
+    if(istartsWith(options[i].name, options[i].name + optnamelen,
+                   unkopt, unkopt + unkoptlen)) {
+      if(optnamelen == unkoptlen) {
+        // Exact match, then we don't show any condidates.
+        return ;
+      }
+      ++prefix_match;
+      cands.emplace_back(0, options[i].name);
+      continue;
+    }
+    // Use cost 0 for suffix match, but match at least 3 characters
+    if(unkoptlen >= 3 &&
+       iendsWith(options[i].name, options[i].name + optnamelen,
+                 unkopt, unkopt + unkoptlen)) {
       cands.emplace_back(0, options[i].name);
       continue;
     }
@@ -339,7 +351,7 @@ void show_candidates(const char *unkopt, option *options)
     int sim = levenshtein(unkopt, options[i].name, 0, 2, 1, 3);
     cands.emplace_back(sim, options[i].name);
   }
-  if(cands.empty()) {
+  if(prefix_match == 1 || cands.empty()) {
     return;
   }
   std::sort(std::begin(cands), std::end(cands));
