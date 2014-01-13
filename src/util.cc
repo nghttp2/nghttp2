@@ -324,12 +324,14 @@ void show_candidates(const char *unkopt, option *options)
   if(*unkopt == '\0') {
     return;
   }
+  auto unkoptlen = strlen(unkopt);
   auto cands = std::vector<std::pair<int, const char*>>();
   for(size_t i = 0; options[i].name != nullptr; ++i) {
     // Use cost 0 for prefix or suffix match
     if(istartsWith(options[i].name, unkopt) ||
-       iendsWith(options[i].name, options[i].name + strlen(options[i].name),
-                 unkopt, unkopt + strlen(unkopt))) {
+       (unkoptlen >= 3 &&
+        iendsWith(options[i].name, options[i].name + strlen(options[i].name),
+                  unkopt, unkopt + unkoptlen))) {
       cands.emplace_back(0, options[i].name);
       continue;
     }
