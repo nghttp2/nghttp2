@@ -194,15 +194,21 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx)-1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
+  const char *ciphers;
   if(get_config()->ciphers) {
-    if(SSL_CTX_set_cipher_list(ssl_ctx, get_config()->ciphers) == 0) {
-      LOG(FATAL) << "SSL_CTX_set_cipher_list failed: "
-                 << ERR_error_string(ERR_get_error(), nullptr);
-      DIE();
+    ciphers = get_config()->ciphers;
+    // If ciphers are given, honor its order unconditionally
+    SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+  } else {
+    ciphers = "HIGH:!aNULL:!eNULL";
+    if(get_config()->honor_cipher_order) {
+      SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
     }
-    SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
-  } else if(get_config()->honor_cipher_order) {
-    SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+  }
+  if(SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
+    LOG(FATAL) << "SSL_CTX_set_cipher_list " << ciphers << " failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
   }
 
 #ifndef OPENSSL_NO_EC
@@ -337,12 +343,16 @@ SSL_CTX* create_ssl_client_context()
                       create_tls_proto_mask(get_config()->tls_proto_list,
                                             get_config()->tls_proto_list_len));
 
+  const char *ciphers;
   if(get_config()->ciphers) {
-    if(SSL_CTX_set_cipher_list(ssl_ctx, get_config()->ciphers) == 0) {
-      LOG(FATAL) << "SSL_CTX_set_cipher_list failed: "
-                 << ERR_error_string(ERR_get_error(), nullptr);
-      DIE();
-    }
+    ciphers = get_config()->ciphers;
+  } else {
+    ciphers = "HIGH:!aNULL:!eNULL";
+  }
+  if(SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
+    LOG(FATAL) << "SSL_CTX_set_cipher_list " << ciphers << " failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
   }
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
