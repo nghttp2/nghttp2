@@ -179,10 +179,8 @@ void on_ctrl_recv_callback
     }
     bool is_connect = method && strcmp("CONNECT", method) == 0;
     if(!path || !host || !method ||
-       !http2::check_header_value(host) ||
-       !http2::check_header_value(path) ||
-       !http2::check_header_value(method) ||
-       (!is_connect && (!scheme || !http2::check_header_value(scheme)))) {
+       http2::lws(host) || http2::lws(path) || http2::lws(method) ||
+       (!is_connect && (!scheme || http2::lws(scheme)))) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }

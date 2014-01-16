@@ -2670,31 +2670,34 @@ void test_nghttp2_submit_invalid_nv(void)
     MAKE_NV("", "empty name")
   };
 
+  /* Now invalid header name/value pair in HTTP/1.1 is accepted in
+     nghttp2 */
+
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, NULL));
 
   /* nghttp2_submit_request */
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+  CU_ASSERT(0 ==
             nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT,
                                    empty_name_nv, ARRLEN(empty_name_nv),
                                    NULL, NULL));
 
   /* nghttp2_submit_response */
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+  CU_ASSERT(0 ==
             nghttp2_submit_response(session, 2,
                                     empty_name_nv, ARRLEN(empty_name_nv),
                                     NULL));
 
   /* nghttp2_submit_headers */
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+  CU_ASSERT(0 ==
             nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1,
                                    NGHTTP2_PRI_DEFAULT,
                                    empty_name_nv, ARRLEN(empty_name_nv),
                                    NULL));
 
   /* nghttp2_submit_push_promise */
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+  CU_ASSERT(0 ==
             nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 2,
                                         empty_name_nv, ARRLEN(empty_name_nv)));
 

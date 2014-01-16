@@ -550,46 +550,6 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
   return iv_copy;
 }
 
-int nghttp2_nv_array_check_nocase(const nghttp2_nv *nva, size_t nvlen)
-{
-  size_t i;
-  for(i = 0; i < nvlen; ++i) {
-    if(!nghttp2_check_header_name_nocase(nva[i].name, nva[i].namelen)) {
-      return 0;
-    }
-    if(!nghttp2_check_header_value(nva[i].value, nva[i].valuelen)) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
-int nghttp2_nv_array_check(const nghttp2_nv *nva, size_t nvlen)
-{
-  size_t i;
-  for(i = 0; i < nvlen; ++i) {
-    if(!nghttp2_check_header_name(nva[i].name, nva[i].namelen)) {
-      return 0;
-    }
-    if(!nghttp2_check_header_value(nva[i].value, nva[i].valuelen)) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
-int nghttp2_nv_check(const uint8_t *name, size_t namelen,
-                     const uint8_t *value, size_t valuelen)
-{
-  if(!nghttp2_check_header_name(name, namelen)) {
-    return 0;
-  }
-  if(!nghttp2_check_header_value(value, valuelen)) {
-    return 0;
-  }
-  return 1;
-}
-
 int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b)
 {
   return a->namelen == b->namelen && a->valuelen == b->valuelen &&

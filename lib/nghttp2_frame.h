@@ -559,25 +559,6 @@ int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b);
 void nghttp2_nv_array_del(nghttp2_nv *nva);
 
 /*
- * Checks header name/value pair is well-formed. This function allows
- * captital alphabet letters in name.
- *
- * This function returns nonzero if it succeeds, or 0.
- */
-int nghttp2_nv_array_check_nocase(const nghttp2_nv *nva, size_t nvlen);
-
-/*
- * Checks header name/value pair is well-formed. This function does
- * not allow captital alphabet letters in name.
- *
- * This function returns nonzero if it succeeds, or 0.
- */
-int nghttp2_nv_array_check(const nghttp2_nv *nva, size_t nvlen);
-
-int nghttp2_nv_check(const uint8_t *name, size_t namelen,
-                     const uint8_t *value, size_t valuelen);
-
-/*
  * Checks that the |iv|, which includes |niv| entries, does not have
  * invalid values. The |flow_control_opt| is current flow control
  * option value.

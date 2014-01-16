@@ -46,8 +46,8 @@ std::string get_status_string(unsigned int status_code);
 
 void capitalize(std::string& s, size_t offset);
 
-// Returns false if |value| is LWS
-bool check_header_value(const char *value);
+// Returns true if |value| is LWS
+bool lws(const char *value);
 
 void sanitize_header_value(std::string& s, size_t offset);
 
@@ -196,6 +196,30 @@ std::string rewrite_location_uri(const std::string& uri,
                                  const std::string& request_host,
                                  const std::string& upstream_scheme,
                                  uint16_t upstream_port);
+
+
+// Checks the header name in |name| with |len| bytes is well-formed.
+//
+// This function returns nonzero if it succeeds, or 0.
+int check_header_name(const uint8_t *name, size_t len);
+
+
+// Checks the header name in |name| with |len| bytes is
+// well-formed. This function accepts also characters in [A-Z].
+//
+// This function returns nonzero if it succeeds, or 0.
+int check_header_name_nocase(const uint8_t *name, size_t len);
+
+// Checks the header value in |value| with |len| bytes is well-formed.
+//
+// This function returns nonzero if it succeeds, or 0.
+int check_header_value(const uint8_t* value, size_t len);
+
+// Checks the header name/value pair using check_header_name() and
+// check_header_value(). If both function returns nonzero, this
+// function returns nonzero.
+int check_nv(const uint8_t *name, size_t namelen,
+             const uint8_t *value, size_t valuelen);
 
 } // namespace http2
 

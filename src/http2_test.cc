@@ -244,11 +244,11 @@ void test_http2_build_http1_headers_from_norm_headers(void)
   // CU_ASSERT(hdrs == "Alpha: bravo  charlie  \r\n");
 }
 
-void test_http2_check_header_value(void)
+void test_http2_lws(void)
 {
-  CU_ASSERT(http2::check_header_value("alpha"));
-  CU_ASSERT(!http2::check_header_value(" "));
-  CU_ASSERT(!http2::check_header_value(""));
+  CU_ASSERT(!http2::lws("alpha"));
+  CU_ASSERT(http2::lws(" "));
+  CU_ASSERT(http2::lws(""));
 }
 
 namespace {
@@ -295,6 +295,54 @@ void test_http2_rewrite_location_uri(void)
   check_rewrite_location_uri("https://localhost:3000/",
                              "http://localhost/",
                              "localhost", "https", 3000);
+}
+
+namespace {
+int check_header_name(const char *s)
+{
+  return http2::check_header_name((const uint8_t*)s, strlen(s));
+}
+} // namespace
+
+namespace {
+int check_header_name_nocase(const char *s)
+{
+  return http2::check_header_name_nocase((const uint8_t*)s, strlen(s));
+}
+} // namespace
+
+void test_http2_check_header_name(void)
+{
+  CU_ASSERT(check_header_name(":path"));
+  CU_ASSERT(check_header_name("path"));
+  CU_ASSERT(check_header_name("!#$%&'*+-.^_`|~"));
+  CU_ASSERT(!check_header_name(":PATH"));
+  CU_ASSERT(!check_header_name("path:"));
+  CU_ASSERT(!check_header_name(""));
+  CU_ASSERT(!check_header_name(":"));
+
+  CU_ASSERT(check_header_name_nocase(":path"));
+  CU_ASSERT(check_header_name_nocase("path"));
+  CU_ASSERT(check_header_name_nocase("!#$%&'*+-.^_`|~"));
+  CU_ASSERT(check_header_name_nocase(":PATH"));
+  CU_ASSERT(!check_header_name_nocase("path:"));
+  CU_ASSERT(!check_header_name_nocase(""));
+  CU_ASSERT(!check_header_name_nocase(":"));
+}
+
+#define check_header_value(S)                                   \
+  http2::check_header_value((const uint8_t*)S, sizeof(S) - 1)
+
+void test_http2_check_header_value(void)
+{
+  uint8_t goodval[] = { 'a', '\0', 'b', 0x80u, 'c', 0xffu, 'd', '\t', ' ' };
+  uint8_t badval1[] = { 'a', 0x1fu, 'b' };
+  uint8_t badval2[] = { 'a', 0x7fu, 'b' };
+
+  CU_ASSERT(check_header_value(" !|}~"));
+  CU_ASSERT(check_header_value(goodval));
+  CU_ASSERT(!check_header_value(badval1));
+  CU_ASSERT(!check_header_value(badval2));
 }
 
 } // namespace shrpx

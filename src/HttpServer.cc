@@ -791,6 +791,9 @@ int on_header_callback(nghttp2_session *session,
   if(!stream) {
     return 0;
   }
+  if(!http2::check_nv(name, namelen, value, valuelen)) {
+    return 0;
+  }
   http2::split_add_header(stream->headers, name, namelen, value, valuelen);
   return 0;
 }

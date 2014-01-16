@@ -2143,8 +2143,6 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |nva| includes empty name, or name which contains invalid
  *     characters.
- * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
- *     The stream is already closed or does not exist.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */

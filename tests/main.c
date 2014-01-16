@@ -215,8 +215,6 @@ int main(int argc, char* argv[])
                    test_nghttp2_frame_pack_goaway) ||
       !CU_add_test(pSuite, "frame_pack_window_update",
                    test_nghttp2_frame_pack_window_update) ||
-      !CU_add_test(pSuite, "nv_array_check",
-                   test_nghttp2_nv_array_check) ||
       !CU_add_test(pSuite, "nv_array_copy", test_nghttp2_nv_array_copy) ||
       !CU_add_test(pSuite, "iv_check", test_nghttp2_iv_check) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
@@ -248,11 +246,7 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_deflate_inflate) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "adjust_local_window_size",
-                   test_nghttp2_adjust_local_window_size) ||
-      !CU_add_test(pSuite, "check_header_name",
-                   test_nghttp2_check_header_name) ||
-      !CU_add_test(pSuite, "check_header_value",
-                   test_nghttp2_check_header_value)
+                   test_nghttp2_adjust_local_window_size)
       ) {
      CU_cleanup_registry();
      return CU_get_error();

@@ -233,7 +233,9 @@ int on_header_callback(nghttp2_session *session,
   if(!downstream) {
     return 0;
   }
-  // TODO Discard malformed header here
+  if(!http2::check_nv(name, namelen, value, valuelen)) {
+    return 0;
+  }
   downstream->split_add_request_header(name, namelen, value, valuelen);
   return 0;
 }
