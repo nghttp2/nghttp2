@@ -30,27 +30,25 @@
 
 /* #include "nghttp2_session.h" */
 
-ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
-                                   nghttp2_frame_type type,
-                                   nghttp2_hd_context *inflater,
-                                   const uint8_t *in, size_t len)
+ssize_t unpack_frame(nghttp2_frame *frame,
+                     nghttp2_frame_type type,
+                     const uint8_t *in, size_t len)
 {
   ssize_t rv;
   switch(type) {
   case NGHTTP2_HEADERS:
-    rv = nghttp2_frame_unpack_headers((nghttp2_headers*)frame,
-                                      &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
-                                      &in[NGHTTP2_FRAME_HEAD_LENGTH],
-                                      len - NGHTTP2_FRAME_HEAD_LENGTH,
-                                      inflater);
+    rv = nghttp2_frame_unpack_headers_without_nv
+      ((nghttp2_headers*)frame,
+       &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
+       &in[NGHTTP2_FRAME_HEAD_LENGTH],
+       len - NGHTTP2_FRAME_HEAD_LENGTH);
     break;
   case NGHTTP2_PUSH_PROMISE:
-    rv = nghttp2_frame_unpack_push_promise
+    rv = nghttp2_frame_unpack_push_promise_without_nv
       ((nghttp2_push_promise*)frame,
        &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
        &in[NGHTTP2_FRAME_HEAD_LENGTH],
-       len - NGHTTP2_FRAME_HEAD_LENGTH,
-       inflater);
+       len - NGHTTP2_FRAME_HEAD_LENGTH);
     break;
   default:
     /* Must not be reachable */
@@ -78,4 +76,65 @@ int nvnameeq(const char *a, nghttp2_nv *nv)
 int nvvalueeq(const char *a, nghttp2_nv *nv)
 {
   return strmemeq(a, nv->value, nv->valuelen);
+}
+
+void nva_out_init(nva_out *out)
+{
+  memset(out->nva, 0, sizeof(out->nva));
+  out->nvlen = 0;
+}
+
+void nva_out_reset(nva_out *out)
+{
+  size_t i;
+  for(i = 0; i < out->nvlen; ++i) {
+    free(out->nva[i].name);
+    free(out->nva[i].value);
+  }
+  memset(out->nva, 0, sizeof(out->nva));
+  out->nvlen = 0;
+}
+
+void add_out(nva_out *out, nghttp2_nv *nv)
+{
+  nghttp2_nv *onv = &out->nva[out->nvlen];
+  if(nv->namelen) {
+    onv->name = malloc(nv->namelen);
+    memcpy(onv->name, nv->name, nv->namelen);
+  } else {
+    onv->name = NULL;
+  }
+  if(nv->valuelen) {
+    onv->value = malloc(nv->valuelen);
+    memcpy(onv->value, nv->value, nv->valuelen);
+  } else {
+    onv->value = NULL;
+  }
+  onv->namelen = nv->namelen;
+  onv->valuelen = nv->valuelen;
+  ++out->nvlen;
+}
+
+ssize_t inflate_hd(nghttp2_hd_context *inflater, nva_out *out,
+                   uint8_t *buf, size_t buflen)
+{
+  ssize_t rv;
+  nghttp2_nv nv;
+  int final;
+  size_t initial = buflen;
+
+  for(;;) {
+    rv = nghttp2_hd_inflate_hd(inflater, &nv, &final, buf, buflen);
+    if(rv < 0) {
+      return rv;
+    }
+    buf += rv;
+    buflen -= rv;
+    if(final) {
+      break;
+    }
+    add_out(out, &nv);
+  }
+  nghttp2_hd_inflate_end_headers(inflater);
+  return initial - buflen;
 }

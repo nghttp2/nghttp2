@@ -58,6 +58,15 @@ void test_util_streq(void)
   CU_ASSERT(util::streq(a, 0,  b, 0));
 }
 
+void test_util_strieq(void)
+{
+  CU_ASSERT(util::strieq(std::string("alpha"), std::string("alpha")));
+  CU_ASSERT(util::strieq(std::string("alpha"), std::string("AlPhA")));
+  CU_ASSERT(util::strieq(std::string(), std::string()));
+  CU_ASSERT(!util::strieq(std::string("alpha"), std::string("AlPhA ")));
+  CU_ASSERT(!util::strieq(std::string(), std::string("AlPhA ")));
+}
+
 void test_util_inp_strlower(void)
 {
   std::string a("alPha");

@@ -154,6 +154,19 @@ bool endsWith(const std::string& a, const std::string& b)
   return endsWith(a.begin(), a.end(), b.begin(), b.end());
 }
 
+bool strieq(const std::string& a, const std::string& b)
+{
+  if(a.size() != b.size()) {
+    return false;
+  }
+  for(size_t i = 0; i < a.size(); ++i) {
+    if(lowcase(a[i]) != lowcase(b[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool strieq(const char *a, const char *b)
 {
   if(!a || !b) {

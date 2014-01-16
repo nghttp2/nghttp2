@@ -98,6 +98,9 @@ typedef struct {
   /* How many bytes are received for this frame. off <= payloadlen
      must be fulfilled. */
   size_t off;
+  /* How many bytes are decompressed inside |buf|. This is used for
+     header decompression. */
+  size_t inflate_offset;
   nghttp2_inbound_state state;
   /* Error code */
   int error_code;

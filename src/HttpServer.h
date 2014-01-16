@@ -44,6 +44,8 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "http2.h"
+
 namespace nghttp2 {
 
 struct Config {
@@ -68,7 +70,7 @@ struct Config {
 class Sessions;
 
 struct Request {
-  std::vector<std::pair<std::string, std::string>> headers;
+  Headers headers;
   std::pair<std::string, size_t> response_body;
   int32_t stream_id;
   int file;

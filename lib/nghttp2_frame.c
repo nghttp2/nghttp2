@@ -207,6 +207,15 @@ static size_t headers_nv_offset(nghttp2_headers *frame)
   }
 }
 
+size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame)
+{
+  if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+    return 4;
+  } else {
+    return 0;
+  }
+}
+
 ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *buflen_ptr,
                                    nghttp2_headers *frame,
@@ -235,29 +244,6 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
     nghttp2_put_uint32be(&(*buf_ptr)[8], frame->pri);
   }
   return framelen;
-}
-
-int nghttp2_frame_unpack_headers(nghttp2_headers *frame,
-                                 const uint8_t *head, size_t headlen,
-                                 const uint8_t *payload, size_t payloadlen,
-                                 nghttp2_hd_context *inflater)
-{
-  ssize_t r;
-  size_t pnv_offset;
-  r = nghttp2_frame_unpack_headers_without_nv(frame, head, headlen,
-                                              payload, payloadlen);
-  if(r < 0) {
-    return r;
-  }
-  pnv_offset = headers_nv_offset(frame) - NGHTTP2_FRAME_HEAD_LENGTH;
-  r = nghttp2_hd_inflate_hd(inflater, &frame->nva,
-                            (uint8_t*)payload + pnv_offset,
-                            payloadlen - pnv_offset);
-  if(r < 0) {
-    return r;
-  }
-  frame->nvlen = r;
-  return 0;
 }
 
 int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
@@ -433,27 +419,6 @@ ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
   return framelen;
 }
 
-int nghttp2_frame_unpack_push_promise(nghttp2_push_promise *frame,
-                                      const uint8_t *head, size_t headlen,
-                                      const uint8_t *payload,
-                                      size_t payloadlen,
-                                      nghttp2_hd_context *inflater)
-{
-  ssize_t r;
-  r = nghttp2_frame_unpack_push_promise_without_nv(frame, head, headlen,
-                                                   payload, payloadlen);
-  if(r < 0) {
-    return r;
-  }
-  r = nghttp2_hd_inflate_hd(inflater, &frame->nva,
-                            (uint8_t*)payload + 4, payloadlen - 4);
-  if(r < 0) {
-    return r;
-  }
-  frame->nvlen = r;
-  return 0;
-}
-
 int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
                                                  const uint8_t *head,
                                                  size_t headlen,
@@ -609,6 +574,18 @@ int nghttp2_nv_array_check(const nghttp2_nv *nva, size_t nvlen)
     if(!nghttp2_check_header_value(nva[i].value, nva[i].valuelen)) {
       return 0;
     }
+  }
+  return 1;
+}
+
+int nghttp2_nv_check(const uint8_t *name, size_t namelen,
+                     const uint8_t *value, size_t valuelen)
+{
+  if(!nghttp2_check_header_name(name, namelen)) {
+    return 0;
+  }
+  if(!nghttp2_check_header_value(value, valuelen)) {
+    return 0;
   }
   return 1;
 }

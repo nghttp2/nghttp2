@@ -85,6 +85,13 @@ void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd);
 void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
 
 /*
+ * Returns the offset from the HEADERS frame payload where the
+ * compressed header block starts. The frame payload does not include
+ * frame header.
+ */
+size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
+
+/*
  * Packs HEADERS frame |frame| in wire format and store it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
  * This function expands |*buf_ptr| as necessary to store frame. When
@@ -566,6 +573,9 @@ int nghttp2_nv_array_check_nocase(const nghttp2_nv *nva, size_t nvlen);
  * This function returns nonzero if it succeeds, or 0.
  */
 int nghttp2_nv_array_check(const nghttp2_nv *nva, size_t nvlen);
+
+int nghttp2_nv_check(const uint8_t *name, size_t namelen,
+                     const uint8_t *value, size_t valuelen);
 
 /*
  * Checks that the |iv|, which includes |niv| entries, does not have

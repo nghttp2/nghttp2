@@ -161,7 +161,6 @@ const char* ansi_escend()
 }
 } // namespace
 
-
 void print_nv(nghttp2_nv *nva, size_t nvlen)
 {
   for(auto& nv : http2::sort_nva(nva, nvlen)) {
@@ -311,7 +310,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     print_frame_attr_indent();
     printf("(promised_stream_id=%d)\n",
            frame->push_promise.promised_stream_id);
-    print_nv(frame->headers.nva, frame->headers.nvlen);
+    print_nv(frame->push_promise.nva, frame->push_promise.nvlen);
     break;
   case NGHTTP2_PING:
     print_frame_attr_indent();
@@ -339,6 +338,20 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   }
 }
 } // namespace
+
+int verbose_on_header_callback(nghttp2_session *session,
+                               const nghttp2_frame *frame,
+                               const uint8_t *name, size_t namelen,
+                               const uint8_t *value, size_t valuelen,
+                               void *user_data)
+{
+  nghttp2_nv nv = {
+    const_cast<uint8_t*>(name), const_cast<uint8_t*>(value),
+    static_cast<uint16_t>(namelen), static_cast<uint16_t>(valuelen)
+  };
+  print_nv(&nv, 1);
+  return 0;
+}
 
 int verbose_on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)

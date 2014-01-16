@@ -246,6 +246,7 @@ std::string strip_fragment(const char *raw_uri)
 
 namespace {
 struct Request {
+  Headers res_nva;
   // URI without fragment
   std::string uri;
   std::string status;
@@ -1103,27 +1104,17 @@ int before_frame_send_callback
 } // namespace
 
 namespace {
-void check_response_header
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
+void check_response_header(nghttp2_session *session, Request* req)
 {
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
-    return;
-  }
-  auto req = (Request*)nghttp2_session_get_stream_user_data
-    (session, frame->hd.stream_id);
-  if(!req) {
-    // Server-pushed stream does not have stream user data
-    return;
-  }
-  auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
   bool gzip = false;
-  for(auto& nv : nva) {
-    if(util::strieq("content-encoding", nv.name, nv.namelen)) {
-      gzip = util::strieq("gzip", nv.value, nv.valuelen) ||
-        util::strieq("deflate", nv.value, nv.valuelen);
-    } else if(util::strieq(":status", nv.name, nv.namelen)) {
-      req->status.assign(nv.value, nv.value + nv.valuelen);
+  for(auto& nv : req->res_nva) {
+    if("content-encoding" == nv.first) {
+      gzip = util::strieq("gzip", nv.second) ||
+        util::strieq("deflate", nv.second);
+      continue;
+    }
+    if(":status" == nv.first) {
+      req->status.assign(nv.second);
     }
   }
   if(gzip) {
@@ -1136,6 +1127,56 @@ void check_response_header
       req->init_html_parser();
     }
   }
+}
+} // namespace
+
+namespace {
+int on_header_callback(nghttp2_session *session,
+                       const nghttp2_frame *frame,
+                       const uint8_t *name, size_t namelen,
+                       const uint8_t *value, size_t valuelen,
+                       void *user_data)
+{
+  if(config.verbose) {
+    verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
+                               user_data);
+  }
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
+    return 0;
+  }
+  auto req = (Request*)nghttp2_session_get_stream_user_data
+    (session, frame->hd.stream_id);
+  if(!req) {
+    // Server-pushed stream does not have stream user data
+    return 0;
+  }
+  http2::split_add_header(req->res_nva, name, namelen, value, valuelen);
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_end_headers_callback(nghttp2_session *session,
+                            const nghttp2_frame *frame,
+                            nghttp2_error_code error_code,
+                            void *user_data)
+{
+  if(error_code != NGHTTP2_NO_ERROR) {
+    return 0;
+  }
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
+    return 0;
+  }
+  auto req = (Request*)nghttp2_session_get_stream_user_data
+    (session, frame->hd.stream_id);
+  if(!req) {
+    // Server-pushed stream does not have stream user data
+    return 0;
+  }
+  check_response_header(session, req);
+  return 0;
 }
 } // namespace
 
@@ -1153,7 +1194,6 @@ int on_frame_recv_callback2
       req->record_response_time();
     }
   }
-  check_response_header(session, frame, user_data);
   if(frame->hd.type == NGHTTP2_SETTINGS &&
      (frame->hd.flags & NGHTTP2_FLAG_ACK)) {
     auto client = get_session(user_data);
@@ -1529,6 +1569,9 @@ int run(char **uris, int n)
       verbose_on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_end_headers_callback = on_end_headers_callback;
+
   std::string prev_scheme;
   std::string prev_host;
   uint16_t prev_port = 0;

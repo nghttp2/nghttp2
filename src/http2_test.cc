@@ -72,38 +72,67 @@ void test_http2_sort_nva(void)
   check_nv({"delta", "5"}, &nva[5]);
 }
 
+void test_http2_split_add_header(void)
+{
+  const uint8_t concatval[] = { '4', 0x00, 0x00, '6', 0x00, '5', '9', 0x00 };
+  auto nva = Headers();
+  http2::split_add_header(nva, (const uint8_t*)"delta", 5,
+                          concatval, sizeof(concatval));
+  CU_ASSERT(Headers::value_type("delta", "4") == nva[0]);
+  CU_ASSERT(Headers::value_type("delta", "6") == nva[1]);
+  CU_ASSERT(Headers::value_type("delta", "59") == nva[2]);
+
+  nva.clear();
+
+  http2::split_add_header(nva, (const uint8_t*)"alpha", 5,
+                          (const uint8_t*)"123", 3);
+  CU_ASSERT(Headers::value_type("alpha", "123") == nva[0]);
+
+  nva.clear();
+
+  http2::split_add_header(nva, (const uint8_t*)"alpha", 5,
+                          (const uint8_t*)"", 0);
+  CU_ASSERT(Headers::value_type("alpha", "") == nva[0]);
+}
+
 void test_http2_check_http2_headers(void)
 {
-  nghttp2_nv nv1[] = {MAKE_NV("alpha", "1"),
-                      MAKE_NV("bravo", "2"),
-                      MAKE_NV("upgrade", "http2")};
-  CU_ASSERT(!http2::check_http2_headers(http2::sort_nva(nv1, 3)));
+  auto nva1 = Headers{
+    { "alpha", "1" },
+    { "bravo", "2" },
+    { "upgrade", "http2" }
+  };
+  CU_ASSERT(!http2::check_http2_headers(nva1));
 
-  nghttp2_nv nv2[] = {MAKE_NV("connection", "1"),
-                      MAKE_NV("delta", "2"),
-                      MAKE_NV("echo", "3")};
-  CU_ASSERT(!http2::check_http2_headers(http2::sort_nva(nv2, 3)));
+  auto nva2 = Headers{
+    { "connection", "1" },
+    { "delta", "2" },
+    { "echo", "3" }
+  };
+  CU_ASSERT(!http2::check_http2_headers(nva2));
 
-  nghttp2_nv nv3[] = {MAKE_NV("alpha", "1"),
-                      MAKE_NV("bravo", "2"),
-                      MAKE_NV("te2", "3")};
-  CU_ASSERT(http2::check_http2_headers(http2::sort_nva(nv3, 3)));
+  auto nva3 = Headers{
+    { "alpha", "1" },
+    { "bravo", "2" },
+    { "te2", "3" }
+  };
+  CU_ASSERT(http2::check_http2_headers(nva3));
 }
 
 void test_http2_get_unique_header(void)
 {
-  nghttp2_nv nv[] = {MAKE_NV("alpha", "1"),
-                     MAKE_NV("bravo", "2"),
-                     MAKE_NV("bravo", "3"),
-                     MAKE_NV("charlie", "4"),
-                     MAKE_NV("delta", "5"),
-                     MAKE_NV("echo", "6"),};
-  size_t nvlen = sizeof(nv)/sizeof(nv[0]);
-  auto nva = http2::sort_nva(nv, nvlen);
-  const nghttp2_nv *rv;
+  auto nva = Headers{
+    { "alpha", "1" },
+    { "bravo", "2" },
+    { "bravo", "3" },
+    { "charlie", "4" },
+    { "delta", "5" },
+    { "echo", "6" }
+  };
+  const Headers::value_type *rv;
   rv = http2::get_unique_header(nva, "delta");
   CU_ASSERT(rv != nullptr);
-  CU_ASSERT(util::streq("delta", rv->name, rv->namelen));
+  CU_ASSERT("delta" == rv->first);
 
   rv = http2::get_unique_header(nva, "bravo");
   CU_ASSERT(rv == nullptr);
@@ -114,22 +143,22 @@ void test_http2_get_unique_header(void)
 
 void test_http2_get_header(void)
 {
-  nghttp2_nv nv[] = {MAKE_NV("alpha", "1"),
-                     MAKE_NV("bravo", "2"),
-                     MAKE_NV("bravo", "3"),
-                     MAKE_NV("charlie", "4"),
-                     MAKE_NV("delta", "5"),
-                     MAKE_NV("echo", "6"),};
-  size_t nvlen = sizeof(nv)/sizeof(nv[0]);
-  auto nva = http2::sort_nva(nv, nvlen);
-  const nghttp2_nv *rv;
+  auto nva = Headers{
+    { "alpha", "1" },
+    { "bravo", "2" },
+    { "bravo", "3" },
+    { "charlie", "4" },
+    { "delta", "5" },
+    { "echo", "6" }
+  };
+  const Headers::value_type *rv;
   rv = http2::get_header(nva, "delta");
   CU_ASSERT(rv != nullptr);
-  CU_ASSERT(util::streq("delta", rv->name, rv->namelen));
+  CU_ASSERT("delta" == rv->first);
 
   rv = http2::get_header(nva, "bravo");
   CU_ASSERT(rv != nullptr);
-  CU_ASSERT(util::streq("bravo", rv->name, rv->namelen));
+  CU_ASSERT("bravo" == rv->first);
 
   rv = http2::get_header(nva, "foxtrot");
   CU_ASSERT(rv == nullptr);
@@ -137,16 +166,18 @@ void test_http2_get_header(void)
 
 void test_http2_value_lws(void)
 {
-  nghttp2_nv nv[] = {MAKE_NV("0", "alpha"),
-                     MAKE_NV("1", " alpha"),
-                     MAKE_NV("2", ""),
-                     MAKE_NV("3", " "),
-                     MAKE_NV("4", "  a ")};
-  CU_ASSERT(!http2::value_lws(&nv[0]));
-  CU_ASSERT(!http2::value_lws(&nv[1]));
-  CU_ASSERT(http2::value_lws(&nv[2]));
-  CU_ASSERT(http2::value_lws(&nv[3]));
-  CU_ASSERT(!http2::value_lws(&nv[4]));
+  auto nva = Headers{
+    { "0", "alpha" },
+    { "1", " alpha" },
+    { "2", "" },
+    {" 3", " " },
+    {" 4", " a "}
+  };
+  CU_ASSERT(!http2::value_lws(&nva[0]));
+  CU_ASSERT(!http2::value_lws(&nva[1]));
+  CU_ASSERT(http2::value_lws(&nva[2]));
+  CU_ASSERT(http2::value_lws(&nva[3]));
+  CU_ASSERT(!http2::value_lws(&nva[4]));
 }
 
 namespace {

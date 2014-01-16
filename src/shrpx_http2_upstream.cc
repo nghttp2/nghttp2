@@ -218,6 +218,138 @@ void Http2Upstream::stop_settings_timer()
 }
 
 namespace {
+int on_header_callback(nghttp2_session *session,
+                       const nghttp2_frame *frame,
+                       const uint8_t *name, size_t namelen,
+                       const uint8_t *value, size_t valuelen,
+                       void *user_data)
+{
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto downstream = upstream->find_downstream(frame->hd.stream_id);
+  if(!downstream) {
+    return 0;
+  }
+  // TODO Discard malformed header here
+  downstream->split_add_request_header(name, namelen, value, valuelen);
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_end_headers_callback(nghttp2_session *session,
+                            const nghttp2_frame *frame,
+                            nghttp2_error_code error_code,
+                            void *user_data)
+{
+  if(error_code != NGHTTP2_NO_ERROR) {
+    return 0;
+  }
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  int rv;
+  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto downstream = upstream->find_downstream(frame->hd.stream_id);
+  if(!downstream) {
+    return 0;
+  }
+
+  downstream->normalize_request_headers();
+  auto& nva = downstream->get_request_headers();
+
+  if(LOG_ENABLED(INFO)) {
+    std::stringstream ss;
+    for(auto& nv : nva) {
+      ss << TTY_HTTP_HD << nv.first << TTY_RST << ": " << nv.second << "\n";
+    }
+    ULOG(INFO, upstream) << "HTTP request headers. stream_id="
+                         << downstream->get_stream_id()
+                         << "\n" << ss.str();
+  }
+
+  if(get_config()->http2_upstream_dump_request_header) {
+    http2::dump_nv(get_config()->http2_upstream_dump_request_header, nva);
+  }
+
+  if(!http2::check_http2_headers(nva)) {
+    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    return 0;
+  }
+
+  auto host = http2::get_unique_header(nva, "host");
+  auto authority = http2::get_unique_header(nva, ":authority");
+  auto path = http2::get_unique_header(nva, ":path");
+  auto method = http2::get_unique_header(nva, ":method");
+  auto scheme = http2::get_unique_header(nva, ":scheme");
+  bool is_connect = method  && "CONNECT" == method->second;
+  bool having_host = http2::non_empty_value(host);
+  bool having_authority = http2::non_empty_value(authority);
+
+  if(is_connect) {
+    // Here we strictly require :authority header field.
+    if(scheme || path || !having_authority) {
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      return 0;
+    }
+  } else {
+    // For proxy, :authority is required. Otherwise, we can accept
+    // :authority or host for methods.
+    if(!http2::non_empty_value(method) ||
+       !http2::non_empty_value(scheme) ||
+       (get_config()->http2_proxy && !having_authority) ||
+       (!get_config()->http2_proxy && !having_authority && !having_host) ||
+       !http2::non_empty_value(path)) {
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      return 0;
+    }
+  }
+  if(!is_connect &&
+     (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+    auto content_length = http2::get_header(nva, "content-length");
+    if(!content_length || http2::value_lws(content_length)) {
+      // If content-length is missing,
+      // Downstream::push_upload_data_chunk will fail and
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      return 0;
+    }
+  }
+
+  downstream->set_request_method(http2::value_to_str(method));
+  downstream->set_request_http2_scheme(http2::value_to_str(scheme));
+  downstream->set_request_http2_authority(http2::value_to_str(authority));
+  downstream->set_request_path(http2::value_to_str(path));
+
+  downstream->check_upgrade_request();
+
+  auto dconn = upstream->get_client_handler()->get_downstream_connection();
+  rv = dconn->attach_downstream(downstream);
+  if(rv != 0) {
+    // If downstream connection fails, issue RST_STREAM.
+    upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    return 0;
+  }
+  rv = downstream->push_request_headers();
+  if(rv != 0) {
+    upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    return 0;
+  }
+  downstream->set_request_state(Downstream::HEADER_COMPLETE);
+  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    downstream->set_request_state(Downstream::MSG_COMPLETE);
+  }
+
+  return 0;
+}
+
+} // namespace
+
+namespace {
 int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -237,104 +369,6 @@ int on_frame_recv_callback
                                      frame->headers.pri);
     upstream->add_downstream(downstream);
     downstream->init_response_body_buf();
-
-    // nva is no longer sorted
-    auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
-
-    if(LOG_ENABLED(INFO)) {
-      std::stringstream ss;
-      for(auto& nv : nva) {
-        ss << TTY_HTTP_HD;
-        ss.write(reinterpret_cast<char*>(nv.name), nv.namelen);
-        ss << TTY_RST << ": ";
-        ss.write(reinterpret_cast<char*>(nv.value), nv.valuelen);
-        ss << "\n";
-      }
-      ULOG(INFO, upstream) << "HTTP request headers. stream_id="
-                           << downstream->get_stream_id()
-                           << "\n" << ss.str();
-    }
-
-    if(get_config()->http2_upstream_dump_request_header) {
-      http2::dump_nv(get_config()->http2_upstream_dump_request_header,
-                     nva.data(), nva.size());
-    }
-
-    if(!http2::check_http2_headers(nva)) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return 0;
-    }
-
-    for(auto& nv : nva) {
-      if(nv.namelen > 0 && nv.name[0] != ':') {
-        downstream->add_request_header(http2::name_to_str(&nv),
-                                       http2::value_to_str(&nv));
-      }
-    }
-
-    auto host = http2::get_unique_header(nva, "host");
-    auto authority = http2::get_unique_header(nva, ":authority");
-    auto path = http2::get_unique_header(nva, ":path");
-    auto method = http2::get_unique_header(nva, ":method");
-    auto scheme = http2::get_unique_header(nva, ":scheme");
-    bool is_connect = method &&
-      util::streq("CONNECT", method->value, method->valuelen);
-    bool having_host = http2::non_empty_value(host);
-    bool having_authority = http2::non_empty_value(authority);
-
-    if(is_connect) {
-      // Here we strictly require :authority header field.
-      if(scheme || path || !having_authority) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-    } else {
-      // For proxy, :authority is required. Otherwise, we can accept
-      // :authority or host for methods.
-      if(!http2::non_empty_value(method) ||
-         !http2::non_empty_value(scheme) ||
-         (get_config()->http2_proxy && !having_authority) ||
-         (!get_config()->http2_proxy && !having_authority && !having_host) ||
-         !http2::non_empty_value(path)) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-    }
-    if(!is_connect &&
-       (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-      auto content_length = http2::get_header(nva, "content-length");
-      if(!content_length || http2::value_lws(content_length)) {
-        // If content-length is missing,
-        // Downstream::push_upload_data_chunk will fail and
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-    }
-
-    downstream->set_request_method(http2::value_to_str(method));
-    downstream->set_request_http2_scheme(http2::value_to_str(scheme));
-    downstream->set_request_http2_authority(http2::value_to_str(authority));
-    downstream->set_request_path(http2::value_to_str(path));
-
-    downstream->check_upgrade_request();
-
-    auto dconn = upstream->get_client_handler()->get_downstream_connection();
-    rv = dconn->attach_downstream(downstream);
-    if(rv != 0) {
-      // If downstream connection fails, issue RST_STREAM.
-      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-      downstream->set_request_state(Downstream::CONNECT_FAIL);
-      return 0;
-    }
-    rv = downstream->push_request_headers();
-    if(rv != 0) {
-      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-      return 0;
-    }
-    downstream->set_request_state(Downstream::HEADER_COMPLETE);
-    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      downstream->set_request_state(Downstream::MSG_COMPLETE);
-    }
     break;
   }
   case NGHTTP2_SETTINGS:
@@ -496,6 +530,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   callbacks.on_frame_recv_parse_error_callback =
     on_frame_recv_parse_error_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_end_headers_callback = on_end_headers_callback;
 
   nghttp2_opt_set opt_set;
   opt_set.no_auto_stream_window_update = 1;

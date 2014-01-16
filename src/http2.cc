@@ -203,16 +203,29 @@ auto nv_name_less = [](const nghttp2_nv& lhs, const nghttp2_nv& rhs)
 };
 } // namespace
 
-bool check_http2_headers(const std::vector<nghttp2_nv>& nva)
+bool name_less(const Headers::value_type& lhs,
+               const Headers::value_type& rhs)
+{
+  return lhs.first < rhs.first;
+}
+
+bool check_http2_headers(const Headers& nva)
 {
   for(size_t i = 0; i < DISALLOWED_HDLEN; ++i) {
-    nghttp2_nv nv = {(uint8_t*)DISALLOWED_HD[i], nullptr,
-                     (uint16_t)strlen(DISALLOWED_HD[i]), 0};
-    if(std::binary_search(std::begin(nva), std::end(nva), nv, nv_name_less)) {
+    if(std::binary_search(std::begin(nva), std::end(nva),
+                          std::make_pair(DISALLOWED_HD[i], ""), name_less)) {
       return false;
     }
   }
   return true;
+}
+
+void normalize_headers(Headers& nva)
+{
+  for(auto& kv : nva) {
+    util::inp_strlower(kv.first);
+  }
+  std::stable_sort(std::begin(nva), std::end(nva), name_less);
 }
 
 std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen)
@@ -246,69 +259,81 @@ std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen)
   return res;
 }
 
-const nghttp2_nv* get_unique_header(const std::vector<nghttp2_nv>& nva,
-                                    const char *name)
+Headers::value_type to_header(const uint8_t *name, size_t namelen,
+                              const uint8_t *value, size_t valuelen)
 {
-  size_t namelen = strlen(name);
-  nghttp2_nv nv = {(uint8_t*)name, nullptr, (uint16_t)namelen, 0};
-  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, nv_name_less);
-  if(i != std::end(nva) && util::streq((*i).name, (*i).namelen,
-                                       (const uint8_t*)name, namelen)) {
+  return std::make_pair(std::string(reinterpret_cast<const char*>(name),
+                                    namelen),
+                        std::string(reinterpret_cast<const char*>(value),
+                                    valuelen));
+}
+
+void split_add_header(Headers& nva,
+                      const uint8_t *name, size_t namelen,
+                      const uint8_t *value, size_t valuelen)
+{
+  if(valuelen == 0) {
+    nva.push_back(to_header(name, namelen, value, valuelen));
+    return;
+  }
+  auto j = value;
+  auto end = value + valuelen;
+  for(;;) {
+    // Skip 0 length value
+    j = std::find_if(j, end,
+                     [](uint8_t c)
+                     {
+                       return c != '\0';
+                     });
+    if(j == end) {
+      break;
+    }
+    auto l = std::find(j, end, '\0');
+    nva.push_back(to_header(name, namelen, j, l-j));
+    j = l;
+  }
+}
+
+const Headers::value_type* get_unique_header(const Headers& nva,
+                                             const char *name)
+{
+  auto nv = Headers::value_type(name, "");
+  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, name_less);
+  if(i != std::end(nva) && (*i).first == nv.first) {
     auto j = i + 1;
-    if(j == std::end(nva) || !util::streq((*j).name, (*j).namelen,
-                                          (const uint8_t*)name, namelen)) {
+    if(j == std::end(nva) || (*j).first != nv.first) {
       return &(*i);
     }
   }
   return nullptr;
 }
 
-const nghttp2_nv* get_header(const std::vector<nghttp2_nv>& nva,
-                             const char *name)
+const Headers::value_type* get_header(const Headers& nva, const char *name)
 {
-  size_t namelen = strlen(name);
-  nghttp2_nv nv = {(uint8_t*)name, nullptr, (uint16_t)namelen, 0};
-  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, nv_name_less);
-  if(i != std::end(nva) && util::streq((*i).name, (*i).namelen,
-                                       (const uint8_t*)name, namelen)) {
+  auto nv = Headers::value_type(name, "");
+  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, name_less);
+  if(i != std::end(nva) && (*i).first == nv.first) {
     return &(*i);
   }
   return nullptr;
 }
 
-std::string name_to_str(const nghttp2_nv *nv)
+std::string value_to_str(const Headers::value_type *nv)
 {
   if(nv) {
-    return std::string(reinterpret_cast<const char*>(nv->name), nv->namelen);
+    return nv->second;
   }
   return "";
 }
 
-std::string value_to_str(const nghttp2_nv *nv)
+bool value_lws(const Headers::value_type *nv)
 {
-  if(nv) {
-    return std::string(reinterpret_cast<const char*>(nv->value), nv->valuelen);
-  }
-  return "";
+  return (*nv).second.find_first_not_of("\t ") == std::string::npos;
 }
 
-bool value_lws(const nghttp2_nv *nv)
+bool non_empty_value(const Headers::value_type *nv)
 {
-  for(size_t i = 0; i < nv->valuelen; ++i) {
-    switch(nv->value[i]) {
-    case '\t':
-    case ' ':
-      continue;
-    default:
-      return false;
-    }
-  }
-  return true;
-}
-
-bool non_empty_value(const nghttp2_nv* nv)
-{
-  return nv && !http2::value_lws(nv);
+  return nv && !value_lws(nv);
 }
 
 nghttp2_nv make_nv(const std::string& name, const std::string& value)
@@ -320,11 +345,9 @@ nghttp2_nv make_nv(const std::string& name, const std::string& value)
       };
 }
 
-std::vector<std::pair<std::string, std::string>>
-concat_norm_headers
-(std::vector<std::pair<std::string, std::string>> headers)
+Headers concat_norm_headers(Headers headers)
 {
-  auto res = std::vector<std::pair<std::string, std::string>>();
+  auto res = Headers();
   res.reserve(headers.size());
   for(auto& kv : headers) {
     if(!res.empty() && res.back().first == kv.first &&
@@ -341,14 +364,15 @@ concat_norm_headers
 }
 
 void copy_norm_headers_to_nva
-(std::vector<nghttp2_nv>& nva,
- const std::vector<std::pair<std::string, std::string>>& headers)
+(std::vector<nghttp2_nv>& nva, const Headers& headers)
 {
   size_t i, j;
   for(i = 0, j = 0; i < headers.size() && j < IGN_HDLEN;) {
     int rv = strcmp(headers[i].first.c_str(), IGN_HD[j]);
     if(rv < 0) {
-      nva.push_back(make_nv(headers[i].first, headers[i].second));
+      if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
+        nva.push_back(make_nv(headers[i].first, headers[i].second));
+      }
       ++i;
     } else if(rv > 0) {
       ++j;
@@ -357,39 +381,43 @@ void copy_norm_headers_to_nva
     }
   }
   for(; i < headers.size(); ++i) {
-    nva.push_back(make_nv(headers[i].first, headers[i].second));
+    if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
+      nva.push_back(make_nv(headers[i].first, headers[i].second));
+    }
   }
 }
 
 void build_http1_headers_from_norm_headers
-(std::string& hdrs,
- const std::vector<std::pair<std::string,
- std::string>>& headers)
+(std::string& hdrs, const Headers& headers)
 {
   size_t i, j;
   for(i = 0, j = 0; i < headers.size() && j < HTTP1_IGN_HDLEN;) {
     int rv = strcmp(headers[i].first.c_str(), HTTP1_IGN_HD[j]);
     if(rv < 0) {
+      if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
+        hdrs += headers[i].first;
+        capitalize(hdrs, hdrs.size()-headers[i].first.size());
+        hdrs += ": ";
+        hdrs += headers[i].second;
+        sanitize_header_value(hdrs, hdrs.size() - headers[i].second.size());
+        hdrs += "\r\n";
+      }
+      ++i;
+    } else if(rv > 0) {
+      ++j;
+    } else {
+      ++i;
+    }
+  }
+  for(; i < headers.size(); ++i) {
+    if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
       hdrs += headers[i].first;
       capitalize(hdrs, hdrs.size()-headers[i].first.size());
       hdrs += ": ";
       hdrs += headers[i].second;
       sanitize_header_value(hdrs, hdrs.size() - headers[i].second.size());
       hdrs += "\r\n";
-      ++i;
-    } else if(rv > 0) {
-      ++j;
-    } else {
-      ++i;
     }
-  }
-  for(; i < headers.size(); ++i) {
-    hdrs += headers[i].first;
-    capitalize(hdrs, hdrs.size()-headers[i].first.size());
-    hdrs += ": ";
-    hdrs += headers[i].second;
-    sanitize_header_value(hdrs, hdrs.size() - headers[i].second.size());
-    hdrs += "\r\n";
   }
 }
 
@@ -434,6 +462,18 @@ void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen)
     fwrite(nv.name, nv.namelen, 1, out);
     fwrite(": ", 2, 1, out);
     fwrite(nv.value, nv.valuelen, 1, out);
+    fwrite("\n", 1, 1, out);
+  }
+  fwrite("\n", 1, 1, out);
+  fflush(out);
+}
+
+void dump_nv(FILE *out, const Headers& nva)
+{
+  for(auto& nv : nva) {
+    fwrite(nv.first.c_str(), nv.first.size(), 1, out);
+    fwrite(": ", 2, 1, out);
+    fwrite(nv.second.c_str(), nv.second.size(), 1, out);
     fwrite("\n", 1, 1, out);
   }
   fwrite("\n", 1, 1, out);

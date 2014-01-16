@@ -117,7 +117,6 @@ static void deflate_hd(nghttp2_hd_context *deflater,
   input_sum += inputlen;
   output_sum += rv;
   output_to_json(deflater, buf, rv, inputlen, nva, nvlen, seq);
-  nghttp2_hd_end_headers(deflater);
   free(buf);
 }
 

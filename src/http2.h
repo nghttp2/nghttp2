@@ -38,6 +38,8 @@
 
 namespace nghttp2 {
 
+typedef std::vector<std::pair<std::string, std::string>> Headers;
+
 namespace http2 {
 
 std::string get_status_string(unsigned int status_code);
@@ -63,10 +65,25 @@ bool check_http2_allowed_header(const uint8_t *name, size_t namelen);
 // assuming |name| is null-terminated string.
 bool check_http2_allowed_header(const char *name);
 
-// Checks that headers |nva| including |nvlen| entries do not contain
-// disallowed header fields in HTTP/2.0 spec. This function returns
-// true if |nva| does not contains such headers.
-bool check_http2_headers(const std::vector<nghttp2_nv>& nva);
+// Checks that headers |nva| do not contain disallowed header fields
+// in HTTP/2.0 spec. This function returns true if |nva| does not
+// contains such headers.
+bool check_http2_headers(const Headers& nva);
+
+bool name_less(const Headers::value_type& lhs, const Headers::value_type& rhs);
+
+void normalize_headers(Headers& nva);
+
+Headers::value_type to_header(const uint8_t *name, size_t namelen,
+                              const uint8_t *value, size_t valuelen);
+
+// Add name/value pairs to |nva|. The name is given in the |name| with
+// |namelen| bytes. This function inspects the |value| and split it
+// using '\0' as delimiter. Each token is added to the |nva| with the
+// name |name|.
+void split_add_header(Headers& nva,
+                      const uint8_t *name, size_t namelen,
+                      const uint8_t *value, size_t valuelen);
 
 // Returns sorted |nva| with |nvlen| elements. The headers are sorted
 // by name only and not necessarily stable. In addition to the
@@ -75,37 +92,33 @@ bool check_http2_headers(const std::vector<nghttp2_nv>& nva);
 // the returned vector refers to the memory pointed by |nva|.
 std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen);
 
-// Returns the pointer to the entry in |nva| which has name |name| and
-// the |name| is uinque in the |nva|. If no such entry exist, returns
+// Returns the iterator to the entry in |nva| which has name |name|
+// and the |name| is uinque in the |nva|. If no such entry exist,
+// returns nullptr.
+const Headers::value_type* get_unique_header(const Headers& nva,
+                                             const char *name);
+
+// Returns the iterator to the entry in |nva| which has name
+// |name|. If more than one entries which have the name |name|, first
+// occurrence in |nva| is returned. If no such entry exist, returns
 // nullptr.
-const nghttp2_nv* get_unique_header(const std::vector<nghttp2_nv>& nva,
-                                    const char *name);
+const Headers::value_type* get_header(const Headers& nva, const char *name);
 
-// Returns the poiter to the entry in |nva| which has name |name|. If
-// more than one entries which have the name |name|, first occurrence
-// in |nva| is returned. If no such entry exist, returns nullptr.
-const nghttp2_nv* get_header(const std::vector<nghttp2_nv>& nva,
-                             const char *name);
-
-// Returns std::string version of nv->name with nv->namelen bytes.
-std::string name_to_str(const nghttp2_nv *nv);
-// Returns std::string version of nv->value with nv->valuelen bytes.
-std::string value_to_str(const nghttp2_nv *nv);
+// Returns nv->second if nv is not nullptr. Otherwise, returns "".
+std::string value_to_str(const Headers::value_type *nv);
 
 // Returns true if the value of |nv| includes only ' ' (0x20) or '\t'.
-bool value_lws(const nghttp2_nv *nv);
+bool value_lws(const Headers::value_type *nv);
 
 // Returns true if the value of |nv| is not empty value and not LWS
 // and not contain illegal characters.
-bool non_empty_value(const nghttp2_nv* nv);
+bool non_empty_value(const Headers::value_type *nv);
 
 // Concatenates field with same value by NULL as delimiter and returns
 // new vector containing the resulting header fields. cookie and
 // set-cookie header fields won't be concatenated. This function
 // assumes that the |headers| is sorted by name.
-std::vector<std::pair<std::string, std::string>>
-concat_norm_headers
-(std::vector<std::pair<std::string, std::string>> headers);
+Headers concat_norm_headers(Headers headers);
 
 // Creates nghttp2_nv using |name| and |value| and returns it. The
 // returned value only references the data pointer to name.c_str() and
@@ -141,15 +154,13 @@ nghttp2_nv make_nv_ls(const char(&name)[N], const std::string& value)
 // disallowed headers in HTTP/2.0 spec and headers which require
 // special handling (i.e. via), are not copied.
 void copy_norm_headers_to_nva
-(std::vector<nghttp2_nv>& nva,
- const std::vector<std::pair<std::string, std::string>>& headers);
+(std::vector<nghttp2_nv>& nva, const Headers& headers);
 
 // Appends HTTP/1.1 style header lines to |hdrs| from headers in
 // |headers|. Certain headers, which requires special handling
 // (i.e. via and cookie), are not appended.
 void build_http1_headers_from_norm_headers
-(std::string& hdrs,
- const std::vector<std::pair<std::string, std::string>>& headers);
+(std::string& hdrs, const Headers& headers);
 
 // Return positive window_size_increment if WINDOW_UPDATE should be
 // sent for the stream |stream_id|. If |stream_id| == 0, this function
@@ -166,6 +177,9 @@ void dump_nv(FILE *out, const char **nv);
 
 // Dumps name/value pairs in |nva| to |out|.
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen);
+
+// Dumps name/value pairs in |nva| to |out|.
+void dump_nv(FILE *out, const Headers& nva);
 
 // Rewrites redirection URI which usually appears in location header
 // field. The |uri| is the URI in the location header field. The |u|

@@ -108,6 +108,9 @@ typedef struct {
   nghttp2_hd_entry **emit_set;
   /* Keep track of allocated buffers in inflation */
   uint8_t **buf_track;
+  nghttp2_hd_entry *ent_keep;
+  uint8_t *name_keep, *value_keep;
+  size_t end_headers_index;
   /* Abstract buffer size of hd_table as described in the spec. This
      is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
@@ -284,18 +287,27 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
 
 /*
  * Inflates name/value block stored in |in| with length |inlen|. This
- * function performs decompression. The |*nva_ptr| points to the final
- * result on successful decompression. The caller must free |*nva_ptr|
- * using nghttp2_nv_array_del().
+ * function performs decompression. For each successful emission of
+ * header name/value pair, name/value pair is assigned to the
+ * |nv_out| and the function returns. The caller must not free
+ * the members of |nv_out|.
  *
- * The |*nva_ptr| includes pointers to the memory region in the
- * |in|. The caller must retain the |in| while the |*nva_ptr| is
- * used. After the use of |*nva_ptr| is over, if the caller intends to
- * inflate another set of headers, the caller must call
- * nghttp2_hd_end_headers().
+ * The |nv_out| includes pointers to the memory region in the
+ * |in|. The caller must retain the |in| while the |nv_out| is used.
  *
- * This function returns the number of name/value pairs in |*nva_ptr|
- * if it succeeds, or one of the following negative error codes:
+ * The application should call this function repeatedly until the
+ * |*final| is nonzero and return value is non-negative. This means
+ * the all input values are processed successfully. If |*final| is
+ * nonzero, no header name/value is emitted. Then the application must
+ * call `nghttp2_hd_inflate_end_headers()` to prepare for the next
+ * header block input.
+ *
+ * Currently, the whole compressed header block must be given in the
+ * |in| and |inlen|. Otherwise, it may lead to NGHTTP2_ERR_HEADER_COMP
+ * error.
+ *
+ * This function returns the number of bytes processed if it succeeds,
+ * or one of the following negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
@@ -303,16 +315,16 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
  *     Inflation process has failed.
  */
 ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
-                              nghttp2_nv **nva_ptr,
+                              nghttp2_nv *nv_out, int *final,
                               uint8_t *in, size_t inlen);
 
 /*
- * Signals the end of processing one header block.
+ * Signals the end of decompression for one header block.
  *
  * This function returns 0 if it succeeds. Currently this function
  * always succeeds.
  */
-int nghttp2_hd_end_headers(nghttp2_hd_context *deflater_or_inflater);
+int nghttp2_hd_inflate_end_headers(nghttp2_hd_context *inflater);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,

@@ -36,8 +36,6 @@
 #include "util.h"
 #include "http2.h"
 
-using namespace nghttp2;
-
 namespace shrpx {
 
 Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
@@ -146,29 +144,11 @@ void check_expect_100_continue(bool *res,
 } // namespace
 
 namespace {
-auto name_less = [](const Headers::value_type& lhs,
-                    const Headers::value_type& rhs)
-{
-  return lhs.first < rhs.first;
-};
-} // namespace
-
-namespace {
-void normalize_headers(Headers& headers)
-{
-  for(auto& kv : headers) {
-    util::inp_strlower(kv.first);
-  }
-  std::stable_sort(std::begin(headers), std::end(headers), name_less);
-}
-} // namespace
-
-namespace {
 Headers::const_iterator get_norm_header(const Headers& headers,
                                         const std::string& name)
 {
   auto i = std::lower_bound(std::begin(headers), std::end(headers),
-                            std::make_pair(name, std::string()), name_less);
+                            std::make_pair(name, ""), http2::name_less);
   if(i != std::end(headers) && (*i).first == name) {
     return i;
   }
@@ -177,11 +157,10 @@ Headers::const_iterator get_norm_header(const Headers& headers,
 } // namespace
 
 namespace {
-Headers::iterator get_norm_header(Headers& headers,
-                                  const std::string& name)
+Headers::iterator get_norm_header(Headers& headers, const std::string& name)
 {
   auto i = std::lower_bound(std::begin(headers), std::end(headers),
-                            std::make_pair(name, std::string()), name_less);
+                            std::make_pair(name, ""), http2::name_less);
   if(i != std::end(headers) && (*i).first == name) {
     return i;
   }
@@ -262,7 +241,7 @@ const std::string& Downstream::get_assembled_request_cookie() const
 
 void Downstream::normalize_request_headers()
 {
-  normalize_headers(request_headers_);
+  http2::normalize_headers(request_headers_);
 }
 
 Headers::const_iterator Downstream::get_norm_request_header
@@ -289,6 +268,13 @@ void Downstream::set_last_request_header_value(std::string value)
   item.second = std::move(value);
   check_transfer_encoding_chunked(&chunked_request_, item);
   check_expect_100_continue(&request_expect_100_continue_, item);
+}
+
+void Downstream::split_add_request_header
+(const uint8_t *name, size_t namelen,
+ const uint8_t *value, size_t valuelen)
+{
+  http2::split_add_header(request_headers_, name, namelen, value, valuelen);
 }
 
 bool Downstream::get_request_header_key_prev() const
@@ -476,7 +462,7 @@ const Headers& Downstream::get_response_headers() const
 
 void Downstream::normalize_response_headers()
 {
-  normalize_headers(response_headers_);
+  http2::normalize_headers(response_headers_);
 }
 
 void Downstream::concat_norm_response_headers()
@@ -537,6 +523,13 @@ void Downstream::set_last_response_header_value(std::string value)
   auto& item = response_headers_.back();
   item.second = std::move(value);
   check_transfer_encoding_chunked(&chunked_response_, item);
+}
+
+void Downstream::split_add_response_header
+(const uint8_t *name, size_t namelen,
+ const uint8_t *value, size_t valuelen)
+{
+  http2::split_add_header(response_headers_, name, namelen, value, valuelen);
 }
 
 bool Downstream::get_response_header_key_prev() const

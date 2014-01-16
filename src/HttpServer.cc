@@ -759,9 +759,8 @@ namespace {
 void append_nv(Request *req, const std::vector<nghttp2_nv>& nva)
 {
   for(auto& nv : nva) {
-    req->headers.push_back(std::make_pair
-                           (std::string(nv.name, nv.name + nv.namelen),
-                            std::string(nv.value, nv.value + nv.valuelen)));
+    http2::split_add_header(req->headers,
+                            nv.name, nv.namelen, nv.value, nv.valuelen);
   }
 }
 } // namespace
@@ -770,6 +769,75 @@ namespace {
 const char *REQUIRED_HEADERS[] = {
   ":method", ":path", ":scheme", nullptr
 };
+} // namespace
+
+namespace {
+int on_header_callback(nghttp2_session *session,
+                       const nghttp2_frame *frame,
+                       const uint8_t *name, size_t namelen,
+                       const uint8_t *value, size_t valuelen,
+                       void *user_data)
+{
+  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  if(hd->get_config()->verbose) {
+    verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
+                               user_data);
+  }
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  auto stream = hd->get_stream(frame->hd.stream_id);
+  if(!stream) {
+    return 0;
+  }
+  http2::split_add_header(stream->headers, name, namelen, value, valuelen);
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_end_headers_callback(nghttp2_session *session,
+                            const nghttp2_frame *frame,
+                            nghttp2_error_code error_code,
+                            void *user_data)
+{
+  if(error_code != NGHTTP2_NO_ERROR) {
+    return 0;
+  }
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto stream = hd->get_stream(frame->hd.stream_id);
+  if(!stream) {
+    return 0;
+  }
+  http2::normalize_headers(stream->headers);
+  if(!http2::check_http2_headers(stream->headers)) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                              NGHTTP2_PROTOCOL_ERROR);
+    return 0;
+  }
+  for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
+    if(!http2::get_unique_header(stream->headers, REQUIRED_HEADERS[i])) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+      return 0;
+    }
+  }
+  // intermediary translating from HTTP/1 request to HTTP/2 may
+  // not produce :authority header field. In this case, it should
+  // provide host HTTP/1.1 header field.
+  if(!http2::get_unique_header(stream->headers, ":authority") &&
+     !http2::get_unique_header(stream->headers, "host")) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                              NGHTTP2_PROTOCOL_ERROR);
+    return 0;
+  }
+  return 0;
+}
 } // namespace
 
 namespace {
@@ -785,32 +853,8 @@ int hd_on_frame_recv_callback
   case NGHTTP2_HEADERS:
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST: {
-      int32_t stream_id = frame->hd.stream_id;
-      auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
-      if(!http2::check_http2_headers(nva)) {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
-                                  NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-      for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
-        if(!http2::get_unique_header(nva, REQUIRED_HEADERS[i])) {
-          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
-                                    NGHTTP2_PROTOCOL_ERROR);
-          return 0;
-        }
-      }
-      // intermediary translating from HTTP/1 request to HTTP/2 may
-      // not produce :authority header field. In this case, it should
-      // provide host HTTP/1.1 header field.
-      if(!http2::get_unique_header(nva, ":authority") &&
-         !http2::get_unique_header(nva, "host")) {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
-                                  NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-      auto req = util::make_unique<Request>(stream_id);
-      append_nv(req.get(), nva);
-      hd->add_stream(stream_id, std::move(req));
+      auto req = util::make_unique<Request>(frame->hd.stream_id);
+      hd->add_stream(frame->hd.stream_id, std::move(req));
       break;
     }
     default:
@@ -962,6 +1006,8 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_request_recv_callback = config->on_request_recv_callback;
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_end_headers_callback = on_end_headers_callback;
 }
 } // namespace
 

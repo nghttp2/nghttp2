@@ -67,6 +67,18 @@ json_t* dump_header_table(nghttp2_hd_context *context)
   return obj;
 }
 
+json_t* dump_header(const uint8_t *name, size_t namelen,
+                    const uint8_t *value, size_t valuelen)
+{
+  json_t *nv_pair = json_object();
+  char *cname = malloc(namelen + 1);
+  memcpy(cname, name, namelen);
+  cname[namelen] = '\0';
+  json_object_set_new(nv_pair, cname, json_pack("s#", value, valuelen));
+  free(cname);
+  return nv_pair;
+}
+
 json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen)
 {
   json_t *headers;
@@ -74,13 +86,9 @@ json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen)
 
   headers = json_array();
   for(i = 0; i < nvlen; ++i) {
-    json_t *nv_pair = json_object();
-    char *name = strndup((const char*)nva[i].name, nva[i].namelen);
-    name[nva[i].namelen] = '\0';
-    json_object_set_new(nv_pair, name,
-                        json_pack("s#", nva[i].value, nva[i].valuelen));
-    free(name);
-    json_array_append_new(headers, nv_pair);
+    json_array_append_new(headers,
+                          dump_header(nva[i].name, nva[i].namelen,
+                                      nva[i].value, nva[i].valuelen));
   }
   return headers;
 }

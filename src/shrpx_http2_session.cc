@@ -797,10 +797,149 @@ void Http2Session::stop_settings_timer()
 }
 
 namespace {
+int on_header_callback(nghttp2_session *session,
+                       const nghttp2_frame *frame,
+                       const uint8_t *name, size_t namelen,
+                       const uint8_t *value, size_t valuelen,
+                       void *user_data)
+{
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
+    return 0;
+  }
+  auto sd = reinterpret_cast<StreamData*>
+    (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if(!sd || !sd->dconn) {
+    return 0;
+  }
+  auto downstream = sd->dconn->get_downstream();
+  if(!downstream) {
+    return 0;
+  }
+  // TODO Discard malformed header here
+  downstream->split_add_response_header(name, namelen, value, valuelen);
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_end_headers_callback(nghttp2_session *session,
+                            const nghttp2_frame *frame,
+                            nghttp2_error_code error_code,
+                            void *user_data)
+{
+  if(error_code != NGHTTP2_NO_ERROR) {
+    return 0;
+  }
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
+    return 0;
+  }
+  int rv;
+  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto sd = reinterpret_cast<StreamData*>
+    (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if(!sd || !sd->dconn) {
+    return 0;
+  }
+  auto downstream = sd->dconn->get_downstream();
+  if(!downstream) {
+    return 0;
+  }
+  downstream->normalize_response_headers();
+  auto& nva = downstream->get_response_headers();
+
+  if(!http2::check_http2_headers(nva)) {
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_PROTOCOL_ERROR);
+    downstream->set_response_state(Downstream::MSG_RESET);
+    call_downstream_readcb(http2session, downstream);
+    return 0;
+  }
+
+  auto status = http2::get_unique_header(nva, ":status");
+  if(!status || http2::value_lws(status)) {
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_PROTOCOL_ERROR);
+    downstream->set_response_state(Downstream::MSG_RESET);
+    call_downstream_readcb(http2session, downstream);
+    return 0;
+  }
+  downstream->set_response_http_status(strtoul(status->second.c_str(),
+                                               nullptr, 10));
+  // Just assume it is HTTP/1.1. But we really consider to say 2.0
+  // here.
+  downstream->set_response_major(1);
+  downstream->set_response_minor(1);
+
+  auto content_length = http2::get_header(nva, "content-length");
+  if(!content_length && downstream->get_request_method() != "HEAD" &&
+     downstream->get_request_method() != "CONNECT") {
+    unsigned int status;
+    status = downstream->get_response_http_status();
+    if(!((100 <= status && status <= 199) || status == 204 ||
+         status == 304)) {
+      // Here we have response body but Content-Length is not known
+      // in advance.
+      if(downstream->get_request_major() <= 0 ||
+         downstream->get_request_minor() <= 0) {
+        // We simply close connection for pre-HTTP/1.1 in this case.
+        downstream->set_response_connection_close(true);
+      } else {
+        // Otherwise, use chunked encoding to keep upstream
+        // connection open.  In HTTP2, we are supporsed not to
+        // receive transfer-encoding.
+        downstream->add_response_header("transfer-encoding", "chunked");
+      }
+    }
+  }
+
+  if(LOG_ENABLED(INFO)) {
+    std::stringstream ss;
+    for(auto& nv : nva) {
+      ss << TTY_HTTP_HD << nv.first << TTY_RST << ": " << nv.second << "\n";
+    }
+    SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
+                              << frame->hd.stream_id
+                              << "\n" << ss.str();
+  }
+
+  auto upstream = downstream->get_upstream();
+  downstream->set_response_state(Downstream::HEADER_COMPLETE);
+  downstream->check_upgrade_fulfilled();
+  if(downstream->get_upgraded()) {
+    downstream->set_response_connection_close(true);
+    // On upgrade sucess, both ends can send data
+    if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream) != 0) {
+      // If resume_read fails, just drop connection. Not ideal.
+      delete upstream->get_client_handler();
+      return 0;
+    }
+    downstream->set_request_state(Downstream::HEADER_COMPLETE);
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, http2session) << "HTTP upgrade success. stream_id="
+                                << frame->hd.stream_id;
+    }
+  } else if(downstream->get_request_method() == "CONNECT") {
+    // If request is CONNECT, terminate request body to avoid for
+    // stream to stall.
+    downstream->end_upload_data();
+  }
+  rv = upstream->on_downstream_header_complete(downstream);
+  if(rv != 0) {
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_PROTOCOL_ERROR);
+    downstream->set_response_state(Downstream::MSG_RESET);
+  }
+  call_downstream_readcb(http2session, downstream);
+  return 0;
+}
+} // namespace
+
+namespace {
 int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
-  int rv;
   auto http2session = reinterpret_cast<Http2Session*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
@@ -827,104 +966,6 @@ int on_frame_recv_callback
                                       NGHTTP2_INTERNAL_ERROR);
       break;
     }
-    // nva is no longer sorted
-    auto nva = http2::sort_nva(frame->headers.nva, frame->headers.nvlen);
-
-    if(!http2::check_http2_headers(nva)) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_PROTOCOL_ERROR);
-      downstream->set_response_state(Downstream::MSG_RESET);
-      call_downstream_readcb(http2session, downstream);
-      return 0;
-    }
-
-    for(auto& nv : nva) {
-      if(nv.namelen > 0 && nv.name[0] != ':') {
-        downstream->add_response_header(http2::name_to_str(&nv),
-                                        http2::value_to_str(&nv));
-      }
-    }
-
-    auto status = http2::get_unique_header(nva, ":status");
-    if(!status || http2::value_lws(status)) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_PROTOCOL_ERROR);
-      downstream->set_response_state(Downstream::MSG_RESET);
-      call_downstream_readcb(http2session, downstream);
-      return 0;
-    }
-    downstream->set_response_http_status
-      (strtoul(http2::value_to_str(status).c_str(), nullptr, 10));
-
-    // Just assume it is HTTP/1.1. But we really consider to say 2.0
-    // here.
-    downstream->set_response_major(1);
-    downstream->set_response_minor(1);
-
-    auto content_length = http2::get_header(nva, "content-length");
-    if(!content_length && downstream->get_request_method() != "HEAD" &&
-       downstream->get_request_method() != "CONNECT") {
-      unsigned int status;
-      status = downstream->get_response_http_status();
-      if(!((100 <= status && status <= 199) || status == 204 ||
-           status == 304)) {
-        // Here we have response body but Content-Length is not known
-        // in advance.
-        if(downstream->get_request_major() <= 0 ||
-           downstream->get_request_minor() <= 0) {
-          // We simply close connection for pre-HTTP/1.1 in this case.
-          downstream->set_response_connection_close(true);
-        } else {
-          // Otherwise, use chunked encoding to keep upstream
-          // connection open.  In HTTP2, we are supporsed not to
-          // receive transfer-encoding.
-          downstream->add_response_header("transfer-encoding", "chunked");
-        }
-      }
-    }
-
-    if(LOG_ENABLED(INFO)) {
-      std::stringstream ss;
-      for(auto& nv : nva) {
-        ss << TTY_HTTP_HD;
-        ss.write(reinterpret_cast<char*>(nv.name), nv.namelen);
-        ss << TTY_RST << ": ";
-        ss.write(reinterpret_cast<char*>(nv.value), nv.valuelen);
-        ss << "\n";
-      }
-      SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
-                                << frame->hd.stream_id
-                                << "\n" << ss.str();
-    }
-
-    auto upstream = downstream->get_upstream();
-    downstream->set_response_state(Downstream::HEADER_COMPLETE);
-    downstream->check_upgrade_fulfilled();
-    if(downstream->get_upgraded()) {
-      downstream->set_response_connection_close(true);
-      // On upgrade sucess, both ends can send data
-      if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream) != 0) {
-        // If resume_read fails, just drop connection. Not ideal.
-        delete upstream->get_client_handler();
-        return 0;
-      }
-      downstream->set_request_state(Downstream::HEADER_COMPLETE);
-      if(LOG_ENABLED(INFO)) {
-        SSLOG(INFO, http2session) << "HTTP upgrade success. stream_id="
-                                  << frame->hd.stream_id;
-      }
-    } else if(downstream->get_request_method() == "CONNECT") {
-      // If request is CONNECT, terminate request body to avoid for
-      // stream to stall.
-      downstream->end_upload_data();
-    }
-    rv = upstream->on_downstream_header_complete(downstream);
-    if(rv != 0) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_PROTOCOL_ERROR);
-      downstream->set_response_state(Downstream::MSG_RESET);
-    }
-    call_downstream_readcb(http2session, downstream);
     break;
   }
   case NGHTTP2_RST_STREAM: {
@@ -1163,6 +1204,8 @@ int Http2Session::on_connect()
   callbacks.on_frame_recv_parse_error_callback =
     on_frame_recv_parse_error_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_end_headers_callback = on_end_headers_callback;
 
   nghttp2_opt_set opt_set;
   opt_set.no_auto_stream_window_update = 1;

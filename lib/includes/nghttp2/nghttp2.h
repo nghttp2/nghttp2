@@ -870,21 +870,10 @@ typedef ssize_t (*nghttp2_recv_callback)
  * argument passed in to the call to `nghttp2_session_client_new()` or
  * `nghttp2_session_server_new()`.
  *
- * If the application uses `nghttp2_session_mem_recv()`, it can return
- * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
- * return without processing further input bytes.  The |frame|
- * parameter is retained until `nghttp2_session_continue()` is
- * called. The application must retain the input bytes which was used
- * to produce the |frame| parameter, because it may refer to the
- * memory region included in the input bytes. The application which
- * returns :enum:`NGHTTP2_ERR_PAUSE` must call
- * `nghttp2_session_continue()` before `nghttp2_session_mem_recv()`.
- *
  * The implementation of this function must return 0 if it
- * succeeds. It may return :enum:`NGHTTP2_ERR_PAUSE`. If the other
- * nonzero value is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
- * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * succeeds. If nonzero value is returned, it is treated as fatal
+ * error and `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
+ * functions immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_frame_recv_callback)
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
@@ -934,7 +923,7 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_data_chunk_recv_callback)
@@ -1120,6 +1109,66 @@ typedef int (*nghttp2_on_unknown_frame_recv_callback)
  void *user_data);
 
 /**
+ * @functypedef
+ *
+ * Callback function invoked when a header name/value pair is received
+ * for the |frame|. When this callback is invoked, ``frame->hd.type``
+ * is either :enum:`NGHTTP2_HEADERS` or :enum:`NGHTTP2_PUSH_PROMISE`.
+ * After all header name/value pairs are processed with this callback,
+ * or header decompression error occurred, then
+ * :type:`nghttp2_on_end_headers_callback` will be invoked unless
+ * application returns nonzero value from this callback.
+ *
+ * The |name| may be ``NULL`` if the |namelen| is 0. The same thing
+ * can be said about the |value|.
+ *
+ * If the application uses `nghttp2_session_mem_recv()`, it can return
+ * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
+ * return without processing further input bytes.  The |frame|,
+ * |name|, |namelen|, |value| and |valuelen| parameters are retained
+ * until `nghttp2_session_continue()` is called. The application must
+ * retain the input bytes which was used to produce the |frame|
+ * parameter, because it may refer to the memory region included in
+ * the input bytes. The application which returns
+ * :enum:`NGHTTP2_ERR_PAUSE` must call `nghttp2_session_continue()`
+ * before `nghttp2_session_mem_recv()`.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. It may return :enum:`NGHTTP2_ERR_PAUSE`. If the other
+ * nonzero value is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef int (*nghttp2_on_header_callback)
+(nghttp2_session *session,
+ const nghttp2_frame *frame,
+ const uint8_t *name, size_t namelen,
+ const uint8_t *value, size_t valuelen,
+ void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when all header name/value pairs are
+ * processed or after the header decompression error is detected. If
+ * the |error_code| is :enum:`NGHTTP2_NO_ERROR`, it indicates the
+ * header decompression succeeded. Otherwise, error prevented the
+ * completion of the header decompression. In this case, the library
+ * will handle the error by either transmitting RST_STREAM or GOAWAY
+ * and terminate session.
+ *
+ * The implementation of this function must return 0 if it
+ * succeeds. If nonzero value is returned, it is treated as fatal
+ * error and `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
+ * functions immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef int (*nghttp2_on_end_headers_callback)
+(nghttp2_session *session,
+ const nghttp2_frame *frame,
+ nghttp2_error_code error_code,
+ void *user_data);
+
+/**
  * @struct
  *
  * Callback functions.
@@ -1191,6 +1240,16 @@ typedef struct {
    * unknown.
    */
   nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback;
+  /**
+   * Callback function invoked when a header name/value pair is
+   * received.
+   */
+  nghttp2_on_header_callback on_header_callback;
+  /**
+   * Callback function invoked when all header name/value pairs are
+   * processed.
+   */
+  nghttp2_on_end_headers_callback on_end_headers_callback;
 } nghttp2_session_callbacks;
 
 /**

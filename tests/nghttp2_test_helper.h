@@ -36,15 +36,27 @@
   { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
 #define ARRLEN(ARR) (sizeof(ARR)/sizeof(ARR[0]))
 
-ssize_t unpack_frame_with_nv_block(nghttp2_frame *frame,
-                                   nghttp2_frame_type type,
-                                   nghttp2_hd_context *inflater,
-                                   const uint8_t *in, size_t len);
+ssize_t unpack_frame(nghttp2_frame *frame,
+                     nghttp2_frame_type type,
+                     const uint8_t *in, size_t len);
 
 int strmemeq(const char *a, const uint8_t *b, size_t bn);
 
 int nvnameeq(const char *a, nghttp2_nv *nv);
 
 int nvvalueeq(const char *a, nghttp2_nv *nv);
+
+typedef struct {
+  nghttp2_nv nva[256];
+  size_t nvlen;
+} nva_out;
+
+void nva_out_init(nva_out *out);
+void nva_out_reset(nva_out *out);
+
+void add_out(nva_out *out, nghttp2_nv *nv);
+
+ssize_t inflate_hd(nghttp2_hd_context *inflater, nva_out *out,
+                   uint8_t *buf, size_t buflen);
 
 #endif /* NGHTTP2_TEST_HELPER_H */

@@ -856,7 +856,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
   for(auto& hd : downstream->get_response_headers()) {
-    if(util::strieq(hd.first.c_str(), "transfer-encoding") ||
+    if(hd.first.empty() || hd.first.c_str()[0] == ':' ||
+       util::strieq(hd.first.c_str(), "transfer-encoding") ||
        util::strieq(hd.first.c_str(), "keep-alive") || // HTTP/1.0?
        util::strieq(hd.first.c_str(), "connection") ||
        util::strieq(hd.first.c_str(), "proxy-connection")) {

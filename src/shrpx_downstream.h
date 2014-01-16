@@ -38,13 +38,14 @@
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_io_control.h"
+#include "http2.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
 class Upstream;
 class DownstreamConnection;
-
-typedef std::vector<std::pair<std::string, std::string> > Headers;
 
 class Downstream {
 public:
@@ -100,6 +101,9 @@ public:
   void concat_norm_request_headers();
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(std::string value);
+
+  void split_add_request_header(const uint8_t *name, size_t namelen,
+                                const uint8_t *value, size_t valuelen);
 
   bool get_request_header_key_prev() const;
   void append_last_request_header_key(const char *data, size_t len);
@@ -163,6 +167,9 @@ public:
    uint16_t upstream_port);
   void add_response_header(std::string name, std::string value);
   void set_last_response_header_value(std::string value);
+
+  void split_add_response_header(const uint8_t *name, size_t namelen,
+                                 const uint8_t *value, size_t valuelen);
 
   bool get_response_header_key_prev() const;
   void append_last_response_header_key(const char *data, size_t len);
