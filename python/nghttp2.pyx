@@ -199,19 +199,24 @@ cdef class HDInflater(_HDContextBase):
         byte string (not unicode string).
 
         '''
-        cdef cnghttp2.nghttp2_nv *nva
+        cdef cnghttp2.nghttp2_nv nv
+        cdef int final
         cdef ssize_t rv
-
-        rv = cnghttp2.nghttp2_hd_inflate_hd(&self._ctx, &nva,
-                                            data, len(data))
-        if rv < 0:
-            raise Exception(_strerror(rv))
-        try:
-            res = [(nva[i].name[:nva[i].namelen],
-                    nva[i].value[:nva[i].valuelen]) for i in range(rv)]
-        finally:
-            cnghttp2.nghttp2_nv_array_del(nva)
-            cnghttp2.nghttp2_hd_end_headers(&self._ctx)
+        cdef uint8_t *buf = data
+        cdef size_t buflen = len(data)
+        res = []
+        while True:
+            rv = cnghttp2.nghttp2_hd_inflate_hd(&self._ctx, &nv, &final,
+                                                buf, buflen)
+            if rv < 0:
+                raise Exception(_strerror(rv))
+            if final:
+                break
+            buf += rv
+            buflen -= rv
+            # may throw
+            res.append((nv.name[:nv.namelen], nv.value[:nv.valuelen]))
+        cnghttp2.nghttp2_hd_inflate_end_headers(&self._ctx)
         return res
 
 cdef _strerror(int liberror_code):

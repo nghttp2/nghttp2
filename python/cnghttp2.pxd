@@ -86,10 +86,10 @@ cdef extern from 'nghttp2_hd.h':
                                   nghttp2_nv *nva, size_t nvlen)
 
     ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
-                                  nghttp2_nv **nva_ptr,
+                                  nghttp2_nv *nv_out, int *final,
                                   uint8_t *input, size_t inlen)
 
-    int nghttp2_hd_end_headers(nghttp2_hd_context *deflater_or_inflater)
+    int nghttp2_hd_inflate_end_headers(nghttp2_hd_context *inflater)
 
     nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                            size_t index)
