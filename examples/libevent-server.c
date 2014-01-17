@@ -205,7 +205,7 @@ static void delete_http2_session_data(http2_session_data *session_data)
 {
   http2_stream_data *stream_data;
   SSL *ssl = bufferevent_openssl_get_ssl(session_data->bev);
-
+  fprintf(stderr, "%s disconnected\n", session_data->client_addr);
   if(ssl) {
     SSL_shutdown(ssl);
   }
@@ -588,7 +588,7 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr)
     return;
   }
   if(events & BEV_EVENT_EOF) {
-    fprintf(stderr, "%s disconnected\n", session_data->client_addr);
+    fprintf(stderr, "%s EOF\n", session_data->client_addr);
   } else if(events & BEV_EVENT_ERROR) {
     fprintf(stderr, "%s network error\n", session_data->client_addr);
   } else if(events & BEV_EVENT_TIMEOUT) {

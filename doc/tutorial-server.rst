@@ -173,7 +173,7 @@ underlying network socket::
         return;
       }
       if(events & BEV_EVENT_EOF) {
-        fprintf(stderr, "%s disconnected\n", session_data->client_addr);
+        fprintf(stderr, "%s EOF\n", session_data->client_addr);
       } else if(events & BEV_EVENT_ERROR) {
         fprintf(stderr, "%s network error\n", session_data->client_addr);
       } else if(events & BEV_EVENT_TIMEOUT) {
