@@ -1867,8 +1867,7 @@ const char* nghttp2_strerror(int lib_error_code);
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |nva| includes empty name, or name
- *     which contains invalid characters.
+ *     The |pri| is invalid
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1911,9 +1910,6 @@ int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nva| includes empty name or name which contains invalid
- *     characters.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -1968,8 +1964,7 @@ int nghttp2_submit_response(nghttp2_session *session,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid; or the |nva| includes empty name, or name
- *     which contains invalid characters.
+ *     The |pri| is invalid
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -2110,9 +2105,6 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |nva| includes empty name, or name which contains invalid
- *     characters.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
