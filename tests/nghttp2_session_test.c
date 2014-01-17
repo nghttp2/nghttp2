@@ -818,7 +818,8 @@ void test_nghttp2_session_on_request_headers_received(void)
 
   /* More than max concurrent streams leads REFUSED_STREAM */
   session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
-  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
+  nghttp2_frame_headers_init(&frame.headers,
+                             NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
                              3, NGHTTP2_PRI_DEFAULT, NULL, 0);
   user_data.invalid_frame_recv_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
@@ -831,7 +832,8 @@ void test_nghttp2_session_on_request_headers_received(void)
 
   /* Stream ID less than or equal to the previouly received request
      HEADERS leads to connection error */
-  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
+  nghttp2_frame_headers_init(&frame.headers,
+                             NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
                              3, NGHTTP2_PRI_DEFAULT, NULL, 0);
   user_data.invalid_frame_recv_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));

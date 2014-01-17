@@ -1873,6 +1873,25 @@ static int nghttp2_session_validate_request_headers(nghttp2_session *session,
   return 0;
 }
 
+/*
+ * Inflates header block in session->iframe.buf. The offset inside the
+ * buffer must be initialized before this call. If this function
+ * returns NGHTTP2_ERR_PAUSE, the caller must call this function
+ * again, until it returns 0 or one of negative error code.  If
+ * |call_header_cb| is zero, the on_header_callback and
+ * on_end_headers_callback are not invoked and the function never
+ * return NGHTTP2_ERR_PAUSE.
+ *
+ * This function return 0 if it succeeds, or one of the negative error
+ * codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_PAUSE
+ *     The callback function returned NGHTTP2_ERR_PAUSE
+ */
 static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
                                 int call_header_cb)
 {
@@ -1889,8 +1908,15 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
       return rv;
     }
     if(rv < 0) {
-      return session_call_on_end_headers(session, frame,
+      if(call_header_cb) {
+        rv = session_call_on_end_headers(session, frame,
                                          NGHTTP2_COMPRESSION_ERROR);
+        if(rv != 0) {
+          return rv;
+        }
+      }
+      return nghttp2_session_terminate_session(session,
+                                               NGHTTP2_COMPRESSION_ERROR);
     }
     session->iframe.inflate_offset += rv;
     if(final) {
@@ -1905,7 +1931,10 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     }
   }
   nghttp2_hd_inflate_end_headers(&session->hd_inflater);
-  return session_call_on_end_headers(session, frame, NGHTTP2_NO_ERROR);
+  if(call_header_cb) {
+    return session_call_on_end_headers(session, frame, NGHTTP2_NO_ERROR);
+  }
+  return 0;
 }
 
 static int nghttp2_session_handle_parse_error(nghttp2_session *session,
@@ -1962,14 +1991,25 @@ static size_t get_payload_nv_offset(nghttp2_frame *frame)
   return 0;
 }
 
+/*
+ * Inflates header block without invoking on_header_callback and
+ * on_end_headers_callback. The initial offset inside
+ * session->iframe.buf is calculated based on |frame|.
+ */
+static int session_skip_inflate_header_block(nghttp2_session *session,
+                                             nghttp2_frame *frame)
+{
+  session->iframe.inflate_offset = get_payload_nv_offset(frame);
+  return inflate_header_block(session, frame, 0);
+}
+
 static int nghttp2_session_inflate_handle_invalid_stream
 (nghttp2_session *session,
  nghttp2_frame *frame,
  nghttp2_error_code error_code)
 {
   int rv;
-  session->iframe.inflate_offset = get_payload_nv_offset(frame);
-  rv = inflate_header_block(session, frame, 0);
+  rv = session_skip_inflate_header_block(session, frame);
   if(rv != 0) {
     return rv;
   }
@@ -1999,8 +2039,7 @@ static int nghttp2_session_inflate_handle_invalid_connection
  nghttp2_error_code error_code)
 {
   int rv;
-  session->iframe.inflate_offset = get_payload_nv_offset(frame);
-  rv = inflate_header_block(session, frame, 0);
+  rv = session_skip_inflate_header_block(session, frame);
   if(rv != 0) {
     return rv;
   }
@@ -2094,9 +2133,7 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
-    session->iframe.inflate_offset =
-      nghttp2_frame_headers_payload_nv_offset(&frame->headers);
-    return inflate_header_block(session, frame, 0);
+    return session_skip_inflate_header_block(session, frame);
   }
   if(!nghttp2_session_is_new_peer_stream_id(session, frame->hd.stream_id)) {
     /* The spec says if an endpoint receives a HEADERS with invalid
@@ -2189,9 +2226,7 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
   }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
-    session->iframe.inflate_offset =
-      nghttp2_frame_headers_payload_nv_offset(&frame->headers);
-    return inflate_header_block(session, frame, 0);
+    return session_skip_inflate_header_block(session, frame);
   }
   rv = nghttp2_session_validate_request_headers(session, &frame->headers);
   if(rv != 0) {
@@ -2253,9 +2288,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
       /* This is race condition. NGHTTP2_STREAM_CLOSING indicates
          that we queued RST_STREAM but it has not been sent. It will
          eventually sent, so we just ignore this frame. */
-      session->iframe.inflate_offset =
-        nghttp2_frame_headers_payload_nv_offset(&frame->headers);
-      return inflate_header_block(session, frame, 0);
+      return session_skip_inflate_header_block(session, frame);
     } else {
       return nghttp2_session_inflate_handle_invalid_stream
         (session, frame, NGHTTP2_PROTOCOL_ERROR);
@@ -2274,9 +2307,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
         nghttp2_frame_headers_payload_nv_offset(&frame->headers);
       return session_end_headers_received(session, frame);
     }
-    session->iframe.inflate_offset =
-      nghttp2_frame_headers_payload_nv_offset(&frame->headers);
-    return inflate_header_block(session, frame, 0);
+    return session_skip_inflate_header_block(session, frame);
   }
 }
 
@@ -2728,8 +2759,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   if(session->goaway_flags) {
     /* We just dicard PUSH_PROMISE after GOAWAY is sent or
        received. */
-    session->iframe.inflate_offset = 4;
-    return inflate_header_block(session, frame, 0);
+    return session_skip_inflate_header_block(session, frame);
   }
   if(!nghttp2_session_is_new_peer_stream_id
      (session, frame->push_promise.promised_stream_id)) {
@@ -2742,8 +2772,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   session->last_recv_stream_id = frame->push_promise.promised_stream_id;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
-    session->iframe.inflate_offset = 4;
-    rv = inflate_header_block(session, frame, 0);
+    rv = session_skip_inflate_header_block(session, frame);
     if(rv != 0) {
       return rv;
     }
@@ -2756,8 +2785,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
   if(stream->shut_flags & NGHTTP2_SHUT_RD) {
-    session->iframe.inflate_offset = 4;
-    rv = inflate_header_block(session, frame, 0);
+    rv = session_skip_inflate_header_block(session, frame);
     if(rv != 0) {
       return rv;
     }
@@ -2772,8 +2800,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
        NGHTTP2_PROTOCOL_ERROR);
   }
   if(stream->state == NGHTTP2_STREAM_CLOSING) {
-    session->iframe.inflate_offset = 4;
-    rv = inflate_header_block(session, frame, 0);
+    rv = session_skip_inflate_header_block(session, frame);
     if(rv != 0) {
       return rv;
     }
