@@ -2046,6 +2046,21 @@ static int nghttp2_session_inflate_handle_invalid_connection
   return nghttp2_session_handle_invalid_connection(session, frame, error_code);
 }
 
+/*
+ * Decompress header blocks of incoming request HEADERS and also call
+ * additional callbacks. This function can be called again if this
+ * function returns NGHTTP2_ERR_PAUSE.
+ *
+ * This function returns 0 if it succeeds, or one of negative error
+ * codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_PAUSE
+ *     The callback function returned NGHTTP2_ERR_PAUSE
+ */
 static int session_end_request_headers_received(nghttp2_session *session,
                                                 nghttp2_frame *frame)
 {
@@ -2067,6 +2082,21 @@ static int session_end_request_headers_received(nghttp2_session *session,
   return 0;
 }
 
+/*
+ * Decompress header blocks of incoming (push-)response HEADERS and
+ * also call additional callbacks. This function can be called again
+ * if this function returns NGHTTP2_ERR_PAUSE.
+ *
+ * This function returns 0 if it succeeds, or one of negative error
+ * codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_PAUSE
+ *     The callback function returned NGHTTP2_ERR_PAUSE
+ */
 static int session_end_response_headers_received(nghttp2_session *session,
                                                  nghttp2_frame *frame)
 {
@@ -2089,6 +2119,21 @@ static int session_end_response_headers_received(nghttp2_session *session,
   return 0;
 }
 
+/*
+ * Decompress header blocks of incoming HEADERS and also call
+ * additional callbacks. This function can be called again if this
+ * function returns NGHTTP2_ERR_PAUSE.
+ *
+ * This function returns 0 if it succeeds, or one of negative error
+ * codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_PAUSE
+ *     The callback function returned NGHTTP2_ERR_PAUSE
+ */
 static int session_end_headers_received(nghttp2_session *session,
                                         nghttp2_frame *frame)
 {
@@ -3390,40 +3435,46 @@ static int nghttp2_session_check_data_recv_allowed(nghttp2_session *session,
   return 0;
 }
 
-int nghttp2_session_continue(nghttp2_session *session)
+/*
+ * Handles paused header emission callbacks. This function may return
+ * NGHTTP2_ERR_PAUSE again if the application just do so in a
+ * callback.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
+ *     The callback function failed.
+ * :enum:`NGHTTP2_ERR_PAUSE`
+ *     The callback function returned NGHTTP2_ERR_PAUSE
+ */
+static int session_continue(nghttp2_session *session)
 {
   nghttp2_frame *frame = &session->iframe.frame;
   int rv = 0;
-  if(session->iframe.error_code != NGHTTP2_ERR_PAUSE) {
-    return 0;
-  }
   switch(frame->hd.type) {
-  case NGHTTP2_DATA:
-    /* To call on_data_recv_callback */
-    return nghttp2_session_mem_recv(session, NULL, 0);
   case NGHTTP2_HEADERS:
-    switch(session->iframe.frame.headers.cat) {
+    switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST:
-      rv = session_end_request_headers_received(session,
-                                                &session->iframe.frame);
+      rv = session_end_request_headers_received(session, frame);
       break;
     case NGHTTP2_HCAT_RESPONSE:
     case NGHTTP2_HCAT_PUSH_RESPONSE:
-      rv = session_end_response_headers_received(session,
-                                                 &session->iframe.frame);
+      rv = session_end_response_headers_received(session, frame);
       break;
     case NGHTTP2_HCAT_HEADERS:
-      rv = session_end_headers_received(session, &session->iframe.frame);
+      rv = session_end_headers_received(session, frame);
       break;
     }
     break;
   case NGHTTP2_PUSH_PROMISE:
-    rv = inflate_header_block(session, &session->iframe.frame, 1);
+    rv = inflate_header_block(session, frame, 1);
     break;
   default:
     break;
   }
-  nghttp2_inbound_frame_reset(session);
   return rv;
 }
 
@@ -3431,6 +3482,21 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                  const uint8_t *in, size_t inlen)
 {
   const uint8_t *inmark, *inlimit;
+  if(session->iframe.error_code == NGHTTP2_ERR_PAUSE) {
+    int rv;
+    rv = session_continue(session);
+    if(rv == NGHTTP2_ERR_PAUSE) {
+      return 0;
+    }
+    if(rv != 0) {
+      return rv;
+    }
+    /* For DATA, we have to go without resetting in order to call
+       on_data_recv_callback. */
+    if(session->iframe.frame.hd.type != NGHTTP2_DATA) {
+      nghttp2_inbound_frame_reset(session);
+    }
+  }
   inmark = in;
   inlimit = in+inlen;
   while(1) {

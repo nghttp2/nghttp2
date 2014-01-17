@@ -913,13 +913,12 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)
  *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
- * return without processing further input bytes.  The |frame|
- * parameter is retained until `nghttp2_session_continue()` is
+ * return without processing further input bytes.  The memory by
+ * pointed by the |data| is retained until
+ * `nghttp2_session_mem_recv()` or `nghttp2_session_recv()` is
  * called. The application must retain the input bytes which was used
- * to produce the |frame| parameter, because it may refer to the
- * memory region included in the input bytes. The application which
- * returns :enum:`NGHTTP2_ERR_PAUSE` must call
- * `nghttp2_session_continue()` before `nghttp2_session_mem_recv()`.
+ * to produce the |data| parameter, because it may refer to the memory
+ * region included in the input bytes.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -1124,14 +1123,12 @@ typedef int (*nghttp2_on_unknown_frame_recv_callback)
  *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
- * return without processing further input bytes.  The |frame|,
- * |name|, |namelen|, |value| and |valuelen| parameters are retained
- * until `nghttp2_session_continue()` is called. The application must
- * retain the input bytes which was used to produce the |frame|
- * parameter, because it may refer to the memory region included in
- * the input bytes. The application which returns
- * :enum:`NGHTTP2_ERR_PAUSE` must call `nghttp2_session_continue()`
- * before `nghttp2_session_mem_recv()`.
+ * return without processing further input bytes.  The memory pointed
+ * by |frame|, |name| and |value| parameters are retained until
+ * `nghttp2_session_mem_recv()` or `nghttp2_session_recv()` is
+ * called. The application must retain the input bytes which was used
+ * to produce these parameters, because it may refer to the memory
+ * region included in the input bytes.
  *
  * The implementation of this function must return 0 if it
  * succeeds. It may return :enum:`NGHTTP2_ERR_PAUSE`. If the other
@@ -1548,7 +1545,7 @@ int nghttp2_session_recv(nghttp2_session *session);
  * In the current implementation, this function always tries to
  * processes all input data unless either an error occurs or
  * :enum:`NGHTTP2_ERR_PAUSE` is returned from
- * :member:`nghttp2_session_callbacks.on_frame_recv_callback` or
+ * :member:`nghttp2_session_callbacks.on_header_callback` or
  * :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`.
  * If :enum:`NGHTTP2_ERR_PAUSE` is used, the return value includes the
  * number of bytes which was used to produce the data or frame for the
@@ -1564,33 +1561,6 @@ int nghttp2_session_recv(nghttp2_session *session);
  */
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                  const uint8_t *in, size_t inlen);
-
-/**
- * @function
- *
- * Perform post-processing after `nghttp2_session_mem_recv()` was
- * paused by :enum:`NGHTTP2_ERR_PAUSE` from
- * :member:`nghttp2_session_callbacks.on_frame_recv_callback` or
- * :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`.
- *
- * This function frees resources associated with paused frames.  It
- * may also call additional callbacks, such as
- * :member:`nghttp2_session_callbacks.on_stream_close_callback`.
- *
- * If this function succeeds, the application can call
- * `nghttp2_session_mem_recv()` again.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- *
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
- *     The callback function failed.
- *
- */
-int nghttp2_session_continue(nghttp2_session *session);
 
 /**
  * @function
