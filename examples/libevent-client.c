@@ -151,6 +151,16 @@ static void delete_http2_session_data(http2_session_data *session_data)
   free(session_data);
 }
 
+static void print_header(FILE *f,
+                         const uint8_t *name, size_t namelen,
+                         const uint8_t *value, size_t valuelen)
+{
+  fwrite(name, namelen, 1, f);
+  fprintf(f, ": ");
+  fwrite(value, valuelen, 1, f);
+  fprintf(f, "\n");
+}
+
 /* Print HTTP headers to |f|. Please note that this function does not
    take into account that header name and value are sequence of
    octets, therefore they may contain non-printable characters. */
@@ -158,12 +168,11 @@ static void print_headers(FILE *f, nghttp2_nv *nva, size_t nvlen)
 {
   size_t i;
   for(i = 0; i < nvlen; ++i) {
-    fwrite(nva[i].name, nva[i].namelen, 1, stderr);
-    fprintf(stderr, ": ");
-    fwrite(nva[i].value, nva[i].valuelen, 1, stderr);
-    fprintf(stderr, "\n");
+    print_header(f,
+                 nva[i].name, nva[i].namelen,
+                 nva[i].value, nva[i].valuelen);
   }
-  fprintf(stderr, "\n");
+  fprintf(f, "\n");
 }
 
 /* nghttp2_send_callback. Here we transmit the |data|, |length| bytes,
@@ -201,6 +210,47 @@ static int before_frame_send_callback
   return 0;
 }
 
+/* nghttp2_on_header_callback: Called when nghttp2 library emits
+   single header name/value pair. */
+static int on_header_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame,
+                              const uint8_t *name, size_t namelen,
+                              const uint8_t *value, size_t valuelen,
+                              void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
+       session_data->stream_data->stream_id == frame->hd.stream_id) {
+      /* Print response headers for the initiated request. */
+      print_header(stderr, name, namelen, value, valuelen);
+      break;
+    }
+  }
+  return 0;
+}
+
+/* nghttp2_on_end_headers_callback: Called when nghttp2 library emits
+   all header name/value pairs, or may be called prematurely because
+   of errors which is indicated by |error_code|. */
+static int on_end_headers_callback(nghttp2_session *session,
+                                   const nghttp2_frame *frame,
+                                   nghttp2_error_code error_code,
+                                   void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
+       session_data->stream_data->stream_id == frame->hd.stream_id) {
+      fprintf(stderr, "All headers received with error_code=%d\n", error_code);
+    }
+    break;
+  }
+  return 0;
+}
+
 /* nghttp2_on_frame_recv_callback: Called when nghttp2 library
    received a frame from the remote peer. */
 static int on_frame_recv_callback(nghttp2_session *session,
@@ -211,9 +261,8 @@ static int on_frame_recv_callback(nghttp2_session *session,
   case NGHTTP2_HEADERS:
     if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
        session_data->stream_data->stream_id == frame->hd.stream_id) {
-      /* Print response headers for the initiated request. */
-      fprintf(stderr, "Response headers:\n");
-      print_headers(stderr, frame->headers.nva, frame->headers.nvlen);
+      fprintf(stderr, "Response headers for stream ID=%d:\n",
+              frame->hd.stream_id);
     }
     break;
   }
@@ -311,6 +360,8 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_end_headers_callback = on_end_headers_callback;
   nghttp2_session_client_new(&session_data->session, &callbacks, session_data);
 }
 

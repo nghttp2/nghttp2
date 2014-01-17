@@ -325,13 +325,41 @@ static char* percent_decode(const uint8_t *value, size_t valuelen)
   return res;
 }
 
+/* nghttp2_on_header_callback: Called when nghttp2 library emits
+   single header name/value pair. */
+static int on_header_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame,
+                              const uint8_t *name, size_t namelen,
+                              const uint8_t *value, size_t valuelen,
+                              void *user_data)
+{
+  http2_stream_data *stream_data;
+  const char PATH[] = ":path";
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+      break;
+    }
+    stream_data = nghttp2_session_get_stream_user_data(session,
+                                                       frame->hd.stream_id);
+    if(stream_data->request_path) {
+      break;
+    }
+    if(namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
+      size_t j;
+      for(j = 0; j < valuelen && value[j] != '?'; ++j);
+      stream_data->request_path = percent_decode(value, j);
+    }
+    break;
+  }
+  return 0;
+}
+
 static int on_frame_recv_callback(nghttp2_session *session,
                                   const nghttp2_frame *frame, void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
   http2_stream_data *stream_data;
-  size_t i;
-  const char PATH[] = ":path";
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
     if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
@@ -340,16 +368,6 @@ static int on_frame_recv_callback(nghttp2_session *session,
     stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
     nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
                                          stream_data);
-    for(i = 0; i < frame->headers.nvlen; ++i) {
-      nghttp2_nv *nv = &frame->headers.nva[i];
-      if(nv->namelen == sizeof(PATH) - 1 &&
-         memcmp(PATH, nv->name, nv->namelen) == 0) {
-        size_t j;
-        for(j = 0; j < nv->valuelen && nv->value[j] != '?'; ++j);
-        stream_data->request_path = percent_decode(nv->value, j);
-        break;
-      }
-    }
     break;
   default:
     break;
@@ -503,6 +521,7 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_request_recv_callback = on_request_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
+  callbacks.on_header_callback = on_header_callback;
   nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
 }
 
