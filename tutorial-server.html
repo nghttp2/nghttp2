@@ -301,7 +301,7 @@ underlying network socket:</p>
     <span class="k">return</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_EOF</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s disconnected</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s EOF</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
   <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_ERROR</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s network error</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
   <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_TIMEOUT</span><span class="p">)</span> <span class="p">{</span>
@@ -936,7 +936,7 @@ stream is about to close and we no longer use that object.</p>
 <span class="p">{</span>
   <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
   <span class="n">SSL</span> <span class="o">*</span><span class="n">ssl</span> <span class="o">=</span> <span class="n">bufferevent_openssl_get_ssl</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
-
+  <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s disconnected</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
   <span class="k">if</span><span class="p">(</span><span class="n">ssl</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">SSL_shutdown</span><span class="p">(</span><span class="n">ssl</span><span class="p">);</span>
   <span class="p">}</span>
@@ -1319,7 +1319,7 @@ stream is about to close and we no longer use that object.</p>
     <span class="k">return</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_EOF</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s disconnected</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s EOF</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
   <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_ERROR</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s network error</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
   <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_TIMEOUT</span><span class="p">)</span> <span class="p">{</span>
