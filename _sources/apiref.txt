@@ -800,6 +800,11 @@ Types (structs, unions and typedefs)
     argument passed in to the call to `nghttp2_session_client_new()` or
     `nghttp2_session_server_new()`.
     
+    If frame is HEADERS or PUSH_PROMISE, the ``nva`` and ``nvlen``
+    member of their data structure are always ``NULL`` and 0
+    respectively. The header name/value pairs are emitted via
+    :type:`nghttp2_on_header_callback`.
+    
     The implementation of this function must return 0 if it
     succeeds. If nonzero value is returned, it is treated as fatal
     error and `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
@@ -815,6 +820,14 @@ Types (structs, unions and typedefs)
     either RST_STREAM or GOAWAY frame. The *user_data* pointer is the
     third argument passed in to the call to
     `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
+    
+    If frame is HEADERS or PUSH_PROMISE, the ``nva`` and ``nvlen``
+    member of their data structure are always ``NULL`` and 0
+    respectively.
+    
+    If this callback is called, :type:`nghttp2_on_header_callback` and
+    :type:`nghttp2_on_end_headers_callback` will not be called for this
+    frame.
     
     The implementation of this function must return 0 if it
     succeeds. If nonzero is returned, it is treated as fatal error and
@@ -1028,6 +1041,10 @@ Types (structs, unions and typedefs)
     completion of the header decompression. In this case, the library
     will handle the error by either transmitting RST_STREAM or GOAWAY
     and terminate session.
+    
+    If the *error_code* is not :macro:`NGHTTP2_NO_ERROR`, then
+    :type:`nghttp2_on_request_recv_callback` will not called for this
+    frame if the *frame* is HEADERS.
     
     The implementation of this function must return 0 if it
     succeeds. If nonzero value is returned, it is treated as fatal
@@ -1294,7 +1311,12 @@ Functions
           one or more times to receive whole frame.
        2. If the received frame is valid,
           :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
-          invoked.  If the frame is the final frame of the request,
+          invoked. If frame is either HEADERS or PUSH_PROMISE,
+          :member:`nghttp2_session_callbacks.on_header_callback` is
+          invoked for each header name/value pair. After all name/value
+          pairs are emitted (or decompression failed),
+          :member:`nghttp2_session_callbacks.on_end_headers_callback`
+          is invoked. If the frame is the final frame of the request,
           :member:`nghttp2_session_callbacks.on_request_recv_callback`
           is invoked.  If the reception of the frame triggers the
           closure of the stream,
