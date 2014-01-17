@@ -72,6 +72,8 @@ typedef struct {
 static http2_stream_data* create_http2_stream_data(const char *uri,
                                                    struct http_parser_url *u)
 {
+  /* MAX 5 digits (max 65535) + 1 ':' + 1 NULL (because of snprintf) */
+  size_t extra = 7;
   http2_stream_data *stream_data = malloc(sizeof(http2_stream_data));
 
   stream_data->uri = uri;
@@ -79,16 +81,14 @@ static http2_stream_data* create_http2_stream_data(const char *uri,
   stream_data->stream_id = -1;
 
   stream_data->authoritylen = u->field_data[UF_HOST].len;
+  stream_data->authority = malloc(stream_data->authoritylen + extra);
+  memcpy(stream_data->authority,
+         &uri[u->field_data[UF_HOST].off], u->field_data[UF_HOST].len);
   if(u->field_set & (1 << UF_PORT)) {
-    /* MAX 5 digits (max 65535) + 1 ':' + 1 NULL (because of snprintf) */
-    size_t extra = 7;
-    stream_data->authority = malloc(stream_data->authoritylen + extra);
     stream_data->authoritylen +=
       snprintf(stream_data->authority + u->field_data[UF_HOST].len, extra,
                ":%u", u->port);
   }
-  memcpy(stream_data->authority,
-         &uri[u->field_data[UF_HOST].off], u->field_data[UF_HOST].len);
 
   stream_data->pathlen = 0;
   if(u->field_set & (1 << UF_PATH)) {
