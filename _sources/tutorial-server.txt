@@ -243,11 +243,12 @@ We initialize nghttp2 session object which is done in
       callbacks.on_frame_recv_callback = on_frame_recv_callback;
       callbacks.on_request_recv_callback = on_request_recv_callback;
       callbacks.on_stream_close_callback = on_stream_close_callback;
+      callbacks.on_header_callback = on_header_callback;
       nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
     }
 
 Since we are creating server, nghttp2 session object is created using
-`nghttp2_session_server_new()` function. We registers 4 callbacks to
+`nghttp2_session_server_new()` function. We registers 5 callbacks to
 nghttp2 session object. We'll talk about these callbacks later.
 
 After initialization of nghttp2 session object, we are going to send
@@ -421,8 +422,6 @@ received from the remote peer::
     {
       http2_session_data *session_data = (http2_session_data*)user_data;
       http2_stream_data *stream_data;
-      size_t i;
-      const char PATH[] = ":path";
       switch(frame->hd.type) {
       case NGHTTP2_HEADERS:
         if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
@@ -431,16 +430,6 @@ received from the remote peer::
         stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
         nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
                                              stream_data);
-        for(i = 0; i < frame->headers.nvlen; ++i) {
-          nghttp2_nv *nv = &frame->headers.nva[i];
-          if(nv->namelen == sizeof(PATH) - 1 &&
-             memcmp(PATH, nv->name, nv->namelen) == 0) {
-            size_t j;
-            for(j = 0; j < nv->valuelen && nv->value[j] != '?'; ++j);
-            stream_data->request_path = percent_decode(nv->value, j);
-            break;
-          }
-        }
         break;
       default:
         break;
@@ -457,13 +446,47 @@ in nghttp2 session object using `nghttp2_set_stream_user_data()` in
 order to get the object without searching through doubly linked list.
 
 In this example server, we want to serve files relative to the current
-working directory the program was invoked. We search ``:path`` header
-field in request headers and keep the requested path in
-``http2_stream_data`` object. In this example program, we ignore
-``:method`` header field and always treat the request as GET request.
+working directory the program was invoked. Each header name/value pair
+is emitted via ``on_header_callback`` function, which is called after
+``on_frame_recv_callback()``::
 
-It is ok for the server to start sending response in this callback. In
-this example, we defer it to ``on_request_recv_callback()`` function.
+    static int on_header_callback(nghttp2_session *session,
+                                  const nghttp2_frame *frame,
+                                  const uint8_t *name, size_t namelen,
+                                  const uint8_t *value, size_t valuelen,
+                                  void *user_data)
+    {
+      http2_stream_data *stream_data;
+      const char PATH[] = ":path";
+      switch(frame->hd.type) {
+      case NGHTTP2_HEADERS:
+        if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+          break;
+        }
+        stream_data = nghttp2_session_get_stream_user_data(session,
+                                                           frame->hd.stream_id);
+        if(stream_data->request_path) {
+          break;
+        }
+        if(namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
+          size_t j;
+          for(j = 0; j < valuelen && value[j] != '?'; ++j);
+          stream_data->request_path = percent_decode(value, j);
+        }
+        break;
+      }
+      return 0;
+    }
+
+We search ``:path`` header field in request headers and keep the
+requested path in ``http2_stream_data`` object. In this example
+program, we ignore ``:method`` header field and always treat the
+request as GET request.
+
+It is ok for the server to start sending response in this callback (or
+in `nghttp2_on_end_headers_callback()`, which is not used in this
+tutorial). In this example, we defer it to
+``on_request_recv_callback()`` function.
 
 The ``on_request_recv_callback()`` function is invoked when all HTTP
 request, including entity body, was received::

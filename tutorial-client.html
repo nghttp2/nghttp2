@@ -292,12 +292,14 @@ finished successfully. We first initialize nghttp2 session object in
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_data_chunk_recv_callback</span> <span class="o">=</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_stream_close_callback</span> <span class="o">=</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_header_callback</span> <span class="o">=</span> <span class="n">on_header_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_end_headers_callback</span> <span class="o">=</span> <span class="n">on_end_headers_callback</span><span class="p">;</span>
   <span class="n">nghttp2_session_client_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p>Since we are creating client, we use <a class="reference internal" href="apiref.html#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> to
-initialize nghttp2 session object.  We setup 5 callbacks for the
+initialize nghttp2 session object.  We setup 7 callbacks for the
 nghttp2 session. We&#8217;ll explain these callbacks later.</p>
 <p>The <tt class="xref c c-func docutils literal"><span class="pre">delete_http2_session_data()</span></tt> destroys <tt class="docutils literal"><span class="pre">session_data</span></tt> and frees
 its bufferevent, so it closes underlying connection as well. It also
@@ -516,9 +518,8 @@ received from the remote peer:</p>
   <span class="k">case</span> <span class="n">NGHTTP2_HEADERS</span>:
     <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">&amp;&amp;</span>
        <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
-      <span class="cm">/* Print response headers for the initiated request. */</span>
-      <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Response headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">nva</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">nvlen</span><span class="p">);</span>
+      <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Response headers for stream ID=%d:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+              <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">);</span>
     <span class="p">}</span>
     <span class="k">break</span><span class="p">;</span>
   <span class="p">}</span>
@@ -530,6 +531,51 @@ received from the remote peer:</p>
 HEADERS. We check te frame type and its category (it should be
 <a class="reference internal" href="apiref.html#NGHTTP2_HCAT_RESPONSE" title="NGHTTP2_HCAT_RESPONSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_HCAT_RESPONSE</span></tt></a> for HTTP response HEADERS). Also check
 its stream ID.</p>
+<p>Each request header name/value pair is emitted via
+<tt class="docutils literal"><span class="pre">on_header_callback</span></tt> function:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">on_header_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">,</span>
+                              <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="k">switch</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="n">NGHTTP2_HEADERS</span>:
+    <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">&amp;&amp;</span>
+       <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
+      <span class="cm">/* Print response headers for the initiated request. */</span>
+      <span class="n">print_header</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">namelen</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">valuelen</span><span class="p">);</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>In this turotial, we just print the name/value pair.</p>
+<p>After all name/value pairs are emitted for a frame,
+<tt class="docutils literal"><span class="pre">on_end_headers_callback</span></tt> function is called:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">on_end_headers_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                   <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                   <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span>
+                                   <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="k">switch</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="n">NGHTTP2_HEADERS</span>:
+    <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">&amp;&amp;</span>
+       <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;All headers received with error_code=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error_code</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">break</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This callback may be called prematurely because of errors (e.g.,
+header decompression failure) which is indicated by <tt class="docutils literal"><span class="pre">error_code</span></tt>.</p>
 <p>The <tt class="docutils literal"><span class="pre">on_data_chunk_recv_callback()</span></tt> function is invoked when a chunk
 of data is received from the remote peer:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">on_data_chunk_recv_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
@@ -733,6 +779,16 @@ here.</p>
   <span class="n">free</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">print_header</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">*</span><span class="n">f</span><span class="p">,</span>
+                         <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
+                         <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">fwrite</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">namelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">f</span><span class="p">);</span>
+  <span class="n">fprintf</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s">&quot;: &quot;</span><span class="p">);</span>
+  <span class="n">fwrite</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">valuelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">f</span><span class="p">);</span>
+  <span class="n">fprintf</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
 <span class="cm">/* Print HTTP headers to |f|. Please note that this function does not</span>
 <span class="cm">   take into account that header name and value are sequence of</span>
 <span class="cm">   octets, therefore they may contain non-printable characters. */</span>
@@ -740,12 +796,11 @@ here.</p>
 <span class="p">{</span>
   <span class="kt">size_t</span> <span class="n">i</span><span class="p">;</span>
   <span class="k">for</span><span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">nvlen</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">fwrite</span><span class="p">(</span><span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span><span class="p">,</span> <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">namelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stderr</span><span class="p">);</span>
-    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;: &quot;</span><span class="p">);</span>
-    <span class="n">fwrite</span><span class="p">(</span><span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">,</span> <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">valuelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stderr</span><span class="p">);</span>
-    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">print_header</span><span class="p">(</span><span class="n">f</span><span class="p">,</span>
+                 <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span><span class="p">,</span> <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">namelen</span><span class="p">,</span>
+                 <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">,</span> <span class="n">nva</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">valuelen</span><span class="p">);</span>
   <span class="p">}</span>
-  <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+  <span class="n">fprintf</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="cm">/* nghttp2_send_callback. Here we transmit the |data|, |length| bytes,</span>
@@ -783,6 +838,47 @@ here.</p>
   <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
 <span class="p">}</span>
 
+<span class="cm">/* nghttp2_on_header_callback: Called when nghttp2 library emits</span>
+<span class="cm">   single header name/value pair. */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">on_header_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">,</span>
+                              <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="k">switch</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="n">NGHTTP2_HEADERS</span>:
+    <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">&amp;&amp;</span>
+       <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
+      <span class="cm">/* Print response headers for the initiated request. */</span>
+      <span class="n">print_header</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">namelen</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">valuelen</span><span class="p">);</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* nghttp2_on_end_headers_callback: Called when nghttp2 library emits</span>
+<span class="cm">   all header name/value pairs, or may be called prematurely because</span>
+<span class="cm">   of errors which is indicated by |error_code|. */</span>
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">on_end_headers_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                   <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                   <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span>
+                                   <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+  <span class="k">switch</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="n">NGHTTP2_HEADERS</span>:
+    <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">&amp;&amp;</span>
+       <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;All headers received with error_code=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error_code</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">break</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
 <span class="cm">/* nghttp2_on_frame_recv_callback: Called when nghttp2 library</span>
 <span class="cm">   received a frame from the remote peer. */</span>
 <span class="k">static</span> <span class="kt">int</span> <span class="nf">on_frame_recv_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -793,9 +889,8 @@ here.</p>
   <span class="k">case</span> <span class="n">NGHTTP2_HEADERS</span>:
     <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_RESPONSE</span> <span class="o">&amp;&amp;</span>
        <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">==</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">)</span> <span class="p">{</span>
-      <span class="cm">/* Print response headers for the initiated request. */</span>
-      <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Response headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">nva</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">nvlen</span><span class="p">);</span>
+      <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Response headers for stream ID=%d:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+              <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">);</span>
     <span class="p">}</span>
     <span class="k">break</span><span class="p">;</span>
   <span class="p">}</span>
@@ -893,6 +988,8 @@ here.</p>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_data_chunk_recv_callback</span> <span class="o">=</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_stream_close_callback</span> <span class="o">=</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_header_callback</span> <span class="o">=</span> <span class="n">on_header_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_end_headers_callback</span> <span class="o">=</span> <span class="n">on_end_headers_callback</span><span class="p">;</span>
   <span class="n">nghttp2_session_client_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 
