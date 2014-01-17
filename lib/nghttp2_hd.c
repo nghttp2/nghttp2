@@ -303,11 +303,6 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
     return rv;
   }
 
-  context->emit_set = NULL;
-  context->emit_set_capacity = 0;
-  context->buf_track = NULL;
-  context->buf_track_capacity = 0;
-
   context->ent_keep = NULL;
   context->name_keep = NULL;
   context->value_keep = NULL;
@@ -316,8 +311,6 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
   context->deflate_hd_table_bufsize_max = deflate_hd_table_bufsize_max;
   context->deflate_hd_table_bufsize = 0;
   context->deflate_hd_tablelen = 0;
-  context->emit_setlen = 0;
-  context->buf_tracklen = 0;
   context->hd_table_bufsize = 0;
   return 0;
 }

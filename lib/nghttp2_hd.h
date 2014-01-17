@@ -31,15 +31,6 @@
 
 #include <nghttp2/nghttp2.h>
 
-#define NGHTTP2_MAX_EMIT_SET_LENGTH 256
-#define NGHTTP2_INITIAL_EMIT_SET_LENGTH 32
-
-#define NGHTTP2_MAX_BUF_TRACK_LENGTH 256
-#define NGHTTP2_INITIAL_BUF_TRACK_LENGTH 32
-
-#define NGHTTP2_MAX_NVA_LENGTH 256
-#define NGHTTP2_INITIAL_NVA_LENGTH 32
-
 #define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE (1 << 12)
 #define NGHTTP2_HD_MAX_ENTRY_SIZE 3072
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
@@ -103,11 +94,6 @@ typedef struct {
 typedef struct {
   /* dynamic header table */
   nghttp2_hd_ringbuf hd_table;
-  /* Holding emitted entry in deflating header block to retain
-     reference count. */
-  nghttp2_hd_entry **emit_set;
-  /* Keep track of allocated buffers in inflation */
-  uint8_t **buf_track;
   nghttp2_hd_entry *ent_keep;
   uint8_t *name_keep, *value_keep;
   size_t end_headers_index;
@@ -134,19 +120,11 @@ typedef struct {
   /* The number of effective entry in |hd_table|. This value is always
      equal to hd_table.len on decoder side. */
   size_t deflate_hd_tablelen;
-  /* The number of entry the |buf_track| contains. */
-  size_t buf_tracklen;
   /* Role of this context; deflate or infalte */
   nghttp2_hd_role role;
   /* NGHTTP2_HD_SIDE_REQUEST for processing request, otherwise
      response. */
   nghttp2_hd_side side;
-  /* The capacity of the |emit_set| */
-  uint16_t emit_set_capacity;
-  /* The number of entry the |emit_set| contains */
-  uint16_t emit_setlen;
-  /* The capacity of |buf_track| */
-  uint16_t buf_track_capacity;
   /* If inflate/deflate error occurred, this value is set to 1 and
      further invocation of inflate/deflate will fail with
      NGHTTP2_ERR_HEADER_COMP. */
