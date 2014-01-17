@@ -1891,6 +1891,8 @@ static int nghttp2_session_validate_request_headers(nghttp2_session *session,
  *     Out of memory.
  * NGHTTP2_ERR_PAUSE
  *     The callback function returned NGHTTP2_ERR_PAUSE
+ * NGHTTP2_ERR_HEADER_COMP
+ *     Header decompression failed
  */
 static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
                                 int call_header_cb)
@@ -1915,8 +1917,12 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
           return rv;
         }
       }
-      return nghttp2_session_terminate_session(session,
-                                               NGHTTP2_COMPRESSION_ERROR);
+      rv = nghttp2_session_terminate_session(session,
+                                             NGHTTP2_COMPRESSION_ERROR);
+      if(rv != 0) {
+        return rv;
+      }
+      return NGHTTP2_ERR_HEADER_COMP;
     }
     session->iframe.inflate_offset += rv;
     if(final) {
@@ -2010,7 +2016,7 @@ static int nghttp2_session_inflate_handle_invalid_stream
 {
   int rv;
   rv = session_skip_inflate_header_block(session, frame);
-  if(rv != 0) {
+  if(nghttp2_is_fatal(rv)) {
     return rv;
   }
   return nghttp2_session_handle_invalid_stream(session, frame, error_code);
@@ -2040,7 +2046,7 @@ static int nghttp2_session_inflate_handle_invalid_connection
 {
   int rv;
   rv = session_skip_inflate_header_block(session, frame);
-  if(rv != 0) {
+  if(nghttp2_is_fatal(rv)) {
     return rv;
   }
   return nghttp2_session_handle_invalid_connection(session, frame, error_code);
@@ -2060,6 +2066,8 @@ static int nghttp2_session_inflate_handle_invalid_connection
  *     Out of memory.
  * NGHTTP2_ERR_PAUSE
  *     The callback function returned NGHTTP2_ERR_PAUSE
+ * NGHTTP2_ERR_HEADER_COMP
+ *     Header decompression failed
  */
 static int session_end_request_headers_received(nghttp2_session *session,
                                                 nghttp2_frame *frame)
@@ -2096,6 +2104,8 @@ static int session_end_request_headers_received(nghttp2_session *session,
  *     Out of memory.
  * NGHTTP2_ERR_PAUSE
  *     The callback function returned NGHTTP2_ERR_PAUSE
+ * NGHTTP2_ERR_HEADER_COMP
+ *     Header decompression failed
  */
 static int session_end_response_headers_received(nghttp2_session *session,
                                                  nghttp2_frame *frame)
@@ -2133,6 +2143,8 @@ static int session_end_response_headers_received(nghttp2_session *session,
  *     Out of memory.
  * NGHTTP2_ERR_PAUSE
  *     The callback function returned NGHTTP2_ERR_PAUSE
+ * NGHTTP2_ERR_HEADER_COMP
+ *     Header decompression failed
  */
 static int session_end_headers_received(nghttp2_session *session,
                                         nghttp2_frame *frame)
@@ -3475,7 +3487,10 @@ static int session_continue(nghttp2_session *session)
   default:
     break;
   }
-  return rv;
+  if(rv == NGHTTP2_ERR_PAUSE || nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+  return 0;
 }
 
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
