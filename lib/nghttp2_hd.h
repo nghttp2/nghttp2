@@ -94,8 +94,16 @@ typedef struct {
 typedef struct {
   /* dynamic header table */
   nghttp2_hd_ringbuf hd_table;
+  /* Pointer to the nghttp2_hd_entry which is used current header
+     emission. This is required because in some cases the
+     ent_keep->ref == 0 and we have to keep track of it. */
   nghttp2_hd_entry *ent_keep;
+  /* Pointers to the name/value pair which are used current header
+     emission. They are usually used to keep track of malloc'ed memory
+     for huffman decoding. */
   uint8_t *name_keep, *value_keep;
+  /* The index of header table to toggle off the entry from reference
+     set at the end of decompression. */
   size_t end_headers_index;
   /* Abstract buffer size of hd_table as described in the spec. This
      is the sum of length of name/value in hd_table +
