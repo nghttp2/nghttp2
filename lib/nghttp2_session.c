@@ -2059,7 +2059,7 @@ static int session_end_request_headers_received(nghttp2_session *session,
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
-    if(nghttp2_is_fatal(rv)) {
+    if(rv != 0) {
       return rv;
     }
   }
@@ -2102,7 +2102,7 @@ static int session_end_headers_received(nghttp2_session *session,
     if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
       rv = nghttp2_session_call_on_request_recv(session,
                                                 frame->hd.stream_id);
-      if(nghttp2_is_fatal(rv)) {
+      if(rv != 0) {
         return rv;
       }
     }
