@@ -495,7 +495,7 @@ void test_nghttp2_hd_inflate_indname_noinc(void)
                                                  nv[i].value, nv[i].valuelen,
                                                  0,
                                                  NGHTTP2_HD_SIDE_REQUEST));
-    CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+    CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
     CU_ASSERT(1 == out.nvlen);
     assert_nv_equal(&nv[i], out.nva, 1);
@@ -523,7 +523,7 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&buf, &buflen, &offset, 56,
                                                nv.value, nv.valuelen, 1,
                                                NGHTTP2_HD_SIDE_REQUEST));
-  CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+  CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1);
@@ -562,7 +562,7 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
                                                value, sizeof(value), 1,
                                                NGHTTP2_HD_SIDE_REQUEST));
 
-  CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+  CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
   CU_ASSERT(4 == out.nvlen);
   CU_ASSERT(14 == out.nva[0].namelen);
@@ -604,7 +604,7 @@ void test_nghttp2_hd_inflate_newname_noinc(void)
     CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                  &nv[i], 0,
                                                  NGHTTP2_HD_SIDE_REQUEST));
-    CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+    CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
     CU_ASSERT(1 == out.nvlen);
     assert_nv_equal(&nv[i], out.nva, 1);
@@ -632,7 +632,7 @@ void test_nghttp2_hd_inflate_newname_inc(void)
   CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                &nv, 1,
                                                NGHTTP2_HD_SIDE_REQUEST));
-  CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+  CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1);
@@ -668,7 +668,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void)
   CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                &nv, 1,
                                                NGHTTP2_HD_SIDE_REQUEST));
-  CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+  CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1);
@@ -677,7 +677,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void)
   nva_out_reset(&out);
 
   /* Do it again */
-  CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+  CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1);
@@ -693,7 +693,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void)
   CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&buf, &buflen, &offset,
                                                &nv, 1,
                                                NGHTTP2_HD_SIDE_REQUEST));
-  CU_ASSERT(offset == inflate_hd(&inflater, &out, buf, offset));
+  CU_ASSERT((ssize_t)offset == inflate_hd(&inflater, &out, buf, offset));
 
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1);
