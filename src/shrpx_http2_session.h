@@ -74,6 +74,8 @@ public:
   // |dconn|.
   int submit_window_update(Http2DownstreamConnection *dconn, int32_t amount);
 
+  int submit_priority(Http2DownstreamConnection *dconn, int32_t pri);
+
   int terminate_session(nghttp2_error_code error_code);
 
   nghttp2_session* get_session() const;

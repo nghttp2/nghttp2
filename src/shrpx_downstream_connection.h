@@ -56,6 +56,7 @@ public:
   virtual int on_write() = 0;
 
   virtual void on_upstream_change(Upstream *uptream) = 0;
+  virtual int on_priority_change(int32_t pri) = 0;
 
   ClientHandler* get_client_handler();
   Downstream* get_downstream();

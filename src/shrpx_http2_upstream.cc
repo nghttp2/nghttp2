@@ -373,6 +373,17 @@ int on_frame_recv_callback
     downstream->init_response_body_buf();
     break;
   }
+  case NGHTTP2_PRIORITY: {
+    auto downstream = upstream->find_downstream(frame->hd.stream_id);
+    if(!downstream) {
+      break;
+    }
+    rv = downstream->change_priority(frame->priority.pri);
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+    break;
+  }
   case NGHTTP2_SETTINGS:
     if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
       break;

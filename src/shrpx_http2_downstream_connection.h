@@ -59,6 +59,7 @@ public:
   virtual int on_write();
 
   virtual void on_upstream_change(Upstream *upstream) {}
+  virtual int on_priority_change(int32_t pri);
 
   int send();
 

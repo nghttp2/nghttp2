@@ -616,6 +616,15 @@ int Downstream::on_read()
   return dconn_->on_read();
 }
 
+int Downstream::change_priority(int32_t pri)
+{
+  if(!dconn_) {
+    DLOG(INFO, this) << "dconn_ is NULL";
+    return -1;
+  }
+  return dconn_->on_priority_change(pri);
+}
+
 void Downstream::set_response_state(int state)
 {
   response_state_ = state;

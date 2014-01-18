@@ -121,7 +121,10 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
       // At this point, input buffer is already filled with some
       // bytes.  The read callback is not called until new data
       // come. So consume input buffer here.
-      handler->get_upstream()->on_read();
+      if(handler->get_upstream()->on_read() != 0) {
+        delete handler;
+        return;
+      }
     }
   }
 }

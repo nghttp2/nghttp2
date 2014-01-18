@@ -518,4 +518,23 @@ bool Http2DownstreamConnection::get_output_buffer_full()
   }
 }
 
+int Http2DownstreamConnection::on_priority_change(int32_t pri)
+{
+  int rv;
+  if(downstream_->get_priorty() == pri) {
+    return 0;
+  }
+  downstream_->set_priority(pri);
+  if(http2session_->get_state() != Http2Session::CONNECTED) {
+    return 0;
+  }
+  rv = http2session_->submit_priority(this, pri);
+  if(rv != 0) {
+    DLOG(FATAL, this) << "nghttp2_submit_priority() failed";
+    return -1;
+  }
+  http2session_->notify();
+  return 0;
+}
+
 } // namespace shrpx

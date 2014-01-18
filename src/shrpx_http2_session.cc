@@ -629,6 +629,25 @@ int Http2Session::submit_window_update(Http2DownstreamConnection *dconn,
   return 0;
 }
 
+int Http2Session::submit_priority(Http2DownstreamConnection *dconn,
+                                  int32_t pri)
+{
+  assert(state_ == CONNECTED);
+  if(!dconn) {
+    return 0;
+  }
+  int rv;
+  rv = nghttp2_submit_priority(session_, NGHTTP2_FLAG_NONE,
+                               dconn->get_downstream()->
+                               get_downstream_stream_id(), pri);
+  if(rv < NGHTTP2_ERR_FATAL) {
+    SSLOG(FATAL, this) << "nghttp2_submit_priority() failed: "
+                       << nghttp2_strerror(rv);
+    return -1;
+  }
+  return 0;
+}
+
 nghttp2_session* Http2Session::get_session() const
 {
   return session_;
