@@ -1837,6 +1837,7 @@ int main(int argc, char **argv)
       config.multiply = strtoul(optarg, nullptr, 10);
       break;
     case 'c':
+      errno = 0;
       config.header_table_size = strtol(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0') {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;

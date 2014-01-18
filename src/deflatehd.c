@@ -411,6 +411,7 @@ int main(int argc, char **argv)
       break;
     case 's':
       /* --table-size */
+      errno = 0;
       config.table_size = strtoul(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0') {
         fprintf(stderr, "-s: Bad option value\n");
@@ -419,6 +420,7 @@ int main(int argc, char **argv)
       break;
     case 'S':
       /* --deflate-table-size */
+      errno = 0;
       config.deflate_table_size = strtoul(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0') {
         fprintf(stderr, "-S: Bad option value\n");
