@@ -457,6 +457,10 @@ int htp_msg_completecb(http_parser *htp)
 {
   auto downstream = reinterpret_cast<Downstream*>(htp->data);
   downstream->set_response_state(Downstream::MSG_COMPLETE);
+  // Block reading another response message from (broken?)
+  // server. This callback is not called if the connection is
+  // tunneled.
+  downstream->pause_read(SHRPX_MSG_BLOCK);
   return downstream->get_upstream()->on_downstream_body_complete(downstream);
 }
 } // namespace

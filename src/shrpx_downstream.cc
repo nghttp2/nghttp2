@@ -635,18 +635,6 @@ int Downstream::get_response_state() const
   return response_state_;
 }
 
-namespace {
-void body_buf_cb(evbuffer *body, size_t oldlen, size_t newlen, void *arg)
-{
-  Downstream *downstream = reinterpret_cast<Downstream*>(arg);
-  if(newlen == 0) {
-    if(downstream->resume_read(SHRPX_NO_BUFFER) == -1) {
-      DLOG(WARNING, downstream) << "Sending WINDOW_UPDATE failed";
-    }
-  }
-}
-} // namespace
-
 int Downstream::init_response_body_buf()
 {
   if(!response_body_buf_) {
@@ -654,7 +642,6 @@ int Downstream::init_response_body_buf()
     if(response_body_buf_ == nullptr) {
       DIE();
     }
-    evbuffer_setcb(response_body_buf_, body_buf_cb, this);
   }
   return 0;
 }

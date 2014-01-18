@@ -92,7 +92,6 @@ int Http2DownstreamConnection::init_request_body_buf()
     if(request_body_buf_ == nullptr) {
       return -1;
     }
-    evbuffer_setcb(request_body_buf_, nullptr, this);
   }
   return 0;
 }
@@ -212,6 +211,14 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
         }
       }
     } else {
+      // Send WINDOW_UPDATE before buffer is empty to avoid delay
+      // because of RTT.
+      if(!downstream->get_output_buffer_full() &&
+         downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
+                                                 downstream) == -1) {
+        // In this case, downstream may be deleted.
+        return NGHTTP2_ERR_DEFERRED;
+      }
       break;
     }
   }
