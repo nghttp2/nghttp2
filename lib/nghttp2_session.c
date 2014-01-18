@@ -57,11 +57,11 @@ static int nghttp2_session_is_incoming_concurrent_streams_max
 }
 
 /*
- * Returns non-zero if |error| is non-fatal error.
+ * Returns non-zero if |lib_error| is non-fatal error.
  */
-static int nghttp2_is_non_fatal(int error)
+static int nghttp2_is_non_fatal(int lib_error)
 {
-  return error < 0 && error > NGHTTP2_ERR_FATAL;
+  return lib_error < 0 && lib_error > NGHTTP2_ERR_FATAL;
 }
 
 int nghttp2_is_fatal(int lib_error)
