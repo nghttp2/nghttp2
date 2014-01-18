@@ -712,24 +712,6 @@ ssize_t send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-ssize_t recv_callback(nghttp2_session *session,
-                      uint8_t *data, size_t len, int flags, void *user_data)
-{
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
-  auto bev = http2session->get_bev();
-  auto input = bufferevent_get_input(bev);
-  int nread = evbuffer_remove(input, data, len);
-  if(nread == -1) {
-    return NGHTTP2_ERR_CALLBACK_FAILURE;
-  } else if(nread == 0) {
-    return NGHTTP2_ERR_WOULDBLOCK;
-  } else {
-    return nread;
-  }
-}
-} // namespace
-
-namespace {
 int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
@@ -1215,7 +1197,6 @@ int Http2Session::on_connect()
   nghttp2_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(callbacks));
   callbacks.send_callback = send_callback;
-  callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
@@ -1290,27 +1271,33 @@ int Http2Session::on_connect()
 
 int Http2Session::on_read()
 {
-  int rv = 0;
-  if((rv = nghttp2_session_recv(session_)) < 0) {
-    if(rv != NGHTTP2_ERR_EOF) {
-      SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
-                         << nghttp2_strerror(rv);
-    }
-  } else if((rv = nghttp2_session_send(session_)) < 0) {
+  ssize_t rv = 0;
+  auto input = bufferevent_get_input(bev_);
+  auto inputlen = evbuffer_get_length(input);
+  auto mem = evbuffer_pullup(input, -1);
+
+  rv = nghttp2_session_mem_recv(session_, mem, inputlen);
+  if(rv < 0) {
+    SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
+                       << nghttp2_strerror(rv);
+    return -1;
+  }
+  evbuffer_drain(input, rv);
+  rv = nghttp2_session_send(session_);
+  if(rv < 0) {
     SSLOG(ERROR, this) << "nghttp2_session_send() returned error: "
                        << nghttp2_strerror(rv);
+    return -1;
   }
-  if(rv == 0) {
-    if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0 &&
-       evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
-      if(LOG_ENABLED(INFO)) {
-        SSLOG(INFO, this) << "No more read/write for this session";
-      }
-      rv = -1;
+  if(nghttp2_session_want_read(session_) == 0 &&
+     nghttp2_session_want_write(session_) == 0 &&
+     evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "No more read/write for this session";
     }
+    return -1;
   }
-  return rv;
+  return 0;
 }
 
 int Http2Session::on_write()
