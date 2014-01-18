@@ -473,7 +473,11 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason)
       }
     }
   }
-  return (rv1 == 0 && rv2 == 0) ? 0 : -1;
+  if(rv1 == 0 && rv2 == 0) {
+    return 0;
+  }
+  DLOG(WARNING, this) << "Sending WINDOW_UPDATE failed";
+  return -1;
 }
 
 int Http2DownstreamConnection::on_read()

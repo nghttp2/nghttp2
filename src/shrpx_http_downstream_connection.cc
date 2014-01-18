@@ -359,7 +359,8 @@ void HttpDownstreamConnection::pause_read(IOCtrlReason reason)
 
 int HttpDownstreamConnection::resume_read(IOCtrlReason reason)
 {
-  return ioctrl_.resume_read(reason) ? 0 : -1;
+  ioctrl_.resume_read(reason);
+  return 0;
 }
 
 void HttpDownstreamConnection::force_resume_read()

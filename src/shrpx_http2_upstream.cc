@@ -905,9 +905,8 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   // Send WINDOW_UPDATE before buffer is empty to avoid delay because
   // of RTT.
   if(*eof != 1 &&
-     evbuffer_get_length(body) < SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES &&
-     downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
-    DLOG(WARNING, downstream) << "Sending WINDOW_UPDATE failed";
+     evbuffer_get_length(body) < SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
+    downstream->resume_read(SHRPX_NO_BUFFER);
   }
   if(nread == 0 && *eof != 1) {
     return NGHTTP2_ERR_DEFERRED;
