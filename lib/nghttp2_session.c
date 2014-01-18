@@ -2903,6 +2903,10 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
 int nghttp2_session_on_goaway_received(nghttp2_session *session,
                                        nghttp2_frame *frame)
 {
+  if(frame->hd.stream_id != 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
+  }
   session->last_stream_id = frame->goaway.last_stream_id;
   session->goaway_flags |= NGHTTP2_GOAWAY_RECV;
   return nghttp2_session_call_on_frame_received(session, frame);
