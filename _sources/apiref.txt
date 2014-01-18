@@ -1743,8 +1743,6 @@ Functions
     
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
-    :macro:`NGHTTP2_ERR_STREAM_CLOSED`
-        The stream is already closed or does not exist.
 
 .. function:: int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags, int32_t stream_id, int32_t pri)
 
@@ -1762,8 +1760,6 @@ Functions
         Out of memory.
     :macro:`NGHTTP2_ERR_INVALID_ARGUMENT`
         The *pri* is negative.
-    :macro:`NGHTTP2_ERR_STREAM_CLOSED`
-        The stream is already closed or does not exist.
 
 .. function:: int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags, int32_t stream_id, nghttp2_error_code error_code)
 
@@ -1919,8 +1915,6 @@ Functions
     
     :macro:`NGHTTP2_ERR_FLOW_CONTROL`
         The local window size overflow or gets negative.
-    :macro:`NGHTTP2_ERR_STREAM_CLOSED`
-        The stream is already closed or does not exist.
     :macro:`NGHTTP2_ERR_NOMEM`
         Out of memory.
 
@@ -2056,5 +2050,11 @@ Functions
     24 bit numerical value for the least accepted version number and if the
     condition is not met, this function will return a NULL. Pass in 0 to skip
     the version checking.
+
+.. function:: int nghttp2_is_fatal(int lib_error)
+
+    
+    Returns nonzero if the :type:`nghttp2_error` library error code
+    *lib_error* is fatal.
 
 

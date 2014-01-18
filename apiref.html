@@ -2285,8 +2285,6 @@ negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
-<dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
-<dd>The stream is already closed or does not exist.</dd>
 </dl>
 </dd></dl>
 
@@ -2304,8 +2302,6 @@ negative error codes:</p>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
 <dd>The <em>pri</em> is negative.</dd>
-<dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
-<dd>The stream is already closed or does not exist.</dd>
 </dl>
 </dd></dl>
 
@@ -2449,8 +2445,6 @@ negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_FLOW_CONTROL" title="NGHTTP2_ERR_FLOW_CONTROL"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_FLOW_CONTROL</span></tt></a></dt>
 <dd>The local window size overflow or gets negative.</dd>
-<dt><a class="reference internal" href="#NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
-<dd>The stream is already closed or does not exist.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>
@@ -2589,6 +2583,13 @@ the run-time library in use.  The <em>least_version</em> argument can be set to 
 24 bit numerical value for the least accepted version number and if the
 condition is not met, this function will return a NULL. Pass in 0 to skip
 the version checking.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_is_fatal">
+int <tt class="descname">nghttp2_is_fatal</tt><big>(</big>int<em>&nbsp;lib_error</em><big>)</big><a class="headerlink" href="#nghttp2_is_fatal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns nonzero if the <a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_error</span></tt></a> library error code
+<em>lib_error</em> is fatal.</p>
 </dd></dl>
 
 </div>

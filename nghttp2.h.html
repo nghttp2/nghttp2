@@ -2149,8 +2149,6 @@
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
-<span class="cm"> *     The stream is already closed or does not exist.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                         <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -2172,8 +2170,6 @@
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
 <span class="cm"> *     The |pri| is negative.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
-<span class="cm"> *     The stream is already closed or does not exist.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_priority</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                             <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">pri</span><span class="p">);</span>
@@ -2351,8 +2347,6 @@
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_FLOW_CONTROL`</span>
 <span class="cm"> *     The local window size overflow or gets negative.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
-<span class="cm"> *     The stream is already closed or does not exist.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
@@ -2517,6 +2511,14 @@
 <span class="cm"> * the version checking.</span>
 <span class="cm"> */</span>
 <span class="n">nghttp2_info</span> <span class="o">*</span><span class="nf">nghttp2_version</span><span class="p">(</span><span class="kt">int</span> <span class="n">least_version</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns nonzero if the :type:`nghttp2_error` library error code</span>
+<span class="cm"> * |lib_error| is fatal.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_is_fatal</span><span class="p">(</span><span class="kt">int</span> <span class="n">lib_error</span><span class="p">);</span>
 
 <span class="cp">#ifdef __cplusplus</span>
 <span class="p">}</span>
