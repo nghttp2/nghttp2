@@ -828,35 +828,34 @@ int main(int argc, char **argv)
     }
     switch(c) {
     case 'D':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_DAEMON, "yes"));
+      cmdcfgs.emplace_back(SHRPX_OPT_DAEMON, "yes");
       break;
     case 'L':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_LOG_LEVEL, optarg));
+      cmdcfgs.emplace_back(SHRPX_OPT_LOG_LEVEL, optarg);
       break;
     case 'b':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND, optarg));
+      cmdcfgs.emplace_back(SHRPX_OPT_BACKEND, optarg);
       break;
     case 'c':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS,
-                                       optarg));
+      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS, optarg);
       break;
     case 'f':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND, optarg));
+      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND, optarg);
       break;
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'k':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_INSECURE, "yes"));
+      cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, "yes");
       break;
     case 'n':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WORKERS, optarg));
+      cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
       break;
     case 'p':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_PROXY, "yes"));
+      cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PROXY, "yes");
       break;
     case 's':
-      cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HTTP2_PROXY, "yes"));
+      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_PROXY, "yes");
       break;
     case 'v':
       print_version(std::cout);
@@ -868,52 +867,44 @@ int main(int argc, char **argv)
       switch(flag) {
       case 1:
         // --add-x-forwarded-for
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_ADD_X_FORWARDED_FOR,
-                                         "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_X_FORWARDED_FOR, "yes");
         break;
       case 2:
         // --frontend-http2-read-timeout
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT, optarg);
         break;
       case 3:
         // --frontend-read-timeout
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_READ_TIMEOUT,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_READ_TIMEOUT, optarg);
         break;
       case 4:
         // --frontend-write-timeout
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_WRITE_TIMEOUT,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_WRITE_TIMEOUT, optarg);
         break;
       case 5:
         // --backend-read-timeout
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_READ_TIMEOUT,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_READ_TIMEOUT, optarg);
         break;
       case 6:
         // --backend-write-timeout
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_WRITE_TIMEOUT,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_WRITE_TIMEOUT, optarg);
         break;
       case 7:
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_ACCESSLOG, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG, "yes");
         break;
       case 8:
         // --backend-keep-alive-timeout
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT, optarg);
         break;
       case 9:
         // --frontend-http2-window-bits
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS, optarg);
         break;
       case 10:
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PID_FILE, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_PID_FILE, optarg);
         break;
       case 11:
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_USER, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_USER, optarg);
         break;
       case 12:
         // --conf
@@ -921,157 +912,143 @@ int main(int argc, char **argv)
         break;
       case 13:
         // --syslog
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SYSLOG, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_SYSLOG, "yes");
         break;
       case 14:
         // --syslog-facility
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SYSLOG_FACILITY, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_SYSLOG_FACILITY, optarg);
         break;
       case 15:
         // --backlog
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKLOG, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKLOG, optarg);
         break;
       case 16:
         // --ciphers
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CIPHERS, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_CIPHERS, optarg);
         break;
       case 17:
         // --client
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT, "yes");
         break;
       case 18:
         // --backend-http2-window-bits
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS, optarg);
         break;
       case 19:
         // --cacert
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CACERT, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_CACERT, optarg);
         break;
       case 20:
         // --backend-ipv4
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_IPV4, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV4, "yes");
         break;
       case 21:
         // --backend-ipv6
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_IPV6, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV6, "yes");
         break;
       case 22:
         // --private-key-passwd-file
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE, optarg);
         break;
       case 23:
         // --no-via
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_NO_VIA, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_VIA, "yes");
         break;
       case 24:
         // --subcert
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_SUBCERT, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_SUBCERT, optarg);
         break;
       case 25:
         // --http2-bridge
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HTTP2_BRIDGE, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_BRIDGE, "yes");
         break;
       case 26:
         // --backend-http-proxy-uri
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_HTTP_PROXY_URI,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP_PROXY_URI, optarg);
         break;
       case 27:
         // --backend-no-tls
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_NO_TLS,
-                                         "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_NO_TLS, "yes");
         break;
       case 29:
         // --frontend-no-tls
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_FRONTEND_NO_TLS,
-                                         "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_NO_TLS, "yes");
         break;
       case 31:
         // --backend-tls-sni-field
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_BACKEND_TLS_SNI_FIELD,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SNI_FIELD, optarg);
         break;
       case 32:
         // --honor-cipher-order
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_HONOR_CIPHER_ORDER,
-                                         "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_HONOR_CIPHER_ORDER, "yes");
         break;
       case 33:
         // --dh-param-file
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_DH_PARAM_FILE, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_DH_PARAM_FILE, optarg);
         break;
       case 34:
         // --read-rate
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_READ_RATE, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_RATE, optarg);
         break;
       case 35:
         // --read-burst
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_READ_BURST, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_BURST, optarg);
         break;
       case 36:
         // --write-rate
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WRITE_RATE, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_RATE, optarg);
         break;
       case 37:
         // --write-burst
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_WRITE_BURST, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_BURST, optarg);
         break;
       case 38:
         // --npn-list
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_NPN_LIST, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_NPN_LIST, optarg);
         break;
       case 39:
         // --verify-client
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_VERIFY_CLIENT, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT, "yes");
         break;
       case 40:
         // --verify-client-cacert
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_VERIFY_CLIENT_CACERT,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_CACERT, optarg);
         break;
       case 41:
         // --client-private-key-file
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE,
-                                         optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE, optarg);
         break;
       case 42:
         // --client-cert-file
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CLIENT_CERT_FILE, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CERT_FILE, optarg);
         break;
       case 43:
         // --frontend-http2-dump-request-header
-        cmdcfgs.push_back(std::make_pair
-                          (SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
-                           optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
+                             optarg);
         break;
       case 44:
         // --frontend-http2-dump-response-header
-        cmdcfgs.push_back(std::make_pair
-                          (SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
-                           optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
+                             optarg);
         break;
       case 45:
         // --http2-no-cookie-crumbling
-        cmdcfgs.push_back(std::make_pair
-                          (SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, "yes"));
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, "yes");
         break;
       case 46:
         // --frontend-http2-connection-window-bits
-        cmdcfgs.push_back(std::make_pair
-                          (SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
-                           optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
+                             optarg);
         break;
       case 47:
         // --backend-http2-connection-window-bits
-        cmdcfgs.push_back(std::make_pair
-                          (SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
-                           optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
+                             optarg);
         break;
       case 48:
         // --tls-proto-list
-        cmdcfgs.push_back(std::make_pair(SHRPX_OPT_TLS_PROTO_LIST, optarg));
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_PROTO_LIST, optarg);
         break;
       default:
         break;
@@ -1098,10 +1075,8 @@ int main(int argc, char **argv)
   }
 
   if(argc - optind >= 2) {
-    cmdcfgs.push_back(std::make_pair(SHRPX_OPT_PRIVATE_KEY_FILE,
-                                     argv[optind++]));
-    cmdcfgs.push_back(std::make_pair(SHRPX_OPT_CERTIFICATE_FILE,
-                                     argv[optind++]));
+    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, argv[optind++]);
+    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
   }
 
   for(size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
