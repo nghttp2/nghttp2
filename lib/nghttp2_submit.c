@@ -140,13 +140,8 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
 {
   int r;
   nghttp2_frame *frame;
-  nghttp2_stream *stream;
   if(pri < 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-  stream = nghttp2_session_get_stream(session, stream_id);
-  if(stream == NULL) {
-    return NGHTTP2_ERR_STREAM_CLOSED;
   }
   frame = malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
@@ -248,7 +243,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
         return rv;
       }
     } else {
-      return NGHTTP2_ERR_STREAM_CLOSED;
+      return 0;
     }
   }
   if(window_size_increment > 0) {
@@ -309,9 +304,6 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
   nghttp2_data *data_frame;
   uint8_t nflags = 0;
 
-  if(nghttp2_session_get_stream(session, stream_id) == NULL) {
-    return NGHTTP2_ERR_STREAM_CLOSED;
-  }
   data_frame = malloc(sizeof(nghttp2_data));
   if(data_frame == NULL) {
     return NGHTTP2_ERR_NOMEM;

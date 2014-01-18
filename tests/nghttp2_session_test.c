@@ -2651,7 +2651,9 @@ void test_nghttp2_submit_window_update(void)
   stream->local_flow_control = 0;
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 2, -1));
-  CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED ==
+  /* It is ok if stream is closed or does not exist at the call
+     time */
+  CU_ASSERT(0 ==
             nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 4, 4096));
 
   nghttp2_session_del(session);
@@ -3608,10 +3610,6 @@ void test_nghttp2_session_on_ctrl_not_send(void)
   CU_ASSERT(1 == user_data.frame_not_send_cb_called);
   CU_ASSERT(NGHTTP2_HEADERS == user_data.not_sent_frame_type);
   CU_ASSERT(NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE == user_data.not_sent_error);
-
-  /* Send PRIORITY to stream ID = 1 which does not exist */
-  CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED ==
-            nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, 0));
 
   user_data.frame_not_send_cb_called = 0;
   /* Send GOAWAY */
