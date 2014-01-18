@@ -2374,6 +2374,14 @@ int nghttp2_gzip_inflate(nghttp2_gzip *inflater,
  */
 nghttp2_info *nghttp2_version(int least_version);
 
+/**
+ * @function
+ *
+ * Returns nonzero if the :type:`nghttp2_error` library error code
+ * |lib_error| is fatal.
+ */
+int nghttp2_is_fatal(int lib_error);
+
 #ifdef __cplusplus
 }
 #endif

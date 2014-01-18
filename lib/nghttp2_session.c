@@ -64,12 +64,9 @@ static int nghttp2_is_non_fatal(int error)
   return error < 0 && error > NGHTTP2_ERR_FATAL;
 }
 
-/*
- * Returns non-zero if |error| is fatal error.
- */
-static int nghttp2_is_fatal(int error)
+int nghttp2_is_fatal(int lib_error)
 {
-  return error < NGHTTP2_ERR_FATAL;
+  return lib_error < NGHTTP2_ERR_FATAL;
 }
 
 /* Returns the pushed stream's priority based on the associated stream
