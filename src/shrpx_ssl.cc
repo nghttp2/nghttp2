@@ -132,6 +132,25 @@ int servername_callback(SSL *ssl, int *al, void *arg)
 }
 } // namespace
 
+namespace {
+void info_callback(const SSL *ssl, int where, int ret)
+{
+  // To mitigate possible DOS attack using lots of renegotiations, we
+  // disable renegotiation. Since OpenSSL does not provide an easy way
+  // to disable it, we check that renegotiation is started in this
+  // callback.
+  if(where & SSL_CB_HANDSHAKE_START) {
+    auto handler = static_cast<ClientHandler*>(SSL_get_app_data(ssl));
+    if(handler && handler->get_tls_handshake()) {
+      handler->set_tls_renegotiation(true);
+      if(LOG_ENABLED(INFO)) {
+        CLOG(INFO, handler) << "TLS renegotiation started";
+      }
+    }
+  }
+}
+} // namespace
+
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
 int alpn_select_proto_cb(SSL* ssl,
@@ -301,6 +320,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
+  SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
   // NPN advertisement
   auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,

@@ -77,6 +77,10 @@ public:
   bool get_http2_upgrade_allowed() const;
   // Returns upstream scheme, either "http" or "https"
   std::string get_upstream_scheme() const;
+  void set_tls_handshake(bool f);
+  bool get_tls_handshake() const;
+  void set_tls_renegotiation(bool f);
+  bool get_tls_renegotiation() const;
 private:
   std::set<DownstreamConnection*> dconn_pool_;
   std::unique_ptr<Upstream> upstream_;
@@ -90,6 +94,8 @@ private:
   size_t left_connhd_len_;
   int fd_;
   bool should_close_after_write_;
+  bool tls_handshake_;
+  bool tls_renegotiation_;
 };
 
 } // namespace shrpx

@@ -48,6 +48,10 @@ namespace {
 void upstream_readcb(bufferevent *bev, void *arg)
 {
   auto handler = reinterpret_cast<ClientHandler*>(arg);
+  if(handler->get_tls_renegotiation()) {
+    delete handler;
+    return;
+  }
   int rv = handler->on_read();
   if(rv != 0) {
     delete handler;
@@ -106,8 +110,9 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
     delete handler;
   } else {
     if(events & BEV_EVENT_CONNECTED) {
+      handler->set_tls_handshake(true);
       if(LOG_ENABLED(INFO)) {
-        CLOG(INFO, handler) << "SSL/TLS handleshake completed";
+        CLOG(INFO, handler) << "SSL/TLS handshake completed";
       }
       if(handler->validate_next_proto() != 0) {
         delete handler;
@@ -226,7 +231,9 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     ssl_(ssl),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN),
     fd_(fd),
-    should_close_after_write_(false)
+    should_close_after_write_(false),
+    tls_handshake_(false),
+    tls_renegotiation_(false)
 {
   int rv;
   rv = bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
@@ -238,6 +245,7 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
                         &get_config()->upstream_write_timeout);
   if(ssl_) {
+    SSL_set_app_data(ssl_, reinterpret_cast<char*>(this));
     set_bev_cb(nullptr, upstream_writecb, upstream_eventcb);
   } else {
     // For non-TLS version, first create HttpsUpstream. It may be
@@ -254,6 +262,7 @@ ClientHandler::~ClientHandler()
     CLOG(INFO, this) << "Deleting";
   }
   if(ssl_) {
+    SSL_set_app_data(ssl_, nullptr);
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl_);
   }
@@ -496,6 +505,26 @@ std::string ClientHandler::get_upstream_scheme() const
   } else {
     return "http";
   }
+}
+
+void ClientHandler::set_tls_handshake(bool f)
+{
+  tls_handshake_ = f;
+}
+
+bool ClientHandler::get_tls_handshake() const
+{
+  return tls_handshake_;
+}
+
+void ClientHandler::set_tls_renegotiation(bool f)
+{
+  tls_renegotiation_ = f;
+}
+
+bool ClientHandler::get_tls_renegotiation() const
+{
+  return tls_renegotiation_;
 }
 
 } // namespace shrpx
