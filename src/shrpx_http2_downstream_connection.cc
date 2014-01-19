@@ -192,9 +192,9 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
         // This is important because it will handle flow control
         // stuff.
         if(downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
-                                                   downstream) == -1) {
+                                                   downstream) != 0) {
           // In this case, downstream may be deleted.
-          return NGHTTP2_ERR_DEFERRED;
+          return NGHTTP2_ERR_CALLBACK_FAILURE;
         }
         // Check dconn is still alive because Upstream::resume_read()
         // may delete downstream which will delete dconn.

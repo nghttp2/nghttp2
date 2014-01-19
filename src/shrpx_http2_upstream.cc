@@ -906,7 +906,9 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   // of RTT.
   if(*eof != 1 &&
      evbuffer_get_length(body) < SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
-    downstream->resume_read(SHRPX_NO_BUFFER);
+    if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
   if(nread == 0 && *eof != 1) {
     return NGHTTP2_ERR_DEFERRED;
