@@ -44,7 +44,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const size_t SHRPX_HTTPS_UPSTREAM_OUTPUT_UPPER_THRES = 64*1024;
+const size_t OUTBUF_MAX_THRES = 64*1024;
 const size_t SHRPX_HTTPS_MAX_HEADER_LENGTH = 64*1024;
 } // namespace
 
@@ -414,7 +414,7 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
       auto handler = upstream->get_client_handler();
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         if(handler->get_should_close_after_write() &&
-           handler->get_pending_write_length() == 0) {
+           handler->get_outbuf_length() == 0) {
           // If all upstream response body has already written out to
           // the peer, we cannot use writecb for ClientHandler. In
           // this case, we just delete handler here.
@@ -435,7 +435,7 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
         // https_downstream_eventcb.
         //
         // Tunneled connection always indicates connection close.
-        if(handler->get_pending_write_length() == 0) {
+        if(handler->get_outbuf_length() == 0) {
           // For tunneled connection, if there is no pending data,
           // delete handler because on_write will not be called.
           delete handler;
@@ -446,8 +446,8 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
         }
       }
     } else {
-      if(upstream->get_client_handler()->get_pending_write_length() >
-         SHRPX_HTTPS_UPSTREAM_OUTPUT_UPPER_THRES) {
+      if(upstream->get_client_handler()->get_outbuf_length() >
+         OUTBUF_MAX_THRES) {
         downstream->pause_read(SHRPX_NO_BUFFER);
       }
     }
@@ -514,7 +514,7 @@ void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
       auto handler = upstream->get_client_handler();
       if(handler->get_should_close_after_write() &&
-         handler->get_pending_write_length() == 0) {
+         handler->get_outbuf_length() == 0) {
         // If all upstream response body has already written out to
         // the peer, we cannot use writecb for ClientHandler. In this
         // case, we just delete handler here.

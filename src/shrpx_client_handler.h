@@ -61,7 +61,7 @@ public:
   void pool_downstream_connection(DownstreamConnection *dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
   DownstreamConnection* get_downstream_connection();
-  size_t get_pending_write_length();
+  size_t get_outbuf_length();
   SSL* get_ssl() const;
   void set_http2_session(Http2Session *http2session);
   Http2Session* get_http2_session() const;

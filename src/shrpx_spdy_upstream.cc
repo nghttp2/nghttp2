@@ -45,7 +45,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const size_t SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES = 64*1024;
+const size_t OUTBUF_MAX_THRES = 64*1024;
 } // namespace
 
 namespace {
@@ -59,8 +59,7 @@ ssize_t send_callback(spdylay_session *session,
   auto bev = handler->get_bev();
   auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(handler->get_pending_write_length() >
-     SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+  if(handler->get_outbuf_length() > OUTBUF_MAX_THRES) {
     return SPDYLAY_ERR_WOULDBLOCK;
   }
 
@@ -452,7 +451,7 @@ int SpdyUpstream::on_read()
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
        spdylay_session_want_write(session_) == 0 &&
-       handler_->get_pending_write_length() == 0) {
+       handler_->get_outbuf_length() == 0) {
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }
@@ -478,7 +477,7 @@ int SpdyUpstream::send()
   if(rv == 0) {
     if(spdylay_session_want_read(session_) == 0 &&
        spdylay_session_want_write(session_) == 0 &&
-       handler_->get_pending_write_length() == 0) {
+       handler_->get_outbuf_length() == 0) {
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this SPDY session";
       }
@@ -751,8 +750,8 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
   // Send WINDOW_UPDATE before buffer is empty to avoid delay because
   // of RTT.
   if(*eof != 1 &&
-     handler->get_pending_write_length() + evbuffer_get_length(body) <
-     SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+     handler->get_outbuf_length() + evbuffer_get_length(body) <
+     OUTBUF_MAX_THRES) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return SPDYLAY_ERR_CALLBACK_FAILURE;
     }
@@ -931,9 +930,9 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
   }
   spdylay_session_resume_data(session_, downstream->get_stream_id());
 
-  auto outbuflen = upstream->get_client_handler()->get_pending_write_length() +
+  auto outbuflen = upstream->get_client_handler()->get_outbuf_length() +
     evbuffer_get_length(body);
-  if(outbuflen > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+  if(outbuflen > OUTBUF_MAX_THRES) {
     downstream->pause_read(SHRPX_NO_BUFFER);
   }
 

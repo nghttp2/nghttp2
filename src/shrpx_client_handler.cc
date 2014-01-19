@@ -60,7 +60,7 @@ void upstream_writecb(bufferevent *bev, void *arg)
 {
   auto handler = reinterpret_cast<ClientHandler*>(arg);
   // We actually depend on write low-warter mark == 0.
-  if(handler->get_pending_write_length() > 0) {
+  if(handler->get_outbuf_length() > 0) {
     // Possibly because of deferred callback, we may get this callback
     // when the output buffer is not empty.
     return;
@@ -449,7 +449,7 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
   }
 }
 
-size_t ClientHandler::get_pending_write_length()
+size_t ClientHandler::get_outbuf_length()
 {
   auto underlying = bufferevent_get_underlying(bev_);
   auto len = evbuffer_get_length(bufferevent_get_output(bev_));
