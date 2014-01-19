@@ -458,9 +458,14 @@ ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
                    << ERR_error_string(ERR_get_error(), nullptr);
         return nullptr;
       }
-      bev = bufferevent_openssl_socket_new
-        (evbase, fd, ssl,
-         BUFFEREVENT_SSL_ACCEPTING, BEV_OPT_DEFER_CALLBACKS);
+      SSL_set_fd(ssl, fd);
+      // To detect TLS renegotiation and deal with it, we have to use
+      // filter-based OpenSSL bufferevent and set evbuffer callback by
+      // our own.
+      auto underlying_bev = bufferevent_socket_new(evbase, fd, 0);
+      bev = bufferevent_openssl_filter_new(evbase, underlying_bev, ssl,
+                                           BUFFEREVENT_SSL_ACCEPTING,
+                                           BEV_OPT_DEFER_CALLBACKS);
     } else {
       bev = bufferevent_socket_new(evbase, fd, BEV_OPT_DEFER_CALLBACKS);
     }

@@ -48,10 +48,6 @@ namespace {
 void upstream_readcb(bufferevent *bev, void *arg)
 {
   auto handler = reinterpret_cast<ClientHandler*>(arg);
-  if(handler->get_tls_renegotiation()) {
-    delete handler;
-    return;
-  }
   int rv = handler->on_read();
   if(rv != 0) {
     delete handler;
@@ -64,7 +60,7 @@ void upstream_writecb(bufferevent *bev, void *arg)
 {
   auto handler = reinterpret_cast<ClientHandler*>(arg);
   // We actually depend on write low-warter mark == 0.
-  if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
+  if(handler->get_pending_write_length() > 0) {
     // Possibly because of deferred callback, we may get this callback
     // when the output buffer is not empty.
     return;
@@ -223,6 +219,19 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 }
 } // namespace
 
+namespace {
+void tls_raw_readcb(evbuffer *buffer, const evbuffer_cb_info *info, void *arg)
+{
+  auto handler = static_cast<ClientHandler*>(arg);
+  if(handler->get_tls_renegotiation()) {
+    if(LOG_ENABLED(INFO)) {
+      CLOG(INFO, handler) << "Close connection due to TLS renegotiation";
+    }
+    delete handler;
+  }
+}
+} // namespace
+
 ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
                              const char *ipaddr)
   : ipaddr_(ipaddr),
@@ -247,6 +256,8 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
   if(ssl_) {
     SSL_set_app_data(ssl_, reinterpret_cast<char*>(this));
     set_bev_cb(nullptr, upstream_writecb, upstream_eventcb);
+    auto input = bufferevent_get_input(bufferevent_get_underlying(bev_));
+    evbuffer_add_cb(input, tls_raw_readcb, this);
   } else {
     // For non-TLS version, first create HttpsUpstream. It may be
     // upgraded to HTTP/2.0 through HTTP Upgrade or direct HTTP/2.0
@@ -266,10 +277,15 @@ ClientHandler::~ClientHandler()
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl_);
   }
+  auto underlying = bufferevent_get_underlying(bev_);
   bufferevent_disable(bev_, EV_READ | EV_WRITE);
   bufferevent_free(bev_);
   if(ssl_) {
     SSL_free(ssl_);
+  }
+  if(underlying) {
+    bufferevent_disable(underlying, EV_READ | EV_WRITE);
+    bufferevent_free(underlying);
   }
   shutdown(fd_, SHUT_WR);
   close(fd_);
@@ -435,8 +451,12 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
 
 size_t ClientHandler::get_pending_write_length()
 {
-  auto output = bufferevent_get_output(bev_);
-  return evbuffer_get_length(output);
+  auto underlying = bufferevent_get_underlying(bev_);
+  auto len = evbuffer_get_length(bufferevent_get_output(bev_));
+  if(underlying) {
+    len += evbuffer_get_length(bufferevent_get_output(underlying));
+  }
+  return len;
 }
 
 SSL* ClientHandler::get_ssl() const

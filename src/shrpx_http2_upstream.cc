@@ -59,7 +59,8 @@ ssize_t send_callback(nghttp2_session *session,
   auto bev = handler->get_bev();
   auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(evbuffer_get_length(output) > SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
+  if(handler->get_pending_write_length() >
+     SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
     return NGHTTP2_ERR_WOULDBLOCK;
   }
 
@@ -594,7 +595,7 @@ int Http2Upstream::on_read()
   }
   if(nghttp2_session_want_read(session_) == 0 &&
      nghttp2_session_want_write(session_) == 0 &&
-     evbuffer_get_length(bufferevent_get_output(bev)) == 0) {
+     handler_->get_pending_write_length() == 0) {
     if(LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "No more read/write for this HTTP2 session";
     }
@@ -619,7 +620,7 @@ int Http2Upstream::send()
   if(rv == 0) {
     if(nghttp2_session_want_read(session_) == 0 &&
        nghttp2_session_want_write(session_) == 0 &&
-       evbuffer_get_length(bufferevent_get_output(handler_->get_bev())) == 0) {
+       handler_->get_pending_write_length() == 0) {
       if(LOG_ENABLED(INFO)) {
         ULOG(INFO, this) << "No more read/write for this HTTP2 session";
       }
