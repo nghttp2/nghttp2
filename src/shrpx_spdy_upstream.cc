@@ -726,6 +726,7 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
 {
   auto downstream = reinterpret_cast<Downstream*>(source->ptr);
   auto upstream = reinterpret_cast<SpdyUpstream*>(downstream->get_upstream());
+  auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
@@ -745,6 +746,15 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
       }
       upstream->rst_stream(downstream, infer_upstream_rst_stream_status_code
                            (downstream->get_response_rst_stream_error_code()));
+    }
+  }
+  // Send WINDOW_UPDATE before buffer is empty to avoid delay because
+  // of RTT.
+  if(*eof != 1 &&
+     handler->get_pending_write_length() + evbuffer_get_length(body) <
+     SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+    if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
+      return SPDYLAY_ERR_CALLBACK_FAILURE;
     }
   }
   if(nread == 0 && *eof != 1) {
@@ -912,6 +922,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 int SpdyUpstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len)
 {
+  auto upstream = downstream->get_upstream();
   auto body = downstream->get_response_body_buf();
   int rv = evbuffer_add(body, data, len);
   if(rv != 0) {
@@ -920,8 +931,9 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
   }
   spdylay_session_resume_data(session_, downstream->get_stream_id());
 
-  size_t bodylen = evbuffer_get_length(body);
-  if(bodylen > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
+  auto outbuflen = upstream->get_client_handler()->get_pending_write_length() +
+    evbuffer_get_length(body);
+  if(outbuflen > SHRPX_SPDY_UPSTREAM_OUTPUT_UPPER_THRES) {
     downstream->pause_read(SHRPX_NO_BUFFER);
   }
 

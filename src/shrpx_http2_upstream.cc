@@ -882,6 +882,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 {
   auto downstream = reinterpret_cast<Downstream*>(source->ptr);
   auto upstream = reinterpret_cast<Http2Upstream*>(downstream->get_upstream());
+  auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
@@ -906,7 +907,8 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   // Send WINDOW_UPDATE before buffer is empty to avoid delay because
   // of RTT.
   if(*eof != 1 &&
-     evbuffer_get_length(body) < SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
+     handler->get_pending_write_length() + evbuffer_get_length(body) <
+     SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -1074,6 +1076,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
 int Http2Upstream::on_downstream_body(Downstream *downstream,
                                       const uint8_t *data, size_t len)
 {
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   int rv = evbuffer_add(body, data, len);
   if(rv != 0) {
@@ -1082,8 +1086,9 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
   }
   nghttp2_session_resume_data(session_, downstream->get_stream_id());
 
-  size_t bodylen = evbuffer_get_length(body);
-  if(bodylen > SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
+  auto outbuflen = handler->get_pending_write_length() +
+    evbuffer_get_length(body);
+  if(outbuflen > SHRPX_HTTP2_UPSTREAM_OUTPUT_UPPER_THRES) {
     downstream->pause_read(SHRPX_NO_BUFFER);
   }
 
