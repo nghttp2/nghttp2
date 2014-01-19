@@ -697,7 +697,7 @@ ssize_t send_callback(nghttp2_session *session,
   auto bev = http2session->get_bev();
   auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(evbuffer_get_length(output) > Downstream::OUTPUT_UPPER_THRES) {
+  if(evbuffer_get_length(output) > Http2Session::OUTBUF_MAX_THRES) {
     return NGHTTP2_ERR_WOULDBLOCK;
   }
 
@@ -1367,6 +1367,15 @@ int Http2Session::terminate_session(nghttp2_error_code error_code)
     return -1;
   }
   return 0;
+}
+
+size_t Http2Session::get_outbuf_length() const
+{
+  if(bev_) {
+    return evbuffer_get_length(bufferevent_get_output(bev_));
+  } else {
+    return OUTBUF_MAX_THRES;
+  }
 }
 
 } // namespace shrpx

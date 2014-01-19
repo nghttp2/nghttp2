@@ -104,6 +104,8 @@ public:
   int start_settings_timer();
   void stop_settings_timer();
 
+  size_t get_outbuf_length() const;
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -118,6 +120,8 @@ public:
     // Connected to downstream
     CONNECTED
   };
+
+  static const size_t OUTBUF_MAX_THRES = 64*1024;
 private:
   std::set<Http2DownstreamConnection*> dconns_;
   std::set<StreamData*> streams_;

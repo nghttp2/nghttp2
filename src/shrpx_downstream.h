@@ -199,8 +199,6 @@ public:
 
   // Change the priority of downstream
   int change_priority(int32_t pri);
-
-  static const size_t OUTPUT_UPPER_THRES = 64*1024;
 private:
   Headers request_headers_;
   Headers response_headers_;
