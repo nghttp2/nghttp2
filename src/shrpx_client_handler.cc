@@ -67,12 +67,15 @@ void upstream_writecb(bufferevent *bev, void *arg)
   }
   if(handler->get_should_close_after_write()) {
     delete handler;
-  } else {
-    auto upstream = handler->get_upstream();
-    int rv = upstream->on_write();
-    if(rv != 0) {
-      delete handler;
-    }
+    return;
+  }
+  auto upstream = handler->get_upstream();
+  if(!upstream) {
+    return;
+  }
+  int rv = upstream->on_write();
+  if(rv != 0) {
+    delete handler;
   }
 }
 } // namespace
@@ -232,6 +235,17 @@ void tls_raw_readcb(evbuffer *buffer, const evbuffer_cb_info *info, void *arg)
 }
 } // namespace
 
+namespace {
+void tls_raw_writecb(evbuffer *buffer, const evbuffer_cb_info *info, void *arg)
+{
+  auto handler = static_cast<ClientHandler*>(arg);
+  // upstream_writecb() is called when external bufferevent
+  // handler->bev's output buffer gets empty. But the underlying
+  // bufferevent may have pending output buffer.
+  upstream_writecb(handler->get_bev(), handler);
+}
+} // namespace
+
 ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
                              const char *ipaddr)
   : ipaddr_(ipaddr),
@@ -258,6 +272,8 @@ ClientHandler::ClientHandler(bufferevent *bev, int fd, SSL *ssl,
     set_bev_cb(nullptr, upstream_writecb, upstream_eventcb);
     auto input = bufferevent_get_input(bufferevent_get_underlying(bev_));
     evbuffer_add_cb(input, tls_raw_readcb, this);
+    auto output = bufferevent_get_output(bufferevent_get_underlying(bev_));
+    evbuffer_add_cb(output, tls_raw_writecb, this);
   } else {
     // For non-TLS version, first create HttpsUpstream. It may be
     // upgraded to HTTP/2.0 through HTTP Upgrade or direct HTTP/2.0
