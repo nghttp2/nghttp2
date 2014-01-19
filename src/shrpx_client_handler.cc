@@ -47,7 +47,7 @@ namespace shrpx {
 namespace {
 void upstream_readcb(bufferevent *bev, void *arg)
 {
-  auto handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = static_cast<ClientHandler*>(arg);
   int rv = handler->on_read();
   if(rv != 0) {
     delete handler;
@@ -58,7 +58,7 @@ void upstream_readcb(bufferevent *bev, void *arg)
 namespace {
 void upstream_writecb(bufferevent *bev, void *arg)
 {
-  auto handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = static_cast<ClientHandler*>(arg);
   // We actually depend on write low-warter mark == 0.
   if(handler->get_outbuf_length() > 0) {
     // Possibly because of deferred callback, we may get this callback
@@ -80,7 +80,7 @@ void upstream_writecb(bufferevent *bev, void *arg)
 namespace {
 void upstream_eventcb(bufferevent *bev, short events, void *arg)
 {
-  auto handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = static_cast<ClientHandler*>(arg);
   bool finish = false;
   if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
@@ -136,7 +136,7 @@ void upstream_http2_connhd_readcb(bufferevent *bev, void *arg)
 {
   // This callback assumes upstream is Http2Upstream.
   uint8_t data[NGHTTP2_CLIENT_CONNECTION_HEADER_LEN];
-  auto handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = static_cast<ClientHandler*>(arg);
   auto leftlen = handler->get_left_connhd_len();
   auto input = bufferevent_get_input(bev);
   auto readlen = evbuffer_remove(input, data, leftlen);
@@ -173,7 +173,7 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 {
   // This callback assumes upstream is HttpsUpstream.
   uint8_t data[NGHTTP2_CLIENT_CONNECTION_HEADER_LEN];
-  auto handler = reinterpret_cast<ClientHandler*>(arg);
+  auto handler = static_cast<ClientHandler*>(arg);
   auto leftlen = handler->get_left_connhd_len();
   auto input = bufferevent_get_input(bev);
   auto readlen = evbuffer_copyout(input, data, leftlen);

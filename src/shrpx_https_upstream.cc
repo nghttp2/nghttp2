@@ -71,7 +71,7 @@ void HttpsUpstream::reset_current_header_length()
 namespace {
 int htp_msg_begin(http_parser *htp)
 {
-  auto upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
+  auto upstream = static_cast<HttpsUpstream*>(htp->data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request started";
   }
@@ -85,7 +85,7 @@ int htp_msg_begin(http_parser *htp)
 namespace {
 int htp_uricb(http_parser *htp, const char *data, size_t len)
 {
-  auto upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
+  auto upstream = static_cast<HttpsUpstream*>(htp->data);
   auto downstream = upstream->get_downstream();
   downstream->append_request_path(data, len);
   return 0;
@@ -95,7 +95,7 @@ int htp_uricb(http_parser *htp, const char *data, size_t len)
 namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
 {
-  auto upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
+  auto upstream = static_cast<HttpsUpstream*>(htp->data);
   auto downstream = upstream->get_downstream();
   if(downstream->get_request_header_key_prev()) {
     downstream->append_last_request_header_key(data, len);
@@ -109,7 +109,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
 namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
 {
-  auto upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
+  auto upstream = static_cast<HttpsUpstream*>(htp->data);
   auto downstream = upstream->get_downstream();
   if(downstream->get_request_header_key_prev()) {
     downstream->set_last_request_header_value(std::string(data, len));
@@ -124,7 +124,7 @@ namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
   int rv;
-  auto upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
+  auto upstream = static_cast<HttpsUpstream*>(htp->data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request headers completed";
   }
@@ -199,7 +199,7 @@ namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len)
 {
   int rv;
-  auto upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
+  auto upstream = static_cast<HttpsUpstream*>(htp->data);
   auto downstream = upstream->get_downstream();
   rv = downstream->push_upload_data_chunk
     (reinterpret_cast<const uint8_t*>(data), len);
@@ -214,7 +214,7 @@ namespace {
 int htp_msg_completecb(http_parser *htp)
 {
   int rv;
-  auto upstream = reinterpret_cast<HttpsUpstream*>(htp->data);
+  auto upstream = static_cast<HttpsUpstream*>(htp->data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request completed";
   }
@@ -393,7 +393,7 @@ int HttpsUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 namespace {
 void https_downstream_readcb(bufferevent *bev, void *ptr)
 {
-  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto dconn = static_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   int rv;
@@ -481,7 +481,7 @@ void https_downstream_writecb(bufferevent *bev, void *ptr)
   if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     return;
   }
-  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto dconn = static_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   // May return -1
@@ -492,7 +492,7 @@ void https_downstream_writecb(bufferevent *bev, void *ptr)
 namespace {
 void https_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto dconn = static_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<HttpsUpstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {

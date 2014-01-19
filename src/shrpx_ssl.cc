@@ -62,8 +62,7 @@ namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                   void *arg)
 {
-  auto next_proto =
-    reinterpret_cast<std::pair<unsigned char*, size_t>*>(arg);
+  auto next_proto = static_cast<std::pair<unsigned char*, size_t>*>(arg);
   *data = next_proto->first;
   *len = next_proto->second;
   return SSL_TLSEXT_ERR_OK;
@@ -103,7 +102,7 @@ size_t set_npn_prefs(unsigned char *out, char **protos, size_t len)
 namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
 {
-  auto config = reinterpret_cast<Config*>(user_data);
+  auto config = static_cast<Config*>(user_data);
   int len = (int)strlen(config->private_key_passwd);
   if (size < len + 1) {
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
@@ -579,8 +578,8 @@ void get_altnames(X509 *cert,
                   std::vector<std::string>& ip_addrs,
                   std::string& common_name)
 {
-  GENERAL_NAMES* altnames;
-  altnames = reinterpret_cast<GENERAL_NAMES*>
+  GENERAL_NAMES *altnames =
+    static_cast<GENERAL_NAMES*>
     (X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if(altnames) {
     util::auto_delete<GENERAL_NAMES*> altnames_deleter(altnames,

@@ -216,7 +216,7 @@ namespace {
 void readcb(bufferevent *bev, void *ptr)
 {
   int rv;
-  auto handler = reinterpret_cast<Http2Handler*>(ptr);
+  auto handler = static_cast<Http2Handler*>(ptr);
   rv = handler->on_read();
   if(rv != 0) {
     delete_handler(handler);
@@ -231,7 +231,7 @@ void writecb(bufferevent *bev, void *ptr)
     return;
   }
   int rv;
-  auto handler = reinterpret_cast<Http2Handler*>(ptr);
+  auto handler = static_cast<Http2Handler*>(ptr);
   rv = handler->on_write();
   if(rv != 0) {
     delete_handler(handler);
@@ -242,7 +242,7 @@ void writecb(bufferevent *bev, void *ptr)
 namespace {
 void eventcb(bufferevent *bev, short events, void *ptr)
 {
-  auto handler = reinterpret_cast<Http2Handler*>(ptr);
+  auto handler = static_cast<Http2Handler*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     // SSL/TLS handshake completed
     if(handler->verify_npn_result() != 0) {
@@ -267,7 +267,7 @@ namespace {
 void connhd_readcb(bufferevent *bev, void *ptr)
 {
   uint8_t data[24];
-  auto handler = reinterpret_cast<Http2Handler*>(ptr);
+  auto handler = static_cast<Http2Handler*>(ptr);
   size_t leftlen = handler->get_left_connhd_len();
   auto input = bufferevent_get_input(bev);
   int readlen = evbuffer_remove(input, data, leftlen);
@@ -353,7 +353,7 @@ int Http2Handler::on_write()
 namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(arg);
+  auto hd = static_cast<Http2Handler*>(arg);
   hd->terminate_session(NGHTTP2_SETTINGS_TIMEOUT);
   hd->on_write();
 }
@@ -606,7 +606,7 @@ ssize_t hd_send_callback(nghttp2_session *session,
                          const uint8_t *data, size_t len, int flags,
                          void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   return hd->sendcb(data, len);
 }
 } // namespace
@@ -615,7 +615,7 @@ namespace {
 ssize_t hd_recv_callback(nghttp2_session *session,
                          uint8_t *data, size_t len, int flags, void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   return hd->recvcb(data, len);
 }
 } // namespace
@@ -778,7 +778,7 @@ int on_header_callback(nghttp2_session *session,
                        const uint8_t *value, size_t valuelen,
                        void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
     verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
                                user_data);
@@ -812,7 +812,7 @@ int on_end_headers_callback(nghttp2_session *session,
      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   auto stream = hd->get_stream(frame->hd.stream_id);
   if(!stream) {
     return 0;
@@ -847,7 +847,7 @@ namespace {
 int hd_on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
     verbose_on_frame_recv_callback(session, frame, user_data);
@@ -884,7 +884,7 @@ int hd_on_frame_recv_callback
 int htdocs_on_request_recv_callback
 (nghttp2_session *session, int32_t stream_id, void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   auto stream = hd->get_stream(stream_id);
   if(stream) {
     prepare_response(stream, hd);
@@ -896,7 +896,7 @@ namespace {
 int hd_before_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
     auto stream_id = frame->push_promise.promised_stream_id;
     auto req = util::make_unique<Request>(stream_id);
@@ -914,7 +914,7 @@ int hd_on_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame,
  void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
     auto stream = hd->get_stream(frame->push_promise.promised_stream_id);
     if(stream) {
@@ -945,7 +945,7 @@ int hd_on_data_recv_callback
  void *user_data)
 {
   // TODO Handle POST
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
     verbose_on_data_recv_callback(session, length, flags, stream_id,
@@ -960,7 +960,7 @@ int hd_on_data_send_callback
 (nghttp2_session *session, uint16_t length,  uint8_t flags, int32_t stream_id,
  void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
     verbose_on_data_send_callback(session, length, flags, stream_id,
@@ -975,7 +975,7 @@ int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
-  auto hd = reinterpret_cast<Http2Handler*>(user_data);
+  auto hd = static_cast<Http2Handler*>(user_data);
   hd->remove_stream(stream_id);
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
@@ -1061,8 +1061,7 @@ namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                   void *arg)
 {
-  auto next_proto =
-    reinterpret_cast<std::pair<unsigned char*, size_t>* >(arg);
+  auto next_proto = static_cast<std::pair<unsigned char*, size_t>* >(arg);
   *data = next_proto->first;
   *len = next_proto->second;
   return SSL_TLSEXT_ERR_OK;
@@ -1082,7 +1081,7 @@ namespace {
 void evlistener_acceptcb(evconnlistener *listener, int fd,
                          sockaddr *addr, int addrlen, void *arg)
 {
-  auto handler = reinterpret_cast<ListenEventHandler*>(arg);
+  auto handler = static_cast<ListenEventHandler*>(arg);
   handler->accept_connection(fd, addr, addrlen);
 }
 } // namespace
@@ -1170,7 +1169,7 @@ int alpn_select_proto_cb(SSL* ssl,
                          const unsigned char *in, unsigned int inlen,
                          void *arg)
 {
-  auto config = reinterpret_cast<HttpServer*>(arg)->get_config();
+  auto config = static_cast<HttpServer*>(arg)->get_config();
   if(config->verbose) {
     std::cout << "[ALPN] client offers:" << std::endl;
   }

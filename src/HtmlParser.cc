@@ -80,7 +80,7 @@ void start_element_func
  const xmlChar *name,
  const xmlChar **attrs)
 {
-  auto parser_data = reinterpret_cast<ParserData*>(user_data);
+  auto parser_data = static_cast<ParserData*>(user_data);
   if(util::strieq(reinterpret_cast<const char*>(name), "link")) {
     auto rel_attr = get_attr(attrs, "rel");
     auto href_attr = get_attr(attrs, "href");

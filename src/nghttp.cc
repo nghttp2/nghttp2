@@ -888,7 +888,7 @@ int htp_msg_begincb(http_parser *htp)
 namespace {
 int htp_status_completecb(http_parser *htp)
 {
-  auto client = reinterpret_cast<HttpClient*>(htp->data);
+  auto client = static_cast<HttpClient*>(htp->data);
   client->upgrade_response_status_code = htp->status_code;
   return 0;
 }
@@ -897,7 +897,7 @@ int htp_status_completecb(http_parser *htp)
 namespace {
 int htp_msg_completecb(http_parser *htp)
 {
-  auto client = reinterpret_cast<HttpClient*>(htp->data);
+  auto client = static_cast<HttpClient*>(htp->data);
   client->upgrade_response_complete = true;
   return 0;
 }
@@ -1026,7 +1026,7 @@ void update_html_parser(HttpClient *client, Request *req,
 namespace {
 HttpClient* get_session(void *user_data)
 {
-  return reinterpret_cast<HttpClient*>(user_data);
+  return static_cast<HttpClient*>(user_data);
 }
 } // namespace
 
@@ -1302,7 +1302,7 @@ namespace {
 void upgrade_readcb(bufferevent *bev, void *ptr)
 {
   int rv;
-  auto client = reinterpret_cast<HttpClient*>(ptr);
+  auto client = static_cast<HttpClient*>(ptr);
   rv = client->on_upgrade_read();
   if(rv != 0) {
     client->disconnect();
@@ -1314,7 +1314,7 @@ namespace {
 void readcb(bufferevent *bev, void *ptr)
 {
   int rv;
-  auto client = reinterpret_cast<HttpClient*>(ptr);
+  auto client = static_cast<HttpClient*>(ptr);
   rv = client->on_read();
   if(rv != 0) {
     client->disconnect();
@@ -1329,7 +1329,7 @@ void writecb(bufferevent *bev, void *ptr)
     return;
   }
   int rv;
-  auto client = reinterpret_cast<HttpClient*>(ptr);
+  auto client = static_cast<HttpClient*>(ptr);
   rv = client->on_write();
   if(rv != 0) {
     client->disconnect();
@@ -1341,7 +1341,7 @@ namespace {
 void eventcb(bufferevent *bev, short events, void *ptr)
 {
   int rv;
-  auto client = reinterpret_cast<HttpClient*>(ptr);
+  auto client = static_cast<HttpClient*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     client->state = STATE_CONNECTED;
     int fd = bufferevent_getfd(bev);
@@ -1420,7 +1420,7 @@ ssize_t client_send_callback(nghttp2_session *session,
                              const uint8_t *data, size_t len, int flags,
                              void *user_data)
 {
-  auto client = reinterpret_cast<HttpClient*>(user_data);
+  auto client = static_cast<HttpClient*>(user_data);
   return client->sendcb(data, len);
 }
 } // namespace
@@ -1430,7 +1430,7 @@ ssize_t client_recv_callback(nghttp2_session *session,
                              uint8_t *buf, size_t len, int flags,
                              void *user_data)
 {
-  auto client = reinterpret_cast<HttpClient*>(user_data);
+  auto client = static_cast<HttpClient*>(user_data);
   return client->recvcb(buf, len);
 }
 } // namespace

@@ -54,7 +54,7 @@ ssize_t send_callback(nghttp2_session *session,
                       void *user_data)
 {
   int rv;
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   auto handler = upstream->get_client_handler();
   auto bev = handler->get_bev();
   auto output = bufferevent_get_output(bev);
@@ -78,7 +78,7 @@ int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Stream stream_id=" << stream_id
                          << " is being closed";
@@ -156,7 +156,7 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
 namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(arg);
+  auto upstream = static_cast<Http2Upstream*>(arg);
   ULOG(INFO, upstream) << "SETTINGS timeout";
   if(upstream->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     delete upstream->get_client_handler();
@@ -209,7 +209,7 @@ int on_header_callback(nghttp2_session *session,
      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   auto downstream = upstream->find_downstream(frame->hd.stream_id);
   if(!downstream) {
     return 0;
@@ -236,7 +236,7 @@ int on_end_headers_callback(nghttp2_session *session,
     return 0;
   }
   int rv;
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   auto downstream = upstream->find_downstream(frame->hd.stream_id);
   if(!downstream) {
     return 0;
@@ -337,7 +337,7 @@ int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   int rv;
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
     if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
@@ -392,7 +392,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
                                 const uint8_t *data, size_t len,
                                 void *user_data)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   auto downstream = upstream->find_downstream(stream_id);
   if(downstream) {
     if(downstream->push_upload_data_chunk(data, len) != 0) {
@@ -409,7 +409,7 @@ int on_data_recv_callback(nghttp2_session *session,
                           uint16_t length, uint8_t flags, int32_t stream_id,
                           void *user_data)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   auto downstream = upstream->find_downstream(stream_id);
   if(downstream && (flags & NGHTTP2_FLAG_END_STREAM)) {
     downstream->end_upload_data();
@@ -423,7 +423,7 @@ namespace {
 int on_frame_send_callback(nghttp2_session* session,
                            const nghttp2_frame *frame, void *user_data)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   if(frame->hd.type == NGHTTP2_SETTINGS &&
      (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
     if(upstream->start_settings_timer() != 0) {
@@ -439,7 +439,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame,
                                int lib_error_code, void *user_data)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   ULOG(WARNING, upstream) << "Failed to send control frame type="
                           << static_cast<uint32_t>(frame->hd.type)
                           << ", lib_error_code=" << lib_error_code << ":"
@@ -464,7 +464,7 @@ int on_frame_recv_parse_error_callback(nghttp2_session *session,
                                        size_t payloadlen, int lib_error_code,
                                        void *user_data)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Failed to parse received control frame. type="
                          << type
@@ -481,7 +481,7 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
                                    const uint8_t *payload, size_t payloadlen,
                                    void *user_data)
 {
-  auto upstream = reinterpret_cast<Http2Upstream*>(user_data);
+  auto upstream = static_cast<Http2Upstream*>(user_data);
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "Received unknown control frame.";
   }
@@ -642,7 +642,7 @@ ClientHandler* Http2Upstream::get_client_handler() const
 namespace {
 void downstream_readcb(bufferevent *bev, void *ptr)
 {
-  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto dconn = static_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
@@ -701,7 +701,7 @@ void downstream_writecb(bufferevent *bev, void *ptr)
   if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     return;
   }
-  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto dconn = static_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   upstream->resume_read(SHRPX_NO_BUFFER, downstream);
@@ -711,7 +711,7 @@ void downstream_writecb(bufferevent *bev, void *ptr)
 namespace {
 void downstream_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  auto dconn = reinterpret_cast<DownstreamConnection*>(ptr);
+  auto dconn = static_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   if(events & BEV_EVENT_CONNECTED) {
@@ -879,8 +879,8 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
                                       nghttp2_data_source *source,
                                       void *user_data)
 {
-  auto downstream = reinterpret_cast<Downstream*>(source->ptr);
-  auto upstream = reinterpret_cast<Http2Upstream*>(downstream->get_upstream());
+  auto downstream = static_cast<Downstream*>(source->ptr);
+  auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   assert(body);

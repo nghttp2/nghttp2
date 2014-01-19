@@ -148,7 +148,7 @@ namespace {
 void notify_readcb(bufferevent *bev, void *arg)
 {
   int rv;
-  auto http2session = reinterpret_cast<Http2Session*>(arg);
+  auto http2session = static_cast<Http2Session*>(arg);
   http2session->clear_notify();
   switch(http2session->get_state()) {
   case Http2Session::DISCONNECTED:
@@ -172,7 +172,7 @@ void notify_readcb(bufferevent *bev, void *arg)
 namespace {
 void notify_eventcb(bufferevent *bev, short events, void *arg)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(arg);
+  auto http2session = static_cast<Http2Session*>(arg);
   // TODO should DIE()?
   if(events & BEV_EVENT_EOF) {
     SSLOG(ERROR, http2session) << "Notification connection lost: EOF";
@@ -222,7 +222,7 @@ namespace {
 void readcb(bufferevent *bev, void *ptr)
 {
   int rv;
-  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  auto http2session = static_cast<Http2Session*>(ptr);
   rv = http2session->on_read();
   if(rv != 0) {
     http2session->disconnect();
@@ -237,7 +237,7 @@ void writecb(bufferevent *bev, void *ptr)
     return;
   }
   int rv;
-  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  auto http2session = static_cast<Http2Session*>(ptr);
   rv = http2session->on_write();
   if(rv != 0) {
     http2session->disconnect();
@@ -248,7 +248,7 @@ void writecb(bufferevent *bev, void *ptr)
 namespace {
 void eventcb(bufferevent *bev, short events, void *ptr)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  auto http2session = static_cast<Http2Session*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "Connection established";
@@ -288,7 +288,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 namespace {
 void proxy_readcb(bufferevent *bev, void *ptr)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  auto http2session = static_cast<Http2Session*>(ptr);
   if(http2session->on_read_proxy() == 0) {
     switch(http2session->get_state()) {
     case Http2Session::PROXY_CONNECTED:
@@ -313,7 +313,7 @@ void proxy_readcb(bufferevent *bev, void *ptr)
 namespace {
 void proxy_eventcb(bufferevent *bev, short events, void *ptr)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(ptr);
+  auto http2session = static_cast<Http2Session*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "Connected to the proxy";
@@ -498,7 +498,7 @@ void Http2Session::unwrap_free_bev()
 namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(htp->data);
+  auto http2session = static_cast<Http2Session*>(htp->data);
   // We just check status code here
   if(htp->status_code == 200) {
     if(LOG_ENABLED(INFO)) {
@@ -693,7 +693,7 @@ ssize_t send_callback(nghttp2_session *session,
                       void *user_data)
 {
   int rv;
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   auto bev = http2session->get_bev();
   auto output = bufferevent_get_output(bev);
   // Check buffer length and return WOULDBLOCK if it is large enough.
@@ -717,12 +717,12 @@ int on_stream_close_callback
  void *user_data)
 {
   int rv;
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Stream stream_id=" << stream_id
                               << " is being closed";
   }
-  auto sd = reinterpret_cast<StreamData*>
+  auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(sd == 0) {
     // We might get this close callback when pushed streams are
@@ -756,7 +756,7 @@ int on_stream_close_callback
 namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(arg);
+  auto http2session = static_cast<Http2Session*>(arg);
   SSLOG(INFO, http2session) << "SETTINGS timeout";
   if(http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     http2session->disconnect();
@@ -808,7 +808,7 @@ int on_header_callback(nghttp2_session *session,
      frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
     return 0;
   }
-  auto sd = reinterpret_cast<StreamData*>
+  auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
   if(!sd || !sd->dconn) {
     return 0;
@@ -839,8 +839,8 @@ int on_end_headers_callback(nghttp2_session *session,
     return 0;
   }
   int rv;
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
-  auto sd = reinterpret_cast<StreamData*>
+  auto http2session = static_cast<Http2Session*>(user_data);
+  auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
   if(!sd || !sd->dconn) {
     return 0;
@@ -943,7 +943,7 @@ namespace {
 int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
     if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
@@ -955,7 +955,7 @@ int on_frame_recv_callback
     if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
       break;
     }
-    auto sd = reinterpret_cast<StreamData*>
+    auto sd = static_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd || !sd->dconn) {
       http2session->submit_rst_stream(frame->hd.stream_id,
@@ -972,7 +972,7 @@ int on_frame_recv_callback
     break;
   }
   case NGHTTP2_RST_STREAM: {
-    auto sd = reinterpret_cast<StreamData*>
+    auto sd = static_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(sd && sd->dconn) {
       auto downstream = sd->dconn->get_downstream();
@@ -1032,8 +1032,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
                                 void *user_data)
 {
   int rv;
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
-  auto sd = reinterpret_cast<StreamData*>
+  auto http2session = static_cast<Http2Session*>(user_data);
+  auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
@@ -1061,10 +1061,10 @@ int before_frame_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame,
                                void *user_data)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    auto sd = reinterpret_cast<StreamData*>
+    auto sd = static_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd || !sd->dconn) {
       http2session->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
@@ -1085,7 +1085,7 @@ namespace {
 int on_frame_send_callback(nghttp2_session* session,
                            const nghttp2_frame *frame, void *user_data)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   if(frame->hd.type == NGHTTP2_SETTINGS &&
      (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
     if(http2session->start_settings_timer() != 0) {
@@ -1101,7 +1101,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame,
                                int lib_error_code, void *user_data)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   SSLOG(WARNING, http2session) << "Failed to send control frame type="
                                << frame->hd.type << ", "
                                << "lib_error_code=" << lib_error_code << ":"
@@ -1110,7 +1110,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     // To avoid stream hanging around, flag Downstream::MSG_RESET and
     // terminate the upstream and downstream connections.
-    auto sd = reinterpret_cast<StreamData*>
+    auto sd = static_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if(!sd) {
       return 0;
@@ -1138,7 +1138,7 @@ int on_frame_recv_parse_error_callback(nghttp2_session *session,
                                        size_t payloadlen, int lib_error_code,
                                        void *user_data)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session)
       << "Failed to parse received control frame. type="
@@ -1156,7 +1156,7 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
                                    const uint8_t *payload, size_t payloadlen,
                                    void *user_data)
 {
-  auto http2session = reinterpret_cast<Http2Session*>(user_data);
+  auto http2session = static_cast<Http2Session*>(user_data);
   if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Received unknown control frame";
   }

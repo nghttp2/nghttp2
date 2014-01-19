@@ -158,12 +158,12 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
                                  nghttp2_data_source *source,
                                  void *user_data)
 {
-  auto sd = reinterpret_cast<StreamData*>
+  auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
     return NGHTTP2_ERR_DEFERRED;
   }
-  auto dconn = reinterpret_cast<Http2DownstreamConnection*>(source->ptr);
+  auto dconn = static_cast<Http2DownstreamConnection*>(source->ptr);
   auto downstream = dconn->get_downstream();
   if(!downstream) {
     // In this case, RST_STREAM should have been issued. But depending

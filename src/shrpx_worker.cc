@@ -57,7 +57,7 @@ Worker::~Worker()
 namespace {
 void readcb(bufferevent *bev, void *arg)
 {
-  auto receiver = reinterpret_cast<ThreadEventReceiver*>(arg);
+  auto receiver = static_cast<ThreadEventReceiver*>(arg);
   receiver->on_read(bev);
 }
 } // namespace
