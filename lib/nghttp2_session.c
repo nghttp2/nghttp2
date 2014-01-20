@@ -3307,9 +3307,10 @@ static int nghttp2_session_process_data_frame(nghttp2_session *session)
 /*
  * Now we have SETTINGS synchronization, flow control error can be
  * detected strictly. If DATA frame is received with length > 0 and
- * current received window size is equal to or larger than local
- * window size (latter happens when we shirnk window size), it is
- * subject to FLOW_CONTROL_ERROR, so return -1. If the resulting
+ * current received window size + delta length is strictly larger than
+ * local window size, it is subject to FLOW_CONTROL_ERROR, so return
+ * -1. Note that local_window_size is calculated after SETTINGS ACK is
+ * received from peer, so peer must honor this limit. If the resulting
  * recv_window_size is strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
  * return -1 too.
  */
@@ -3317,7 +3318,7 @@ static int adjust_recv_window_size(int32_t *recv_window_size_ptr,
                                    int32_t delta,
                                    int32_t local_window_size)
 {
-  if(*recv_window_size_ptr >= local_window_size ||
+  if(*recv_window_size_ptr > local_window_size - delta ||
      *recv_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta) {
     return -1;
   }
