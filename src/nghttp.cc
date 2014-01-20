@@ -922,16 +922,6 @@ int submit_request
  const std::vector<std::pair<std::string, std::string>>& headers,
  Request *req)
 {
-  enum eStaticHeaderPosition
-  {
-    POS_METHOD = 0,
-    POS_PATH,
-    POS_SCHEME,
-    POS_AUTHORITY,
-    POS_ACCEPT,
-    POS_ACCEPT_ENCODING,
-    POS_USERAGENT
-  };
   auto path = req->make_reqpath();
   auto scheme = get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
   auto build_headers = std::vector<std::pair<std::string, std::string>>
@@ -942,24 +932,22 @@ int submit_request
      {"accept", "*/*"},
      {"accept-encoding", "gzip, deflate"},
      {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
-
+  auto num_initial_headers = build_headers.size();
   if(req->data_prd) {
     build_headers.emplace_back("content-length", util::utos(req->data_length));
   }
   for(auto& kv : headers) {
-    auto key = kv.first.c_str();
-    if ( util::strieq( key, "accept" ) ) {
-      build_headers[POS_ACCEPT].second = kv.second;
+    size_t i;
+    for(i = 0; i < num_initial_headers; ++i) {
+      if(util::strieq(kv.first, build_headers[i].first)) {
+        build_headers[i].second = kv.second;
+        break;
+      }
     }
-    else if ( util::strieq( key, "user-agent" ) ) {
-      build_headers[POS_USERAGENT].second = kv.second;
+    if(i < num_initial_headers) {
+      continue;
     }
-    else if ( util::strieq( key, ":authority" ) ) {
-      build_headers[POS_AUTHORITY].second = kv.second;
-    }
-    else {
-      build_headers.push_back(kv);
-    }
+    build_headers.push_back(kv);
   }
   std::stable_sort(std::begin(build_headers), std::end(build_headers),
                    [](const std::pair<std::string, std::string>& lhs,
