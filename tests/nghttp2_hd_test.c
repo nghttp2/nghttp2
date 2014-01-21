@@ -331,10 +331,11 @@ void test_nghttp2_hd_deflate_deflate_buffer(void)
 
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, &nv3, 1);
   CU_ASSERT(blocklen > 0);
-  /* Now header table should be empty */
-  CU_ASSERT(0 == deflater.hd_table.len);
-  CU_ASSERT(0 == deflater.deflate_hd_tablelen);
-  CU_ASSERT(0 == deflater.deflate_hd_table_bufsize);
+  /* Now header table should be unchanged, because we don't index
+     large header */
+  CU_ASSERT(4 == deflater.hd_table.len);
+  CU_ASSERT(4 == deflater.deflate_hd_tablelen);
+  CU_ASSERT(156 == deflater.deflate_hd_table_bufsize);
 
   nghttp2_hd_deflate_free(&deflater);
 
@@ -398,34 +399,6 @@ void test_nghttp2_hd_deflate_deflate_buffer(void)
   /* Sort before comparison */
   nghttp2_nv_array_sort(nva2, 2);
   assert_nv_equal(nva2, out.nva, 2);
-
-  nva_out_reset(&out);
-
-  blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, &nv3, 1);
-  CU_ASSERT(blocklen > 0);
-  /* Now header table should look like this:
-   *
-   *  0: a..a, a..a (-)
-   *  1: k1, v1 (-)
-   *  2: k1000, v100 (-)
-   *  3: k100, v100 (-)
-   *  4: k10, v10 (-)
-   *  5: k1, v1   (-)
-   *
-   *  name/value of all entries must be NULL.
-   */
-  CU_ASSERT(6 == deflater.hd_table.len);
-  CU_ASSERT(0 == deflater.deflate_hd_tablelen);
-  CU_ASSERT(0 == deflater.deflate_hd_table_bufsize);
-  for(i = 0; i < 6; ++i) {
-    ent = nghttp2_hd_table_get(&deflater, i);
-    CU_ASSERT(0 == (ent->flags & NGHTTP2_HD_FLAG_REFSET));
-  }
-
-  CU_ASSERT(blocklen == inflate_hd(&inflater, &out, buf, blocklen));
-
-  CU_ASSERT(1 == out.nvlen);
-  assert_nv_equal(&nv3, out.nva, 1);
 
   nva_out_reset(&out);
 

@@ -926,8 +926,14 @@ nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
 #define name_match(NV, NAME)                                            \
   (nv->namelen == sizeof(NAME) - 1 && memeq(nv->name, NAME, sizeof(NAME) - 1))
 
-static int should_indexing(const nghttp2_nv *nv)
+static int hd_deflate_should_indexing(nghttp2_hd_context *deflater,
+                                      const nghttp2_nv *nv)
 {
+  size_t table_size = nghttp2_min(deflater->deflate_hd_table_bufsize_max,
+                                  deflater->hd_table_bufsize_max);
+  if(entry_room(nv->namelen, nv->valuelen) > table_size * 3 / 4) {
+    return 0;
+  }
 #ifdef NGHTTP2_XHD
   return !name_match(nv, NGHTTP2_XHD);
 #else /* !NGHTTP2_XHD */
@@ -1020,8 +1026,7 @@ static int deflate_nv(nghttp2_hd_context *deflater,
     if(res.index != -1) {
       index = res.index;
     }
-    if(should_indexing(nv) &&
-       entry_room(nv->namelen, nv->valuelen) <= NGHTTP2_HD_MAX_ENTRY_SIZE) {
+    if(hd_deflate_should_indexing(deflater, nv)) {
       nghttp2_hd_entry *new_ent;
       if(index >= (ssize_t)deflater->hd_table.len) {
         nghttp2_nv nv_indname;

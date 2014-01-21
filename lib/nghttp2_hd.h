@@ -32,7 +32,6 @@
 #include <nghttp2/nghttp2.h>
 
 #define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE (1 << 12)
-#define NGHTTP2_HD_MAX_ENTRY_SIZE 3072
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
 
 /* Default size of maximum table buffer size for encoder. Even if
