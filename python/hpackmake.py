@@ -13,7 +13,7 @@ import sys, base64, json, os.path, os, argparse, errno
 from binascii import b2a_hex
 import nghttp2
 
-def testsuite(testdata, filename, outdir, table_size):
+def testsuite(testdata, filename, outdir, table_size, deflate_table_size):
     if testdata['context'] == 'request':
         side = nghttp2.HD_SIDE_REQUEST
     else:
@@ -29,7 +29,7 @@ original. We make some headers not indexing at all, but this does not always \
 result in less bits on the wire.'''
     }
     cases = []
-    deflater = nghttp2.HDDeflater(side)
+    deflater = nghttp2.HDDeflater(side, deflate_table_size)
     deflater.change_table_size(table_size)
     for casenum, item  in enumerate(testdata['cases']):
         outitem = {
@@ -52,6 +52,9 @@ if __name__ == '__main__':
     ap.add_argument('-d', '--dir', help='output directory', default='out')
     ap.add_argument('-s', '--table-size', help='max header table size',
                     type=int, default=4096)
+    ap.add_argument('-S', '--deflate-table-size',
+                    help='max header table size for deflater',
+                    type=int, default=4096)
     ap.add_argument('file', nargs='*', help='input file')
     args = ap.parse_args()
     try:
@@ -64,4 +67,4 @@ if __name__ == '__main__':
         with open(filename) as f:
             input = f.read()
         testsuite(json.loads(input), os.path.basename(filename),
-                  args.dir, args.table_size)
+                  args.dir, args.table_size, args.deflate_table_size)
