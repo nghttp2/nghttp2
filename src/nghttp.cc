@@ -1255,7 +1255,7 @@ void print_stats(const HttpClient& client)
 namespace {
 void print_protocol_nego_error()
 {
-  std::cerr << "Server did not select HTTP/2.0 protocol."
+  std::cerr << "HTTP/2.0 protocol was not selected."
             << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
             << std::endl;
 }
