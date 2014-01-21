@@ -9,11 +9,11 @@
 # exist, otherwise the script will fail. The output filename is the
 # same as the input filename.
 #
-import sys, base64, json, os.path
+import sys, base64, json, os.path, os, argparse, errno
 from binascii import b2a_hex
 import nghttp2
 
-def testsuite(testdata, filename):
+def testsuite(testdata, filename, outdir, table_size):
     if testdata['context'] == 'request':
         side = nghttp2.HD_SIDE_REQUEST
     else:
@@ -30,9 +30,10 @@ result in less bits on the wire.'''
     }
     cases = []
     deflater = nghttp2.HDDeflater(side)
+    deflater.change_table_size(table_size)
     for casenum, item  in enumerate(testdata['cases']):
         outitem = {
-            'header_table_size': 4096,
+            'header_table_size': table_size,
             'headers': item['headers']
         }
         casenum += 1
@@ -43,12 +44,24 @@ result in less bits on the wire.'''
         cases.append(outitem)
     res['cases'] = cases
     jsonstr = json.dumps(res, indent=2)
-    with open(os.path.join('out', filename), 'w') as f:
+    with open(os.path.join(outdir, filename), 'w') as f:
         f.write(jsonstr)
 
 if __name__ == '__main__':
-    for filename in sys.argv[1:]:
+    ap = argparse.ArgumentParser(description='HPACK test case generator')
+    ap.add_argument('-d', '--dir', help='output directory', default='out')
+    ap.add_argument('-s', '--table-size', help='max header table size',
+                    type=int, default=4096)
+    ap.add_argument('file', nargs='*', help='input file')
+    args = ap.parse_args()
+    try:
+        os.mkdir(args.dir)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise e
+    for filename in args.file:
         sys.stderr.write('{}\n'.format(filename))
         with open(filename) as f:
             input = f.read()
-        testsuite(json.loads(input), os.path.basename(filename))
+        testsuite(json.loads(input), os.path.basename(filename),
+                  args.dir, args.table_size)
