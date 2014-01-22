@@ -58,7 +58,6 @@
 #include <event.h>
 #include <event2/event.h>
 #include <event2/bufferevent_ssl.h>
-#include <event2/dns.h>
 
 #include <nghttp2/nghttp2.h>
 
@@ -435,6 +434,7 @@ struct HttpClient {
   // for 1 resource.
   std::set<std::string> path_cache;
   std::string scheme;
+  std::string host;
   std::string hostport;
   // Used for parse the HTTP upgrade response from server
   std::unique_ptr<http_parser> htp;
@@ -442,11 +442,12 @@ struct HttpClient {
   nghttp2_session *session;
   const nghttp2_session_callbacks *callbacks;
   event_base *evbase;
-  evdns_base *dnsbase;
   SSL_CTX *ssl_ctx;
   SSL *ssl;
   bufferevent *bev;
   event *settings_timerev;
+  addrinfo *addrs;
+  addrinfo *next_addr;
   // The number of completed requests, including failed ones.
   size_t complete;
   // The length of settings_payload
@@ -465,11 +466,12 @@ struct HttpClient {
     : session(nullptr),
       callbacks(callbacks),
       evbase(evbase),
-      dnsbase(evdns_base_new(evbase, 1)),
       ssl_ctx(ssl_ctx),
       ssl(nullptr),
       bev(nullptr),
       settings_timerev(nullptr),
+      addrs(nullptr),
+      next_addr(nullptr),
       complete(0),
       settings_payloadlen(0),
       state(STATE_IDLE),
@@ -487,9 +489,27 @@ struct HttpClient {
     return config.upgrade && scheme == "http";
   }
 
-  int initiate_connection(const std::string& host, uint16_t port)
+  int resolve_host(const std::string& host, uint16_t port)
   {
     int rv;
+    this->host = host;
+    rv = getaddrinfo(host.c_str(), util::utos(port).c_str(), nullptr, &addrs);
+    if(rv != 0) {
+      std::cerr << "getaddrinfo() failed: "
+                << gai_strerror(rv) << std::endl;
+      return -1;
+    }
+    if(addrs == nullptr) {
+      std::cerr << "No address returned" << std::endl;
+      return -1;
+    }
+    next_addr = addrs;
+    return 0;
+  }
+
+  int initiate_connection()
+  {
+    int rv = 0;
     if(ssl_ctx) {
       // We are establishing TLS connection.
       ssl = SSL_new(ssl_ctx);
@@ -523,8 +543,14 @@ struct HttpClient {
     } else {
       bev = bufferevent_socket_new(evbase, -1, BEV_OPT_DEFER_CALLBACKS);
     }
-    rv = bufferevent_socket_connect_hostname
-      (bev, dnsbase, AF_UNSPEC, host.c_str(), port);
+    while(next_addr) {
+      rv = bufferevent_socket_connect
+        (bev, next_addr->ai_addr, next_addr->ai_addrlen);
+      ++next_addr;
+      if(rv == 0) {
+        break;
+      }
+    }
     if(rv != 0) {
       return -1;
     }
@@ -560,10 +586,6 @@ struct HttpClient {
       bufferevent_free(bev);
       bev = nullptr;
     }
-    if(dnsbase) {
-      evdns_base_free(dnsbase, 1);
-      dnsbase = nullptr;
-    }
     if(settings_timerev) {
       event_free(settings_timerev);
       settings_timerev = nullptr;
@@ -575,6 +597,11 @@ struct HttpClient {
     if(fd != -1) {
       shutdown(fd, SHUT_WR);
       close(fd);
+    }
+    if(addrs) {
+      freeaddrinfo(addrs);
+      addrs = nullptr;
+      next_addr = nullptr;
     }
   }
 
@@ -1379,11 +1406,18 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       client->disconnect();
       return;
     }
-  } else if(events & BEV_EVENT_EOF) {
-    std::cerr << "EOF" << std::endl;
-    client->disconnect();
     return;
-  } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
+  }
+  if(events & BEV_EVENT_EOF) {
+    std::cerr << "EOF" << std::endl;
+    auto state = client->state;
+    client->disconnect();
+    if(state == STATE_IDLE) {
+      client->initiate_connection();
+    }
+    return;
+  }
+  if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(events & BEV_EVENT_ERROR) {
       if(client->state == STATE_IDLE) {
         std::cerr << "Could not connect to the host" << std::endl;
@@ -1393,8 +1427,11 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     } else {
       std::cerr << "Timeout" << std::endl;
     }
-    // TODO Needs disconnect()?
+    auto state = client->state;
     client->disconnect();
+    if(state == STATE_IDLE) {
+      client->initiate_connection();
+    }
     return;
   }
 }
@@ -1482,7 +1519,10 @@ int communicate(const std::string& scheme, const std::string& host,
       }
     }
     client.update_hostport();
-    if(client.initiate_connection(host, port) != 0) {
+    if(client.resolve_host(host, port) != 0) {
+      goto fin;
+    }
+    if(client.initiate_connection() != 0) {
       goto fin;
     }
     event_base_loop(evbase, 0);
