@@ -520,13 +520,11 @@ struct HttpClient {
       bev = bufferevent_openssl_socket_new(evbase, -1, ssl,
                                            BUFFEREVENT_SSL_CONNECTING,
                                            BEV_OPT_DEFER_CALLBACKS);
-      rv = bufferevent_socket_connect_hostname
-        (bev, dnsbase, AF_UNSPEC, host_string, port);
     } else {
       bev = bufferevent_socket_new(evbase, -1, BEV_OPT_DEFER_CALLBACKS);
-      rv = bufferevent_socket_connect_hostname
-        (bev, dnsbase, AF_UNSPEC, host.c_str(), port);
     }
+    rv = bufferevent_socket_connect_hostname
+      (bev, dnsbase, AF_UNSPEC, host.c_str(), port);
     if(rv != 0) {
       return -1;
     }
