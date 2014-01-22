@@ -139,15 +139,34 @@ static int nghttp2_outbound_item_compar(const void *lhsx, const void *rhsx)
 static void nghttp2_inbound_frame_reset(nghttp2_session *session)
 {
   nghttp2_inbound_frame *iframe = &session->iframe;
-  if(iframe->error_code == NGHTTP2_ERR_PAUSE) {
-    switch(iframe->frame.hd.type) {
-    case NGHTTP2_HEADERS:
-      nghttp2_frame_headers_free(&iframe->frame.headers);
-      break;
-    case NGHTTP2_PUSH_PROMISE:
-      nghttp2_frame_push_promise_free(&iframe->frame.push_promise);
-      break;
-    }
+  /* A bit risky code, since if this function is called from
+     nghttp2_session_new(), we rely on the fact that
+     iframe->frame.hd.type is 0, so that no free is performed. */
+  switch(iframe->frame.hd.type) {
+  case NGHTTP2_HEADERS:
+    nghttp2_frame_headers_free(&iframe->frame.headers);
+    break;
+  case NGHTTP2_PRIORITY:
+    nghttp2_frame_priority_free(&iframe->frame.priority);
+    break;
+  case NGHTTP2_RST_STREAM:
+    nghttp2_frame_rst_stream_free(&iframe->frame.rst_stream);
+    break;
+  case NGHTTP2_SETTINGS:
+    nghttp2_frame_settings_free(&iframe->frame.settings);
+    break;
+  case NGHTTP2_PUSH_PROMISE:
+    nghttp2_frame_push_promise_free(&iframe->frame.push_promise);
+    break;
+  case NGHTTP2_PING:
+    nghttp2_frame_ping_free(&iframe->frame.ping);
+    break;
+  case NGHTTP2_GOAWAY:
+    nghttp2_frame_goaway_free(&iframe->frame.goaway);
+    break;
+  case NGHTTP2_WINDOW_UPDATE:
+    nghttp2_frame_window_update_free(&iframe->frame.window_update);
+    break;
   }
   iframe->state = NGHTTP2_RECV_HEAD;
   iframe->payloadlen = iframe->buflen = iframe->off = 0;
