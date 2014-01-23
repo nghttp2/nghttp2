@@ -168,6 +168,7 @@ static void nghttp2_inbound_frame_reset(nghttp2_session *session)
     nghttp2_frame_window_update_free(&iframe->frame.window_update);
     break;
   }
+  memset(&iframe->frame, 0, sizeof(nghttp2_frame));
   iframe->state = NGHTTP2_RECV_HEAD;
   iframe->payloadlen = iframe->buflen = iframe->off = 0;
   iframe->headbufoff = 0;
