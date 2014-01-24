@@ -90,7 +90,11 @@ static void output_to_json(nghttp2_hd_context *deflater,
   json_object_set_new(obj, "percentage_of_original_size",
                       json_real((double)len / inputlen * 100));
   to_hex(hex, buf, len);
-  json_object_set_new(obj, "wire", json_pack("s#", hex, len * 2));
+  if(len == 0) {
+    json_object_set_new(obj, "wire", json_string(""));
+  } else {
+    json_object_set_new(obj, "wire", json_pack("s#", hex, len * 2));
+  }
   json_object_set_new(obj, "headers", dump_headers(nva, nvlen));
   json_object_set_new(obj, "header_table_size",
                       json_integer(config.table_size));
