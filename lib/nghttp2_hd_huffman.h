@@ -31,7 +31,21 @@
 
 #include <nghttp2/nghttp2.h>
 
-typedef int16_t huff_decode_table_type[256];
+enum {
+  /* FSA accepts this state as the end of huffman encoding
+     sequence. */
+  NGHTTP2_HUFF_ACCEPTED = 1,
+  /* This state emits symbol */
+  NGHTTP2_HUFF_SYM = (1 << 1)
+} nghttp2_huff_decode_flag;
+
+typedef struct {
+  int16_t state;
+  uint8_t flags;
+  uint8_t sym;
+} nghttp2_huff_decode;
+
+typedef nghttp2_huff_decode huff_decode_table_type[16];
 
 typedef struct {
   /* The number of bits in this code */

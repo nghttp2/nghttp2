@@ -372,19 +372,6 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
                                nghttp2_hd_side side);
 
 /*
- * Counts the number of required bytes to decode |src| with length
- * |srclen|. The given input must be padded with the prefix of
- * terminal code. If |side| is NGHTTP2_HD_SIDE_REQUEST, the request
- * huffman code table is used. Otherwise, the response code table is
- * used.
- *
- * This function returns the number of required bytes to decode given
- * data if it succeeds, or -1.
- */
-ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
-                                     nghttp2_hd_side side);
-
-/*
  * Decodes the given data |src| with length |srclen|. This function
  * allocates memory to store the result and assigns the its pointer to
  * |*dest_ptr| on success. The caller is responsible to release the

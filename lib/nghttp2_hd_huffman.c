@@ -31,64 +31,11 @@
 #include "nghttp2_hd.h"
 
 extern const nghttp2_huff_sym req_huff_sym_table[];
-extern const int16_t req_huff_decode_table[][256];
+extern const nghttp2_huff_decode req_huff_decode_table[][16];
 
 extern const nghttp2_huff_sym res_huff_sym_table[];
-extern const int16_t res_huff_decode_table[][256];
+extern const nghttp2_huff_decode res_huff_decode_table[][16];
 
-/*
- * Returns next 8 bits of data from |in|, starting |bitoff| bits
- * offset. If there are fewer bits left than |bitoff|, the left bits
- * with padded with 0 are returned. The |bitoff| must be strictly less
- * than 8.
- */
-static uint8_t get_prefix_byte(const uint8_t *in, size_t len, size_t bitoff)
-{
-  uint8_t b;
-  if(bitoff == 0) {
-    return *in;
-  }
-  b = *in << bitoff;
-  if(len > 1) {
-    b |= *(in + 1) >> (8 - bitoff);
-  }
-  return b;
-}
-
-/*
- * Decodes next byte from input |in| with length |len|, starting
- * |bitoff| bit offset.
- *
- * This function returns the decoded symbol number (0-255 and 256 for
- * special terminal symbol) if it succeeds, or -1.
- */
-static int huff_decode(const uint8_t *in, size_t len, size_t bitoff,
-                       const nghttp2_huff_sym *huff_sym_table,
-                       const huff_decode_table_type *huff_decode_table)
-{
-  int rv = 0;
-  size_t len_orig = len;
-  if(len == 0) {
-    return -1;
-  }
-  for(;;) {
-    rv = huff_decode_table[rv][get_prefix_byte(in, len, bitoff)];
-    if(rv >= 0) {
-      break;
-    }
-    /* Negative return value means we need to lookup next table. */
-    rv = -rv;
-    ++in;
-    --len;
-    if(len == 0) {
-      return -1;
-    }
-  }
-  if(bitoff + huff_sym_table[rv].nbits > len_orig * 8) {
-    return -1;
-  }
-  return rv;
-}
 /*
  * Encodes huffman code |sym| into |*dest_ptr|, whose least |rembits|
  * bits are not filled yet.  The |rembits| must be in range [1, 8],
@@ -167,102 +114,54 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
   return dest - dest_first;
 }
 
-static int check_last_byte(const uint8_t *src, size_t srclen, size_t idx,
-                           size_t bitoff)
-{
-  uint8_t last_mask = (1 << (8 - bitoff)) - 1;
-  return idx + 1 == srclen && bitoff > 0 &&
-    (src[idx] & last_mask) == last_mask;
-}
-
-ssize_t nghttp2_hd_huff_decode_count(const uint8_t *src, size_t srclen,
-                                     nghttp2_hd_side side)
-{
-  size_t bitoff = 0;
-  size_t i, j;
-  const nghttp2_huff_sym *huff_sym_table;
-  const huff_decode_table_type *huff_decode_table;
-
-  if(side == NGHTTP2_HD_SIDE_REQUEST) {
-    huff_sym_table = req_huff_sym_table;
-    huff_decode_table = req_huff_decode_table;
-  } else {
-    huff_sym_table = res_huff_sym_table;
-    huff_decode_table = res_huff_decode_table;
-  }
-  j = 0;
-  for(i = 0; i < srclen;) {
-    int rv = huff_decode(src + i, srclen - i, bitoff,
-                         huff_sym_table, huff_decode_table);
-    if(rv == -1) {
-      if(check_last_byte(src, srclen, i, bitoff)) {
-        break;
-      }
-      return -1;
-    }
-    if(rv == 256) {
-      /* 256 is special terminal symbol and it should not encoded in
-         byte string. */
-      return -1;
-    }
-    j++;
-    bitoff += huff_sym_table[rv].nbits;
-    i += bitoff / 8;
-    bitoff &= 0x7;
-  }
-  return j;
-}
-
 ssize_t nghttp2_hd_huff_decode(uint8_t **dest_ptr,
                                const uint8_t *src, size_t srclen,
                                nghttp2_hd_side side)
 {
-  size_t bitoff = 0;
-  size_t i, j;
-  const nghttp2_huff_sym *huff_sym_table;
+  size_t i, j, k;
   const huff_decode_table_type *huff_decode_table;
   uint8_t *dest = NULL;
   size_t destlen = 0;
   int rv;
+  int16_t state = 0;
+  const nghttp2_huff_decode *t = NULL;
 
+  /* We use the decoding algorithm described in
+     http://graphics.ics.uci.edu/pub/Prefix.pdf */
   if(side == NGHTTP2_HD_SIDE_REQUEST) {
-    huff_sym_table = req_huff_sym_table;
     huff_decode_table = req_huff_decode_table;
   } else {
-    huff_sym_table = res_huff_sym_table;
     huff_decode_table = res_huff_decode_table;
   }
   j = 0;
-  for(i = 0; i < srclen;) {
-    rv = huff_decode(src + i, srclen - i, bitoff,
-                     huff_sym_table, huff_decode_table);
-    if(rv == -1) {
-      if(check_last_byte(src, srclen, i, bitoff)) {
-        break;
-      }
-      rv = NGHTTP2_ERR_HEADER_COMP;
-      goto fail;
-    }
-    if(rv == 256) {
-      /* 256 is special terminal symbol and it should not encoded in
-         byte string. */
-      rv = NGHTTP2_ERR_HEADER_COMP;
-      goto fail;
-    }
-    if(j == destlen) {
-      size_t new_len = j == 0 ? 32 : j * 2;
-      uint8_t *new_dest = realloc(dest, new_len);
-      if(new_dest == NULL) {
-        rv = NGHTTP2_ERR_NOMEM;
+  for(i = 0; i < srclen; ++i) {
+    uint8_t in = src[i] >> 4;
+    for(k = 0; k < 2; ++k) {
+      t = &huff_decode_table[state][in];
+      if(t->state == -1) {
+        rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-      dest = new_dest;
-      destlen = new_len;
+      if(t->flags & NGHTTP2_HUFF_SYM) {
+        if(destlen == j) {
+          size_t new_len = j == 0 ? 32 : j * 2;
+          uint8_t *new_dest = realloc(dest, new_len);
+          if(new_dest == NULL) {
+            rv = NGHTTP2_ERR_NOMEM;
+            goto fail;
+          }
+          dest = new_dest;
+          destlen = new_len;
+        }
+        dest[j++] = t->sym;
+      }
+      state = t->state;
+      in = src[i] & 0xf;
     }
-    dest[j++] = rv;
-    bitoff += huff_sym_table[rv].nbits;
-    i += bitoff / 8;
-    bitoff &= 0x7;
+  }
+  if(srclen && (t->flags & NGHTTP2_HUFF_ACCEPTED) == 0) {
+    rv = NGHTTP2_ERR_HEADER_COMP;
+    goto fail;
   }
   *dest_ptr = dest;
   return j;
