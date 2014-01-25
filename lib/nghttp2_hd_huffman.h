@@ -40,12 +40,26 @@ enum {
 } nghttp2_huff_decode_flag;
 
 typedef struct {
+  /* huffman decoding state, which is actually the node ID of internal
+     huffman tree */
   int16_t state;
+  /* bitwise OR of zero or more of the nghttp2_huff_decode_flag */
   uint8_t flags;
+  /* symbol if NGHTTP2_HUFF_SYM flag set */
   uint8_t sym;
 } nghttp2_huff_decode;
 
 typedef nghttp2_huff_decode huff_decode_table_type[16];
+
+typedef struct {
+  const huff_decode_table_type *huff_decode_table;
+  /* Current huffman decoding state. We stripped leaf nodes, so the
+     value range is [0..255], inclusive. */
+  uint8_t state;
+  /* nonzero if we can say that the decoding process succeeds at this
+     state */
+  uint8_t accept;
+} nghttp2_hd_huff_decode_context;
 
 typedef struct {
   /* The number of bits in this code */

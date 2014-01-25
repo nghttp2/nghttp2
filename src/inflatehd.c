@@ -94,7 +94,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
   size_t buflen;
   ssize_t rv;
   nghttp2_nv nv;
-  int final;
+  int inflate_flags;
 
   wire = json_object_get(obj, "wire");
   if(wire == NULL) {
@@ -131,18 +131,21 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
 
   p = buf;
   for(;;) {
-    rv = nghttp2_hd_inflate_hd(inflater, &nv, &final, p, buflen);
+    inflate_flags = 0;
+    rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, p, buflen, 1);
     if(rv < 0) {
       fprintf(stderr, "inflate failed with error code %zd at %d\n", rv, seq);
       exit(EXIT_FAILURE);
     }
     p += rv;
     buflen -= rv;
-    if(final) {
+    if(inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
+      json_array_append_new(headers, dump_header(nv.name, nv.namelen,
+                                                 nv.value, nv.valuelen));
+    }
+    if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
       break;
     }
-    json_array_append_new(headers, dump_header(nv.name, nv.namelen,
-                                               nv.value, nv.valuelen));
   }
   assert(buflen == 0);
   nghttp2_hd_inflate_end_headers(inflater);

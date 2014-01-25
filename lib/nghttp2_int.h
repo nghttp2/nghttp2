@@ -44,7 +44,8 @@ typedef int (*nghttp2_compar)(const void *lhs, const void *rhs);
 /* Internal error code. They must be in the range [-499, -100],
    inclusive. */
 typedef enum {
-  NGHTTP2_ERR_CREDENTIAL_PENDING = -101
+  NGHTTP2_ERR_CREDENTIAL_PENDING = -101,
+  NGHTTP2_ERR_BUFFER_ERROR = - 102
 } nghttp2_internal_error;
 
 #endif /* NGHTTP2_INT_H */

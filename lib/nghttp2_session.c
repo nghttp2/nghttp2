@@ -1915,14 +1915,15 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
                                 int call_header_cb)
 {
   ssize_t rv;
-  int final;
+  int inflate_flags;
   nghttp2_nv nv;
 
   for(;;) {
+    inflate_flags = 0;
     rv = nghttp2_hd_inflate_hd
-      (&session->hd_inflater, &nv, &final,
+      (&session->hd_inflater, &nv, &inflate_flags,
        session->iframe.buf + session->iframe.inflate_offset,
-       session->iframe.buflen - session->iframe.inflate_offset);
+       session->iframe.buflen - session->iframe.inflate_offset, 1);
     if(nghttp2_is_fatal(rv)) {
       return rv;
     }
@@ -1942,15 +1943,15 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
       return NGHTTP2_ERR_HEADER_COMP;
     }
     session->iframe.inflate_offset += rv;
-    if(final) {
-      break;
-    }
-    if(call_header_cb) {
+    if(call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
       rv = session_call_on_header(session, frame, &nv);
       /* This handles NGHTTP2_ERR_PAUSE as well */
       if(rv != 0) {
         return rv;
       }
+    }
+    if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
+      break;
     }
   }
   nghttp2_hd_inflate_end_headers(&session->hd_inflater);

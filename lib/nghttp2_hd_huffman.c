@@ -114,58 +114,46 @@ ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
   return dest - dest_first;
 }
 
-ssize_t nghttp2_hd_huff_decode(uint8_t **dest_ptr,
-                               const uint8_t *src, size_t srclen,
-                               nghttp2_hd_side side)
+void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx,
+                                         nghttp2_hd_side side)
 {
-  size_t i, j, k;
-  const huff_decode_table_type *huff_decode_table;
-  uint8_t *dest = NULL;
-  size_t destlen = 0;
-  int rv;
-  int16_t state = 0;
-  const nghttp2_huff_decode *t = NULL;
+  if(side == NGHTTP2_HD_SIDE_REQUEST) {
+    ctx->huff_decode_table = req_huff_decode_table;
+  } else {
+    ctx->huff_decode_table = res_huff_decode_table;
+  }
+  ctx->state = 0;
+  ctx->accept = 1;
+}
 
+ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
+                               nghttp2_buffer *dest,
+                               const uint8_t *src, size_t srclen, int final)
+{
+  size_t i, j;
+  int rv;
   /* We use the decoding algorithm described in
      http://graphics.ics.uci.edu/pub/Prefix.pdf */
-  if(side == NGHTTP2_HD_SIDE_REQUEST) {
-    huff_decode_table = req_huff_decode_table;
-  } else {
-    huff_decode_table = res_huff_decode_table;
-  }
-  j = 0;
   for(i = 0; i < srclen; ++i) {
     uint8_t in = src[i] >> 4;
-    for(k = 0; k < 2; ++k) {
-      t = &huff_decode_table[state][in];
+    for(j = 0; j < 2; ++j) {
+      const nghttp2_huff_decode *t = &ctx->huff_decode_table[ctx->state][in];
       if(t->state == -1) {
-        rv = NGHTTP2_ERR_HEADER_COMP;
-        goto fail;
+        return NGHTTP2_ERR_HEADER_COMP;
       }
       if(t->flags & NGHTTP2_HUFF_SYM) {
-        if(destlen == j) {
-          size_t new_len = j == 0 ? 32 : j * 2;
-          uint8_t *new_dest = realloc(dest, new_len);
-          if(new_dest == NULL) {
-            rv = NGHTTP2_ERR_NOMEM;
-            goto fail;
-          }
-          dest = new_dest;
-          destlen = new_len;
+        rv = nghttp2_buffer_add_byte(dest, t->sym);
+        if(rv != 0) {
+          return rv;
         }
-        dest[j++] = t->sym;
       }
-      state = t->state;
+      ctx->state = t->state;
+      ctx->accept = (t->flags & NGHTTP2_HUFF_ACCEPTED) != 0;
       in = src[i] & 0xf;
     }
   }
-  if(srclen && (t->flags & NGHTTP2_HUFF_ACCEPTED) == 0) {
-    rv = NGHTTP2_ERR_HEADER_COMP;
-    goto fail;
+  if(final && !ctx->accept) {
+    return NGHTTP2_ERR_HEADER_COMP;
   }
-  *dest_ptr = dest;
-  return j;
- fail:
-  free(dest);
-  return rv;
+  return i;
 }

@@ -73,7 +73,6 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "map_each_free", test_nghttp2_map_each_free) ||
       !CU_add_test(pSuite, "queue", test_nghttp2_queue) ||
       !CU_add_test(pSuite, "buffer", test_nghttp2_buffer) ||
-      !CU_add_test(pSuite, "buffer_reader", test_nghttp2_buffer_reader) ||
       !CU_add_test(pSuite, "npn", test_nghttp2_npn) ||
       !CU_add_test(pSuite, "session_recv", test_nghttp2_session_recv) ||
       !CU_add_test(pSuite, "session_recv_invalid_stream_id",

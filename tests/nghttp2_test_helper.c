@@ -120,20 +120,23 @@ ssize_t inflate_hd(nghttp2_hd_context *inflater, nva_out *out,
 {
   ssize_t rv;
   nghttp2_nv nv;
-  int final;
+  int inflate_flags;
   size_t initial = buflen;
 
   for(;;) {
-    rv = nghttp2_hd_inflate_hd(inflater, &nv, &final, buf, buflen);
+    inflate_flags = 0;
+    rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, buf, buflen, 1);
     if(rv < 0) {
       return rv;
     }
     buf += rv;
     buflen -= rv;
-    if(final) {
+    if(inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
+      add_out(out, &nv);
+    }
+    if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
       break;
     }
-    add_out(out, &nv);
   }
   nghttp2_hd_inflate_end_headers(inflater);
   return initial - buflen;

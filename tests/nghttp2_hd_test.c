@@ -185,28 +185,29 @@ void test_nghttp2_hd_deflate_same_indexed_repr(void)
 void test_nghttp2_hd_deflate_common_header_eviction(void)
 {
   nghttp2_hd_context deflater, inflater;
-  nghttp2_nv nva[] = {MAKE_NV(":scheme", "http"),
-                      MAKE_NV("", "")};
+  nghttp2_nv nva[] = {MAKE_NV("h1", ""),
+                      MAKE_NV("h2", "")};
   uint8_t *buf = NULL;
   size_t buflen = 0;
   ssize_t blocklen;
   /* Default header table capacity is 4096. Adding 2 byte header name
      and 4060 byte value, which is 4094 bytes including overhead, to
      the table evicts first entry. */
-  uint8_t value[4060];
+  uint8_t value[3038];
   nva_out out;
+  size_t i;
 
   nva_out_init(&out);
   memset(value, '0', sizeof(value));
-  nva[1].name = (uint8_t*)"hd";
-  nva[1].namelen = strlen((const char*)nva[1].name);
-  nva[1].value = value;
-  nva[1].valuelen = sizeof(value);
+  for(i = 0; i < 2; ++i) {
+    nva[i].value = value;
+    nva[i].valuelen = sizeof(value);
+  }
 
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
   nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
 
-  /* First emit ":scheme: http" to put it in the reference set (index
+  /* First emit "h1: ..." to put it in the reference set (index
      = 0). */
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva, 1);
   CU_ASSERT(blocklen > 0);
@@ -218,11 +219,11 @@ void test_nghttp2_hd_deflate_common_header_eviction(void)
 
   nva_out_reset(&out);
 
-  /* Encode with large header */
+  /* Encode with second header */
   blocklen = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva, 2);
   CU_ASSERT(blocklen > 0);
 
-  /* Check common header :scheme: http, which is removed from the
+  /* Check common header "h1: ...:, which is removed from the
      header table because of eviction, is still emitted by the
      inflater */
   CU_ASSERT(blocklen == inflate_hd(&inflater, &out, buf, blocklen));
