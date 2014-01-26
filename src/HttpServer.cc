@@ -1002,8 +1002,6 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   if(config->verbose) {
     callbacks.on_invalid_frame_recv_callback =
       verbose_on_invalid_frame_recv_callback;
-    callbacks.on_frame_recv_parse_error_callback =
-      verbose_on_frame_recv_parse_error_callback;
     callbacks.on_unknown_frame_recv_callback =
       verbose_on_unknown_frame_recv_callback;
   }

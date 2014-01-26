@@ -1589,8 +1589,6 @@ int run(char **uris, int n)
     callbacks.on_data_send_callback = verbose_on_data_send_callback;
     callbacks.on_invalid_frame_recv_callback =
       verbose_on_invalid_frame_recv_callback;
-    callbacks.on_frame_recv_parse_error_callback =
-      verbose_on_frame_recv_parse_error_callback;
     callbacks.on_unknown_frame_recv_callback =
       verbose_on_unknown_frame_recv_callback;
   }

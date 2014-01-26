@@ -387,27 +387,6 @@ void dump_header(const uint8_t *head, size_t headlen)
 }
 } // namespace
 
-int verbose_on_frame_recv_parse_error_callback(nghttp2_session *session,
-                                               nghttp2_frame_type type,
-                                               const uint8_t *head,
-                                               size_t headlen,
-                                               const uint8_t *payload,
-                                               size_t payloadlen,
-                                               int error_code,
-                                               void *user_data)
-{
-  print_timer();
-  printf(" [PARSE_ERROR] recv %s%s%s frame\n",
-         frame_name_ansi_esc(PRINT_RECV),
-         strframetype(type),
-         ansi_escend());
-  print_frame_attr_indent();
-  printf("Error: %s\n", nghttp2_strerror(error_code));
-  dump_header(head, headlen);
-  fflush(stdout);
-  return 0;
-}
-
 int verbose_on_unknown_frame_recv_callback(nghttp2_session *session,
                                            const uint8_t *head,
                                            size_t headlen,

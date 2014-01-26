@@ -457,25 +457,6 @@ int on_frame_not_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int on_frame_recv_parse_error_callback(nghttp2_session *session,
-                                       nghttp2_frame_type type,
-                                       const uint8_t *head, size_t headlen,
-                                       const uint8_t *payload,
-                                       size_t payloadlen, int lib_error_code,
-                                       void *user_data)
-{
-  auto upstream = static_cast<Http2Upstream*>(user_data);
-  if(LOG_ENABLED(INFO)) {
-    ULOG(INFO, upstream) << "Failed to parse received control frame. type="
-                         << type
-                         << ", error_code=" << lib_error_code << ":"
-                         << nghttp2_strerror(lib_error_code);
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
 int on_unknown_frame_recv_callback(nghttp2_session *session,
                                    const uint8_t *head, size_t headlen,
                                    const uint8_t *payload, size_t payloadlen,
@@ -520,8 +501,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   callbacks.on_data_recv_callback = on_data_recv_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
-  callbacks.on_frame_recv_parse_error_callback =
-    on_frame_recv_parse_error_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   callbacks.on_header_callback = on_header_callback;
   callbacks.on_end_headers_callback = on_end_headers_callback;
