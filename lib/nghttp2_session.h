@@ -37,6 +37,7 @@
 #include "nghttp2_stream.h"
 #include "nghttp2_buffer.h"
 #include "nghttp2_outbound_item.h"
+#include "nghttp2_int.h"
 
 /*
  * Option flags.
@@ -72,39 +73,36 @@ typedef struct {
 /* Internal state when receiving incoming frame */
 typedef enum {
   /* Receiving frame header */
-  NGHTTP2_RECV_HEAD,
-  /* Receiving frame payload (comes after length field) */
-  NGHTTP2_RECV_PAYLOAD,
-  /* Receiving frame payload, but the received bytes are discarded. */
-  NGHTTP2_RECV_PAYLOAD_IGN
+  NGHTTP2_IB_READ_HEAD,
+  NGHTTP2_IB_READ_NBYTE,
+  NGHTTP2_IB_READ_HEADER_BLOCK,
+  NGHTTP2_IB_IGN_HEADER_BLOCK,
+  NGHTTP2_IB_IGN_PAYLOAD,
+  NGHTTP2_IB_FRAME_SIZE_ERROR,
+  NGHTTP2_IB_READ_SETTINGS,
+  NGHTTP2_IB_READ_GOAWAY_DEBUG,
+  NGHTTP2_IB_READ_DATA,
+  NGHTTP2_IB_IGN_DATA
 } nghttp2_inbound_state;
 
 typedef struct {
   nghttp2_frame frame;
-  /* Payload for non-DATA frames. */
-  uint8_t *buf;
-  /* How many bytes are filled in headbuf */
-  size_t headbufoff;
-  /* Capacity of buf */
-  size_t bufmax;
-  /* For frames without name/value header block, this is how many
-     bytes are going to filled in buf. For frames with the block, buf
-     only contains bytes that come before ther block, but this value
-     includes the length of the block. buflen <= bufmax must be
-     fulfilled. */
-  size_t buflen;
-  /* length in Length field */
-  size_t payloadlen;
-  /* How many bytes are received for this frame. off <= payloadlen
-     must be fulfilled. */
-  size_t off;
-  /* How many bytes are decompressed inside |buf|. This is used for
-     header decompression. */
-  size_t inflate_offset;
+  /* The received SETTINGS entry. The protocol says that we only cares
+     about the defined settings ID. If unknown ID is received, it is
+     subject to connection error */
+  nghttp2_settings_entry iv[5];
+  /* The number of entry filled in |iv| */
+  size_t niv;
+  /* How many bytes we still need to receive in the |buf| */
+  size_t left;
+  /* How many bytes we still need to receive for current frame */
+  size_t payloadleft;
   nghttp2_inbound_state state;
-  /* Error code */
+  /* TODO, remove this. Error code */
   int error_code;
-  uint8_t headbuf[NGHTTP2_FRAME_HEAD_LENGTH];
+  uint8_t buf[8];
+  /* How many bytes have been written to |buf| */
+  uint8_t buflen;
 } nghttp2_inbound_frame;
 
 typedef enum {
@@ -131,9 +129,6 @@ struct nghttp2_session {
   /* Sequence number of outbound frame to maintain the order of
      enqueue if priority is equal. */
   int64_t next_seq;
-  /* Buffer used to store inflated name/value pairs in wire format
-     temporarily on pack/unpack. */
-  uint8_t *nvbuf;
   void *user_data;
   /* In-flight SETTINGS values. NULL does not necessarily mean there
      is no in-flight SETTINGS. */
@@ -357,6 +352,15 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
 int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
                                               nghttp2_stream *stream);
 
+
+int nghttp2_session_end_request_headers_received(nghttp2_session *session,
+                                                 nghttp2_frame *frame);
+
+int nghttp2_session_end_response_headers_received(nghttp2_session *session,
+                                                  nghttp2_frame *frame);
+
+int nghttp2_session_end_headers_received(nghttp2_session *session,
+                                         nghttp2_frame *frame);
 
 int nghttp2_session_on_request_headers_received(nghttp2_session *session,
                                                 nghttp2_frame *frame);

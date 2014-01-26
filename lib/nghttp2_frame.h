@@ -161,6 +161,10 @@ int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
                                             const uint8_t *payload,
                                             size_t payloadlen);
 
+int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
+                                         const uint8_t *payload,
+                                         size_t payloadlen);
+
 /*
  * Packs PRIORITY frame |frame| in wire format and store it in
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
@@ -188,6 +192,10 @@ ssize_t nghttp2_frame_pack_priority(uint8_t **buf_ptr, size_t *buflen_ptr,
 int nghttp2_frame_unpack_priority(nghttp2_priority *frame,
                                   const uint8_t *head, size_t headlen,
                                   const uint8_t *payload, size_t payloadlen);
+
+void nghttp2_frame_unpack_priority_payload(nghttp2_priority *frame,
+                                           const uint8_t *payload,
+                                           size_t payloadlen);
 
 /*
  * Packs RST_STREAM frame |frame| in wire frame format and store it in
@@ -217,6 +225,10 @@ ssize_t nghttp2_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
 int nghttp2_frame_unpack_rst_stream(nghttp2_rst_stream *frame,
                                     const uint8_t *head, size_t headlen,
                                     const uint8_t *payload, size_t payloadlen);
+
+void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
+                                             const uint8_t *payload,
+                                             size_t payloadlen);
 
 /*
  * Packs SETTINGS frame |frame| in wire format and store it in
@@ -258,6 +270,13 @@ int nghttp2_frame_unpack_settings(nghttp2_settings *frame,
                                   const uint8_t *head, size_t headlen,
                                   const uint8_t *payload, size_t payloadlen);
 
+
+void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
+                                         const uint8_t *payload);
+
+int nghttp2_frame_unpack_settings_payload2(nghttp2_settings *frame,
+                                           nghttp2_settings_entry *iv,
+                                           size_t niv);
 
 /*
  * Unpacks SETTINGS payload into |*iv_ptr|. The number of entries are
@@ -347,6 +366,10 @@ int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
                                                  const uint8_t *payload,
                                                  size_t payloadlen);
 
+int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
+                                              const uint8_t *payload,
+                                              size_t payloadlen);
+
 /*
  * Packs PING frame |frame| in wire format and store it in
  * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
@@ -374,6 +397,10 @@ ssize_t nghttp2_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
 int nghttp2_frame_unpack_ping(nghttp2_ping *frame,
                               const uint8_t *head, size_t headlen,
                               const uint8_t *payload, size_t payloadlen);
+
+void nghttp2_frame_unpack_ping_payload(nghttp2_ping *frame,
+                                       const uint8_t *payload,
+                                       size_t payloadlen);
 
 /*
  * Packs GOAWAY frame |frame | in wire format and store it in
@@ -405,6 +432,10 @@ int nghttp2_frame_unpack_goaway(nghttp2_goaway *frame,
                                 const uint8_t *head, size_t headlen,
                                 const uint8_t *payload, size_t payloadlen);
 
+void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
+                                         const uint8_t *payload,
+                                         size_t payloadlen);
+
 /*
  * Packs WINDOW_UPDATE frame |frame| in wire frame format and store it
  * in |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
@@ -433,6 +464,10 @@ int nghttp2_frame_unpack_window_update(nghttp2_window_update *frame,
                                        const uint8_t *head, size_t headlen,
                                        const uint8_t *payload,
                                        size_t payloadlen);
+
+void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
+                                                const uint8_t *payload,
+                                                size_t payloadlen);
 
 /*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
