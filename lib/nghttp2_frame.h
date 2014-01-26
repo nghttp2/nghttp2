@@ -117,50 +117,15 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    nghttp2_hd_context *deflater);
 
 /*
- * Unpacks HEADERS frame byte sequence into |frame|.  The control
- * frame header is given in |head| with |headlen| length. In the spec,
- * headlen is 8 bytes. |payload| is the data after frame header and
- * just before name/value header block.
- *
- * The |inflater| inflates name/value header block.
- *
- * This function also validates the name/value pairs. If unpacking
- * succeeds but validation fails, it is indicated by returning
- * NGHTTP2_ERR_INVALID_HEADER_BLOCK.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_HEADER_COMP
- *     The inflate operation failed.
- * NGHTTP2_ERR_INVALID_HEADER_BLOCK
- *     Unpacking succeeds but the header block is invalid.
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_frame_unpack_headers(nghttp2_headers *frame,
-                                 const uint8_t *head, size_t headlen,
-                                 const uint8_t *payload, size_t payloadlen,
-                                 nghttp2_hd_context *inflater);
-
-/*
  * Unpacks HEADERS frame byte sequence into |frame|. This function
  * only unapcks bytes that come before name/value header block.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
+ * NGHTTP2_ERR_PROTO
+ *     TODO END_HEADERS flag is not set
  */
-int nghttp2_frame_unpack_headers_without_nv(nghttp2_headers *frame,
-                                            const uint8_t *head,
-                                            size_t headlen,
-                                            const uint8_t *payload,
-                                            size_t payloadlen);
-
 int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
                                          const uint8_t *payload,
                                          size_t payloadlen);
@@ -182,17 +147,7 @@ ssize_t nghttp2_frame_pack_priority(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 /*
  * Unpacks PRIORITY wire format into |frame|.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
  */
-int nghttp2_frame_unpack_priority(nghttp2_priority *frame,
-                                  const uint8_t *head, size_t headlen,
-                                  const uint8_t *payload, size_t payloadlen);
-
 void nghttp2_frame_unpack_priority_payload(nghttp2_priority *frame,
                                            const uint8_t *payload,
                                            size_t payloadlen);
@@ -215,17 +170,7 @@ ssize_t nghttp2_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 /*
  * Unpacks RST_STREAM frame byte sequence into |frame|.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
  */
-int nghttp2_frame_unpack_rst_stream(nghttp2_rst_stream *frame,
-                                    const uint8_t *head, size_t headlen,
-                                    const uint8_t *payload, size_t payloadlen);
-
 void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
                                              const uint8_t *payload,
                                              size_t payloadlen);
@@ -255,28 +200,22 @@ size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
                                            const nghttp2_settings_entry *iv,
                                            size_t niv);
 
+void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
+                                         const uint8_t *payload);
+
 /*
- * Unpacks SETTINGS wire format into |frame|.
+ * Makes a copy of |iv| in frame->settings.iv. The |niv| is assigned
+ * to frame->settings.niv.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_frame_unpack_settings(nghttp2_settings *frame,
-                                  const uint8_t *head, size_t headlen,
-                                  const uint8_t *payload, size_t payloadlen);
-
-
-void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
-                                         const uint8_t *payload);
-
-int nghttp2_frame_unpack_settings_payload2(nghttp2_settings *frame,
-                                           nghttp2_settings_entry *iv,
-                                           size_t niv);
+int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
+                                          nghttp2_settings_entry *iv,
+                                          size_t niv);
 
 /*
  * Unpacks SETTINGS payload into |*iv_ptr|. The number of entries are
@@ -290,10 +229,10 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_frame_unpack_settings_payload(nghttp2_settings_entry **iv_ptr,
-                                          size_t *niv_ptr,
-                                          const uint8_t *payload,
-                                          size_t payloadlen);
+int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
+                                           size_t *niv_ptr,
+                                           const uint8_t *payload,
+                                           size_t payloadlen);
 
 /*
  * Packs PUSH_PROMISE frame |frame| in wire format and store it in
@@ -321,51 +260,15 @@ ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
                                         nghttp2_hd_context *deflater);
 
 /*
- * Unpacks PUSH_PROMISE frame byte sequence into |frame|.  The control
- * frame header is given in |head| with |headlen| length. In the spec,
- * headlen is 8 bytes. |payload| is the data after frame header and
- * just before name/value header block.
- *
- * The |inflater| inflates name/value header block.
- *
- * This function also validates the name/value pairs. If unpacking
- * succeeds but validation fails, it is indicated by returning
- * NGHTTP2_ERR_INVALID_HEADER_BLOCK.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_HEADER_COMP
- *     The inflate operation failed.
- * NGHTTP2_ERR_INVALID_HEADER_BLOCK
- *     Unpacking succeeds but the header block is invalid.
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_frame_unpack_push_promise(nghttp2_push_promise *frame,
-                                      const uint8_t *head, size_t headlen,
-                                      const uint8_t *payload,
-                                      size_t payloadlen,
-                                      nghttp2_hd_context *inflater);
-
-/*
  * Unpacks PUSH_PROMISE frame byte sequence into |frame|. This function
  * only unapcks bytes that come before name/value header block.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
+ * NGHTTP2_ERR_PROTO
+ *     TODO END_HEADERS flag is not set
  */
-int nghttp2_frame_unpack_push_promise_without_nv(nghttp2_push_promise *frame,
-                                                 const uint8_t *head,
-                                                 size_t headlen,
-                                                 const uint8_t *payload,
-                                                 size_t payloadlen);
-
 int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
                                               const uint8_t *payload,
                                               size_t payloadlen);
@@ -387,17 +290,7 @@ ssize_t nghttp2_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 /*
  * Unpacks PING wire format into |frame|.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
  */
-int nghttp2_frame_unpack_ping(nghttp2_ping *frame,
-                              const uint8_t *head, size_t headlen,
-                              const uint8_t *payload, size_t payloadlen);
-
 void nghttp2_frame_unpack_ping_payload(nghttp2_ping *frame,
                                        const uint8_t *payload,
                                        size_t payloadlen);
@@ -419,19 +312,7 @@ ssize_t nghttp2_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 /*
  * Unpacks GOAWAY wire format into |frame|.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
  */
-int nghttp2_frame_unpack_goaway(nghttp2_goaway *frame,
-                                const uint8_t *head, size_t headlen,
-                                const uint8_t *payload, size_t payloadlen);
-
 void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
                                          const uint8_t *payload,
                                          size_t payloadlen);
@@ -453,18 +334,7 @@ ssize_t nghttp2_frame_pack_window_update(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 /*
  * Unpacks WINDOW_UPDATE frame byte sequence into |frame|.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The input length is invalid
  */
-int nghttp2_frame_unpack_window_update(nghttp2_window_update *frame,
-                                       const uint8_t *head, size_t headlen,
-                                       const uint8_t *payload,
-                                       size_t payloadlen);
-
 void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
                                                 const uint8_t *payload,
                                                 size_t payloadlen);

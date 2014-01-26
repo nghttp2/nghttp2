@@ -2828,8 +2828,8 @@ static int session_process_settings_frame(nghttp2_session *session)
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  rv = nghttp2_frame_unpack_settings_payload2(&frame->settings,
-                                              iframe->iv, iframe->niv);
+  rv = nghttp2_frame_unpack_settings_payload(&frame->settings,
+                                             iframe->iv, iframe->niv);
   if(rv != 0) {
     assert(nghttp2_is_fatal(rv));
     return rv;
@@ -4074,8 +4074,8 @@ int nghttp2_session_upgrade(nghttp2_session *session,
   if(settings_payloadlen % 8) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
-  rv = nghttp2_frame_unpack_settings_payload(&iv, &niv, settings_payload,
-                                             settings_payloadlen);
+  rv = nghttp2_frame_unpack_settings_payload2(&iv, &niv, settings_payload,
+                                              settings_payloadlen);
   if(rv != 0) {
     return rv;
   }

@@ -36,9 +36,7 @@
   { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
 #define ARRLEN(ARR) (sizeof(ARR)/sizeof(ARR[0]))
 
-ssize_t unpack_frame(nghttp2_frame *frame,
-                     nghttp2_frame_type type,
-                     const uint8_t *in, size_t len);
+int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len);
 
 int strmemeq(const char *a, const uint8_t *b, size_t bn);
 

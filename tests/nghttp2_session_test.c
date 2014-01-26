@@ -2062,7 +2062,7 @@ void test_nghttp2_submit_request_without_data(void)
   CU_ASSERT(OB_CTRL(item)->hd.flags & NGHTTP2_FLAG_END_STREAM);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(0 == unpack_frame(&frame, NGHTTP2_HEADERS, acc.buf, acc.length));
+  CU_ASSERT(0 == unpack_frame(&frame, acc.buf, acc.length));
 
   inflate_hd(&inflater, &out, acc.buf + 8, acc.length - 8);
 
@@ -2136,7 +2136,7 @@ void test_nghttp2_submit_response_without_data(void)
   CU_ASSERT(OB_CTRL(item)->hd.flags & NGHTTP2_FLAG_END_STREAM);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(0 == unpack_frame(&frame, NGHTTP2_HEADERS, acc.buf, acc.length));
+  CU_ASSERT(0 == unpack_frame(&frame, acc.buf, acc.length));
 
   inflate_hd(&inflater, &out, acc.buf + 8, acc.length - 8);
 
@@ -2326,7 +2326,7 @@ void test_nghttp2_submit_headers(void)
   CU_ASSERT(NGHTTP2_HEADERS == ud.sent_frame_type);
   CU_ASSERT(stream->shut_flags & NGHTTP2_SHUT_WR);
 
-  CU_ASSERT(0 == unpack_frame(&frame, NGHTTP2_HEADERS, acc.buf, acc.length));
+  CU_ASSERT(0 == unpack_frame(&frame, acc.buf, acc.length));
 
   inflate_hd(&inflater, &out, acc.buf + 8, acc.length - 8);
 
@@ -3824,8 +3824,8 @@ void test_nghttp2_pack_settings_payload(void)
 
   len = nghttp2_pack_settings_payload(buf, sizeof(buf), iv, 2);
   CU_ASSERT(16 == len);
-  CU_ASSERT(0 == nghttp2_frame_unpack_settings_payload(&resiv, &resniv,
-                                                       buf, len));
+  CU_ASSERT(0 == nghttp2_frame_unpack_settings_payload2(&resiv, &resniv,
+                                                        buf, len));
   CU_ASSERT(2 == resniv);
   CU_ASSERT(NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS == resiv[0].settings_id);
   CU_ASSERT(1 == resiv[0].value);

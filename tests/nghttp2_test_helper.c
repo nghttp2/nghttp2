@@ -28,27 +28,45 @@
 
 #include <CUnit/CUnit.h>
 
-/* #include "nghttp2_session.h" */
-
-ssize_t unpack_frame(nghttp2_frame *frame,
-                     nghttp2_frame_type type,
-                     const uint8_t *in, size_t len)
+int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
 {
-  ssize_t rv;
-  switch(type) {
+  ssize_t rv = 0;
+  const uint8_t *payload = in + NGHTTP2_FRAME_HEAD_LENGTH;
+  size_t payloadlen = len - NGHTTP2_FRAME_HEAD_LENGTH;
+  nghttp2_frame_unpack_frame_hd(&frame->hd, in);
+  switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
-    rv = nghttp2_frame_unpack_headers_without_nv
-      ((nghttp2_headers*)frame,
-       &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
-       &in[NGHTTP2_FRAME_HEAD_LENGTH],
-       len - NGHTTP2_FRAME_HEAD_LENGTH);
+    rv = nghttp2_frame_unpack_headers_payload
+      (&frame->headers, payload, payloadlen);
+    break;
+  case NGHTTP2_PRIORITY:
+    nghttp2_frame_unpack_priority_payload
+      (&frame->priority, payload, payloadlen);
+    break;
+  case NGHTTP2_RST_STREAM:
+    nghttp2_frame_unpack_rst_stream_payload
+      (&frame->rst_stream, payload, payloadlen);
+    break;
+  case NGHTTP2_SETTINGS:
+    rv = nghttp2_frame_unpack_settings_payload2(&frame->settings.iv,
+                                                &frame->settings.niv,
+                                                payload, payloadlen);
     break;
   case NGHTTP2_PUSH_PROMISE:
-    rv = nghttp2_frame_unpack_push_promise_without_nv
-      ((nghttp2_push_promise*)frame,
-       &in[0], NGHTTP2_FRAME_HEAD_LENGTH,
-       &in[NGHTTP2_FRAME_HEAD_LENGTH],
-       len - NGHTTP2_FRAME_HEAD_LENGTH);
+    rv = nghttp2_frame_unpack_push_promise_payload
+      (&frame->push_promise, payload, payloadlen);
+    break;
+  case NGHTTP2_PING:
+    nghttp2_frame_unpack_ping_payload
+      (&frame->ping, payload, payloadlen);
+    break;
+  case NGHTTP2_GOAWAY:
+    nghttp2_frame_unpack_goaway_payload
+      (&frame->goaway, payload, payloadlen);
+    break;
+  case NGHTTP2_WINDOW_UPDATE:
+    nghttp2_frame_unpack_window_update_payload
+      (&frame->window_update, payload, payloadlen);
     break;
   default:
     /* Must not be reachable */
