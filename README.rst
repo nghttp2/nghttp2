@@ -23,7 +23,7 @@ SETTINGS_HEADER_TABLE_SIZE Done
 SETTINGS_ENABLE_PUSH       Done
 FRAME_SIZE_ERROR           Done
 SETTINGS with ACK          Done
-Header Continuation
+Header Continuation        Done
 ALPN                       Done
 ========================== =================
 
@@ -34,9 +34,9 @@ The following endpoints are available to try out nghttp2
 implementation.  These endpoints supports ``HTTP-draft-09/2.0`` and
 the earlier draft versions are not supporeted.
 
-* https://106.186.112.116 (TLS + NPN)
+* https://106.186.112.116 (TLS + NPN + ALPN)
 
-  NPN offers ``HTTP-draft-09/2.0``, ``spdy/3.1``, ``spdy/3``,
+  ALPN and NPN offer ``HTTP-draft-09/2.0``, ``spdy/3.1``, ``spdy/3``,
   ``spdy/2`` and ``http/1.1``.
 
   Note: certificate is self-signed and a browser will show alert
