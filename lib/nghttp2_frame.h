@@ -33,10 +33,6 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_buffer.h"
 
-/* The maximum value length of name/value pair. This is not specified
-   by the spec. We just chose the arbitrary size */
-#define NGHTTP2_MAX_HD_VALUE_LENGTH ((1 << 13) - 1)
-
 #define NGHTTP2_FRAME_LENGTH_MASK ((1 << 14) - 1)
 #define NGHTTP2_STREAM_ID_MASK ((1u << 31) - 1)
 #define NGHTTP2_PRIORITY_MASK ((1u << 31) - 1)
@@ -99,7 +95,10 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
  * frame->hd.length is assigned after length is determined during
- * packing process.
+ * packing process. If payload length is strictly larger than
+ * NGHTTP2_MAX_FRAME_LENGTH, payload data is still serialized as is,
+ * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
+ * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
  *
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
@@ -242,7 +241,10 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
  * frame->hd.length is assigned after length is determined during
- * packing process.
+ * packing process. If payload length is strictly larger than
+ * NGHTTP2_MAX_FRAME_LENGTH, payload data is still serialized as is,
+ * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
+ * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
  *
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:

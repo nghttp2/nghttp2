@@ -230,7 +230,12 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
     return rv;
   }
   framelen = rv + nv_offset;
-  frame->hd.length = framelen - NGHTTP2_FRAME_HEAD_LENGTH;
+  if(NGHTTP2_FRAME_HEAD_LENGTH + NGHTTP2_MAX_FRAME_LENGTH < rv + nv_offset) {
+    frame->hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+    frame->hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
+  } else {
+    frame->hd.length = framelen - NGHTTP2_FRAME_HEAD_LENGTH;
+  }
   /* If frame->nvlen == 0, *buflen_ptr may be smaller than
      nv_offset */
   rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, nv_offset);
@@ -387,7 +392,12 @@ ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
     return rv;
   }
   framelen = rv + nv_offset;
-  frame->hd.length = framelen - NGHTTP2_FRAME_HEAD_LENGTH;
+  if(NGHTTP2_FRAME_HEAD_LENGTH + NGHTTP2_MAX_FRAME_LENGTH < rv + nv_offset) {
+    frame->hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+    frame->hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
+  } else {
+    frame->hd.length = framelen - NGHTTP2_FRAME_HEAD_LENGTH;
+  }
   /* If frame->nvlen == 0, *buflen_ptr may be smaller than
      nv_offset */
   rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, nv_offset);
@@ -562,8 +572,8 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
   size_t buflen = 0;
   nghttp2_nv *p;
   for(i = 0; i < nvlen; ++i) {
-    if(nva[i].namelen > NGHTTP2_MAX_HD_VALUE_LENGTH ||
-       nva[i].valuelen > NGHTTP2_MAX_HD_VALUE_LENGTH) {
+    if(nva[i].namelen > NGHTTP2_HD_MAX_NAME ||
+       nva[i].valuelen > NGHTTP2_HD_MAX_VALUE) {
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
     buflen += nva[i].namelen + nva[i].valuelen;

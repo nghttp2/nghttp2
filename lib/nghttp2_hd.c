@@ -443,9 +443,7 @@ static int ensure_write_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
                                size_t offset, size_t need)
 {
   int rv;
-  /* TODO Remove this limitation when header continuation is
-     implemented. */
-  if(need + offset > NGHTTP2_MAX_FRAME_LENGTH) {
+  if(need + offset > NGHTTP2_HD_MAX_BUFFER_LENGTH) {
     return NGHTTP2_ERR_HEADER_COMP;
   }
   rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, offset + need);

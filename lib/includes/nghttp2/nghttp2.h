@@ -504,7 +504,11 @@ typedef struct {
   /**
    * The length field of this frame, excluding frame header.
    */
-  uint16_t length;
+  size_t length;
+  /**
+   * The stream identifier (aka, stream ID)
+   */
+  int32_t stream_id;
   /**
    * The type of this frame. See `nghttp2_frame`.
    */
@@ -513,10 +517,6 @@ typedef struct {
    * The flags.
    */
   uint8_t flags;
-  /**
-   * The stream identifier (aka, stream ID)
-   */
-  int32_t stream_id;
 } nghttp2_frame_hd;
 
 

@@ -60,6 +60,9 @@ typedef struct {
   size_t framebuflen;
   /* The number of bytes has been sent */
   size_t framebufoff;
+  /* Marks the last position to send. This is used to implement
+     CONTINUATION */
+  size_t framebufmark;
 } nghttp2_active_outbound_item;
 
 /* Buffer length for inbound raw byte stream. */

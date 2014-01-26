@@ -143,8 +143,8 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   ssize_t framelen;
   nghttp2_nv *nva;
   ssize_t nvlen;
-  size_t big_vallen = NGHTTP2_MAX_HD_VALUE_LENGTH;
-  nghttp2_nv big_hds[8];
+  size_t big_vallen = NGHTTP2_HD_MAX_VALUE;
+  nghttp2_nv big_hds[16];
   size_t big_hdslen = ARRLEN(big_hds);
   size_t i;
 

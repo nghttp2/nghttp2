@@ -144,6 +144,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "submit_headers_push_reply",
                    test_nghttp2_submit_headers_push_reply) ||
       !CU_add_test(pSuite, "submit_headers", test_nghttp2_submit_headers) ||
+      !CU_add_test(pSuite, "submit_headers_continuation",
+                   test_nghttp2_submit_headers_continuation) ||
       !CU_add_test(pSuite, "submit_priority", test_nghttp2_submit_priority) ||
       !CU_add_test(pSuite, "session_submit_settings",
                    test_nghttp2_submit_settings) ||
