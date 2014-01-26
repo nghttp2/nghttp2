@@ -250,10 +250,6 @@ int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
                                          const uint8_t *payload,
                                          size_t payloadlen)
 {
-  /* TODO Return error if header continuation is used for now */
-  if((frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
-    return NGHTTP2_ERR_PROTO;
-  }
   if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
     assert(payloadlen == 4);
     frame->pri = nghttp2_get_uint32(payload) & NGHTTP2_PRIORITY_MASK;
@@ -409,10 +405,6 @@ int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
                                               const uint8_t *payload,
                                               size_t payloadlen)
 {
-  /* TODO Return error if header continuation is used for now */
-  if((frame->hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) == 0) {
-    return NGHTTP2_ERR_PROTO;
-  }
   frame->promised_stream_id = nghttp2_get_uint32(payload) &
     NGHTTP2_STREAM_ID_MASK;
   frame->nva = NULL;

@@ -3398,6 +3398,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
   size_t readlen;
   int rv;
   int busy = 0;
+  nghttp2_frame_hd cont_hd;
 
   for(;;) {
     switch(iframe->state) {
@@ -3408,6 +3409,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       if(iframe->left) {
         return in - first;
       }
+
       nghttp2_frame_unpack_frame_hd(&iframe->frame.hd, iframe->buf);
       iframe->payloadleft = iframe->frame.hd.length;
       iframe->buflen = 0;
@@ -3505,6 +3507,15 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         iframe->state = NGHTTP2_IB_READ_NBYTE;
         iframe->left = 8;
         break;
+      case NGHTTP2_CONTINUATION:
+        rv = nghttp2_session_terminate_session(session,
+                                               NGHTTP2_PROTOCOL_ERROR);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+        busy = 1;
+        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+        break;
       default:
         busy = 1;
         iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
@@ -3592,6 +3603,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                      readlen, iframe->payloadleft));
       rv = inflate_header_block(session, &iframe->frame, &readlen,
                                 (uint8_t*)in, readlen,
+                                (iframe->frame.hd.flags &
+                                 NGHTTP2_FLAG_END_HEADERS) &&
                                 iframe->payloadleft == readlen,
                                 iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK);
       if(nghttp2_is_fatal(rv)) {
@@ -3620,7 +3633,18 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           return rv;
         }
       }
-      nghttp2_inbound_frame_reset(session);
+      if((iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
+        iframe->left = NGHTTP2_FRAME_HEAD_LENGTH;
+        iframe->error_code = 0;
+        iframe->buflen = 0;
+        if(iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
+          iframe->state = NGHTTP2_IB_EXPECT_CONTINUATION;
+        } else {
+          iframe->state = NGHTTP2_IB_IGN_CONTINUATION;
+        }
+      } else {
+        nghttp2_inbound_frame_reset(session);
+      }
       break;
     case NGHTTP2_IB_IGN_PAYLOAD:
       readlen = inbound_frame_payload_readlen(iframe, in, last);
@@ -3687,6 +3711,52 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         return rv;
       }
       nghttp2_inbound_frame_reset(session);
+      break;
+    case NGHTTP2_IB_EXPECT_CONTINUATION:
+    case NGHTTP2_IB_IGN_CONTINUATION:
+#ifdef DEBUGBUILD
+      if(iframe->state == NGHTTP2_IB_EXPECT_CONTINUATION) {
+        fprintf(stderr, "[IB_EXPECT_CONTINUATION]\n");
+      } else {
+        fprintf(stderr, "[IB_IGN_CONTINUATION]\n");
+      }
+#endif /* DEBUGBUILD */
+      readlen = inbound_frame_buf_read(iframe, in, last);
+      in += readlen;
+      if(iframe->left) {
+        return in - first;
+      }
+      nghttp2_frame_unpack_frame_hd(&cont_hd, iframe->buf);
+      iframe->payloadleft = cont_hd.length;
+      if(cont_hd.type != NGHTTP2_CONTINUATION ||
+         cont_hd.stream_id != iframe->frame.hd.stream_id) {
+        rv = nghttp2_session_terminate_session(session,
+                                               NGHTTP2_PROTOCOL_ERROR);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        rv = session_call_on_end_headers(session, &iframe->frame,
+                                         NGHTTP2_PROTOCOL_ERROR);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+        /* Mark inflater bad so that we won't perform further decoding */
+        session->hd_inflater.ctx.bad = 1;
+        busy = 1;
+        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+        break;
+      }
+      if(cont_hd.flags & NGHTTP2_FLAG_END_HEADERS) {
+        iframe->frame.hd.flags |= NGHTTP2_FLAG_END_HEADERS;
+      }
+      busy = 1;
+      if(iframe->state == NGHTTP2_IB_EXPECT_CONTINUATION) {
+        iframe->state = NGHTTP2_IB_READ_HEADER_BLOCK;
+      } else {
+        iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
+      }
       break;
     case NGHTTP2_IB_READ_DATA:
       DEBUGF(fprintf(stderr, "[IB_READ_DATA]\n"));

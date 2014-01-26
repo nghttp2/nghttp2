@@ -364,7 +364,11 @@ typedef enum {
   /**
    * The WINDOW_UPDATE frame.
    */
-  NGHTTP2_WINDOW_UPDATE = 9
+  NGHTTP2_WINDOW_UPDATE = 9,
+  /**
+   * The CONTINUATION frame.
+   */
+  NGHTTP2_CONTINUATION = 10
 } nghttp2_frame_type;
 
 /**

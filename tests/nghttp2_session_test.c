@@ -660,6 +660,122 @@ void test_nghttp2_session_recv_data(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_continuation(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  const nghttp2_nv nv1[] = {
+    MAKE_NV("method", "GET"),
+    MAKE_NV("path", "/")
+  };
+  nghttp2_nv *nva;
+  size_t nvlen;
+  nghttp2_frame frame;
+  uint8_t *framedata = NULL;
+  size_t framedatacap = 0;
+  size_t framedatalen;
+  size_t framedataoff;
+  ssize_t rv;
+  my_user_data ud;
+  nghttp2_hd_deflater deflater;
+  uint8_t data[1024];
+  size_t datalen;
+  nghttp2_frame_hd cont_hd;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_end_headers_callback = on_end_headers_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+
+  /* Make 1 HEADERS and insert CONTINUATION header */
+  nvlen = nghttp2_nv_array_copy(&nva, nv1, ARRLEN(nv1));
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_NONE,
+                             1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
+  framedatalen = nghttp2_frame_pack_headers(&framedata, &framedatacap,
+                                            &frame.headers,
+                                            &deflater);
+  nghttp2_frame_headers_free(&frame.headers);
+
+  memcpy(data, framedata, 9);
+  datalen = 9;
+  framedataoff = NGHTTP2_FRAME_HEAD_LENGTH + 1;
+
+  nghttp2_put_uint16be(data, 1);
+
+  /* First CONTINUATION, 2 bytes */
+  cont_hd.length = 2;
+  cont_hd.type = NGHTTP2_CONTINUATION;
+  cont_hd.flags = NGHTTP2_FLAG_NONE;
+  cont_hd.stream_id = 1;
+
+  nghttp2_frame_pack_frame_hd(data + datalen, &cont_hd);
+  datalen += NGHTTP2_FRAME_HEAD_LENGTH;
+
+  memcpy(data + datalen, framedata + framedataoff, cont_hd.length);
+  datalen += cont_hd.length;
+  framedataoff += cont_hd.length;
+
+  /* Second CONTINUATION, rest of the bytes */
+  cont_hd.length = framedatalen - framedataoff;
+  cont_hd.flags = NGHTTP2_FLAG_END_HEADERS;
+  cont_hd.stream_id = 1;
+
+  nghttp2_frame_pack_frame_hd(data + datalen, &cont_hd);
+  datalen += NGHTTP2_FRAME_HEAD_LENGTH;
+
+  memcpy(data + datalen, framedata + framedataoff, cont_hd.length);
+  datalen += cont_hd.length;
+  framedataoff += cont_hd.length;
+
+  assert(framedataoff == framedatalen);
+
+  ud.header_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, data, datalen);
+  CU_ASSERT(rv == datalen);
+  CU_ASSERT(2 == ud.header_cb_called);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Expecting CONTINUATION, but get the other frame */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+
+  /* HEADERS without END_HEADERS flag */
+  nvlen = nghttp2_nv_array_copy(&nva, nv1, ARRLEN(nv1));
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_NONE,
+                             1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
+  framedatalen = nghttp2_frame_pack_headers(&framedata, &framedatacap,
+                                            &frame.headers,
+                                            &deflater);
+  nghttp2_frame_headers_free(&frame.headers);
+  memcpy(data, framedata, framedatalen);
+  datalen = framedatalen;
+
+  /* Followed by PRIORITY */
+  nghttp2_frame_priority_init(&frame.priority, 1, 0);
+  framedatalen = nghttp2_frame_pack_priority(&framedata, &framedatacap,
+                                             &frame.priority);
+  memcpy(data + datalen, framedata, framedatalen);
+  datalen += framedatalen;
+
+  ud.end_headers_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, data, datalen);
+  CU_ASSERT(datalen == rv);
+
+  CU_ASSERT(1 == ud.end_headers_cb_called);
+  CU_ASSERT(NGHTTP2_GOAWAY ==
+            OB_CTRL_TYPE(nghttp2_session_get_next_ob_item(session)));
+
+  free(framedata);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_continue(void)
 {
   nghttp2_session *session;
