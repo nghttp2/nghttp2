@@ -547,6 +547,13 @@ The GOAWAY frame.</p>
 The WINDOW_UPDATE frame.</p>
 </dd></dl>
 
+<dl class="macro">
+<dt id="NGHTTP2_CONTINUATION">
+<tt class="descname">NGHTTP2_CONTINUATION</tt><a class="headerlink" href="#NGHTTP2_CONTINUATION" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">10</span></tt>)
+The CONTINUATION frame.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -908,8 +915,14 @@ uint16_t <tt class="descname">valuelen</tt><a class="headerlink" href="#nghttp2_
 <dd><p>The frame header.</p>
 <dl class="member">
 <dt id="nghttp2_frame_hd.length">
-uint16_t <tt class="descname">length</tt><a class="headerlink" href="#nghttp2_frame_hd.length" title="Permalink to this definition">¶</a></dt>
+size_t <tt class="descname">length</tt><a class="headerlink" href="#nghttp2_frame_hd.length" title="Permalink to this definition">¶</a></dt>
 <dd><p>The length field of this frame, excluding frame header.</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_frame_hd.stream_id">
+int32_t <tt class="descname">stream_id</tt><a class="headerlink" href="#nghttp2_frame_hd.stream_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>The stream identifier (aka, stream ID)</p>
 </dd></dl>
 
 <dl class="member">
@@ -922,12 +935,6 @@ uint8_t <tt class="descname">type</tt><a class="headerlink" href="#nghttp2_frame
 <dt id="nghttp2_frame_hd.flags">
 uint8_t <tt class="descname">flags</tt><a class="headerlink" href="#nghttp2_frame_hd.flags" title="Permalink to this definition">¶</a></dt>
 <dd><p>The flags.</p>
-</dd></dl>
-
-<dl class="member">
-<dt id="nghttp2_frame_hd.stream_id">
-int32_t <tt class="descname">stream_id</tt><a class="headerlink" href="#nghttp2_frame_hd.stream_id" title="Permalink to this definition">¶</a></dt>
-<dd><p>The stream identifier (aka, stream ID)</p>
 </dd></dl>
 
 </dd></dl>
@@ -1467,27 +1474,6 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 </dd></dl>
 
 <dl class="type">
-<dt id="nghttp2_on_frame_recv_parse_error_callback">
-typedef int <tt class="descname">(*nghttp2_on_frame_recv_parse_error_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#nghttp2_frame_type" title="nghttp2_frame_type">nghttp2_frame_type</a><em>&nbsp;type</em>, const uint8_t<em>&nbsp;*head</em>, size_t<em>&nbsp;headlen</em>, const uint8_t<em>&nbsp;*payload</em>, size_t<em>&nbsp;payloadlen</em>, int<em>&nbsp;lib_error_code</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_frame_recv_parse_error_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback function invoked when the received control frame octets
-could not be parsed correctly. The <em>type</em> indicates the type of
-received non-DATA frame. The <em>head</em> is the pointer to the header of
-the received frame. The <em>headlen</em> is the length of the
-<em>head</em>. According to the spec, the <em>headlen</em> is always 8. In other
-words, the <em>head</em> is the first 8 bytes of the received frame.  The
-<em>payload</em> is the pointer to the data portion of the received frame.
-The <em>payloadlen</em> is the length of the <em>payload</em>. This is the data
-after the length field. The <em>lib_error_code</em> is one of the error
-code defined in <a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-macro docutils literal"><span class="pre">nghttp2_error</span></tt></a> and indicates the error. The
-<em>user_data</em> pointer is the third argument passed in to the call to
-<a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
-<p>The implementation of this function must return 0 if it
-succeeds. If nonzero is returned, it is treated as fatal error and
-<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
-immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
-</dd></dl>
-
-<dl class="type">
 <dt id="nghttp2_on_unknown_frame_recv_callback">
 typedef int <tt class="descname">(*nghttp2_on_unknown_frame_recv_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const uint8_t<em>&nbsp;*head</em>, size_t<em>&nbsp;headlen</em>, const uint8_t<em>&nbsp;*payload</em>, size_t<em>&nbsp;payloadlen</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_on_unknown_frame_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the received frame type is
@@ -1633,13 +1619,6 @@ because of an error.</p>
 <a class="reference internal" href="#nghttp2_on_request_recv_callback" title="nghttp2_on_request_recv_callback">nghttp2_on_request_recv_callback</a> <tt class="descname">on_request_recv_callback</tt><a class="headerlink" href="#nghttp2_session_callbacks.on_request_recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when request from the remote peer is
 received.</p>
-</dd></dl>
-
-<dl class="member">
-<dt id="nghttp2_session_callbacks.nghttp2_on_frame_recv_parse_error_callback">
-<tt class="descname">nghttp2_on_frame_recv_parse_error_callback</tt><a class="headerlink" href="#nghttp2_session_callbacks.nghttp2_on_frame_recv_parse_error_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback function invoked when the received non-DATA frame octets
-could not be parsed correctly.</p>
 </dd></dl>
 
 <dl class="member">
@@ -1880,9 +1859,6 @@ is invoked.</li>
 <li>If the received frame is unpacked but is interpreted as
 invalid,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_invalid_frame_recv_callback" title="nghttp2_session_callbacks.on_invalid_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_invalid_frame_recv_callback</span></tt></a>
-is invoked.</li>
-<li>If the received frame could not be unpacked correctly,
-<tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_recv_parse_error_callback</span></tt>
 is invoked.</li>
 <li>If the received frame type is unknown,
 <a class="reference internal" href="#nghttp2_session_callbacks.on_unknown_frame_recv_callback" title="nghttp2_session_callbacks.on_unknown_frame_recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_unknown_frame_recv_callback</span></tt></a>

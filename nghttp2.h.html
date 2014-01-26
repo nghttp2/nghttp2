@@ -502,7 +502,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * The WINDOW_UPDATE frame.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">9</span>
+  <span class="n">NGHTTP2_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">9</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The CONTINUATION frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_CONTINUATION</span> <span class="o">=</span> <span class="mi">10</span>
 <span class="p">}</span> <span class="n">nghttp2_frame_type</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -638,7 +642,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * The length field of this frame, excluding frame header.</span>
 <span class="cm">   */</span>
-  <span class="kt">uint16_t</span> <span class="n">length</span><span class="p">;</span>
+  <span class="kt">size_t</span> <span class="n">length</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The stream identifier (aka, stream ID)</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * The type of this frame. See `nghttp2_frame`.</span>
 <span class="cm">   */</span>
@@ -647,10 +655,6 @@
 <span class="cm">   * The flags.</span>
 <span class="cm">   */</span>
   <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The stream identifier (aka, stream ID)</span>
-<span class="cm">   */</span>
-  <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_frame_hd</span><span class="p">;</span>
 
 
@@ -1209,33 +1213,6 @@
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
 <span class="cm"> *</span>
-<span class="cm"> * Callback function invoked when the received control frame octets</span>
-<span class="cm"> * could not be parsed correctly. The |type| indicates the type of</span>
-<span class="cm"> * received non-DATA frame. The |head| is the pointer to the header of</span>
-<span class="cm"> * the received frame. The |headlen| is the length of the</span>
-<span class="cm"> * |head|. According to the spec, the |headlen| is always 8. In other</span>
-<span class="cm"> * words, the |head| is the first 8 bytes of the received frame.  The</span>
-<span class="cm"> * |payload| is the pointer to the data portion of the received frame.</span>
-<span class="cm"> * The |payloadlen| is the length of the |payload|. This is the data</span>
-<span class="cm"> * after the length field. The |lib_error_code| is one of the error</span>
-<span class="cm"> * code defined in :enum:`nghttp2_error` and indicates the error. The</span>
-<span class="cm"> * |user_data| pointer is the third argument passed in to the call to</span>
-<span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
-<span class="cm"> *</span>
-<span class="cm"> * The implementation of this function must return 0 if it</span>
-<span class="cm"> * succeeds. If nonzero is returned, it is treated as fatal error and</span>
-<span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
-<span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
-<span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_recv_parse_error_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="n">nghttp2_frame_type</span> <span class="n">type</span><span class="p">,</span>
- <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">headlen</span><span class="p">,</span>
- <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">payload</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">payloadlen</span><span class="p">,</span>
- <span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @functypedef</span>
-<span class="cm"> *</span>
 <span class="cm"> * Callback function invoked when the received frame type is</span>
 <span class="cm"> * unknown. The |head| is the pointer to the header of the received</span>
 <span class="cm"> * frame. The |headlen| is the length of the |head|. According to the</span>
@@ -1381,12 +1358,6 @@
 <span class="cm">   * received.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_on_request_recv_callback</span> <span class="n">on_request_recv_callback</span><span class="p">;</span>
-  <span class="cm">/**</span>
-<span class="cm">   * Callback function invoked when the received non-DATA frame octets</span>
-<span class="cm">   * could not be parsed correctly.</span>
-<span class="cm">   */</span>
-  <span class="n">nghttp2_on_frame_recv_parse_error_callback</span>
-  <span class="n">on_frame_recv_parse_error_callback</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * Callback function invoked when the received frame type is</span>
 <span class="cm">   * unknown.</span>
@@ -1670,10 +1641,7 @@
 <span class="cm"> *       invalid,</span>
 <span class="cm"> *       :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`</span>
 <span class="cm"> *       is invoked.</span>
-<span class="cm"> *    4. If the received frame could not be unpacked correctly,</span>
-<span class="cm"> *       :member:`nghttp2_session_callbacks.on_frame_recv_parse_error_callback`</span>
-<span class="cm"> *       is invoked.</span>
-<span class="cm"> *    5. If the received frame type is unknown,</span>
+<span class="cm"> *    4. If the received frame type is unknown,</span>
 <span class="cm"> *       :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`</span>
 <span class="cm"> *       is invoked.</span>
 <span class="cm"> *</span>
