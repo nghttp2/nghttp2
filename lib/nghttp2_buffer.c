@@ -49,7 +49,7 @@ int nghttp2_buffer_reserve(nghttp2_buffer *buffer, size_t len)
   }
   if(buffer->capacity < len) {
     uint8_t *new_buf;
-    size_t new_cap = buffer->capacity == 0 ? 32 : buffer->capacity * 3 / 2;
+    size_t new_cap = buffer->capacity == 0 ? 8 : buffer->capacity * 3 / 2;
     new_cap = nghttp2_min(buffer->max_capacity, nghttp2_max(new_cap, len));
     new_buf = realloc(buffer->buf, new_cap);
     if(new_buf == NULL) {
