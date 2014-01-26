@@ -360,7 +360,7 @@ void test_nghttp2_session_recv(void)
   nghttp2_outbound_item *item;
   nghttp2_nv *nva;
   ssize_t nvlen;
-  nghttp2_hd_context deflater;
+  nghttp2_hd_deflater deflater;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -441,7 +441,7 @@ void test_nghttp2_session_recv_invalid_stream_id(void)
   size_t framedatalen = 0;
   ssize_t framelen;
   nghttp2_frame frame;
-  nghttp2_hd_context deflater;
+  nghttp2_hd_deflater deflater;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.recv_callback = scripted_recv_callback;
@@ -484,7 +484,7 @@ void test_nghttp2_session_recv_invalid_frame(void)
   nghttp2_frame frame;
   nghttp2_nv *nva;
   ssize_t nvlen;
-  nghttp2_hd_context deflater;
+  nghttp2_hd_deflater deflater;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.recv_callback = scripted_recv_callback;
@@ -685,7 +685,7 @@ void test_nghttp2_session_continue(void)
   ssize_t nvlen;
   const nghttp2_frame *recv_frame;
   nghttp2_frame_hd data_hd;
-  nghttp2_hd_context deflater;
+  nghttp2_hd_deflater deflater;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -2045,7 +2045,7 @@ void test_nghttp2_submit_request_without_data(void)
   nghttp2_outbound_item *item;
   my_user_data ud;
   nghttp2_frame frame;
-  nghttp2_hd_context inflater;
+  nghttp2_hd_inflater inflater;
   nva_out out;
 
   nva_out_init(&out);
@@ -2116,7 +2116,7 @@ void test_nghttp2_submit_response_without_data(void)
   nghttp2_outbound_item *item;
   my_user_data ud;
   nghttp2_frame frame;
-  nghttp2_hd_context inflater;
+  nghttp2_hd_inflater inflater;
   nva_out out;
 
   nva_out_init(&out);
@@ -2285,7 +2285,7 @@ void test_nghttp2_submit_headers(void)
   nghttp2_stream *stream;
   accumulator acc;
   nghttp2_frame frame;
-  nghttp2_hd_context inflater;
+  nghttp2_hd_inflater inflater;
   nva_out out;
 
   nva_out_init(&out);
@@ -2488,7 +2488,7 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(1 ==
             session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]);
   CU_ASSERT(0 == session->local_flow_control);
-  CU_ASSERT(0 == session->hd_inflater.hd_table_bufsize_max);
+  CU_ASSERT(0 == session->hd_inflater.ctx.hd_table_bufsize_max);
 
   nghttp2_session_del(session);
 }

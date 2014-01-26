@@ -2673,7 +2673,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
        header_table_size > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
       return NGHTTP2_ERR_HEADER_COMP;
     }
-    rv = nghttp2_hd_change_table_size(&session->hd_inflater,
+    rv = nghttp2_hd_change_table_size(&session->hd_inflater.ctx,
                                       header_table_size);
     if(rv != 0) {
       return rv;
@@ -2760,7 +2760,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
         return nghttp2_session_handle_invalid_connection
           (session, frame, NGHTTP2_COMPRESSION_ERROR);
       }
-      rv = nghttp2_hd_change_table_size(&session->hd_deflater, entry->value);
+      rv = nghttp2_hd_change_table_size(&session->hd_deflater.ctx,
+                                        entry->value);
       if(rv != 0) {
         if(nghttp2_is_fatal(rv)) {
           return rv;

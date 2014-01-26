@@ -119,17 +119,6 @@ typedef enum {
 typedef struct {
   /* dynamic header table */
   nghttp2_hd_ringbuf hd_table;
-  /* Pointer to the nghttp2_hd_entry which is used current header
-     emission. This is required because in some cases the
-     ent_keep->ref == 0 and we have to keep track of it. */
-  nghttp2_hd_entry *ent_keep;
-  /* Pointers to the name/value pair which are used current header
-     emission. They are usually used to keep track of malloc'ed memory
-     for huffman decoding. */
-  uint8_t *name_keep, *value_keep;
-  /* The index of header table to toggle off the entry from reference
-     set at the end of decompression. */
-  size_t end_headers_index;
   /* Abstract buffer size of hd_table as described in the spec. This
      is the sum of length of name/value in hd_table +
      NGHTTP2_HD_ENTRY_OVERHEAD bytes overhead per each entry. */
@@ -162,21 +151,48 @@ typedef struct {
      further invocation of inflate/deflate will fail with
      NGHTTP2_ERR_HEADER_COMP. */
   uint8_t bad;
+} nghttp2_hd_context;
+
+typedef struct {
+  nghttp2_hd_context ctx;
   /* Set to this nonzero to clear reference set on each deflation each
      time. */
   uint8_t no_refset;
-  /* Decoder specific members */
+} nghttp2_hd_deflater;
+
+typedef struct {
+  nghttp2_hd_context ctx;
+  /* header name buffer */
   nghttp2_buffer namebuf;
+  /* header value buffer */
   nghttp2_buffer valuebuf;
+  /* Stores current state of huffman decoding */
   nghttp2_hd_huff_decode_context huff_decode_ctx;
-  int state;
-  nghttp2_hd_opcode opcode;
-  uint8_t huffman_encoded;
-  uint8_t index_required;
-  ssize_t left;
-  size_t index;
+  /* Pointer to the nghttp2_hd_entry which is used current header
+     emission. This is required because in some cases the
+     ent_keep->ref == 0 and we have to keep track of it. */
+  nghttp2_hd_entry *ent_keep;
+  /* Pointers to the name/value pair which are used current header
+     emission. They are usually used to keep track of malloc'ed memory
+     for huffman decoding. */
+  uint8_t *name_keep, *value_keep;
+  /* Pointers to the name/value pair which is referred as indexed
+     name. This entry must be in header table. */
   nghttp2_hd_entry *ent_name;
-} nghttp2_hd_context;
+  /* The number of bytes to read */
+  ssize_t left;
+  /* The index in indexed repr or indexed name */
+  size_t index;
+  /* The index of header table to toggle off the entry from reference
+     set at the end of decompression. */
+  size_t end_headers_index;
+  nghttp2_hd_opcode opcode;
+  nghttp2_hd_inflate_state state;
+  /* nonzero if string is huffman encoded */
+  uint8_t huffman_encoded;
+  /* nonzero if deflater requires that current entry is indexed */
+  uint8_t index_required;
+} nghttp2_hd_inflater;
 
 /*
  * Initializes the |ent| members. If NGHTTP2_HD_FLAG_NAME_ALLOC bit
@@ -211,7 +227,7 @@ void nghttp2_hd_entry_free(nghttp2_hd_entry *ent);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
+int nghttp2_hd_deflate_init(nghttp2_hd_deflater *deflater,
                             nghttp2_hd_side side);
 
 /*
@@ -227,7 +243,7 @@ int nghttp2_hd_deflate_init(nghttp2_hd_context *deflater,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
+int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
                              nghttp2_hd_side side,
                              size_t deflate_hd_table_bufsize_max);
 
@@ -240,18 +256,18 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater,
+int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater,
                             nghttp2_hd_side side);
 
 /*
  * Deallocates any resources allocated for |deflater|.
  */
-void nghttp2_hd_deflate_free(nghttp2_hd_context *deflater);
+void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater);
 
 /*
  * Deallocates any resources allocated for |inflater|.
  */
-void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
+void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater);
 
 /*
  * Sets the availability of reference set in the |deflater|. If
@@ -259,7 +275,7 @@ void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater);
  * each invocation of nghttp2_hd_deflate_hd() to clear up reference
  * set. By default, the deflater uses reference set.
  */
-void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_context *deflater,
+void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
                                       uint8_t no_refset);
 
 /*
@@ -302,7 +318,7 @@ int nghttp2_hd_change_table_size(nghttp2_hd_context *context,
  * NGHTTP2_ERR_HEADER_COMP
  *     Deflation process has failed.
  */
-ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
+ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                               uint8_t **buf_ptr, size_t *buflen_ptr,
                               size_t nv_offset,
                               nghttp2_nv *nva, size_t nvlen);
@@ -344,7 +360,7 @@ typedef enum {
  * NGHTTP2_ERR_HEADER_COMP
  *     Inflation process has failed.
  */
-ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
+ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
                               nghttp2_nv *nv_out, int *inflate_flags,
                               uint8_t *in, size_t inlen, int in_final);
 
@@ -354,7 +370,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
  * This function returns 0 if it succeeds. Currently this function
  * always succeeds.
  */
-int nghttp2_hd_inflate_end_headers(nghttp2_hd_context *inflater);
+int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,

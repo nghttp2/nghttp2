@@ -54,7 +54,7 @@ void nva_out_reset(nva_out *out);
 
 void add_out(nva_out *out, nghttp2_nv *nv);
 
-ssize_t inflate_hd(nghttp2_hd_context *inflater, nva_out *out,
+ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
                    uint8_t *buf, size_t buflen);
 
 #endif /* NGHTTP2_TEST_HELPER_H */

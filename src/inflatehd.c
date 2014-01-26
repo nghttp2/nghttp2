@@ -67,7 +67,7 @@ static void decode_hex(uint8_t *dest, const char *src, size_t len)
   }
 }
 
-static void to_json(nghttp2_hd_context *inflater,
+static void to_json(nghttp2_hd_inflater *inflater,
                     json_t *headers, json_t *wire, int seq)
 {
   json_t *obj;
@@ -77,16 +77,17 @@ static void to_json(nghttp2_hd_context *inflater,
   json_object_set(obj, "wire", wire);
   json_object_set(obj, "headers", headers);
   json_object_set_new(obj, "header_table_size",
-                      json_integer(inflater->hd_table_bufsize_max));
+                      json_integer(inflater->ctx.hd_table_bufsize_max));
   if(config.dump_header_table) {
-    json_object_set_new(obj, "header_table", dump_header_table(inflater));
+    json_object_set_new(obj, "header_table",
+                        dump_header_table(&inflater->ctx));
   }
   json_dumpf(obj, stdout, JSON_INDENT(2) | JSON_PRESERVE_ORDER);
   json_decref(obj);
   printf("\n");
 }
 
-static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
+static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq)
 {
   json_t *wire, *table_size, *headers;
   size_t inputlen;
@@ -109,7 +110,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
               seq);
       return -1;
     }
-    rv = nghttp2_hd_change_table_size(inflater,
+    rv = nghttp2_hd_change_table_size(&inflater->ctx,
                                       json_integer_value(table_size));
     if(rv != 0) {
       fprintf(stderr,
@@ -157,7 +158,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_context *inflater, int seq)
 
 static int perform(void)
 {
-  nghttp2_hd_context inflater;
+  nghttp2_hd_inflater inflater;
   size_t i;
   json_t *json, *cases;
   json_error_t error;
@@ -185,7 +186,7 @@ static int perform(void)
     exit(EXIT_FAILURE);
   }
   nghttp2_hd_inflate_init(&inflater, side);
-  nghttp2_hd_change_table_size(&inflater, config.table_size);
+  nghttp2_hd_change_table_size(&inflater.ctx, config.table_size);
 
   output_json_header(side);
   len = json_array_size(cases);

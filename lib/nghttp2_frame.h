@@ -114,7 +114,7 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
 ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *buflen_ptr,
                                    nghttp2_headers *frame,
-                                   nghttp2_hd_context *deflater);
+                                   nghttp2_hd_deflater *deflater);
 
 /*
  * Unpacks HEADERS frame byte sequence into |frame|. This function
@@ -257,7 +257,7 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
 ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
                                         size_t *buflen_ptr,
                                         nghttp2_push_promise *frame,
-                                        nghttp2_hd_context *deflater);
+                                        nghttp2_hd_deflater *deflater);
 
 /*
  * Unpacks PUSH_PROMISE frame byte sequence into |frame|. This function

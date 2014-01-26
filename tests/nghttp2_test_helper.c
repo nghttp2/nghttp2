@@ -133,7 +133,7 @@ void add_out(nva_out *out, nghttp2_nv *nv)
   ++out->nvlen;
 }
 
-ssize_t inflate_hd(nghttp2_hd_context *inflater, nva_out *out,
+ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
                    uint8_t *buf, size_t buflen)
 {
   ssize_t rv;

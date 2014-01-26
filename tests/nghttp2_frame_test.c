@@ -69,7 +69,8 @@ static void check_frame_header(uint16_t length, uint8_t type, uint8_t flags,
 
 void test_nghttp2_frame_pack_headers()
 {
-  nghttp2_hd_context deflater, inflater;
+  nghttp2_hd_deflater deflater;
+  nghttp2_hd_inflater inflater;
   nghttp2_headers frame, oframe;
   uint8_t *buf = NULL;
   size_t buflen = 0;
@@ -135,7 +136,7 @@ void test_nghttp2_frame_pack_headers()
 
 void test_nghttp2_frame_pack_headers_frame_too_large(void)
 {
-  nghttp2_hd_context deflater;
+  nghttp2_hd_deflater deflater;
   nghttp2_headers frame;
   uint8_t *buf = NULL;
   size_t buflen = 0;
@@ -241,7 +242,8 @@ void test_nghttp2_frame_pack_settings()
 
 void test_nghttp2_frame_pack_push_promise()
 {
-  nghttp2_hd_context deflater, inflater;
+  nghttp2_hd_deflater deflater;
+  nghttp2_hd_inflater inflater;
   nghttp2_push_promise frame, oframe;
   uint8_t *buf = NULL;
   size_t buflen = 0;

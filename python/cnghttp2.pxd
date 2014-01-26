@@ -52,6 +52,10 @@ cdef extern from 'nghttp2_hd.h':
     ctypedef enum nghttp2_hd_flags:
         NGHTTP2_HD_FLAG_REFSET
 
+    ctypedef enum nghttp2_hd_inflate_flag:
+        NGHTTP2_HD_INFLATE_EMIT
+        NGHTTP2_HD_INFLATE_FINAL
+
     ctypedef struct nghttp2_hd_entry:
         nghttp2_nv nv
         uint8_t flags
@@ -62,34 +66,40 @@ cdef extern from 'nghttp2_hd.h':
     ctypedef struct nghttp2_hd_context:
         nghttp2_hd_ringbuf hd_table
 
-    int nghttp2_hd_deflate_init2(nghttp2_hd_context *deflater,
+    ctypedef struct nghttp2_hd_deflater:
+        nghttp2_hd_context ctx
+
+    ctypedef struct nghttp2_hd_inflater:
+        nghttp2_hd_context ctx
+
+    int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
                                  nghttp2_hd_side side,
                                  size_t deflate_hd_table_bufsize_max)
 
-    int nghttp2_hd_inflate_init(nghttp2_hd_context *inflater,
+    int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater,
                                 nghttp2_hd_side side)
 
 
-    void nghttp2_hd_deflate_free(nghttp2_hd_context *deflater)
+    void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater)
 
-    void nghttp2_hd_inflate_free(nghttp2_hd_context *inflater)
+    void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater)
 
-    void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_context *deflater,
+    void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
                                           uint8_t no_refset)
 
     int nghttp2_hd_change_table_size(nghttp2_hd_context *context,
                                      size_t hd_table_bufsize_max)
 
-    ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_context *deflater,
+    ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
                                   size_t nv_offset,
                                   nghttp2_nv *nva, size_t nvlen)
 
-    ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_context *inflater,
-                                  nghttp2_nv *nv_out, int *final,
-                                  uint8_t *input, size_t inlen)
+    ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
+                                  nghttp2_nv *nv_out, int *inflate_flags,
+                                  uint8_t *input, size_t inlen, int in_final)
 
-    int nghttp2_hd_inflate_end_headers(nghttp2_hd_context *inflater)
+    int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 
     nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                            size_t index)

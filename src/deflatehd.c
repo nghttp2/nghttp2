@@ -72,7 +72,7 @@ static void to_hex(char *dest, const uint8_t *src, size_t len)
   }
 }
 
-static void output_to_json(nghttp2_hd_context *deflater,
+static void output_to_json(nghttp2_hd_deflater *deflater,
                            const uint8_t *buf, size_t len, size_t inputlen,
                            nghttp2_nv *nva, size_t nvlen,
                            int seq)
@@ -99,7 +99,8 @@ static void output_to_json(nghttp2_hd_context *deflater,
   json_object_set_new(obj, "header_table_size",
                       json_integer(config.table_size));
   if(config.dump_header_table) {
-    json_object_set_new(obj, "header_table", dump_header_table(deflater));
+    json_object_set_new(obj, "header_table",
+                        dump_header_table(&deflater->ctx));
   }
   json_dumpf(obj, stdout, JSON_PRESERVE_ORDER | JSON_INDENT(2));
   printf("\n");
@@ -107,7 +108,7 @@ static void output_to_json(nghttp2_hd_context *deflater,
   free(hex);
 }
 
-static void deflate_hd(nghttp2_hd_context *deflater,
+static void deflate_hd(nghttp2_hd_deflater *deflater,
                        nghttp2_nv *nva, size_t nvlen, size_t inputlen, int seq)
 {
   ssize_t rv;
@@ -124,7 +125,7 @@ static void deflate_hd(nghttp2_hd_context *deflater,
   free(buf);
 }
 
-static int deflate_hd_json(json_t *obj, nghttp2_hd_context *deflater, int seq)
+static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater, int seq)
 {
   json_t *js;
   nghttp2_nv nva[128];
@@ -173,14 +174,14 @@ static int deflate_hd_json(json_t *obj, nghttp2_hd_context *deflater, int seq)
   return 0;
 }
 
-static void init_deflater(nghttp2_hd_context *deflater, nghttp2_hd_side side)
+static void init_deflater(nghttp2_hd_deflater *deflater, nghttp2_hd_side side)
 {
   nghttp2_hd_deflate_init2(deflater, side, config.deflate_table_size);
   nghttp2_hd_deflate_set_no_refset(deflater, config.no_refset);
-  nghttp2_hd_change_table_size(deflater, config.table_size);
+  nghttp2_hd_change_table_size(&deflater->ctx, config.table_size);
 }
 
-static void deinit_deflater(nghttp2_hd_context *deflater)
+static void deinit_deflater(nghttp2_hd_deflater *deflater)
 {
   nghttp2_hd_deflate_free(deflater);
 }
@@ -191,7 +192,7 @@ static int perform(void)
   json_t *json, *cases;
   json_error_t error;
   size_t len;
-  nghttp2_hd_context deflater;
+  nghttp2_hd_deflater deflater;
   nghttp2_hd_side side;
 
   json = json_loadf(stdin, 0, &error);
@@ -242,7 +243,7 @@ static int perform_from_http1text(void)
   char line[1 << 14];
   nghttp2_nv nva[256];
   int seq = 0;
-  nghttp2_hd_context deflater;
+  nghttp2_hd_deflater deflater;
   init_deflater(&deflater, config.side);
   output_json_header(config.side);
   for(;;) {

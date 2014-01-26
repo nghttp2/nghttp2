@@ -123,8 +123,8 @@ struct nghttp2_session {
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_ss_pq;
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
-  nghttp2_hd_context hd_deflater;
-  nghttp2_hd_context hd_inflater;
+  nghttp2_hd_deflater hd_deflater;
+  nghttp2_hd_inflater hd_inflater;
   nghttp2_session_callbacks callbacks;
   /* Sequence number of outbound frame to maintain the order of
      enqueue if priority is equal. */
