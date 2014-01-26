@@ -205,6 +205,7 @@ int on_header_callback(nghttp2_session *session,
                        const uint8_t *value, size_t valuelen,
                        void *user_data)
 {
+  int rv;
   if(frame->hd.type != NGHTTP2_HEADERS ||
      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
@@ -212,6 +213,13 @@ int on_header_callback(nghttp2_session *session,
   auto upstream = static_cast<Http2Upstream*>(user_data);
   auto downstream = upstream->find_downstream(frame->hd.stream_id);
   if(!downstream) {
+    return 0;
+  }
+  if(downstream->get_request_headers().size() >= Downstream::MAX_HEADERS) {
+    rv = http2::handle_too_many_headers(session, frame->hd.stream_id);
+    if(nghttp2_is_fatal(rv)) {
+      return rv;
+    }
     return 0;
   }
   if(!http2::check_nv(name, namelen, value, valuelen)) {

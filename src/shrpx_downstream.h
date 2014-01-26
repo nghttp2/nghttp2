@@ -199,6 +199,10 @@ public:
 
   // Change the priority of downstream
   int change_priority(int32_t pri);
+
+  // Maximum number of headers per HEADERS frame, including its
+  // following CONTINUATIONs.
+  static const size_t MAX_HEADERS = 128;
 private:
   Headers request_headers_;
   Headers response_headers_;

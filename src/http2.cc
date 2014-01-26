@@ -730,6 +730,21 @@ int check_nv(const uint8_t *name, size_t namelen,
   return 1;
 }
 
+int handle_too_many_headers(nghttp2_session *session, int32_t stream_id)
+{
+  int rv;
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                                 NGHTTP2_INTERNAL_ERROR);
+  if(nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+  rv = nghttp2_session_terminate_session(session, NGHTTP2_INTERNAL_ERROR);
+  if(nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+  return 0;
+}
+
 } // namespace http2
 
 } // namespace nghttp2
