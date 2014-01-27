@@ -416,6 +416,8 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
 
+void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
+
 void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
                                      uint8_t flags,
                                      int32_t stream_id,

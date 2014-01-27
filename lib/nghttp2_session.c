@@ -1387,6 +1387,25 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
   }
 }
 
+static int session_call_before_frame_send(nghttp2_session *session,
+                                          nghttp2_frame *frame)
+{
+  int rv;
+  if(session->callbacks.before_frame_send_callback) {
+    /* Adjust frame length to deal with CONTINUATION frame */
+    size_t origlen = frame->hd.length;
+    frame->hd.length =
+      session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH;
+    rv = session->callbacks.before_frame_send_callback(session, frame,
+                                                       session->user_data);
+    frame->hd.length = origlen;
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+  return 0;
+}
+
 static int session_call_on_frame_send(nghttp2_session *session,
                                       nghttp2_frame *frame)
 {
@@ -1584,12 +1603,8 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
 
     data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
     if(session->callbacks.on_frame_send_callback) {
-      nghttp2_frame public_data_frame = { data_frame->hd };
-      /* flags may have NGHTTP2_FLAG_END_STREAM even if the sent chunk
-         is not the end of the stream */
-      if(!data_frame->eof) {
-        public_data_frame.hd.flags &= ~NGHTTP2_FLAG_END_STREAM;
-      }
+      nghttp2_frame public_data_frame;
+      nghttp2_frame_data_init(&public_data_frame.data, data_frame);
       rv = session_call_on_frame_send(session, &public_data_frame);
       if(nghttp2_is_fatal(rv)) {
         return rv;
@@ -1737,22 +1752,15 @@ int nghttp2_session_send(nghttp2_session *session)
         nghttp2_frame *frame = nghttp2_outbound_item_get_ctrl_frame(item);
         session->aob.framebufmark =
           frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH;
-        /* Call before_send callback */
-        if(session->callbacks.before_frame_send_callback) {
-          size_t origlen = frame->hd.length;
-          frame->hd.length =
-            session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH;
-          r = session->callbacks.before_frame_send_callback
-            (session, frame, session->user_data);
-          frame->hd.length = origlen;
-          if(r != 0) {
-            return NGHTTP2_ERR_CALLBACK_FAILURE;
-          }
+        r = session_call_before_frame_send(session, frame);
+        if(nghttp2_is_fatal(r)) {
+          return r;
         }
       } else {
+        nghttp2_private_data *frame;
+        frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
         session->aob.framebufmark =
-          nghttp2_outbound_item_get_data_frame
-          (session->aob.item)->hd.length + NGHTTP2_FRAME_HEAD_LENGTH;
+          frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH;
       }
     }
     data = session->aob.framebuf + session->aob.framebufoff;

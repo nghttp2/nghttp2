@@ -181,6 +181,16 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame)
 {}
 
+void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata)
+{
+  frame->hd = pdata->hd;
+  /* flags may have NGHTTP2_FLAG_END_STREAM even if the sent chunk
+     is not the end of the stream */
+  if(!pdata->eof) {
+    frame->hd.flags &= ~NGHTTP2_FLAG_END_STREAM;
+  }
+}
+
 void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
                                      uint8_t flags,
                                      int32_t stream_id,
