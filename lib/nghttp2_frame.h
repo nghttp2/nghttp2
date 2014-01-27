@@ -58,7 +58,9 @@ typedef enum {
 
 /**
  * @struct
- * The DATA frame. It has the following members:
+ *
+ * The DATA frame used in the library privately. It has the following
+ * members:
  */
 typedef struct {
   nghttp2_frame_hd hd;
@@ -72,7 +74,7 @@ typedef struct {
    * exclusively by nghttp2 library and not in the spec.
    */
   uint8_t eof;
-} nghttp2_data;
+} nghttp2_private_data;
 
 int nghttp2_frame_is_data_frame(uint8_t *head);
 
@@ -414,11 +416,11 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
 
-void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
+void nghttp2_frame_data_init(nghttp2_private_data *frame, uint8_t flags,
                              int32_t stream_id,
                              const nghttp2_data_provider *data_prd);
 
-void nghttp2_frame_data_free(nghttp2_data *frame);
+void nghttp2_frame_data_free(nghttp2_private_data *frame);
 
 /*
  * Makes copy of |iv| and return the copy. The |niv| is the number of

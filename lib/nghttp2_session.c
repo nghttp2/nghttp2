@@ -420,7 +420,7 @@ static int outbound_item_update_pri
       return 0;
     }
   } else {
-    if(((nghttp2_data*)item->frame)->hd.stream_id != stream->stream_id) {
+    if(((nghttp2_private_data*)item->frame)->hd.stream_id != stream->stream_id) {
       return 0;
     }
   }
@@ -535,7 +535,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
       r = nghttp2_pq_push(&session->ob_pq, item);
     }
   } else if(frame_cat == NGHTTP2_CAT_DATA) {
-    nghttp2_data *data_frame = (nghttp2_data*)abs_frame;
+    nghttp2_private_data *data_frame = (nghttp2_private_data*)abs_frame;
     nghttp2_stream *stream;
     stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
     if(stream) {
@@ -1264,7 +1264,7 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
   } else if(item->frame_cat == NGHTTP2_CAT_DATA) {
     size_t next_readmax;
     nghttp2_stream *stream;
-    nghttp2_data *data_frame;
+    nghttp2_private_data *data_frame;
     int r;
     data_frame = nghttp2_outbound_item_get_data_frame(item);
     r = nghttp2_session_predicate_data_send(session, data_frame->hd.stream_id);
@@ -1572,7 +1572,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     nghttp2_active_outbound_item_reset(&session->aob);
   } else if(item->frame_cat == NGHTTP2_CAT_DATA) {
     int r;
-    nghttp2_data *data_frame;
+    nghttp2_private_data *data_frame;
     data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
     if(session->callbacks.on_data_send_callback) {
       if(session->callbacks.on_data_send_callback
@@ -1763,7 +1763,7 @@ int nghttp2_session_send(nghttp2_session *session)
     } else {
       if(session->aob.item->frame_cat == NGHTTP2_CAT_DATA &&
          session->aob.framebufoff + sentlen > NGHTTP2_FRAME_HEAD_LENGTH) {
-        nghttp2_data *frame;
+        nghttp2_private_data *frame;
         nghttp2_stream *stream;
         uint16_t len;
         if(session->aob.framebufoff < NGHTTP2_FRAME_HEAD_LENGTH) {
@@ -4029,7 +4029,7 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
                                   size_t datamax,
-                                  nghttp2_data *frame)
+                                  nghttp2_private_data *frame)
 {
   ssize_t framelen = datamax+8, r;
   int eof_flags;

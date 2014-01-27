@@ -301,10 +301,10 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
                         const nghttp2_data_provider *data_prd)
 {
   int r;
-  nghttp2_data *data_frame;
+  nghttp2_private_data *data_frame;
   uint8_t nflags = 0;
 
-  data_frame = malloc(sizeof(nghttp2_data));
+  data_frame = malloc(sizeof(nghttp2_private_data));
   if(data_frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }

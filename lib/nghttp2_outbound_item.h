@@ -47,7 +47,7 @@ typedef struct {
   void *frame;
   void *aux_data;
   /* Type of |frame|. NGHTTP2_CTRL: nghttp2_frame*, NGHTTP2_DATA:
-     nghttp2_data* */
+     nghttp2_private_data* */
   nghttp2_frame_category frame_cat;
   /* The priority used in priority comparion */
   int32_t pri;
@@ -63,6 +63,7 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item);
 #define nghttp2_outbound_item_get_ctrl_frame(ITEM) ((nghttp2_frame*)ITEM->frame)
 #define nghttp2_outbound_item_get_ctrl_frame_type(ITEM) \
   (((nghttp2_frame*)ITEM->frame)->hd.type)
-#define nghttp2_outbound_item_get_data_frame(ITEM) ((nghttp2_data*)ITEM->frame)
+#define nghttp2_outbound_item_get_data_frame(ITEM) \
+  ((nghttp2_private_data*)ITEM->frame)
 
 #endif /* NGHTTP2_OUTBOUND_ITEM_H */

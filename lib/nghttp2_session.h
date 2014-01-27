@@ -220,7 +220,7 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
  * |frame_cat| must be either NGHTTP2_CTRL or NGHTTP2_DATA. If the
  * |frame_cat| is NGHTTP2_CTRL, the |frame| must be a pointer to
  * nghttp2_frame. If the |frame_cat| is NGHTTP2_DATA, it must be a
- * pointer to nghttp2_data. |aux_data| is a pointer to the arbitrary
+ * pointer to nghttp2_private_data. |aux_data| is a pointer to the arbitrary
  * data. Its interpretation is defined per the type of the frame. When
  * this function succeeds, it takes ownership of |frame| and
  * |aux_data|, so caller must not free them on success.
@@ -530,7 +530,7 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
                                   size_t datamax,
-                                  nghttp2_data *frame);
+                                  nghttp2_private_data *frame);
 
 /*
  * Returns top of outbound frame queue. This function returns NULL if

@@ -181,17 +181,17 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame)
 {}
 
-void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
+void nghttp2_frame_data_init(nghttp2_private_data *frame, uint8_t flags,
                              int32_t stream_id,
                              const nghttp2_data_provider *data_prd)
 {
-  memset(frame, 0, sizeof(nghttp2_data));
+  memset(frame, 0, sizeof(nghttp2_private_data));
   /* At this moment, the length of DATA frame is unknown */
   nghttp2_frame_set_hd(&frame->hd, 0, NGHTTP2_DATA, flags, stream_id);
   frame->data_prd = *data_prd;
 }
 
-void nghttp2_frame_data_free(nghttp2_data *frame)
+void nghttp2_frame_data_free(nghttp2_private_data *frame)
 {}
 
 /*

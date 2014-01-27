@@ -3576,7 +3576,7 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   my_user_data ud;
   nghttp2_data_provider data_prd;
   nghttp2_frame frame;
-  nghttp2_data *data_frame;
+  nghttp2_private_data *data_frame;
   nghttp2_stream *stream;
   size_t data_size = 128*1024;
 
@@ -3599,7 +3599,7 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(NULL != stream->deferred_data);
   CU_ASSERT(NGHTTP2_CAT_DATA == stream->deferred_data->frame_cat);
-  data_frame = (nghttp2_data*)stream->deferred_data->frame;
+  data_frame = (nghttp2_private_data*)stream->deferred_data->frame;
   data_frame->data_prd.read_callback =
     temporal_failure_data_source_read_callback;
 
