@@ -161,10 +161,13 @@ const char* ansi_escend()
 }
 } // namespace
 
-void print_nv(nghttp2_nv *nva, size_t nvlen)
+namespace {
+void print_nv(nghttp2_nv *nva, size_t nvlen, bool indent = true)
 {
   for(auto& nv : http2::sort_nva(nva, nvlen)) {
-    print_frame_attr_indent();
+    if(indent) {
+      print_frame_attr_indent();
+    }
     printf("%s", ansi_esc("\033[1;34m"));
     fwrite(nv.name, nv.namelen, 1, stdout);
     printf("%s: ", ansi_escend());
@@ -172,6 +175,7 @@ void print_nv(nghttp2_nv *nva, size_t nvlen)
     printf("\n");
   }
 }
+} // namelen
 
 void print_timer()
 {
@@ -351,7 +355,9 @@ int verbose_on_header_callback(nghttp2_session *session,
     const_cast<uint8_t*>(name), const_cast<uint8_t*>(value),
     static_cast<uint16_t>(namelen), static_cast<uint16_t>(valuelen)
   };
-  print_nv(&nv, 1);
+  print_timer();
+  printf(" (stream_id=%d) ", frame->hd.stream_id);
+  print_nv(&nv, 1, false /* no indent */);
   return 0;
 }
 

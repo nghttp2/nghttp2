@@ -780,6 +780,7 @@ int on_header_callback(nghttp2_session *session,
 {
   auto hd = static_cast<Http2Handler*>(user_data);
   if(hd->get_config()->verbose) {
+    print_session_id(hd->session_id());
     verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
                                user_data);
   }
