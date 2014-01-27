@@ -482,6 +482,11 @@ struct HttpClient {
   ~HttpClient()
   {
     disconnect();
+    if(addrs) {
+      freeaddrinfo(addrs);
+      addrs = nullptr;
+      next_addr = nullptr;
+    }
   }
 
   bool need_upgrade() const
@@ -492,8 +497,14 @@ struct HttpClient {
   int resolve_host(const std::string& host, uint16_t port)
   {
     int rv;
+    addrinfo hints;
     this->host = host;
-    rv = getaddrinfo(host.c_str(), util::utos(port).c_str(), nullptr, &addrs);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = 0;
+    hints.ai_flags = AI_ADDRCONFIG;
+    rv = getaddrinfo(host.c_str(), util::utos(port).c_str(), &hints, &addrs);
     if(rv != 0) {
       std::cerr << "getaddrinfo() failed: "
                 << gai_strerror(rv) << std::endl;
@@ -543,10 +554,11 @@ struct HttpClient {
     } else {
       bev = bufferevent_socket_new(evbase, -1, BEV_OPT_DEFER_CALLBACKS);
     }
+    rv = -1;
     while(next_addr) {
       rv = bufferevent_socket_connect
         (bev, next_addr->ai_addr, next_addr->ai_addrlen);
-      ++next_addr;
+      next_addr = next_addr->ai_next;
       if(rv == 0) {
         break;
       }
@@ -597,11 +609,6 @@ struct HttpClient {
     if(fd != -1) {
       shutdown(fd, SHUT_WR);
       close(fd);
-    }
-    if(addrs) {
-      freeaddrinfo(addrs);
-      addrs = nullptr;
-      next_addr = nullptr;
     }
   }
 
@@ -1413,7 +1420,9 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     auto state = client->state;
     client->disconnect();
     if(state == STATE_IDLE) {
-      client->initiate_connection();
+      if(client->initiate_connection() == 0) {
+        std::cerr << "Trying next address" << std::endl;
+      }
     }
     return;
   }
@@ -1430,7 +1439,9 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     auto state = client->state;
     client->disconnect();
     if(state == STATE_IDLE) {
-      client->initiate_connection();
+      if(client->initiate_connection() == 0) {
+        std::cerr << "Trying next address" << std::endl;
+      }
     }
     return;
   }
