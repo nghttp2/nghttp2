@@ -1099,9 +1099,18 @@ typedef int (*nghttp2_on_unknown_frame_recv_callback)
  * to produce these parameters, because it may refer to the memory
  * region included in the input bytes.
  *
+ * Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close
+ * the stream by issuing RST_STREAM with
+ * :enum:`NGHTTP2_INTERNAL_ERROR`. In this case,
+ * :type:`nghttp2_on_end_headers_callback` will not be invoked.
+ *
  * The implementation of this function must return 0 if it
- * succeeds. It may return :enum:`NGHTTP2_ERR_PAUSE`. If the other
- * nonzero value is returned, it is treated as fatal error and
+ * succeeds. It may return :enum:`NGHTTP2_ERR_PAUSE` or
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`. For other critical
+ * failures, it must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. If
+ * the other nonzero value is returned, it is treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. If
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
  * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */

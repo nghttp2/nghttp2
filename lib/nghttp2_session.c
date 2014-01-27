@@ -1861,7 +1861,8 @@ static int session_call_on_header(nghttp2_session *session,
                                                nv->name, nv->namelen,
                                                nv->value, nv->valuelen,
                                                session->user_data);
-    if(rv == NGHTTP2_ERR_PAUSE) {
+    if(rv == NGHTTP2_ERR_PAUSE ||
+       rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
       return rv;
     }
     if(rv != 0) {
@@ -1988,7 +1989,8 @@ static ssize_t inflate_header_block(nghttp2_session *session,
     *readlen_ptr += rv;
     if(call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
       rv = session_call_on_header(session, frame, &nv);
-      /* This handles NGHTTP2_ERR_PAUSE as well */
+      /* This handles NGHTTP2_ERR_PAUSE and
+         NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE as well */
       if(rv != 0) {
         return rv;
       }
@@ -3642,6 +3644,19 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       iframe->payloadleft -= readlen;
       if(rv == NGHTTP2_ERR_PAUSE) {
         return in - first;
+      }
+      if(rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+        /* The application says no more headers. We decompress the
+           rest of the header block but not invoke
+           on_header_callback and on_end_headers_callback. */
+        rv = nghttp2_session_add_rst_stream(session,
+                                            iframe->frame.hd.stream_id,
+                                            NGHTTP2_INTERNAL_ERROR);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+        iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
+        break;
       }
       if(rv == NGHTTP2_ERR_HEADER_COMP) {
         /* GOAWAY is already issued */
