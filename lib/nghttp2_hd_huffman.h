@@ -31,7 +31,7 @@
 
 #include <nghttp2/nghttp2.h>
 
-enum {
+typedef enum {
   /* FSA accepts this state as the end of huffman encoding
      sequence. */
   NGHTTP2_HUFF_ACCEPTED = 1,
