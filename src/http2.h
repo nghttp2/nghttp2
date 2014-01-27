@@ -221,10 +221,6 @@ int check_header_value(const uint8_t* value, size_t len);
 int check_nv(const uint8_t *name, size_t namelen,
              const uint8_t *value, size_t valuelen);
 
-// Handles the situation that incoming headers are too many. It is
-// dealt with by issuing RST_STREAM and GOAWAY.
-int handle_too_many_headers(nghttp2_session *session, int32_t stream_id);
-
 } // namespace http2
 
 } // namespace nghttp2

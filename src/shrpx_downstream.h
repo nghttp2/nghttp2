@@ -109,6 +109,8 @@ public:
   void append_last_request_header_key(const char *data, size_t len);
   void append_last_request_header_value(const char *data, size_t len);
 
+  size_t get_request_headers_sum() const;
+
   void set_request_method(std::string method);
   const std::string& get_request_method() const;
   void set_request_path(std::string path);
@@ -175,6 +177,8 @@ public:
   void append_last_response_header_key(const char *data, size_t len);
   void append_last_response_header_value(const char *data, size_t len);
 
+  size_t get_response_headers_sum() const;
+
   unsigned int get_response_http_status() const;
   void set_response_http_status(unsigned int status);
   void set_response_major(int major);
@@ -200,9 +204,8 @@ public:
   // Change the priority of downstream
   int change_priority(int32_t pri);
 
-  // Maximum number of headers per HEADERS frame, including its
-  // following CONTINUATIONs.
-  static const size_t MAX_HEADERS = 128;
+  // Maximum buffer size for header name/value pairs.
+  static const size_t MAX_HEADERS_SUM = 32768;
 private:
   Headers request_headers_;
   Headers response_headers_;
@@ -220,6 +223,9 @@ private:
   // This buffer is used to temporarily store downstream response
   // body. nghttp2 library reads data from this in the callback.
   evbuffer *response_body_buf_;
+
+  size_t request_headers_sum_;
+  size_t response_headers_sum_;
 
   int32_t stream_id_;
   int32_t priority_;

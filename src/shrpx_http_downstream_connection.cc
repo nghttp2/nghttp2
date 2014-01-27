@@ -431,6 +431,13 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
   } else {
     downstream->add_response_header(std::string(data, len), "");
   }
+  if(downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
+    if(LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream) << "Too large header block size="
+                             << downstream->get_response_headers_sum();
+    }
+    return -1;
+  }
   return 0;
 }
 } // namespace
@@ -443,6 +450,13 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
     downstream->set_last_response_header_value(std::string(data, len));
   } else {
     downstream->append_last_response_header_value(data, len);
+  }
+  if(downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
+    if(LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream) << "Too large header block size="
+                             << downstream->get_response_headers_sum();
+    }
+    return -1;
   }
   return 0;
 }

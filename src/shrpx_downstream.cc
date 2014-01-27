@@ -258,12 +258,14 @@ void Downstream::concat_norm_request_headers()
 void Downstream::add_request_header(std::string name, std::string value)
 {
   request_header_key_prev_ = true;
+  request_headers_sum_ += name.size() + value.size();
   request_headers_.emplace_back(std::move(name), std::move(value));
 }
 
 void Downstream::set_last_request_header_value(std::string value)
 {
   request_header_key_prev_ = false;
+  request_headers_sum_ += value.size();
   Headers::value_type &item = request_headers_.back();
   item.second = std::move(value);
   check_transfer_encoding_chunked(&chunked_request_, item);
@@ -274,6 +276,7 @@ void Downstream::split_add_request_header
 (const uint8_t *name, size_t namelen,
  const uint8_t *value, size_t valuelen)
 {
+  request_headers_sum_ += namelen + valuelen;
   http2::split_add_header(request_headers_, name, namelen, value, valuelen);
 }
 
@@ -285,6 +288,7 @@ bool Downstream::get_request_header_key_prev() const
 void Downstream::append_last_request_header_key(const char *data, size_t len)
 {
   assert(request_header_key_prev_);
+  request_headers_sum_ += len;
   auto& item = request_headers_.back();
   item.first.append(data, len);
 }
@@ -292,8 +296,14 @@ void Downstream::append_last_request_header_key(const char *data, size_t len)
 void Downstream::append_last_request_header_value(const char *data, size_t len)
 {
   assert(!request_header_key_prev_);
+  request_headers_sum_ += len;
   auto& item = request_headers_.back();
   item.second.append(data, len);
+}
+
+size_t Downstream::get_request_headers_sum() const
+{
+  return request_headers_sum_;
 }
 
 void Downstream::set_request_method(std::string method)
@@ -512,6 +522,7 @@ void Downstream::rewrite_norm_location_response_header
 void Downstream::add_response_header(std::string name, std::string value)
 {
   response_header_key_prev_ = true;
+  response_headers_sum_ += name.size() + value.size();
   response_headers_.emplace_back(std::move(name), std::move(value));
   check_transfer_encoding_chunked(&chunked_response_,
                                   response_headers_.back());
@@ -520,6 +531,7 @@ void Downstream::add_response_header(std::string name, std::string value)
 void Downstream::set_last_response_header_value(std::string value)
 {
   response_header_key_prev_ = false;
+  response_headers_sum_ += value.size();
   auto& item = response_headers_.back();
   item.second = std::move(value);
   check_transfer_encoding_chunked(&chunked_response_, item);
@@ -529,6 +541,7 @@ void Downstream::split_add_response_header
 (const uint8_t *name, size_t namelen,
  const uint8_t *value, size_t valuelen)
 {
+  response_headers_sum_ += namelen + valuelen;
   http2::split_add_header(response_headers_, name, namelen, value, valuelen);
 }
 
@@ -540,6 +553,7 @@ bool Downstream::get_response_header_key_prev() const
 void Downstream::append_last_response_header_key(const char *data, size_t len)
 {
   assert(response_header_key_prev_);
+  response_headers_sum_ += len;
   auto& item = response_headers_.back();
   item.first.append(data, len);
 }
@@ -548,8 +562,14 @@ void Downstream::append_last_response_header_value(const char *data,
                                                    size_t len)
 {
   assert(!response_header_key_prev_);
+  response_headers_sum_ += len;
   auto& item = response_headers_.back();
   item.second.append(data, len);
+}
+
+size_t Downstream::get_response_headers_sum() const
+{
+  return response_headers_sum_;
 }
 
 unsigned int Downstream::get_response_http_status() const

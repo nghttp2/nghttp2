@@ -804,7 +804,6 @@ int on_header_callback(nghttp2_session *session,
                        const uint8_t *value, size_t valuelen,
                        void *user_data)
 {
-  int rv;
   if(frame->hd.type != NGHTTP2_HEADERS ||
      frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
     return 0;
@@ -818,12 +817,12 @@ int on_header_callback(nghttp2_session *session,
   if(!downstream) {
     return 0;
   }
-  if(downstream->get_request_headers().size() >= Downstream::MAX_HEADERS) {
-    rv = http2::handle_too_many_headers(session, frame->hd.stream_id);
-    if(nghttp2_is_fatal(rv)) {
-      return rv;
+  if(downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
+    if(LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream) << "Too large header block size="
+                             << downstream->get_response_headers_sum();
     }
-    return 0;
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;

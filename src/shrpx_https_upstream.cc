@@ -45,7 +45,6 @@ namespace shrpx {
 
 namespace {
 const size_t OUTBUF_MAX_THRES = 64*1024;
-const size_t SHRPX_HTTPS_MAX_HEADER_LENGTH = 64*1024;
 } // namespace
 
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
@@ -102,6 +101,13 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len)
   } else {
     downstream->add_request_header(std::string(data, len), "");
   }
+  if(downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
+    if(LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Too large header block size="
+                           << downstream->get_request_headers_sum();
+    }
+    return -1;
+  }
   return 0;
 }
 } // namespace
@@ -115,6 +121,13 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len)
     downstream->set_last_request_header_value(std::string(data, len));
   } else {
     downstream->append_last_request_header_value(data, len);
+  }
+  if(downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
+    if(LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Too large header block size="
+                           << downstream->get_request_headers_sum();
+    }
+    return -1;
   }
   return 0;
 }
@@ -321,17 +334,7 @@ int HttpsUpstream::on_read()
   } else if(htperr == HPE_OK) {
     // downstream can be NULL here.
     if(downstream) {
-      if(downstream->get_request_state() == Downstream::INITIAL &&
-         current_header_length_ > SHRPX_HTTPS_MAX_HEADER_LENGTH) {
-        ULOG(WARNING, this) << "Request Header too long:"
-                            << current_header_length_
-                            << " bytes";
-        handler->set_should_close_after_write(true);
-        pause_read(SHRPX_MSG_BLOCK);
-        if(error_reply(400) != 0) {
-          return -1;
-        }
-      } else if(downstream->get_output_buffer_full()) {
+      if(downstream->get_output_buffer_full()) {
         if(LOG_ENABLED(INFO)) {
           ULOG(INFO, this) << "Downstream output buffer is full";
         }
