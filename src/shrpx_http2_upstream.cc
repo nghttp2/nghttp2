@@ -347,6 +347,17 @@ int on_frame_recv_callback
   int rv;
   auto upstream = static_cast<Http2Upstream*>(user_data);
   switch(frame->hd.type) {
+  case NGHTTP2_DATA: {
+    auto downstream = upstream->find_downstream(frame->hd.stream_id);
+    if(!downstream) {
+      break;
+    }
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      downstream->end_upload_data();
+      downstream->set_request_state(Downstream::MSG_COMPLETE);
+    }
+    break;
+  }
   case NGHTTP2_HEADERS: {
     if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
       break;
@@ -407,21 +418,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
       return 0;
     }
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
-int on_data_recv_callback(nghttp2_session *session,
-                          uint16_t length, uint8_t flags, int32_t stream_id,
-                          void *user_data)
-{
-  auto upstream = static_cast<Http2Upstream*>(user_data);
-  auto downstream = upstream->find_downstream(stream_id);
-  if(downstream && (flags & NGHTTP2_FLAG_END_STREAM)) {
-    downstream->end_upload_data();
-    downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
   return 0;
 }
@@ -506,7 +502,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_data_recv_callback = on_data_recv_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;

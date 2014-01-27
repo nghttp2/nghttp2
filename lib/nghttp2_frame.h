@@ -416,11 +416,12 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
 
-void nghttp2_frame_data_init(nghttp2_private_data *frame, uint8_t flags,
-                             int32_t stream_id,
-                             const nghttp2_data_provider *data_prd);
+void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
+                                     uint8_t flags,
+                                     int32_t stream_id,
+                                     const nghttp2_data_provider *data_prd);
 
-void nghttp2_frame_data_free(nghttp2_private_data *frame);
+void nghttp2_frame_private_data_free(nghttp2_private_data *frame);
 
 /*
  * Makes copy of |iv| and return the copy. The |niv| is the number of

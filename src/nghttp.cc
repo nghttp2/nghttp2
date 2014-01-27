@@ -1585,8 +1585,6 @@ int run(char **uris, int n)
   callbacks.before_frame_send_callback = before_frame_send_callback;
   if(config.verbose) {
     callbacks.on_frame_send_callback = verbose_on_frame_send_callback;
-    callbacks.on_data_recv_callback = verbose_on_data_recv_callback;
-    callbacks.on_data_send_callback = verbose_on_data_send_callback;
     callbacks.on_invalid_frame_recv_callback =
       verbose_on_invalid_frame_recv_callback;
     callbacks.on_unknown_frame_recv_callback =

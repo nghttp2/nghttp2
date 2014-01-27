@@ -262,6 +262,8 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     print_flags(frame->hd);
   }
   switch(frame->hd.type) {
+  case NGHTTP2_DATA:
+    break;
   case NGHTTP2_HEADERS:
     if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
       print_frame_attr_indent();
@@ -407,43 +409,6 @@ int verbose_on_frame_send_callback
   print_timer();
   printf(" send ");
   print_frame(PRINT_SEND, frame);
-  fflush(stdout);
-  return 0;
-}
-
-namespace {
-void print_data_frame(print_type ptype, uint16_t length, uint8_t flags,
-                      int32_t stream_id)
-{
-  printf("%sDATA%s frame ",
-         frame_name_ansi_esc(ptype), ansi_escend());
-  nghttp2_frame_hd hd = {length, stream_id, NGHTTP2_DATA, flags};
-  print_frame_hd(hd);
-  if(flags) {
-    print_frame_attr_indent();
-    print_flags(hd);
-  }
-}
-} // namespace
-
-int verbose_on_data_recv_callback
-(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
- void *user_data)
-{
-  print_timer();
-  printf(" recv ");
-  print_data_frame(PRINT_RECV, length, flags, stream_id);
-  fflush(stdout);
-  return 0;
-}
-
-int verbose_on_data_send_callback
-(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
- void *user_data)
-{
-  print_timer();
-  printf(" send ");
-  print_data_frame(PRINT_SEND, length, flags, stream_id);
   fflush(stdout);
   return 0;
 }

@@ -62,14 +62,6 @@ int verbose_on_unknown_frame_recv_callback(nghttp2_session *session,
 int verbose_on_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
 
-int verbose_on_data_recv_callback
-(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
- void *user_data);
-
-int verbose_on_data_send_callback
-(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
- void *user_data);
-
 // Returns difference between |a| and |b| in milliseconds, assuming
 // |a| is more recent than |b|.
 template<typename TimePoint>

@@ -580,6 +580,16 @@ typedef struct {
 } nghttp2_data_provider;
 
 /**
+ * @struct
+ *
+ * The DATA frame. The received data is delivered via
+ * :type:`nghttp2_on_data_chunk_recv_callback`.
+ */
+typedef struct {
+  nghttp2_frame_hd hd;
+} nghttp2_data;
+
+/**
  * @enum
  *
  * The category of HEADERS, which indicates the role of the frame. In
@@ -796,6 +806,10 @@ typedef union {
    */
   nghttp2_frame_hd hd;
   /**
+   * The DATA frame.
+   */
+  nghttp2_data data;
+  /**
    * The HEADERS frame.
    */
   nghttp2_headers headers;
@@ -869,9 +883,9 @@ typedef ssize_t (*nghttp2_recv_callback)
 /**
  * @functypedef
  *
- * Callback function invoked by `nghttp2_session_recv()` when a
- * non-DATA frame is received. The |user_data| pointer is the third
- * argument passed in to the call to `nghttp2_session_client_new()` or
+ * Callback function invoked by `nghttp2_session_recv()` when a aframe
+ * is received. The |user_data| pointer is the third argument passed
+ * in to the call to `nghttp2_session_client_new()` or
  * `nghttp2_session_server_new()`.
  *
  * If frame is HEADERS or PUSH_PROMISE, the ``nva`` and ``nvlen``
@@ -923,7 +937,7 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)
  * to. The |flags| is the flags of DATA frame which this data chunk is
  * contained. ``(flags & NGHTTP2_FLAG_END_STREAM) != 0`` does not
  * necessarily mean this chunk of data is the last one in the
- * stream. You should use :type:`nghttp2_on_data_recv_callback` to
+ * stream. You should use :type:`nghttp2_on_frame_recv_callback` to
  * know all data frames are received. The |user_data| pointer is the
  * third argument passed in to the call to
  * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
@@ -949,24 +963,6 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)
 /**
  * @functypedef
  *
- * Callback function invoked when DATA frame is received. The actual
- * data it contains are received by
- * :type:`nghttp2_on_data_chunk_recv_callback`. The |user_data|
- * pointer is the third argument passed in to the call to
- * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
- *
- * The implementation of this function must return 0 if it
- * succeeds. If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
- * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
- */
-typedef int (*nghttp2_on_data_recv_callback)
-(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
- void *user_data);
-
-/**
- * @functypedef
- *
  * Callback function invoked before the non-DATA frame |frame| is
  * sent. This may be useful, for example, to know the stream ID of
  * HEADERS and PUSH_PROMISE frame (see also
@@ -986,10 +982,9 @@ typedef int (*nghttp2_before_frame_send_callback)
 /**
  * @functypedef
  *
- * Callback function invoked after the non-DATA frame |frame| is sent.
- * The |user_data| pointer is the third argument passed in to the call
- * to `nghttp2_session_client_new()` or
- * `nghttp2_session_server_new()`.
+ * Callback function invoked after the frame |frame| is sent.  The
+ * |user_data| pointer is the third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
@@ -1016,22 +1011,6 @@ typedef int (*nghttp2_on_frame_send_callback)
  */
 typedef int (*nghttp2_on_frame_not_send_callback)
 (nghttp2_session *session, const nghttp2_frame *frame, int lib_error_code,
- void *user_data);
-
-/**
- * @functypedef
- *
- * Callback function invoked after DATA frame is sent. The |user_data|
- * pointer is the third argument passed in to the call to
- * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
- *
- * The implementation of this function must return 0 if it
- * succeeds. If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
- * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
- */
-typedef int (*nghttp2_on_data_send_callback)
-(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
  void *user_data);
 
 /**
@@ -1191,10 +1170,6 @@ typedef struct {
    */
   nghttp2_on_data_chunk_recv_callback on_data_chunk_recv_callback;
   /**
-   * Callback function invoked when DATA frame is received.
-   */
-  nghttp2_on_data_recv_callback on_data_recv_callback;
-  /**
    * Callback function invoked before the non-DATA frame is sent.
    */
   nghttp2_before_frame_send_callback before_frame_send_callback;
@@ -1207,10 +1182,6 @@ typedef struct {
    * because of an error.
    */
   nghttp2_on_frame_not_send_callback on_frame_not_send_callback;
-  /**
-   * Callback function invoked after DATA frame is sent.
-   */
-  nghttp2_on_data_send_callback on_data_send_callback;
   /**
    * Callback function invoked when the stream is closed.
    */
@@ -1432,13 +1403,9 @@ void nghttp2_session_del(nghttp2_session *session);
  *    invoked.
  * 6. :member:`nghttp2_session_callbacks.send_callback` is invoked one
  *    or more times to send the frame.
- * 7. If the frame is a control frame,
- *    :member:`nghttp2_session_callbacks.on_frame_send_callback` is
+ * 7. :member:`nghttp2_session_callbacks.on_frame_send_callback` is
  *    invoked.
- * 8. If the frame is a DATA frame,
- *    :member:`nghttp2_session_callbacks.on_data_send_callback` is
- *    invoked.
- * 9. If the transmission of the frame triggers closure of the stream,
+ * 8. If the transmission of the frame triggers closure of the stream,
  *    the stream is closed and
  *    :member:`nghttp2_session_callbacks.on_stream_close_callback` is
  *    invoked.
@@ -1474,7 +1441,7 @@ int nghttp2_session_send(nghttp2_session *session);
  *       :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`
  *       is invoked.
  *    2. If one DATA frame is completely received,
- *       :member:`nghttp2_session_callbacks.on_data_recv_callback` is
+ *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
  *       invoked.  If the frame is the final frame of the request,
  *       :member:`nghttp2_session_callbacks.on_request_recv_callback`
  *       is invoked.  If the reception of the frame triggers the

@@ -853,6 +853,9 @@ int hd_on_frame_recv_callback
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   switch(frame->hd.type) {
+  case NGHTTP2_DATA:
+    // TODO Handle POST
+    break;
   case NGHTTP2_HEADERS:
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST: {
@@ -940,37 +943,6 @@ int on_data_chunk_recv_callback
 } // namespace
 
 namespace {
-int hd_on_data_recv_callback
-(nghttp2_session *session, uint16_t length, uint8_t flags, int32_t stream_id,
- void *user_data)
-{
-  // TODO Handle POST
-  auto hd = static_cast<Http2Handler*>(user_data);
-  if(hd->get_config()->verbose) {
-    print_session_id(hd->session_id());
-    verbose_on_data_recv_callback(session, length, flags, stream_id,
-                                  user_data);
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
-int hd_on_data_send_callback
-(nghttp2_session *session, uint16_t length,  uint8_t flags, int32_t stream_id,
- void *user_data)
-{
-  auto hd = static_cast<Http2Handler*>(user_data);
-  if(hd->get_config()->verbose) {
-    print_session_id(hd->session_id());
-    verbose_on_data_send_callback(session, length, flags, stream_id,
-                                  user_data);
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
 int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
@@ -997,8 +969,6 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.on_frame_recv_callback = hd_on_frame_recv_callback;
   callbacks.before_frame_send_callback = hd_before_frame_send_callback;
   callbacks.on_frame_send_callback = hd_on_frame_send_callback;
-  callbacks.on_data_recv_callback = hd_on_data_recv_callback;
-  callbacks.on_data_send_callback = hd_on_data_send_callback;
   if(config->verbose) {
     callbacks.on_invalid_frame_recv_callback =
       verbose_on_invalid_frame_recv_callback;

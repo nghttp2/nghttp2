@@ -1387,6 +1387,20 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
   }
 }
 
+static int session_call_on_frame_send(nghttp2_session *session,
+                                      nghttp2_frame *frame)
+{
+  int rv;
+  if(session->callbacks.on_frame_send_callback) {
+    rv = session->callbacks.on_frame_send_callback(session, frame,
+                                                   session->user_data);
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+  return 0;
+}
+
 /*
  * Called after a frame is sent.
  *
@@ -1431,11 +1445,9 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
          CONTINUATION frame. */
       frame->hd.length = session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH;
     }
-    if(session->callbacks.on_frame_send_callback) {
-      if(session->callbacks.on_frame_send_callback(session, frame,
-                                                   session->user_data) != 0) {
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
-      }
+    r = session_call_on_frame_send(session, frame);
+    if(nghttp2_is_fatal(r)) {
+      return r;
     }
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS: {
@@ -1573,16 +1585,18 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
   } else if(item->frame_cat == NGHTTP2_CAT_DATA) {
     int r;
     nghttp2_private_data *data_frame;
+
     data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
-    if(session->callbacks.on_data_send_callback) {
-      if(session->callbacks.on_data_send_callback
-         (session,
-          session->aob.framebuflen - NGHTTP2_FRAME_HEAD_LENGTH,
-          data_frame->eof ? data_frame->hd.flags :
-          (data_frame->hd.flags & (~NGHTTP2_FLAG_END_STREAM)),
-          data_frame->hd.stream_id,
-          session->user_data) != 0) {
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
+    if(session->callbacks.on_frame_send_callback) {
+      nghttp2_frame public_data_frame = { data_frame->hd };
+      /* flags may have NGHTTP2_FLAG_END_STREAM even if the sent chunk
+         is not the end of the stream */
+      if(!data_frame->eof) {
+        public_data_frame.hd.flags &= ~NGHTTP2_FLAG_END_STREAM;
+      }
+      r = session_call_on_frame_send(session, &public_data_frame);
+      if(nghttp2_is_fatal(r)) {
+        return r;
       }
     }
     if(data_frame->eof && (data_frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
@@ -3137,34 +3151,31 @@ static int session_process_window_update_frame(nghttp2_session *session)
 /* } */
 
 int nghttp2_session_on_data_received(nghttp2_session *session,
-                                     uint16_t length, uint8_t flags,
-                                     int32_t stream_id)
+                                     nghttp2_frame *frame)
 {
   int rv = 0;
   nghttp2_stream *stream;
 
-  stream = nghttp2_session_get_stream(session, stream_id);
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
     /* This should be treated as stream error, but it results in lots
        of RST_STREAM. So just ignore frame against nonexistent stream
        for now. */
     return 0;
   }
-  if(session->callbacks.on_data_recv_callback) {
-    if(session->callbacks.on_data_recv_callback
-       (session, length, flags, stream_id, session->user_data) != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(nghttp2_is_fatal(rv)) {
+    return rv;
   }
-  if(!nghttp2_session_is_my_stream_id(session, stream_id)) {
-    if(flags & NGHTTP2_FLAG_END_STREAM) {
-      rv = nghttp2_session_call_on_request_recv(session, stream_id);
+  if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
       if(rv != 0) {
         return rv;
       }
     }
   }
-  if(flags & NGHTTP2_FLAG_END_STREAM) {
+  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
     if(nghttp2_is_fatal(rv)) {
@@ -3178,10 +3189,8 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
 static int nghttp2_session_process_data_frame(nghttp2_session *session)
 {
   int r;
-  nghttp2_frame *frame = &session->iframe.frame;
-  r = nghttp2_session_on_data_received(session,
-                                       frame->hd.length, frame->hd.flags,
-                                       frame->hd.stream_id);
+  nghttp2_frame *public_data_frame = &session->iframe.frame;
+  r = nghttp2_session_on_data_received(session, public_data_frame);
   if(nghttp2_is_fatal(r)) {
     return r;
   } else {

@@ -66,7 +66,7 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item)
   } else if(item->frame_cat == NGHTTP2_CAT_DATA) {
     nghttp2_private_data *data_frame;
     data_frame = nghttp2_outbound_item_get_data_frame(item);
-    nghttp2_frame_data_free(data_frame);
+    nghttp2_frame_private_data_free(data_frame);
   } else {
     /* Unreachable */
     assert(0);

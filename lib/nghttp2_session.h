@@ -488,17 +488,19 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
                                               nghttp2_frame *frame);
 
 /*
- * Called when DATA is received.
+ * Called when DATA is received, assuming |frame| is properly
+ * initialized.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
  */
 int nghttp2_session_on_data_received(nghttp2_session *session,
-                                     uint16_t length, uint8_t flags,
-                                     int32_t stream_id);
+                                     nghttp2_frame *frame);
 
 /*
  * Returns nghttp2_stream* object whose stream ID is |stream_id|.  It

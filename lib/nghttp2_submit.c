@@ -311,10 +311,10 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
   if(flags & NGHTTP2_FLAG_END_STREAM) {
     nflags |= NGHTTP2_FLAG_END_STREAM;
   }
-  nghttp2_frame_data_init(data_frame, nflags, stream_id, data_prd);
+  nghttp2_frame_private_data_init(data_frame, nflags, stream_id, data_prd);
   r = nghttp2_session_add_frame(session, NGHTTP2_CAT_DATA, data_frame, NULL);
   if(r != 0) {
-    nghttp2_frame_data_free(data_frame);
+    nghttp2_frame_private_data_free(data_frame);
     free(data_frame);
   }
   return r;
