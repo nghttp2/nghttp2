@@ -1156,7 +1156,7 @@ typedef struct {
   nghttp2_recv_callback recv_callback;
   /**
    * Callback function invoked by `nghttp2_session_recv()` when a
-   * non-DATA frame is received.
+   * frame is received.
    */
   nghttp2_on_frame_recv_callback on_frame_recv_callback;
   /**
@@ -1170,11 +1170,11 @@ typedef struct {
    */
   nghttp2_on_data_chunk_recv_callback on_data_chunk_recv_callback;
   /**
-   * Callback function invoked before the non-DATA frame is sent.
+   * Callback function invoked before a non-DATA frame is sent.
    */
   nghttp2_before_frame_send_callback before_frame_send_callback;
   /**
-   * Callback function invoked after the non-DATA frame is sent.
+   * Callback function invoked after a frame is sent.
    */
   nghttp2_on_frame_send_callback on_frame_send_callback;
   /**
