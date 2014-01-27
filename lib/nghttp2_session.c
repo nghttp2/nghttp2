@@ -1934,15 +1934,18 @@ static int nghttp2_session_validate_request_headers(nghttp2_session *session,
  * and on_end_headers_callback are not invoked and the function never
  * return NGHTTP2_ERR_PAUSE. If the given |in| is the last chunk of
  * header block, the |final| must be nonzero. If header block is
- * successfully processed (which is indicated by the return value 0 or
- * NGHTTP2_ERR_PAUSE), the number of processed input bytes is assigned
- * to the |*readlen_ptr|.
+ * successfully processed (which is indicated by the return value 0,
+ * NGHTTP2_ERR_PAUSE or NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE), the
+ * number of processed input bytes is assigned to the |*readlen_ptr|.
  *
  * This function return 0 if it succeeds, or one of the negative error
  * codes:
  *
  * NGHTTP2_ERR_CALLBACK_FAILURE
  *     The callback function failed.
+ * NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE
+ *     The callback returns this error code, indicating that this
+ *     stream should be RST_STREAMed.
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_PAUSE
