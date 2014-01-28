@@ -43,6 +43,8 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     upstream_(upstream),
     dconn_(nullptr),
     response_body_buf_(nullptr),
+    request_headers_sum_(0),
+    response_headers_sum_(0),
     stream_id_(stream_id),
     priority_(priority),
     downstream_stream_id_(-1),
