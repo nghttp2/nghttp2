@@ -65,7 +65,6 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 
 Config::Config()
   : data_ptr(nullptr),
-    on_request_recv_callback(nullptr),
     output_upper_thres(1024*1024),
     header_table_size(-1),
     port(0),
@@ -801,45 +800,17 @@ int on_header_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int on_end_headers_callback(nghttp2_session *session,
-                            const nghttp2_frame *frame,
-                            nghttp2_error_code error_code,
-                            void *user_data)
+int on_begin_headers_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame,
+                              void *user_data)
 {
-  if(error_code != NGHTTP2_NO_ERROR) {
-    return 0;
-  }
+  auto hd = static_cast<Http2Handler*>(user_data);
   if(frame->hd.type != NGHTTP2_HEADERS ||
      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
-  auto hd = static_cast<Http2Handler*>(user_data);
-  auto stream = hd->get_stream(frame->hd.stream_id);
-  if(!stream) {
-    return 0;
-  }
-  http2::normalize_headers(stream->headers);
-  if(!http2::check_http2_headers(stream->headers)) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
-    return 0;
-  }
-  for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
-    if(!http2::get_unique_header(stream->headers, REQUIRED_HEADERS[i])) {
-      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return 0;
-    }
-  }
-  // intermediary translating from HTTP/1 request to HTTP/2 may
-  // not produce :authority header field. In this case, it should
-  // provide host HTTP/1.1 header field.
-  if(!http2::get_unique_header(stream->headers, ":authority") &&
-     !http2::get_unique_header(stream->headers, "host")) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
-    return 0;
-  }
+  auto stream = util::make_unique<Request>(frame->hd.stream_id);
+  hd->add_stream(frame->hd.stream_id, std::move(stream));
   return 0;
 }
 } // namespace
@@ -856,12 +827,49 @@ int hd_on_frame_recv_callback
   switch(frame->hd.type) {
   case NGHTTP2_DATA:
     // TODO Handle POST
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      auto stream = hd->get_stream(frame->hd.stream_id);
+      if(!stream) {
+        return 0;
+      }
+      prepare_response(stream, hd);
+    }
     break;
   case NGHTTP2_HEADERS:
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST: {
-      auto req = util::make_unique<Request>(frame->hd.stream_id);
-      hd->add_stream(frame->hd.stream_id, std::move(req));
+      auto stream = hd->get_stream(frame->hd.stream_id);
+      if(!stream) {
+        return 0;
+      }
+      http2::normalize_headers(stream->headers);
+      if(!http2::check_http2_headers(stream->headers)) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id,
+                                  NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
+      for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
+        if(!http2::get_unique_header(stream->headers, REQUIRED_HEADERS[i])) {
+          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                    frame->hd.stream_id,
+                                    NGHTTP2_PROTOCOL_ERROR);
+          return 0;
+        }
+      }
+      // intermediary translating from HTTP/1 request to HTTP/2 may
+      // not produce :authority header field. In this case, it should
+      // provide host HTTP/1.1 header field.
+      if(!http2::get_unique_header(stream->headers, ":authority") &&
+         !http2::get_unique_header(stream->headers, "host")) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id,
+                                  NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
+      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        prepare_response(stream, hd);
+      }
       break;
     }
     default:
@@ -884,17 +892,6 @@ int hd_on_frame_recv_callback
   return 0;
 }
 } // namespace
-
-int htdocs_on_request_recv_callback
-(nghttp2_session *session, int32_t stream_id, void *user_data)
-{
-  auto hd = static_cast<Http2Handler*>(user_data);
-  auto stream = hd->get_stream(stream_id);
-  if(stream) {
-    prepare_response(stream, hd);
-  }
-  return 0;
-}
 
 namespace {
 int hd_before_frame_send_callback
@@ -977,9 +974,8 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
       verbose_on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_request_recv_callback = config->on_request_recv_callback;
   callbacks.on_header_callback = on_header_callback;
-  callbacks.on_end_headers_callback = on_end_headers_callback;
+  callbacks.on_begin_headers_callback = on_begin_headers_callback;
 }
 } // namespace
 

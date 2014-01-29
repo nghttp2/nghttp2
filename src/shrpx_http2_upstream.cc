@@ -230,20 +230,35 @@ int on_header_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int on_end_headers_callback(nghttp2_session *session,
-                            const nghttp2_frame *frame,
-                            nghttp2_error_code error_code,
-                            void *user_data)
+int on_begin_headers_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame,
+                              void *user_data)
 {
-  if(error_code != NGHTTP2_NO_ERROR) {
-    return 0;
-  }
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
-    return 0;
-  }
-  int rv;
   auto upstream = static_cast<Http2Upstream*>(user_data);
+
+  if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  if(LOG_ENABLED(INFO)) {
+    ULOG(INFO, upstream) << "Received upstream request HEADERS stream_id="
+                         << frame->hd.stream_id;
+  }
+  auto downstream = new Downstream(upstream,
+                                   frame->hd.stream_id,
+                                   frame->headers.pri);
+  upstream->add_downstream(downstream);
+  downstream->init_response_body_buf();
+
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_request_headers(Http2Upstream *upstream,
+                       nghttp2_session *session,
+                       const nghttp2_frame *frame)
+{
+  int rv;
   auto downstream = upstream->find_downstream(frame->hd.stream_id);
   if(!downstream) {
     return 0;
@@ -357,21 +372,8 @@ int on_frame_recv_callback
     }
     break;
   }
-  case NGHTTP2_HEADERS: {
-    if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
-      break;
-    }
-    if(LOG_ENABLED(INFO)) {
-      ULOG(INFO, upstream) << "Received upstream request HEADERS stream_id="
-                           << frame->hd.stream_id;
-    }
-    auto downstream = new Downstream(upstream,
-                                     frame->hd.stream_id,
-                                     frame->headers.pri);
-    upstream->add_downstream(downstream);
-    downstream->init_response_body_buf();
-    break;
-  }
+  case NGHTTP2_HEADERS:
+    return on_request_headers(upstream, session, frame);
   case NGHTTP2_PRIORITY: {
     auto downstream = upstream->find_downstream(frame->hd.stream_id);
     if(!downstream) {
@@ -505,7 +507,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   callbacks.on_header_callback = on_header_callback;
-  callbacks.on_end_headers_callback = on_end_headers_callback;
+  callbacks.on_begin_headers_callback = on_begin_headers_callback;
 
   nghttp2_opt_set opt_set;
   opt_set.no_auto_stream_window_update = 1;

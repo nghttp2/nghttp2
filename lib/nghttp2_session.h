@@ -359,13 +359,16 @@ int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
 
 
 int nghttp2_session_end_request_headers_received(nghttp2_session *session,
-                                                 nghttp2_frame *frame);
+                                                 nghttp2_frame *frame,
+                                                 nghttp2_stream *stream);
 
 int nghttp2_session_end_response_headers_received(nghttp2_session *session,
-                                                  nghttp2_frame *frame);
+                                                  nghttp2_frame *frame,
+                                                  nghttp2_stream *stream);
 
 int nghttp2_session_end_headers_received(nghttp2_session *session,
-                                         nghttp2_frame *frame);
+                                         nghttp2_frame *frame,
+                                         nghttp2_stream *stream);
 
 int nghttp2_session_on_request_headers_received(nghttp2_session *session,
                                                 nghttp2_frame *frame);

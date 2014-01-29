@@ -231,30 +231,11 @@ static int on_header_callback(nghttp2_session *session,
   return 0;
 }
 
-/* nghttp2_on_end_headers_callback: Called when nghttp2 library emits
-   all header name/value pairs, or may be called prematurely because
-   of errors which is indicated by |error_code|. */
-static int on_end_headers_callback(nghttp2_session *session,
-                                   const nghttp2_frame *frame,
-                                   nghttp2_error_code error_code,
-                                   void *user_data)
-{
-  http2_session_data *session_data = (http2_session_data*)user_data;
-  switch(frame->hd.type) {
-  case NGHTTP2_HEADERS:
-    if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
-       session_data->stream_data->stream_id == frame->hd.stream_id) {
-      fprintf(stderr, "All headers received with error_code=%d\n", error_code);
-    }
-    break;
-  }
-  return 0;
-}
-
-/* nghttp2_on_frame_recv_callback: Called when nghttp2 library
-   received a frame from the remote peer. */
-static int on_frame_recv_callback(nghttp2_session *session,
-                                  const nghttp2_frame *frame, void *user_data)
+/* nghttp2_on_begin_headers_callback: Called when nghttp2 library gets
+   started to receive header block. */
+static int on_begin_headers_callback(nghttp2_session *session,
+                                     const nghttp2_frame *frame,
+                                     void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
   switch(frame->hd.type) {
@@ -263,6 +244,23 @@ static int on_frame_recv_callback(nghttp2_session *session,
        session_data->stream_data->stream_id == frame->hd.stream_id) {
       fprintf(stderr, "Response headers for stream ID=%d:\n",
               frame->hd.stream_id);
+    }
+    break;
+  }
+  return 0;
+}
+
+/* nghttp2_on_frame_recv_callback: Called when nghttp2 library
+   received a complete frame from the remote peer. */
+static int on_frame_recv_callback(nghttp2_session *session,
+                                  const nghttp2_frame *frame, void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
+       session_data->stream_data->stream_id == frame->hd.stream_id) {
+      fprintf(stderr, "All headers received\n");
     }
     break;
   }
@@ -361,7 +359,7 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_header_callback = on_header_callback;
-  callbacks.on_end_headers_callback = on_end_headers_callback;
+  callbacks.on_begin_headers_callback = on_begin_headers_callback;
   nghttp2_session_client_new(&session_data->session, &callbacks, session_data);
 }
 

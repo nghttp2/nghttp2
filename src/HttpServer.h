@@ -55,7 +55,6 @@ struct Config {
   std::string private_key_file;
   std::string cert_file;
   void *data_ptr;
-  nghttp2_on_request_recv_callback on_request_recv_callback;
   size_t output_upper_thres;
   ssize_t header_table_size;
   uint16_t port;
@@ -143,9 +142,6 @@ public:
 private:
   const Config *config_;
 };
-
-int htdocs_on_request_recv_callback
-(nghttp2_session *session, int32_t stream_id, void *user_data);
 
 ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,

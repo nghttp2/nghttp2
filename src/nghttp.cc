@@ -1177,30 +1177,6 @@ int on_header_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int on_end_headers_callback(nghttp2_session *session,
-                            const nghttp2_frame *frame,
-                            nghttp2_error_code error_code,
-                            void *user_data)
-{
-  if(error_code != NGHTTP2_NO_ERROR) {
-    return 0;
-  }
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
-    return 0;
-  }
-  auto req = (Request*)nghttp2_session_get_stream_user_data
-    (session, frame->hd.stream_id);
-  if(!req) {
-    // Server-pushed stream does not have stream user data
-    return 0;
-  }
-  check_response_header(session, req);
-  return 0;
-}
-} // namespace
-
-namespace {
 int on_frame_recv_callback2
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
@@ -1212,9 +1188,9 @@ int on_frame_recv_callback2
     // req is nullptr.
     if(req) {
       req->record_response_time();
+      check_response_header(session, req);
     }
-  }
-  if(frame->hd.type == NGHTTP2_SETTINGS &&
+  } else if(frame->hd.type == NGHTTP2_SETTINGS &&
      (frame->hd.flags & NGHTTP2_FLAG_ACK)) {
     auto client = get_session(user_data);
     if(client->settings_timerev) {
@@ -1603,7 +1579,6 @@ int run(char **uris, int n)
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
-  callbacks.on_end_headers_callback = on_end_headers_callback;
 
   std::string prev_scheme;
   std::string prev_host;

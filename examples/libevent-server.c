@@ -325,56 +325,6 @@ static char* percent_decode(const uint8_t *value, size_t valuelen)
   return res;
 }
 
-/* nghttp2_on_header_callback: Called when nghttp2 library emits
-   single header name/value pair. */
-static int on_header_callback(nghttp2_session *session,
-                              const nghttp2_frame *frame,
-                              const uint8_t *name, size_t namelen,
-                              const uint8_t *value, size_t valuelen,
-                              void *user_data)
-{
-  http2_stream_data *stream_data;
-  const char PATH[] = ":path";
-  switch(frame->hd.type) {
-  case NGHTTP2_HEADERS:
-    if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
-      break;
-    }
-    stream_data = nghttp2_session_get_stream_user_data(session,
-                                                       frame->hd.stream_id);
-    if(stream_data->request_path) {
-      break;
-    }
-    if(namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
-      size_t j;
-      for(j = 0; j < valuelen && value[j] != '?'; ++j);
-      stream_data->request_path = percent_decode(value, j);
-    }
-    break;
-  }
-  return 0;
-}
-
-static int on_frame_recv_callback(nghttp2_session *session,
-                                  const nghttp2_frame *frame, void *user_data)
-{
-  http2_session_data *session_data = (http2_session_data*)user_data;
-  http2_stream_data *stream_data;
-  switch(frame->hd.type) {
-  case NGHTTP2_HEADERS:
-    if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
-      break;
-    }
-    stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
-    nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
-                                         stream_data);
-    break;
-  default:
-    break;
-  }
-  return 0;
-}
-
 static ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,
  uint8_t *buf, size_t length, int *eof,
@@ -443,6 +393,53 @@ static int error_reply(nghttp2_session *session,
   return 0;
 }
 
+/* nghttp2_on_header_callback: Called when nghttp2 library emits
+   single header name/value pair. */
+static int on_header_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame,
+                              const uint8_t *name, size_t namelen,
+                              const uint8_t *value, size_t valuelen,
+                              void *user_data)
+{
+  http2_stream_data *stream_data;
+  const char PATH[] = ":path";
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+      break;
+    }
+    stream_data = nghttp2_session_get_stream_user_data(session,
+                                                       frame->hd.stream_id);
+    if(stream_data->request_path) {
+      break;
+    }
+    if(namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
+      size_t j;
+      for(j = 0; j < valuelen && value[j] != '?'; ++j);
+      stream_data->request_path = percent_decode(value, j);
+    }
+    break;
+  }
+  return 0;
+}
+
+static int on_begin_headers_callback(nghttp2_session *session,
+                                     const nghttp2_frame *frame,
+                                     void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  http2_stream_data *stream_data;
+
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
+  nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
+                                       stream_data);
+  return 0;
+}
+
 /* Minimum check for directory traversal. Returns nonzero if it is
    safe. */
 static int check_path(const char *path)
@@ -455,19 +452,16 @@ static int check_path(const char *path)
     !ends_with(path, "/..") && !ends_with(path, "/.");
 }
 
-static int on_request_recv_callback(nghttp2_session *session,
-                                    int32_t stream_id, void *user_data)
+static int on_request_recv(nghttp2_session *session,
+                           http2_session_data *session_data,
+                           http2_stream_data *stream_data)
 {
   int fd;
-  http2_session_data *session_data = (http2_session_data*)user_data;
-  http2_stream_data *stream_data;
   nghttp2_nv hdrs[] = {
     MAKE_NV(":status", "200")
   };
   char *rel_path;
 
-  stream_data = (http2_stream_data*)nghttp2_session_get_stream_user_data
-    (session, stream_id);
   if(!stream_data->request_path) {
     if(error_reply(session, stream_data) != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -492,9 +486,36 @@ static int on_request_recv_callback(nghttp2_session *session,
   }
   stream_data->fd = fd;
 
-  if(send_response(session, stream_id, hdrs, ARRLEN(hdrs), fd) != 0) {
+  if(send_response(session, stream_data->stream_id, hdrs,
+                   ARRLEN(hdrs), fd) != 0) {
     close(fd);
     return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+  return 0;
+}
+
+static int on_frame_recv_callback(nghttp2_session *session,
+                                  const nghttp2_frame *frame, void *user_data)
+{
+  http2_session_data *session_data = (http2_session_data*)user_data;
+  http2_stream_data *stream_data;
+  switch(frame->hd.type) {
+  case NGHTTP2_DATA:
+  case NGHTTP2_HEADERS:
+    /* Check that the client request has finished */
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      stream_data = nghttp2_session_get_stream_user_data(session,
+                                                         frame->hd.stream_id);
+      /* For DATA and HEADERS frame, this callback may be called after
+         on_stream_close_callback. Check that stream still alive. */
+      if(!stream_data) {
+        return 0;
+      }
+      return on_request_recv(session, session_data, stream_data);
+    }
+    break;
+  default:
+    break;
   }
   return 0;
 }
@@ -519,9 +540,9 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
 
   callbacks.send_callback = send_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
-  callbacks.on_request_recv_callback = on_request_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_header_callback = on_header_callback;
+  callbacks.on_begin_headers_callback = on_begin_headers_callback;
   nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
 }
 

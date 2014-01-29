@@ -833,20 +833,44 @@ int on_header_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int on_end_headers_callback(nghttp2_session *session,
-                            const nghttp2_frame *frame,
-                            nghttp2_error_code error_code,
-                            void *user_data)
+int on_begin_headers_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame,
+                              void *user_data)
 {
-  if(error_code != NGHTTP2_NO_ERROR) {
-    return 0;
-  }
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
-    return 0;
-  }
-  int rv;
   auto http2session = static_cast<Http2Session*>(user_data);
+  if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+    // server sends request HEADERS
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_REFUSED_STREAM);
+    return 0;
+  }
+  if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
+    return 0;
+  }
+  auto sd = static_cast<StreamData*>
+    (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if(!sd || !sd->dconn) {
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_INTERNAL_ERROR);
+    return 0;
+  }
+  auto downstream = sd->dconn->get_downstream();
+  if(!downstream ||
+     downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_INTERNAL_ERROR);
+    return 0;
+  }
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_response_headers(Http2Session *http2session,
+                        nghttp2_session *session,
+                        const nghttp2_frame *frame)
+{
+  int rv;
   auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
   if(!sd || !sd->dconn) {
@@ -952,32 +976,8 @@ int on_frame_recv_callback
 {
   auto http2session = static_cast<Http2Session*>(user_data);
   switch(frame->hd.type) {
-  case NGHTTP2_HEADERS: {
-    if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-      // server sends request HEADERS
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_REFUSED_STREAM);
-      break;
-    }
-    if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
-      break;
-    }
-    auto sd = static_cast<StreamData*>
-      (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
-    if(!sd || !sd->dconn) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_INTERNAL_ERROR);
-      break;
-    }
-    auto downstream = sd->dconn->get_downstream();
-    if(!downstream ||
-       downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_INTERNAL_ERROR);
-      break;
-    }
-    break;
-  }
+  case NGHTTP2_HEADERS:
+    return on_response_headers(http2session, session, frame);
   case NGHTTP2_RST_STREAM: {
     auto sd = static_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
@@ -1192,7 +1192,7 @@ int Http2Session::on_connect()
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   callbacks.on_header_callback = on_header_callback;
-  callbacks.on_end_headers_callback = on_end_headers_callback;
+  callbacks.on_begin_headers_callback = on_begin_headers_callback;
 
   nghttp2_opt_set opt_set;
   opt_set.no_auto_stream_window_update = 1;

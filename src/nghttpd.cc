@@ -236,7 +236,6 @@ int main(int argc, char **argv)
   SSL_load_error_strings();
   SSL_library_init();
   reset_timer();
-  config.on_request_recv_callback = htdocs_on_request_recv_callback;
 
   HttpServer server(&config);
   server.run();

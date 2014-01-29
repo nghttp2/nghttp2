@@ -1851,6 +1851,22 @@ static int nghttp2_session_call_on_frame_received
   return 0;
 }
 
+static int session_call_on_begin_headers(nghttp2_session *session,
+                                         nghttp2_frame *frame)
+{
+  int rv;
+  DEBUGF(fprintf(stderr, "Call on_begin_headers callback stream_id=%d\n",
+                 frame->hd.stream_id));
+  if(session->callbacks.on_begin_headers_callback) {
+    rv = session->callbacks.on_begin_headers_callback(session, frame,
+                                                      session->user_data);
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+  return 0;
+}
+
 static int session_call_on_header(nghttp2_session *session,
                                   const nghttp2_frame *frame,
                                   const nghttp2_nv *nv)
@@ -1865,22 +1881,6 @@ static int session_call_on_header(nghttp2_session *session,
        rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
       return rv;
     }
-    if(rv != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
-  }
-  return 0;
-}
-
-static int session_call_on_end_headers
-(nghttp2_session *session, nghttp2_frame *frame, nghttp2_error_code error_code)
-{
-  int rv;
-  DEBUGF(fprintf(stderr, "Call on_end_headers callback stream_id=%d\n",
-                 frame->hd.stream_id));
-  if(session->callbacks.on_end_headers_callback) {
-    rv = session->callbacks.on_end_headers_callback(session, frame, error_code,
-                                                    session->user_data);
     if(rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -1931,12 +1931,12 @@ static int nghttp2_session_validate_request_headers(nghttp2_session *session,
  * bytes. If this function returns NGHTTP2_ERR_PAUSE, the caller must
  * call this function again, until it returns 0 or one of negative
  * error code.  If |call_header_cb| is zero, the on_header_callback
- * and on_end_headers_callback are not invoked and the function never
- * return NGHTTP2_ERR_PAUSE. If the given |in| is the last chunk of
- * header block, the |final| must be nonzero. If header block is
- * successfully processed (which is indicated by the return value 0,
- * NGHTTP2_ERR_PAUSE or NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE), the
- * number of processed input bytes is assigned to the |*readlen_ptr|.
+ * are not invoked and the function never return NGHTTP2_ERR_PAUSE. If
+ * the given |in| is the last chunk of header block, the |final| must
+ * be nonzero. If header block is successfully processed (which is
+ * indicated by the return value 0, NGHTTP2_ERR_PAUSE or
+ * NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE), the number of processed
+ * input bytes is assigned to the |*readlen_ptr|.
  *
  * This function return 0 if it succeeds, or one of the negative error
  * codes:
@@ -1973,13 +1973,6 @@ static ssize_t inflate_header_block(nghttp2_session *session,
       return rv;
     }
     if(rv < 0) {
-      if(call_header_cb) {
-        rv = session_call_on_end_headers(session, frame,
-                                         NGHTTP2_COMPRESSION_ERROR);
-        if(rv != 0) {
-          return rv;
-        }
-      }
       rv = nghttp2_session_terminate_session(session,
                                              NGHTTP2_COMPRESSION_ERROR);
       if(rv != 0) {
@@ -2000,14 +1993,9 @@ static ssize_t inflate_header_block(nghttp2_session *session,
     }
     if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
       nghttp2_hd_inflate_end_headers(&session->hd_inflater);
-      if(call_header_cb) {
-        rv = session_call_on_end_headers(session, frame, NGHTTP2_NO_ERROR);
-        if(rv != 0) {
-          return rv;
-        }
-      }
       break;
-    } else if((inflate_flags & NGHTTP2_HD_INFLATE_EMIT) == 0 && inlen == 0) {
+    }
+    if((inflate_flags & NGHTTP2_HD_INFLATE_EMIT) == 0 && inlen == 0) {
       break;
     }
   }
@@ -2107,15 +2095,11 @@ static int nghttp2_session_inflate_handle_invalid_connection
  *     Out of memory.
  */
 int nghttp2_session_end_request_headers_received(nghttp2_session *session,
-                                                 nghttp2_frame *frame)
+                                                 nghttp2_frame *frame,
+                                                 nghttp2_stream *stream)
 {
   int rv;
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    nghttp2_stream *stream;
-    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    if(!stream) {
-      return 0;
-    }
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
     if(rv != 0) {
@@ -2140,17 +2124,13 @@ int nghttp2_session_end_request_headers_received(nghttp2_session *session,
  *     Out of memory.
  */
 int nghttp2_session_end_response_headers_received(nghttp2_session *session,
-                                                  nghttp2_frame *frame)
+                                                  nghttp2_frame *frame,
+                                                  nghttp2_stream *stream)
 {
   int rv;
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     /* This is the last frame of this stream, so disallow
        further receptions. */
-    nghttp2_stream *stream;
-    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    if(!stream) {
-      return 0;
-    }
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
     if(nghttp2_is_fatal(rv)) {
@@ -2174,21 +2154,17 @@ int nghttp2_session_end_response_headers_received(nghttp2_session *session,
  *     Out of memory.
  */
 int nghttp2_session_end_headers_received(nghttp2_session *session,
-                                         nghttp2_frame *frame)
+                                         nghttp2_frame *frame,
+                                         nghttp2_stream *stream)
 {
   int rv;
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    nghttp2_stream *stream;
     if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
       rv = nghttp2_session_call_on_request_recv(session,
                                                 frame->hd.stream_id);
       if(rv != 0) {
         return rv;
       }
-    }
-    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    if(!stream) {
-      return 0;
     }
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
@@ -2199,17 +2175,35 @@ int nghttp2_session_end_headers_received(nghttp2_session *session,
   return 0;
 }
 
-static int session_post_process_headers_frame(nghttp2_session *session)
+static int session_after_header_block_received(nghttp2_session *session)
 {
+  int rv;
   nghttp2_frame *frame = &session->iframe.frame;
+  nghttp2_stream *stream;
+
+  /* We call on_frame_recv_callback regardless of the existence of
+     stream */
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+  if(frame->hd.type !=  NGHTTP2_HEADERS) {
+    return 0;
+  }
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  if(!stream) {
+    return 0;
+  }
   switch(frame->headers.cat) {
   case NGHTTP2_HCAT_REQUEST:
-    return nghttp2_session_end_request_headers_received(session, frame);
+    return nghttp2_session_end_request_headers_received
+      (session, frame, stream);
   case NGHTTP2_HCAT_RESPONSE:
   case NGHTTP2_HCAT_PUSH_RESPONSE:
-    return nghttp2_session_end_response_headers_received(session, frame);
+    return nghttp2_session_end_response_headers_received
+      (session, frame, stream);
   case NGHTTP2_HCAT_HEADERS:
-    return nghttp2_session_end_headers_received(session, frame);
+    return nghttp2_session_end_headers_received(session, frame, stream);
   default:
     assert(0);
   }
@@ -2256,7 +2250,7 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
     return NGHTTP2_ERR_NOMEM;
   }
   session->last_proc_stream_id = session->last_recv_stream_id;
-  rv = nghttp2_session_call_on_frame_received(session, frame);
+  rv = session_call_on_begin_headers(session, frame);
   if(rv != 0) {
     return rv;
   }
@@ -2287,7 +2281,7 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
       (session, frame, NGHTTP2_STREAM_CLOSED);
   }
   stream->state = NGHTTP2_STREAM_OPENED;
-  rv = nghttp2_session_call_on_frame_received(session, frame);
+  rv = session_call_on_begin_headers(session, frame);
   if(rv != 0) {
     return rv;
   }
@@ -2314,7 +2308,7 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
   }
   nghttp2_stream_promise_fulfilled(stream);
   ++session->num_incoming_streams;
-  rv = nghttp2_session_call_on_frame_received(session, frame);
+  rv = session_call_on_begin_headers(session, frame);
   if(rv != 0) {
     return rv;
   }
@@ -2350,7 +2344,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
   }
   if(nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
     if(stream->state == NGHTTP2_STREAM_OPENED) {
-      r = nghttp2_session_call_on_frame_received(session, frame);
+      r = session_call_on_begin_headers(session, frame);
       if(r != 0) {
         return r;
       }
@@ -2370,7 +2364,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
      NGHTTP2_STREAM_CLOSING, we discard the frame. This is a race
      condition. */
   if(stream->state != NGHTTP2_STREAM_CLOSING) {
-    r = nghttp2_session_call_on_frame_received(session, frame);
+    r = session_call_on_begin_headers(session, frame);
     if(r != 0) {
       return r;
     }
@@ -2945,7 +2939,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
     return NGHTTP2_ERR_NOMEM;
   }
   session->last_proc_stream_id = session->last_recv_stream_id;
-  rv = nghttp2_session_call_on_frame_received(session, frame);
+  rv = session_call_on_begin_headers(session, frame);
   if(rv != 0) {
     return rv;
   }
@@ -3650,8 +3644,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
       if(rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
         /* The application says no more headers. We decompress the
-           rest of the header block but not invoke
-           on_header_callback and on_end_headers_callback. */
+           rest of the header block but not invoke on_header_callback
+           and on_frame_recv_callback. */
         rv = nghttp2_session_add_rst_stream(session,
                                             iframe->frame.hd.stream_id,
                                             NGHTTP2_INTERNAL_ERROR);
@@ -3674,7 +3668,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
       if(iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
-        rv = session_post_process_headers_frame(session);
+        rv = session_after_header_block_received(session);
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
@@ -3782,13 +3776,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                        cont_hd.stream_id, cont_hd.type));
         rv = nghttp2_session_terminate_session(session,
                                                NGHTTP2_PROTOCOL_ERROR);
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
-        rv = session_call_on_end_headers(session, &iframe->frame,
-                                         NGHTTP2_PROTOCOL_ERROR);
-
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }

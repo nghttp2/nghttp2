@@ -916,10 +916,6 @@ typedef int (*nghttp2_on_frame_recv_callback)
  * member of their data structure are always ``NULL`` and 0
  * respectively.
  *
- * If this callback is called, :type:`nghttp2_on_header_callback` and
- * :type:`nghttp2_on_end_headers_callback` will not be called for this
- * frame.
- *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
@@ -1079,13 +1075,39 @@ typedef int (*nghttp2_on_unknown_frame_recv_callback)
 /**
  * @functypedef
  *
+ * Callback function invoked when the reception of header block in
+ * HEADERS or PUSH_PROMISE is started. Each header name/value pair
+ * will be emitted by :type:`nghttp2_on_header_callback`.
+ *
+ * The |frame->hd.flags| may not have :enum:`NGHTTP2_FLAG_END_HEADERS`
+ * flag set, which indicates that one or more CONTINUATION frames are
+ * involved. But the application does not need to care about that
+ * because the header name/value pairs are emitted transparently
+ * regardless of CONTINUATION frames.
+ *
+ * The implementation of this function must return 0 if it succeeds or
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. If nonzero value other than
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned, it is treated as
+ * if :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned. If
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
+ * `nghttp2_session_mem_recv()` function will immediately return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef int (*nghttp2_on_begin_headers_callback)
+(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
+
+/**
+ * @functypedef
+ *
  * Callback function invoked when a header name/value pair is received
  * for the |frame|. When this callback is invoked, ``frame->hd.type``
  * is either :enum:`NGHTTP2_HEADERS` or :enum:`NGHTTP2_PUSH_PROMISE`.
  * After all header name/value pairs are processed with this callback,
- * or header decompression error occurred, then
- * :type:`nghttp2_on_end_headers_callback` will be invoked unless
- * application returns nonzero value from this callback.
+ * and no error has been detected,
+ * :type:`nghttp2_on_frame_recv_callback` will be invoked.  If there
+ * is an error in decompression,
+ * :type:`nghttp2_on_frame_recv_callback` for the |frame| will not be
+ * invoked.
  *
  * The |name| may be ``NULL`` if the |namelen| is 0. The same thing
  * can be said about the |value|.
@@ -1102,7 +1124,7 @@ typedef int (*nghttp2_on_unknown_frame_recv_callback)
  * Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close
  * the stream by issuing RST_STREAM with
  * :enum:`NGHTTP2_INTERNAL_ERROR`. In this case,
- * :type:`nghttp2_on_end_headers_callback` will not be invoked.
+ * :type:`nghttp2_on_frame_recv_callback` will not be invoked.
  *
  * The implementation of this function must return 0 if it
  * succeeds. It may return :enum:`NGHTTP2_ERR_PAUSE` or
@@ -1119,32 +1141,6 @@ typedef int (*nghttp2_on_header_callback)
  const nghttp2_frame *frame,
  const uint8_t *name, size_t namelen,
  const uint8_t *value, size_t valuelen,
- void *user_data);
-
-/**
- * @functypedef
- *
- * Callback function invoked when all header name/value pairs are
- * processed or after the header decompression error is detected. If
- * the |error_code| is :enum:`NGHTTP2_NO_ERROR`, it indicates the
- * header decompression succeeded. Otherwise, error prevented the
- * completion of the header decompression. In this case, the library
- * will handle the error by either transmitting RST_STREAM or GOAWAY
- * and terminate session.
- *
- * If the |error_code| is not :enum:`NGHTTP2_NO_ERROR`, then
- * :type:`nghttp2_on_request_recv_callback` will not called for this
- * frame if the |frame| is HEADERS.
- *
- * The implementation of this function must return 0 if it
- * succeeds. If nonzero value is returned, it is treated as fatal
- * error and `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
- * functions immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
- */
-typedef int (*nghttp2_on_end_headers_callback)
-(nghttp2_session *session,
- const nghttp2_frame *frame,
- nghttp2_error_code error_code,
  void *user_data);
 
 /**
@@ -1206,15 +1202,15 @@ typedef struct {
    */
   nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback;
   /**
+   * Callback function invoked when the reception of header block in
+   * HEADERS or PUSH_PROMISE is started.
+   */
+  nghttp2_on_begin_headers_callback on_begin_headers_callback;
+  /**
    * Callback function invoked when a header name/value pair is
    * received.
    */
   nghttp2_on_header_callback on_header_callback;
-  /**
-   * Callback function invoked when all header name/value pairs are
-   * processed.
-   */
-  nghttp2_on_end_headers_callback on_end_headers_callback;
 } nghttp2_session_callbacks;
 
 /**
@@ -1462,14 +1458,19 @@ int nghttp2_session_send(nghttp2_session *session);
  *
  *    1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
  *       one or more times to receive whole frame.
- *    2. If the received frame is valid,
- *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
- *       invoked. If frame is either HEADERS or PUSH_PROMISE,
+ *
+ *    2. If the received frame is valid, then following actions are
+ *       taken. If the frame is either HEADERS or PUSH_PROMISE,
+ *       :member:`nghttp2_session_callbacks.on_begin_headers_callback`
+ *       is invoked. Then
  *       :member:`nghttp2_session_callbacks.on_header_callback` is
  *       invoked for each header name/value pair. After all name/value
- *       pairs are emitted (or decompression failed),
- *       :member:`nghttp2_session_callbacks.on_end_headers_callback`
- *       is invoked. If the frame is the final frame of the request,
+ *       pairs are emitted successfully,
+ *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
+ *       invoked.  For other frames,
+ *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
+ *       invoked.
+ *       If the frame is the final frame of the request,
  *       :member:`nghttp2_session_callbacks.on_request_recv_callback`
  *       is invoked.  If the reception of the frame triggers the
  *       closure of the stream,
