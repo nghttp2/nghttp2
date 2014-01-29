@@ -3154,16 +3154,19 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
   int rv = 0;
   nghttp2_stream *stream;
 
+  /* We call on_frame_recv_callback even if stream has been closed
+     already */
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
     /* This should be treated as stream error, but it results in lots
        of RST_STREAM. So just ignore frame against nonexistent stream
        for now. */
     return 0;
-  }
-  rv = nghttp2_session_call_on_frame_received(session, frame);
-  if(nghttp2_is_fatal(rv)) {
-    return rv;
   }
   if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
