@@ -893,6 +893,12 @@ typedef ssize_t (*nghttp2_recv_callback)
  * respectively. The header name/value pairs are emitted via
  * :type:`nghttp2_on_header_callback`.
  *
+ * For HEADERS, PUSH_PROMISE and DATA frames, this callback may be
+ * called after stream is closed (see
+ * :type:`nghttp2_on_stream_close_callback`). The application should
+ * check that stream is still alive using its own stream management or
+ * :func:`nghttp2_session_get_stream_user_data()`.
+ *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero value is returned, it is treated as fatal
  * error and `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
@@ -1079,11 +1085,11 @@ typedef int (*nghttp2_on_unknown_frame_recv_callback)
  * HEADERS or PUSH_PROMISE is started. Each header name/value pair
  * will be emitted by :type:`nghttp2_on_header_callback`.
  *
- * The |frame->hd.flags| may not have :enum:`NGHTTP2_FLAG_END_HEADERS`
- * flag set, which indicates that one or more CONTINUATION frames are
- * involved. But the application does not need to care about that
- * because the header name/value pairs are emitted transparently
- * regardless of CONTINUATION frames.
+ * The ``frame->hd.flags`` may not have
+ * :enum:`NGHTTP2_FLAG_END_HEADERS` flag set, which indicates that one
+ * or more CONTINUATION frames are involved. But the application does
+ * not need to care about that because the header name/value pairs are
+ * emitted transparently regardless of CONTINUATION frames.
  *
  * The implementation of this function must return 0 if it succeeds or
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. If nonzero value other than
