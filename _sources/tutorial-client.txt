@@ -164,7 +164,7 @@ finished successfully. We first initialize nghttp2 session object in
       callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
       callbacks.on_stream_close_callback = on_stream_close_callback;
       callbacks.on_header_callback = on_header_callback;
-      callbacks.on_end_headers_callback = on_end_headers_callback;
+      callbacks.on_begin_headers_callback = on_begin_headers_callback;
       nghttp2_session_client_new(&session_data->session, &callbacks, session_data);
     }
 
@@ -386,30 +386,6 @@ multiple streams, and *stream_user_data* is very handy to identify
 which HEADERS we are seeing in the callback. Therefore we just show
 how to use it here.
 
-The ``on_frame_recv_callback()`` function is invoked when a frame is
-received from the remote peer::
-
-    static int on_frame_recv_callback(nghttp2_session *session,
-                                      const nghttp2_frame *frame, void *user_data)
-    {
-      http2_session_data *session_data = (http2_session_data*)user_data;
-      switch(frame->hd.type) {
-      case NGHTTP2_HEADERS:
-        if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
-           session_data->stream_data->stream_id == frame->hd.stream_id) {
-          fprintf(stderr, "Response headers for stream ID=%d:\n",
-                  frame->hd.stream_id);
-        }
-        break;
-      }
-      return 0;
-    }
-
-In this tutorial, we are just interested in the HTTP response
-HEADERS. We check te frame type and its category (it should be
-:macro:`NGHTTP2_HCAT_RESPONSE` for HTTP response HEADERS). Also check
-its stream ID.
-
 Each request header name/value pair is emitted via
 ``on_header_callback`` function::
 
@@ -435,27 +411,27 @@ Each request header name/value pair is emitted via
 In this turotial, we just print the name/value pair.
 
 After all name/value pairs are emitted for a frame,
-``on_end_headers_callback`` function is called::
+``on_frame_recv_callback`` function is called::
 
-    static int on_end_headers_callback(nghttp2_session *session,
-                                       const nghttp2_frame *frame,
-                                       nghttp2_error_code error_code,
-                                       void *user_data)
+    static int on_frame_recv_callback(nghttp2_session *session,
+                                      const nghttp2_frame *frame, void *user_data)
     {
       http2_session_data *session_data = (http2_session_data*)user_data;
       switch(frame->hd.type) {
       case NGHTTP2_HEADERS:
         if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
            session_data->stream_data->stream_id == frame->hd.stream_id) {
-          fprintf(stderr, "All headers received with error_code=%d\n", error_code);
+          fprintf(stderr, "All headers received\n");
         }
         break;
       }
       return 0;
     }
 
-This callback may be called prematurely because of errors (e.g.,
-header decompression failure) which is indicated by ``error_code``.
+In this tutorial, we are just interested in the HTTP response
+HEADERS. We check te frame type and its category (it should be
+:macro:`NGHTTP2_HCAT_RESPONSE` for HTTP response HEADERS). Also check
+its stream ID.
 
 The ``on_data_chunk_recv_callback()`` function is invoked when a chunk
 of data is received from the remote peer::

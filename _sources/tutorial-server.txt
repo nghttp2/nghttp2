@@ -241,9 +241,9 @@ We initialize nghttp2 session object which is done in
 
       callbacks.send_callback = send_callback;
       callbacks.on_frame_recv_callback = on_frame_recv_callback;
-      callbacks.on_request_recv_callback = on_request_recv_callback;
       callbacks.on_stream_close_callback = on_stream_close_callback;
       callbacks.on_header_callback = on_header_callback;
+      callbacks.on_begin_headers_callback = on_begin_headers_callback;
       nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
     }
 
@@ -414,26 +414,23 @@ We have already described about nghttp2 callback ``send_callback()``.
 Let's describe remaining nghttp2 callbacks we setup in
 ``initialize_nghttp2_setup()`` function.
 
-The ``on_frame_recv_callback()`` function is invoked when a frame is
-received from the remote peer::
+The ``on_begin_headers_callback()`` function is invoked when reception
+of header block in HEADERS or PUSH_PROMISE frame is started::
 
-    static int on_frame_recv_callback(nghttp2_session *session,
-                                      const nghttp2_frame *frame, void *user_data)
+    static int on_begin_headers_callback(nghttp2_session *session,
+                                         const nghttp2_frame *frame,
+                                         void *user_data)
     {
       http2_session_data *session_data = (http2_session_data*)user_data;
       http2_stream_data *stream_data;
-      switch(frame->hd.type) {
-      case NGHTTP2_HEADERS:
-        if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
-          break;
-        }
-        stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
-        nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
-                                             stream_data);
-        break;
-      default:
-        break;
+
+      if(frame->hd.type != NGHTTP2_HEADERS ||
+         frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+        return 0;
       }
+      stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
+      nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
+                                           stream_data);
       return 0;
     }
 
@@ -448,7 +445,7 @@ order to get the object without searching through doubly linked list.
 In this example server, we want to serve files relative to the current
 working directory the program was invoked. Each header name/value pair
 is emitted via ``on_header_callback`` function, which is called after
-``on_frame_recv_callback()``::
+``on_begin_headers_callback()``::
 
     static int on_header_callback(nghttp2_session *session,
                                   const nghttp2_frame *frame,
@@ -483,60 +480,37 @@ requested path in ``http2_stream_data`` object. In this example
 program, we ignore ``:method`` header field and always treat the
 request as GET request.
 
-It is ok for the server to start sending response in this callback (or
-in `nghttp2_on_end_headers_callback()`, which is not used in this
-tutorial). In this example, we defer it to
-``on_request_recv_callback()`` function.
+The ``on_frame_recv_callback()`` function is invoked when a frame is
+fully received::
 
-The ``on_request_recv_callback()`` function is invoked when all HTTP
-request, including entity body, was received::
-
-    static int on_request_recv_callback(nghttp2_session *session,
-                                        int32_t stream_id, void *user_data)
+    static int on_frame_recv_callback(nghttp2_session *session,
+                                      const nghttp2_frame *frame, void *user_data)
     {
-      int fd;
       http2_session_data *session_data = (http2_session_data*)user_data;
       http2_stream_data *stream_data;
-      nghttp2_nv hdrs[] = {
-        MAKE_NV(":status", "200")
-      };
-      char *rel_path;
-
-      stream_data = (http2_stream_data*)nghttp2_session_get_stream_user_data
-        (session, stream_id);
-      if(!stream_data->request_path) {
-        if(error_reply(session, stream_data) != 0) {
-          return NGHTTP2_ERR_CALLBACK_FAILURE;
+      switch(frame->hd.type) {
+      case NGHTTP2_DATA:
+      case NGHTTP2_HEADERS:
+        /* Check that the client request has finished */
+        if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+          stream_data = nghttp2_session_get_stream_user_data(session,
+                                                             frame->hd.stream_id);
+          /* For DATA and HEADERS frame, this callback may be called after
+             on_stream_close_callback. Check that stream still alive. */
+          if(!stream_data) {
+            return 0;
+          }
+          return on_request_recv(session, session_data, stream_data);
         }
-        return 0;
-      }
-      fprintf(stderr, "%s GET %s\n", session_data->client_addr,
-              stream_data->request_path);
-      if(!check_path(stream_data->request_path)) {
-        if(error_reply(session, stream_data) != 0) {
-          return NGHTTP2_ERR_CALLBACK_FAILURE;
-        }
-        return 0;
-      }
-      for(rel_path = stream_data->request_path; *rel_path == '/'; ++rel_path);
-      fd = open(rel_path, O_RDONLY);
-      if(fd == -1) {
-        if(error_reply(session, stream_data) != 0) {
-          return NGHTTP2_ERR_CALLBACK_FAILURE;
-        }
-        return 0;
-      }
-      stream_data->fd = fd;
-
-      if(send_response(session, stream_id, hdrs, ARRLEN(hdrs), fd) != 0) {
-        close(fd);
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
+        break;
+      default:
+        break;
       }
       return 0;
     }
 
 First we retrieve ``http2_stream_data`` object associated to the
-stream in ``on_frame_recv_callback()``. It is done using
+stream in ``on_begin_headers_callback()``. It is done using
 `nghttp2_session_get_stream_user_data()`. If the requested path cannot
 be served for some reasons (e.g., file is not found), we send 404
 response, which is done in ``error_reply()``.  Otherwise, we open
