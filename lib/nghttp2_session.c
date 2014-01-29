@@ -1825,18 +1825,6 @@ static ssize_t nghttp2_recv(nghttp2_session *session, uint8_t *buf, size_t len)
   return r;
 }
 
-static int nghttp2_session_call_on_request_recv
-(nghttp2_session *session, int32_t stream_id)
-{
-  if(session->callbacks.on_request_recv_callback) {
-    if(session->callbacks.on_request_recv_callback(session, stream_id,
-                                                   session->user_data) != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
-  }
-  return 0;
-}
-
 static int nghttp2_session_call_on_frame_received
 (nghttp2_session *session, nghttp2_frame *frame)
 {
@@ -2098,13 +2086,8 @@ int nghttp2_session_end_request_headers_received(nghttp2_session *session,
                                                  nghttp2_frame *frame,
                                                  nghttp2_stream *stream)
 {
-  int rv;
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-    rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
-    if(rv != 0) {
-      return rv;
-    }
   }
   /* Here we assume that stream is not shutdown in NGHTTP2_SHUT_WR */
   return 0;
@@ -2160,11 +2143,6 @@ int nghttp2_session_end_headers_received(nghttp2_session *session,
   int rv;
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-      rv = nghttp2_session_call_on_request_recv(session,
-                                                frame->hd.stream_id);
-      if(rv != 0) {
-        return rv;
-      }
     }
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
@@ -3167,14 +3145,6 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
        of RST_STREAM. So just ignore frame against nonexistent stream
        for now. */
     return 0;
-  }
-  if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      rv = nghttp2_session_call_on_request_recv(session, frame->hd.stream_id);
-      if(rv != 0) {
-        return rv;
-      }
-    }
   }
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);

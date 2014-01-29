@@ -899,6 +899,10 @@ typedef ssize_t (*nghttp2_recv_callback)
  * check that stream is still alive using its own stream management or
  * :func:`nghttp2_session_get_stream_user_data()`.
  *
+ * Only HEADERS and DATA frame can signal the end of incoming data. If
+ * ``frame->hd.flags & NGHTTP2_FLAG_END_STREAM`` is nonzero, the
+ * |frame| is the last frame from the remote peer in this stream.
+ *
  * The implementation of this function must return 0 if it
  * succeeds. If nonzero value is returned, it is treated as fatal
  * error and `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
@@ -1034,24 +1038,6 @@ typedef int (*nghttp2_on_frame_not_send_callback)
 typedef int (*nghttp2_on_stream_close_callback)
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data);
-
-/**
- * @functypedef
- *
- * Callback function invoked when the request from the remote peer is
- * received.  In other words, the frame with END_STREAM flag set is
- * received.  In HTTP, this means HTTP request, including request
- * body, is fully received. The |user_data| pointer is the third
- * argument passed in to the call to `nghttp2_session_client_new()` or
- * `nghttp2_session_server_new()`.
- *
- * The implementation of this function must return 0 if it
- * succeeds. If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
- * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
- */
-typedef int (*nghttp2_on_request_recv_callback)
-(nghttp2_session *session, int32_t stream_id, void *user_data);
 
 /**
  * @functypedef
@@ -1197,11 +1183,6 @@ typedef struct {
    * Callback function invoked when the stream is closed.
    */
   nghttp2_on_stream_close_callback on_stream_close_callback;
-  /**
-   * Callback function invoked when request from the remote peer is
-   * received.
-   */
-  nghttp2_on_request_recv_callback on_request_recv_callback;
   /**
    * Callback function invoked when the received frame type is
    * unknown.
@@ -1453,9 +1434,7 @@ int nghttp2_session_send(nghttp2_session *session);
  *       is invoked.
  *    2. If one DATA frame is completely received,
  *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
- *       invoked.  If the frame is the final frame of the request,
- *       :member:`nghttp2_session_callbacks.on_request_recv_callback`
- *       is invoked.  If the reception of the frame triggers the
+ *       invoked. If the reception of the frame triggers the
  *       closure of the stream,
  *       :member:`nghttp2_session_callbacks.on_stream_close_callback`
  *       is invoked.
@@ -1476,10 +1455,8 @@ int nghttp2_session_send(nghttp2_session *session);
  *       invoked.  For other frames,
  *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
  *       invoked.
- *       If the frame is the final frame of the request,
- *       :member:`nghttp2_session_callbacks.on_request_recv_callback`
- *       is invoked.  If the reception of the frame triggers the
- *       closure of the stream,
+ *       If the reception of the frame triggers the closure of the
+ *       stream,
  *       :member:`nghttp2_session_callbacks.on_stream_close_callback`
  *       is invoked.
  *    3. If the received frame is unpacked but is interpreted as

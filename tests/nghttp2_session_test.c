@@ -235,15 +235,6 @@ static ssize_t fail_data_source_read_callback
   return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
-static int on_request_recv_callback(nghttp2_session *session,
-                                    int32_t stream_id,
-                                    void *user_data)
-{
-  my_user_data *ud = (my_user_data*)user_data;
-  ud->stream_id = stream_id;
-  return 0;
-}
-
 /* static void no_stream_user_data_stream_close_callback */
 /* (nghttp2_session *session, */
 /*  int32_t stream_id, */
@@ -3633,55 +3624,6 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   /* Sending data will fail (hard fail) and session tear down */
   CU_ASSERT(NGHTTP2_ERR_CALLBACK_FAILURE == nghttp2_session_send(session));
 
-  nghttp2_session_del(session);
-}
-
-void test_nghttp2_session_on_request_recv_callback(void)
-{
-  nghttp2_session *session;
-  nghttp2_session_callbacks callbacks;
-  my_user_data user_data;
-  nghttp2_frame frame;
-  nghttp2_stream *stream;
-
-  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.on_request_recv_callback = on_request_recv_callback;
-
-  nghttp2_session_server_new(&session, &callbacks, &user_data);
-  nghttp2_frame_headers_init(&frame.headers,
-                             NGHTTP2_FLAG_END_HEADERS |
-                             NGHTTP2_FLAG_END_STREAM,
-                             3, NGHTTP2_PRI_DEFAULT, NULL, 0);
-
-  /* nghttp2_session_end_* does not open stream, so we do it here */
-  stream = nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
-                                       NGHTTP2_PRI_DEFAULT,
-                                       NGHTTP2_STREAM_OPENING, NULL);
-
-  user_data.stream_id = 0;
-  CU_ASSERT(0 == nghttp2_session_end_request_headers_received
-            (session, &frame, stream));
-  CU_ASSERT(3 == user_data.stream_id);
-
-  nghttp2_frame_headers_free(&frame.headers);
-
-  user_data.stream_id = 0;
-
-  stream = nghttp2_session_open_stream(session, 5, NGHTTP2_STREAM_FLAG_NONE,
-                                       NGHTTP2_PRI_DEFAULT,
-                                       NGHTTP2_STREAM_OPENING, NULL);
-  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
-                             5, NGHTTP2_PRI_DEFAULT, NULL, 0);
-
-  CU_ASSERT(0 == nghttp2_session_end_headers_received(session, &frame, stream));
-  CU_ASSERT(0 == user_data.stream_id);
-
-  frame.headers.hd.flags |= NGHTTP2_FLAG_END_STREAM;
-
-  CU_ASSERT(0 == nghttp2_session_end_headers_received(session, &frame, stream));
-  CU_ASSERT(5 == user_data.stream_id);
-
-  nghttp2_frame_headers_free(&frame.headers);
   nghttp2_session_del(session);
 }
 

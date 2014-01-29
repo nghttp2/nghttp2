@@ -83,7 +83,6 @@ void test_nghttp2_session_flow_control_disable_remote(void);
 void test_nghttp2_session_flow_control_disable_local(void);
 void test_nghttp2_session_flow_control_data_recv(void);
 void test_nghttp2_session_data_read_temporal_failure(void);
-void test_nghttp2_session_on_request_recv_callback(void);
 void test_nghttp2_session_on_stream_close(void);
 void test_nghttp2_session_on_ctrl_not_send(void);
 void test_nghttp2_session_get_outbound_queue_size(void);
