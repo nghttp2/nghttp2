@@ -3446,6 +3446,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           return rv;
         }
         busy = 1;
+        if(rv == NGHTTP2_ERR_IGN_HEADER_BLOCK) {
+          iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
+          break;
+        }
         iframe->state = NGHTTP2_IB_READ_HEADER_BLOCK;
         break;
       case NGHTTP2_PRIORITY:
