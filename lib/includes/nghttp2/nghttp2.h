@@ -1104,6 +1104,20 @@ typedef int (*nghttp2_on_begin_headers_callback)
  * The |name| may be ``NULL`` if the |namelen| is 0. The same thing
  * can be said about the |value|.
  *
+ * Please note that nghttp2 library does not perform any validity
+ * check against the |name| and the |value|. For example, the
+ * |namelen| could be 0, and/or the |value| contains ``0x0a`` or
+ * ``0x0d``.  The application must check them if it matters. The
+ * helper function `nghttp2_check_header_name()` and
+ * `nghttp2_check_header_value()` provide simple validation against
+ * HTTP2 header field construction rule.
+ *
+ * One more thing to note is that the |value| may contain ``NULL``
+ * (``0x00``) characters. It is used to concatenate header values
+ * which share the same header field name. The application should
+ * split these values if it wants to get individual value. This
+ * concatenation is used in order to keep the ordering of headers.
+ *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
  * return without processing further input bytes.  The memory pointed
