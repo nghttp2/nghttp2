@@ -997,6 +997,20 @@ Types (structs, unions and typedefs)
     The *name* may be ``NULL`` if the *namelen* is 0. The same thing
     can be said about the *value*.
     
+    Please note that nghttp2 library does not perform any validity
+    check against the *name* and the *value*. For example, the
+    *namelen* could be 0, and/or the *value* contains ``0x0a`` or
+    ``0x0d``.  The application must check them if it matters. The
+    helper function `nghttp2_check_header_name()` and
+    `nghttp2_check_header_value()` provide simple validation against
+    HTTP2 header field construction rule.
+    
+    One more thing to note is that the *value* may contain ``NULL``
+    (``0x00``) characters. It is used to concatenate header values
+    which share the same header field name. The application should
+    split these values if it wants to get individual value. This
+    concatenation is used in order to keep the ordering of headers.
+    
     If the application uses `nghttp2_session_mem_recv()`, it can return
     :macro:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
     return without processing further input bytes.  The memory pointed
@@ -2006,5 +2020,25 @@ Functions
     
     Returns nonzero if the :type:`nghttp2_error` library error code
     *lib_error* is fatal.
+
+.. function:: int nghttp2_check_header_name(const uint8_t *name, size_t len)
+
+    
+    Returns nonzero if HTTP header field name *name* of length *len* is
+    valid according to
+    http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2
+    
+    Because this is a header field name in HTTP2, the upper cased alphabet
+    is treated as error.
+
+.. function:: int nghttp2_check_header_value(const uint8_t *value, size_t len)
+
+    
+    Returns nonzero if HTTP header field value *value* of length *len*
+    is valid according to
+    http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2
+    
+    Because this is HTTP2 header field value, it can contain NULL
+    character (0x00).
 
 

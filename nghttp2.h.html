@@ -1242,6 +1242,20 @@
 <span class="cm"> * The |name| may be ``NULL`` if the |namelen| is 0. The same thing</span>
 <span class="cm"> * can be said about the |value|.</span>
 <span class="cm"> *</span>
+<span class="cm"> * Please note that nghttp2 library does not perform any validity</span>
+<span class="cm"> * check against the |name| and the |value|. For example, the</span>
+<span class="cm"> * |namelen| could be 0, and/or the |value| contains ``0x0a`` or</span>
+<span class="cm"> * ``0x0d``.  The application must check them if it matters. The</span>
+<span class="cm"> * helper function `nghttp2_check_header_name()` and</span>
+<span class="cm"> * `nghttp2_check_header_value()` provide simple validation against</span>
+<span class="cm"> * HTTP2 header field construction rule.</span>
+<span class="cm"> *</span>
+<span class="cm"> * One more thing to note is that the |value| may contain ``NULL``</span>
+<span class="cm"> * (``0x00``) characters. It is used to concatenate header values</span>
+<span class="cm"> * which share the same header field name. The application should</span>
+<span class="cm"> * split these values if it wants to get individual value. This</span>
+<span class="cm"> * concatenation is used in order to keep the ordering of headers.</span>
+<span class="cm"> *</span>
 <span class="cm"> * If the application uses `nghttp2_session_mem_recv()`, it can return</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`</span>
 <span class="cm"> * return without processing further input bytes.  The memory pointed</span>
@@ -2447,6 +2461,30 @@
 <span class="cm"> * |lib_error| is fatal.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_is_fatal</span><span class="p">(</span><span class="kt">int</span> <span class="n">lib_error</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns nonzero if HTTP header field name |name| of length |len| is</span>
+<span class="cm"> * valid according to</span>
+<span class="cm"> * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</span>
+<span class="cm"> *</span>
+<span class="cm"> * Because this is a header field name in HTTP2, the upper cased alphabet</span>
+<span class="cm"> * is treated as error.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_check_header_name</span><span class="p">(</span><span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns nonzero if HTTP header field value |value| of length |len|</span>
+<span class="cm"> * is valid according to</span>
+<span class="cm"> * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</span>
+<span class="cm"> *</span>
+<span class="cm"> * Because this is HTTP2 header field value, it can contain NULL</span>
+<span class="cm"> * character (0x00).</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_check_header_value</span><span class="p">(</span><span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">);</span>
 
 <span class="cp">#ifdef __cplusplus</span>
 <span class="p">}</span>

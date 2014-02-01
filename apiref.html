@@ -1502,6 +1502,18 @@ is an error in decompression,
 invoked.</p>
 <p>The <em>name</em> may be <tt class="docutils literal"><span class="pre">NULL</span></tt> if the <em>namelen</em> is 0. The same thing
 can be said about the <em>value</em>.</p>
+<p>Please note that nghttp2 library does not perform any validity
+check against the <em>name</em> and the <em>value</em>. For example, the
+<em>namelen</em> could be 0, and/or the <em>value</em> contains <tt class="docutils literal"><span class="pre">0x0a</span></tt> or
+<tt class="docutils literal"><span class="pre">0x0d</span></tt>.  The application must check them if it matters. The
+helper function <a class="reference internal" href="#nghttp2_check_header_name" title="nghttp2_check_header_name"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_name()</span></tt></a> and
+<a class="reference internal" href="#nghttp2_check_header_value" title="nghttp2_check_header_value"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_value()</span></tt></a> provide simple validation against
+HTTP2 header field construction rule.</p>
+<p>One more thing to note is that the <em>value</em> may contain <tt class="docutils literal"><span class="pre">NULL</span></tt>
+(<tt class="docutils literal"><span class="pre">0x00</span></tt>) characters. It is used to concatenate header values
+which share the same header field name. The application should
+split these values if it wants to get individual value. This
+concatenation is used in order to keep the ordering of headers.</p>
 <p>If the application uses <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>, it can return
 <a class="reference internal" href="#NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> to make <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>
 return without processing further input bytes.  The memory pointed
@@ -2530,6 +2542,26 @@ the version checking.</p>
 int <tt class="descname">nghttp2_is_fatal</tt><big>(</big>int<em>&nbsp;lib_error</em><big>)</big><a class="headerlink" href="#nghttp2_is_fatal" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns nonzero if the <a class="reference internal" href="#nghttp2_error" title="nghttp2_error"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_error</span></tt></a> library error code
 <em>lib_error</em> is fatal.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_check_header_name">
+int <tt class="descname">nghttp2_check_header_name</tt><big>(</big>const uint8_t<em>&nbsp;*name</em>, size_t<em>&nbsp;len</em><big>)</big><a class="headerlink" href="#nghttp2_check_header_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns nonzero if HTTP header field name <em>name</em> of length <em>len</em> is
+valid according to
+<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2">http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</a></p>
+<p>Because this is a header field name in HTTP2, the upper cased alphabet
+is treated as error.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_check_header_value">
+int <tt class="descname">nghttp2_check_header_value</tt><big>(</big>const uint8_t<em>&nbsp;*value</em>, size_t<em>&nbsp;len</em><big>)</big><a class="headerlink" href="#nghttp2_check_header_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns nonzero if HTTP header field value <em>value</em> of length <em>len</em>
+is valid according to
+<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2">http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</a></p>
+<p>Because this is HTTP2 header field value, it can contain NULL
+character (0x00).</p>
 </dd></dl>
 
 </div>
