@@ -152,3 +152,32 @@ void test_nghttp2_adjust_local_window_size(void)
   CU_ASSERT(0 == recv_reduction);
   CU_ASSERT(INT32_MIN == delta);
 }
+
+#define check_header_name(S)                                    \
+  nghttp2_check_header_name((const uint8_t*)S, sizeof(S) - 1)
+
+void test_nghttp2_check_header_name(void)
+{
+  CU_ASSERT(check_header_name(":path"));
+  CU_ASSERT(check_header_name("path"));
+  CU_ASSERT(check_header_name("!#$%&'*+-.^_`|~"));
+  CU_ASSERT(!check_header_name(":PATH"));
+  CU_ASSERT(!check_header_name("path:"));
+  CU_ASSERT(!check_header_name(""));
+  CU_ASSERT(!check_header_name(":"));
+}
+
+#define check_header_value(S)                                   \
+  nghttp2_check_header_value((const uint8_t*)S, sizeof(S) - 1)
+
+void test_nghttp2_check_header_value(void)
+{
+  uint8_t goodval[] = { 'a', '\0', 'b', 0x80u, 'c', 0xffu, 'd', '\t', ' ' };
+  uint8_t badval1[] = { 'a', 0x1fu, 'b' };
+  uint8_t badval2[] = { 'a', 0x7fu, 'b' };
+
+  CU_ASSERT(check_header_value(" !|}~"));
+  CU_ASSERT(check_header_value(goodval));
+  CU_ASSERT(!check_header_value(badval1));
+  CU_ASSERT(!check_header_value(badval2));
+}

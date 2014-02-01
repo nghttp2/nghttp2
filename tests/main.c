@@ -247,7 +247,11 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_deflate_inflate) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "adjust_local_window_size",
-                   test_nghttp2_adjust_local_window_size)
+                   test_nghttp2_adjust_local_window_size) ||
+      !CU_add_test(pSuite, "check_header_name",
+                   test_nghttp2_check_header_name) ||
+      !CU_add_test(pSuite, "check_header_value",
+                   test_nghttp2_check_header_value)
       ) {
      CU_cleanup_registry();
      return CU_get_error();
