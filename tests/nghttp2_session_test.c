@@ -555,7 +555,11 @@ void test_nghttp2_session_recv_data(void)
   CU_ASSERT(0 == ud.data_chunk_recv_cb_called);
   CU_ASSERT(0 == ud.frame_recv_cb_called);
   item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(NULL == item);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
 
   /* Create stream 1 with CLOSING state. DATA is ignored. */
   stream = nghttp2_session_open_stream(session, 1,
@@ -610,7 +614,7 @@ void test_nghttp2_session_recv_data(void)
      in the error condition. We have received 4096 * 4 bytes of
      DATA. Additional 4 DATA frames, connection flow control will kick
      in. */
-  for(i = 0; i < 4; ++i) {
+  for(i = 0; i < 5; ++i) {
     rv = nghttp2_session_mem_recv(session, data, 8+4096);
     CU_ASSERT(8+4096 == rv);
   }

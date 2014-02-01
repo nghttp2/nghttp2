@@ -1893,6 +1893,22 @@ static int nghttp2_session_is_new_peer_stream_id(nghttp2_session *session,
   }
 }
 
+static int session_detect_idle_stream(nghttp2_session *session,
+                                      int32_t stream_id)
+{
+  /* Assume that stream object with stream_id does not exist */
+  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+    if(session->next_stream_id >= (uint32_t)stream_id) {
+      return 1;
+    }
+    return 0;
+  }
+  if(nghttp2_session_is_new_peer_stream_id(session, stream_id)) {
+    return 1;
+  }
+  return 0;
+}
+
 /*
  * Validates received HEADERS frame |frame| with NGHTTP2_HCAT_REQUEST
  * or NGHTTP2_HCAT_PUSH_RESPONSE category, which both opens new
@@ -2397,6 +2413,10 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
   }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
+    if(session_detect_idle_stream(session, frame->hd.stream_id)) {
+      return nghttp2_session_handle_invalid_connection(session, frame,
+                                                       NGHTTP2_PROTOCOL_ERROR);
+    }
     return 0;
   }
   if(state_reserved_remote(session, stream)) {
@@ -2430,10 +2450,19 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame)
 {
   int rv;
+  nghttp2_stream *stream;
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_handle_invalid_connection(session, frame,
                                                      NGHTTP2_PROTOCOL_ERROR);
   }
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  if(!stream) {
+    if(session_detect_idle_stream(session, frame->hd.stream_id)) {
+      return nghttp2_session_handle_invalid_connection(session, frame,
+                                                       NGHTTP2_PROTOCOL_ERROR);
+    }
+  }
+
   rv = nghttp2_session_call_on_frame_received(session, frame);
   if(rv != 0) {
     return rv;
@@ -2883,6 +2912,12 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
+    if(!stream) {
+      if(session_detect_idle_stream(session, frame->hd.stream_id)) {
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      }
+    }
     rv = nghttp2_session_add_rst_stream
       (session, frame->push_promise.promised_stream_id,
        NGHTTP2_REFUSED_STREAM);
@@ -3062,6 +3097,10 @@ static int session_on_stream_window_update_received
   nghttp2_stream *stream;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
+    if(session_detect_idle_stream(session, frame->hd.stream_id)) {
+      return nghttp2_session_handle_invalid_connection(session, frame,
+                                                       NGHTTP2_PROTOCOL_ERROR);
+    }
     return 0;
   }
   if(stream->state == NGHTTP2_STREAM_RESERVED) {
@@ -3307,6 +3346,9 @@ static int nghttp2_session_on_data_received_fail_fast(nghttp2_session *session)
   }
   stream = nghttp2_session_get_stream(session, stream_id);
   if(!stream) {
+    if(session_detect_idle_stream(session, stream_id)) {
+      goto fail;
+    }
     return NGHTTP2_ERR_IGN_PAYLOAD;
   }
   if(stream->shut_flags & NGHTTP2_SHUT_RD) {
@@ -3330,7 +3372,7 @@ static int nghttp2_session_on_data_received_fail_fast(nghttp2_session *session)
   return 0;
  fail:
   rv = nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
-  if(rv != 0) {
+  if(nghttp2_is_fatal(rv)) {
     return rv;
   }
   return NGHTTP2_ERR_IGN_PAYLOAD;
