@@ -44,29 +44,40 @@
   
 
   
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
     <link rel="top" title="nghttp2 0.3.0-DEV documentation" href="index.html"/>
         <link rel="prev" title="nghttp2.h" href="nghttp2.h.html"/> 
 
-  <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav" role="document">
 
   <div class="wy-grid-for-nav">
 
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="index.html" class="icon icon-home"> nghttp2</a>
-        <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
-  <input type="text" name="q" placeholder="Search docs" />
-  <input type="hidden" name="check_keywords" value="yes" />
-  <input type="hidden" name="area" value="default" />
-</form>
+        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
       </div>
 
-      <div class="wy-menu wy-menu-vertical" data-spy="affix">
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
         
             <ul class="current">
@@ -112,8 +123,8 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top">
-        <i data-toggle="wy-nav-top" class="icon icon-reorder"></i>
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
         <a href="index.html">nghttp2</a>
       </nav>
 
@@ -121,18 +132,21 @@
       
       <div class="wy-nav-content">
         <div class="rst-content">
-          <ul class="wy-breadcrumbs">
-  <li><a href="index.html">Docs</a> &raquo;</li>
-  <li><a href="">nghttp2ver.h</a></li>
-    <li class="wy-breadcrumbs-aside">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
       
-        <a href="_sources/nghttp2ver.h.txt" rel="nofollow"> View page source</a>
-      
-    </li>
-</ul>
-<hr/>
-
-          
+    <li>nghttp2ver.h</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/nghttp2ver.h.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
   <div class="section" id="nghttp2ver-h">
 <h1>nghttp2ver.h<a class="headerlink" href="#nghttp2ver-h" title="Permalink to this headline">¶</a></h1>
 <div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
@@ -182,23 +196,26 @@
 </div>
 
 
+          </div>
           <footer>
   
-    <div class="rst-footer-buttons">
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="nghttp2.h.html" class="btn btn-neutral" title="nghttp2.h"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="nghttp2.h.html" class="btn btn-neutral" title="nghttp2.h"><span class="fa fa-circle-arrow-left"></span> Previous</a>
       
     </div>
   
 
   <hr/>
 
-  <p>
-      &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
-  </p>
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+    </p>
+  </div>
 
-  <a href="https://www.github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="http://readthedocs.org">Read the Docs</a>
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
 </footer>
         </div>
       </div>

@@ -44,30 +44,41 @@
   
 
   
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
     <link rel="top" title="nghttp2 0.3.0-DEV documentation" href="index.html"/>
         <link rel="next" title="API Reference" href="apiref.html"/>
         <link rel="prev" title="Tutorial: HTTP/2.0 client" href="tutorial-client.html"/> 
 
-  <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav" role="document">
 
   <div class="wy-grid-for-nav">
 
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="index.html" class="icon icon-home"> nghttp2</a>
-        <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
-  <input type="text" name="q" placeholder="Search docs" />
-  <input type="hidden" name="check_keywords" value="yes" />
-  <input type="hidden" name="area" value="default" />
-</form>
+        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
       </div>
 
-      <div class="wy-menu wy-menu-vertical" data-spy="affix">
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
         
             <ul class="current">
@@ -113,8 +124,8 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top">
-        <i data-toggle="wy-nav-top" class="icon icon-reorder"></i>
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
         <a href="index.html">nghttp2</a>
       </nav>
 
@@ -122,18 +133,21 @@
       
       <div class="wy-nav-content">
         <div class="rst-content">
-          <ul class="wy-breadcrumbs">
-  <li><a href="index.html">Docs</a> &raquo;</li>
-  <li><a href="">Tutorial: HTTP/2.0 server</a></li>
-    <li class="wy-breadcrumbs-aside">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
       
-        <a href="_sources/tutorial-server.txt" rel="nofollow"> View page source</a>
-      
-    </li>
-</ul>
-<hr/>
-
-          
+    <li>Tutorial: HTTP/2.0 server</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/tutorial-server.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
   <div class="section" id="tutorial-http-2-0-server">
 <h1>Tutorial: HTTP/2.0 server<a class="headerlink" href="#tutorial-http-2-0-server" title="Permalink to this headline">¶</a></h1>
 <p>In this tutorial, we are going to write single-threaded, event-based
@@ -1451,25 +1465,28 @@ stream is about to close and we no longer use that object.</p>
 </div>
 
 
+          </div>
           <footer>
   
-    <div class="rst-footer-buttons">
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="apiref.html" class="btn btn-neutral float-right" title="API Reference"/>Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="apiref.html" class="btn btn-neutral float-right" title="API Reference"/>Next <span class="fa fa-circle-arrow-right"></span></a>
       
       
-        <a href="tutorial-client.html" class="btn btn-neutral" title="Tutorial: HTTP/2.0 client"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="tutorial-client.html" class="btn btn-neutral" title="Tutorial: HTTP/2.0 client"><span class="fa fa-circle-arrow-left"></span> Previous</a>
       
     </div>
   
 
   <hr/>
 
-  <p>
-      &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
-  </p>
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+    </p>
+  </div>
 
-  <a href="https://www.github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="http://readthedocs.org">Read the Docs</a>
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
 </footer>
         </div>
       </div>
