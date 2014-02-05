@@ -1,10 +1,10 @@
 #!/bin/sh -e
 
-VERSION=$1
-PREV_VERSION=$2
+TAG=$1
+PREV_TAG=$2
 
-git checkout refs/tags/release-$VERSION
-git log --pretty=fuller --date=short refs/tags/release-$PREV_VERSION..HEAD > ChangeLog
+git checkout refs/tags/$TAG
+git log --pretty=fuller --date=short refs/tags/$PREV_TAG..HEAD > ChangeLog
 
 ./configure && \
     make dist-bzip2 && make dist-gzip && make dist-xz || echo "error"
