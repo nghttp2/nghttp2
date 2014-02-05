@@ -189,14 +189,6 @@ struct nghttp2_session {
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
      composed by bitwise OR-ing nghttp2_goaway_flag. */
   uint8_t goaway_flags;
-  /* Non-zero indicates connection-level flow control on remote side
-     is in effect. This will be disabled when WINDOW_UPDATE with
-     END_FLOW_CONTROL bit set is received. */
-  uint8_t remote_flow_control;
-  /* Non-zero indicates connection-level flow control on local side is
-     in effect. This will be disabled when WINDOW_UPDATE with
-     END_FLOW_CONTROL bit set is sent. */
-  uint8_t local_flow_control;
 };
 
 /* Struct used when updating initial window size of each active

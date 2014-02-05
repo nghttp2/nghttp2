@@ -186,7 +186,6 @@ static void init_settings(uint32_t *settings)
     NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
   settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
     NGHTTP2_INITIAL_WINDOW_SIZE;
-  settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS] = 0;
 }
 
 typedef struct {
@@ -225,8 +224,6 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
       NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
   }
 
-  (*session_ptr)->remote_flow_control = 1;
-  (*session_ptr)->local_flow_control = 1;
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
   (*session_ptr)->recv_reduction = 0;
@@ -585,10 +582,6 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     return NULL;
   }
   nghttp2_stream_init(stream, stream_id, flags, pri, initial_state,
-                      !session->remote_settings
-                      [NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS],
-                      !session->local_settings
-                      [NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS],
                       session->remote_settings
                       [NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE],
                       session->local_settings
@@ -1016,12 +1009,8 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
 {
   int32_t window_size = NGHTTP2_DATA_PAYLOAD_LENGTH;
   /* Take into account both connection-level flow control here */
-  if(session->remote_flow_control) {
-    window_size = nghttp2_min(window_size, session->remote_window_size);
-  }
-  if(stream->remote_flow_control) {
-    window_size = nghttp2_min(window_size, stream->remote_window_size);
-  }
+  window_size = nghttp2_min(window_size, session->remote_window_size);
+  window_size = nghttp2_min(window_size, stream->remote_window_size);
   if(window_size > 0) {
     return window_size;
   }
@@ -1786,12 +1775,10 @@ int nghttp2_session_send(nghttp2_session *session)
         }
         frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
         stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-        if(stream && stream->remote_flow_control) {
+        if(stream) {
           stream->remote_window_size -= len;
         }
-        if(session->remote_flow_control) {
-          session->remote_window_size -= len;
-        }
+        session->remote_window_size -= len;
       }
       session->aob.framebufoff += sentlen;
       if(session->aob.framebufoff == session->aob.framebufmark) {
@@ -2506,8 +2493,7 @@ static int nghttp2_update_remote_initial_window_size_func
   if(stream->deferred_data &&
      (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL) &&
      stream->remote_window_size > 0 &&
-     (arg->session->remote_flow_control == 0 ||
-      arg->session->remote_window_size > 0)) {
+     arg->session->remote_window_size > 0) {
     rv = nghttp2_pq_push(&arg->session->ob_pq, stream->deferred_data);
     if(rv != 0) {
       /* FATAL */
@@ -2552,9 +2538,6 @@ static int nghttp2_update_local_initial_window_size_func
   nghttp2_stream *stream;
   arg = (nghttp2_update_window_size_arg*)ptr;
   stream = (nghttp2_stream*)entry;
-  if(!stream->local_flow_control) {
-    return 0;
-  }
   rv = nghttp2_stream_update_local_initial_window_size(stream,
                                                        arg->new_window_size,
                                                        arg->old_window_size);
@@ -2603,70 +2586,6 @@ static int nghttp2_session_update_local_initial_window_size
                           &arg);
 }
 
-static int nghttp2_disable_remote_flow_control_func(nghttp2_map_entry *entry,
-                                                    void *ptr)
-{
-  nghttp2_session *session;
-  nghttp2_stream *stream;
-  session = (nghttp2_session*)ptr;
-  stream = (nghttp2_stream*)entry;
-  stream->remote_flow_control = 0;
-  /* If DATA frame is deferred due to flow control, push it back to
-     outbound queue. */
-  if(stream->deferred_data &&
-     (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
-    int rv;
-    rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
-    if(rv == 0) {
-      nghttp2_stream_detach_deferred_data(stream);
-    } else {
-      /* FATAL */
-      assert(rv < NGHTTP2_ERR_FATAL);
-      return rv;
-    }
-  }
-  return 0;
-}
-
-/*
- * Disable remote side connection-level flow control and stream-level
- * flow control of existing streams.
- *
- * This function returns 0 if it succeeds, or one of negative error codes.
- *
- * The error code is always FATAL.
- */
-static int nghttp2_session_disable_remote_flow_control
-(nghttp2_session *session)
-{
-  session->remote_flow_control = 0;
-  return nghttp2_map_each(&session->streams,
-                          nghttp2_disable_remote_flow_control_func, session);
-}
-
-static int nghttp2_disable_local_flow_control_func(nghttp2_map_entry *entry,
-                                                   void *ptr)
-{
-  nghttp2_stream *stream;
-  stream = (nghttp2_stream*)entry;
-  stream->local_flow_control = 0;
-  return 0;
-}
-
-/*
- * Disable stream-level flow control in local side of existing
- * streams.
- */
-static void nghttp2_session_disable_local_flow_control
-(nghttp2_session *session)
-{
-  int rv;
-  session->local_flow_control = 0;
-  rv = nghttp2_map_each(&session->streams,
-                        nghttp2_disable_local_flow_control_func, NULL);
-  assert(rv == 0);
-}
-
 /*
  * Apply SETTINGS values |iv| having |niv| elements to the local
  * settings. SETTINGS_MAX_CONCURRENT_STREAMS is not applied here
@@ -2687,9 +2606,6 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
 {
   int rv;
   size_t i;
-  uint8_t old_flow_control =
-    session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS];
-  uint8_t new_flow_control = old_flow_control;
   int32_t new_initial_window_size = -1;
   int32_t header_table_size = -1;
   uint8_t header_table_size_seen = 0;
@@ -2702,9 +2618,6 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       new_initial_window_size = iv[i].value;
-      break;
-    case  NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
-      new_flow_control = iv[i].value;
       break;
     }
   }
@@ -2719,7 +2632,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
       return rv;
     }
   }
-  if(!old_flow_control && !new_flow_control && new_initial_window_size != -1) {
+  if(new_initial_window_size != -1) {
     rv = nghttp2_session_update_local_initial_window_size
       (session,
        new_initial_window_size,
@@ -2735,10 +2648,6 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
        iv[i].settings_id != NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
       session->local_settings[iv[i].settings_id] = iv[i].value;
     }
-  }
-  if(old_flow_control == 0 &&
-     session->local_settings[NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS]) {
-    nghttp2_session_disable_local_flow_control(session);
   }
   return 0;
 }
@@ -2828,23 +2737,6 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       } else {
         return nghttp2_session_handle_invalid_connection
           (session, frame, NGHTTP2_PROTOCOL_ERROR);
-      }
-      break;
-    case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
-      if(entry->value & 0x1) {
-        if(session->remote_settings[entry->settings_id] == 0) {
-          rv = nghttp2_session_disable_remote_flow_control(session);
-          if(rv != 0) {
-            /* FATAL */
-            assert(rv < NGHTTP2_ERR_FATAL);
-            return rv;
-          }
-        }
-      } else if(session->remote_settings[entry->settings_id] == 1) {
-        /* Re-enabling flow control is subject to connection-level
-           error(?) */
-        return nghttp2_session_handle_invalid_connection
-          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
       }
       break;
     }
@@ -3035,7 +2927,7 @@ static int nghttp2_push_back_deferred_data_func(nghttp2_map_entry *entry,
      outbound queue. */
   if(stream->deferred_data &&
      (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL) &&
-     (stream->remote_flow_control == 0 || stream->remote_window_size > 0)) {
+     stream->remote_window_size > 0) {
     int rv;
     rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
     if(rv == 0) {
@@ -3064,13 +2956,6 @@ static int session_on_connection_window_update_received
 {
   int rv;
   /* Handle connection-level flow control */
-  if(session->remote_flow_control == 0) {
-    /* Disabling flow control by sending SETTINGS and receiving
-       WINDOW_UPDATE are asynchronous, so it is hard to determine
-       that the peer is misbehaving or not without measuring
-       RTT. For now, we just ignore such frames. */
-    return nghttp2_session_call_on_frame_received(session, frame);
-  }
   if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
      session->remote_window_size) {
     return nghttp2_session_handle_invalid_connection
@@ -3107,10 +2992,6 @@ static int session_on_stream_window_update_received
     return nghttp2_session_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
-  if(stream->remote_flow_control == 0) {
-    /* Same reason with connection-level flow control */
-    return nghttp2_session_call_on_frame_received(session, frame);
-  }
   if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
      stream->remote_window_size) {
     return nghttp2_session_handle_invalid_stream(session, frame,
@@ -3118,8 +2999,7 @@ static int session_on_stream_window_update_received
   }
   stream->remote_window_size += frame->window_update.window_size_increment;
   if(stream->remote_window_size > 0 &&
-     (session->remote_flow_control == 0 ||
-      session->remote_window_size > 0) &&
+     session->remote_window_size > 0 &&
      stream->deferred_data != NULL &&
      (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
     rv = nghttp2_pq_push(&session->ob_pq, stream->deferred_data);
@@ -3411,7 +3291,6 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   case NGHTTP2_SETTINGS_ENABLE_PUSH:
   case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
-  case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
     break;
   default:
     return -1;
@@ -3822,23 +3701,21 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu\n",
                      readlen, iframe->payloadleft));
       if(readlen > 0) {
-        if(session->local_flow_control) {
-          rv = nghttp2_session_update_recv_connection_window_size
-            (session, readlen);
-          if(nghttp2_is_fatal(rv)) {
-            return rv;
-          }
-          if(iframe->payloadleft ||
-             (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-            nghttp2_stream *stream;
-            stream = nghttp2_session_get_stream(session,
-                                                iframe->frame.hd.stream_id);
-            if(stream && stream->local_flow_control) {
-              rv = nghttp2_session_update_recv_stream_window_size
-                (session, stream, readlen);
-              if(nghttp2_is_fatal(rv)) {
-                return rv;
-              }
+        rv = nghttp2_session_update_recv_connection_window_size
+          (session, readlen);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+        if(iframe->payloadleft ||
+           (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+          nghttp2_stream *stream;
+          stream = nghttp2_session_get_stream(session,
+                                              iframe->frame.hd.stream_id);
+          if(stream) {
+            rv = nghttp2_session_update_recv_stream_window_size
+              (session, stream, readlen);
+            if(nghttp2_is_fatal(rv)) {
+              return rv;
             }
           }
         }
@@ -3875,7 +3752,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       readlen = inbound_frame_payload_readlen(iframe, in, last);
       iframe->payloadleft -= readlen;
       in += readlen;
-      if(readlen > 0 && session->local_flow_control) {
+      if(readlen > 0) {
         /* Update connection-level flow control window for ignored
            DATA frame too */
         rv = nghttp2_session_update_recv_connection_window_size
@@ -4033,9 +3910,7 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   nghttp2_frame *frame;
   nghttp2_settings_entry *iv_copy;
   int r;
-  if(!nghttp2_iv_check(iv, niv,
-                       session->local_settings
-                       [NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS])) {
+  if(!nghttp2_iv_check(iv, niv)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   frame = malloc(sizeof(nghttp2_frame));
@@ -4149,9 +4024,6 @@ int32_t nghttp2_session_get_stream_effective_recv_data_length
   if(stream == NULL) {
     return -1;
   }
-  if(stream->local_flow_control == 0) {
-    return 0;
-  }
   return stream->recv_window_size < 0 ? 0 : stream->recv_window_size;
 }
 
@@ -4169,9 +4041,6 @@ int32_t nghttp2_session_get_stream_effective_local_window_size
 int32_t nghttp2_session_get_effective_recv_data_length
 (nghttp2_session *session)
 {
-  if(session->local_flow_control == 0) {
-    return 0;
-  }
   return session->recv_window_size < 0 ? 0 : session->recv_window_size;
 }
 

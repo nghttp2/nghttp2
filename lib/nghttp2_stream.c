@@ -29,8 +29,6 @@
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          uint8_t flags, int32_t pri,
                          nghttp2_stream_state initial_state,
-                         uint8_t remote_flow_control,
-                         uint8_t local_flow_control,
                          int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
                          void *stream_user_data)
@@ -44,8 +42,6 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->stream_user_data = stream_user_data;
   stream->deferred_data = NULL;
   stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
-  stream->remote_flow_control = remote_flow_control;
-  stream->local_flow_control = local_flow_control;
   stream->remote_window_size = remote_initial_window_size;
   stream->local_window_size = local_initial_window_size;
   stream->recv_window_size = 0;

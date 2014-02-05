@@ -95,7 +95,6 @@ struct Config {
   bool verbose;
   bool get_assets;
   bool stat;
-  bool no_flow_control;
   bool upgrade;
   Config()
     : output_upper_thres(1024*1024),
@@ -111,7 +110,6 @@ struct Config {
       verbose(false),
       get_assets(false),
       stat(false),
-      no_flow_control(false),
       upgrade(false)
   {}
 };
@@ -365,11 +363,6 @@ size_t populate_settings(nghttp2_settings_entry *iv)
     iv[1].value = (1 << config.window_bits) - 1;
   } else {
     iv[1].value = NGHTTP2_INITIAL_WINDOW_SIZE;
-  }
-  if(config.no_flow_control) {
-    iv[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-    iv[niv].value = 1;
-    ++niv;
   }
   if(config.header_table_size >= 0) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
@@ -1642,7 +1635,7 @@ int run(char **uris, int n)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [-Oafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [-W <WINDOW_BITS>]\n"
+  out << "Usage: nghttp [-Oansuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [-W <WINDOW_BITS>]\n"
       << "              [--cert=<CERT>] [--key=<KEY>] [-d <FILE>] [-m <N>]\n"
       << "              [-p <PRIORITY>] [-M <N>]\n"
       << "              <URI>..."
@@ -1686,9 +1679,6 @@ void print_help(std::ostream& out)
       << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
       << "                       URI is not requested twice. This option\n"
       << "                       disables it too.\n"
-      << "    -f, --no-flow-control\n"
-      << "                       Disables connection and stream level flow\n"
-      << "                       controls.\n"
       << "    -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
       << "                       option is ignored if the request URI has\n"
       << "                       https scheme.\n"
@@ -1727,7 +1717,6 @@ int main(int argc, char **argv)
       {"header", required_argument, nullptr, 'H'},
       {"data", required_argument, nullptr, 'd'},
       {"multiply", required_argument, nullptr, 'm'},
-      {"no-flow-control", no_argument, nullptr, 'f'},
       {"upgrade", no_argument, nullptr, 'u'},
       {"pri", required_argument, nullptr, 'p'},
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
@@ -1738,7 +1727,7 @@ int main(int argc, char **argv)
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oac:d:fm:np:hH:vst:uw:W:", long_options,
+    int c = getopt_long(argc, argv, "M:Oac:d:m:np:hH:vst:uw:W:", long_options,
                         &option_index);
     char *end;
     if(c == -1) {
@@ -1751,9 +1740,6 @@ int main(int argc, char **argv)
       break;
     case 'O':
       config.remote_name = true;
-      break;
-    case 'f':
-      config.no_flow_control = true;
       break;
     case 'h':
       print_help(std::cout);

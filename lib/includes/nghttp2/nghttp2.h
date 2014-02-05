@@ -426,13 +426,9 @@ typedef enum {
    */
   NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 7,
   /**
-   * SETTINGS_FLOW_CONTROL_OPTIONS
-   */
-  NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS = 10,
-  /**
    * Maximum ID of :type:`nghttp2_settings_id`.
    */
-  NGHTTP2_SETTINGS_MAX = 10
+  NGHTTP2_SETTINGS_MAX = 7
 } nghttp2_settings_id;
 
 /**
@@ -1623,9 +1619,6 @@ size_t nghttp2_session_get_outbound_queue_size(nghttp2_session *session);
  * window_size_increment with `nghttp2_submit_window_update()`, this
  * function returns the number of bytes less than actually received.
  *
- * If flow control is disabled for that stream, this function returns
- * 0.
- *
  * This function returns -1 if it fails.
  */
 int32_t nghttp2_session_get_stream_effective_recv_data_length
@@ -1655,9 +1648,6 @@ int32_t nghttp2_session_get_stream_effective_local_window_size
  * window size is reduced by submitting negative window_size_increment
  * with `nghttp2_submit_window_update()`, this function returns the
  * number of bytes less than actually received.
- *
- * If flow control is disabled for a connection, this function returns
- * 0.
  *
  * This function returns -1 if it fails.
  */
@@ -2021,8 +2011,8 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |iv| contains invalid value (e.g., attempting to re-enable
- *     flow control).
+ *     The |iv| contains invalid value (e.g., initial window size
+ *     strictly greater than (1 << 31) - 1.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */

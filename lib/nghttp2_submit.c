@@ -219,9 +219,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   }
   flags = 0;
   if(stream_id == 0) {
-    if(!session->local_flow_control) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
     rv = nghttp2_adjust_local_window_size(&session->local_window_size,
                                           &session->recv_window_size,
                                           &session->recv_reduction,
@@ -232,9 +229,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
     if(stream) {
-      if(!stream->local_flow_control) {
-        return NGHTTP2_ERR_INVALID_ARGUMENT;
-      }
       rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
                                             &stream->recv_window_size,
                                             &stream->recv_reduction,
@@ -325,9 +319,7 @@ ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
                                       const nghttp2_settings_entry *iv,
                                       size_t niv)
 {
-  /* Assume that current flow_control_option is 0 (which means that
-     flow control is enabled) */
-  if(!nghttp2_iv_check(iv, niv, 0)) {
+  if(!nghttp2_iv_check(iv, niv)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 

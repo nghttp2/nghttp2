@@ -617,8 +617,7 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
   return nvlen;
 }
 
-int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv,
-                     int32_t flow_control_opt)
+int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
 {
   size_t i;
   for(i = 0; i < niv; ++i) {
@@ -628,15 +627,6 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv,
         return 0;
       }
       break;
-    case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
-      if(flow_control_opt) {
-        if((iv[i].value & 0x1) == 0) {
-          /* Attempt to re-enabling flow-control is error */
-          return 0;
-        }
-      } else {
-        flow_control_opt = iv[i].value & 0x1;
-      }
     default:
       break;
     }

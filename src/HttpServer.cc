@@ -71,8 +71,7 @@ Config::Config()
     verbose(false),
     daemon(false),
     verify_client(false),
-    no_tls(false),
-    no_flow_control(false)
+    no_tls(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -373,11 +372,6 @@ int Http2Handler::on_connect()
   entry[0].value = 100;
   entry[1].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   entry[1].value = 0;
-  if(sessions_->get_config()->no_flow_control) {
-    entry[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-    entry[niv].value = 1;
-    ++niv;
-  }
   if(sessions_->get_config()->header_table_size >= 0) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
     entry[niv].value = sessions_->get_config()->header_table_size;

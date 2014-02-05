@@ -220,8 +220,8 @@ void test_nghttp2_frame_pack_settings()
   iv[0].value = 256;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = 16384;
-  iv[2].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-  iv[2].value = 1;
+  iv[2].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[2].value = 4096;
 
   nghttp2_frame_settings_init(&frame, NGHTTP2_FLAG_NONE,
                               nghttp2_frame_iv_copy(iv, 3), 3);
@@ -397,22 +397,16 @@ void test_nghttp2_iv_check(void)
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[0].value = 100;
-  iv[1].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-  iv[1].value = 0;
-  iv[2].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-  iv[2].value = 1;
+  iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[1].value = 1024;
 
-  CU_ASSERT(nghttp2_iv_check(iv, 2, 0));
-  CU_ASSERT(nghttp2_iv_check(iv, 3, 0));
-  /* Re-enabling flow-control*/
-  CU_ASSERT(0 == nghttp2_iv_check(iv, 2, 1));
-  CU_ASSERT(0 == nghttp2_iv_check(iv, 3, 1));
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = NGHTTP2_MAX_WINDOW_SIZE;
-  CU_ASSERT(nghttp2_iv_check(iv, 2, 0));
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 
   /* Too large window size */
   iv[1].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
-  CU_ASSERT(0 == nghttp2_iv_check(iv, 2, 0));
+  CU_ASSERT(0 == nghttp2_iv_check(iv, 2));
 }

@@ -75,7 +75,7 @@ int parse_push_config(Config& config, const char *optarg)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttpd [-DVfhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
+  out << "Usage: nghttpd [-DVhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
       << std::endl;
 }
 } // namespace
@@ -103,9 +103,6 @@ void print_help(std::ostream& out)
       << "    -v, --verbose      Print debug information such as reception/\n"
       << "                       transmission of frames and name/value pairs.\n"
       << "    --no-tls           Disable SSL/TLS.\n"
-      << "    -f, --no-flow-control\n"
-      << "                       Disables connection and stream level flow\n"
-      << "                       controls.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
       << "    --color            Force colored log output.\n"
@@ -134,7 +131,6 @@ int main(int argc, char **argv)
       {"help", no_argument, nullptr, 'h'},
       {"verbose", no_argument, nullptr, 'v'},
       {"verify-client", no_argument, nullptr, 'V'},
-      {"no-flow-control", no_argument, nullptr, 'f'},
       {"header-table-size", required_argument, nullptr, 'c'},
       {"push", required_argument, nullptr, 'p'},
       {"no-tls", no_argument, &flag, 1},
@@ -142,7 +138,7 @@ int main(int argc, char **argv)
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVc:d:fhp:v", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVc:d:hp:v", long_options, &option_index);
     char *end;
     if(c == -1) {
       break;
@@ -156,9 +152,6 @@ int main(int argc, char **argv)
       break;
     case 'd':
       config.htdocs = optarg;
-      break;
-    case 'f':
-      config.no_flow_control = true;
       break;
     case 'h':
       print_help(std::cout);

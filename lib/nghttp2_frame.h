@@ -472,12 +472,10 @@ void nghttp2_nv_array_del(nghttp2_nv *nva);
 
 /*
  * Checks that the |iv|, which includes |niv| entries, does not have
- * invalid values. The |flow_control_opt| is current flow control
- * option value.
+ * invalid values.
  *
  * This function returns nonzero if it succeeds, or 0.
  */
-int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv,
-                     int32_t flow_control_opt);
+int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
 
 #endif /* NGHTTP2_FRAME_H */

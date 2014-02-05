@@ -95,8 +95,6 @@ const char* strsettingsid(int32_t id)
     return "SETTINGS_MAX_CONCURRENT_STREAMS";
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
     return "SETTINGS_INITIAL_WINDOW_SIZE";
-  case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
-    return "SETTINGS_FLOW_CONTROL_OPTIONS";
   default:
     return "UNKNOWN";
   }

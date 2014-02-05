@@ -62,7 +62,6 @@ struct Config {
   bool daemon;
   bool verify_client;
   bool no_tls;
-  bool no_flow_control;
   Config();
 };
 
