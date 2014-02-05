@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -7,7 +8,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Search &mdash; nghttp2 0.4.0-DEV documentation</title>
+  <title>nghttp2ver.h &mdash; nghttp2 0.3.0 documentation</title>
   
 
   
@@ -22,7 +23,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:'',
-        VERSION:'0.4.0-DEV',
+        VERSION:'0.3.0',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
         HAS_SOURCE:  true
@@ -31,7 +32,6 @@
       <script type="text/javascript" src="_static/jquery.js"></script>
       <script type="text/javascript" src="_static/underscore.js"></script>
       <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/searchtools.js"></script>
 
     
 
@@ -53,14 +53,8 @@
   
 
   
-    <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
-  <script type="text/javascript">
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script type="text/javascript" id="searchindexloader"></script>
-   
-
+    <link rel="top" title="nghttp2 0.3.0 documentation" href="index.html"/>
+        <link rel="prev" title="nghttp2.h" href="nghttp2.h.html"/> 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -75,7 +69,7 @@
       <div class="wy-side-nav-search">
         <a href="index.html" class="fa fa-home"> nghttp2</a>
         <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -86,7 +80,7 @@
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
         
-            <ul>
+            <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2.0 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
@@ -116,7 +110,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
-<li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2ver.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
 </ul>
@@ -142,8 +136,10 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li></li>
+    <li>nghttp2ver.h</li>
       <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/nghttp2ver.h.txt" rel="nofollow"> View page source</a>
         
       </li>
   </ul>
@@ -151,22 +147,64 @@
 </div>
           <div role="main">
             
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
-    </p>
-  </div>
-  </noscript>
+  <div class="section" id="nghttp2ver-h">
+<h1>nghttp2ver.h<a class="headerlink" href="#nghttp2ver-h" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
+<span class="cm"> * nghttp2 - HTTP/2.0 C Library</span>
+<span class="cm"> *</span>
+<span class="cm"> * Copyright (c) 2012, 2013 Tatsuhiro Tsujikawa</span>
+<span class="cm"> *</span>
+<span class="cm"> * Permission is hereby granted, free of charge, to any person obtaining</span>
+<span class="cm"> * a copy of this software and associated documentation files (the</span>
+<span class="cm"> * &quot;Software&quot;), to deal in the Software without restriction, including</span>
+<span class="cm"> * without limitation the rights to use, copy, modify, merge, publish,</span>
+<span class="cm"> * distribute, sublicense, and/or sell copies of the Software, and to</span>
+<span class="cm"> * permit persons to whom the Software is furnished to do so, subject to</span>
+<span class="cm"> * the following conditions:</span>
+<span class="cm"> *</span>
+<span class="cm"> * The above copyright notice and this permission notice shall be</span>
+<span class="cm"> * included in all copies or substantial portions of the Software.</span>
+<span class="cm"> *</span>
+<span class="cm"> * THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,</span>
+<span class="cm"> * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF</span>
+<span class="cm"> * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND</span>
+<span class="cm"> * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE</span>
+<span class="cm"> * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION</span>
+<span class="cm"> * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION</span>
+<span class="cm"> * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</span>
+<span class="cm"> */</span>
+<span class="cp">#ifndef NGHTTP2VER_H</span>
+<span class="cp">#define NGHTTP2VER_H</span>
 
-  
-  <div id="search-results">
-  
-  </div>
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> * Version number of the nghttp2 library release</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_VERSION &quot;0.3.0&quot;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> * Numerical representation of the version number of the nghttp2 library</span>
+<span class="cm"> * release. This is a 24 bit number with 8 bits for major number, 8 bits</span>
+<span class="cm"> * for minor and 8 bits for patch. Version 1.2.3 becomes 0x010203.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_VERSION_NUM 0x000300</span>
+
+<span class="cp">#endif </span><span class="cm">/* NGHTTP2VER_H */</span><span class="cp"></span>
+</pre></div>
+</div>
+</div>
+
 
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="nghttp2.h.html" class="btn btn-neutral" title="nghttp2.h"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
