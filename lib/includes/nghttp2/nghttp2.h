@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2.0 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2013, 2014 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -797,8 +797,8 @@ typedef struct {
  * @union
  *
  * This union includes all frames to pass them to various function
- * calls as nghttp2_frame type. The DATA frame is intentionally
- * omitted from here.
+ * calls as nghttp2_frame type. The CONTINUATION frame is omitted from
+ * here because the library deals with it internally.
  */
 typedef union {
   /**
@@ -2198,6 +2198,9 @@ int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs);
  * Selecting ``HTTP-draft-04/2.0`` means that ``HTTP-draft-04/2.0`` is
  * written into |*out| and its length (which is 17) is
  * assigned to |*outlen|.
+ *
+ * For ALPN, refer to
+ * http://tools.ietf.org/html/draft-ietf-tls-applayerprotoneg-04
  *
  * See http://technotes.googlecode.com/git/nextprotoneg.html for more
  * details about NPN.
