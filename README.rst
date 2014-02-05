@@ -34,7 +34,7 @@ The following endpoints are available to try out nghttp2
 implementation.  These endpoints supports ``HTTP-draft-09/2.0`` and
 the earlier draft versions are not supporeted.
 
-* https://106.186.112.116 (TLS + NPN + ALPN)
+* https://106.186.112.116 (TLS + NPN / ALPN)
 
   ALPN and NPN offer ``HTTP-draft-09/2.0``, ``spdy/3.1``, ``spdy/3``,
   ``spdy/2`` and ``http/1.1``.
