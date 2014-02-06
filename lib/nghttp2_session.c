@@ -3432,16 +3432,14 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         iframe->state = NGHTTP2_IB_READ_NBYTE;
         iframe->left = 8;
         break;
-      case NGHTTP2_CONTINUATION:
+      default:
+        /* Receiving unknown frame type and CONTINUATION in this state
+           are subject to connection error of type PROTOCOL_ERROR */
         rv = nghttp2_session_terminate_session(session,
                                                NGHTTP2_PROTOCOL_ERROR);
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
-        busy = 1;
-        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
-        break;
-      default:
         busy = 1;
         iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
         break;
