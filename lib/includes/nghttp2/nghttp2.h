@@ -364,11 +364,11 @@ typedef enum {
   /**
    * The WINDOW_UPDATE frame.
    */
-  NGHTTP2_WINDOW_UPDATE = 9,
+  NGHTTP2_WINDOW_UPDATE = 8,
   /**
    * The CONTINUATION frame.
    */
-  NGHTTP2_CONTINUATION = 10
+  NGHTTP2_CONTINUATION = 9
 } nghttp2_frame_type;
 
 /**
@@ -401,7 +401,19 @@ typedef enum {
   /**
    * The ACK flag.
    */
-  NGHTTP2_FLAG_ACK = 0x1
+  NGHTTP2_FLAG_ACK = 0x1,
+  /**
+   * The END_SEGMENT flag.
+   */
+  NGHTTP2_FLAG_END_SEGMENT = 0x2,
+  /**
+   * The PAD_LOW flag.
+   */
+  NGHTTP2_FLAG_PAD_LOW = 0x4,
+  /**
+   * The PAD_HIGH flag.
+   */
+  NGHTTP2_FLAG_PAD_HIGH = 0x8
 } nghttp2_flag;
 
 /**
@@ -489,7 +501,11 @@ typedef enum {
   /**
    * ENHANCE_YOUR_CALM
    */
-  NGHTTP2_ENHANCE_YOUR_CALM = 420
+  NGHTTP2_ENHANCE_YOUR_CALM = 11,
+  /**
+   * INADEQUATE_SECURITY
+   */
+  NGHTTP2_INADEQUATE_SECURITY = 12
 } nghttp2_error_code;
 
 /**
