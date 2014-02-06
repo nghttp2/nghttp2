@@ -323,8 +323,9 @@ ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  if(buflen < (niv * 8))
+  if(buflen < (niv * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH)) {
     return NGHTTP2_ERR_INSUFF_BUFSIZE;
+  }
 
   return nghttp2_frame_pack_settings_payload(buf, iv, niv);
 }

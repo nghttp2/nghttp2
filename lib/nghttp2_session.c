@@ -3390,7 +3390,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       case NGHTTP2_SETTINGS:
         DEBUGF(fprintf(stderr, "SETTINGS\n"));
-        if((iframe->frame.hd.length & 0x7) ||
+        if((iframe->frame.hd.length % NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) ||
            ((iframe->frame.hd.flags & NGHTTP2_FLAG_ACK) &&
             iframe->payloadleft > 0)) {
           busy = 1;
@@ -3399,7 +3399,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         }
         iframe->state = NGHTTP2_IB_READ_SETTINGS;
         if(iframe->payloadleft) {
-          iframe->left = 8;
+          iframe->left = NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
           break;
         }
         busy = 1;
@@ -3629,7 +3629,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         }
       }
       if(iframe->payloadleft) {
-        iframe->left = 8;
+        iframe->left = NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
         iframe->buflen = 0;
         break;
       }
@@ -4070,7 +4070,7 @@ int nghttp2_session_upgrade(nghttp2_session *session,
      (session->server && session->last_recv_stream_id >= 1)) {
     return NGHTTP2_ERR_PROTO;
   }
-  if(settings_payloadlen % 8) {
+  if(settings_payloadlen % NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   rv = nghttp2_frame_unpack_settings_payload2(&iv, &niv, settings_payload,

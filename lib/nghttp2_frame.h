@@ -48,6 +48,9 @@
 /* The number of bytes of frame header. */
 #define NGHTTP2_FRAME_HEAD_LENGTH 8
 
+/* The number of bytes for each SETTINGS entry */
+#define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 5
+
 /* Category of frames. */
 typedef enum {
   /* non-DATA frame */

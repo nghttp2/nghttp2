@@ -110,7 +110,8 @@ void nghttp2_frame_settings_init(nghttp2_settings *frame, uint8_t flags,
                                  nghttp2_settings_entry *iv, size_t niv)
 {
   memset(frame, 0, sizeof(nghttp2_settings));
-  nghttp2_frame_set_hd(&frame->hd, niv*8, NGHTTP2_SETTINGS, flags, 0);
+  nghttp2_frame_set_hd(&frame->hd, niv * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH,
+                       NGHTTP2_SETTINGS, flags, 0);
   frame->niv = niv;
   frame->iv = iv;
 }
@@ -341,11 +342,11 @@ size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
                                            size_t niv)
 {
   size_t i;
-  for(i = 0; i < niv; ++i, buf += 8) {
-    nghttp2_put_uint32be(buf, iv[i].settings_id);
-    nghttp2_put_uint32be(buf + 4, iv[i].value);
+  for(i = 0; i < niv; ++i, buf += NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) {
+    buf[0] = iv[i].settings_id;
+    nghttp2_put_uint32be(buf + 1, iv[i].value);
   }
-  return 8 * niv;
+  return NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH * niv;
 }
 
 int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
@@ -366,9 +367,8 @@ int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
 void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
                                          const uint8_t *payload)
 {
-  iv->settings_id = nghttp2_get_uint32(&payload[0]) &
-    NGHTTP2_SETTINGS_ID_MASK;
-  iv->value = nghttp2_get_uint32(&payload[4]);
+  iv->settings_id = payload[0];
+  iv->value = nghttp2_get_uint32(&payload[1]);
 }
 
 int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
@@ -377,13 +377,13 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
                                            size_t payloadlen)
 {
   size_t i;
-  *niv_ptr = payloadlen / 8;
+  *niv_ptr = payloadlen / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
   *iv_ptr = malloc((*niv_ptr)*sizeof(nghttp2_settings_entry));
   if(*iv_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
   for(i = 0; i < *niv_ptr; ++i) {
-    size_t off = i*8;
+    size_t off = i * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
     nghttp2_frame_unpack_settings_entry(&(*iv_ptr)[i], &payload[off]);
   }
   return 0;

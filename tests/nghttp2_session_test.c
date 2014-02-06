@@ -3828,7 +3828,7 @@ void test_nghttp2_pack_settings_payload(void)
   iv[1].value = 4095;
 
   len = nghttp2_pack_settings_payload(buf, sizeof(buf), iv, 2);
-  CU_ASSERT(16 == len);
+  CU_ASSERT(2 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH == len);
   CU_ASSERT(0 == nghttp2_frame_unpack_settings_payload2(&resiv, &resniv,
                                                         buf, len));
   CU_ASSERT(2 == resniv);
@@ -3839,6 +3839,6 @@ void test_nghttp2_pack_settings_payload(void)
 
   free(resiv);
 
-  len = nghttp2_pack_settings_payload(buf, 15 /* too small */, iv, 2);
+  len = nghttp2_pack_settings_payload(buf, 9 /* too small */, iv, 2);
   CU_ASSERT(NGHTTP2_ERR_INSUFF_BUFSIZE == len);
 }

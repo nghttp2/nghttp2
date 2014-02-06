@@ -226,9 +226,11 @@ void test_nghttp2_frame_pack_settings()
   nghttp2_frame_settings_init(&frame, NGHTTP2_FLAG_NONE,
                               nghttp2_frame_iv_copy(iv, 3), 3);
   framelen = nghttp2_frame_pack_settings(&buf, &buflen, &frame);
-  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH+3*8 == framelen);
+  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH +
+            3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH == framelen);
   CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf, framelen));
-  check_frame_header(3*8, NGHTTP2_SETTINGS, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
+  check_frame_header(3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH,
+                     NGHTTP2_SETTINGS, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
   CU_ASSERT(3 == oframe.niv);
   for(i = 0; i < 3; ++i) {
     CU_ASSERT(iv[i].settings_id == oframe.iv[i].settings_id);
