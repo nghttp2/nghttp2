@@ -1314,8 +1314,7 @@ void test_nghttp2_session_on_settings_received(void)
   iv[3].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iv[3].value = 1024;
 
-  /* Unknown settings ID */
-  iv[4].settings_id = 999;
+  iv[4].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   iv[4].value = 0;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
@@ -1343,6 +1342,8 @@ void test_nghttp2_session_on_settings_received(void)
             session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
   CU_ASSERT(1024 ==
             session->remote_settings[NGHTTP2_SETTINGS_HEADER_TABLE_SIZE]);
+  CU_ASSERT(0 ==
+            session->remote_settings[NGHTTP2_SETTINGS_ENABLE_PUSH]);
 
   CU_ASSERT(64*1024 == stream1->remote_window_size);
   CU_ASSERT(0 == stream2->remote_window_size);

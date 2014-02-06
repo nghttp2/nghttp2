@@ -2720,23 +2720,27 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
         }
       }
       break;
+    case NGHTTP2_SETTINGS_ENABLE_PUSH:
+      if(entry->value != 0 && entry->value != 1) {
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      }
+      break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
-      if(entry->value <= NGHTTP2_MAX_WINDOW_SIZE) {
-        rv = nghttp2_session_update_remote_initial_window_size
-          (session, entry->value);
-        if(rv != 0) {
-          if(nghttp2_is_fatal(rv)) {
-            return rv;
-          } else {
-            return nghttp2_session_handle_invalid_connection
-              (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
-          }
-        }
-      } else {
+      if(entry->value > NGHTTP2_MAX_WINDOW_SIZE) {
         return nghttp2_session_handle_invalid_connection
-          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
+      }
+      rv = nghttp2_session_update_remote_initial_window_size
+        (session, entry->value);
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+      if(rv != 0) {
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
       }
       break;
     }

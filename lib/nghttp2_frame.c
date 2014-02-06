@@ -622,12 +622,18 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
   size_t i;
   for(i = 0; i < niv; ++i) {
     switch(iv[i].settings_id) {
+    case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+    case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+      break;
+    case NGHTTP2_SETTINGS_ENABLE_PUSH:
+      if(iv[i].value != 0 && iv[i].value != 1) {
+        return 0;
+      }
+      break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       if(iv[i].value > (uint32_t)NGHTTP2_MAX_WINDOW_SIZE) {
         return 0;
       }
-      break;
-    default:
       break;
     }
   }

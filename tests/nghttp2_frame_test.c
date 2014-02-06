@@ -409,4 +409,13 @@ void test_nghttp2_iv_check(void)
   /* Too large window size */
   iv[1].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
   CU_ASSERT(0 == nghttp2_iv_check(iv, 2));
+
+  /* ENABLE_PUSH only allows 0 or 1 */
+  iv[1].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+  iv[1].value = 0;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
+  iv[1].value = 1;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
+  iv[1].value = 3;
+  CU_ASSERT(!nghttp2_iv_check(iv, 2));
 }
