@@ -97,6 +97,7 @@ struct Config {
   bool get_assets;
   bool stat;
   bool upgrade;
+  bool continuation;
   Config()
     : output_upper_thres(1024*1024),
       data_pad_alignment(NGHTTP2_DATA_PAD_ALIGNMENT),
@@ -112,7 +113,8 @@ struct Config {
       verbose(false),
       get_assets(false),
       stat(false),
-      upgrade(false)
+      upgrade(false),
+      continuation(false)
   {}
 };
 } // namespace
@@ -961,6 +963,16 @@ int submit_request
      {"accept", "*/*"},
      {"accept-encoding", "gzip, deflate"},
      {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
+  if(config.continuation) {
+    build_headers.emplace_back("continuation-test-1",
+                               std::string(4096, '-'));
+    build_headers.emplace_back("continuation-test-2",
+                               std::string(4096, '-'));
+    build_headers.emplace_back("continuation-test-3",
+                               std::string(4096, '-'));
+    build_headers.emplace_back("continuation-test-4",
+                               std::string(4096, '-'));
+  }
   auto num_initial_headers = build_headers.size();
   if(req->data_prd) {
     build_headers.emplace_back("content-length", util::utos(req->data_length));
@@ -1701,6 +1713,7 @@ void print_help(std::ostream& out)
       << "    -b, --data-pad=<ALIGNMENT>\n"
       << "                       Alignment of DATA frame padding.\n"
       << "    --color            Force colored log output.\n"
+      << "    --continuation     Send large header to test CONTINUATION.\n"
       << std::endl;
 }
 } // namespace
@@ -1731,6 +1744,7 @@ int main(int argc, char **argv)
       {"cert", required_argument, &flag, 1},
       {"key", required_argument, &flag, 2},
       {"color", no_argument, &flag, 3},
+      {"continuation", no_argument, &flag, 4},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -1864,6 +1878,10 @@ int main(int argc, char **argv)
       case 3:
         // color option
         color = true;
+        break;
+      case 4:
+        // continuation option
+        config.continuation = true;
         break;
       }
       break;
