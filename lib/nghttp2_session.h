@@ -44,7 +44,10 @@
  */
 typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE = 1 << 0,
-  NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1
+  NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1,
+  /* Option to disable DATA frame padding, which is currently hidden
+     from outside, but provided for ease of testing */
+  NGHTTP2_OPTMASK_NO_DATA_PADDING = 1 << 2,
 } nghttp2_optmask;
 
 typedef struct {
@@ -149,6 +152,8 @@ struct nghttp2_session {
   size_t num_incoming_streams;
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
+  /* DATA padding alignemnt. See NGHTTP2_OPT_DATA_PAD_ALIGNMENT. */
+  size_t data_pad_alignment;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
   uint32_t next_stream_id;
   /* The largest stream ID received so far */
@@ -508,9 +513,11 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
  * Packs DATA frame |frame| in wire frame format and stores it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. It packs header in first 8 bytes. Remaining bytes
- * are the DATA apyload and are filled using |frame->data_prd|. The
- * length of payload is at most |datamax| bytes.
+ * given |frame|. It packs header in first 8 bytes starting
+ * |*bufoff_ptr| offset. The |*bufoff_ptr| is calculated based on
+ * usage of padding. Remaining bytes are the DATA apyload and are
+ * filled using |frame->data_prd|. The length of payload is at most
+ * |datamax| bytes.
  *
  * This function returns the size of packed frame if it succeeds, or
  * one of the following negative error codes:
@@ -526,6 +533,7 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
  */
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  size_t *bufoff_ptr,
                                   size_t datamax,
                                   nghttp2_private_data *frame);
 

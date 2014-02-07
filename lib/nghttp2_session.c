@@ -223,6 +223,12 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
     (*session_ptr)->opt_flags |=
       NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
   }
+  if((opt_set_mask & NGHTTP2_OPT_DATA_PAD_ALIGNMENT) &&
+     opt_set->data_pad_alignment >= 8) {
+    (*session_ptr)->data_pad_alignment = opt_set->data_pad_alignment;
+  } else {
+    (*session_ptr)->data_pad_alignment = NGHTTP2_DATA_PAD_ALIGNMENT;
+  }
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
@@ -1271,6 +1277,7 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
     framebuflen = nghttp2_session_pack_data(session,
                                             &session->aob.framebuf,
                                             &session->aob.framebufmax,
+                                            &session->aob.framebufoff,
                                             next_readmax,
                                             data_frame);
     if(framebuflen == NGHTTP2_ERR_DEFERRED) {
@@ -1589,8 +1596,20 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
   } else if(item->frame_cat == NGHTTP2_CAT_DATA) {
     nghttp2_private_data *data_frame;
     nghttp2_outbound_item* next_item;
+    nghttp2_stream *stream;
+    size_t effective_payloadlen;
 
     data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
+    stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
+    /* We update flow control window after a frame was completely
+       sent. This is possible because we choose payload length not to
+       exceed the window */
+    effective_payloadlen = data_frame->hd.length - data_frame->padlen;
+    session->remote_window_size -= effective_payloadlen;
+    if(stream) {
+      stream->remote_window_size -= effective_payloadlen;
+    }
+
     if(session->callbacks.on_frame_send_callback) {
       nghttp2_frame public_data_frame;
       nghttp2_frame_data_init(&public_data_frame.data, data_frame);
@@ -1599,15 +1618,13 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         return rv;
       }
     }
-    if(data_frame->eof && (data_frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
-      nghttp2_stream *stream =
-        nghttp2_session_get_stream(session, data_frame->hd.stream_id);
-      if(stream) {
-        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
-        rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
-        }
+
+    if(stream && data_frame->eof &&
+       (data_frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
+      nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
+      rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
       }
     }
     /* If session is closed or RST_STREAM was queued, we won't send
@@ -1618,16 +1635,14 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       nghttp2_active_outbound_item_reset(&session->aob);
       return 0;
     }
+    /* Assuming stream is not NULL */
+    assert(stream);
     next_item = nghttp2_session_get_next_ob_item(session);
     /* If priority of this stream is higher or equal to other stream
        waiting at the top of the queue, we continue to send this
        data. */
     if(next_item == NULL || session->aob.item->pri < next_item->pri) {
       size_t next_readmax;
-      nghttp2_stream *stream;
-      stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
-      /* Assuming stream is not NULL */
-      assert(stream);
       next_readmax = nghttp2_session_next_data_read(session, stream);
       if(next_readmax == 0) {
         nghttp2_stream_defer_data(stream, session->aob.item,
@@ -1639,6 +1654,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       rv = nghttp2_session_pack_data(session,
                                      &session->aob.framebuf,
                                      &session->aob.framebufmax,
+                                     &session->aob.framebufoff,
                                      next_readmax,
                                      data_frame);
       if(nghttp2_is_fatal(rv)) {
@@ -1666,7 +1682,6 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       }
       assert(rv >= 0);
       session->aob.framebuflen = session->aob.framebufmark = rv;
-      session->aob.framebufoff = 0;
       return 0;
     }
     /* Update seq to interleave other streams with the same
@@ -1740,6 +1755,7 @@ int nghttp2_session_send(nghttp2_session *session)
       if(item->frame_cat == NGHTTP2_CAT_CTRL) {
         nghttp2_frame *frame = nghttp2_outbound_item_get_ctrl_frame(item);
         session->aob.framebufmark =
+          session->aob.framebufoff +
           frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH;
         r = session_call_before_frame_send(session, frame);
         if(nghttp2_is_fatal(r)) {
@@ -1748,10 +1764,13 @@ int nghttp2_session_send(nghttp2_session *session)
       } else {
         nghttp2_private_data *frame;
         frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
+        /* session->aob.framebufmark = session->aob.framebuflen; */
         session->aob.framebufmark =
+          session->aob.framebufoff +
           frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH;
       }
     }
+
     data = session->aob.framebuf + session->aob.framebufoff;
     datalen = session->aob.framebufmark - session->aob.framebufoff;
     sentlen = session->callbacks.send_callback(session, data, datalen, 0,
@@ -1763,23 +1782,6 @@ int nghttp2_session_send(nghttp2_session *session)
         return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
     } else {
-      if(session->aob.item->frame_cat == NGHTTP2_CAT_DATA &&
-         session->aob.framebufoff + sentlen > NGHTTP2_FRAME_HEAD_LENGTH) {
-        nghttp2_private_data *frame;
-        nghttp2_stream *stream;
-        uint16_t len;
-        if(session->aob.framebufoff < NGHTTP2_FRAME_HEAD_LENGTH) {
-          len = session->aob.framebufoff + sentlen - NGHTTP2_FRAME_HEAD_LENGTH;
-        } else {
-          len = sentlen;
-        }
-        frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
-        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-        if(stream) {
-          stream->remote_window_size -= len;
-        }
-        session->remote_window_size -= len;
-      }
       session->aob.framebufoff += sentlen;
       if(session->aob.framebufoff == session->aob.framebufmark) {
         /* Frame has completely sent */
@@ -3338,6 +3340,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       switch(iframe->frame.hd.type) {
       case NGHTTP2_DATA: {
         DEBUGF(fprintf(stderr, "DATA\n"));
+        iframe->frame.data.padlen = 0;
         /* Check stream is open. If it is not open or closing,
            ignore payload. */
         busy = 1;
@@ -3350,6 +3353,25 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         }
         if(nghttp2_is_fatal(rv)) {
           return rv;
+        }
+        if(iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+          if((iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_LOW) == 0) {
+            iframe->state = NGHTTP2_IB_IGN_DATA;
+            rv = nghttp2_session_terminate_session(session,
+                                                   NGHTTP2_PROTOCOL_ERROR);
+            if(nghttp2_is_fatal(rv)) {
+              return rv;
+            }
+            break;
+          }
+          iframe->state = NGHTTP2_IB_READ_NBYTE;
+          iframe->left = 2;
+          break;
+        }
+        if(iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+          iframe->state = NGHTTP2_IB_READ_NBYTE;
+          iframe->left = 1;
+          break;
         }
         iframe->state = NGHTTP2_IB_READ_DATA;
         break;
@@ -3454,7 +3476,26 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
       switch(iframe->frame.hd.type) {
       case NGHTTP2_DATA:
-        assert(0);
+        busy = 1;
+        iframe->frame.data.padlen = iframe->buf[0];
+        if(iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+          iframe->frame.data.padlen <<= 8;
+          iframe->frame.data.padlen |= iframe->buf[1];
+          ++iframe->frame.data.padlen;
+        }
+        ++iframe->frame.data.padlen;
+
+        DEBUGF(fprintf(stderr, "padlen=%zu\n", iframe->frame.data.padlen));
+        if(iframe->frame.data.padlen > iframe->frame.hd.length) {
+          rv = nghttp2_session_terminate_session(session,
+                                                 NGHTTP2_PROTOCOL_ERROR);
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+          iframe->state = NGHTTP2_IB_IGN_DATA;
+          break;
+        }
+        iframe->state = NGHTTP2_IB_READ_DATA;
         break;
       case NGHTTP2_HEADERS:
         rv = session_process_headers_frame(session);
@@ -3703,6 +3744,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu\n",
                      readlen, iframe->payloadleft));
       if(readlen > 0) {
+        size_t data_readlen = readlen;
         rv = nghttp2_session_update_recv_connection_window_size
           (session, readlen);
         if(nghttp2_is_fatal(rv)) {
@@ -3721,13 +3763,25 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
             }
           }
         }
-        if(session->callbacks.on_data_chunk_recv_callback) {
+        if(nghttp2_frame_data_trail_padlen(&iframe->frame.data) >
+           iframe->payloadleft) {
+          size_t trail_padlen;
+          trail_padlen = nghttp2_frame_data_trail_padlen(&iframe->frame.data)
+            - iframe->payloadleft;
+          if(readlen < trail_padlen) {
+            data_readlen = 0;
+          } else {
+            data_readlen -= trail_padlen;
+          }
+        }
+        DEBUGF(fprintf(stderr, "data_readlen=%zu\n", data_readlen));
+        if(data_readlen > 0 && session->callbacks.on_data_chunk_recv_callback) {
           rv = session->callbacks.on_data_chunk_recv_callback
             (session,
              iframe->frame.hd.flags,
              iframe->frame.hd.stream_id,
              in - readlen,
-             readlen,
+             data_readlen,
              session->user_data);
           if(rv == NGHTTP2_ERR_PAUSE) {
             /* Set type to NGHTTP2_DATA, so that we can see what was
@@ -3937,10 +3991,18 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  size_t *bufoff_ptr,
                                   size_t datamax,
                                   nghttp2_private_data *frame)
 {
-  ssize_t framelen = datamax+8, r;
+  /* extra 2 bytes for PAD_HIGH and PAD_LOW. We allocate extra 2 bytes
+     for padding. Based on the padding length, we adjust the starting
+     offset of frame data. The starting offset is assigned into
+     |*bufoff_ptr|. */
+  size_t headoff = 2;
+  size_t dataoff = NGHTTP2_FRAME_HEAD_LENGTH + headoff;
+  ssize_t framelen = dataoff + datamax;
+  ssize_t r;
   int eof_flags;
   uint8_t flags;
   r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
@@ -3949,7 +4011,7 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
   }
   eof_flags = 0;
   r = frame->data_prd.read_callback
-    (session, frame->hd.stream_id, (*buf_ptr)+8, datamax,
+    (session, frame->hd.stream_id, (*buf_ptr) + dataoff, datamax,
      &eof_flags, &frame->data_prd.source, session->user_data);
   if(r == NGHTTP2_ERR_DEFERRED || r == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
     return r;
@@ -3957,19 +4019,56 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
     /* This is the error code when callback is failed. */
     return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
-  frame->hd.length = r;
-  memset(*buf_ptr, 0, NGHTTP2_FRAME_HEAD_LENGTH);
-  nghttp2_put_uint16be(&(*buf_ptr)[0], r);
+
+  /* Clear flags, because this may contain previous flags of previous
+     DATA */
+  frame->hd.flags &= ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
   flags = 0;
+
+  if((session->opt_flags & NGHTTP2_OPTMASK_NO_DATA_PADDING) == 0 &&
+     r > 0 && (size_t)r < datamax) {
+    const size_t align = session->data_pad_alignment;
+    size_t nextlen = nghttp2_min((r + align - 1) / align * align, datamax);
+    size_t padlen = nextlen - r;
+    size_t trail_padlen = 0;
+    if(padlen > 257) {
+      headoff = 0;
+      trail_padlen = padlen - 2;
+      flags |= NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW;
+      (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH] = trail_padlen >> 8;
+      (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen & 0xff;
+    } else if(padlen > 0) {
+      headoff = 1;
+      trail_padlen = padlen - 1;
+      flags |= NGHTTP2_FLAG_PAD_LOW;
+      (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen;
+    }
+    frame->padlen = padlen;
+    memset((*buf_ptr) + dataoff + r, 0, trail_padlen);
+    frame->hd.length = nextlen;
+  } else {
+    frame->padlen = 0;
+    frame->hd.length = r;
+  }
+
+  /* Set PAD flags so that we can supply frame to the callback with
+     the correct flags */
+  frame->hd.flags |= flags;
+
+  memset(*buf_ptr + headoff, 0, NGHTTP2_FRAME_HEAD_LENGTH);
+  nghttp2_put_uint16be(&(*buf_ptr)[headoff], frame->hd.length);
+
   if(eof_flags) {
     frame->eof = 1;
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       flags |= NGHTTP2_FLAG_END_STREAM;
     }
   }
-  (*buf_ptr)[3] = flags;
-  nghttp2_put_uint32be(&(*buf_ptr)[4], frame->hd.stream_id);
-  return r+8;
+  (*buf_ptr)[headoff + 3] = flags;
+  nghttp2_put_uint32be(&(*buf_ptr)[headoff + 4], frame->hd.stream_id);
+  *bufoff_ptr = headoff;
+
+  return frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH + headoff;
 }
 
 void* nghttp2_session_get_stream_user_data(nghttp2_session *session,

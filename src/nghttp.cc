@@ -82,6 +82,7 @@ struct Config {
   std::string keyfile;
   std::string datafile;
   size_t output_upper_thres;
+  size_t data_pad_alignment;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
   int32_t pri;
@@ -98,6 +99,7 @@ struct Config {
   bool upgrade;
   Config()
     : output_upper_thres(1024*1024),
+      data_pad_alignment(NGHTTP2_DATA_PAD_ALIGNMENT),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1),
       pri(NGHTTP2_PRI_DEFAULT),
@@ -712,8 +714,10 @@ struct HttpClient {
     }
     nghttp2_opt_set opt_set;
     opt_set.peer_max_concurrent_streams = config.peer_max_concurrent_streams;
+    opt_set.data_pad_alignment = config.data_pad_alignment;
     rv = nghttp2_session_client_new2(&session, callbacks, this,
-                                     NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
+                                     NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS |
+                                     NGHTTP2_OPT_DATA_PAD_ALIGNMENT,
                                      &opt_set);
     if(rv != 0) {
       return -1;
@@ -1637,7 +1641,7 @@ void print_usage(std::ostream& out)
 {
   out << "Usage: nghttp [-Oansuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [-W <WINDOW_BITS>]\n"
       << "              [--cert=<CERT>] [--key=<KEY>] [-d <FILE>] [-m <N>]\n"
-      << "              [-p <PRIORITY>] [-M <N>]\n"
+      << "              [-p <PRIORITY>] [-M <N>] [-b <ALIGNMENT>]\n"
       << "              <URI>..."
       << std::endl;
 }
@@ -1694,6 +1698,8 @@ void print_help(std::ostream& out)
       << "                       is large enough as it is seen as unlimited.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
+      << "    -b, --data-pad=<ALIGNMENT>\n"
+      << "                       Alignment of DATA frame padding.\n"
       << "    --color            Force colored log output.\n"
       << std::endl;
 }
@@ -1721,13 +1727,14 @@ int main(int argc, char **argv)
       {"pri", required_argument, nullptr, 'p'},
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
       {"header-table-size", required_argument, nullptr, 'c'},
+      {"data-pad", required_argument, nullptr, 'b'},
       {"cert", required_argument, &flag, 1},
       {"key", required_argument, &flag, 2},
       {"color", no_argument, &flag, 3},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oac:d:m:np:hH:vst:uw:W:", long_options,
+    int c = getopt_long(argc, argv, "M:Oab:c:d:m:np:hH:vst:uw:W:", long_options,
                         &option_index);
     char *end;
     if(c == -1) {
@@ -1744,6 +1751,9 @@ int main(int argc, char **argv)
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
+    case 'b':
+      config.data_pad_alignment = strtol(optarg, nullptr, 10);
+      break;
     case 'n':
       config.null_out = true;
       break;

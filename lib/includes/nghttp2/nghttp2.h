@@ -148,6 +148,14 @@ typedef struct {
 #define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN 24
 
 /**
+ * @macro
+ *
+ * The default value of DATA padding alignment. See
+ * :member:`NGHTTP2_OPT_DATA_PAD_ALIGNMENT`.
+ */
+#define NGHTTP2_DATA_PAD_ALIGNMENT 256
+
+/**
  * @enum
  *
  * Error codes used in this library. The code range is [-999, -500],
@@ -599,6 +607,11 @@ typedef struct {
  */
 typedef struct {
   nghttp2_frame_hd hd;
+  /**
+   * The length of the padding in this frame. This includes PAD_HIGH
+   * and PAD_LOW.
+   */
+  size_t padlen;
 } nghttp2_data;
 
 /**
@@ -1309,7 +1322,15 @@ typedef enum {
    * will be overwritten if the local endpoint receives
    * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
    */
-  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 2
+  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 2,
+  /**
+   * This option specifies the alignment of padding in DATA frame. If
+   * this option is set to N, padding is added to DATA payload so that
+   * its payload length is divisible by N. Due to flow control,
+   * padding is not always added according to this alignment. The
+   * option value must be greater than or equal to 8.
+   */
+  NGHTTP2_OPT_DATA_PAD_ALIGNMENT = 1 << 3
 } nghttp2_opt;
 
 /**
@@ -1330,6 +1351,10 @@ typedef struct {
    * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
    */
   uint8_t no_auto_connection_window_update;
+  /**
+   * :enum:`NGHTTP2_OPT_DATA_PAD_ALIGNMENT`
+   */
+  uint16_t data_pad_alignment;
 } nghttp2_opt_set;
 
 /**

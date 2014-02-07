@@ -56,6 +56,7 @@ struct Config {
   std::string cert_file;
   void *data_ptr;
   size_t output_upper_thres;
+  size_t data_pad_alignment;
   ssize_t header_table_size;
   uint16_t port;
   bool verbose;

@@ -185,11 +185,19 @@ void nghttp2_frame_window_update_free(nghttp2_window_update *frame)
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata)
 {
   frame->hd = pdata->hd;
+  frame->padlen = pdata->padlen;
   /* flags may have NGHTTP2_FLAG_END_STREAM even if the sent chunk
      is not the end of the stream */
   if(!pdata->eof) {
     frame->hd.flags &= ~NGHTTP2_FLAG_END_STREAM;
   }
+}
+
+size_t nghttp2_frame_data_trail_padlen(nghttp2_data *frame)
+{
+  return frame->padlen
+    - ((frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH) > 0)
+    - ((frame->hd.flags & NGHTTP2_FLAG_PAD_LOW) > 0);
 }
 
 void nghttp2_frame_private_data_init(nghttp2_private_data *frame,

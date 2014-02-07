@@ -75,7 +75,8 @@ int parse_push_config(Config& config, const char *optarg)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttpd [-DVhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
+  out << "Usage: nghttpd [-DVhpv] [-d <PATH>] [--no-tls] [-b <ALIGNMENT>]\n"
+      << "               <PORT> [<PRIVATE_KEY> <CERT>]"
       << std::endl;
 }
 } // namespace
@@ -114,6 +115,8 @@ void print_help(std::ostream& out)
       << "                         -p/=/foo.png -p/doc=/bar.css\n"
       << "                       PATH and PUSH_PATHs are relative to document\n"
       << "                       root. See --htdocs option.\n"
+      << "    -b, --data-pad=<ALIGNMENT>\n"
+      << "                       Alignment of DATA frame padding.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -133,12 +136,13 @@ int main(int argc, char **argv)
       {"verify-client", no_argument, nullptr, 'V'},
       {"header-table-size", required_argument, nullptr, 'c'},
       {"push", required_argument, nullptr, 'p'},
+      {"data-pad", required_argument, nullptr, 'b'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVc:d:hp:v", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVb:c:d:hp:v", long_options, &option_index);
     char *end;
     if(c == -1) {
       break;
@@ -149,6 +153,9 @@ int main(int argc, char **argv)
       break;
     case 'V':
       config.verify_client = true;
+      break;
+    case 'b':
+      config.data_pad_alignment = strtol(optarg, nullptr, 10);
       break;
     case 'd':
       config.htdocs = optarg;

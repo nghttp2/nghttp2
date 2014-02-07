@@ -72,6 +72,11 @@ typedef struct {
    */
   nghttp2_data_provider data_prd;
   /**
+   * The number of bytes added as padding. This includes PAD_HIGH and
+   * PAD_LOW.
+   */
+  size_t padlen;
+  /**
    * The flag to indicate whether EOF was reached or not. Initially
    * |eof| is 0. It becomes 1 after all data were read. This is used
    * exclusively by nghttp2 library and not in the spec.
@@ -420,6 +425,12 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
 
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
+
+/*
+ * Returns the number of padding data after application data
+ * payload. Thus this does not include the PAD_HIGH and PAD_LOW.
+ */
+size_t nghttp2_frame_data_trail_padlen(nghttp2_data *frame);
 
 void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
                                      uint8_t flags,

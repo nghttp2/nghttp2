@@ -77,6 +77,8 @@ const char* strstatus(nghttp2_error_code error_code)
     return "CONNECT_ERROR";
   case NGHTTP2_ENHANCE_YOUR_CALM:
     return "ENHANCE_YOUR_CALM";
+  case NGHTTP2_INADEQUATE_SECURITY:
+    return "INADEQUATE_SECURITY";
   default:
     return "UNKNOWN";
   }
@@ -201,10 +203,34 @@ void print_flags(const nghttp2_frame_hd& hd)
     if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
     }
+    if(hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "END_SEGMENT";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_LOW";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_HIGH";
+    }
     break;
   case NGHTTP2_HEADERS:
     if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
+    }
+    if(hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "END_SEGMENT";
     }
     if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
       if(!s.empty()) {
@@ -265,6 +291,10 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   }
   switch(frame->hd.type) {
   case NGHTTP2_DATA:
+    if(frame->hd.flags & (NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW)) {
+      print_frame_attr_indent();
+      printf("(padlen=%zu)\n", frame->data.padlen);
+    }
     break;
   case NGHTTP2_HEADERS:
     if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
