@@ -3468,9 +3468,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
       break;
     case NGHTTP2_IB_READ_NBYTE:
+      DEBUGF(fprintf(stderr, "[IB_READ_NBYTE]\n"));
       readlen = inbound_frame_buf_read(iframe, in, last);
       in += readlen;
       iframe->payloadleft -= readlen;
+      DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu, left=%zu\n",
+                     readlen, iframe->payloadleft, iframe->left));
       if(iframe->left) {
         return in - first;
       }
@@ -3561,10 +3564,16 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       break;
     case NGHTTP2_IB_READ_HEADER_BLOCK:
     case NGHTTP2_IB_IGN_HEADER_BLOCK:
-      DEBUGF(fprintf(stderr, "[IB_READ_HEADER_BLOCK]\n"));
+#ifdef DEBUGBUILD
+      if(iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
+        fprintf(stderr, "[IB_READ_HEADER_BLOCK]\n");
+      } else {
+        fprintf(stderr, "[IB_IGN_HEADER_BLOCK]\n");
+      }
+#endif /* DEBUGBUILD */
       readlen = inbound_frame_payload_readlen(iframe, in, last);
       DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu\n",
-                     readlen, iframe->payloadleft));
+                     readlen, iframe->payloadleft - readlen));
       DEBUGF(fprintf(stderr, "block final=%d\n",
                      (iframe->frame.hd.flags &
                       NGHTTP2_FLAG_END_HEADERS) &&
@@ -3628,15 +3637,19 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
       break;
     case NGHTTP2_IB_IGN_PAYLOAD:
+      DEBUGF(fprintf(stderr, "[IB_IGN_PAYLOAD]\n"));
       readlen = inbound_frame_payload_readlen(iframe, in, last);
       iframe->payloadleft -= readlen;
       in += readlen;
+      DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu\n",
+                     readlen, iframe->payloadleft));
       if(iframe->payloadleft) {
         break;
       }
       nghttp2_inbound_frame_reset(session);
       break;
     case NGHTTP2_IB_FRAME_SIZE_ERROR:
+      DEBUGF(fprintf(stderr, "[IB_FRAME_SIZE_ERROR]\n"));
       rv = session_handle_frame_size_error(session, &iframe->frame);
       if(nghttp2_is_fatal(rv)) {
         return rv;
@@ -3649,6 +3662,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       readlen = inbound_frame_buf_read(iframe, in, last);
       iframe->payloadleft -= readlen;
       in += readlen;
+      DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu\n",
+                     readlen, iframe->payloadleft));
       if(iframe->left) {
         break;
       }
@@ -3681,9 +3696,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       nghttp2_inbound_frame_reset(session);
       break;
     case NGHTTP2_IB_READ_GOAWAY_DEBUG:
+      DEBUGF(fprintf(stderr, "[IB_READ_GOAWAY_DEBUG]\n"));
       readlen = inbound_frame_payload_readlen(iframe, in, last);
       iframe->payloadleft -= readlen;
       in += readlen;
+      DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu\n",
+                     readlen, iframe->payloadleft));
       if(iframe->payloadleft) {
         break;
       }
@@ -3808,6 +3826,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       readlen = inbound_frame_payload_readlen(iframe, in, last);
       iframe->payloadleft -= readlen;
       in += readlen;
+      DEBUGF(fprintf(stderr, "readlen=%zu, payloadleft=%zu\n",
+                     readlen, iframe->payloadleft));
       if(readlen > 0) {
         /* Update connection-level flow control window for ignored
            DATA frame too */
