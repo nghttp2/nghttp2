@@ -3313,6 +3313,29 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   return 0;
 }
 
+/*
+ * Checks PAD_HIGH and PAD_LOW flags and set next state
+ * accordingly. If padding is set, this function returns 1. If no
+ * padding is set, this function returns 0. On error, returns -1.
+ */
+static int inbound_frame_handle_pad(nghttp2_inbound_frame *iframe)
+{
+  if(iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+    if((iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_LOW) == 0) {
+      return -1;
+    }
+    iframe->state = NGHTTP2_IB_READ_NBYTE;
+    iframe->left = 2;
+    return 1;
+  }
+  if(iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+    iframe->state = NGHTTP2_IB_READ_NBYTE;
+    iframe->left = 1;
+    return 1;
+  }
+  return 0;
+}
+
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                  const uint8_t *in, size_t inlen)
 {
@@ -3354,26 +3377,20 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
-        if(iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
-          if((iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_LOW) == 0) {
-            iframe->state = NGHTTP2_IB_IGN_DATA;
-            rv = nghttp2_session_terminate_session(session,
-                                                   NGHTTP2_PROTOCOL_ERROR);
-            if(nghttp2_is_fatal(rv)) {
-              return rv;
-            }
-            break;
+        rv = inbound_frame_handle_pad(iframe);
+        if(rv < 0) {
+          iframe->state = NGHTTP2_IB_IGN_DATA;
+          rv = nghttp2_session_terminate_session(session,
+                                                 NGHTTP2_PROTOCOL_ERROR);
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
           }
-          iframe->state = NGHTTP2_IB_READ_NBYTE;
-          iframe->left = 2;
           break;
         }
-        if(iframe->frame.hd.flags & NGHTTP2_FLAG_PAD_LOW) {
-          iframe->state = NGHTTP2_IB_READ_NBYTE;
-          iframe->left = 1;
+        if(rv == 0) {
+          iframe->state = NGHTTP2_IB_READ_DATA;
           break;
         }
-        iframe->state = NGHTTP2_IB_READ_DATA;
         break;
       }
       case NGHTTP2_HEADERS:
