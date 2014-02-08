@@ -21,8 +21,11 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+SUBDIRS = _themes
+
 EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py \
-	package_README.rst tutorial-client.rst tutorial-server.rst
+	package_README.rst tutorial-client.rst tutorial-server.rst \
+	nghttp2.h.rst nghttp2ver.h.rst
 
 # Makefile for Sphinx documentation
 #
