@@ -82,7 +82,7 @@ struct Config {
   std::string keyfile;
   std::string datafile;
   size_t output_upper_thres;
-  size_t data_pad_alignment;
+  size_t pad_alignment;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
   int32_t pri;
@@ -100,7 +100,7 @@ struct Config {
   bool continuation;
   Config()
     : output_upper_thres(1024*1024),
-      data_pad_alignment(NGHTTP2_DATA_PAD_ALIGNMENT),
+      pad_alignment(NGHTTP2_PAD_ALIGNMENT),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1),
       pri(NGHTTP2_PRI_DEFAULT),
@@ -716,10 +716,10 @@ struct HttpClient {
     }
     nghttp2_opt_set opt_set;
     opt_set.peer_max_concurrent_streams = config.peer_max_concurrent_streams;
-    opt_set.data_pad_alignment = config.data_pad_alignment;
+    opt_set.pad_alignment = config.pad_alignment;
     rv = nghttp2_session_client_new2(&session, callbacks, this,
                                      NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS |
-                                     NGHTTP2_OPT_DATA_PAD_ALIGNMENT,
+                                     NGHTTP2_OPT_PAD_ALIGNMENT,
                                      &opt_set);
     if(rv != 0) {
       return -1;
@@ -1710,8 +1710,8 @@ void print_help(std::ostream& out)
       << "                       is large enough as it is seen as unlimited.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
-      << "    -b, --data-pad=<ALIGNMENT>\n"
-      << "                       Alignment of DATA frame padding.\n"
+      << "    -b, --pad=<ALIGNMENT>\n"
+      << "                       Alignment of frame payload padding.\n"
       << "    --color            Force colored log output.\n"
       << "    --continuation     Send large header to test CONTINUATION.\n"
       << std::endl;
@@ -1766,7 +1766,7 @@ int main(int argc, char **argv)
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'b':
-      config.data_pad_alignment = strtol(optarg, nullptr, 10);
+      config.pad_alignment = strtol(optarg, nullptr, 10);
       break;
     case 'n':
       config.null_out = true;

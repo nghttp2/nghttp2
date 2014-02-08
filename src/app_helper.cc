@@ -244,6 +244,18 @@ void print_flags(const nghttp2_frame_hd& hd)
       }
       s += "PRIORITY";
     }
+    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_LOW";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_HIGH";
+    }
     break;
   case NGHTTP2_SETTINGS:
     if(hd.flags & NGHTTP2_FLAG_ACK) {
@@ -253,6 +265,18 @@ void print_flags(const nghttp2_frame_hd& hd)
   case NGHTTP2_PUSH_PROMISE:
     if(hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) {
       s += "END_PUSH_PROMISE";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_LOW";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_HIGH";
     }
     break;
   case NGHTTP2_PING:
@@ -297,10 +321,9 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     }
     break;
   case NGHTTP2_HEADERS:
-    if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
-      print_frame_attr_indent();
-      printf("(pri=%d)\n", frame->headers.pri);
-    }
+    print_frame_attr_indent();
+    printf("(pri=%d, padlen=%zu)\n",
+           frame->headers.pri, frame->headers.padlen);
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST:
       print_frame_attr_indent();
@@ -342,8 +365,9 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     break;
   case NGHTTP2_PUSH_PROMISE:
     print_frame_attr_indent();
-    printf("(promised_stream_id=%d)\n",
-           frame->push_promise.promised_stream_id);
+    printf("(promised_stream_id=%d, padlen=%zu)\n",
+           frame->push_promise.promised_stream_id,
+           frame->push_promise.padlen);
     print_nv(frame->push_promise.nva, frame->push_promise.nvlen);
     break;
   case NGHTTP2_PING:

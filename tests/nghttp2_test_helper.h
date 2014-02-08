@@ -29,6 +29,7 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#include "nghttp2_session.h"
 #include "nghttp2_frame.h"
 #include "nghttp2_hd.h"
 
@@ -56,5 +57,7 @@ void add_out(nva_out *out, nghttp2_nv *nv);
 
 ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
                    uint8_t *buf, size_t buflen);
+
+void session_disable_pad(nghttp2_session *session);
 
 #endif /* NGHTTP2_TEST_HELPER_H */

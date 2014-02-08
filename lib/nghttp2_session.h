@@ -44,10 +44,7 @@
  */
 typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE = 1 << 0,
-  NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1,
-  /* Option to disable DATA frame padding, which is currently hidden
-     from outside, but provided for ease of testing */
-  NGHTTP2_OPTMASK_NO_DATA_PADDING = 1 << 2,
+  NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1
 } nghttp2_optmask;
 
 typedef struct {
@@ -89,6 +86,8 @@ typedef enum {
   NGHTTP2_IB_READ_GOAWAY_DEBUG,
   NGHTTP2_IB_EXPECT_CONTINUATION,
   NGHTTP2_IB_IGN_CONTINUATION,
+  NGHTTP2_IB_READ_PAD_CONTINUATION,
+  NGHTTP2_IB_IGN_PAD_CONTINUATION,
   NGHTTP2_IB_READ_DATA,
   NGHTTP2_IB_IGN_DATA
 } nghttp2_inbound_state;
@@ -105,6 +104,8 @@ typedef struct {
   size_t left;
   /* How many bytes we still need to receive for current frame */
   size_t payloadleft;
+  /* padding length for the current frame */
+  size_t padlen;
   nghttp2_inbound_state state;
   /* TODO, remove this. Error code */
   int error_code;
@@ -152,8 +153,8 @@ struct nghttp2_session {
   size_t num_incoming_streams;
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
-  /* DATA padding alignemnt. See NGHTTP2_OPT_DATA_PAD_ALIGNMENT. */
-  size_t data_pad_alignment;
+  /* padding alignemnt. See NGHTTP2_OPT_PAD_ALIGNMENT. */
+  size_t pad_alignment;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
   uint32_t next_stream_id;
   /* The largest stream ID received so far */

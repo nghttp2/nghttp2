@@ -159,3 +159,8 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
   nghttp2_hd_inflate_end_headers(inflater);
   return initial - buflen;
 }
+
+void session_disable_pad(nghttp2_session *session)
+{
+  session->pad_alignment = 0;
+}

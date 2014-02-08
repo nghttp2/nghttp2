@@ -115,8 +115,8 @@ void print_help(std::ostream& out)
       << "                         -p/=/foo.png -p/doc=/bar.css\n"
       << "                       PATH and PUSH_PATHs are relative to document\n"
       << "                       root. See --htdocs option.\n"
-      << "    -b, --data-pad=<ALIGNMENT>\n"
-      << "                       Alignment of DATA frame padding.\n"
+      << "    -b, --pad=<ALIGNMENT>\n"
+      << "                       Alignment of frame payload padding.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
       config.verify_client = true;
       break;
     case 'b':
-      config.data_pad_alignment = strtol(optarg, nullptr, 10);
+      config.pad_alignment = strtol(optarg, nullptr, 10);
       break;
     case 'd':
       config.htdocs = optarg;

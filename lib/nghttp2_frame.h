@@ -104,14 +104,21 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * expansion occurred, memory previously pointed by |*buf_ptr| may
  * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
+ * The first byte the frame is serialized is returned in the
+ * |*bufoff_ptr|.
+ *
+ * The |align| is used as padding alignment. If the |align| is zero,
+ * no padding is added.
+ *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
  * NGHTTP2_MAX_FRAME_LENGTH, payload data is still serialized as is,
  * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
  * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
  *
- * This function returns the size of packed frame if it succeeds, or
- * returns one of the following negative error codes:
+ * This function returns the size of packed frame (which includes
+ * |*bufoff_ptr| bytes) if it succeeds, or returns one of the
+ * following negative error codes:
  *
  * NGHTTP2_ERR_HEADER_COMP
  *     The deflate operation failed.
@@ -122,8 +129,10 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  */
 ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *buflen_ptr,
+                                   size_t *bufoff_ptr,
                                    nghttp2_headers *frame,
-                                   nghttp2_hd_deflater *deflater);
+                                   nghttp2_hd_deflater *deflater,
+                                   size_t align);
 
 /*
  * Unpacks HEADERS frame byte sequence into |frame|. This function
@@ -427,10 +436,11 @@ void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
 
 /*
- * Returns the number of padding data after application data
- * payload. Thus this does not include the PAD_HIGH and PAD_LOW.
+ * Returns the number of padding bytes after payload. The total
+ * padding length is given in the |padlen|. The returned value does
+ * not include the PAD_HIGH and PAD_LOW.
  */
-size_t nghttp2_frame_data_trail_padlen(nghttp2_data *frame);
+size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen);
 
 void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
                                      uint8_t flags,
