@@ -4077,7 +4077,7 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
     frame->padlen = rv;
     frame->hd.length = payloadlen + rv;
   } else {
-    *bufoff_ptr = 0;
+    *bufoff_ptr = 2;
     frame->padlen = 0;
     frame->hd.length = payloadlen;
   }
