@@ -417,11 +417,11 @@ typedef enum {
   /**
    * The PAD_LOW flag.
    */
-  NGHTTP2_FLAG_PAD_LOW = 0x4,
+  NGHTTP2_FLAG_PAD_LOW = 0x10,
   /**
    * The PAD_HIGH flag.
    */
-  NGHTTP2_FLAG_PAD_HIGH = 0x8
+  NGHTTP2_FLAG_PAD_HIGH = 0x20
 } nghttp2_flag;
 
 /**
