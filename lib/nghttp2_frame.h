@@ -492,4 +492,35 @@ void nghttp2_nv_array_del(nghttp2_nv *nva);
  */
 int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
 
+/*
+ * Add padding to the payload in the |*buf_ptr| of length
+ * |*buflen_ptr|. The payload length is given in |payloadlen|. The
+ * payload must start at offset NGHTTP2_FRAME_HEAD_LENGTH + 2 from
+ * |*buf_ptr| to account for PAD_HIGH and PAD_LOW. The maximum payload
+ * allowed is given in the |payloadmax|. The padding will not be made
+ * more than |payloadmax|. The padding alignment is given in the
+ * |align|.
+ *
+ * The |*flags_ptr| is updated to include NGHTTP2_FLAG_PAD_LOW and
+ * NGHTTP2_FLAG_PAD_HIGH based on the padding length. The
+ * |*bufoff_ptr| will have the offset starting the frame header in
+ * |*buf_ptr|.
+ *
+ * The |*buf_ptr| and |*buflen_ptr| may be extended to include padding
+ * bytes.
+ *
+ * This function returns the number of padding added to the payload
+ * including PAD_HIGH and PAD_LOW if it succeeds, or one of the
+ * following negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
+                              size_t *bufoff_ptr,
+                              uint8_t *flags_ptr,
+                              size_t payloadlen,
+                              size_t payloadmax,
+                              size_t align);
+
 #endif /* NGHTTP2_FRAME_H */

@@ -4019,23 +4019,27 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
      for padding. Based on the padding length, we adjust the starting
      offset of frame data. The starting offset is assigned into
      |*bufoff_ptr|. */
-  size_t headoff = 2;
-  size_t dataoff = NGHTTP2_FRAME_HEAD_LENGTH + headoff;
-  ssize_t framelen = dataoff + datamax;
-  ssize_t r;
+  size_t payloadoff = NGHTTP2_FRAME_HEAD_LENGTH + 2;
+  ssize_t framelen = payloadoff + datamax;
+  ssize_t rv;
   int eof_flags;
   uint8_t flags;
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
-  if(r != 0) {
-    return r;
+  ssize_t payloadlen;
+
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(rv != 0) {
+    return rv;
   }
   eof_flags = 0;
-  r = frame->data_prd.read_callback
-    (session, frame->hd.stream_id, (*buf_ptr) + dataoff, datamax,
+  payloadlen = frame->data_prd.read_callback
+    (session, frame->hd.stream_id, (*buf_ptr) + payloadoff, datamax,
      &eof_flags, &frame->data_prd.source, session->user_data);
-  if(r == NGHTTP2_ERR_DEFERRED || r == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
-    return r;
-  } else if(r < 0 || datamax < (size_t)r) {
+
+  if(payloadlen == NGHTTP2_ERR_DEFERRED ||
+     payloadlen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+    return payloadlen;
+  }
+  if(payloadlen < 0 || datamax < (size_t)payloadlen) {
     /* This is the error code when callback is failed. */
     return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
@@ -4046,37 +4050,27 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
   flags = 0;
 
   if((session->opt_flags & NGHTTP2_OPTMASK_NO_DATA_PADDING) == 0 &&
-     r > 0 && (size_t)r < datamax) {
-    const size_t align = session->data_pad_alignment;
-    size_t nextlen = nghttp2_min((r + align - 1) / align * align, datamax);
-    size_t padlen = nextlen - r;
-    size_t trail_padlen = 0;
-    if(padlen > 257) {
-      headoff = 0;
-      trail_padlen = padlen - 2;
-      flags |= NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW;
-      (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH] = trail_padlen >> 8;
-      (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen & 0xff;
-    } else if(padlen > 0) {
-      headoff = 1;
-      trail_padlen = padlen - 1;
-      flags |= NGHTTP2_FLAG_PAD_LOW;
-      (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen;
+     payloadlen > 0 && (size_t)payloadlen < datamax) {
+    rv = nghttp2_frame_add_pad(buf_ptr, buflen_ptr, bufoff_ptr,
+                               &flags, payloadlen, datamax,
+                               session->data_pad_alignment);
+    if(rv < 0) {
+      return rv;
     }
-    frame->padlen = padlen;
-    memset((*buf_ptr) + dataoff + r, 0, trail_padlen);
-    frame->hd.length = nextlen;
+    frame->padlen = rv;
+    frame->hd.length = payloadlen + rv;
   } else {
+    *bufoff_ptr = 0;
     frame->padlen = 0;
-    frame->hd.length = r;
+    frame->hd.length = payloadlen;
   }
 
   /* Set PAD flags so that we can supply frame to the callback with
      the correct flags */
   frame->hd.flags |= flags;
 
-  memset(*buf_ptr + headoff, 0, NGHTTP2_FRAME_HEAD_LENGTH);
-  nghttp2_put_uint16be(&(*buf_ptr)[headoff], frame->hd.length);
+  memset(*buf_ptr + *bufoff_ptr, 0, NGHTTP2_FRAME_HEAD_LENGTH);
+  nghttp2_put_uint16be(&(*buf_ptr)[*bufoff_ptr], frame->hd.length);
 
   if(eof_flags) {
     frame->eof = 1;
@@ -4084,11 +4078,10 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
       flags |= NGHTTP2_FLAG_END_STREAM;
     }
   }
-  (*buf_ptr)[headoff + 3] = flags;
-  nghttp2_put_uint32be(&(*buf_ptr)[headoff + 4], frame->hd.stream_id);
-  *bufoff_ptr = headoff;
+  (*buf_ptr)[*bufoff_ptr + 3] = flags;
+  nghttp2_put_uint32be(&(*buf_ptr)[*bufoff_ptr + 4], frame->hd.stream_id);
 
-  return frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH + headoff;
+  return frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH + *bufoff_ptr;
 }
 
 void* nghttp2_session_get_stream_user_data(nghttp2_session *session,

@@ -647,3 +647,42 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
   }
   return 1;
 }
+
+ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
+                              size_t *bufoff_ptr,
+                              uint8_t *flags_ptr,
+                              size_t payloadlen,
+                              size_t payloadmax,
+                              size_t align)
+{
+  int rv;
+  size_t nextlen = nghttp2_min((payloadlen + align - 1) / align * align,
+                               payloadmax);
+  size_t padlen = nextlen - payloadlen;
+  size_t trail_padlen = 0;
+  size_t headoff = 2;
+  size_t trail_padoff = headoff + NGHTTP2_FRAME_HEAD_LENGTH + payloadlen;
+  if(padlen > 257) {
+    headoff = 0;
+    trail_padlen = padlen - 2;
+    *flags_ptr |= NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW;
+    (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH] = trail_padlen >> 8;
+    (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen & 0xff;
+  } else if(padlen > 0) {
+    headoff = 1;
+    trail_padlen = padlen - 1;
+    *flags_ptr |= NGHTTP2_FLAG_PAD_LOW;
+    (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen;
+  }
+
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr,
+                              trail_padoff + trail_padlen);
+  if(rv != 0) {
+    return rv;
+  }
+
+  memset((*buf_ptr) + trail_padoff, 0, trail_padlen);
+  *bufoff_ptr = headoff;
+
+  return padlen;
+}
