@@ -3686,12 +3686,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       if(iframe->payloadleft) {
         break;
       }
-      if(iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
-        rv = session_after_header_block_received(session);
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-      }
       if((iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
         iframe->left = NGHTTP2_FRAME_HEAD_LENGTH;
         iframe->error_code = 0;
@@ -3702,6 +3696,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           iframe->state = NGHTTP2_IB_IGN_CONTINUATION;
         }
       } else {
+        if(iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
+          rv = session_after_header_block_received(session);
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
         nghttp2_inbound_frame_reset(session);
       }
       break;
