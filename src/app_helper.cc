@@ -331,8 +331,11 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     break;
   case NGHTTP2_HEADERS:
     print_frame_attr_indent();
-    fprintf(outfile, "(pri=%d, padlen=%zu)\n",
-            frame->headers.pri, frame->headers.padlen);
+    fprintf(outfile, "(");
+    if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+      fprintf(outfile, "pri=%d, ", frame->headers.pri);
+    }
+    fprintf(outfile, "padlen=%zu)\n", frame->headers.padlen);
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST:
       print_frame_attr_indent();
