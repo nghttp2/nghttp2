@@ -1,1 +1,0 @@
-SUBDIRS = css fonts js
