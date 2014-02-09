@@ -696,7 +696,8 @@ ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
   if(rv != 0) {
     return rv;
   }
-
+  /* We have to zero out padding bytes so that we won't reveal the
+     possible internal data to the remote peer */
   memset((*buf_ptr) + trail_padoff, 0, trail_padlen);
 
   return padlen;

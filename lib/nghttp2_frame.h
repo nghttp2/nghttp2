@@ -519,6 +519,57 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  * The |*buf_ptr| and |*buflen_ptr| may be extended to include padding
  * bytes.
  *
+ * The padding specifier PAD_HIGH and PAD_LOW are located right after
+ * the frame header. But they may not be there depending of the length
+ * of the padding. To save the additional buffer copy, we allocate
+ * buffer size as if these 2 bytes always exist. Depending of the
+ * length of the padding, we move the location of frame header and
+ * adjust |*bufoff_ptr|. If more than or equal to 256 padding is made,
+ * the |*bufoff_ptr| is 0 and the content of the |*buf_ptr| looks like
+ * this:
+ *
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * | Frame header                                                ...
+ * +---------------------------------------------------------------+
+ * . Frame header                                                  |
+ * +---------------+---------------+-------------------------------+
+ * | Pad high      | Pad low       | Payload                     ...
+ * +---------------+---------------+-------------------------------+
+ *
+ *
+ * If padding is less than 256 but strictly more than 0, the
+ * |*bufoff_ptr| is 1 and the |*buf_ptr| looks like this:
+ *
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * | Unused        | Frame header                                ...
+ * +---------------+-----------------------------------------------+
+ * . Frame header                                                ...
+ * +---------------+---------------+-------------------------------+
+ * . Frame Header  | Pad low       | Payload                     ...
+ * +---------------+---------------+-------------------------------+
+ *
+ * If no padding is added, the |*bufoff_ptr| is 2 and the |*buf_ptr|
+ * looks like this:
+ *
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * | Unused                        | Frame header                ...
+ * +-------------------------------+-------------------------------+
+ * . Frame header                                                ...
+ * +-------------------------------+-------------------------------+
+ * . Frame Header                  | Payload                     ...
+ * +-------------------------------+-------------------------------+
+ *
+ * Notice that the position of payload does not change. This way, we
+ * can set PAD_HIGH and PAD_LOW after payload was serialized and no
+ * additional copy operation is required (if the |*buf_ptr| is large
+ * enough to account the additional padding, of course).
+ *
  * This function returns the number of padding added to the payload
  * including PAD_HIGH and PAD_LOW if it succeeds, or one of the
  * following negative error codes:
