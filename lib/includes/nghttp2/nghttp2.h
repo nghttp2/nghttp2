@@ -153,7 +153,7 @@ typedef struct {
  * The default value of DATA padding alignment. See
  * :member:`NGHTTP2_OPT_PAD_ALIGNMENT`.
  */
-#define NGHTTP2_PAD_ALIGNMENT 256
+#define NGHTTP2_PAD_ALIGNMENT 16
 
 /**
  * @enum
