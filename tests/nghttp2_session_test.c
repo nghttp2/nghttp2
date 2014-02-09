@@ -3905,7 +3905,7 @@ void test_nghttp2_session_pack_data_with_padding(void)
   CU_ASSERT(NGHTTP2_HEADERS == ud.sent_frame_type);
 
   frame = OB_DATA(session->aob.item);
-  CU_ASSERT(session->pad_alignment - datalen == frame->padlen);
+  CU_ASSERT((frame->padlen + datalen) % session->pad_alignment == 0);
   CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PAD_LOW);
   CU_ASSERT(0 == (frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH));
 
