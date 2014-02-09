@@ -1338,8 +1338,7 @@ typedef enum {
    * payload. If this option is set to N, padding is added to frame
    * payload so that its payload length is divisible by N. For DATA
    * frame, due to flow control, padding is not always added according
-   * to this alignment. The option value must be greater than or equal
-   * to 8.
+   * to this alignment. Specifying 0 to this option disables padding.
    */
   NGHTTP2_OPT_PADDING_BOUNDARY = 1 << 3
 } nghttp2_opt;

@@ -224,8 +224,7 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
     (*session_ptr)->opt_flags |=
       NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
   }
-  if((opt_set_mask & NGHTTP2_OPT_PADDING_BOUNDARY) &&
-     opt_set->padding_boundary >= 8) {
+  if(opt_set_mask & NGHTTP2_OPT_PADDING_BOUNDARY) {
     (*session_ptr)->padding_boundary = opt_set->padding_boundary;
   } else {
     (*session_ptr)->padding_boundary = NGHTTP2_PADDING_BOUNDARY;

@@ -1711,7 +1711,8 @@ void print_help(std::ostream& out)
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
       << "    -b, --padding=<BOUNDARY>\n"
-      << "                       Padding boundary for frame payload.\n"
+      << "                       Padding boundary for frame payload. Specify\n"
+      << "                       0 to disable padding.\n"
       << "    --color            Force colored log output.\n"
       << "    --continuation     Send large header to test CONTINUATION.\n"
       << std::endl;

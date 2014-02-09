@@ -116,7 +116,8 @@ void print_help(std::ostream& out)
       << "                       PATH and PUSH_PATHs are relative to document\n"
       << "                       root. See --htdocs option.\n"
       << "    -b, --padding=<BOUNDARY>\n"
-      << "                       Padding boundary for frame payload.\n"
+      << "                       Padding boundary for frame payload. Specify\n"
+      << "                       0 to disable padding.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
