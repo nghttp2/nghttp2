@@ -669,7 +669,8 @@ ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
 {
   int rv;
   size_t nextlen =
-    nghttp2_min((payloadlen + boundary - 1) / boundary * boundary,
+    nghttp2_min(((payloadlen == 0 ? 1 : payloadlen) + boundary - 1)
+                / boundary * boundary,
                 payloadmax);
   size_t padlen = nextlen - payloadlen;
   size_t trail_padlen = 0;

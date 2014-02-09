@@ -4227,8 +4227,7 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
   frame->hd.flags &= ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
   flags = 0;
 
-  if(session->padding_boundary &&
-     payloadlen > 0 && (size_t)payloadlen < datamax) {
+  if(session->padding_boundary && (size_t)payloadlen < datamax) {
     rv = nghttp2_frame_add_pad(buf_ptr, buflen_ptr, bufoff_ptr,
                                &flags, payloadlen, datamax,
                                session->padding_boundary);
