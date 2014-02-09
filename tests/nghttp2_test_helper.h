@@ -37,6 +37,24 @@
   { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
 #define ARRLEN(ARR) (sizeof(ARR)/sizeof(ARR[0]))
 
+#define assert_nv_equal(A, B, len)                          \
+  do {                                                      \
+    size_t alloclen = sizeof(nghttp2_nv) * len;             \
+    nghttp2_nv *sa = A, *sb = B;                            \
+    nghttp2_nv *a = malloc(alloclen);                       \
+    nghttp2_nv *b = malloc(alloclen);                       \
+    ssize_t i_;                                             \
+    memcpy(a, sa, alloclen);                                \
+    memcpy(b, sb, alloclen);                                \
+    nghttp2_nv_array_sort(a, len);                          \
+    nghttp2_nv_array_sort(b, len);                          \
+    for(i_ = 0; i_ < (ssize_t)len; ++i_) {                  \
+      CU_ASSERT(nghttp2_nv_equal(&a[i_], &b[i_]));          \
+    }                                                       \
+    free(b);                                                \
+    free(a);                                                \
+  } while(0);
+
 int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len);
 
 int strmemeq(const char *a, const uint8_t *b, size_t bn);

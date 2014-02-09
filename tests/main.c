@@ -201,6 +201,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",
                    test_nghttp2_frame_pack_headers_frame_too_large) ||
+      !CU_add_test(pSuite, "frame_pack_headers_with_padding",
+                   test_nghttp2_frame_pack_headers_with_padding) ||
       !CU_add_test(pSuite, "frame_pack_priority",
                    test_nghttp2_frame_pack_priority) ||
       !CU_add_test(pSuite, "frame_pack_rst_stream",

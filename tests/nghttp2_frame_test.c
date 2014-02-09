@@ -184,6 +184,134 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   nghttp2_hd_deflate_free(&deflater);
 }
 
+
+void test_nghttp2_frame_pack_headers_with_padding(void)
+{
+  nghttp2_hd_deflater deflater;
+  nghttp2_hd_inflater inflater;
+  nghttp2_headers frame, oframe;
+  uint8_t *buf = NULL;
+  size_t buflen = 0;
+  size_t bufoff;
+  ssize_t framelen;
+  nghttp2_nv *nva;
+  ssize_t nvlen;
+  nva_out out;
+  size_t trail_padlen;
+  size_t header_blocklen;
+
+  nva_out_init(&out);
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
+
+  /* Payload length is 0, so no padding */
+  nghttp2_frame_headers_init(&frame,
+                             NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
+                             1000000007, NGHTTP2_PRI_DEFAULT, NULL, 0);
+  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &bufoff, &frame,
+                                        &deflater, 128);
+
+  CU_ASSERT(2 == bufoff);
+  CU_ASSERT((ssize_t)bufoff + NGHTTP2_FRAME_HEAD_LENGTH == framelen);
+
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf + bufoff,
+                              framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
+                     NGHTTP2_HEADERS,
+                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS,
+                     1000000007, &oframe.hd);
+
+  CU_ASSERT(NGHTTP2_PRI_DEFAULT == oframe.pri);
+  nghttp2_frame_headers_free(&oframe);
+
+  /* Include priroty */
+  frame.hd.flags |= NGHTTP2_FLAG_PRIORITY;
+  frame.pri = 1000000009;
+  bufoff = 0;
+
+  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &bufoff, &frame,
+                                        &deflater, 128);
+
+  CU_ASSERT(1 == bufoff);
+  CU_ASSERT((ssize_t)bufoff + NGHTTP2_FRAME_HEAD_LENGTH + 128 == framelen);
+
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf + bufoff,
+                              framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
+                     NGHTTP2_HEADERS,
+                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
+                     NGHTTP2_FLAG_PRIORITY | NGHTTP2_FLAG_PAD_LOW,
+                     1000000007, &oframe.hd);
+
+  CU_ASSERT(1000000009 == oframe.pri);
+  nghttp2_frame_headers_free(&oframe);
+
+  /* padding more than 256 */
+  bufoff = 0;
+
+  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &bufoff, &frame,
+                                        &deflater, 512);
+
+  CU_ASSERT(0 == bufoff);
+  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH + 512 == framelen);
+
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf + bufoff,
+                              framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
+                     NGHTTP2_HEADERS,
+                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
+                     NGHTTP2_FLAG_PRIORITY |
+                     NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW,
+                     1000000007, &oframe.hd);
+
+  CU_ASSERT(1000000009 == oframe.pri);
+  nghttp2_frame_headers_free(&oframe);
+
+  /* Include priority + headers */
+  nva = headers();
+  nvlen = HEADERS_LENGTH;
+  frame.nva = nva;
+  frame.nvlen = nvlen;
+  bufoff = 0;
+
+  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &bufoff, &frame,
+                                        &deflater, 512);
+
+  CU_ASSERT(0 == bufoff);
+  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH + 512 == framelen);
+
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf + bufoff,
+                              framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
+                     NGHTTP2_HEADERS,
+                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
+                     NGHTTP2_FLAG_PRIORITY |
+                     NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW,
+                     1000000007, &oframe.hd);
+
+  CU_ASSERT(1000000009 == oframe.pri);
+  trail_padlen = (buf[NGHTTP2_FRAME_HEAD_LENGTH] << 8) |
+    buf[NGHTTP2_FRAME_HEAD_LENGTH + 1];
+
+  header_blocklen = framelen - NGHTTP2_FRAME_HEAD_LENGTH - 2 - 4
+    - trail_padlen;
+  CU_ASSERT((ssize_t)header_blocklen ==
+            inflate_hd(&inflater, &out,
+                       buf + NGHTTP2_FRAME_HEAD_LENGTH + 2 + 4,
+                       header_blocklen));
+
+  CU_ASSERT(nvlen == (ssize_t)out.nvlen);
+  assert_nv_equal(nva, out.nva, nvlen);
+
+  nghttp2_frame_headers_free(&oframe);
+  nva_out_reset(&out);
+
+  free(buf);
+  nghttp2_frame_headers_free(&frame);
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+}
+
 void test_nghttp2_frame_pack_priority(void)
 {
   nghttp2_priority frame, oframe;

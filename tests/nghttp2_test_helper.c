@@ -33,11 +33,15 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
   ssize_t rv = 0;
   const uint8_t *payload = in + NGHTTP2_FRAME_HEAD_LENGTH;
   size_t payloadlen = len - NGHTTP2_FRAME_HEAD_LENGTH;
+  size_t payloadoff;
+
   nghttp2_frame_unpack_frame_hd(&frame->hd, in);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
+    payloadoff = ((frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH) > 0) +
+      ((frame->hd.flags & NGHTTP2_FLAG_PAD_LOW) > 0);
     rv = nghttp2_frame_unpack_headers_payload
-      (&frame->headers, payload, payloadlen);
+      (&frame->headers, payload + payloadoff, payloadlen - payloadoff);
     break;
   case NGHTTP2_PRIORITY:
     nghttp2_frame_unpack_priority_payload

@@ -35,15 +35,6 @@
 
 #define GET_TABLE_ENT(context, index) nghttp2_hd_table_get(context, index)
 
-static void assert_nv_equal(nghttp2_nv *a, nghttp2_nv *b, size_t len)
-{
-  size_t i;
-  nghttp2_nv_array_sort(b, len);
-  for(i = 0; i < len; ++i, ++a, ++b) {
-    CU_ASSERT(nghttp2_nv_equal(a, b));
-  }
-}
-
 void test_nghttp2_hd_deflate(void)
 {
   nghttp2_hd_deflater deflater;

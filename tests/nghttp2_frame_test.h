@@ -27,6 +27,7 @@
 
 void test_nghttp2_frame_pack_headers(void);
 void test_nghttp2_frame_pack_headers_frame_too_large(void);
+void test_nghttp2_frame_pack_headers_with_padding(void);
 void test_nghttp2_frame_pack_priority(void);
 void test_nghttp2_frame_pack_rst_stream(void);
 void test_nghttp2_frame_pack_settings(void);
