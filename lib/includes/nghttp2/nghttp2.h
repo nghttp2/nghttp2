@@ -151,9 +151,9 @@ typedef struct {
  * @macro
  *
  * The default value of DATA padding alignment. See
- * :member:`NGHTTP2_OPT_PAD_ALIGNMENT`.
+ * :member:`NGHTTP2_OPT_PADDING_BOUNDARY`.
  */
-#define NGHTTP2_PAD_ALIGNMENT 16
+#define NGHTTP2_PADDING_BOUNDARY 64
 
 /**
  * @enum
@@ -1341,7 +1341,7 @@ typedef enum {
    * to this alignment. The option value must be greater than or equal
    * to 8.
    */
-  NGHTTP2_OPT_PAD_ALIGNMENT = 1 << 3
+  NGHTTP2_OPT_PADDING_BOUNDARY = 1 << 3
 } nghttp2_opt;
 
 /**
@@ -1363,9 +1363,9 @@ typedef struct {
    */
   uint8_t no_auto_connection_window_update;
   /**
-   * :enum:`NGHTTP2_OPT_PAD_ALIGNMENT`
+   * :enum:`NGHTTP2_OPT_PADDING_BOUNDARY`
    */
-  uint16_t pad_alignment;
+  uint16_t padding_boundary;
 } nghttp2_opt_set;
 
 /**

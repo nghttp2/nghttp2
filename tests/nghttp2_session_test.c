@@ -3870,7 +3870,7 @@ void test_nghttp2_session_pack_data_with_padding(void)
   data_prd.read_callback = fixed_length_data_source_read_callback;
 
   nghttp2_session_client_new(&session, &callbacks, &ud);
-  session->pad_alignment = 512;
+  session->padding_boundary = 512;
 
   nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT, NULL, 0, &data_prd,
                          NULL);
@@ -3881,7 +3881,7 @@ void test_nghttp2_session_pack_data_with_padding(void)
   CU_ASSERT(NGHTTP2_HEADERS == ud.sent_frame_type);
 
   frame = OB_DATA(session->aob.item);
-  CU_ASSERT(session->pad_alignment - datalen == frame->padlen);
+  CU_ASSERT(session->padding_boundary - datalen == frame->padlen);
   CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PAD_LOW);
   CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH);
 
@@ -3905,7 +3905,7 @@ void test_nghttp2_session_pack_data_with_padding(void)
   CU_ASSERT(NGHTTP2_HEADERS == ud.sent_frame_type);
 
   frame = OB_DATA(session->aob.item);
-  CU_ASSERT((frame->padlen + datalen) % session->pad_alignment == 0);
+  CU_ASSERT((frame->padlen + datalen) % session->padding_boundary == 0);
   CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PAD_LOW);
   CU_ASSERT(0 == (frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH));
 

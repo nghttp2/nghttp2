@@ -107,8 +107,8 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * The first byte the frame is serialized is returned in the
  * |*bufoff_ptr|.
  *
- * The |align| is used as padding alignment. If the |align| is zero,
- * no padding is added.
+ * The |boundary| is used as padding boundary. If the |boundary| is
+ * zero, no padding is added.
  *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
@@ -132,7 +132,7 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *bufoff_ptr,
                                    nghttp2_headers *frame,
                                    nghttp2_hd_deflater *deflater,
-                                   size_t align);
+                                   size_t boundary);
 
 /*
  * Unpacks HEADERS frame byte sequence into |frame|. This function
@@ -508,8 +508,8 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  * payload must start at offset NGHTTP2_FRAME_HEAD_LENGTH + 2 from
  * |*buf_ptr| to account for PAD_HIGH and PAD_LOW. The maximum payload
  * allowed is given in the |payloadmax|. The padding will not be made
- * more than |payloadmax|. The padding alignment is given in the
- * |align|.
+ * more than |payloadmax|. The padding boundary is given in the
+ * |boundary|.
  *
  * The |*flags_ptr| is updated to include NGHTTP2_FLAG_PAD_LOW and
  * NGHTTP2_FLAG_PAD_HIGH based on the padding length. The
@@ -582,6 +582,6 @@ ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
                               uint8_t *flags_ptr,
                               size_t payloadlen,
                               size_t payloadmax,
-                              size_t align);
+                              size_t boundary);
 
 #endif /* NGHTTP2_FRAME_H */

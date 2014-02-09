@@ -228,7 +228,7 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *bufoff_ptr,
                                    nghttp2_headers *frame,
                                    nghttp2_hd_deflater *deflater,
-                                   size_t align)
+                                   size_t boundary)
 {
   size_t payloadoff = NGHTTP2_FRAME_HEAD_LENGTH + 2;
   size_t nv_offset =
@@ -244,13 +244,13 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
 
   payloadlen = nghttp2_frame_headers_payload_nv_offset(frame) + rv;
 
-  if(align > 0) {
+  if(boundary > 0) {
     ssize_t padlen;
     padlen = nghttp2_frame_add_pad(buf_ptr, buflen_ptr, bufoff_ptr,
                                    &frame->hd.flags,
                                    payloadlen,
-                                   payloadlen + align,
-                                   align);
+                                   payloadlen + boundary,
+                                   boundary);
     if(padlen < 0) {
       return padlen;
     }
@@ -665,11 +665,12 @@ ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
                               uint8_t *flags_ptr,
                               size_t payloadlen,
                               size_t payloadmax,
-                              size_t align)
+                              size_t boundary)
 {
   int rv;
-  size_t nextlen = nghttp2_min((payloadlen + align - 1) / align * align,
-                               payloadmax);
+  size_t nextlen =
+    nghttp2_min((payloadlen + boundary - 1) / boundary * boundary,
+                payloadmax);
   size_t padlen = nextlen - payloadlen;
   size_t trail_padlen = 0;
   /* extra 2 bytes for PAD_HIGH and PAD_LOW. */

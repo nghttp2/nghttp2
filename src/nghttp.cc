@@ -82,7 +82,7 @@ struct Config {
   std::string keyfile;
   std::string datafile;
   size_t output_upper_thres;
-  size_t pad_alignment;
+  size_t padding_boundary;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
   int32_t pri;
@@ -100,7 +100,7 @@ struct Config {
   bool continuation;
   Config()
     : output_upper_thres(1024*1024),
-      pad_alignment(NGHTTP2_PAD_ALIGNMENT),
+      padding_boundary(NGHTTP2_PADDING_BOUNDARY),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1),
       pri(NGHTTP2_PRI_DEFAULT),
@@ -716,10 +716,10 @@ struct HttpClient {
     }
     nghttp2_opt_set opt_set;
     opt_set.peer_max_concurrent_streams = config.peer_max_concurrent_streams;
-    opt_set.pad_alignment = config.pad_alignment;
+    opt_set.padding_boundary = config.padding_boundary;
     rv = nghttp2_session_client_new2(&session, callbacks, this,
                                      NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS |
-                                     NGHTTP2_OPT_PAD_ALIGNMENT,
+                                     NGHTTP2_OPT_PADDING_BOUNDARY,
                                      &opt_set);
     if(rv != 0) {
       return -1;
@@ -1710,8 +1710,8 @@ void print_help(std::ostream& out)
       << "                       is large enough as it is seen as unlimited.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
-      << "    -b, --pad=<ALIGNMENT>\n"
-      << "                       Alignment of frame payload padding.\n"
+      << "    -b, --padding=<BOUNDARY>\n"
+      << "                       Padding boundary for frame payload.\n"
       << "    --color            Force colored log output.\n"
       << "    --continuation     Send large header to test CONTINUATION.\n"
       << std::endl;
@@ -1740,7 +1740,7 @@ int main(int argc, char **argv)
       {"pri", required_argument, nullptr, 'p'},
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
       {"header-table-size", required_argument, nullptr, 'c'},
-      {"data-pad", required_argument, nullptr, 'b'},
+      {"padding", required_argument, nullptr, 'b'},
       {"cert", required_argument, &flag, 1},
       {"key", required_argument, &flag, 2},
       {"color", no_argument, &flag, 3},
@@ -1766,7 +1766,7 @@ int main(int argc, char **argv)
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'b':
-      config.pad_alignment = strtol(optarg, nullptr, 10);
+      config.padding_boundary = strtol(optarg, nullptr, 10);
       break;
     case 'n':
       config.null_out = true;

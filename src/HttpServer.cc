@@ -66,7 +66,7 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 Config::Config()
   : data_ptr(nullptr),
     output_upper_thres(1024*1024),
-    pad_alignment(NGHTTP2_PAD_ALIGNMENT),
+    padding_boundary(NGHTTP2_PADDING_BOUNDARY),
     header_table_size(-1),
     port(0),
     verbose(false),
@@ -365,11 +365,11 @@ int Http2Handler::on_connect()
   nghttp2_opt_set opt_set;
 
   memset(&opt_set, 0, sizeof(opt_set));
-  opt_set.pad_alignment = sessions_->get_config()->pad_alignment;
+  opt_set.padding_boundary = sessions_->get_config()->padding_boundary;
 
   fill_callback(callbacks, sessions_->get_config());
   r = nghttp2_session_server_new2(&session_, &callbacks, this,
-                                  NGHTTP2_OPT_PAD_ALIGNMENT, &opt_set);
+                                  NGHTTP2_OPT_PADDING_BOUNDARY, &opt_set);
   if(r != 0) {
     return r;
   }

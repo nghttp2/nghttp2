@@ -115,8 +115,8 @@ void print_help(std::ostream& out)
       << "                         -p/=/foo.png -p/doc=/bar.css\n"
       << "                       PATH and PUSH_PATHs are relative to document\n"
       << "                       root. See --htdocs option.\n"
-      << "    -b, --pad=<ALIGNMENT>\n"
-      << "                       Alignment of frame payload padding.\n"
+      << "    -b, --padding=<BOUNDARY>\n"
+      << "                       Padding boundary for frame payload.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -136,7 +136,7 @@ int main(int argc, char **argv)
       {"verify-client", no_argument, nullptr, 'V'},
       {"header-table-size", required_argument, nullptr, 'c'},
       {"push", required_argument, nullptr, 'p'},
-      {"data-pad", required_argument, nullptr, 'b'},
+      {"padding", required_argument, nullptr, 'b'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
       {nullptr, 0, nullptr, 0}
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
       config.verify_client = true;
       break;
     case 'b':
-      config.pad_alignment = strtol(optarg, nullptr, 10);
+      config.padding_boundary = strtol(optarg, nullptr, 10);
       break;
     case 'd':
       config.htdocs = optarg;

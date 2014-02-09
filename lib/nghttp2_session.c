@@ -224,11 +224,11 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
     (*session_ptr)->opt_flags |=
       NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
   }
-  if((opt_set_mask & NGHTTP2_OPT_PAD_ALIGNMENT) &&
-     opt_set->pad_alignment >= 8) {
-    (*session_ptr)->pad_alignment = opt_set->pad_alignment;
+  if((opt_set_mask & NGHTTP2_OPT_PADDING_BOUNDARY) &&
+     opt_set->padding_boundary >= 8) {
+    (*session_ptr)->padding_boundary = opt_set->padding_boundary;
   } else {
-    (*session_ptr)->pad_alignment = NGHTTP2_PAD_ALIGNMENT;
+    (*session_ptr)->padding_boundary = NGHTTP2_PADDING_BOUNDARY;
   }
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
@@ -1123,7 +1123,7 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
                                                &session->aob.framebufoff,
                                                &frame->headers,
                                                &session->hd_deflater,
-                                               session->pad_alignment);
+                                               session->padding_boundary);
       if(framebuflen < 0) {
         return framebuflen;
       }
@@ -4227,11 +4227,11 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
   frame->hd.flags &= ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
   flags = 0;
 
-  if(session->pad_alignment &&
+  if(session->padding_boundary &&
      payloadlen > 0 && (size_t)payloadlen < datamax) {
     rv = nghttp2_frame_add_pad(buf_ptr, buflen_ptr, bufoff_ptr,
                                &flags, payloadlen, datamax,
-                               session->pad_alignment);
+                               session->padding_boundary);
     if(rv < 0) {
       return rv;
     }
