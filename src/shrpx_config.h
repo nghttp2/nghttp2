@@ -102,6 +102,7 @@ extern const char SHRPX_OPT_CLIENT_CERT_FILE[];
 extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[];
 extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[];
 extern const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[];
+extern const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -213,6 +214,7 @@ struct Config {
   // true if stderr refers to a terminal.
   bool tty;
   bool http2_no_cookie_crumbling;
+  bool upstream_frame_debug;
 };
 
 const Config* get_config();

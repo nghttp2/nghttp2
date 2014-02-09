@@ -53,6 +53,7 @@
 #include "shrpx_listen_handler.h"
 #include "shrpx_ssl.h"
 #include "util.h"
+#include "app_helper.h"
 
 using namespace nghttp2;
 
@@ -435,6 +436,7 @@ void fill_default_config()
   mod_config()->http2_upstream_dump_request_header = nullptr;
   mod_config()->http2_upstream_dump_response_header = nullptr;
   mod_config()->http2_no_cookie_crumbling = false;
+  mod_config()->upstream_frame_debug = false;
 }
 } // namespace
 
@@ -736,6 +738,10 @@ void print_help(std::ostream& out)
       << "                       an empty line.\n"
       << "                       This option is not thread safe and MUST NOT\n"
       << "                       be used with option -n=N, where N >= 2.\n"
+      << "    -o, --frontend-frame-debug\n"
+      << "                       Print HTTP/2 frames in frontend to stderr.\n"
+      << "                       This option is not thread safe and MUST NOT\n"
+      << "                       be used with option -n=N, where N >= 2.\n"
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
       << "    --pid-file=<PATH>  Set path to save PID of this program.\n"
@@ -771,6 +777,7 @@ int main(int argc, char **argv)
       {"client-proxy", no_argument, nullptr, 'p'},
       {"http2-proxy", no_argument, nullptr, 's'},
       {"version", no_argument, nullptr, 'v'},
+      {"frontend-frame-debug", no_argument, nullptr, 'o'},
       {"add-x-forwarded-for", no_argument, &flag, 1},
       {"frontend-http2-read-timeout", required_argument, &flag, 2},
       {"frontend-read-timeout", required_argument, &flag, 3},
@@ -821,7 +828,7 @@ int main(int argc, char **argv)
     };
 
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DL:b:c:f:hkn:psv", long_options,
+    int c = getopt_long(argc, argv, "DL:b:c:f:hkn:opsv", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -850,6 +857,9 @@ int main(int argc, char **argv)
       break;
     case 'n':
       cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
+      break;
+    case 'o':
+      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes");
       break;
     case 'p':
       cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PROXY, "yes");
@@ -1203,6 +1213,15 @@ int main(int argc, char **argv)
      get_rate_limit(get_config()->write_rate),
      get_rate_limit(get_config()->write_burst),
      nullptr);
+
+  if(get_config()->upstream_frame_debug) {
+    // To make it sync to logging
+    set_output(stderr);
+    if(isatty(fileno(stdout))) {
+      set_color_output(true);
+    }
+    reset_timer();
+  }
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));

@@ -39,6 +39,7 @@
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
+#include "app_helper.h"
 
 using namespace nghttp2;
 
@@ -205,6 +206,10 @@ int on_header_callback(nghttp2_session *session,
                        const uint8_t *value, size_t valuelen,
                        void *user_data)
 {
+  if(get_config()->upstream_frame_debug) {
+    verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
+                               user_data);
+  }
   if(frame->hd.type != NGHTTP2_HEADERS ||
      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
@@ -359,6 +364,9 @@ int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   int rv;
+  if(get_config()->upstream_frame_debug) {
+    verbose_on_frame_recv_callback(session, frame, user_data);
+  }
   auto upstream = static_cast<Http2Upstream*>(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_DATA: {
@@ -428,6 +436,9 @@ namespace {
 int on_frame_send_callback(nghttp2_session* session,
                            const nghttp2_frame *frame, void *user_data)
 {
+  if(get_config()->upstream_frame_debug) {
+    verbose_on_frame_send_callback(session, frame, user_data);
+  }
   auto upstream = static_cast<Http2Upstream*>(user_data);
   if(frame->hd.type == NGHTTP2_SETTINGS &&
      (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
