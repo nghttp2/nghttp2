@@ -21,11 +21,26 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SUBDIRS = _themes
-
 EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py \
 	package_README.rst tutorial-client.rst tutorial-server.rst \
-	nghttp2.h.rst nghttp2ver.h.rst
+	nghttp2.h.rst nghttp2ver.h.rst \
+	_themes/sphinx_rtd_theme/footer.html \
+	_themes/sphinx_rtd_theme/theme.conf \
+	_themes/sphinx_rtd_theme/layout_old.html \
+	_themes/sphinx_rtd_theme/__init__.py \
+	_themes/sphinx_rtd_theme/layout.html \
+	_themes/sphinx_rtd_theme/search.html \
+	_themes/sphinx_rtd_theme/breadcrumbs.html \
+	_themes/sphinx_rtd_theme/versions.html \
+	_themes/sphinx_rtd_theme/searchbox.html \
+	_themes/sphinx_rtd_theme/static/fonts/FontAwesome.otf \
+	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.svg \
+	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.woff \
+	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.eot \
+	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.ttf \
+	_themes/sphinx_rtd_theme/static/js/theme.js \
+	_themes/sphinx_rtd_theme/static/css/theme.css \
+	_themes/sphinx_rtd_theme/static/css/badge_only.css
 
 # Makefile for Sphinx documentation
 #

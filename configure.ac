@@ -399,12 +399,6 @@ AC_CONFIG_FILES([
   python/Makefile
   doc/Makefile
   doc/conf.py
-  doc/_themes/Makefile
-  doc/_themes/sphinx_rtd_theme/Makefile
-  doc/_themes/sphinx_rtd_theme/static/Makefile
-  doc/_themes/sphinx_rtd_theme/static/css/Makefile
-  doc/_themes/sphinx_rtd_theme/static/fonts/Makefile
-  doc/_themes/sphinx_rtd_theme/static/js/Makefile
 ])
 AC_OUTPUT
 
