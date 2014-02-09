@@ -1600,17 +1600,15 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     nghttp2_private_data *data_frame;
     nghttp2_outbound_item* next_item;
     nghttp2_stream *stream;
-    size_t effective_payloadlen;
 
     data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
     stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
     /* We update flow control window after a frame was completely
        sent. This is possible because we choose payload length not to
        exceed the window */
-    effective_payloadlen = data_frame->hd.length - data_frame->padlen;
-    session->remote_window_size -= effective_payloadlen;
+    session->remote_window_size -= data_frame->hd.length;
     if(stream) {
-      stream->remote_window_size -= effective_payloadlen;
+      stream->remote_window_size -= data_frame->hd.length;
     }
 
     if(session->callbacks.on_frame_send_callback) {
