@@ -3807,6 +3807,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       if(cont_hd.flags & NGHTTP2_FLAG_END_HEADERS) {
         iframe->frame.hd.flags |= NGHTTP2_FLAG_END_HEADERS;
       }
+      iframe->frame.hd.length += cont_hd.length;
+
       busy = 1;
       if(iframe->state == NGHTTP2_IB_EXPECT_CONTINUATION) {
         iframe->state = NGHTTP2_IB_READ_HEADER_BLOCK;
