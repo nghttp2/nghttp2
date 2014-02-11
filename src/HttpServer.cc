@@ -988,7 +988,9 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
   callbacks.on_begin_headers_callback = on_begin_headers_callback;
-  callbacks.select_padding_callback = select_padding_callback;
+  if(config->padding_boundary) {
+    callbacks.select_padding_callback = select_padding_callback;
+  }
 }
 } // namespace
 

@@ -1598,7 +1598,9 @@ int run(char **uris, int n)
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
-  callbacks.select_padding_callback = select_padding_callback;
+  if(config.padding_boundary) {
+    callbacks.select_padding_callback = select_padding_callback;
+  }
 
   std::string prev_scheme;
   std::string prev_host;
