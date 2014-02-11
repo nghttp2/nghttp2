@@ -1156,13 +1156,13 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
            nghttp2_session_after_frame_sent(). */
         framebuflen += frame->headers.padlen;
       } else if(frame->hd.length <= NGHTTP2_MAX_FRAME_LENGTH &&
-                padded_payloadlen > frame->hd.length) {
+                frame->headers.padlen > 0) {
         r = nghttp2_frame_add_pad(&session->aob.framebuf,
                                   &session->aob.framebufmax,
                                   &session->aob.framebufoff,
                                   &frame->hd.flags,
-                                  frame->hd.length,
-                                  padded_payloadlen - frame->hd.length);
+                                  frame->hd.length - frame->headers.padlen,
+                                  frame->headers.padlen);
         if(nghttp2_is_fatal(r)) {
           return r;
         }
