@@ -519,6 +519,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
   callbacks.on_header_callback = on_header_callback;
   callbacks.on_begin_headers_callback = on_begin_headers_callback;
+  if(get_config()->padding) {
+    callbacks.select_padding_callback = http::select_padding_callback;
+  }
 
   nghttp2_opt_set opt_set;
   opt_set.no_auto_stream_window_update = 1;

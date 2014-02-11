@@ -437,6 +437,7 @@ void fill_default_config()
   mod_config()->http2_upstream_dump_response_header = nullptr;
   mod_config()->http2_no_cookie_crumbling = false;
   mod_config()->upstream_frame_debug = false;
+  mod_config()->padding = 0;
 }
 } // namespace
 
@@ -675,6 +676,11 @@ void print_help(std::ostream& out)
       << "    --backend-no-tls   Disable SSL/TLS on backend connections.\n"
       << "    --http2-no-cookie-crumbling\n"
       << "                       Don't crumble cookie header field.\n"
+      << "    --padding=<BOUNDARY>\n"
+      << "                       Padding boundary for HTTP/2 frame payload.\n"
+      << "                       Specify 0 to disable padding. This option is\n"
+      << "                       meant for debugging purpose and not intended\n"
+      << "                       to enhance protocol security.\n"
       << "\n"
       << "  Mode:\n"
       << "    (default mode)     Accept HTTP/2.0, SPDY and HTTP/1.1 over\n"
@@ -824,6 +830,7 @@ int main(int argc, char **argv)
       {"frontend-http2-connection-window-bits", required_argument, &flag, 46},
       {"backend-http2-connection-window-bits", required_argument, &flag, 47},
       {"tls-proto-list", required_argument, &flag, 48},
+      {"padding", required_argument, &flag, 49},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1059,6 +1066,10 @@ int main(int argc, char **argv)
       case 48:
         // --tls-proto-list
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_PROTO_LIST, optarg);
+        break;
+      case 49:
+        // --padding
+        cmdcfgs.emplace_back(SHRPX_OPT_PADDING, optarg);
         break;
       default:
         break;
