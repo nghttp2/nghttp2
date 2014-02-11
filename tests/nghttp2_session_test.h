@@ -31,6 +31,7 @@ void test_nghttp2_session_recv_invalid_frame(void);
 void test_nghttp2_session_recv_eof(void);
 void test_nghttp2_session_recv_data(void);
 void test_nghttp2_session_recv_continuation(void);
+void test_nghttp2_session_recv_premature_headers(void);
 void test_nghttp2_session_continue(void);
 void test_nghttp2_session_add_frame(void);
 void test_nghttp2_session_on_request_headers_received(void);

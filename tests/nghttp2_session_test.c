@@ -779,6 +779,54 @@ void test_nghttp2_session_recv_continuation(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_premature_headers(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  const nghttp2_nv nv1[] = {
+    MAKE_NV("method", "GET"),
+    MAKE_NV("path", "/")
+  };
+  nghttp2_nv *nva;
+  size_t nvlen;
+  nghttp2_frame frame;
+  uint8_t *framedata = NULL;
+  size_t framedatacap = 0;
+  size_t framedatalen;
+  ssize_t rv;
+  my_user_data ud;
+  nghttp2_hd_deflater deflater;
+  nghttp2_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+
+  nvlen = nghttp2_nv_array_copy(&nva, nv1, ARRLEN(nv1));
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
+                             1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
+  framedatalen = nghttp2_frame_pack_headers(&framedata, &framedatacap,
+                                            &frame.headers,
+                                            &deflater);
+  nghttp2_frame_headers_free(&frame.headers);
+
+  /* Intentionally feed payload cutting last 1 byte off */
+  nghttp2_put_uint16be(framedata, frame.hd.length - 1);
+  rv = nghttp2_session_mem_recv(session, framedata, framedatalen - 1);
+  CU_ASSERT((ssize_t)framedatalen - 1 == rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+  CU_ASSERT(NGHTTP2_COMPRESSION_ERROR == OB_CTRL(item)->goaway.error_code);
+
+  free(framedata);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_continue(void)
 {
   nghttp2_session *session;
