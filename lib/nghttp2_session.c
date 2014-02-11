@@ -1089,7 +1089,7 @@ static ssize_t session_call_select_padding(nghttp2_session *session,
     rv = session->callbacks.select_padding_callback(session, frame,
                                                     max_payloadlen,
                                                     session->user_data);
-    if(rv < frame->hd.length || rv > max_payloadlen) {
+    if(rv < (ssize_t)frame->hd.length || rv > (ssize_t)max_payloadlen) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
     return rv;

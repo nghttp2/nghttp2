@@ -818,7 +818,7 @@ void test_nghttp2_session_recv_premature_headers(void)
   nghttp2_put_uint16be(framedata + bufoff, frame.hd.length - 1);
   rv = nghttp2_session_mem_recv(session, framedata + bufoff,
                                 framedatalen - bufoff - 1);
-  CU_ASSERT((ssize_t)framedatalen - bufoff - 1 == rv);
+  CU_ASSERT((ssize_t)(framedatalen - bufoff - 1) == rv);
 
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NULL != item);
@@ -3576,12 +3576,12 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void)
   data[NGHTTP2_FRAME_HEAD_LENGTH] = 1;
   data[NGHTTP2_FRAME_HEAD_LENGTH + 1] = 1;
 
-  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH + hd.length ==
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HEAD_LENGTH + hd.length) ==
             nghttp2_session_mem_recv(session, data,
                                      NGHTTP2_FRAME_HEAD_LENGTH + hd.length));
 
-  CU_ASSERT(hd.length == session->recv_window_size);
-  CU_ASSERT(hd.length == stream->recv_window_size);
+  CU_ASSERT((int32_t)hd.length == session->recv_window_size);
+  CU_ASSERT((int32_t)hd.length == stream->recv_window_size);
 
   nghttp2_session_del(session);
 }
