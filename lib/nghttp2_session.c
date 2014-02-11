@@ -378,6 +378,8 @@ static void nghttp2_session_ob_pq_free(nghttp2_pq *pq)
 static void nghttp2_active_outbound_item_reset
 (nghttp2_active_outbound_item *aob)
 {
+  DEBUGF(fprintf(stderr, "reset nghttp2_active_outbound_item\n"));
+  DEBUGF(fprintf(stderr, "aob->item = %p\n", aob->item));
   nghttp2_outbound_item_free(aob->item);
   free(aob->item);
   aob->item = NULL;
@@ -1321,6 +1323,8 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
     next_readmax = nghttp2_session_next_data_read(session, stream);
     if(next_readmax == 0) {
       nghttp2_stream_defer_data(stream, item, NGHTTP2_DEFERRED_FLOW_CONTROL);
+      session->aob.item = NULL;
+      nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
     }
     framebuflen = nghttp2_session_pack_data(session,
@@ -1331,6 +1335,8 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
                                             data_frame);
     if(framebuflen == NGHTTP2_ERR_DEFERRED) {
       nghttp2_stream_defer_data(stream, item, NGHTTP2_DEFERRED_NONE);
+      session->aob.item = NULL;
+      nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
     } else if(framebuflen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
       r = nghttp2_session_add_rst_stream(session, data_frame->hd.stream_id,
@@ -1803,6 +1809,7 @@ int nghttp2_session_send(nghttp2_session *session)
         }
         nghttp2_outbound_item_free(item);
         free(item);
+        nghttp2_active_outbound_item_reset(&session->aob);
 
         if(framebuflen == NGHTTP2_ERR_HEADER_COMP) {
           /* If header compression error occurred, should terminiate
