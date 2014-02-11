@@ -1539,6 +1539,10 @@ void test_nghttp2_session_on_push_promise_received(void)
   memset(session->iframe.buf, 0, 4);
   session->iframe.buflen = 4;
 
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+
   /* Same ID twice */
   stream->state = NGHTTP2_STREAM_OPENING;
 
