@@ -181,6 +181,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_flow_control) ||
       !CU_add_test(pSuite, "session_flow_control_data_recv",
                    test_nghttp2_session_flow_control_data_recv) ||
+      !CU_add_test(pSuite, "session_flow_control_data_with_padding_recv",
+                   test_nghttp2_session_flow_control_data_with_padding_recv) ||
       !CU_add_test(pSuite, "session_data_read_temporal_failure",
                    test_nghttp2_session_data_read_temporal_failure) ||
       !CU_add_test(pSuite, "session_on_stream_close",

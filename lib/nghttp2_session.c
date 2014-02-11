@@ -3204,7 +3204,8 @@ static int adjust_recv_window_size(int32_t *recv_window_size_ptr,
 static int nghttp2_session_update_recv_stream_window_size
 (nghttp2_session *session,
  nghttp2_stream *stream,
- int32_t delta_size)
+ int32_t delta_size,
+ int send_window_update)
 {
   int rv;
   rv = adjust_recv_window_size(&stream->recv_window_size, delta_size,
@@ -3213,7 +3214,10 @@ static int nghttp2_session_update_recv_stream_window_size
     return nghttp2_session_add_rst_stream(session, stream->stream_id,
                                           NGHTTP2_FLOW_CONTROL_ERROR);
   }
-  if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {
+  /* We don't have to send WINDOW_UPDATE if the data received is the
+     last chunk in the incoming stream. */
+  if(send_window_update &&
+     !(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {
     /* We have to use local_settings here because it is the constraint
        the remote endpoint should honor. */
     if(nghttp2_should_send_window_update(stream->local_window_size,
@@ -3478,6 +3482,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
   int rv;
   int busy = 0;
   nghttp2_frame_hd cont_hd;
+  nghttp2_stream *stream;
 
   for(;;) {
     switch(iframe->state) {
@@ -3657,6 +3662,23 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         }
         iframe->frame.data.padlen = rv;
         iframe->state = NGHTTP2_IB_READ_DATA;
+        /* PAD_HIGH and PAD_LOW are subject to flow control */
+        rv = nghttp2_session_update_recv_connection_window_size
+          (session, iframe->buflen);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+        stream = nghttp2_session_get_stream(session,
+                                            iframe->frame.hd.stream_id);
+        if(stream) {
+          rv = nghttp2_session_update_recv_stream_window_size
+            (session, stream, iframe->buflen,
+             iframe->payloadleft ||
+             (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0);
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
         break;
       case NGHTTP2_HEADERS:
         if(iframe->padlen == 0 &&
@@ -4037,17 +4059,15 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
-        if(iframe->payloadleft ||
-           (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-          nghttp2_stream *stream;
-          stream = nghttp2_session_get_stream(session,
-                                              iframe->frame.hd.stream_id);
-          if(stream) {
-            rv = nghttp2_session_update_recv_stream_window_size
-              (session, stream, readlen);
-            if(nghttp2_is_fatal(rv)) {
-              return rv;
-            }
+        stream = nghttp2_session_get_stream(session,
+                                            iframe->frame.hd.stream_id);
+        if(stream) {
+          rv = nghttp2_session_update_recv_stream_window_size
+            (session, stream, readlen,
+             iframe->payloadleft ||
+             (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0);
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
           }
         }
         data_readlen = inbound_frame_effective_readlen

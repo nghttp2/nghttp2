@@ -81,6 +81,7 @@ void test_nghttp2_session_stop_data_with_rst_stream(void);
 void test_nghttp2_session_defer_data(void);
 void test_nghttp2_session_flow_control(void);
 void test_nghttp2_session_flow_control_data_recv(void);
+void test_nghttp2_session_flow_control_data_with_padding_recv(void);
 void test_nghttp2_session_data_read_temporal_failure(void);
 void test_nghttp2_session_on_stream_close(void);
 void test_nghttp2_session_on_ctrl_not_send(void);

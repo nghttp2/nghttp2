@@ -3542,6 +3542,46 @@ void test_nghttp2_session_flow_control_data_recv(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_flow_control_data_with_padding_recv(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  uint8_t data[1024];
+  nghttp2_frame_hd hd;
+  nghttp2_stream *stream;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  /* Initial window size to 64KiB - 1*/
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_OPENED, NULL);
+
+  /* Create DATA frame */
+  memset(data, 0, sizeof(data));
+  hd.length = 357;
+  hd.type = NGHTTP2_DATA;
+  hd.flags = NGHTTP2_FLAG_END_STREAM |
+    NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW;;
+  hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  /* Add 2 byte padding (PAD_LOW itself is padding) */
+  data[NGHTTP2_FRAME_HEAD_LENGTH] = 1;
+  data[NGHTTP2_FRAME_HEAD_LENGTH + 1] = 1;
+
+  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH + hd.length ==
+            nghttp2_session_mem_recv(session, data,
+                                     NGHTTP2_FRAME_HEAD_LENGTH + hd.length));
+
+  CU_ASSERT(hd.length == session->recv_window_size);
+  CU_ASSERT(hd.length == stream->recv_window_size);
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_data_read_temporal_failure(void)
 {
   nghttp2_session *session;
