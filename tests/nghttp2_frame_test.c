@@ -434,4 +434,9 @@ void test_nghttp2_iv_check(void)
   CU_ASSERT(nghttp2_iv_check(iv, 2));
   iv[1].value = 3;
   CU_ASSERT(!nghttp2_iv_check(iv, 2));
+
+  /* Undefined SETTINGS ID */
+  iv[1].settings_id = 1000000009;
+  iv[1].value = 0;
+  CU_ASSERT(!nghttp2_iv_check(iv, 2));
 }

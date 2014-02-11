@@ -640,6 +640,8 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
         return 0;
       }
       break;
+    default:
+      return 0;
     }
   }
   return 1;
