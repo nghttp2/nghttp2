@@ -1840,12 +1840,7 @@ int nghttp2_session_send(nghttp2_session *session)
           return r;
         }
       } else {
-        nghttp2_private_data *frame;
-        frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
-        /* session->aob.framebufmark = session->aob.framebuflen; */
-        session->aob.framebufmark =
-          session->aob.framebufoff + NGHTTP2_FRAME_HEAD_LENGTH +
-          frame->hd.length;
+        session->aob.framebufmark = session->aob.framebuflen;
       }
     }
 
