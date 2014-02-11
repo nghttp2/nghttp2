@@ -1010,6 +1010,10 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
                                              nghttp2_stream *stream)
 {
   int32_t window_size = NGHTTP2_DATA_PAYLOAD_LENGTH;
+
+  DEBUGF(fprintf(stderr, "connection remote_window_size=%d\n",
+                 session->remote_window_size));
+
   /* Take into account both connection-level flow control here */
   window_size = nghttp2_min(window_size, session->remote_window_size);
   window_size = nghttp2_min(window_size, stream->remote_window_size);
@@ -1788,9 +1792,12 @@ int nghttp2_session_send(nghttp2_session *session)
       }
       framebuflen = nghttp2_session_prep_frame(session, item);
       if(framebuflen == NGHTTP2_ERR_DEFERRED) {
+        DEBUGF(fprintf(stderr, "frame deferred\n"));
         continue;
       }
       if(framebuflen < 0) {
+        DEBUGF(fprintf(stderr, "frame preparation failed with %s\n",
+                       nghttp2_strerror(framebuflen)));
         /* TODO If the error comes from compressor, the connection
            must be closed. */
         if(item->frame_cat == NGHTTP2_CAT_CTRL &&
@@ -3484,6 +3491,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
   nghttp2_frame_hd cont_hd;
   nghttp2_stream *stream;
 
+  DEBUGF(fprintf(stderr, "connection recv_window_size=%d, local_window=%d\n",
+                 session->recv_window_size, session->local_window_size));
+
   for(;;) {
     switch(iframe->state) {
     case NGHTTP2_IB_READ_HEAD:
@@ -3571,6 +3581,19 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       case NGHTTP2_PRIORITY:
       case NGHTTP2_RST_STREAM:
       case NGHTTP2_WINDOW_UPDATE:
+#ifdef DEBUGBUILD
+        switch(iframe->frame.hd.type) {
+        case NGHTTP2_PRIORITY:
+          DEBUGF(fprintf(stderr, "PRIORITY\n"));
+          break;
+        case NGHTTP2_RST_STREAM:
+          DEBUGF(fprintf(stderr, "RST_STREAM\n"));
+          break;
+        case NGHTTP2_WINDOW_UPDATE:
+          DEBUGF(fprintf(stderr, "WINDOW_UPDATE\n"));
+          break;
+        }
+#endif /* DEBUGBUILD */
         if(iframe->payloadleft != 4) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -3598,6 +3621,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         inbound_frame_reset_left(iframe, 0);
         break;
       case NGHTTP2_PUSH_PROMISE:
+        DEBUGF(fprintf(stderr, "PUSH_PROMISE\n"));
         if(iframe->payloadleft < 4) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -3607,6 +3631,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         inbound_frame_reset_left(iframe, 4);
         break;
       case NGHTTP2_PING:
+        DEBUGF(fprintf(stderr, "PING\n"));
         if(iframe->payloadleft != 8) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -3616,6 +3641,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         inbound_frame_reset_left(iframe, 8);
         break;
       case NGHTTP2_GOAWAY:
+        DEBUGF(fprintf(stderr, "GOAWAY\n"));
         if(iframe->payloadleft < 8) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -3625,6 +3651,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         inbound_frame_reset_left(iframe, 8);
         break;
       default:
+        DEBUGF(fprintf(stderr, "unknown frame\n"));
         /* Receiving unknown frame type and CONTINUATION in this state
            are subject to connection error of type PROTOCOL_ERROR */
         rv = nghttp2_session_terminate_session(session,
@@ -4320,6 +4347,8 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
 
   if(payloadlen == NGHTTP2_ERR_DEFERRED ||
      payloadlen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+    DEBUGF(fprintf(stderr, "DATA postponed due to %s\n",
+                   nghttp2_strerror(payloadlen)));
     return payloadlen;
   }
   if(payloadlen < 0 || datamax < (size_t)payloadlen) {
