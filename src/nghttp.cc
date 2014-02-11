@@ -100,7 +100,7 @@ struct Config {
   bool continuation;
   Config()
     : output_upper_thres(1024*1024),
-      padding_boundary(NGHTTP2_PADDING_BOUNDARY),
+      padding_boundary(0),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1),
       pri(NGHTTP2_PRI_DEFAULT),
@@ -716,10 +716,8 @@ struct HttpClient {
     }
     nghttp2_opt_set opt_set;
     opt_set.peer_max_concurrent_streams = config.peer_max_concurrent_streams;
-    opt_set.padding_boundary = config.padding_boundary;
     rv = nghttp2_session_client_new2(&session, callbacks, this,
-                                     NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS |
-                                     NGHTTP2_OPT_PADDING_BOUNDARY,
+                                     NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
                                      &opt_set);
     if(rv != 0) {
       return -1;
@@ -964,14 +962,10 @@ int submit_request
      {"accept-encoding", "gzip, deflate"},
      {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
   if(config.continuation) {
-    build_headers.emplace_back("continuation-test-1",
-                               std::string(4096, '-'));
-    build_headers.emplace_back("continuation-test-2",
-                               std::string(4096, '-'));
-    build_headers.emplace_back("continuation-test-3",
-                               std::string(4096, '-'));
-    build_headers.emplace_back("continuation-test-4",
-                               std::string(4096, '-'));
+    for(size_t i = 0; i < 8; ++i) {
+      build_headers.emplace_back("continuation-test-" + util::utos(i+1),
+                                 std::string(4096, '-'));
+    }
   }
   auto num_initial_headers = build_headers.size();
   if(req->data_prd) {
@@ -1129,6 +1123,22 @@ int before_frame_send_callback
     check_stream_id(session, frame->hd.stream_id, user_data);
   }
   return 0;
+}
+} // namespace
+
+namespace {
+ssize_t select_padding_callback
+(nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
+ void *user_data)
+{
+  auto bd = config.padding_boundary;
+  if(bd == 0) {
+    return frame->hd.length;
+  }
+  if(frame->hd.length == 0) {
+    return bd;
+  }
+  return std::min(max_payload, (frame->hd.length + bd - 1) / bd * bd);
 }
 } // namespace
 
@@ -1588,6 +1598,7 @@ int run(char **uris, int n)
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
+  callbacks.select_padding_callback = select_padding_callback;
 
   std::string prev_scheme;
   std::string prev_host;

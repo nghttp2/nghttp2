@@ -153,8 +153,6 @@ struct nghttp2_session {
   size_t num_incoming_streams;
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
-  /* padding alignemnt. See NGHTTP2_OPT_PADDING_BOUNDARY. */
-  size_t padding_boundary;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
   uint32_t next_stream_id;
   /* The largest stream ID received so far */

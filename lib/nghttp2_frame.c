@@ -227,8 +227,7 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *buflen_ptr,
                                    size_t *bufoff_ptr,
                                    nghttp2_headers *frame,
-                                   nghttp2_hd_deflater *deflater,
-                                   size_t boundary)
+                                   nghttp2_hd_deflater *deflater)
 {
   size_t payloadoff = NGHTTP2_FRAME_HEAD_LENGTH + 2;
   size_t nv_offset =
@@ -244,23 +243,9 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
 
   payloadlen = nghttp2_frame_headers_payload_nv_offset(frame) + rv;
 
-  if(boundary > 0) {
-    ssize_t padlen;
-    padlen = nghttp2_frame_add_pad(buf_ptr, buflen_ptr, bufoff_ptr,
-                                   &frame->hd.flags,
-                                   payloadlen,
-                                   payloadlen + boundary,
-                                   boundary);
-    if(padlen < 0) {
-      return padlen;
-    }
-    frame->padlen = padlen;
-    frame->hd.length = payloadlen + padlen;
-  } else {
-    *bufoff_ptr = 2;
-    frame->padlen = 0;
-    frame->hd.length = payloadlen;
-  }
+  *bufoff_ptr = 2;
+  frame->padlen = 0;
+  frame->hd.length = payloadlen;
   /* If frame->nvlen == 0, *buflen_ptr may be smaller than
      nv_offset */
   rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, nv_offset);
@@ -269,11 +254,11 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
   }
   memset(*buf_ptr + *bufoff_ptr, 0, NGHTTP2_FRAME_HEAD_LENGTH);
   /* pack ctrl header after length is determined */
-  if(NGHTTP2_FRAME_HEAD_LENGTH + NGHTTP2_MAX_FRAME_LENGTH < rv + nv_offset) {
+  if(NGHTTP2_MAX_FRAME_LENGTH < payloadlen) {
     /* Needs CONTINUATION */
     nghttp2_frame_hd hd = frame->hd;
-    hd.flags &= ~(NGHTTP2_FLAG_END_HEADERS |
-                  NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
+    hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
+    hd.length = NGHTTP2_MAX_FRAME_LENGTH;
     nghttp2_frame_pack_frame_hd(*buf_ptr + *bufoff_ptr, &hd);
   } else {
     nghttp2_frame_pack_frame_hd(*buf_ptr + *bufoff_ptr, &frame->hd);
@@ -660,36 +645,31 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
   return 1;
 }
 
-ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
-                              size_t *bufoff_ptr,
-                              uint8_t *flags_ptr,
-                              size_t payloadlen,
-                              size_t payloadmax,
-                              size_t boundary)
+int nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
+                          size_t *bufoff_ptr,
+                          uint8_t *flags_ptr,
+                          size_t payloadlen,
+                          size_t padlen)
 {
   int rv;
-  size_t nextlen =
-    nghttp2_min(((payloadlen == 0 ? 1 : payloadlen) + boundary - 1)
-                / boundary * boundary,
-                payloadmax);
-  size_t padlen = nextlen - payloadlen;
   size_t trail_padlen = 0;
   /* extra 2 bytes for PAD_HIGH and PAD_LOW. */
-  size_t trail_padoff = 2 + NGHTTP2_FRAME_HEAD_LENGTH + payloadlen;
+  size_t trail_padoff = *bufoff_ptr + NGHTTP2_FRAME_HEAD_LENGTH + payloadlen;
 
   if(padlen > 257) {
-    *bufoff_ptr = 0;
+    uint8_t *p;
+    *bufoff_ptr -= 2;
     trail_padlen = padlen - 2;
     *flags_ptr |= NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW;
-    (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH] = trail_padlen >> 8;
-    (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen & 0xff;
+    p = *buf_ptr + *bufoff_ptr + NGHTTP2_FRAME_HEAD_LENGTH;
+    *p++ = trail_padlen >> 8;
+    *p = trail_padlen & 0xff;
   } else if(padlen > 0) {
-    *bufoff_ptr = 1;
+    --*bufoff_ptr;
     trail_padlen = padlen - 1;
     *flags_ptr |= NGHTTP2_FLAG_PAD_LOW;
-    (*buf_ptr)[NGHTTP2_FRAME_HEAD_LENGTH + 1] = trail_padlen;
+    (*buf_ptr)[*bufoff_ptr + NGHTTP2_FRAME_HEAD_LENGTH] = trail_padlen;
   } else {
-    *bufoff_ptr = 2;
     return 0;
   }
 
@@ -702,5 +682,5 @@ ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
      possible internal data to the remote peer */
   memset((*buf_ptr) + trail_padoff, 0, trail_padlen);
 
-  return padlen;
+  return 0;
 }

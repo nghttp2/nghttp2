@@ -148,14 +148,6 @@ typedef struct {
 #define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN 24
 
 /**
- * @macro
- *
- * The default value of DATA padding alignment. See
- * :member:`NGHTTP2_OPT_PADDING_BOUNDARY`.
- */
-#define NGHTTP2_PADDING_BOUNDARY 64
-
-/**
  * @enum
  *
  * Error codes used in this library. The code range is [-999, -500],
@@ -1185,6 +1177,26 @@ typedef int (*nghttp2_on_header_callback)
  void *user_data);
 
 /**
+ * @functypedef
+ *
+ * Callback function invoked when the library asks application how
+ * much padding is required for the transmission of the |frame|. The
+ * application must choose the total length of payload including
+ * padded bytes in range [frame->hd.length, max_payloadlen],
+ * inclusive. Choosing number not in this range will be treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning
+ * ``frame->hd.length`` means no padding is added.  Returning
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will make
+ * `nghttp2_session_send()` function immediately return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef ssize_t (*nghttp2_select_padding_callback)
+(nghttp2_session *session,
+ const nghttp2_frame *frame,
+ size_t max_payloadlen,
+ void *user_data);
+
+/**
  * @struct
  *
  * Callback functions.
@@ -1247,6 +1259,11 @@ typedef struct {
    * received.
    */
   nghttp2_on_header_callback on_header_callback;
+  /**
+   * Callback function invoked when the library asks application how
+   * much padding is required for the transmission of the given frame.
+   */
+  nghttp2_select_padding_callback select_padding_callback;
 } nghttp2_session_callbacks;
 
 /**
@@ -1332,15 +1349,7 @@ typedef enum {
    * will be overwritten if the local endpoint receives
    * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
    */
-  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 2,
-  /**
-   * This option specifies the alignment of padding in frame
-   * payload. If this option is set to N, padding is added to frame
-   * payload so that its payload length is divisible by N. For DATA
-   * frame, due to flow control, padding is not always added according
-   * to this alignment. Specifying 0 to this option disables padding.
-   */
-  NGHTTP2_OPT_PADDING_BOUNDARY = 1 << 3
+  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 2
 } nghttp2_opt;
 
 /**
@@ -1361,10 +1370,6 @@ typedef struct {
    * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE`
    */
   uint8_t no_auto_connection_window_update;
-  /**
-   * :enum:`NGHTTP2_OPT_PADDING_BOUNDARY`
-   */
-  uint16_t padding_boundary;
 } nghttp2_opt_set;
 
 /**

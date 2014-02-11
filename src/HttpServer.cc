@@ -66,7 +66,7 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 Config::Config()
   : data_ptr(nullptr),
     output_upper_thres(1024*1024),
-    padding_boundary(NGHTTP2_PADDING_BOUNDARY),
+    padding_boundary(0),
     header_table_size(-1),
     port(0),
     verbose(false),
@@ -362,14 +362,8 @@ int Http2Handler::on_connect()
 {
   int r;
   nghttp2_session_callbacks callbacks;
-  nghttp2_opt_set opt_set;
-
-  memset(&opt_set, 0, sizeof(opt_set));
-  opt_set.padding_boundary = sessions_->get_config()->padding_boundary;
-
   fill_callback(callbacks, sessions_->get_config());
-  r = nghttp2_session_server_new2(&session_, &callbacks, this,
-                                  NGHTTP2_OPT_PADDING_BOUNDARY, &opt_set);
+  r = nghttp2_session_server_new(&session_, &callbacks, this);
   if(r != 0) {
     return r;
   }
@@ -932,6 +926,23 @@ int hd_on_frame_send_callback
 } // namespace
 
 namespace {
+ssize_t select_padding_callback
+(nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
+ void *user_data)
+{
+  auto hd = static_cast<Http2Handler*>(user_data);
+  auto bd = hd->get_config()->padding_boundary;
+  if(bd == 0) {
+    return frame->hd.length;
+  }
+  if(frame->hd.length == 0) {
+    return bd;
+  }
+  return std::min(max_payload, (frame->hd.length + bd - 1) / bd * bd);
+}
+} // namespace
+
+namespace {
 int on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
@@ -977,6 +988,7 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
   callbacks.on_begin_headers_callback = on_begin_headers_callback;
+  callbacks.select_padding_callback = select_padding_callback;
 }
 } // namespace
 

@@ -105,10 +105,8 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
  * The first byte the frame is serialized is returned in the
- * |*bufoff_ptr|.
- *
- * The |boundary| is used as padding boundary. If the |boundary| is
- * zero, no padding is added.
+ * |*bufoff_ptr|. Currently, it is always 2 to account for possible
+ * PAD_HIGH and PAD_LOW.
  *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
@@ -131,8 +129,7 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
                                    size_t *buflen_ptr,
                                    size_t *bufoff_ptr,
                                    nghttp2_headers *frame,
-                                   nghttp2_hd_deflater *deflater,
-                                   size_t boundary);
+                                   nghttp2_hd_deflater *deflater);
 
 /*
  * Unpacks HEADERS frame byte sequence into |frame|. This function
@@ -505,11 +502,10 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
 /*
  * Add padding to the payload in the |*buf_ptr| of length
  * |*buflen_ptr|. The payload length is given in |payloadlen|. The
- * payload must start at offset NGHTTP2_FRAME_HEAD_LENGTH + 2 from
- * |*buf_ptr| to account for PAD_HIGH and PAD_LOW. The maximum payload
- * allowed is given in the |payloadmax|. The padding will not be made
- * more than |payloadmax|. The padding boundary is given in the
- * |boundary|.
+ * frame header starts at offset |*bufoff_ptr|. Therefore, the payload
+ * must start at offset *bufoff_ptr + NGHTTP2_FRAME_HEAD_LENGTH from
+ * |*buf_ptr| to account for PAD_HIGH and PAD_LOW. The padding is
+ * given in the |padlen|.
  *
  * The |*flags_ptr| is updated to include NGHTTP2_FLAG_PAD_LOW and
  * NGHTTP2_FLAG_PAD_HIGH based on the padding length. The
@@ -570,18 +566,14 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  * additional copy operation is required (if the |*buf_ptr| is large
  * enough to account the additional padding, of course).
  *
- * This function returns the number of padding added to the payload
- * including PAD_HIGH and PAD_LOW if it succeeds, or one of the
- * following negative error codes:
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
-                              size_t *bufoff_ptr,
-                              uint8_t *flags_ptr,
-                              size_t payloadlen,
-                              size_t payloadmax,
-                              size_t boundary);
+int nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
+                          size_t *bufoff_ptr, uint8_t *flags_ptr,
+                          size_t payloadlen, size_t padlen);
 
 #endif /* NGHTTP2_FRAME_H */
