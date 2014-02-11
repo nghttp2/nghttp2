@@ -174,7 +174,6 @@ static void nghttp2_inbound_frame_reset(nghttp2_session *session)
   iframe->niv = 0;
   iframe->payloadleft = 0;
   iframe->padlen = 0;
-  iframe->error_code = 0;
   iframe->buflen = 0;
 }
 
@@ -3823,7 +3822,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
       if((iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
         inbound_frame_reset_left(iframe, NGHTTP2_FRAME_HEAD_LENGTH);
-        iframe->error_code = 0;
         iframe->padlen = 0;
         if(iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
           iframe->state = NGHTTP2_IB_EXPECT_CONTINUATION;
@@ -4059,9 +4057,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
              data_readlen,
              session->user_data);
           if(rv == NGHTTP2_ERR_PAUSE) {
-            /* Set type to NGHTTP2_DATA, so that we can see what was
-               paused in nghttp2_session_continue() */
-            session->iframe.error_code = NGHTTP2_ERR_PAUSE;
             return in - first;
           }
           if(nghttp2_is_fatal(rv)) {

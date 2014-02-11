@@ -107,8 +107,6 @@ typedef struct {
   /* padding length for the current frame */
   size_t padlen;
   nghttp2_inbound_state state;
-  /* TODO, remove this. Error code */
-  int error_code;
   uint8_t buf[8];
   /* How many bytes have been written to |buf| */
   uint8_t buflen;
