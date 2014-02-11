@@ -3383,9 +3383,10 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
 }
 
 /*
- * Checks PAD_HIGH and PAD_LOW flags and set next state
- * accordingly. If padding is set, this function returns 1. If no
- * padding is set, this function returns 0. On error, returns -1.
+ * Checks PAD_HIGH and PAD_LOW flags and set iframe->left and
+ * iframe->buflen accordingly. If padding is set, this function
+ * returns 1. If no padding is set, this function returns 0. On error,
+ * returns -1.
  */
 static int inbound_frame_handle_pad(nghttp2_inbound_frame *iframe,
                                     nghttp2_frame_hd *hd)
@@ -3394,13 +3395,11 @@ static int inbound_frame_handle_pad(nghttp2_inbound_frame *iframe,
     if((hd->flags & NGHTTP2_FLAG_PAD_LOW) == 0) {
       return -1;
     }
-    iframe->state = NGHTTP2_IB_READ_NBYTE;
     iframe->left = 2;
     iframe->buflen = 0;
     return 1;
   }
   if(hd->flags & NGHTTP2_FLAG_PAD_LOW) {
-    iframe->state = NGHTTP2_IB_READ_NBYTE;
     iframe->left = 1;
     iframe->buflen = 0;
     return 1;
@@ -3507,10 +3506,11 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           }
           break;
         }
-        if(rv == 0) {
-          iframe->state = NGHTTP2_IB_READ_DATA;
+        if(rv == 1) {
+          iframe->state = NGHTTP2_IB_READ_NBYTE;
           break;
         }
+        iframe->state = NGHTTP2_IB_READ_DATA;
         break;
       }
       case NGHTTP2_HEADERS:
@@ -3527,6 +3527,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           break;
         }
         if(rv == 1) {
+          iframe->state = NGHTTP2_IB_READ_NBYTE;
           break;
         }
         if(iframe->frame.hd.flags & NGHTTP2_FLAG_PRIORITY) {
@@ -3909,8 +3910,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       nghttp2_inbound_frame_reset(session);
       break;
     case NGHTTP2_IB_EXPECT_CONTINUATION:
-    case NGHTTP2_IB_IGN_CONTINUATION: {
-      nghttp2_inbound_state state_back;
+    case NGHTTP2_IB_IGN_CONTINUATION:
 #ifdef DEBUGBUILD
       if(iframe->state == NGHTTP2_IB_EXPECT_CONTINUATION) {
         fprintf(stderr, "[IB_EXPECT_CONTINUATION]\n");
@@ -3947,7 +3947,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
          NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
       iframe->frame.hd.length += cont_hd.length;
 
-      state_back = iframe->state;
       rv = inbound_frame_handle_pad(iframe, &cont_hd);
       if(rv < 0) {
         busy = 1;
@@ -3960,7 +3959,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
       if(rv == 1) {
-        if(state_back == NGHTTP2_IB_EXPECT_CONTINUATION) {
+        if(iframe->state == NGHTTP2_IB_EXPECT_CONTINUATION) {
           iframe->state = NGHTTP2_IB_READ_PAD_CONTINUATION;
         } else {
           iframe->state = NGHTTP2_IB_IGN_PAD_CONTINUATION;
@@ -3975,7 +3974,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
       }
       break;
-    }
     case NGHTTP2_IB_READ_PAD_CONTINUATION:
     case NGHTTP2_IB_IGN_PAD_CONTINUATION:
 #ifdef DEBUGBUILD
