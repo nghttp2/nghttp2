@@ -79,6 +79,7 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_nv *nva;
   ssize_t nvlen;
   nva_out out;
+  ssize_t nv_offset;
 
   nva_out_init(&out);
   nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
@@ -102,9 +103,10 @@ void test_nghttp2_frame_pack_headers()
   /* We didn't include PRIORITY flag so priority is not packed */
   CU_ASSERT(1 << 30 == oframe.pri);
 
-  CU_ASSERT(framelen - (ssize_t)bufoff - 8 ==
+  nv_offset = bufoff + NGHTTP2_FRAME_HEAD_LENGTH;
+  CU_ASSERT(framelen - nv_offset ==
             inflate_hd(&inflater, &out,
-                       buf + bufoff + 8, framelen - bufoff - 8));
+                       buf + nv_offset, framelen - nv_offset));
 
   CU_ASSERT(7 == out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
@@ -128,8 +130,10 @@ void test_nghttp2_frame_pack_headers()
                      1000000007, &oframe.hd);
   CU_ASSERT(1 << 20 == oframe.pri);
 
-  CU_ASSERT(framelen - 12 ==
-            inflate_hd(&inflater, &out, buf + 12, framelen - 12));
+  nv_offset = bufoff + NGHTTP2_FRAME_HEAD_LENGTH + 4;
+  CU_ASSERT(framelen - nv_offset ==
+            inflate_hd(&inflater, &out,
+                       buf + nv_offset, framelen - nv_offset));
 
   nghttp2_nv_array_sort(out.nva, out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));

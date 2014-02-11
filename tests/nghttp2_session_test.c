@@ -797,6 +797,7 @@ void test_nghttp2_session_recv_premature_headers(void)
   my_user_data ud;
   nghttp2_hd_deflater deflater;
   nghttp2_outbound_item *item;
+  size_t bufoff = 0;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
@@ -808,14 +809,16 @@ void test_nghttp2_session_recv_premature_headers(void)
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
                              1, NGHTTP2_PRI_DEFAULT, nva, nvlen);
   framedatalen = nghttp2_frame_pack_headers(&framedata, &framedatacap,
+                                            &bufoff,
                                             &frame.headers,
                                             &deflater);
   nghttp2_frame_headers_free(&frame.headers);
 
   /* Intentionally feed payload cutting last 1 byte off */
-  nghttp2_put_uint16be(framedata, frame.hd.length - 1);
-  rv = nghttp2_session_mem_recv(session, framedata, framedatalen - 1);
-  CU_ASSERT((ssize_t)framedatalen - 1 == rv);
+  nghttp2_put_uint16be(framedata + bufoff, frame.hd.length - 1);
+  rv = nghttp2_session_mem_recv(session, framedata + bufoff,
+                                framedatalen - bufoff - 1);
+  CU_ASSERT((ssize_t)framedatalen - bufoff - 1 == rv);
 
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NULL != item);
