@@ -1516,6 +1516,9 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           session->aob.framebuflen = session->aob.framebufmark =
             session->aob.framebufoff + NGHTTP2_FRAME_HEAD_LENGTH +
             cont_hd.length;
+          /* Or-ing flags so that we can show these flags in
+             callback */
+          frame->hd.flags |= cont_hd.flags;
         } else {
           cont_hd.flags = NGHTTP2_FLAG_NONE;
           session->aob.framebufmark += cont_hd.length;
