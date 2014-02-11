@@ -1136,7 +1136,7 @@ ssize_t select_padding_callback
     return frame->hd.length;
   }
   if(frame->hd.length == 0) {
-    return bd;
+    return std::min(max_payload, bd);
   }
   return std::min(max_payload, (frame->hd.length + bd - 1) / bd * bd);
 }

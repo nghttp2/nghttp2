@@ -100,7 +100,7 @@ ssize_t select_padding_callback
 {
   auto bd = get_config()->padding;
   if(frame->hd.length == 0) {
-    return bd;
+    return std::min(max_payload, bd);
   }
   return std::min(max_payload, (frame->hd.length + bd - 1) / bd * bd);
 }
