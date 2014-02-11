@@ -1480,10 +1480,16 @@ void test_nghttp2_session_on_push_promise_received(void)
   CU_ASSERT(0 == user_data.begin_headers_cb_called);
   CU_ASSERT(NULL == nghttp2_session_get_stream(session, 8));
   item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
-  CU_ASSERT(8 == OB_CTRL(item)->hd.stream_id);
-  CU_ASSERT(NGHTTP2_REFUSED_STREAM == OB_CTRL(item)->rst_stream.error_code);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+  CU_ASSERT(0 == OB_CTRL(item)->hd.stream_id);
+  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(item)->goaway.error_code);
   CU_ASSERT(0 == nghttp2_session_send(session));
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+  memset(session->iframe.buf, 0, 4);
+  session->iframe.buflen = 4;
 
   /* Same ID twice */
   stream->state = NGHTTP2_STREAM_OPENING;

@@ -1898,7 +1898,7 @@ static int session_detect_idle_stream(nghttp2_session *session,
 {
   /* Assume that stream object with stream_id does not exist */
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
-    if(session->next_stream_id >= (uint32_t)stream_id) {
+    if(session->next_stream_id <= (uint32_t)stream_id) {
       return 1;
     }
     return 0;
@@ -2914,7 +2914,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   if(!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
     if(!stream) {
       if(session_detect_idle_stream(session, frame->hd.stream_id)) {
-        return nghttp2_session_handle_invalid_connection
+        return nghttp2_session_inflate_handle_invalid_connection
           (session, frame, NGHTTP2_PROTOCOL_ERROR);
       }
     }
