@@ -399,6 +399,12 @@ AC_CONFIG_FILES([
   python/Makefile
   doc/Makefile
   doc/conf.py
+  doc/index.rst
+  doc/package_README.rst
+  doc/tutorial-client.rst
+  doc/tutorial-server.rst
+  doc/nghttp2.h.rst
+  doc/nghttp2ver.h.rst
 ])
 AC_OUTPUT
 

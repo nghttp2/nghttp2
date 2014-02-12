@@ -482,8 +482,3 @@ remote peer), we call `nghttp2_session_terminate_session()` to
 commencing the closure of the HTTP/2.0 session gracefully. If you have
 some data associated for the stream to be closed, you may delete it
 here.
-
-libevent-client.c
------------------
-
-.. literalinclude:: ../examples/libevent-client.c
