@@ -37,7 +37,7 @@ nghttp2_la_CPPFLAGS = \
 	$(PYTHON_CPPFLAGS) \
 	-fno-strict-aliasing \
 	-I$(top_srcdir)/lib/includes \
-	-I$(build_srcdir)/lib/includes \
+	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib
 nghttp2_la_LDFLAGS = \
 	$(PYTHON_LDFLAGS) \

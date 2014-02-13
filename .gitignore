@@ -29,3 +29,9 @@ INSTALL
 compile
 test-driver
 .dirstamp
+doc/index.rst
+doc/nghttp2.h.rst
+doc/nghttp2ver.h.rst
+doc/package_README.rst
+doc/tutorial-client.rst
+doc/tutorial-server.rst

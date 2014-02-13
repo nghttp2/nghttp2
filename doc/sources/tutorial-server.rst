@@ -587,9 +587,3 @@ is about to close::
 
 We destroy ``http2_stream_data`` object in this function since the
 stream is about to close and we no longer use that object.
-
-
-libevent-server.c
------------------
-
-.. literalinclude:: ../examples/libevent-server.c

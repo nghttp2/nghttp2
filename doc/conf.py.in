@@ -51,7 +51,7 @@ import sys, os
 extensions = []
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ['@top_srcdir@/_templates']
 
 # The suffix of source filenames.
 source_suffix = '.rst'
@@ -87,7 +87,7 @@ release = '@PACKAGE_VERSION@'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['manual', 'README.rst', '*-header.rst']
+exclude_patterns = ['manual', 'README.rst', '*-header.rst', 'sources']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 default_role = 'c:func'
@@ -126,7 +126,7 @@ html_theme = 'sphinx_rtd_theme'
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = ['_themes']
+html_theme_path = ['@top_srcdir@/doc/_themes']
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -177,7 +177,8 @@ html_sidebars = {
 #html_split_index = False
 
 # If true, links to the reST sources are added to the pages.
-#html_show_sourcelink = True
+html_show_sourcelink = False
+html_copy_source = False
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 #html_show_sphinx = True

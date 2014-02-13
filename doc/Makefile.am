@@ -79,7 +79,8 @@ help:
 
 apiref.rst: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
-	$(PYTHON) $(builddir)/mkapiref.py --header apiref-header.rst $^ > $@
+	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
+	--header $(top_srcdir)/doc/apiref-header.rst $^ > $@
 
 clean:
 	-rm apiref.rst
