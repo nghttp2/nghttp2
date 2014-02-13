@@ -1414,6 +1414,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
   DEBUGF(fprintf(stderr, "nghtp2_hd_infalte_hd start state=%d\n",
                  inflater->state));
+  hd_inflate_keep_free(inflater);
   *inflate_flags = NGHTTP2_HD_INFLATE_NONE;
   for(; in != last;) {
     switch(inflater->state) {
