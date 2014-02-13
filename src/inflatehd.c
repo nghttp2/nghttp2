@@ -42,7 +42,6 @@
 #include "comp_helper.h"
 
 typedef struct {
-  size_t table_size;
   int dump_header_table;
 } inflate_config;
 
@@ -110,8 +109,8 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq)
               seq);
       return -1;
     }
-    rv = nghttp2_hd_change_table_size(&inflater->ctx,
-                                      json_integer_value(table_size));
+    rv = nghttp2_hd_inflate_change_table_size(inflater,
+                                              json_integer_value(table_size));
     if(rv != 0) {
       fprintf(stderr,
               "nghttp2_hd_change_table_size() failed with error %s at %d\n",
@@ -163,18 +162,11 @@ static int perform(void)
   json_t *json, *cases;
   json_error_t error;
   size_t len;
-  nghttp2_hd_side side;
 
   json = json_loadf(stdin, 0, &error);
   if(json == NULL) {
     fprintf(stderr, "JSON loading failed\n");
     exit(EXIT_FAILURE);
-  }
-  if(strcmp("request", json_string_value(json_object_get(json, "context")))
-     == 0) {
-    side = NGHTTP2_HD_SIDE_REQUEST;
-  } else {
-    side = NGHTTP2_HD_SIDE_RESPONSE;
   }
   cases = json_object_get(json, "cases");
   if(cases == NULL) {
@@ -185,10 +177,8 @@ static int perform(void)
     fprintf(stderr, "'cases' must be JSON array\n");
     exit(EXIT_FAILURE);
   }
-  nghttp2_hd_inflate_init(&inflater, side);
-  nghttp2_hd_change_table_size(&inflater.ctx, config.table_size);
-
-  output_json_header(side);
+  nghttp2_hd_inflate_init(&inflater);
+  output_json_header();
   len = json_array_size(cases);
   for(i = 0; i < len; ++i) {
     json_t *obj = json_array_get(cases, i);
@@ -241,29 +231,21 @@ static void print_help(void)
          "The output of this program can be used as input for deflatehd.\n"
          "\n"
          "OPTIONS:\n"
-         "    -s, --table-size=<N>\n"
-         "                      Set dynamic table size. In the HPACK\n"
-         "                      specification, this value is denoted by\n"
-         "                      SETTINGS_HEADER_TABLE_SIZE.\n"
-         "                      Default: 4096\n"
          "    -d, --dump-header-table\n"
          "                      Output dynamic header table.\n");
 }
 
 static struct option long_options[] = {
-  {"table-size", required_argument, NULL, 's'},
   {"dump-header-table", no_argument, NULL, 'd'},
   {NULL, 0, NULL, 0 }
 };
 
 int main(int argc, char **argv)
 {
-  char *end;
-  config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   config.dump_header_table = 0;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "dhs:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "dh", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -271,15 +253,6 @@ int main(int argc, char **argv)
     case 'h':
       print_help();
       exit(EXIT_SUCCESS);
-    case 's':
-      /* --table-size */
-      errno = 0;
-      config.table_size = strtoul(optarg, &end, 10);
-      if(errno == ERANGE || *end != '\0') {
-        fprintf(stderr, "-s: Bad option value\n");
-        exit(EXIT_FAILURE);
-      }
-      break;
     case 'd':
       /* --dump-header-table */
       config.dump_header_table = 1;

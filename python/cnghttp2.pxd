@@ -45,10 +45,6 @@ cdef extern from 'nghttp2_hd.h':
     # This is macro
     int NGHTTP2_HD_ENTRY_OVERHEAD
 
-    ctypedef enum nghttp2_hd_side:
-        NGHTTP2_HD_SIDE_REQUEST
-        NGHTTP2_HD_SIDE_RESPONSE
-
     ctypedef enum nghttp2_hd_flags:
         NGHTTP2_HD_FLAG_REFSET
 
@@ -73,12 +69,9 @@ cdef extern from 'nghttp2_hd.h':
         nghttp2_hd_context ctx
 
     int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
-                                 nghttp2_hd_side side,
                                  size_t deflate_hd_table_bufsize_max)
 
-    int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater,
-                                nghttp2_hd_side side)
-
+    int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
 
     void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater)
 
@@ -87,8 +80,11 @@ cdef extern from 'nghttp2_hd.h':
     void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
                                           uint8_t no_refset)
 
-    int nghttp2_hd_change_table_size(nghttp2_hd_context *context,
-                                     size_t hd_table_bufsize_max)
+    int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
+                                             size_t hd_table_bufsize_max)
+
+    int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
+                                             size_t hd_table_bufsize_max)
 
     ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,

@@ -13,12 +13,7 @@ from binascii import a2b_hex
 import nghttp2
 
 def testsuite(testdata):
-    if testdata['context'] == 'request':
-        side = nghttp2.HD_SIDE_REQUEST
-    else:
-        side = nghttp2.HD_SIDE_RESPONSE
-
-    inflater = nghttp2.HDInflater(side)
+    inflater = nghttp2.HDInflater()
 
     for casenum, item  in enumerate(testdata['cases']):
         if 'header_table_size' in item:
@@ -47,7 +42,7 @@ def testsuite(testdata):
 
 if __name__ == '__main__':
     for filename in sys.argv[1:]:
-        sys.stderr.write('{}\n'.format(filename))
+        sys.stderr.write('{}: '.format(filename))
         with open(filename) as f:
             input = f.read()
         testsuite(json.loads(input))

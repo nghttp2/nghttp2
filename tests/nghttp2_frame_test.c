@@ -82,8 +82,8 @@ void test_nghttp2_frame_pack_headers()
   ssize_t nv_offset;
 
   nva_out_init(&out);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
+  nghttp2_hd_inflate_init(&inflater);
 
   nva = headers();
   nvlen = HEADERS_LENGTH;
@@ -171,7 +171,7 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   }
 
   nvlen = nghttp2_nv_array_copy(&nva, big_hds, big_hdslen);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
                              1000000007,
@@ -269,8 +269,8 @@ void test_nghttp2_frame_pack_push_promise()
   nva_out out;
 
   nva_out_init(&out);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_RESPONSE);
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_RESPONSE);
+  nghttp2_hd_deflate_init(&deflater);
+  nghttp2_hd_inflate_init(&inflater);
 
   nva = headers();
   nvlen = HEADERS_LENGTH;

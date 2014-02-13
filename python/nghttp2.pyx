@@ -26,9 +26,6 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy, memset
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, int32_t
 
-HD_SIDE_REQUEST = cnghttp2.NGHTTP2_HD_SIDE_REQUEST
-HD_SIDE_RESPONSE = cnghttp2.NGHTTP2_HD_SIDE_RESPONSE
-
 HD_DEFLATE_HD_TABLE_BUFSIZE_MAX = 4096
 
 HD_ENTRY_OVERHEAD = cnghttp2.NGHTTP2_HD_ENTRY_OVERHEAD
@@ -45,12 +42,6 @@ class HDTableEntry:
     def space(self):
         return self.namelen + self.valuelen + HD_ENTRY_OVERHEAD
 
-cdef _change_table_size(cnghttp2.nghttp2_hd_context *ctx, hd_table_bufsize_max):
-    cdef int rv
-    rv = cnghttp2.nghttp2_hd_change_table_size(ctx, hd_table_bufsize_max)
-    if rv != 0:
-        raise Exception(_strerror(rv))
-
 cdef _get_hd_table(cnghttp2.nghttp2_hd_context *ctx):
     cdef int length = ctx.hd_table.len
     cdef cnghttp2.nghttp2_hd_entry *entry
@@ -65,35 +56,25 @@ cdef _get_hd_table(cnghttp2.nghttp2_hd_context *ctx):
     return res
 
 cdef _get_pybytes(uint8_t *b, uint16_t blen):
-    # While the |blen| is positive, the |b| could be NULL. This is
-    # because deflater may deallocate the byte strings its local table
-    # space.
-    if b == NULL and blen > 0:
-        val = None
-    else:
-        val = b[:blen]
-    return val
+    return b[:blen]
 
 cdef class HDDeflater:
-    '''Performs header compression. The header compression algorithm has
-    to know the header set to be compressed is request headers or
-    response headers. It is indicated by |side| parameter in the
-    constructor. The constructor also takes |hd_table_bufsize_max|
-    parameter, which limits the usage of header table in the given
-    amount of bytes. This is necessary because the header compressor
-    and decompressor has to share the same amount of header table and
-    the decompressor decides that number. The compressor may not want
-    to use all header table size because of limited memory
-    availability. In that case, the |hd_table_bufsize_max| can be used
-    to cap the upper limit of talbe size whatever the header table
-    size is chosen. The default value of |hd_table_bufsize_max| is
-    4096 bytes.
+    '''Performs header compression. The constructor takes
+    |hd_table_bufsize_max| parameter, which limits the usage of header
+    table in the given amount of bytes. This is necessary because the
+    header compressor and decompressor has to share the same amount of
+    header table and the decompressor decides that number. The
+    compressor may not want to use all header table size because of
+    limited memory availability. In that case, the
+    |hd_table_bufsize_max| can be used to cap the upper limit of table
+    size whatever the header table size is chosen by the decompressor.
+    The default value of |hd_table_bufsize_max| is 4096 bytes.
 
     The following example shows how to compress request header sets:
 
         import binascii, nghttp2
 
-        deflater = nghttp2.HDDeflater(nghttp2.HD_SIDE_REQUEST)
+        deflater = nghttp2.HDDeflater()
         res = deflater.deflate([(b'foo', b'bar'),
                               (b'baz', b'buz')])
         print(binascii.b2a_hex(res))
@@ -102,16 +83,12 @@ cdef class HDDeflater:
 
     cdef cnghttp2.nghttp2_hd_deflater _deflater
 
-    def __cinit__(self, side,
+    def __cinit__(self,
                   hd_table_bufsize_max = HD_DEFLATE_HD_TABLE_BUFSIZE_MAX):
-        rv = cnghttp2.nghttp2_hd_deflate_init2(&self._deflater, side,
+        rv = cnghttp2.nghttp2_hd_deflate_init2(&self._deflater,
                                                hd_table_bufsize_max)
         if rv != 0:
             raise Exception(_strerror(rv))
-
-    def __init__(self, side,
-                 hd_table_bufsize_max = HD_DEFLATE_HD_TABLE_BUFSIZE_MAX):
-        super(HDDeflater, self).__init__()
 
     def __dealloc__(self):
         cnghttp2.nghttp2_hd_deflate_free(&self._deflater)
@@ -165,7 +142,11 @@ cdef class HDDeflater:
         An exception will be raised on error.
 
         '''
-        _change_table_size(&self._deflater.ctx, hd_table_bufsize_max)
+        cdef int rv
+        rv = cnghttp2.nghttp2_hd_deflate_change_table_size(&self._deflater,
+                                                           hd_table_bufsize_max)
+        if rv != 0:
+            raise Exception(_strerror(rv))
 
     def get_hd_table(self,):
         '''Returns copy of current dynamic header table.'''
@@ -177,7 +158,7 @@ cdef class HDInflater:
     The following example shows how to compress request header sets:
 
         data = b'0082c5ad82bd0f000362617a0362757a'
-        inflater = nghttp2.HDInflater(nghttp2.HD_SIDE_REQUEST)
+        inflater = nghttp2.HDInflater()
         hdrs = inflater.inflate(data)
         print(hdrs)
 
@@ -185,13 +166,10 @@ cdef class HDInflater:
 
     cdef cnghttp2.nghttp2_hd_inflater _inflater
 
-    def __cinit__(self, side):
-        rv = cnghttp2.nghttp2_hd_inflate_init(&self._inflater, side)
+    def __cinit__(self):
+        rv = cnghttp2.nghttp2_hd_inflate_init(&self._inflater)
         if rv != 0:
             raise Exception(_strerror(rv))
-
-    def __init__(self, side):
-        super(HDInflater, self).__init__()
 
     def __dealloc__(self):
         cnghttp2.nghttp2_hd_inflate_free(&self._inflater)
@@ -231,7 +209,11 @@ cdef class HDInflater:
         An exception will be raised on error.
 
         '''
-        _change_table_size(&self._inflater.ctx, hd_table_bufsize_max)
+        cdef int rv
+        rv = cnghttp2.nghttp2_hd_inflate_change_table_size(&self._inflater,
+                                                           hd_table_bufsize_max)
+        if rv != 0:
+            raise Exception(_strerror(rv))
 
     def get_hd_table(self):
         '''Returns copy of current dynamic header table.'''
@@ -255,5 +237,5 @@ def print_hd_table(hdtable):
         print('[{}] (s={}) (r={}) {}: {}'\
               .format(idx, entry.space(),
                       'y' if entry.ref else 'n',
-                      '**DEALLOCATED**' if entry.name is None else entry.name.decode('utf-8'),
-                      '**DEALLOCATED**' if entry.value is None else entry.value.decode('utf-8')))
+                      entry.name.decode('utf-8'),
+                      entry.value.decode('utf-8')))

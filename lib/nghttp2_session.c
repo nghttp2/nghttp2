@@ -201,7 +201,7 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
                                const nghttp2_opt_set *opt_set)
 {
   int r;
-  nghttp2_hd_side side_deflate, side_inflate;
+
   *session_ptr = malloc(sizeof(nghttp2_session));
   if(*session_ptr == NULL) {
     r = NGHTTP2_ERR_NOMEM;
@@ -236,17 +236,12 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
 
   if(server) {
     (*session_ptr)->server = 1;
-    side_deflate = NGHTTP2_HD_SIDE_RESPONSE;
-    side_inflate = NGHTTP2_HD_SIDE_REQUEST;
-  } else {
-    side_deflate = NGHTTP2_HD_SIDE_REQUEST;
-    side_inflate = NGHTTP2_HD_SIDE_RESPONSE;
   }
-  r = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater, side_deflate);
+  r = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater);
   if(r != 0) {
     goto fail_hd_deflater;
   }
-  r = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater, side_inflate);
+  r = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater);
   if(r != 0) {
     goto fail_hd_inflater;
   }
@@ -2708,8 +2703,8 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
        header_table_size > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
       return NGHTTP2_ERR_HEADER_COMP;
     }
-    rv = nghttp2_hd_change_table_size(&session->hd_inflater.ctx,
-                                      header_table_size);
+    rv = nghttp2_hd_inflate_change_table_size(&session->hd_inflater,
+                                              header_table_size);
     if(rv != 0) {
       return rv;
     }
@@ -2791,8 +2786,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
         return nghttp2_session_handle_invalid_connection
           (session, frame, NGHTTP2_COMPRESSION_ERROR);
       }
-      rv = nghttp2_hd_change_table_size(&session->hd_deflater.ctx,
-                                        entry->value);
+      rv = nghttp2_hd_deflate_change_table_size(&session->hd_deflater,
+                                                entry->value);
       if(rv != 0) {
         if(nghttp2_is_fatal(rv)) {
           return rv;

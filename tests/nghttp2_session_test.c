@@ -363,7 +363,7 @@ void test_nghttp2_session_recv(void)
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   user_data.df = &df;
   nghttp2_session_server_new(&session, &callbacks, &user_data);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
 
   nvlen = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv));
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
@@ -446,7 +446,7 @@ void test_nghttp2_session_recv_invalid_stream_id(void)
   user_data.df = &df;
   user_data.invalid_frame_recv_cb_called = 0;
   nghttp2_session_server_new(&session, &callbacks, &user_data);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
 
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 2,
                              NGHTTP2_PRI_DEFAULT, NULL, 0);
@@ -491,7 +491,7 @@ void test_nghttp2_session_recv_invalid_frame(void)
   user_data.df = &df;
   user_data.frame_send_cb_called = 0;
   nghttp2_session_server_new(&session, &callbacks, &user_data);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
   nvlen = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv));
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
                              NGHTTP2_PRI_DEFAULT, nva, nvlen);
@@ -690,7 +690,7 @@ void test_nghttp2_session_recv_continuation(void)
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
 
   /* Make 1 HEADERS and insert CONTINUATION header */
   nvlen = nghttp2_nv_array_copy(&nva, nv1, ARRLEN(nv1));
@@ -746,7 +746,7 @@ void test_nghttp2_session_recv_continuation(void)
   /* Expecting CONTINUATION, but get the other frame */
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
 
   /* HEADERS without END_HEADERS flag */
   nvlen = nghttp2_nv_array_copy(&nva, nv1, ARRLEN(nv1));
@@ -803,7 +803,7 @@ void test_nghttp2_session_recv_premature_headers(void)
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
 
   nvlen = nghttp2_nv_array_copy(&nva, nv1, ARRLEN(nv1));
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
@@ -867,7 +867,7 @@ void test_nghttp2_session_continue(void)
 
   nghttp2_session_server_new(&session, &callbacks, &user_data);
 
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
 
   /* Make 2 HEADERS frames */
   nvlen = nghttp2_nv_array_copy(&nva, nv1, ARRLEN(nv1));
@@ -2255,7 +2255,7 @@ void test_nghttp2_submit_request_without_data(void)
   callbacks.send_callback = accumulator_send_callback;
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
 
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_inflate_init(&inflater);
   CU_ASSERT(0 == nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT,
                                         nva, ARRLEN(nva), &data_prd, NULL));
   item = nghttp2_session_get_next_ob_item(session);
@@ -2327,7 +2327,7 @@ void test_nghttp2_submit_response_without_data(void)
   callbacks.send_callback = accumulator_send_callback;
   CU_ASSERT(0 == nghttp2_session_server_new(&session, &callbacks, &ud));
 
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_RESPONSE);
+  nghttp2_hd_inflate_init(&inflater);
   nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_END_STREAM,
                               NGHTTP2_PRI_DEFAULT,
                               NGHTTP2_STREAM_OPENING, NULL);
@@ -2499,7 +2499,7 @@ void test_nghttp2_submit_headers(void)
 
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
 
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_inflate_init(&inflater);
   CU_ASSERT(0 == nghttp2_submit_headers(session,
                                         NGHTTP2_FLAG_END_STREAM,
                                         1, NGHTTP2_PRI_DEFAULT,

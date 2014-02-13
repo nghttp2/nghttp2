@@ -27,11 +27,7 @@
 
 static void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len)
 {
-  if(val == NULL && len > 0) {
-    json_object_set_new(jent, key, json_string("**DEALLOCATED**"));
-  } else {
-    json_object_set_new(jent, key, json_pack("s#", val, len));
-  }
+  json_object_set_new(jent, key, json_pack("s#", val, len));
 }
 
 json_t* dump_header_table(nghttp2_hd_context *context)
@@ -58,12 +54,6 @@ json_t* dump_header_table(nghttp2_hd_context *context)
   json_object_set_new(obj, "size", json_integer(context->hd_table_bufsize));
   json_object_set_new(obj, "max_size",
                       json_integer(context->hd_table_bufsize_max));
-  if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-    json_object_set_new(obj, "deflate_size",
-                        json_integer(context->deflate_hd_table_bufsize));
-    json_object_set_new(obj, "max_deflate_size",
-                        json_integer(context->deflate_hd_table_bufsize_max));
-  }
   return obj;
 }
 
@@ -93,13 +83,11 @@ json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen)
   return headers;
 }
 
-void output_json_header(int side)
+void output_json_header(void)
 {
   printf("{\n"
-         "  \"context\": \"%s\",\n"
          "  \"cases\":\n"
-         "  [\n",
-         (side == NGHTTP2_HD_SIDE_REQUEST ? "request" : "response"));
+         "  [\n");
 }
 
 void output_json_footer(void)

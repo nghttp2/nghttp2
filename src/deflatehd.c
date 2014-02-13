@@ -44,7 +44,6 @@
 typedef struct {
   size_t table_size;
   size_t deflate_table_size;
-  nghttp2_hd_side side;
   int http1text;
   int dump_header_table;
   int no_refset;
@@ -174,11 +173,11 @@ static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater, int seq)
   return 0;
 }
 
-static void init_deflater(nghttp2_hd_deflater *deflater, nghttp2_hd_side side)
+static void init_deflater(nghttp2_hd_deflater *deflater)
 {
-  nghttp2_hd_deflate_init2(deflater, side, config.deflate_table_size);
+  nghttp2_hd_deflate_init2(deflater, config.deflate_table_size);
   nghttp2_hd_deflate_set_no_refset(deflater, config.no_refset);
-  nghttp2_hd_change_table_size(&deflater->ctx, config.table_size);
+  nghttp2_hd_deflate_change_table_size(deflater, config.table_size);
 }
 
 static void deinit_deflater(nghttp2_hd_deflater *deflater)
@@ -193,18 +192,11 @@ static int perform(void)
   json_error_t error;
   size_t len;
   nghttp2_hd_deflater deflater;
-  nghttp2_hd_side side;
 
   json = json_loadf(stdin, 0, &error);
   if(json == NULL) {
     fprintf(stderr, "JSON loading failed\n");
     exit(EXIT_FAILURE);
-  }
-  if(strcmp("request", json_string_value(json_object_get(json, "context")))
-     == 0) {
-    side = NGHTTP2_HD_SIDE_REQUEST;
-  } else {
-    side = NGHTTP2_HD_SIDE_RESPONSE;
   }
   cases = json_object_get(json, "cases");
   if(cases == NULL) {
@@ -215,8 +207,8 @@ static int perform(void)
     fprintf(stderr, "'cases' must be JSON array\n");
     exit(EXIT_FAILURE);
   }
-  init_deflater(&deflater, side);
-  output_json_header(side);
+  init_deflater(&deflater);
+  output_json_header();
   len = json_array_size(cases);
   for(i = 0; i < len; ++i) {
     json_t *obj = json_array_get(cases, i);
@@ -244,8 +236,8 @@ static int perform_from_http1text(void)
   nghttp2_nv nva[256];
   int seq = 0;
   nghttp2_hd_deflater deflater;
-  init_deflater(&deflater, config.side);
-  output_json_header(config.side);
+  init_deflater(&deflater);
+  output_json_header();
   for(;;) {
     size_t nvlen = 0;
     int end = 0;
@@ -355,10 +347,6 @@ static void print_help(void)
          "The output of this program can be used as input for inflatehd.\n"
          "\n"
          "OPTIONS:\n"
-         "    -r, --response    Use response compression context instead of\n"
-         "                      request if -t is used. For JSON input, it is\n"
-         "                      determined by inspecting \"context\" key in\n"
-         "                      root JSON object.\n"
          "    -t, --http1text   Use HTTP/1 style header field text as input.\n"
          "                      Each header set is delimited by single empty\n"
          "                      line.\n"
@@ -377,7 +365,6 @@ static void print_help(void)
 }
 
 static struct option long_options[] = {
-  {"response", no_argument, NULL, 'r'},
   {"http1text", no_argument, NULL, 't'},
   {"table-size", required_argument, NULL, 's'},
   {"deflate-table-size", required_argument, NULL, 'S'},
@@ -390,7 +377,6 @@ int main(int argc, char **argv)
 {
   char *end;
 
-  config.side = NGHTTP2_HD_SIDE_REQUEST;
   config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   config.deflate_table_size = NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE;
   config.http1text = 0;
@@ -398,15 +384,11 @@ int main(int argc, char **argv)
   config.no_refset = 0;
   while(1) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "S:cdhrs:t", long_options, &option_index);
+    int c = getopt_long(argc, argv, "S:cdhs:t", long_options, &option_index);
     if(c == -1) {
       break;
     }
     switch(c) {
-    case 'r':
-      /* --response */
-      config.side = NGHTTP2_HD_SIDE_RESPONSE;
-      break;
     case 'h':
       print_help();
       exit(EXIT_SUCCESS);
