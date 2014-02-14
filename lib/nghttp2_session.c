@@ -2562,8 +2562,8 @@ static int nghttp2_update_remote_initial_window_size_func
                                                         arg->new_window_size,
                                                         arg->old_window_size);
   if(rv != 0) {
-    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
-                                          NGHTTP2_FLOW_CONTROL_ERROR);
+    return nghttp2_session_terminate_session(arg->session,
+                                             NGHTTP2_FLOW_CONTROL_ERROR);
   }
   /* If window size gets positive, push deferred DATA frame to
      outbound queue. */
@@ -2619,8 +2619,8 @@ static int nghttp2_update_local_initial_window_size_func
                                                        arg->new_window_size,
                                                        arg->old_window_size);
   if(rv != 0) {
-    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
-                                          NGHTTP2_FLOW_CONTROL_ERROR);
+    return nghttp2_session_terminate_session(arg->session,
+                                             NGHTTP2_FLOW_CONTROL_ERROR);
   }
   if(!(arg->session->opt_flags &
        NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {

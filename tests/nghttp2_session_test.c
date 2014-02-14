@@ -2791,7 +2791,10 @@ void test_nghttp2_submit_settings_update_local_window_size(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &ack_frame, 0));
 
-  CU_ASSERT(NGHTTP2_STREAM_CLOSING == stream->state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+  CU_ASSERT(NGHTTP2_FLOW_CONTROL_ERROR == OB_CTRL(item)->goaway.error_code);
 
   nghttp2_session_del(session);
   nghttp2_frame_settings_free(&ack_frame.settings);
