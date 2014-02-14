@@ -1141,10 +1141,7 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
         return framebuflen;
       }
       padded_payloadlen = session_call_select_padding
-        (session, frame,
-         (frame->hd.length == 0 ? NGHTTP2_MAX_FRAME_LENGTH :
-          (frame->hd.length + NGHTTP2_MAX_FRAME_LENGTH - 1)
-          / NGHTTP2_MAX_FRAME_LENGTH * NGHTTP2_MAX_FRAME_LENGTH));
+        (session, frame, frame->hd.length + 1024);
       if(nghttp2_is_fatal(padded_payloadlen)) {
         return padded_payloadlen;
       }
@@ -1152,13 +1149,46 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
       frame->headers.padlen = padded_payloadlen - frame->hd.length;
       frame->hd.length = padded_payloadlen;
 
+      DEBUGF(fprintf(stderr, "payloadlen=%zu, padlen=%zu\n",
+                     frame->hd.length, frame->headers.padlen));
+
       if(frame->hd.length > NGHTTP2_MAX_FRAME_LENGTH) {
-        /* PAD_HIGH and PAD_LOW will be added in
-           nghttp2_session_after_frame_sent(). */
-        /* This may make framebuflen > session->aob.framebufmax. But
+        if(NGHTTP2_MAX_FRAME_LENGTH >
+           frame->hd.length - frame->headers.padlen) {
+          size_t padlen = NGHTTP2_MAX_FRAME_LENGTH -
+            (frame->hd.length - frame->headers.padlen);
+          nghttp2_frame_hd hd = frame->hd;
+
+          DEBUGF(fprintf(stderr, "padding across 2 frames\n"));
+
+          hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
+          hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+
+          DEBUGF(fprintf(stderr, "first HEADERS payloadlen=%zu, padlen=%zu\n",
+                         hd.length, padlen));
+
+          r = nghttp2_frame_add_pad(&session->aob.framebuf,
+                                    &session->aob.framebufmax,
+                                    &session->aob.framebufoff,
+                                    &hd.flags,
+                                    hd.length - padlen,
+                                    padlen);
+          if(nghttp2_is_fatal(r)) {
+            return r;
+          }
+          framebuflen = session->aob.framebufoff + frame->hd.length
+            + NGHTTP2_FRAME_HEAD_LENGTH;
+
+          nghttp2_frame_pack_frame_hd
+            (session->aob.framebuf + session->aob.framebufoff, &hd);
+        } else {
+          /* PAD_HIGH and PAD_LOW will be added in
+             nghttp2_session_after_frame_sent(). */
+          framebuflen += frame->headers.padlen;
+        }
+        /* At this point, framebuflen > session->aob.framebufmax. But
            before we access the missing part, we will allocate it in
            nghttp2_session_after_frame_sent(). */
-        framebuflen += frame->headers.padlen;
       } else if(frame->hd.length <= NGHTTP2_MAX_FRAME_LENGTH &&
                 frame->headers.padlen > 0) {
         r = nghttp2_frame_add_pad(&session->aob.framebuf,
@@ -1504,17 +1534,24 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         session->aob.framebufoff -= NGHTTP2_FRAME_HEAD_LENGTH;
         if(cont_hd.length + session->aob.framebufmark ==
            session->aob.framebuflen) {
+          size_t padlen;
+          if(cont_hd.length < frame->headers.padlen) {
+            padlen = cont_hd.length;
+          } else {
+            padlen = frame->headers.padlen;
+          }
           DEBUGF(fprintf(stderr,
                          "last CONTINUATION payloadlen=%zu, padlen=%zu\n",
-                         cont_hd.length, frame->headers.padlen));
+                         cont_hd.length, padlen));
 
           cont_hd.flags = NGHTTP2_FLAG_END_HEADERS;
+
           rv = nghttp2_frame_add_pad(&session->aob.framebuf,
                                      &session->aob.framebufmax,
                                      &session->aob.framebufoff,
                                      &cont_hd.flags,
-                                     cont_hd.length - frame->headers.padlen,
-                                     frame->headers.padlen);
+                                     cont_hd.length - padlen,
+                                     padlen);
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
@@ -1524,9 +1561,6 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           session->aob.framebuflen = session->aob.framebufmark =
             session->aob.framebufoff + NGHTTP2_FRAME_HEAD_LENGTH +
             cont_hd.length;
-          /* Or-ing flags so that we can show these flags in
-             callback */
-          frame->hd.flags |= cont_hd.flags;
         } else {
           cont_hd.flags = NGHTTP2_FLAG_NONE;
           session->aob.framebufmark += cont_hd.length;
@@ -3506,6 +3540,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       nghttp2_frame_unpack_frame_hd(&iframe->frame.hd, iframe->buf);
       iframe->payloadleft = iframe->frame.hd.length;
 
+      DEBUGF(fprintf(stderr, "payloadlen=%zu\n", iframe->payloadleft));
+
       switch(iframe->frame.hd.type) {
       case NGHTTP2_DATA: {
         DEBUGF(fprintf(stderr, "DATA\n"));
@@ -3841,6 +3877,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       if(iframe->payloadleft) {
         break;
       }
+      /* Clear PAD_HIGH and PAD_LOW, because we rely on those flags
+         in the next CONTINUATION frame. */
+      iframe->frame.hd.flags &=
+        ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
       if((iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
         inbound_frame_reset_left(iframe, NGHTTP2_FRAME_HEAD_LENGTH);
         iframe->padlen = 0;
@@ -3950,6 +3990,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
       nghttp2_frame_unpack_frame_hd(&cont_hd, iframe->buf);
       iframe->payloadleft = cont_hd.length;
+
+      DEBUGF(fprintf(stderr, "payloadlen=%zu\n", iframe->payloadleft));
+
       if(cont_hd.type != NGHTTP2_CONTINUATION ||
          cont_hd.stream_id != iframe->frame.hd.stream_id) {
         DEBUGF(fprintf(stderr, "expected stream_id=%d, type=%d, but "

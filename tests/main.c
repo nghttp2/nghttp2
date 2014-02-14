@@ -199,6 +199,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_data_backoff_by_high_pri_frame) ||
       !CU_add_test(pSuite, "session_pack_data_with_padding",
                    test_nghttp2_session_pack_data_with_padding) ||
+      !CU_add_test(pSuite, "session_pack_headers_with_padding",
+                   test_nghttp2_session_pack_headers_with_padding) ||
       !CU_add_test(pSuite, "pack_settings_payload",
                    test_nghttp2_pack_settings_payload) ||
       !CU_add_test(pSuite, "frame_pack_headers",

@@ -40,7 +40,7 @@
 #define OB_DATA(ITEM) nghttp2_outbound_item_get_data_frame(ITEM)
 
 typedef struct {
-  uint8_t buf[4096];
+  uint8_t buf[65535];
   size_t length;
 } accumulator;
 
@@ -4036,6 +4036,54 @@ void test_nghttp2_session_pack_data_with_padding(void)
      session->aob.framebufmark - session->aob.framebufoff,
      datalen);
 
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_pack_headers_with_padding(void)
+{
+  nghttp2_session *session, *sv_session;
+  accumulator acc;
+  my_user_data ud;
+  nghttp2_session_callbacks callbacks, sv_callbacks;
+  nghttp2_nv nva[8190];
+  size_t i;
+
+  for(i = 0; i < ARRLEN(nva); ++i) {
+    nva[i].name = (uint8_t*)":path";
+    nva[i].namelen = 5;
+    nva[i].value = (uint8_t*)"/";
+    nva[i].valuelen = 1;
+  }
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = accumulator_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+  callbacks.select_padding_callback = select_padding_callback;
+
+  acc.length = 0;
+  ud.acc = &acc;
+
+  memset(&sv_callbacks, 0, sizeof(sv_callbacks));
+  sv_callbacks.on_frame_recv_callback = on_frame_recv_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+  nghttp2_session_server_new(&sv_session, &sv_callbacks, &ud);
+
+  ud.padding_boundary = 16385;
+
+  CU_ASSERT(0 ==
+            nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT,
+                                   nva, ARRLEN(nva), NULL, NULL));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(acc.length > NGHTTP2_MAX_FRAME_LENGTH);
+  ud.frame_recv_cb_called = 0;
+  CU_ASSERT((ssize_t)acc.length ==
+            nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(sv_session));
+
+  nghttp2_session_del(sv_session);
   nghttp2_session_del(session);
 }
 
