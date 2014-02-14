@@ -912,6 +912,9 @@ static int nghttp2_session_predicate_push_promise_send
 {
   int rv;
   nghttp2_stream *stream;
+  if(!session->server) {
+    return NGHTTP2_ERR_PROTO;
+  }
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
     /* The associated stream must be initiated by the remote peer */
     return NGHTTP2_ERR_PROTO;
@@ -2861,7 +2864,8 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
     return nghttp2_session_inflate_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
-  if(session->local_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] == 0) {
+  if(session->server ||
+     session->local_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] == 0) {
     return nghttp2_session_inflate_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
