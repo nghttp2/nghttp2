@@ -4044,7 +4044,7 @@ void test_nghttp2_session_pack_headers_with_padding(void)
   nghttp2_session *session, *sv_session;
   accumulator acc;
   my_user_data ud;
-  nghttp2_session_callbacks callbacks, sv_callbacks;
+  nghttp2_session_callbacks callbacks;
   nghttp2_nv nva[8190];
   size_t i;
 
@@ -4059,15 +4059,13 @@ void test_nghttp2_session_pack_headers_with_padding(void)
   callbacks.send_callback = accumulator_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
   callbacks.select_padding_callback = select_padding_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
 
   acc.length = 0;
   ud.acc = &acc;
 
-  memset(&sv_callbacks, 0, sizeof(sv_callbacks));
-  sv_callbacks.on_frame_recv_callback = on_frame_recv_callback;
-
   nghttp2_session_client_new(&session, &callbacks, &ud);
-  nghttp2_session_server_new(&sv_session, &sv_callbacks, &ud);
+  nghttp2_session_server_new(&sv_session, &callbacks, &ud);
 
   ud.padding_boundary = 16385;
 
@@ -4082,6 +4080,20 @@ void test_nghttp2_session_pack_headers_with_padding(void)
             nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));
   CU_ASSERT(1 == ud.frame_recv_cb_called);
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(sv_session));
+
+  /* Check PUSH_PROMISE */
+  CU_ASSERT(0 ==
+            nghttp2_submit_push_promise(sv_session, NGHTTP2_FLAG_NONE, 1,
+                                        nva, ARRLEN(nva)));
+  acc.length = 0;
+  CU_ASSERT(0 == nghttp2_session_send(sv_session));
+
+  CU_ASSERT(acc.length > NGHTTP2_MAX_FRAME_LENGTH);
+  ud.frame_recv_cb_called = 0;
+  CU_ASSERT((ssize_t)acc.length ==
+            nghttp2_session_mem_recv(session, acc.buf, acc.length));
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 
   nghttp2_session_del(sv_session);
   nghttp2_session_del(session);

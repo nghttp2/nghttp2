@@ -266,7 +266,7 @@ ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
   if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
     nghttp2_put_uint32be(&(*buf_ptr)[payloadoff], frame->pri);
   }
-  return frame->hd.length + NGHTTP2_FRAME_HEAD_LENGTH + *bufoff_ptr;
+  return *bufoff_ptr + NGHTTP2_FRAME_HEAD_LENGTH + frame->hd.length;
 }
 
 int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
@@ -396,35 +396,45 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
 
 ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
                                         size_t *buflen_ptr,
+                                        size_t *bufoff_ptr,
                                         nghttp2_push_promise *frame,
                                         nghttp2_hd_deflater *deflater)
 {
-  ssize_t framelen;
-  size_t nv_offset = NGHTTP2_FRAME_HEAD_LENGTH + 4;
+  size_t payloadoff = NGHTTP2_FRAME_HEAD_LENGTH + 2;
+  size_t nv_offset = payloadoff + 4;
   ssize_t rv;
+  size_t payloadlen;
+
   rv = nghttp2_hd_deflate_hd(deflater, buf_ptr, buflen_ptr, nv_offset,
                              frame->nva, frame->nvlen);
   if(rv < 0) {
     return rv;
   }
-  framelen = rv + nv_offset;
-  if(NGHTTP2_FRAME_HEAD_LENGTH + NGHTTP2_MAX_FRAME_LENGTH < rv + nv_offset) {
-    frame->hd.length = NGHTTP2_MAX_FRAME_LENGTH;
-    frame->hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
-  } else {
-    frame->hd.length = framelen - NGHTTP2_FRAME_HEAD_LENGTH;
-  }
+
+  payloadlen = 4 + rv;
+
+  *bufoff_ptr = 2;
+  frame->padlen = 0;
+  frame->hd.length = payloadlen;
   /* If frame->nvlen == 0, *buflen_ptr may be smaller than
      nv_offset */
   rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, nv_offset);
   if(rv < 0) {
     return rv;
   }
-  memset(*buf_ptr, 0, nv_offset);
+  memset(*buf_ptr + *bufoff_ptr, 0, NGHTTP2_FRAME_HEAD_LENGTH);
   /* pack ctrl header after length is determined */
-  nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
-  nghttp2_put_uint32be(&(*buf_ptr)[8], frame->promised_stream_id);
-  return framelen;
+  if(NGHTTP2_MAX_FRAME_LENGTH < payloadlen) {
+    /* Needs CONTINUATION */
+    nghttp2_frame_hd hd = frame->hd;
+    hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
+    hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+    nghttp2_frame_pack_frame_hd(*buf_ptr + *bufoff_ptr, &hd);
+  } else {
+    nghttp2_frame_pack_frame_hd(*buf_ptr + *bufoff_ptr, &frame->hd);
+  }
+  nghttp2_put_uint32be(&(*buf_ptr)[payloadoff], frame->promised_stream_id);
+  return *bufoff_ptr + NGHTTP2_FRAME_HEAD_LENGTH + frame->hd.length;
 }
 
 int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,

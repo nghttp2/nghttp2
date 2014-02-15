@@ -263,10 +263,12 @@ void test_nghttp2_frame_pack_push_promise()
   nghttp2_push_promise frame, oframe;
   uint8_t *buf = NULL;
   size_t buflen = 0;
+  size_t bufoff;
   ssize_t framelen;
   nghttp2_nv *nva;
   ssize_t nvlen;
   nva_out out;
+  ssize_t nv_offset;
 
   nva_out_init(&out);
   nghttp2_hd_deflate_init(&deflater);
@@ -276,16 +278,19 @@ void test_nghttp2_frame_pack_push_promise()
   nvlen = HEADERS_LENGTH;
   nghttp2_frame_push_promise_init(&frame, NGHTTP2_FLAG_END_PUSH_PROMISE,
                                   1000000007, (1U << 31) - 1, nva, nvlen);
-  framelen = nghttp2_frame_pack_push_promise(&buf, &buflen, &frame, &deflater);
+  framelen = nghttp2_frame_pack_push_promise(&buf, &buflen, &bufoff, &frame,
+                                             &deflater);
 
-  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf, framelen));
-  check_frame_header(framelen - NGHTTP2_FRAME_HEAD_LENGTH,
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe,
+                              buf + bufoff, framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
                      NGHTTP2_PUSH_PROMISE,
                      NGHTTP2_FLAG_END_PUSH_PROMISE, 1000000007, &oframe.hd);
   CU_ASSERT((1U << 31) - 1 == oframe.promised_stream_id);
 
-  CU_ASSERT(framelen - 12 ==
-            inflate_hd(&inflater, &out, buf + 12, framelen - 12));
+  nv_offset = bufoff + NGHTTP2_FRAME_HEAD_LENGTH + 4;
+  CU_ASSERT(framelen - nv_offset ==
+            inflate_hd(&inflater, &out, buf + nv_offset, framelen - nv_offset));
 
   CU_ASSERT(7 == out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));

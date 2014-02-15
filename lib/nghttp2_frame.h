@@ -256,11 +256,19 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  * expansion occurred, memory previously pointed by |*buf_ptr| may
  * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
  *
+ * The first byte the frame is serialized is returned in the
+ * |*bufoff_ptr|. Currently, it is always 2 to account for possible
+ * PAD_HIGH and PAD_LOW.
+ *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
  * NGHTTP2_MAX_FRAME_LENGTH, payload data is still serialized as is,
  * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
  * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
+ *
+ * This function returns the size of packed frame (which includes
+ * |*bufoff_ptr| bytes) if it succeeds, or returns one of the
+ * following negative error codes:
  *
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
@@ -274,6 +282,7 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  */
 ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
                                         size_t *buflen_ptr,
+                                        size_t *bufoff_ptr,
                                         nghttp2_push_promise *frame,
                                         nghttp2_hd_deflater *deflater);
 
