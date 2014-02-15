@@ -7,7 +7,7 @@ version 2.0.
 Development Status
 ------------------
 
-We started to implement HTTP-draft-10/2.0
+We started to implement h2-10
 (http://tools.ietf.org/html/draft-ietf-httpbis-http2-10) and the
 header compression
 (http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-06).
