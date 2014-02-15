@@ -1149,17 +1149,18 @@ static ssize_t session_headers_add_pad(nghttp2_session *session,
        before we access the missing part, we will allocate it in
        nghttp2_session_after_frame_sent(). */
   } else if(frame->headers.padlen > 0) {
+    nghttp2_frame_hd hd = frame->hd;
     rv = nghttp2_frame_add_pad(&session->aob.framebuf,
                                &session->aob.framebufmax,
                                &session->aob.framebufoff,
-                               &frame->hd.flags,
+                               &hd.flags,
                                frame->hd.length - frame->headers.padlen,
                                frame->headers.padlen);
     if(nghttp2_is_fatal(rv)) {
       return rv;
     }
     nghttp2_frame_pack_frame_hd
-      (session->aob.framebuf + session->aob.framebufoff, &frame->hd);
+      (session->aob.framebuf + session->aob.framebufoff, &hd);
   }
   return session->aob.framebufoff + NGHTTP2_FRAME_HEAD_LENGTH
     + frame->hd.length;
