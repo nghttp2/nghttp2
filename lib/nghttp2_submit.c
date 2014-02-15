@@ -75,8 +75,9 @@ static int nghttp2_submit_headers_shared
     rv = NGHTTP2_ERR_NOMEM;
     goto fail;
   }
-  /* TODO Implement header continuation */
-  flags_copy = (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY)) |
+  flags_copy =
+    (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY |
+              NGHTTP2_FLAG_END_SEGMENT)) |
     NGHTTP2_FLAG_END_HEADERS;
 
   nghttp2_frame_headers_init(&frame->headers, flags_copy, stream_id, pri,
