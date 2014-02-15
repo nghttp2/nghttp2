@@ -197,7 +197,6 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
     free(frame);
     return rv;
   }
-  /* TODO Implement header continuation */
   flags_copy = NGHTTP2_FLAG_END_PUSH_PROMISE;
   nghttp2_frame_push_promise_init(&frame->push_promise, flags_copy,
                                   stream_id, -1, nva_copy, nvlen);
