@@ -23,9 +23,13 @@
 
 man_MANS = nghttp.1 nghttpd.1 nghttpx.1
 
-EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py \
-	package_README.rst tutorial-client.rst tutorial-server.rst \
-	nghttp2.h.rst nghttp2ver.h.rst \
+EXTRA_DIST = \
+	mkapiref.py \
+	README.rst \
+	apiref-header.rst \
+	sources/index.rst \
+	sources/tutorial-client.rst \
+	sources/tutorial-server.rst \
 	_themes/sphinx_rtd_theme/footer.html \
 	_themes/sphinx_rtd_theme/theme.conf \
 	_themes/sphinx_rtd_theme/layout_old.html \
@@ -85,7 +89,7 @@ apiref.rst: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
 	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
 	--header $(top_srcdir)/doc/apiref-header.rst $^ > $@
 
-clean:
+clean-local:
 	-rm apiref.rst
 	-rm -rf $(BUILDDIR)/*
 
