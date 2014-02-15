@@ -1,0 +1,278 @@
+.\" nghttpx manual page
+.TH nghttpx "1" "January 2014" "nghttpx" "User Commands"
+.SH NAME
+nghttpx \- HTTP 2.0 experimental proxy
+.SH SYNOPSIS
+\fBnghttpx\fP [\fIOPTIONS\fP...] [\fIPRIVATE_KEY\fP \fICERT\fP]
+.SH DESCRIPTION
+Experimental HTTP 2.0 reverse proxy.
+.LP
+The default mode is to accept HTTP/2.0, SPDY (if compiled in) and
+HTTP/1.1 over SSL/TLS. If \fB\-\-frontend\-no\-tls\fR is used, accept
+HTTP/2.0 and HTTP/1.1. The incoming HTTP/1.1 connection can be
+upgraded to HTTP/2.0 through HTTP Upgrade.  The protocol to the
+backend is HTTP/1.1.
+.SH "Positional arguments"
+.TP
+\fIPRIVATE_KEY\fP
+Set path to server's private key. Required
+unless either \fB\-p\fR or \fB\-\-client\fR is specified.
+.TP
+\fICERT\fP
+Set path to server's certificate. Required
+unless either \fB\-p\fR or \fB\-\-client\fR is specified.
+.SH OPTIONS
+.TP
+\fB\-b\fR, \fB\-\-backend=\fR<HOST,PORT>
+Set backend host and port.
+Default: '127.0.0.1,80'
+.TP
+\fB\-f\fR, \fB\-\-frontend=\fR<HOST,PORT>
+Set frontend host and port.
+Default: '0.0.0.0,3000'
+.TP
+\fB\-\-backlog=\fR<NUM>
+Set listen backlog size.
+Default: 256
+.TP
+\fB\-\-backend\-ipv4\fR
+Resolve backend hostname to IPv4 address
+only.
+.TP
+\fB\-\-backend\-ipv6\fR
+Resolve backend hostname to IPv6 address
+only.
+.TP
+\fB\-n\fR, \fB\-\-workers=\fR<CORES>
+Set the number of worker threads.
+Default: 1
+.TP
+\fB\-\-read\-rate=\fR<RATE> Set maximum average read rate on frontend
+connection. Setting 0 to this option means
+read rate is unlimited.
+Default: 1048576
+.TP
+\fB\-\-read\-burst=\fR<SIZE>
+Set maximum read burst size on frontend
+connection. Setting 0 to this option means
+read burst size is unlimited.
+Default: 4194304
+.TP
+\fB\-\-write\-rate=\fR<RATE>
+Set maximum average write rate on frontend
+connection. Setting 0 to this option means
+write rate is unlimited.
+Default: 0
+.TP
+\fB\-\-write\-burst=\fR<SIZE>
+Set maximum write burst size on frontend
+connection. Setting 0 to this option means
+write burst size is unlimited.
+Default: 0
+.TP
+\fB\-\-frontend\-http2\-read\-timeout=\fR<SEC>
+Specify read timeout for HTTP/2.0 and SPDY frontend
+connection. Default: 180
+.TP
+\fB\-\-frontend\-read\-timeout=\fR<SEC>
+Specify read timeout for HTTP/1.1 frontend
+connection. Default: 180
+.TP
+\fB\-\-frontend\-write\-timeout=\fR<SEC>
+Specify write timeout for all frontends.
+connection. Default: 60
+.TP
+\fB\-\-backend\-read\-timeout=\fR<SEC>
+Specify read timeout for backend connection.
+Default: 900
+.TP
+\fB\-\-backend\-write\-timeout=\fR<SEC>
+Specify write timeout for backend
+connection. Default: 60
+.TP
+\fB\-\-backend\-keep\-alive\-timeout=\fR<SEC>
+Specify keep\-alive timeout for backend
+connection. Default: 60
+.TP
+\fB\-\-backend\-http\-proxy\-uri=\fR<URI>
+Specify proxy URI in the form
+http://[<USER>:<PASS>@]<PROXY>:<PORT>. If
+a proxy requires authentication, specify
+<USER> and <PASS>. Note that they must be
+properly percent\-encoded. This proxy is used
+when the backend connection is HTTP/2.0. First,
+make a CONNECT request to the proxy and
+it connects to the backend on behalf of
+nghttpx. This forms tunnel. After that, nghttpx
+performs SSL/TLS handshake with the
+downstream through the tunnel. The timeouts
+when connecting and making CONNECT request
+can be specified by \fB\-\-backend\-read\-timeout\fR
+and \fB\-\-backend\-write\-timeout\fR options.
+.TP
+\fB\-\-ciphers=\fR<SUITE>
+Set allowed cipher list. The format of the
+string is described in OpenSSL ciphers(1).
+If this option is used, \fB\-\-honor\-cipher\-order\fR
+is implicitly enabled.
+.TP
+\fB\-\-honor\-cipher\-order\fR
+Honor server cipher order, giving the
+ability to mitigate BEAST attacks.
+.TP
+\fB\-k\fR, \fB\-\-insecure\fR
+When used with \fB\-p\fR or \fB\-\-client\fR, don't verify
+backend server's certificate.
+.TP
+\fB\-\-cacert=\fR<PATH>
+When used with \fB\-p\fR or \fB\-\-client\fR, set path to
+trusted CA certificate file.
+The file must be in PEM format. It can
+contain multiple certificates. If the
+linked OpenSSL is configured to load system
+wide certificates, they are loaded
+at startup regardless of this option.
+.TP
+\fB\-\-private\-key\-passwd\-file=\fR<FILEPATH>
+Path to file that contains password for the
+server's private key. If none is given and
+the private key is password protected it'll
+be requested interactively.
+.TP
+\fB\-\-subcert=\fR<KEYPATH>:<CERTPATH>
+Specify additional certificate and private
+key file. nghttpx will choose certificates
+based on the hostname indicated by client
+using TLS SNI extension. This option can be
+used multiple times.
+.TP
+\fB\-\-backend\-tls\-sni\-field=\fR<HOST>
+Explicitly set the content of the TLS SNI
+extension.  This will default to the backend
+HOST name.
+.TP
+\fB\-\-dh\-param\-file=\fR<PATH>
+Path to file that contains DH parameters in
+PEM format. Without this option, DHE cipher
+suites are not available.
+.TP
+\fB\-\-npn\-list=\fR<LIST>
+Comma delimited list of NPN protocol sorted
+in the order of preference. That means
+most desirable protocol comes first.
+The parameter must be delimited by a single
+comma only and any white spaces are treated
+as a part of protocol string.
+Default: HTTP\-draft\-07/2.0,http/1.1
+.TP
+\fB\-\-verify\-client\fR
+Require and verify client certificate.
+.TP
+\fB\-\-verify\-client\-cacert=\fR<PATH>
+Path to file that contains CA certificates
+to verify client certificate.
+The file must be in PEM format. It can
+contain multiple certificates.
+.TP
+\fB\-\-client\-private\-key\-file=\fR<PATH>
+Path to file that contains client private
+key used in backend client authentication.
+.TP
+\fB\-\-client\-cert\-file=\fR<PATH>
+Path to file that contains client
+certificate used in backend client
+authentication.
+.TP
+\fB\-c\fR, \fB\-\-http2\-max\-concurrent\-streams=\fR<NUM>
+Set the maximum number of the concurrent
+streams in one HTTP/2.0 and SPDY session.
+Default: 100
+.TP
+\fB\-\-frontend\-http2\-window\-bits=\fR<N>
+Sets the initial window size of HTTP/2.0 and SPDY
+frontend connection to 2**<N>\-1.
+Default: 16
+.TP
+\fB\-\-frontend\-no\-tls\fR
+Disable SSL/TLS on frontend connections.
+.TP
+\fB\-\-backend\-http2\-window\-bits=\fR<N>
+Sets the initial window size of HTTP/2.0 and SPDY
+backend connection to 2**<N>\-1.
+Default: 16
+.TP
+\fB\-\-backend\-no\-tls\fR
+Disable SSL/TLS on backend connections.
+.TP
+\fB\-s\fR, \fB\-\-http2\-proxy\fR
+Like default mode, but enable secure proxy mode.
+.TP
+\fB\-\-http2\-bridge\fR
+Like default mode, but communicate with the
+backend in HTTP/2.0 over SSL/TLS. Thus the
+incoming all connections are converted
+to HTTP/2.0 connection and relayed to
+the backend. See \fB\-\-backend\-http\-proxy\-uri\fR
+option if you are behind the proxy and want
+to connect to the outside HTTP/2.0 proxy.
+.TP
+\fB\-\-client\fR
+Accept HTTP/2.0 and HTTP/1.1 without SSL/TLS.
+The incoming HTTP/1.1 connection can be
+upgraded to HTTP/2.0 connection through
+HTTP Upgrade.
+The protocol to the backend is HTTP/2.0.
+To use nghttpx as a forward proxy, use \fB\-p\fR
+option instead.
+.TP
+\fB\-p\fR, \fB\-\-client\-proxy\fR Like \fB\-\-client\fR option, but it also requires
+the request path from frontend must be
+an absolute URI, suitable for use as a
+forward proxy.
+.TP
+\fB\-L\fR, \fB\-\-log\-level=\fR<LEVEL>
+Set the severity level of log output.
+INFO, WARNING, ERROR and FATAL.
+Default: WARNING
+.TP
+\fB\-\-accesslog\fR
+Print simple accesslog to stderr.
+.TP
+\fB\-\-syslog\fR
+Send log messages to syslog.
+.TP
+\fB\-\-syslog\-facility=\fR<FACILITY>
+Set syslog facility.
+Default: daemon
+.TP
+\fB\-\-add\-x\-forwarded\-for\fR
+Append X\-Forwarded\-For header field to the
+downstream request.
+.TP
+\fB\-\-no\-via\fR
+Don't append to Via header field. If Via
+header field is received, it is left
+unaltered.
+.TP
+\fB\-D\fR, \fB\-\-daemon\fR
+Run in a background. If \fB\-D\fR is used, the
+current working directory is changed to '/'.
+.TP
+\fB\-\-pid\-file=\fR<PATH>
+Set path to save PID of this program.
+.TP
+\fB\-\-user=\fR<USER>
+Run this program as USER. This option is
+intended to be used to drop root privileges.
+.TP
+\fB\-\-conf=\fR<PATH>
+Load configuration from PATH.
+Default: \fI/etc/nghttpx/nghttpx.conf\fP
+.TP
+\fB\-v\fR, \fB\-\-version\fR
+Print version and exit.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print this help and exit.
+.SH "SEE ALSO"
+nghttp(1), nghttpd(1)

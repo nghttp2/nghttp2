@@ -21,6 +21,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+man_MANS = nghttp.1 nghttpd.1 nghttpx.1
+
 EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py \
 	package_README.rst tutorial-client.rst tutorial-server.rst \
 	nghttp2.h.rst nghttp2ver.h.rst \
@@ -40,7 +42,8 @@ EXTRA_DIST = README.rst apiref-header.rst index.rst mkapiref.py \
 	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.ttf \
 	_themes/sphinx_rtd_theme/static/js/theme.js \
 	_themes/sphinx_rtd_theme/static/css/theme.css \
-	_themes/sphinx_rtd_theme/static/css/badge_only.css
+	_themes/sphinx_rtd_theme/static/css/badge_only.css \
+	$(man_MANS)
 
 # Makefile for Sphinx documentation
 #
