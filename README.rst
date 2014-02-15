@@ -442,21 +442,18 @@ deflatehd - header compressor
 The ``deflatehd`` reads JSON data or HTTP/1-style header fields from
 stdin and outputs compressed header block in JSON.
 
-For the JSON input, the root JSON object must contain ``context`` key,
-which indicates which compression context is used. If it is
-``request``, request compression context is used. Otherwise, response
-compression context is used. The value of ``cases`` key contains the
-sequence of input header set. They share the same compression context
-and are processed in the order they appear.  Each item in the sequence
-is a JSON object and it must have at least ``headers`` key. Its value
-is an array of a JSON object containing exactly one name/value pair.
+For the JSON input, the root JSON object must include ``cases``
+key. Its value has to include the sequence of input header set. They
+share the same compression context and are processed in the order they
+appear.  Each item in the sequence is a JSON object and it must
+include ``headers`` key. Its value is an array of a JSON object ,
+which includes exactly one name/value pair.
 
 Example:
 
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -487,9 +484,7 @@ Example::
     :method: POST
     user-agent: nghttp2
 
-The output is JSON object. It contains ``context`` key and its value
-is ``request`` if the compression context is request, otherwise
-``response``. The root JSON object also contains ``cases`` key and its
+The output is JSON object. It should include ``cases`` key and its
 value is an array of JSON object, which has at least following keys:
 
 seq
@@ -518,7 +513,6 @@ Examples:
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -580,9 +574,9 @@ The output can be used as the input for ``inflatehd`` and
 ``deflatehd``.
 
 With ``-d`` option, the extra ``header_table`` key is added and its
-associated value contains the state of dyanmic header table after the
-corresponding header set was processed. The value contains following
-keys:
+associated value includes the state of dyanmic header table after the
+corresponding header set was processed. The value includes at least
+following keys:
 
 entries
     The entry in the header table. If ``referenced`` is ``true``, it
@@ -618,7 +612,6 @@ Example:
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -774,21 +767,17 @@ inflatehd - header decompressor
 The ``inflatehd`` reads JSON data from stdin and outputs decompressed
 name/value pairs in JSON.
 
-The root JSON object must contain ``context`` key, which indicates
-which compression context is used. If it is ``request``, request
-compression context is used. Otherwise, response compression context
-is used. The value of ``cases`` key contains the sequence of
-compressed header block. They share the same compression context and
-are processed in the order they appear. Each item in the sequence is a
-JSON object and it must have at least ``wire`` key. Its value is a
-string containing compressed header block in hex string.
+The root JSON object must include ``cases`` key. Its value has to
+include the sequence of compressed header block. They share the same
+compression context and are processed in the order they appear. Each
+item in the sequence is a JSON object and it must have at least
+``wire`` key. Its value is a compressed header block in hex string.
 
 Example:
 
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         { "wire": "8285" },
@@ -796,16 +785,14 @@ Example:
       ]
     }
 
-The output is JSON object. It contains ``context`` key and its value
-is ``request`` if the compression context is request, otherwise
-``response``. The root JSON object also contains ``cases`` key and its
+The output is JSON object. It should include ``cases`` key and its
 value is an array of JSON object, which has at least following keys:
 
 seq
     The index of header set in the input.
 
 headers
-    The JSON array contains decompressed name/value pairs.
+    The JSON array includes decompressed name/value pairs.
 
 wire
     The compressed header block in hex string.
@@ -819,7 +806,6 @@ Example:
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -874,7 +860,7 @@ The output can be used as the input for ``deflatehd`` and
 ``inflatehd``.
 
 With ``-d`` option, the extra ``header_table`` key is added and its
-associated value contains the state of dyanmic header table after the
+associated value includes the state of dyanmic header table after the
 corresponding header set was processed. The format is the same as
 ``deflatehd``.
 
