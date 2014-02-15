@@ -115,9 +115,8 @@ void print_help(std::ostream& out)
       << "                         -p/=/foo.png -p/doc=/bar.css\n"
       << "                       PATH and PUSH_PATHs are relative to document\n"
       << "                       root. See --htdocs option.\n"
-      << "    -b, --padding=<BOUNDARY>\n"
-      << "                       Padding boundary for frame payload. Specify\n"
-      << "                       0 to disable padding.\n"
+      << "    -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
+      << "                       padding. Specify 0 to disable padding.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -156,7 +155,7 @@ int main(int argc, char **argv)
       config.verify_client = true;
       break;
     case 'b':
-      config.padding_boundary = strtol(optarg, nullptr, 10);
+      config.padding = strtol(optarg, nullptr, 10);
       break;
     case 'd':
       config.htdocs = optarg;

@@ -98,11 +98,7 @@ ssize_t select_padding_callback
 (nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
  void *user_data)
 {
-  auto bd = get_config()->padding;
-  if(frame->hd.length == 0) {
-    return std::min(max_payload, bd);
-  }
-  return std::min(max_payload, (frame->hd.length + bd - 1) / bd * bd);
+  return std::min(max_payload, frame->hd.length + get_config()->padding);
 }
 
 } // namespace http

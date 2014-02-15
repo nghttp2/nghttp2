@@ -66,7 +66,7 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 Config::Config()
   : data_ptr(nullptr),
     output_upper_thres(1024*1024),
-    padding_boundary(0),
+    padding(0),
     header_table_size(-1),
     port(0),
     verbose(false),
@@ -931,14 +931,7 @@ ssize_t select_padding_callback
  void *user_data)
 {
   auto hd = static_cast<Http2Handler*>(user_data);
-  auto bd = hd->get_config()->padding_boundary;
-  if(bd == 0) {
-    return frame->hd.length;
-  }
-  if(frame->hd.length == 0) {
-    return std::min(max_payload, bd);
-  }
-  return std::min(max_payload, (frame->hd.length + bd - 1) / bd * bd);
+  return std::min(max_payload, frame->hd.length + hd->get_config()->padding);
 }
 } // namespace
 
@@ -988,7 +981,7 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
   callbacks.on_begin_headers_callback = on_begin_headers_callback;
-  if(config->padding_boundary) {
+  if(config->padding) {
     callbacks.select_padding_callback = select_padding_callback;
   }
 }

@@ -82,7 +82,7 @@ struct Config {
   std::string keyfile;
   std::string datafile;
   size_t output_upper_thres;
-  size_t padding_boundary;
+  size_t padding;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
   int32_t pri;
@@ -100,7 +100,7 @@ struct Config {
   bool continuation;
   Config()
     : output_upper_thres(1024*1024),
-      padding_boundary(0),
+      padding(0),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1),
       pri(NGHTTP2_PRI_DEFAULT),
@@ -1131,14 +1131,7 @@ ssize_t select_padding_callback
 (nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
  void *user_data)
 {
-  auto bd = config.padding_boundary;
-  if(bd == 0) {
-    return frame->hd.length;
-  }
-  if(frame->hd.length == 0) {
-    return std::min(max_payload, bd);
-  }
-  return std::min(max_payload, (frame->hd.length + bd - 1) / bd * bd);
+  return std::min(max_payload, frame->hd.length + config.padding);
 }
 } // namespace
 
@@ -1598,7 +1591,7 @@ int run(char **uris, int n)
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
-  if(config.padding_boundary) {
+  if(config.padding) {
     callbacks.select_padding_callback = select_padding_callback;
   }
 
@@ -1723,9 +1716,8 @@ void print_help(std::ostream& out)
       << "                       is large enough as it is seen as unlimited.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
-      << "    -b, --padding=<BOUNDARY>\n"
-      << "                       Padding boundary for frame payload. Specify\n"
-      << "                       0 to disable padding.\n"
+      << "    -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
+      << "                       padding. Specify 0 to disable padding.\n"
       << "    --color            Force colored log output.\n"
       << "    --continuation     Send large header to test CONTINUATION.\n"
       << std::endl;
@@ -1780,7 +1772,7 @@ int main(int argc, char **argv)
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'b':
-      config.padding_boundary = strtol(optarg, nullptr, 10);
+      config.padding = strtol(optarg, nullptr, 10);
       break;
     case 'n':
       config.null_out = true;
