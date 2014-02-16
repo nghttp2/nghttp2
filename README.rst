@@ -28,17 +28,25 @@ Public Test Server
 ------------------
 
 The following endpoints are available to try out nghttp2
-implementation.  These endpoints supports ``HTTP-draft-09/2.0`` and
-the earlier draft versions are not supporeted.
+implementation.
 
-* https://106.186.112.116 (TLS + NPN / ALPN)
+* https://106.186.112.116:8443/ (TLS + NPN / ALPN)
+
+  ALPN and NPN offer ``h2-10``, ``spdy/3.1``, ``spdy/3``, ``spdy/2``
+  and ``http/1.1``.
+
+  Note: certificate is self-signed and a browser will show alert
+
+* https://106.186.112.116/ (TLS + NPN / ALPN)
 
   ALPN and NPN offer ``HTTP-draft-09/2.0``, ``spdy/3.1``, ``spdy/3``,
   ``spdy/2`` and ``http/1.1``.
 
   Note: certificate is self-signed and a browser will show alert
 
-* http://106.186.112.116 (Upgrade + Direct)
+* http://106.186.112.116/ (Upgrade / Direct)
+
+  ``HTTP-draft-09/2.0`` and ``http/1.1``
 
 Requirements
 ------------
