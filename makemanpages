@@ -1,0 +1,10 @@
+#!/bin/sh -e
+
+help2man --output=doc/nghttp.1 --name="HTTP/2 experimental client" \
+    -N --include doc/nghttp.h2m src/nghttp
+
+help2man --output=doc/nghttpd.1 --name="HTTP/2 experimental server" \
+    -N --include doc/nghttpd.h2m src/nghttpd
+
+help2man --output=doc/nghttpx.1 --name="HTTP/2 experimental proxy" \
+    -N --include doc/nghttpx.h2m src/nghttpx
