@@ -40,7 +40,7 @@ json_t* dump_header(const uint8_t *name, size_t namelen,
 
 json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen);
 
-void output_json_header(int side);
+void output_json_header(void);
 
 void output_json_footer(void);
 

@@ -56,13 +56,13 @@ struct Config {
   std::string cert_file;
   void *data_ptr;
   size_t output_upper_thres;
+  size_t padding;
   ssize_t header_table_size;
   uint16_t port;
   bool verbose;
   bool daemon;
   bool verify_client;
   bool no_tls;
-  bool no_flow_control;
   Config();
 };
 

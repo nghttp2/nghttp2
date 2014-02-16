@@ -74,14 +74,16 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_headers frame, oframe;
   uint8_t *buf = NULL;
   size_t buflen = 0;
+  size_t bufoff;
   ssize_t framelen;
   nghttp2_nv *nva;
   ssize_t nvlen;
   nva_out out;
+  ssize_t nv_offset;
 
   nva_out_init(&out);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
+  nghttp2_hd_inflate_init(&inflater);
 
   nva = headers();
   nvlen = HEADERS_LENGTH;
@@ -89,17 +91,22 @@ void test_nghttp2_frame_pack_headers()
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
                              1000000007,
                              1 << 20, nva, nvlen);
-  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &frame, &deflater);
+  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &bufoff, &frame,
+                                        &deflater);
 
-  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf, framelen));
-  check_frame_header(framelen - NGHTTP2_FRAME_HEAD_LENGTH, NGHTTP2_HEADERS,
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf + bufoff,
+                              framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
+                     NGHTTP2_HEADERS,
                      NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS,
                      1000000007, &oframe.hd);
   /* We didn't include PRIORITY flag so priority is not packed */
   CU_ASSERT(1 << 30 == oframe.pri);
 
-  CU_ASSERT(framelen - 8 ==
-            inflate_hd(&inflater, &out, buf + 8, framelen - 8));
+  nv_offset = bufoff + NGHTTP2_FRAME_HEAD_LENGTH;
+  CU_ASSERT(framelen - nv_offset ==
+            inflate_hd(&inflater, &out,
+                       buf + nv_offset, framelen - nv_offset));
 
   CU_ASSERT(7 == out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
@@ -111,17 +118,22 @@ void test_nghttp2_frame_pack_headers()
   memset(&oframe, 0, sizeof(oframe));
   /* Next, include PRIORITY flag */
   frame.hd.flags |= NGHTTP2_FLAG_PRIORITY;
-  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &frame, &deflater);
+  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &bufoff, &frame,
+                                        &deflater);
 
-  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf, framelen));
-  check_frame_header(framelen - NGHTTP2_FRAME_HEAD_LENGTH, NGHTTP2_HEADERS,
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf + bufoff,
+                              framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
+                     NGHTTP2_HEADERS,
                      NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
                      NGHTTP2_FLAG_PRIORITY,
                      1000000007, &oframe.hd);
   CU_ASSERT(1 << 20 == oframe.pri);
 
-  CU_ASSERT(framelen - 12 ==
-            inflate_hd(&inflater, &out, buf + 12, framelen - 12));
+  nv_offset = bufoff + NGHTTP2_FRAME_HEAD_LENGTH + 4;
+  CU_ASSERT(framelen - nv_offset ==
+            inflate_hd(&inflater, &out,
+                       buf + nv_offset, framelen - nv_offset));
 
   nghttp2_nv_array_sort(out.nva, out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
@@ -140,6 +152,7 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   nghttp2_headers frame;
   uint8_t *buf = NULL;
   size_t buflen = 0;
+  size_t bufoff;
   ssize_t framelen;
   nghttp2_nv *nva;
   ssize_t nvlen;
@@ -158,12 +171,13 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   }
 
   nvlen = nghttp2_nv_array_copy(&nva, big_hds, big_hdslen);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_REQUEST);
+  nghttp2_hd_deflate_init(&deflater);
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
                              1000000007,
                              0, nva, nvlen);
-  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &frame, &deflater);
+  framelen = nghttp2_frame_pack_headers(&buf, &buflen, &bufoff, &frame,
+                                        &deflater);
   CU_ASSERT_EQUAL(NGHTTP2_ERR_HEADER_COMP, framelen);
 
   nghttp2_frame_headers_free(&frame);
@@ -220,15 +234,17 @@ void test_nghttp2_frame_pack_settings()
   iv[0].value = 256;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = 16384;
-  iv[2].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-  iv[2].value = 1;
+  iv[2].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[2].value = 4096;
 
   nghttp2_frame_settings_init(&frame, NGHTTP2_FLAG_NONE,
                               nghttp2_frame_iv_copy(iv, 3), 3);
   framelen = nghttp2_frame_pack_settings(&buf, &buflen, &frame);
-  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH+3*8 == framelen);
+  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH +
+            3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH == framelen);
   CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf, framelen));
-  check_frame_header(3*8, NGHTTP2_SETTINGS, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
+  check_frame_header(3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH,
+                     NGHTTP2_SETTINGS, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
   CU_ASSERT(3 == oframe.niv);
   for(i = 0; i < 3; ++i) {
     CU_ASSERT(iv[i].settings_id == oframe.iv[i].settings_id);
@@ -247,29 +263,34 @@ void test_nghttp2_frame_pack_push_promise()
   nghttp2_push_promise frame, oframe;
   uint8_t *buf = NULL;
   size_t buflen = 0;
+  size_t bufoff;
   ssize_t framelen;
   nghttp2_nv *nva;
   ssize_t nvlen;
   nva_out out;
+  ssize_t nv_offset;
 
   nva_out_init(&out);
-  nghttp2_hd_deflate_init(&deflater, NGHTTP2_HD_SIDE_RESPONSE);
-  nghttp2_hd_inflate_init(&inflater, NGHTTP2_HD_SIDE_RESPONSE);
+  nghttp2_hd_deflate_init(&deflater);
+  nghttp2_hd_inflate_init(&inflater);
 
   nva = headers();
   nvlen = HEADERS_LENGTH;
   nghttp2_frame_push_promise_init(&frame, NGHTTP2_FLAG_END_PUSH_PROMISE,
                                   1000000007, (1U << 31) - 1, nva, nvlen);
-  framelen = nghttp2_frame_pack_push_promise(&buf, &buflen, &frame, &deflater);
+  framelen = nghttp2_frame_pack_push_promise(&buf, &buflen, &bufoff, &frame,
+                                             &deflater);
 
-  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe, buf, framelen));
-  check_frame_header(framelen - NGHTTP2_FRAME_HEAD_LENGTH,
+  CU_ASSERT(0 == unpack_frame((nghttp2_frame*)&oframe,
+                              buf + bufoff, framelen - bufoff));
+  check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
                      NGHTTP2_PUSH_PROMISE,
                      NGHTTP2_FLAG_END_PUSH_PROMISE, 1000000007, &oframe.hd);
   CU_ASSERT((1U << 31) - 1 == oframe.promised_stream_id);
 
-  CU_ASSERT(framelen - 12 ==
-            inflate_hd(&inflater, &out, buf + 12, framelen - 12));
+  nv_offset = bufoff + NGHTTP2_FRAME_HEAD_LENGTH + 4;
+  CU_ASSERT(framelen - nv_offset ==
+            inflate_hd(&inflater, &out, buf + nv_offset, framelen - nv_offset));
 
   CU_ASSERT(7 == out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
@@ -397,22 +418,30 @@ void test_nghttp2_iv_check(void)
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[0].value = 100;
-  iv[1].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-  iv[1].value = 0;
-  iv[2].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-  iv[2].value = 1;
+  iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[1].value = 1024;
 
-  CU_ASSERT(nghttp2_iv_check(iv, 2, 0));
-  CU_ASSERT(nghttp2_iv_check(iv, 3, 0));
-  /* Re-enabling flow-control*/
-  CU_ASSERT(0 == nghttp2_iv_check(iv, 2, 1));
-  CU_ASSERT(0 == nghttp2_iv_check(iv, 3, 1));
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = NGHTTP2_MAX_WINDOW_SIZE;
-  CU_ASSERT(nghttp2_iv_check(iv, 2, 0));
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 
   /* Too large window size */
   iv[1].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
-  CU_ASSERT(0 == nghttp2_iv_check(iv, 2, 0));
+  CU_ASSERT(0 == nghttp2_iv_check(iv, 2));
+
+  /* ENABLE_PUSH only allows 0 or 1 */
+  iv[1].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+  iv[1].value = 0;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
+  iv[1].value = 1;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
+  iv[1].value = 3;
+  CU_ASSERT(!nghttp2_iv_check(iv, 2));
+
+  /* Undefined SETTINGS ID */
+  iv[1].settings_id = 1000000009;
+  iv[1].value = 0;
+  CU_ASSERT(!nghttp2_iv_check(iv, 2));
 }

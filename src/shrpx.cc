@@ -53,6 +53,7 @@
 #include "shrpx_listen_handler.h"
 #include "shrpx_ssl.h"
 #include "util.h"
+#include "app_helper.h"
 
 using namespace nghttp2;
 
@@ -435,6 +436,8 @@ void fill_default_config()
   mod_config()->http2_upstream_dump_request_header = nullptr;
   mod_config()->http2_upstream_dump_response_header = nullptr;
   mod_config()->http2_no_cookie_crumbling = false;
+  mod_config()->upstream_frame_debug = false;
+  mod_config()->padding = 0;
 }
 } // namespace
 
@@ -673,6 +676,11 @@ void print_help(std::ostream& out)
       << "    --backend-no-tls   Disable SSL/TLS on backend connections.\n"
       << "    --http2-no-cookie-crumbling\n"
       << "                       Don't crumble cookie header field.\n"
+      << "    --padding=<N>      Add at most <N> bytes to a HTTP/2 frame payload\n"
+      << "                       as padding.\n"
+      << "                       Specify 0 to disable padding. This option is\n"
+      << "                       meant for debugging purpose and not intended\n"
+      << "                       to enhance protocol security.\n"
       << "\n"
       << "  Mode:\n"
       << "    (default mode)     Accept HTTP/2.0, SPDY and HTTP/1.1 over\n"
@@ -736,6 +744,10 @@ void print_help(std::ostream& out)
       << "                       an empty line.\n"
       << "                       This option is not thread safe and MUST NOT\n"
       << "                       be used with option -n=N, where N >= 2.\n"
+      << "    -o, --frontend-frame-debug\n"
+      << "                       Print HTTP/2 frames in frontend to stderr.\n"
+      << "                       This option is not thread safe and MUST NOT\n"
+      << "                       be used with option -n=N, where N >= 2.\n"
       << "    -D, --daemon       Run in a background. If -D is used, the\n"
       << "                       current working directory is changed to '/'.\n"
       << "    --pid-file=<PATH>  Set path to save PID of this program.\n"
@@ -771,6 +783,7 @@ int main(int argc, char **argv)
       {"client-proxy", no_argument, nullptr, 'p'},
       {"http2-proxy", no_argument, nullptr, 's'},
       {"version", no_argument, nullptr, 'v'},
+      {"frontend-frame-debug", no_argument, nullptr, 'o'},
       {"add-x-forwarded-for", no_argument, &flag, 1},
       {"frontend-http2-read-timeout", required_argument, &flag, 2},
       {"frontend-read-timeout", required_argument, &flag, 3},
@@ -817,11 +830,12 @@ int main(int argc, char **argv)
       {"frontend-http2-connection-window-bits", required_argument, &flag, 46},
       {"backend-http2-connection-window-bits", required_argument, &flag, 47},
       {"tls-proto-list", required_argument, &flag, 48},
+      {"padding", required_argument, &flag, 49},
       {nullptr, 0, nullptr, 0 }
     };
 
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DL:b:c:f:hkn:psv", long_options,
+    int c = getopt_long(argc, argv, "DL:b:c:f:hkn:opsv", long_options,
                         &option_index);
     if(c == -1) {
       break;
@@ -850,6 +864,9 @@ int main(int argc, char **argv)
       break;
     case 'n':
       cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
+      break;
+    case 'o':
+      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes");
       break;
     case 'p':
       cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PROXY, "yes");
@@ -1050,6 +1067,10 @@ int main(int argc, char **argv)
         // --tls-proto-list
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_PROTO_LIST, optarg);
         break;
+      case 49:
+        // --padding
+        cmdcfgs.emplace_back(SHRPX_OPT_PADDING, optarg);
+        break;
       default:
         break;
       }
@@ -1203,6 +1224,15 @@ int main(int argc, char **argv)
      get_rate_limit(get_config()->write_rate),
      get_rate_limit(get_config()->write_burst),
      nullptr);
+
+  if(get_config()->upstream_frame_debug) {
+    // To make it sync to logging
+    set_output(stderr);
+    if(isatty(fileno(stdout))) {
+      set_color_output(true);
+    }
+    reset_timer();
+  }
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));

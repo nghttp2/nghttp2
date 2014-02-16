@@ -33,14 +33,13 @@ static void http2(void)
 {
   const unsigned char p[] = {
     8, 'h', 't', 't', 'p', '/', '1', '.', '1',
-    17, 'H', 'T', 'T', 'P', '-', 'd', 'r', 'a', 'f', 't', '-', '0', '9', '/',
-    '2', '.', '0',
+    5, 'h', '2', '-', '1', '0',
     6, 's', 'p', 'd', 'y', '/', '3'
   };
   unsigned char outlen;
   unsigned char* out;
   CU_ASSERT(1 == nghttp2_select_next_protocol(&out, &outlen, p, sizeof(p)));
-  CU_ASSERT(17 == outlen);
+  CU_ASSERT(NGHTTP2_PROTO_VERSION_ID_LEN == outlen);
   CU_ASSERT(memcmp(NGHTTP2_PROTO_VERSION_ID, out, outlen) == 0);
 }
 

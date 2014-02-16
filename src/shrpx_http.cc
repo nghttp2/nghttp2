@@ -94,6 +94,13 @@ std::string colorizeHeaders(const char *hdrs)
   return nhdrs;
 }
 
+ssize_t select_padding_callback
+(nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
+ void *user_data)
+{
+  return std::min(max_payload, frame->hd.length + get_config()->padding);
+}
+
 } // namespace http
 
 } // namespace shrpx

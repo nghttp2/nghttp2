@@ -80,9 +80,8 @@ void test_nghttp2_session_stream_close_on_headers_push(void);
 void test_nghttp2_session_stop_data_with_rst_stream(void);
 void test_nghttp2_session_defer_data(void);
 void test_nghttp2_session_flow_control(void);
-void test_nghttp2_session_flow_control_disable_remote(void);
-void test_nghttp2_session_flow_control_disable_local(void);
 void test_nghttp2_session_flow_control_data_recv(void);
+void test_nghttp2_session_flow_control_data_with_padding_recv(void);
 void test_nghttp2_session_data_read_temporal_failure(void);
 void test_nghttp2_session_on_stream_close(void);
 void test_nghttp2_session_on_ctrl_not_send(void);
@@ -90,6 +89,8 @@ void test_nghttp2_session_get_outbound_queue_size(void);
 void test_nghttp2_session_get_effective_local_window_size(void);
 void test_nghttp2_session_set_option(void);
 void test_nghttp2_session_data_backoff_by_high_pri_frame(void);
+void test_nghttp2_session_pack_data_with_padding(void);
+void test_nghttp2_session_pack_headers_with_padding(void);
 void test_nghttp2_pack_settings_payload(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

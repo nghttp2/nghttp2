@@ -66,13 +66,13 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 Config::Config()
   : data_ptr(nullptr),
     output_upper_thres(1024*1024),
+    padding(0),
     header_table_size(-1),
     port(0),
     verbose(false),
     daemon(false),
     verify_client(false),
-    no_tls(false),
-    no_flow_control(false)
+    no_tls(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -373,11 +373,6 @@ int Http2Handler::on_connect()
   entry[0].value = 100;
   entry[1].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   entry[1].value = 0;
-  if(sessions_->get_config()->no_flow_control) {
-    entry[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-    entry[niv].value = 1;
-    ++niv;
-  }
   if(sessions_->get_config()->header_table_size >= 0) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
     entry[niv].value = sessions_->get_config()->header_table_size;
@@ -931,6 +926,16 @@ int hd_on_frame_send_callback
 } // namespace
 
 namespace {
+ssize_t select_padding_callback
+(nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
+ void *user_data)
+{
+  auto hd = static_cast<Http2Handler*>(user_data);
+  return std::min(max_payload, frame->hd.length + hd->get_config()->padding);
+}
+} // namespace
+
+namespace {
 int on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
@@ -976,6 +981,9 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
   callbacks.on_begin_headers_callback = on_begin_headers_callback;
+  if(config->padding) {
+    callbacks.select_padding_callback = select_padding_callback;
+  }
 }
 } // namespace
 

@@ -40,13 +40,13 @@ extern "C" {
  *
  * The protocol version identification of this library supports.
  */
-#define NGHTTP2_PROTO_VERSION_ID "HTTP-draft-09/2.0"
+#define NGHTTP2_PROTO_VERSION_ID "h2-10"
 /**
  * @macro
  *
  * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.
  */
-#define NGHTTP2_PROTO_VERSION_ID_LEN 17
+#define NGHTTP2_PROTO_VERSION_ID_LEN 5
 
 struct nghttp2_session;
 /**
@@ -364,11 +364,11 @@ typedef enum {
   /**
    * The WINDOW_UPDATE frame.
    */
-  NGHTTP2_WINDOW_UPDATE = 9,
+  NGHTTP2_WINDOW_UPDATE = 8,
   /**
    * The CONTINUATION frame.
    */
-  NGHTTP2_CONTINUATION = 10
+  NGHTTP2_CONTINUATION = 9
 } nghttp2_frame_type;
 
 /**
@@ -401,7 +401,19 @@ typedef enum {
   /**
    * The ACK flag.
    */
-  NGHTTP2_FLAG_ACK = 0x1
+  NGHTTP2_FLAG_ACK = 0x1,
+  /**
+   * The END_SEGMENT flag.
+   */
+  NGHTTP2_FLAG_END_SEGMENT = 0x2,
+  /**
+   * The PAD_LOW flag.
+   */
+  NGHTTP2_FLAG_PAD_LOW = 0x10,
+  /**
+   * The PAD_HIGH flag.
+   */
+  NGHTTP2_FLAG_PAD_HIGH = 0x20
 } nghttp2_flag;
 
 /**
@@ -420,19 +432,15 @@ typedef enum {
   /**
    * SETTINGS_MAX_CONCURRENT_STREAMS
    */
-  NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS = 4,
+  NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS = 3,
   /**
    * SETTINGS_INITIAL_WINDOW_SIZE
    */
-  NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 7,
-  /**
-   * SETTINGS_FLOW_CONTROL_OPTIONS
-   */
-  NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS = 10,
+  NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 4,
   /**
    * Maximum ID of :type:`nghttp2_settings_id`.
    */
-  NGHTTP2_SETTINGS_MAX = 10
+  NGHTTP2_SETTINGS_MAX = 4
 } nghttp2_settings_id;
 
 /**
@@ -493,7 +501,11 @@ typedef enum {
   /**
    * ENHANCE_YOUR_CALM
    */
-  NGHTTP2_ENHANCE_YOUR_CALM = 420
+  NGHTTP2_ENHANCE_YOUR_CALM = 11,
+  /**
+   * INADEQUATE_SECURITY
+   */
+  NGHTTP2_INADEQUATE_SECURITY = 12
 } nghttp2_error_code;
 
 /**
@@ -587,6 +599,11 @@ typedef struct {
  */
 typedef struct {
   nghttp2_frame_hd hd;
+  /**
+   * The length of the padding in this frame. This includes PAD_HIGH
+   * and PAD_LOW.
+   */
+  size_t padlen;
 } nghttp2_data;
 
 /**
@@ -630,6 +647,11 @@ typedef struct {
    * The frame header.
    */
   nghttp2_frame_hd hd;
+  /**
+   * The length of the padding in this frame. This includes PAD_HIGH
+   * and PAD_LOW.
+   */
+  size_t padlen;
   /**
    * The name/value pairs.
    */
@@ -721,6 +743,11 @@ typedef struct {
    * The frame header.
    */
   nghttp2_frame_hd hd;
+  /**
+   * The length of the padding in this frame. This includes PAD_HIGH
+   * and PAD_LOW.
+   */
+  size_t padlen;
   /**
    * The name/value pairs.
    */
@@ -1150,6 +1177,26 @@ typedef int (*nghttp2_on_header_callback)
  void *user_data);
 
 /**
+ * @functypedef
+ *
+ * Callback function invoked when the library asks application how
+ * much padding is required for the transmission of the |frame|. The
+ * application must choose the total length of payload including
+ * padded bytes in range [frame->hd.length, max_payloadlen],
+ * inclusive. Choosing number not in this range will be treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning
+ * ``frame->hd.length`` means no padding is added.  Returning
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will make
+ * `nghttp2_session_send()` function immediately return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef ssize_t (*nghttp2_select_padding_callback)
+(nghttp2_session *session,
+ const nghttp2_frame *frame,
+ size_t max_payloadlen,
+ void *user_data);
+
+/**
  * @struct
  *
  * Callback functions.
@@ -1212,6 +1259,11 @@ typedef struct {
    * received.
    */
   nghttp2_on_header_callback on_header_callback;
+  /**
+   * Callback function invoked when the library asks application how
+   * much padding is required for the transmission of the given frame.
+   */
+  nghttp2_select_padding_callback select_padding_callback;
 } nghttp2_session_callbacks;
 
 /**
@@ -1623,9 +1675,6 @@ size_t nghttp2_session_get_outbound_queue_size(nghttp2_session *session);
  * window_size_increment with `nghttp2_submit_window_update()`, this
  * function returns the number of bytes less than actually received.
  *
- * If flow control is disabled for that stream, this function returns
- * 0.
- *
  * This function returns -1 if it fails.
  */
 int32_t nghttp2_session_get_stream_effective_recv_data_length
@@ -1655,9 +1704,6 @@ int32_t nghttp2_session_get_stream_effective_local_window_size
  * window size is reduced by submitting negative window_size_increment
  * with `nghttp2_submit_window_update()`, this function returns the
  * number of bytes less than actually received.
- *
- * If flow control is disabled for a connection, this function returns
- * 0.
  *
  * This function returns -1 if it fails.
  */
@@ -2021,8 +2067,8 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |iv| contains invalid value (e.g., attempting to re-enable
- *     flow control).
+ *     The |iv| contains invalid value (e.g., initial window size
+ *     strictly greater than (1 << 31) - 1.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */

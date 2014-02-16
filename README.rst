@@ -7,25 +7,22 @@ version 2.0.
 Development Status
 ------------------
 
-We started to implement HTTP-draft-09/2.0
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-09) and the
+We started to implement h2-10
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-10) and the
 header compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-05).
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-06).
 
 The nghttp2 code base was forked from spdylay project.
 
-========================== =================
-Features                   HTTP-draft-09/2.0
-========================== =================
-:authority                 Done
-HPACK-draft-05             Done
-SETTINGS_HEADER_TABLE_SIZE Done
-SETTINGS_ENABLE_PUSH       Done
-FRAME_SIZE_ERROR           Done
-SETTINGS with ACK          Done
-Header Continuation        Done
-ALPN                       Done
-========================== =================
+========================== =====
+Features                   h2-10
+========================== =====
+HPACK-draft-06             Done
+Strict SETTINGS validation Done
+Disallow client to push    Done
+Padding                    Done
+END_SEGMENT
+========================== =====
 
 Public Test Server
 ------------------
@@ -150,19 +147,21 @@ with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
 It has verbose output mode for framing information. Here is sample
 output from ``nghttp`` client::
 
-    $ src/nghttp -vn https://localhost:8443
-    [  0.003] NPN select next protocol: the remote server offers:
-              * HTTP-draft-09/2.0
+    $ src/nghttp -nv https://localhost:8443
+    [  0.004][NPN] server offers:
+              * h2-10
+              * spdy/3.1
               * spdy/3
               * spdy/2
               * http/1.1
-              NPN selected the protocol: HTTP-draft-09/2.0
-    [  0.005] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
+    The negotiated protocol: h2-10
+    [  0.006] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
               (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-    [  0.006] send HEADERS frame <length=47, flags=0x05, stream_id=1>
+              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+    [  0.007] send HEADERS frame <length=48, flags=0x05, stream_id=1>
               ; END_STREAM | END_HEADERS
+              (padlen=0)
               ; Open new stream
               :authority: localhost:8443
               :method: GET
@@ -170,91 +169,91 @@ output from ``nghttp`` client::
               :scheme: https
               accept: */*
               accept-encoding: gzip, deflate
-              user-agent: nghttp2/0.1.0-DEV
-    [  0.006] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-              (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-    [  0.006] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+              user-agent: nghttp2/0.4.0-DEV
+    [  0.007] recv SETTINGS frame <length=15, flags=0x00, stream_id=0>
+              (niv=3)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+              [SETTINGS_ENABLE_PUSH(2):0]
+    [  0.007] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [  0.006] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
-              (window_size_increment=1000000007)
-    [  0.006] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [  0.007] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [  0.006] recv HEADERS frame <length=132, flags=0x04, stream_id=1>
+    [  0.008] (stream_id=1) :status: 200
+    [  0.008] (stream_id=1) accept-ranges: bytes
+    [  0.008] (stream_id=1) content-encoding: gzip
+    [  0.008] (stream_id=1) content-length: 146
+    [  0.008] (stream_id=1) content-type: text/html
+    [  0.008] (stream_id=1) date: Sat, 15 Feb 2014 08:14:12 GMT
+    [  0.008] (stream_id=1) etag: "b1-4e5535a027780-gzip"
+    [  0.008] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+    [  0.008] (stream_id=1) server: Apache/2.4.6 (Debian)
+    [  0.008] (stream_id=1) vary: Accept-Encoding
+    [  0.008] (stream_id=1) via: 1.1 nghttpx
+    [  0.008] recv HEADERS frame <length=141, flags=0x04, stream_id=1>
               ; END_HEADERS
+              (padlen=0)
               ; First response header
-              :status: 200
-              accept-ranges: bytes
-              content-encoding: gzip
-              content-length: 146
-              content-type: text/html
-              date: Sun, 27 Oct 2013 14:23:54 GMT
-              etag: "b1-4e5535a027780-gzip"
-              last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-              server: Apache/2.4.6 (Debian)
-              vary: Accept-Encoding
-              via: 1.1 nghttpx
-    [  0.006] recv DATA frame <length=146, flags=0x00, stream_id=1>
-    [  0.006] recv DATA frame <length=0, flags=0x01, stream_id=1>
+    [  0.008] recv DATA frame <length=146, flags=0x00, stream_id=1>
+    [  0.008] recv DATA frame <length=0, flags=0x01, stream_id=1>
               ; END_STREAM
-    [  0.007] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+    [  0.008] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
 The HTTP Upgrade is performed like this::
 
-    $ src/nghttp -vnu http://localhost:8080
+    $ src/nghttp -nvu http://localhost:8080
     [  0.000] HTTP Upgrade request
     GET / HTTP/1.1
     Host: localhost:8080
     Connection: Upgrade, HTTP2-Settings
-    Upgrade: HTTP-draft-09/2.0
-    HTTP2-Settings: AAAABAAAAGQAAAAHAAD__w
+    Upgrade: h2-10
+    HTTP2-Settings: AwAAAGQEAAD__w
     Accept: */*
-    User-Agent: nghttp2/0.1.0-DEV
+    User-Agent: nghttp2/0.4.0-DEV
 
 
-    [  0.000] HTTP Upgrade response
+    [  0.001] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
-    Upgrade: HTTP-draft-09/2.0
+    Upgrade: h2-10
 
 
     [  0.001] HTTP Upgrade success
-    [  0.001] send SETTINGS frame <length=16, flags=0x00, stream_id=0>
+    [  0.001] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
               (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-    [  0.001] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
-              (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-    [  0.001] recv WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
-              (window_size_increment=1000000007)
-    [  0.001] recv HEADERS frame <length=121, flags=0x04, stream_id=1>
+              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+    [  0.001] recv SETTINGS frame <length=15, flags=0x00, stream_id=0>
+              (niv=3)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+              [SETTINGS_ENABLE_PUSH(2):0]
+    [  0.001] (stream_id=1) :status: 200
+    [  0.001] (stream_id=1) accept-ranges: bytes
+    [  0.001] (stream_id=1) content-length: 177
+    [  0.001] (stream_id=1) content-type: text/html
+    [  0.001] (stream_id=1) date: Sat, 15 Feb 2014 08:16:23 GMT
+    [  0.001] (stream_id=1) etag: "b1-4e5535a027780"
+    [  0.001] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+    [  0.001] (stream_id=1) server: Apache/2.4.6 (Debian)
+    [  0.001] (stream_id=1) vary: Accept-Encoding
+    [  0.001] (stream_id=1) via: 1.1 nghttpx
+    [  0.001] recv HEADERS frame <length=132, flags=0x04, stream_id=1>
               ; END_HEADERS
+              (padlen=0)
               ; First response header
-              :status: 200
-              accept-ranges: bytes
-              content-length: 177
-              content-type: text/html
-              date: Sun, 27 Oct 2013 14:26:04 GMT
-              etag: "b1-4e5535a027780"
-              last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-              server: Apache/2.4.6 (Debian)
-              vary: Accept-Encoding
-              via: 1.1 nghttpx
     [  0.001] recv DATA frame <length=177, flags=0x00, stream_id=1>
     [  0.001] recv DATA frame <length=0, flags=0x01, stream_id=1>
               ; END_STREAM
-    [  0.001] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [  0.002] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [  0.001] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+    [  0.002] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-    [  0.001] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [  0.002] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
 
@@ -278,50 +277,53 @@ information. Here is sample output from ``nghttpd`` server::
     $ src/nghttpd --no-tls -v 8080
     IPv4: listen on port 8080
     IPv6: listen on port 8080
-    [id=1] [  1.189] send SETTINGS frame <length=8, flags=0x00, stream_id=0>
-              (niv=1)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-    [id=1] [  1.191] recv SETTINGS frame <length=16, flags=0x00, stream_id=0>
+    [id=1] [  1.027] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
               (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-    [id=1] [  1.191] recv HEADERS frame <length=47, flags=0x05, stream_id=1>
+              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+              [SETTINGS_ENABLE_PUSH(2):0]
+    [id=1] [  1.027] recv SETTINGS frame <length=10, flags=0x00, stream_id=0>
+              (niv=2)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+    [id=1] [  1.027] (stream_id=1) :authority: localhost:8080
+    [id=1] [  1.027] (stream_id=1) :method: GET
+    [id=1] [  1.027] (stream_id=1) :path: /
+    [id=1] [  1.027] (stream_id=1) :scheme: http
+    [id=1] [  1.027] (stream_id=1) accept: */*
+    [id=1] [  1.027] (stream_id=1) accept-encoding: gzip, deflate
+    [id=1] [  1.027] (stream_id=1) user-agent: nghttp2/0.4.0-DEV
+    [id=1] [  1.027] recv HEADERS frame <length=48, flags=0x05, stream_id=1>
               ; END_STREAM | END_HEADERS
+              (padlen=0)
               ; Open new stream
-              :authority: localhost:8080
-              :method: GET
-              :path: /
-              :scheme: http
-              accept: */*
-              accept-encoding: gzip, deflate
-              user-agent: nghttp2/0.1.0-DEV
-    [id=1] [  1.192] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [id=1] [  1.027] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [id=1] [  1.192] send HEADERS frame <length=70, flags=0x04, stream_id=1>
+    [id=1] [  1.027] send HEADERS frame <length=72, flags=0x04, stream_id=1>
               ; END_HEADERS
+              (padlen=0)
               ; First response header
               :status: 404
               content-encoding: gzip
               content-type: text/html; charset=UTF-8
-              date: Sun, 27 Oct 2013 14:27:53 GMT
-              server: nghttpd nghttp2/0.1.0-DEV
-    [id=1] [  1.192] send DATA frame <length=117, flags=0x00, stream_id=1>
-    [id=1] [  1.192] send DATA frame <length=0, flags=0x01, stream_id=1>
+              date: Sat, 15 Feb 2014 08:18:53 GMT
+              server: nghttpd nghttp2/0.4.0-DEV
+    [id=1] [  1.028] send DATA frame <length=118, flags=0x00, stream_id=1>
+    [id=1] [  1.028] send DATA frame <length=0, flags=0x01, stream_id=1>
               ; END_STREAM
-    [id=1] [  1.192] stream_id=1 closed
-    [id=1] [  1.192] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [id=1] [  1.028] stream_id=1 closed
+    [id=1] [  1.028] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [id=1] [  1.192] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
+    [id=1] [  1.028] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-    [id=1] [  1.192] closed
+    [id=1] [  1.028] closed
 
 nghttpx - proxy
 +++++++++++++++
 
 The ``nghttpx`` is a multi-threaded reverse proxy for
-HTTP-draft-09/2.0, SPDY and HTTP/1.1. It has several operation modes:
+h2-10, SPDY and HTTP/1.1. It has several operation modes:
 
 ================== ============================== ============== =============
 Mode option        Frontend                       Backend        Note
@@ -334,7 +336,7 @@ default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================== ============== =============
 
 The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-09/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens h2-10, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
@@ -440,21 +442,18 @@ deflatehd - header compressor
 The ``deflatehd`` reads JSON data or HTTP/1-style header fields from
 stdin and outputs compressed header block in JSON.
 
-For the JSON input, the root JSON object must contain ``context`` key,
-which indicates which compression context is used. If it is
-``request``, request compression context is used. Otherwise, response
-compression context is used. The value of ``cases`` key contains the
-sequence of input header set. They share the same compression context
-and are processed in the order they appear.  Each item in the sequence
-is a JSON object and it must have at least ``headers`` key. Its value
-is an array of a JSON object containing exactly one name/value pair.
+For the JSON input, the root JSON object must include ``cases``
+key. Its value has to include the sequence of input header set. They
+share the same compression context and are processed in the order they
+appear.  Each item in the sequence is a JSON object and it must
+include ``headers`` key. Its value is an array of a JSON object ,
+which includes exactly one name/value pair.
 
 Example:
 
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -485,9 +484,7 @@ Example::
     :method: POST
     user-agent: nghttp2
 
-The output is JSON object. It contains ``context`` key and its value
-is ``request`` if the compression context is request, otherwise
-``response``. The root JSON object also contains ``cases`` key and its
+The output is JSON object. It should include ``cases`` key and its
 value is an array of JSON object, which has at least following keys:
 
 seq
@@ -516,7 +513,6 @@ Examples:
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -578,9 +574,9 @@ The output can be used as the input for ``inflatehd`` and
 ``deflatehd``.
 
 With ``-d`` option, the extra ``header_table`` key is added and its
-associated value contains the state of dyanmic header table after the
-corresponding header set was processed. The value contains following
-keys:
+associated value includes the state of dyanmic header table after the
+corresponding header set was processed. The value includes at least
+following keys:
 
 entries
     The entry in the header table. If ``referenced`` is ``true``, it
@@ -616,7 +612,6 @@ Example:
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -772,21 +767,17 @@ inflatehd - header decompressor
 The ``inflatehd`` reads JSON data from stdin and outputs decompressed
 name/value pairs in JSON.
 
-The root JSON object must contain ``context`` key, which indicates
-which compression context is used. If it is ``request``, request
-compression context is used. Otherwise, response compression context
-is used. The value of ``cases`` key contains the sequence of
-compressed header block. They share the same compression context and
-are processed in the order they appear. Each item in the sequence is a
-JSON object and it must have at least ``wire`` key. Its value is a
-string containing compressed header block in hex string.
+The root JSON object must include ``cases`` key. Its value has to
+include the sequence of compressed header block. They share the same
+compression context and are processed in the order they appear. Each
+item in the sequence is a JSON object and it must have at least
+``wire`` key. Its value is a compressed header block in hex string.
 
 Example:
 
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         { "wire": "8285" },
@@ -794,16 +785,14 @@ Example:
       ]
     }
 
-The output is JSON object. It contains ``context`` key and its value
-is ``request`` if the compression context is request, otherwise
-``response``. The root JSON object also contains ``cases`` key and its
+The output is JSON object. It should include ``cases`` key and its
 value is an array of JSON object, which has at least following keys:
 
 seq
     The index of header set in the input.
 
 headers
-    The JSON array contains decompressed name/value pairs.
+    The JSON array includes decompressed name/value pairs.
 
 wire
     The compressed header block in hex string.
@@ -817,7 +806,6 @@ Example:
 .. code-block:: json
 
     {
-      "context": "request",
       "cases":
       [
         {
@@ -872,7 +860,7 @@ The output can be used as the input for ``deflatehd`` and
 ``inflatehd``.
 
 With ``-d`` option, the extra ``header_table`` key is added and its
-associated value contains the state of dyanmic header table after the
+associated value includes the state of dyanmic header table after the
 corresponding header set was processed. The format is the same as
 ``deflatehd``.
 

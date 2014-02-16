@@ -75,7 +75,8 @@ int parse_push_config(Config& config, const char *optarg)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttpd [-DVfhv] [-d <PATH>] [--no-tls] <PORT> [<PRIVATE_KEY> <CERT>]"
+  out << "Usage: nghttpd [-DVhpv] [-d <PATH>] [--no-tls] [-b <ALIGNMENT>]\n"
+      << "               <PORT> [<PRIVATE_KEY> <CERT>]"
       << std::endl;
 }
 } // namespace
@@ -103,9 +104,6 @@ void print_help(std::ostream& out)
       << "    -v, --verbose      Print debug information such as reception/\n"
       << "                       transmission of frames and name/value pairs.\n"
       << "    --no-tls           Disable SSL/TLS.\n"
-      << "    -f, --no-flow-control\n"
-      << "                       Disables connection and stream level flow\n"
-      << "                       controls.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
       << "    --color            Force colored log output.\n"
@@ -117,6 +115,8 @@ void print_help(std::ostream& out)
       << "                         -p/=/foo.png -p/doc=/bar.css\n"
       << "                       PATH and PUSH_PATHs are relative to document\n"
       << "                       root. See --htdocs option.\n"
+      << "    -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
+      << "                       padding. Specify 0 to disable padding.\n"
       << "    -h, --help         Print this help.\n"
       << std::endl;
 }
@@ -134,15 +134,15 @@ int main(int argc, char **argv)
       {"help", no_argument, nullptr, 'h'},
       {"verbose", no_argument, nullptr, 'v'},
       {"verify-client", no_argument, nullptr, 'V'},
-      {"no-flow-control", no_argument, nullptr, 'f'},
       {"header-table-size", required_argument, nullptr, 'c'},
       {"push", required_argument, nullptr, 'p'},
+      {"padding", required_argument, nullptr, 'b'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVc:d:fhp:v", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVb:c:d:hp:v", long_options, &option_index);
     char *end;
     if(c == -1) {
       break;
@@ -154,11 +154,11 @@ int main(int argc, char **argv)
     case 'V':
       config.verify_client = true;
       break;
+    case 'b':
+      config.padding = strtol(optarg, nullptr, 10);
+      break;
     case 'd':
       config.htdocs = optarg;
-      break;
-    case 'f':
-      config.no_flow_control = true;
       break;
     case 'h':
       print_help(std::cout);

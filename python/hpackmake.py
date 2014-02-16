@@ -14,11 +14,6 @@ from binascii import b2a_hex
 import nghttp2
 
 def testsuite(testdata, filename, outdir, table_size, deflate_table_size):
-    if testdata['context'] == 'request':
-        side = nghttp2.HD_SIDE_REQUEST
-    else:
-        side = nghttp2.HD_SIDE_RESPONSE
-
     res = {
         'draft':5, 'context': testdata['context'],
         'description': '''\
@@ -29,7 +24,7 @@ original. We make some headers not indexing at all, but this does not always \
 result in less bits on the wire.'''
     }
     cases = []
-    deflater = nghttp2.HDDeflater(side, deflate_table_size)
+    deflater = nghttp2.HDDeflater(deflate_table_size)
     deflater.change_table_size(table_size)
     for casenum, item  in enumerate(testdata['cases']):
         outitem = {

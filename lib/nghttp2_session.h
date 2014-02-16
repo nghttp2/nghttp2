@@ -86,6 +86,9 @@ typedef enum {
   NGHTTP2_IB_READ_GOAWAY_DEBUG,
   NGHTTP2_IB_EXPECT_CONTINUATION,
   NGHTTP2_IB_IGN_CONTINUATION,
+  NGHTTP2_IB_READ_PAD_CONTINUATION,
+  NGHTTP2_IB_IGN_PAD_CONTINUATION,
+  NGHTTP2_IB_READ_PAD_DATA,
   NGHTTP2_IB_READ_DATA,
   NGHTTP2_IB_IGN_DATA
 } nghttp2_inbound_state;
@@ -102,9 +105,9 @@ typedef struct {
   size_t left;
   /* How many bytes we still need to receive for current frame */
   size_t payloadleft;
+  /* padding length for the current frame */
+  size_t padlen;
   nghttp2_inbound_state state;
-  /* TODO, remove this. Error code */
-  int error_code;
   uint8_t buf[8];
   /* How many bytes have been written to |buf| */
   uint8_t buflen;
@@ -189,14 +192,6 @@ struct nghttp2_session {
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
      composed by bitwise OR-ing nghttp2_goaway_flag. */
   uint8_t goaway_flags;
-  /* Non-zero indicates connection-level flow control on remote side
-     is in effect. This will be disabled when WINDOW_UPDATE with
-     END_FLOW_CONTROL bit set is received. */
-  uint8_t remote_flow_control;
-  /* Non-zero indicates connection-level flow control on local side is
-     in effect. This will be disabled when WINDOW_UPDATE with
-     END_FLOW_CONTROL bit set is sent. */
-  uint8_t local_flow_control;
 };
 
 /* Struct used when updating initial window size of each active
@@ -516,9 +511,11 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
  * Packs DATA frame |frame| in wire frame format and stores it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. It packs header in first 8 bytes. Remaining bytes
- * are the DATA apyload and are filled using |frame->data_prd|. The
- * length of payload is at most |datamax| bytes.
+ * given |frame|. It packs header in first 8 bytes starting
+ * |*bufoff_ptr| offset. The |*bufoff_ptr| is calculated based on
+ * usage of padding. Remaining bytes are the DATA apyload and are
+ * filled using |frame->data_prd|. The length of payload is at most
+ * |datamax| bytes.
  *
  * This function returns the size of packed frame if it succeeds, or
  * one of the following negative error codes:
@@ -534,6 +531,7 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
  */
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
                                   uint8_t **buf_ptr, size_t *buflen_ptr,
+                                  size_t *bufoff_ptr,
                                   size_t datamax,
                                   nghttp2_private_data *frame);
 

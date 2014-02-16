@@ -82,6 +82,7 @@ struct Config {
   std::string keyfile;
   std::string datafile;
   size_t output_upper_thres;
+  size_t padding;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
   int32_t pri;
@@ -95,10 +96,11 @@ struct Config {
   bool verbose;
   bool get_assets;
   bool stat;
-  bool no_flow_control;
   bool upgrade;
+  bool continuation;
   Config()
     : output_upper_thres(1024*1024),
+      padding(0),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1),
       pri(NGHTTP2_PRI_DEFAULT),
@@ -111,8 +113,8 @@ struct Config {
       verbose(false),
       get_assets(false),
       stat(false),
-      no_flow_control(false),
-      upgrade(false)
+      upgrade(false),
+      continuation(false)
   {}
 };
 } // namespace
@@ -365,11 +367,6 @@ size_t populate_settings(nghttp2_settings_entry *iv)
     iv[1].value = (1 << config.window_bits) - 1;
   } else {
     iv[1].value = NGHTTP2_INITIAL_WINDOW_SIZE;
-  }
-  if(config.no_flow_control) {
-    iv[niv].settings_id = NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS;
-    iv[niv].value = 1;
-    ++niv;
   }
   if(config.header_table_size >= 0) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
@@ -964,6 +961,12 @@ int submit_request
      {"accept", "*/*"},
      {"accept-encoding", "gzip, deflate"},
      {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
+  if(config.continuation) {
+    for(size_t i = 0; i < 8; ++i) {
+      build_headers.emplace_back("continuation-test-" + util::utos(i+1),
+                                 std::string(4096, '-'));
+    }
+  }
   auto num_initial_headers = build_headers.size();
   if(req->data_prd) {
     build_headers.emplace_back("content-length", util::utos(req->data_length));
@@ -1120,6 +1123,15 @@ int before_frame_send_callback
     check_stream_id(session, frame->hd.stream_id, user_data);
   }
   return 0;
+}
+} // namespace
+
+namespace {
+ssize_t select_padding_callback
+(nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
+ void *user_data)
+{
+  return std::min(max_payload, frame->hd.length + config.padding);
 }
 } // namespace
 
@@ -1579,6 +1591,9 @@ int run(char **uris, int n)
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_header_callback = on_header_callback;
+  if(config.padding) {
+    callbacks.select_padding_callback = select_padding_callback;
+  }
 
   std::string prev_scheme;
   std::string prev_host;
@@ -1642,9 +1657,9 @@ int run(char **uris, int n)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [-Oafnsuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [-W <WINDOW_BITS>]\n"
+  out << "Usage: nghttp [-Oansuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [-W <WINDOW_BITS>]\n"
       << "              [--cert=<CERT>] [--key=<KEY>] [-d <FILE>] [-m <N>]\n"
-      << "              [-p <PRIORITY>] [-M <N>]\n"
+      << "              [-p <PRIORITY>] [-M <N>] [-b <ALIGNMENT>]\n"
       << "              <URI>..."
       << std::endl;
 }
@@ -1686,9 +1701,6 @@ void print_help(std::ostream& out)
       << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
       << "                       URI is not requested twice. This option\n"
       << "                       disables it too.\n"
-      << "    -f, --no-flow-control\n"
-      << "                       Disables connection and stream level flow\n"
-      << "                       controls.\n"
       << "    -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
       << "                       option is ignored if the request URI has\n"
       << "                       https scheme.\n"
@@ -1704,7 +1716,10 @@ void print_help(std::ostream& out)
       << "                       is large enough as it is seen as unlimited.\n"
       << "    -c, --header-table-size=<N>\n"
       << "                       Specify decoder header table size.\n"
+      << "    -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
+      << "                       padding. Specify 0 to disable padding.\n"
       << "    --color            Force colored log output.\n"
+      << "    --continuation     Send large header to test CONTINUATION.\n"
       << std::endl;
 }
 } // namespace
@@ -1727,18 +1742,19 @@ int main(int argc, char **argv)
       {"header", required_argument, nullptr, 'H'},
       {"data", required_argument, nullptr, 'd'},
       {"multiply", required_argument, nullptr, 'm'},
-      {"no-flow-control", no_argument, nullptr, 'f'},
       {"upgrade", no_argument, nullptr, 'u'},
       {"pri", required_argument, nullptr, 'p'},
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
       {"header-table-size", required_argument, nullptr, 'c'},
+      {"padding", required_argument, nullptr, 'b'},
       {"cert", required_argument, &flag, 1},
       {"key", required_argument, &flag, 2},
       {"color", no_argument, &flag, 3},
+      {"continuation", no_argument, &flag, 4},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oac:d:fm:np:hH:vst:uw:W:", long_options,
+    int c = getopt_long(argc, argv, "M:Oab:c:d:m:np:hH:vst:uw:W:", long_options,
                         &option_index);
     char *end;
     if(c == -1) {
@@ -1752,12 +1768,12 @@ int main(int argc, char **argv)
     case 'O':
       config.remote_name = true;
       break;
-    case 'f':
-      config.no_flow_control = true;
-      break;
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
+    case 'b':
+      config.padding = strtol(optarg, nullptr, 10);
+      break;
     case 'n':
       config.null_out = true;
       break;
@@ -1868,6 +1884,10 @@ int main(int argc, char **argv)
       case 3:
         // color option
         color = true;
+        break;
+      case 4:
+        // continuation option
+        config.continuation = true;
         break;
       }
       break;

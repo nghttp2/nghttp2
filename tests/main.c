@@ -179,12 +179,10 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_defer_data) ||
       !CU_add_test(pSuite, "session_flow_control",
                    test_nghttp2_session_flow_control) ||
-      !CU_add_test(pSuite, "session_flow_control_disable_remote",
-                   test_nghttp2_session_flow_control_disable_remote) ||
-      !CU_add_test(pSuite, "session_flow_control_disable_local",
-                   test_nghttp2_session_flow_control_disable_local) ||
       !CU_add_test(pSuite, "session_flow_control_data_recv",
                    test_nghttp2_session_flow_control_data_recv) ||
+      !CU_add_test(pSuite, "session_flow_control_data_with_padding_recv",
+                   test_nghttp2_session_flow_control_data_with_padding_recv) ||
       !CU_add_test(pSuite, "session_data_read_temporal_failure",
                    test_nghttp2_session_data_read_temporal_failure) ||
       !CU_add_test(pSuite, "session_on_stream_close",
@@ -199,6 +197,10 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_set_option) ||
       !CU_add_test(pSuite, "session_data_backoff_by_high_pri_frame",
                    test_nghttp2_session_data_backoff_by_high_pri_frame) ||
+      !CU_add_test(pSuite, "session_pack_data_with_padding",
+                   test_nghttp2_session_pack_data_with_padding) ||
+      !CU_add_test(pSuite, "session_pack_headers_with_padding",
+                   test_nghttp2_session_pack_headers_with_padding) ||
       !CU_add_test(pSuite, "pack_settings_payload",
                    test_nghttp2_pack_settings_payload) ||
       !CU_add_test(pSuite, "frame_pack_headers",
@@ -225,8 +227,6 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_deflate_same_indexed_repr) ||
       !CU_add_test(pSuite, "hd_deflate_common_header_eviction",
                    test_nghttp2_hd_deflate_common_header_eviction) ||
-      !CU_add_test(pSuite, "hd_deflate_deflate_buffer",
-                   test_nghttp2_hd_deflate_deflate_buffer) ||
       !CU_add_test(pSuite, "hd_deflate_clear_refset",
                    test_nghttp2_hd_deflate_clear_refset) ||
       !CU_add_test(pSuite, "hd_inflate_indname_noinc",

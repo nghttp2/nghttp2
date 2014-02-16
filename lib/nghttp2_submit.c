@@ -75,8 +75,9 @@ static int nghttp2_submit_headers_shared
     rv = NGHTTP2_ERR_NOMEM;
     goto fail;
   }
-  /* TODO Implement header continuation */
-  flags_copy = (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY)) |
+  flags_copy =
+    (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY |
+              NGHTTP2_FLAG_END_SEGMENT)) |
     NGHTTP2_FLAG_END_HEADERS;
 
   nghttp2_frame_headers_init(&frame->headers, flags_copy, stream_id, pri,
@@ -196,7 +197,6 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
     free(frame);
     return rv;
   }
-  /* TODO Implement header continuation */
   flags_copy = NGHTTP2_FLAG_END_PUSH_PROMISE;
   nghttp2_frame_push_promise_init(&frame->push_promise, flags_copy,
                                   stream_id, -1, nva_copy, nvlen);
@@ -219,9 +219,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   }
   flags = 0;
   if(stream_id == 0) {
-    if(!session->local_flow_control) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
     rv = nghttp2_adjust_local_window_size(&session->local_window_size,
                                           &session->recv_window_size,
                                           &session->recv_reduction,
@@ -232,9 +229,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
     if(stream) {
-      if(!stream->local_flow_control) {
-        return NGHTTP2_ERR_INVALID_ARGUMENT;
-      }
       rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
                                             &stream->recv_window_size,
                                             &stream->recv_reduction,
@@ -325,14 +319,13 @@ ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
                                       const nghttp2_settings_entry *iv,
                                       size_t niv)
 {
-  /* Assume that current flow_control_option is 0 (which means that
-     flow control is enabled) */
-  if(!nghttp2_iv_check(iv, niv, 0)) {
+  if(!nghttp2_iv_check(iv, niv)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  if(buflen < (niv * 8))
+  if(buflen < (niv * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH)) {
     return NGHTTP2_ERR_INSUFF_BUFSIZE;
+  }
 
   return nghttp2_frame_pack_settings_payload(buf, iv, niv);
 }

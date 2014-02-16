@@ -77,6 +77,8 @@ const char* strstatus(nghttp2_error_code error_code)
     return "CONNECT_ERROR";
   case NGHTTP2_ENHANCE_YOUR_CALM:
     return "ENHANCE_YOUR_CALM";
+  case NGHTTP2_INADEQUATE_SECURITY:
+    return "INADEQUATE_SECURITY";
   default:
     return "UNKNOWN";
   }
@@ -95,8 +97,6 @@ const char* strsettingsid(int32_t id)
     return "SETTINGS_MAX_CONCURRENT_STREAMS";
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
     return "SETTINGS_INITIAL_WINDOW_SIZE";
-  case NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS:
-    return "SETTINGS_FLOW_CONTROL_OPTIONS";
   default:
     return "UNKNOWN";
   }
@@ -132,13 +132,6 @@ const char* strframetype(uint8_t type)
 } // namespace
 
 namespace {
-void print_frame_attr_indent()
-{
-  printf("          ");
-}
-} // namespace
-
-namespace {
 bool color_output = false;
 } // namespace
 
@@ -146,6 +139,22 @@ void set_color_output(bool f)
 {
   color_output = f;
 }
+
+namespace {
+FILE *outfile = stdout;
+} // namespace
+
+void set_output(FILE *file)
+{
+  outfile = file;
+}
+
+namespace {
+void print_frame_attr_indent()
+{
+  fprintf(outfile, "          ");
+}
+} // namespace
 
 namespace {
 const char* ansi_esc(const char *code)
@@ -168,11 +177,11 @@ void print_nv(nghttp2_nv *nva, size_t nvlen, bool indent = true)
     if(indent) {
       print_frame_attr_indent();
     }
-    printf("%s", ansi_esc("\033[1;34m"));
-    fwrite(nv.name, nv.namelen, 1, stdout);
-    printf("%s: ", ansi_escend());
-    fwrite(nv.value, nv.valuelen, 1, stdout);
-    printf("\n");
+    fprintf(outfile, "%s", ansi_esc("\033[1;34m"));
+    fwrite(nv.name, nv.namelen, 1, outfile);
+    fprintf(outfile, "%s: ", ansi_escend());
+    fwrite(nv.value, nv.valuelen, 1, outfile);
+    fprintf(outfile, "\n");
   }
 }
 } // namelen
@@ -180,17 +189,17 @@ void print_nv(nghttp2_nv *nva, size_t nvlen, bool indent = true)
 void print_timer()
 {
   auto millis = get_timer();
-  printf("%s[%3ld.%03ld]%s",
-         ansi_esc("\033[33m"),
-         (long int)(millis.count()/1000), (long int)(millis.count()%1000),
-         ansi_escend());
+  fprintf(outfile, "%s[%3ld.%03ld]%s",
+          ansi_esc("\033[33m"),
+          (long int)(millis.count()/1000), (long int)(millis.count()%1000),
+          ansi_escend());
 }
 
 namespace {
 void print_frame_hd(const nghttp2_frame_hd& hd)
 {
-  printf("<length=%zu, flags=0x%02x, stream_id=%d>\n",
-         hd.length, hd.flags, hd.stream_id);
+  fprintf(outfile, "<length=%zu, flags=0x%02x, stream_id=%d>\n",
+          hd.length, hd.flags, hd.stream_id);
 }
 } // namespace
 
@@ -203,10 +212,34 @@ void print_flags(const nghttp2_frame_hd& hd)
     if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
     }
+    if(hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "END_SEGMENT";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_LOW";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_HIGH";
+    }
     break;
   case NGHTTP2_HEADERS:
     if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
+    }
+    if(hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "END_SEGMENT";
     }
     if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
       if(!s.empty()) {
@@ -220,6 +253,18 @@ void print_flags(const nghttp2_frame_hd& hd)
       }
       s += "PRIORITY";
     }
+    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_LOW";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_HIGH";
+    }
     break;
   case NGHTTP2_SETTINGS:
     if(hd.flags & NGHTTP2_FLAG_ACK) {
@@ -230,6 +275,18 @@ void print_flags(const nghttp2_frame_hd& hd)
     if(hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) {
       s += "END_PUSH_PROMISE";
     }
+    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_LOW";
+    }
+    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "PAD_HIGH";
+    }
     break;
   case NGHTTP2_PING:
     if(hd.flags & NGHTTP2_FLAG_ACK) {
@@ -237,7 +294,7 @@ void print_flags(const nghttp2_frame_hd& hd)
     }
     break;
   }
-  printf("; %s\n", s.c_str());
+  fprintf(outfile, "; %s\n", s.c_str());
 }
 } // namespace
 
@@ -256,10 +313,10 @@ const char* frame_name_ansi_esc(print_type ptype)
 namespace {
 void print_frame(print_type ptype, const nghttp2_frame *frame)
 {
-  printf("%s%s%s frame ",
-         frame_name_ansi_esc(ptype),
-         strframetype(frame->hd.type),
-         ansi_escend());
+  fprintf(outfile, "%s%s%s frame ",
+          frame_name_ansi_esc(ptype),
+          strframetype(frame->hd.type),
+          ansi_escend());
   print_frame_hd(frame->hd);
   if(frame->hd.flags) {
     print_frame_attr_indent();
@@ -267,24 +324,30 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   }
   switch(frame->hd.type) {
   case NGHTTP2_DATA:
+    if(frame->hd.flags & (NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW)) {
+      print_frame_attr_indent();
+      fprintf(outfile, "(padlen=%zu)\n", frame->data.padlen);
+    }
     break;
   case NGHTTP2_HEADERS:
+    print_frame_attr_indent();
+    fprintf(outfile, "(");
     if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
-      print_frame_attr_indent();
-      printf("(pri=%d)\n", frame->headers.pri);
+      fprintf(outfile, "pri=%d, ", frame->headers.pri);
     }
+    fprintf(outfile, "padlen=%zu)\n", frame->headers.padlen);
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST:
       print_frame_attr_indent();
-      printf("; Open new stream\n");
+      fprintf(outfile, "; Open new stream\n");
       break;
     case NGHTTP2_HCAT_RESPONSE:
       print_frame_attr_indent();
-      printf("; First response header\n");
+      fprintf(outfile, "; First response header\n");
       break;
     case NGHTTP2_HCAT_PUSH_RESPONSE:
       print_frame_attr_indent();
-      printf("; First push response header\n");
+      fprintf(outfile, "; First push response header\n");
       break;
     default:
       break;
@@ -293,53 +356,56 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     break;
   case NGHTTP2_PRIORITY:
     print_frame_attr_indent();
-    printf("(pri=%d)\n", frame->priority.pri);
+    fprintf(outfile, "(pri=%d)\n", frame->priority.pri);
     break;
   case NGHTTP2_RST_STREAM:
     print_frame_attr_indent();
-    printf("(error_code=%s(%u))\n",
-           strstatus(frame->rst_stream.error_code),
-           frame->rst_stream.error_code);
+    fprintf(outfile, "(error_code=%s(%u))\n",
+            strstatus(frame->rst_stream.error_code),
+            frame->rst_stream.error_code);
     break;
   case NGHTTP2_SETTINGS:
     print_frame_attr_indent();
-    printf("(niv=%lu)\n", static_cast<unsigned long>(frame->settings.niv));
+    fprintf(outfile, "(niv=%lu)\n",
+            static_cast<unsigned long>(frame->settings.niv));
     for(size_t i = 0; i < frame->settings.niv; ++i) {
       print_frame_attr_indent();
-      printf("[%s(%d):%u]\n",
-             strsettingsid(frame->settings.iv[i].settings_id),
-             frame->settings.iv[i].settings_id,
-             frame->settings.iv[i].value);
+      fprintf(outfile, "[%s(%d):%u]\n",
+              strsettingsid(frame->settings.iv[i].settings_id),
+              frame->settings.iv[i].settings_id,
+              frame->settings.iv[i].value);
     }
     break;
   case NGHTTP2_PUSH_PROMISE:
     print_frame_attr_indent();
-    printf("(promised_stream_id=%d)\n",
-           frame->push_promise.promised_stream_id);
+    fprintf(outfile, "(promised_stream_id=%d, padlen=%zu)\n",
+            frame->push_promise.promised_stream_id,
+            frame->push_promise.padlen);
     print_nv(frame->push_promise.nva, frame->push_promise.nvlen);
     break;
   case NGHTTP2_PING:
     print_frame_attr_indent();
-    printf("(opaque_data=%s)\n",
-           util::format_hex(frame->ping.opaque_data, 8).c_str());
+    fprintf(outfile, "(opaque_data=%s)\n",
+            util::format_hex(frame->ping.opaque_data, 8).c_str());
     break;
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();
-    printf("(last_stream_id=%d, error_code=%s(%u), opaque_data(%u)=[%s])\n",
-           frame->goaway.last_stream_id,
-           strstatus(frame->goaway.error_code),
-           frame->goaway.error_code,
-           static_cast<unsigned int>(frame->goaway.opaque_data_len),
-           util::format_hex(frame->goaway.opaque_data,
-                            frame->goaway.opaque_data_len).c_str());
+    fprintf(outfile,
+            "(last_stream_id=%d, error_code=%s(%u), opaque_data(%u)=[%s])\n",
+            frame->goaway.last_stream_id,
+            strstatus(frame->goaway.error_code),
+            frame->goaway.error_code,
+            static_cast<unsigned int>(frame->goaway.opaque_data_len),
+            util::format_hex(frame->goaway.opaque_data,
+                             frame->goaway.opaque_data_len).c_str());
     break;
   case NGHTTP2_WINDOW_UPDATE:
     print_frame_attr_indent();
-    printf("(window_size_increment=%d)\n",
-           frame->window_update.window_size_increment);
+    fprintf(outfile, "(window_size_increment=%d)\n",
+            frame->window_update.window_size_increment);
     break;
   default:
-    printf("\n");
+    fprintf(outfile, "\n");
     break;
   }
 }
@@ -356,7 +422,7 @@ int verbose_on_header_callback(nghttp2_session *session,
     static_cast<uint16_t>(namelen), static_cast<uint16_t>(valuelen)
   };
   print_timer();
-  printf(" (stream_id=%d) ", frame->hd.stream_id);
+  fprintf(outfile, " (stream_id=%d) ", frame->hd.stream_id);
   print_nv(&nv, 1, false /* no indent */);
   return 0;
 }
@@ -365,9 +431,9 @@ int verbose_on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   print_timer();
-  printf(" recv ");
+  fprintf(outfile, " recv ");
   print_frame(PRINT_RECV, frame);
-  fflush(stdout);
+  fflush(outfile);
   return 0;
 }
 
@@ -376,9 +442,9 @@ int verbose_on_invalid_frame_recv_callback
  nghttp2_error_code error_code, void *user_data)
 {
   print_timer();
-  printf(" [INVALID; status=%s] recv ", strstatus(error_code));
+  fprintf(outfile, " [INVALID; status=%s] recv ", strstatus(error_code));
   print_frame(PRINT_RECV, frame);
-  fflush(stdout);
+  fflush(outfile);
   return 0;
 }
 
@@ -387,11 +453,11 @@ void dump_header(const uint8_t *head, size_t headlen)
 {
   size_t i;
   print_frame_attr_indent();
-  printf("Header dump: ");
+  fprintf(outfile, "Header dump: ");
   for(i = 0; i < headlen; ++i) {
-    printf("%02X ", head[i]);
+    fprintf(outfile, "%02X ", head[i]);
   }
-  printf("\n");
+  fprintf(outfile, "\n");
 }
 } // namespace
 
@@ -403,9 +469,9 @@ int verbose_on_unknown_frame_recv_callback(nghttp2_session *session,
                                            void *user_data)
 {
   print_timer();
-  printf(" recv unknown frame\n");
+  fprintf(outfile, " recv unknown frame\n");
   dump_header(head, headlen);
-  fflush(stdout);
+  fflush(outfile);
   return 0;
 }
 
@@ -413,9 +479,9 @@ int verbose_on_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   print_timer();
-  printf(" send ");
+  fprintf(outfile, " send ");
   print_frame(PRINT_SEND, frame);
-  fflush(stdout);
+  fflush(outfile);
   return 0;
 }
 

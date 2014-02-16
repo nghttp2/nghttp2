@@ -86,6 +86,10 @@ void print_timer();
 // variable.
 void set_color_output(bool f);
 
+// Set output file when printing HTTP2 frames. By default, stdout is
+// used.
+void set_output(FILE *file);
+
 } // namespace nghttp2
 
 #endif // APP_HELPER_H

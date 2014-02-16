@@ -117,25 +117,11 @@ typedef struct {
   /* The flags for defered DATA. Bitwise OR of zero or more
      nghttp2_deferred_flag values */
   uint8_t deferred_flags;
-  /* Flag to indicate whether the remote side has flow control
-     enabled. If it is enabled, we have to enforces flow control to
-     send data to the other side. This could be disabled when
-     receiving SETTINGS with flow control options off or receiving
-     WINDOW_UPDATE with END_FLOW_CONTROL bit set. */
-  uint8_t remote_flow_control;
-  /* Flag to indicate whether the local side has flow control
-     enabled. If it is enabled, the received data are subject to the
-     flow control. This could be disabled by sending SETTINGS with
-     flow control options off or sending WINDOW_UPDATE with
-     END_FLOW_CONTROL bit set. */
-  uint8_t local_flow_control;
 } nghttp2_stream;
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          uint8_t flags, int32_t pri,
                          nghttp2_stream_state initial_state,
-                         uint8_t remote_flow_control,
-                         uint8_t local_flow_control,
                          int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
                          void *stream_user_data);
