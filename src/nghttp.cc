@@ -1655,13 +1655,17 @@ int run(char **uris, int n)
 } // namespace
 
 namespace {
+void print_version(std::ostream& out)
+{
+  out << "nghttp nghttp2/" NGHTTP2_VERSION << std::endl;
+}
+} // namespace
+
+namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [-Oansuv] [-t <SECONDS>] [-w <WINDOW_BITS>] [-W <WINDOW_BITS>]\n"
-      << "              [--cert=<CERT>] [--key=<KEY>] [-d <FILE>] [-m <N>]\n"
-      << "              [-p <PRIORITY>] [-M <N>] [-b <ALIGNMENT>]\n"
-      << "              <URI>..."
-      << std::endl;
+  out << "Usage: nghttp [OPTIONS]... <URI>...\n"
+      << "HTTP/2 experimental client" << std::endl;
 }
 } // namespace
 
@@ -1670,56 +1674,59 @@ void print_help(std::ostream& out)
 {
   print_usage(out);
   out << "\n"
-      << "OPTIONS:\n"
-      << "    -v, --verbose      Print debug information such as reception/\n"
-      << "                       transmission of frames and name/value pairs.\n"
-      << "    -n, --null-out     Discard downloaded data.\n"
-      << "    -O, --remote-name  Save download data in the current directory.\n"
-      << "                       The filename is dereived from URI. If URI\n"
-      << "                       ends with '/', 'index.html' is used as a\n"
-      << "                       filename. Not implemented yet.\n"
-      << "    -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
-      << "    -w, --window-bits=<N>\n"
-      << "                       Sets the stream level initial window size\n"
-      << "                       to 2**<N>-1.\n"
-      << "    -W, --connection-window-bits=<N>\n"
-      << "                       Sets the connection level initial window\n"
-      << "                       size to 2**<N>-1.\n"
-      << "    -a, --get-assets   Download assets such as stylesheets, images\n"
-      << "                       and script files linked from the downloaded\n"
-      << "                       resource. Only links whose origins are the\n"
-      << "                       same with the linking resource will be\n"
-      << "                       downloaded.\n"
-      << "    -s, --stat         Print statistics.\n"
-      << "    -H, --header       Add a header to the requests.\n"
-      << "    --cert=<CERT>      Use the specified client certificate file.\n"
-      << "                       The file must be in PEM format.\n"
-      << "    --key=<KEY>        Use the client private key file. The file\n"
-      << "                       must be in PEM format.\n"
-      << "    -d, --data=<FILE>  Post FILE to server. If - is given, data\n"
-      << "                       will be read from stdin.\n"
-      << "    -m, --multiply=<N> Request each URI <N> times. By default, same\n"
-      << "                       URI is not requested twice. This option\n"
-      << "                       disables it too.\n"
-      << "    -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
-      << "                       option is ignored if the request URI has\n"
-      << "                       https scheme.\n"
-      << "                       If -d is used, the HTTP upgrade request is\n"
-      << "                       performed with OPTIONS method.\n"
-      << "    -p, --pri=<PRIORITY>\n"
-      << "                       Sets stream priority. Default: "
+      << "  <URI>              Specify URI to access.\n"
+      << "Options:\n"
+      << "  -v, --verbose      Print debug information such as reception/\n"
+      << "                     transmission of frames and name/value pairs.\n"
+      << "  -n, --null-out     Discard downloaded data.\n"
+      << "  -O, --remote-name  Save download data in the current directory.\n"
+      << "                     The filename is dereived from URI. If URI\n"
+      << "                     ends with '/', 'index.html' is used as a\n"
+      << "                     filename. Not implemented yet.\n"
+      << "  -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
+      << "  -w, --window-bits=<N>\n"
+      << "                     Sets the stream level initial window size\n"
+      << "                     to 2**<N>-1.\n"
+      << "  -W, --connection-window-bits=<N>\n"
+      << "                     Sets the connection level initial window\n"
+      << "                     size to 2**<N>-1.\n"
+      << "  -a, --get-assets   Download assets such as stylesheets, images\n"
+      << "                     and script files linked from the downloaded\n"
+      << "                     resource. Only links whose origins are the\n"
+      << "                     same with the linking resource will be\n"
+      << "                     downloaded.\n"
+      << "  -s, --stat         Print statistics.\n"
+      << "  -H, --header       Add a header to the requests.\n"
+      << "  --cert=<CERT>      Use the specified client certificate file.\n"
+      << "                     The file must be in PEM format.\n"
+      << "  --key=<KEY>        Use the client private key file. The file\n"
+      << "                     must be in PEM format.\n"
+      << "  -d, --data=<FILE>  Post FILE to server. If - is given, data\n"
+      << "                     will be read from stdin.\n"
+      << "  -m, --multiply=<N> Request each URI <N> times. By default, same\n"
+      << "                     URI is not requested twice. This option\n"
+      << "                     disables it too.\n"
+      << "  -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
+      << "                     option is ignored if the request URI has\n"
+      << "                     https scheme.\n"
+      << "                     If -d is used, the HTTP upgrade request is\n"
+      << "                     performed with OPTIONS method.\n"
+      << "  -p, --pri=<PRIORITY>\n"
+      << "                     Sets stream priority. Default: "
       << NGHTTP2_PRI_DEFAULT << "\n"
-      << "    -M, --peer-max-concurrent-streams=<N>\n"
-      << "                       Use <N> as SETTINGS_MAX_CONCURRENT_STREAMS\n"
-      << "                       value of remote endpoint as if it is\n"
-      << "                       received in SETTINGS frame. The default\n"
-      << "                       is large enough as it is seen as unlimited.\n"
-      << "    -c, --header-table-size=<N>\n"
-      << "                       Specify decoder header table size.\n"
-      << "    -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
-      << "                       padding. Specify 0 to disable padding.\n"
-      << "    --color            Force colored log output.\n"
-      << "    --continuation     Send large header to test CONTINUATION.\n"
+      << "  -M, --peer-max-concurrent-streams=<N>\n"
+      << "                     Use <N> as SETTINGS_MAX_CONCURRENT_STREAMS\n"
+      << "                     value of remote endpoint as if it is\n"
+      << "                     received in SETTINGS frame. The default\n"
+      << "                     is large enough as it is seen as unlimited.\n"
+      << "  -c, --header-table-size=<N>\n"
+      << "                     Specify decoder header table size.\n"
+      << "  -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
+      << "                     padding. Specify 0 to disable padding.\n"
+      << "  --color            Force colored log output.\n"
+      << "  --continuation     Send large header to test CONTINUATION.\n"
+      << "  --version          Display version information and exit.\n"
+      << "  -h, --help         Display this help and exit.\n"
       << std::endl;
 }
 } // namespace
@@ -1751,6 +1758,7 @@ int main(int argc, char **argv)
       {"key", required_argument, &flag, 2},
       {"color", no_argument, &flag, 3},
       {"continuation", no_argument, &flag, 4},
+      {"version", no_argument, &flag, 5},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -1889,6 +1897,10 @@ int main(int argc, char **argv)
         // continuation option
         config.continuation = true;
         break;
+      case 5:
+        // version option
+        print_version(std::cout);
+        exit(EXIT_SUCCESS);
       }
       break;
     default:

@@ -73,11 +73,18 @@ int parse_push_config(Config& config, const char *optarg)
 } // namespace
 
 namespace {
+void print_version(std::ostream& out)
+{
+  out << "nghttpd nghttp2/" NGHTTP2_VERSION << std::endl;
+}
+} // namespace
+
+namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttpd [-DVhpv] [-d <PATH>] [--no-tls] [-b <ALIGNMENT>]\n"
-      << "               <PORT> [<PRIVATE_KEY> <CERT>]"
-      << std::endl;
+  out << "Usage: nghttpd [OPTION]... <PORT> <PRIVATE_KEY> <CERT>\n"
+      << "  or:  nghttpd --no-tls [OPTION]... <PORT>\n"
+      << "HTTP/2 experimental server" << std::endl;
 }
 } // namespace
 
@@ -86,38 +93,45 @@ void print_help(std::ostream& out)
 {
   print_usage(out);
   out << "\n"
-      << "OPTIONS:\n"
-      << "    -D, --daemon       Run in a background. If -D is used, the\n"
-      << "                       current working directory is changed to '/'.\n"
-      << "                       Therefore if this option is used, -d option\n"
-      << "                       must be specified.\n"
-      << "    -V, --verify-client\n"
-      << "                       The server sends a client certificate\n"
-      << "                       request. If the client did not return a\n"
-      << "                       certificate, the handshake is terminated.\n"
-      << "                       Currently, this option just requests a\n"
-      << "                       client certificate and does not verify it.\n"
-      << "    -d, --htdocs=<PATH>\n"
-      << "                       Specify document root. If this option is\n"
-      << "                       not specified, the document root is the\n"
-      << "                       current working directory.\n"
-      << "    -v, --verbose      Print debug information such as reception/\n"
-      << "                       transmission of frames and name/value pairs.\n"
-      << "    --no-tls           Disable SSL/TLS.\n"
-      << "    -c, --header-table-size=<N>\n"
-      << "                       Specify decoder header table size.\n"
-      << "    --color            Force colored log output.\n"
-      << "    -p, --push=<PATH>=<PUSH_PATH,...>\n"
-      << "                       Push resources PUSH_PATHs when PATH is\n"
-      << "                       requested. This option can be used\n"
-      << "                       repeatedly to specify multiple push\n"
-      << "                       configurations. For example,\n"
-      << "                         -p/=/foo.png -p/doc=/bar.css\n"
-      << "                       PATH and PUSH_PATHs are relative to document\n"
-      << "                       root. See --htdocs option.\n"
-      << "    -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
-      << "                       padding. Specify 0 to disable padding.\n"
-      << "    -h, --help         Print this help.\n"
+      << "  <PORT>             Specify listening port number.\n"
+      << "  <PRIVATE_KEY>      Set path to server's private key. Required\n"
+      << "                     unless --no-tls is specified.\n"
+      << "  <CERT>             Set path to server's certificate. Required\n"
+      << "                     unless --no-tls is specified.\n"
+      << "\n"
+      << "Options:\n"
+      << "  -D, --daemon       Run in a background. If -D is used, the\n"
+      << "                     current working directory is changed to '/'.\n"
+      << "                     Therefore if this option is used, -d option\n"
+      << "                     must be specified.\n"
+      << "  -V, --verify-client\n"
+      << "                     The server sends a client certificate\n"
+      << "                     request. If the client did not return a\n"
+      << "                     certificate, the handshake is terminated.\n"
+      << "                     Currently, this option just requests a\n"
+      << "                     client certificate and does not verify it.\n"
+      << "  -d, --htdocs=<PATH>\n"
+      << "                     Specify document root. If this option is\n"
+      << "                     not specified, the document root is the\n"
+      << "                     current working directory.\n"
+      << "  -v, --verbose      Print debug information such as reception/\n"
+      << "                     transmission of frames and name/value pairs.\n"
+      << "  --no-tls           Disable SSL/TLS.\n"
+      << "  -c, --header-table-size=<N>\n"
+      << "                     Specify decoder header table size.\n"
+      << "  --color            Force colored log output.\n"
+      << "  -p, --push=<PATH>=<PUSH_PATH,...>\n"
+      << "                     Push resources PUSH_PATHs when PATH is\n"
+      << "                     requested. This option can be used\n"
+      << "                     repeatedly to specify multiple push\n"
+      << "                     configurations. For example,\n"
+      << "                       -p/=/foo.png -p/doc=/bar.css\n"
+      << "                     PATH and PUSH_PATHs are relative to document\n"
+      << "                     root. See --htdocs option.\n"
+      << "  -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
+      << "                     padding. Specify 0 to disable padding.\n"
+      << "  --version          Display version information and exit.\n"
+      << "  -h, --help         Display this help and exit.\n"
       << std::endl;
 }
 } // namespace
@@ -139,6 +153,7 @@ int main(int argc, char **argv)
       {"padding", required_argument, nullptr, 'b'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
+      {"version", no_argument, &flag, 3},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
@@ -192,6 +207,10 @@ int main(int argc, char **argv)
         // color option
         color = true;
         break;
+      case 3:
+        // version
+        print_version(std::cout);
+        exit(EXIT_SUCCESS);
       }
       break;
     default:
