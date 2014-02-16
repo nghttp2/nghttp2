@@ -890,8 +890,8 @@ and decompressor in Python:
     import binascii
     import nghttp2
 
-    deflater = nghttp2.HDDeflater(nghttp2.HD_SIDE_REQUEST)
-    inflater = nghttp2.HDInflater(nghttp2.HD_SIDE_REQUEST)
+    deflater = nghttp2.HDDeflater()
+    inflater = nghttp2.HDInflater()
 
     data = deflater.deflate([(b'foo', b'bar'),
                              (b'baz', b'buz')])
