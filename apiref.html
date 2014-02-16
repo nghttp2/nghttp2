@@ -555,14 +555,14 @@ The GOAWAY frame.</p>
 <dl class="macro">
 <dt id="NGHTTP2_WINDOW_UPDATE">
 <tt class="descname">NGHTTP2_WINDOW_UPDATE</tt><a class="headerlink" href="#NGHTTP2_WINDOW_UPDATE" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">9</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">8</span></tt>)
 The WINDOW_UPDATE frame.</p>
 </dd></dl>
 
 <dl class="macro">
 <dt id="NGHTTP2_CONTINUATION">
 <tt class="descname">NGHTTP2_CONTINUATION</tt><a class="headerlink" href="#NGHTTP2_CONTINUATION" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">10</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">9</span></tt>)
 The CONTINUATION frame.</p>
 </dd></dl>
 
@@ -615,6 +615,27 @@ The END_PUSH_PROMISE flag.</p>
 The ACK flag.</p>
 </dd></dl>
 
+<dl class="macro">
+<dt id="NGHTTP2_FLAG_END_SEGMENT">
+<tt class="descname">NGHTTP2_FLAG_END_SEGMENT</tt><a class="headerlink" href="#NGHTTP2_FLAG_END_SEGMENT" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x2</span></tt>)
+The END_SEGMENT flag.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="NGHTTP2_FLAG_PAD_LOW">
+<tt class="descname">NGHTTP2_FLAG_PAD_LOW</tt><a class="headerlink" href="#NGHTTP2_FLAG_PAD_LOW" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x10</span></tt>)
+The PAD_LOW flag.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="NGHTTP2_FLAG_PAD_HIGH">
+<tt class="descname">NGHTTP2_FLAG_PAD_HIGH</tt><a class="headerlink" href="#NGHTTP2_FLAG_PAD_HIGH" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x20</span></tt>)
+The PAD_HIGH flag.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -638,28 +659,21 @@ SETTINGS_ENABLE_PUSH</p>
 <dl class="macro">
 <dt id="NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS">
 <tt class="descname">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">4</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">3</span></tt>)
 SETTINGS_MAX_CONCURRENT_STREAMS</p>
 </dd></dl>
 
 <dl class="macro">
 <dt id="NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE">
 <tt class="descname">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">7</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">4</span></tt>)
 SETTINGS_INITIAL_WINDOW_SIZE</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS">
-<tt class="descname">NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">10</span></tt>)
-SETTINGS_FLOW_CONTROL_OPTIONS</p>
 </dd></dl>
 
 <dl class="macro">
 <dt id="NGHTTP2_SETTINGS_MAX">
 <tt class="descname">NGHTTP2_SETTINGS_MAX</tt><a class="headerlink" href="#NGHTTP2_SETTINGS_MAX" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">10</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">4</span></tt>)
 Maximum ID of <a class="reference internal" href="#nghttp2_settings_id" title="nghttp2_settings_id"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_id</span></tt></a>.</p>
 </dd></dl>
 
@@ -749,8 +763,15 @@ CONNECT_ERROR</p>
 <dl class="macro">
 <dt id="NGHTTP2_ENHANCE_YOUR_CALM">
 <tt class="descname">NGHTTP2_ENHANCE_YOUR_CALM</tt><a class="headerlink" href="#NGHTTP2_ENHANCE_YOUR_CALM" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">420</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">11</span></tt>)
 ENHANCE_YOUR_CALM</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="NGHTTP2_INADEQUATE_SECURITY">
+<tt class="descname">NGHTTP2_INADEQUATE_SECURITY</tt><a class="headerlink" href="#NGHTTP2_INADEQUATE_SECURITY" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">12</span></tt>)
+INADEQUATE_SECURITY</p>
 </dd></dl>
 
 </dd></dl>
@@ -1015,6 +1036,13 @@ of data from it.</p>
 <tt class="descname">nghttp2_data</tt><a class="headerlink" href="#nghttp2_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>The DATA frame. The received data is delivered via
 <a class="reference internal" href="#nghttp2_on_data_chunk_recv_callback" title="nghttp2_on_data_chunk_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_data_chunk_recv_callback</span></tt></a>.</p>
+<dl class="member">
+<dt id="nghttp2_data.padlen">
+size_t <tt class="descname">padlen</tt><a class="headerlink" href="#nghttp2_data.padlen" title="Permalink to this definition">¶</a></dt>
+<dd><p>The length of the padding in this frame. This includes PAD_HIGH
+and PAD_LOW.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -1025,6 +1053,13 @@ of data from it.</p>
 <dt id="nghttp2_headers.hd">
 <a class="reference internal" href="#nghttp2_frame_hd" title="nghttp2_frame_hd">nghttp2_frame_hd</a> <tt class="descname">hd</tt><a class="headerlink" href="#nghttp2_headers.hd" title="Permalink to this definition">¶</a></dt>
 <dd><p>The frame header.</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_headers.padlen">
+size_t <tt class="descname">padlen</tt><a class="headerlink" href="#nghttp2_headers.padlen" title="Permalink to this definition">¶</a></dt>
+<dd><p>The length of the padding in this frame. This includes PAD_HIGH
+and PAD_LOW.</p>
 </dd></dl>
 
 <dl class="member">
@@ -1139,6 +1174,13 @@ size_t <tt class="descname">niv</tt><a class="headerlink" href="#nghttp2_setting
 <dt id="nghttp2_push_promise.hd">
 <a class="reference internal" href="#nghttp2_frame_hd" title="nghttp2_frame_hd">nghttp2_frame_hd</a> <tt class="descname">hd</tt><a class="headerlink" href="#nghttp2_push_promise.hd" title="Permalink to this definition">¶</a></dt>
 <dd><p>The frame header.</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_push_promise.padlen">
+size_t <tt class="descname">padlen</tt><a class="headerlink" href="#nghttp2_push_promise.padlen" title="Permalink to this definition">¶</a></dt>
+<dd><p>The length of the padding in this frame. This includes PAD_HIGH
+and PAD_LOW.</p>
 </dd></dl>
 
 <dl class="member">
@@ -1550,6 +1592,21 @@ immediately return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAI
 </dd></dl>
 
 <dl class="type">
+<dt id="nghttp2_select_padding_callback">
+typedef ssize_t <tt class="descname">(*nghttp2_select_padding_callback)</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, size_t<em>&nbsp;max_payloadlen</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#nghttp2_select_padding_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback function invoked when the library asks application how
+much padding is required for the transmission of the <em>frame</em>. The
+application must choose the total length of payload including
+padded bytes in range [frame-&gt;hd.length, max_payloadlen],
+inclusive. Choosing number not in this range will be treated as
+<a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>. Returning
+<tt class="docutils literal"><span class="pre">frame-&gt;hd.length</span></tt> means no padding is added.  Returning
+<a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a> will make
+<a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> function immediately return
+<a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="type">
 <dt id="nghttp2_session_callbacks">
 <tt class="descname">nghttp2_session_callbacks</tt><a class="headerlink" href="#nghttp2_session_callbacks" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback functions.</p>
@@ -1632,6 +1689,13 @@ HEADERS or PUSH_PROMISE is started.</p>
 <a class="reference internal" href="#nghttp2_on_header_callback" title="nghttp2_on_header_callback">nghttp2_on_header_callback</a> <tt class="descname">on_header_callback</tt><a class="headerlink" href="#nghttp2_session_callbacks.on_header_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when a header name/value pair is
 received.</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="nghttp2_session_callbacks.select_padding_callback">
+<a class="reference internal" href="#nghttp2_select_padding_callback" title="nghttp2_select_padding_callback">nghttp2_select_padding_callback</a> <tt class="descname">select_padding_callback</tt><a class="headerlink" href="#nghttp2_session_callbacks.select_padding_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback function invoked when the library asks application how
+much padding is required for the transmission of the given frame.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1979,8 +2043,6 @@ that and returns effective data length. In particular, if the
 local window size is reduced by submitting negative
 window_size_increment with <a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>, this
 function returns the number of bytes less than actually received.</p>
-<p>If flow control is disabled for that stream, this function returns
-0.</p>
 <p>This function returns -1 if it fails.</p>
 </dd></dl>
 
@@ -2005,8 +2067,6 @@ that and returns effective data length. In particular, if the local
 window size is reduced by submitting negative window_size_increment
 with <a class="reference internal" href="#nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>, this function returns the
 number of bytes less than actually received.</p>
-<p>If flow control is disabled for a connection, this function returns
-0.</p>
 <p>This function returns -1 if it fails.</p>
 </dd></dl>
 
@@ -2303,8 +2363,8 @@ by the library and application could not send it at its will.</p>
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>iv</em> contains invalid value (e.g., attempting to re-enable
-flow control).</dd>
+<dd>The <em>iv</em> contains invalid value (e.g., initial window size
+strictly greater than (1 &lt;&lt; 31) - 1.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 </dl>

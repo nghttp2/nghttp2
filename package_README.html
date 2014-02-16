@@ -152,45 +152,36 @@
 version 2.0.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
-<p>We started to implement HTTP-draft-09/2.0
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-09">http://tools.ietf.org/html/draft-ietf-httpbis-http2-09</a>) and the
+<p>We started to implement h2-10
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-10">http://tools.ietf.org/html/draft-ietf-httpbis-http2-10</a>) and the
 header compression
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-05">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-05</a>).</p>
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-06">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-06</a>).</p>
 <p>The nghttp2 code base was forked from spdylay project.</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="60%" />
-<col width="40%" />
+<col width="84%" />
+<col width="16%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Features</th>
-<th class="head">HTTP-draft-09/2.0</th>
+<th class="head">h2-10</th>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td>:authority</td>
+<tr class="row-even"><td>HPACK-draft-06</td>
 <td>Done</td>
 </tr>
-<tr class="row-odd"><td>HPACK-draft-05</td>
+<tr class="row-odd"><td>Strict SETTINGS validation</td>
 <td>Done</td>
 </tr>
-<tr class="row-even"><td>SETTINGS_HEADER_TABLE_SIZE</td>
+<tr class="row-even"><td>Disallow client to push</td>
 <td>Done</td>
 </tr>
-<tr class="row-odd"><td>SETTINGS_ENABLE_PUSH</td>
+<tr class="row-odd"><td>Padding</td>
 <td>Done</td>
 </tr>
-<tr class="row-even"><td>FRAME_SIZE_ERROR</td>
-<td>Done</td>
-</tr>
-<tr class="row-odd"><td>SETTINGS with ACK</td>
-<td>Done</td>
-</tr>
-<tr class="row-even"><td>Header Continuation</td>
-<td>Done</td>
-</tr>
-<tr class="row-odd"><td>ALPN</td>
-<td>Done</td>
+<tr class="row-even"><td>END_SEGMENT</td>
+<td>&nbsp;</td>
 </tr>
 </tbody>
 </table>
@@ -198,15 +189,20 @@ header compression
 <div class="section" id="public-test-server">
 <h2>Public Test Server<a class="headerlink" href="#public-test-server" title="Permalink to this headline">¶</a></h2>
 <p>The following endpoints are available to try out nghttp2
-implementation.  These endpoints supports <tt class="docutils literal"><span class="pre">HTTP-draft-09/2.0</span></tt> and
-the earlier draft versions are not supporeted.</p>
+implementation.</p>
 <ul>
-<li><p class="first"><a class="reference external" href="https://106.186.112.116">https://106.186.112.116</a> (TLS + NPN / ALPN)</p>
+<li><p class="first"><a class="reference external" href="https://106.186.112.116:8443/">https://106.186.112.116:8443/</a> (TLS + NPN / ALPN)</p>
+<p>ALPN and NPN offer <tt class="docutils literal"><span class="pre">h2-10</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3</span></tt>, <tt class="docutils literal"><span class="pre">spdy/2</span></tt>
+and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
+<p>Note: certificate is self-signed and a browser will show alert</p>
+</li>
+<li><p class="first"><a class="reference external" href="https://106.186.112.116/">https://106.186.112.116/</a> (TLS + NPN / ALPN)</p>
 <p>ALPN and NPN offer <tt class="docutils literal"><span class="pre">HTTP-draft-09/2.0</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3</span></tt>,
 <tt class="docutils literal"><span class="pre">spdy/2</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
 <p>Note: certificate is self-signed and a browser will show alert</p>
 </li>
-<li><p class="first"><a class="reference external" href="http://106.186.112.116">http://106.186.112.116</a> (Upgrade + Direct)</p>
+<li><p class="first"><a class="reference external" href="http://106.186.112.116/">http://106.186.112.116/</a> (Upgrade / Direct)</p>
+<p><tt class="docutils literal"><span class="pre">HTTP-draft-09/2.0</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt></p>
 </li>
 </ul>
 </div>
@@ -305,19 +301,21 @@ $ make</pre>
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 <p>It has verbose output mode for framing information. Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
-<div class="highlight-c"><pre>$ src/nghttp -vn https://localhost:8443
-[  0.003] NPN select next protocol: the remote server offers:
-          * HTTP-draft-09/2.0
+<div class="highlight-c"><pre>$ src/nghttp -nv https://localhost:8443
+[  0.004][NPN] server offers:
+          * h2-10
+          * spdy/3.1
           * spdy/3
           * spdy/2
           * http/1.1
-          NPN selected the protocol: HTTP-draft-09/2.0
-[  0.005] send SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
+The negotiated protocol: h2-10
+[  0.006] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-[  0.006] send HEADERS frame &lt;length=47, flags=0x05, stream_id=1&gt;
+          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+[  0.007] send HEADERS frame &lt;length=48, flags=0x05, stream_id=1&gt;
           ; END_STREAM | END_HEADERS
+          (padlen=0)
           ; Open new stream
           :authority: localhost:8443
           :method: GET
@@ -325,90 +323,90 @@ output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> cl
           :scheme: https
           accept: */*
           accept-encoding: gzip, deflate
-          user-agent: nghttp2/0.1.0-DEV
-[  0.006] recv SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
-          (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-[  0.006] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+          user-agent: nghttp2/0.4.0-DEV
+[  0.007] recv SETTINGS frame &lt;length=15, flags=0x00, stream_id=0&gt;
+          (niv=3)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+          [SETTINGS_ENABLE_PUSH(2):0]
+[  0.007] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[  0.006] recv WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=0&gt;
-          (window_size_increment=1000000007)
-[  0.006] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+[  0.007] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[  0.006] recv HEADERS frame &lt;length=132, flags=0x04, stream_id=1&gt;
+[  0.008] (stream_id=1) :status: 200
+[  0.008] (stream_id=1) accept-ranges: bytes
+[  0.008] (stream_id=1) content-encoding: gzip
+[  0.008] (stream_id=1) content-length: 146
+[  0.008] (stream_id=1) content-type: text/html
+[  0.008] (stream_id=1) date: Sat, 15 Feb 2014 08:14:12 GMT
+[  0.008] (stream_id=1) etag: "b1-4e5535a027780-gzip"
+[  0.008] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+[  0.008] (stream_id=1) server: Apache/2.4.6 (Debian)
+[  0.008] (stream_id=1) vary: Accept-Encoding
+[  0.008] (stream_id=1) via: 1.1 nghttpx
+[  0.008] recv HEADERS frame &lt;length=141, flags=0x04, stream_id=1&gt;
           ; END_HEADERS
+          (padlen=0)
           ; First response header
-          :status: 200
-          accept-ranges: bytes
-          content-encoding: gzip
-          content-length: 146
-          content-type: text/html
-          date: Sun, 27 Oct 2013 14:23:54 GMT
-          etag: "b1-4e5535a027780-gzip"
-          last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-          server: Apache/2.4.6 (Debian)
-          vary: Accept-Encoding
-          via: 1.1 nghttpx
-[  0.006] recv DATA frame &lt;length=146, flags=0x00, stream_id=1&gt;
-[  0.006] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+[  0.008] recv DATA frame &lt;length=146, flags=0x00, stream_id=1&gt;
+[  0.008] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
           ; END_STREAM
-[  0.007] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+[  0.008] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
           (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])</pre>
 </div>
 <p>The HTTP Upgrade is performed like this:</p>
-<div class="highlight-c"><pre>$ src/nghttp -vnu http://localhost:8080
+<div class="highlight-c"><pre>$ src/nghttp -nvu http://localhost:8080
 [  0.000] HTTP Upgrade request
 GET / HTTP/1.1
 Host: localhost:8080
 Connection: Upgrade, HTTP2-Settings
-Upgrade: HTTP-draft-09/2.0
-HTTP2-Settings: AAAABAAAAGQAAAAHAAD__w
+Upgrade: h2-10
+HTTP2-Settings: AwAAAGQEAAD__w
 Accept: */*
-User-Agent: nghttp2/0.1.0-DEV
+User-Agent: nghttp2/0.4.0-DEV
 
 
-[  0.000] HTTP Upgrade response
+[  0.001] HTTP Upgrade response
 HTTP/1.1 101 Switching Protocols
 Connection: Upgrade
-Upgrade: HTTP-draft-09/2.0
+Upgrade: h2-10
 
 
 [  0.001] HTTP Upgrade success
-[  0.001] send SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
+[  0.001] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-[  0.001] recv SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
-          (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-[  0.001] recv WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=0&gt;
-          (window_size_increment=1000000007)
-[  0.001] recv HEADERS frame &lt;length=121, flags=0x04, stream_id=1&gt;
+          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+[  0.001] recv SETTINGS frame &lt;length=15, flags=0x00, stream_id=0&gt;
+          (niv=3)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+          [SETTINGS_ENABLE_PUSH(2):0]
+[  0.001] (stream_id=1) :status: 200
+[  0.001] (stream_id=1) accept-ranges: bytes
+[  0.001] (stream_id=1) content-length: 177
+[  0.001] (stream_id=1) content-type: text/html
+[  0.001] (stream_id=1) date: Sat, 15 Feb 2014 08:16:23 GMT
+[  0.001] (stream_id=1) etag: "b1-4e5535a027780"
+[  0.001] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
+[  0.001] (stream_id=1) server: Apache/2.4.6 (Debian)
+[  0.001] (stream_id=1) vary: Accept-Encoding
+[  0.001] (stream_id=1) via: 1.1 nghttpx
+[  0.001] recv HEADERS frame &lt;length=132, flags=0x04, stream_id=1&gt;
           ; END_HEADERS
+          (padlen=0)
           ; First response header
-          :status: 200
-          accept-ranges: bytes
-          content-length: 177
-          content-type: text/html
-          date: Sun, 27 Oct 2013 14:26:04 GMT
-          etag: "b1-4e5535a027780"
-          last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-          server: Apache/2.4.6 (Debian)
-          vary: Accept-Encoding
-          via: 1.1 nghttpx
 [  0.001] recv DATA frame &lt;length=177, flags=0x00, stream_id=1&gt;
 [  0.001] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
           ; END_STREAM
-[  0.001] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+[  0.002] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[  0.001] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+[  0.002] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
           (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-[  0.001] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+[  0.002] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)</pre>
 </div>
@@ -427,50 +425,53 @@ information. Here is sample output from <tt class="docutils literal"><span class
 <div class="highlight-c"><pre>$ src/nghttpd --no-tls -v 8080
 IPv4: listen on port 8080
 IPv6: listen on port 8080
-[id=1] [  1.189] send SETTINGS frame &lt;length=8, flags=0x00, stream_id=0&gt;
-          (niv=1)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-[id=1] [  1.191] recv SETTINGS frame &lt;length=16, flags=0x00, stream_id=0&gt;
+[id=1] [  1.027] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(4):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(7):65535]
-[id=1] [  1.191] recv HEADERS frame &lt;length=47, flags=0x05, stream_id=1&gt;
+          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+          [SETTINGS_ENABLE_PUSH(2):0]
+[id=1] [  1.027] recv SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
+          (niv=2)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+[id=1] [  1.027] (stream_id=1) :authority: localhost:8080
+[id=1] [  1.027] (stream_id=1) :method: GET
+[id=1] [  1.027] (stream_id=1) :path: /
+[id=1] [  1.027] (stream_id=1) :scheme: http
+[id=1] [  1.027] (stream_id=1) accept: */*
+[id=1] [  1.027] (stream_id=1) accept-encoding: gzip, deflate
+[id=1] [  1.027] (stream_id=1) user-agent: nghttp2/0.4.0-DEV
+[id=1] [  1.027] recv HEADERS frame &lt;length=48, flags=0x05, stream_id=1&gt;
           ; END_STREAM | END_HEADERS
+          (padlen=0)
           ; Open new stream
-          :authority: localhost:8080
-          :method: GET
-          :path: /
-          :scheme: http
-          accept: */*
-          accept-encoding: gzip, deflate
-          user-agent: nghttp2/0.1.0-DEV
-[id=1] [  1.192] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+[id=1] [  1.027] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[id=1] [  1.192] send HEADERS frame &lt;length=70, flags=0x04, stream_id=1&gt;
+[id=1] [  1.027] send HEADERS frame &lt;length=72, flags=0x04, stream_id=1&gt;
           ; END_HEADERS
+          (padlen=0)
           ; First response header
           :status: 404
           content-encoding: gzip
           content-type: text/html; charset=UTF-8
-          date: Sun, 27 Oct 2013 14:27:53 GMT
-          server: nghttpd nghttp2/0.1.0-DEV
-[id=1] [  1.192] send DATA frame &lt;length=117, flags=0x00, stream_id=1&gt;
-[id=1] [  1.192] send DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+          date: Sat, 15 Feb 2014 08:18:53 GMT
+          server: nghttpd nghttp2/0.4.0-DEV
+[id=1] [  1.028] send DATA frame &lt;length=118, flags=0x00, stream_id=1&gt;
+[id=1] [  1.028] send DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
           ; END_STREAM
-[id=1] [  1.192] stream_id=1 closed
-[id=1] [  1.192] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+[id=1] [  1.028] stream_id=1 closed
+[id=1] [  1.028] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[id=1] [  1.192] recv GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+[id=1] [  1.028] recv GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
           (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-[id=1] [  1.192] closed</pre>
+[id=1] [  1.028] closed</pre>
 </div>
 </div>
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
-HTTP-draft-09/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
+h2-10, SPDY and HTTP/1.1. It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="24%" />
@@ -514,7 +515,7 @@ HTTP-draft-09/2.0, SPDY and HTTP/1.1. It has several operation modes:</p>
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens HTTP-draft-09/2.0, SPDY and HTTP/1.1 and
+a reverse proxy and listens h2-10, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
@@ -606,17 +607,14 @@ format used in <a class="reference external" href="https://github.com/Jxck/hpack
 <h3>deflatehd - header compressor<a class="headerlink" href="#deflatehd-header-compressor" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> reads JSON data or HTTP/1-style header fields from
 stdin and outputs compressed header block in JSON.</p>
-<p>For the JSON input, the root JSON object must contain <tt class="docutils literal"><span class="pre">context</span></tt> key,
-which indicates which compression context is used. If it is
-<tt class="docutils literal"><span class="pre">request</span></tt>, request compression context is used. Otherwise, response
-compression context is used. The value of <tt class="docutils literal"><span class="pre">cases</span></tt> key contains the
-sequence of input header set. They share the same compression context
-and are processed in the order they appear.  Each item in the sequence
-is a JSON object and it must have at least <tt class="docutils literal"><span class="pre">headers</span></tt> key. Its value
-is an array of a JSON object containing exactly one name/value pair.</p>
+<p>For the JSON input, the root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt>
+key. Its value has to include the sequence of input header set. They
+share the same compression context and are processed in the order they
+appear.  Each item in the sequence is a JSON object and it must
+include <tt class="docutils literal"><span class="pre">headers</span></tt> key. Its value is an array of a JSON object ,
+which includes exactly one name/value pair.</p>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
-  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
   <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
@@ -646,9 +644,7 @@ header field block. Each header set is delimited by empty line:</p>
 <span class="n">user</span><span class="o">-</span><span class="n">agent</span><span class="o">:</span> <span class="n">nghttp2</span>
 </pre></div>
 </div>
-<p>The output is JSON object. It contains <tt class="docutils literal"><span class="pre">context</span></tt> key and its value
-is <tt class="docutils literal"><span class="pre">request</span></tt> if the compression context is request, otherwise
-<tt class="docutils literal"><span class="pre">response</span></tt>. The root JSON object also contains <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
+<p>The output is JSON object. It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
 value is an array of JSON object, which has at least following keys:</p>
 <dl class="docutils">
 <dt>seq</dt>
@@ -668,7 +664,6 @@ value is an array of JSON object, which has at least following keys:</p>
 </dl>
 <p>Examples:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
-  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
   <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
@@ -729,9 +724,9 @@ value is an array of JSON object, which has at least following keys:</p>
 <p>The output can be used as the input for <tt class="docutils literal"><span class="pre">inflatehd</span></tt> and
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 <p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
-associated value contains the state of dyanmic header table after the
-corresponding header set was processed. The value contains following
-keys:</p>
+associated value includes the state of dyanmic header table after the
+corresponding header set was processed. The value includes at least
+following keys:</p>
 <dl class="docutils">
 <dt>entries</dt>
 <dd>The entry in the header table. If <tt class="docutils literal"><span class="pre">referenced</span></tt> is <tt class="docutils literal"><span class="pre">true</span></tt>, it
@@ -760,7 +755,6 @@ that they are no longer referenced.</dd>
 </dl>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
-  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
   <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
@@ -916,17 +910,13 @@ that they are no longer referenced.</dd>
 <h3>inflatehd - header decompressor<a class="headerlink" href="#inflatehd-header-decompressor" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> reads JSON data from stdin and outputs decompressed
 name/value pairs in JSON.</p>
-<p>The root JSON object must contain <tt class="docutils literal"><span class="pre">context</span></tt> key, which indicates
-which compression context is used. If it is <tt class="docutils literal"><span class="pre">request</span></tt>, request
-compression context is used. Otherwise, response compression context
-is used. The value of <tt class="docutils literal"><span class="pre">cases</span></tt> key contains the sequence of
-compressed header block. They share the same compression context and
-are processed in the order they appear. Each item in the sequence is a
-JSON object and it must have at least <tt class="docutils literal"><span class="pre">wire</span></tt> key. Its value is a
-string containing compressed header block in hex string.</p>
+<p>The root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt> key. Its value has to
+include the sequence of compressed header block. They share the same
+compression context and are processed in the order they appear. Each
+item in the sequence is a JSON object and it must have at least
+<tt class="docutils literal"><span class="pre">wire</span></tt> key. Its value is a compressed header block in hex string.</p>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
-  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
   <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span> <span class="nt">&quot;wire&quot;</span><span class="p">:</span> <span class="s2">&quot;8285&quot;</span> <span class="p">},</span>
@@ -935,15 +925,13 @@ string containing compressed header block in hex string.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The output is JSON object. It contains <tt class="docutils literal"><span class="pre">context</span></tt> key and its value
-is <tt class="docutils literal"><span class="pre">request</span></tt> if the compression context is request, otherwise
-<tt class="docutils literal"><span class="pre">response</span></tt>. The root JSON object also contains <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
+<p>The output is JSON object. It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
 value is an array of JSON object, which has at least following keys:</p>
 <dl class="docutils">
 <dt>seq</dt>
 <dd>The index of header set in the input.</dd>
 <dt>headers</dt>
-<dd>The JSON array contains decompressed name/value pairs.</dd>
+<dd>The JSON array includes decompressed name/value pairs.</dd>
 <dt>wire</dt>
 <dd>The compressed header block in hex string.</dd>
 <dt>header_table_size</dt>
@@ -952,7 +940,6 @@ block.</dd>
 </dl>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
-  <span class="nt">&quot;context&quot;</span><span class="p">:</span> <span class="s2">&quot;request&quot;</span><span class="p">,</span>
   <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
   <span class="p">[</span>
     <span class="p">{</span>
@@ -1007,7 +994,7 @@ block.</dd>
 <p>The output can be used as the input for <tt class="docutils literal"><span class="pre">deflatehd</span></tt> and
 <tt class="docutils literal"><span class="pre">inflatehd</span></tt>.</p>
 <p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
-associated value contains the state of dyanmic header table after the
+associated value includes the state of dyanmic header table after the
 corresponding header set was processed. The format is the same as
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 </div>
@@ -1030,8 +1017,8 @@ and decompressor in Python:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">binascii</span>
 <span class="kn">import</span> <span class="nn">nghttp2</span>
 
-<span class="n">deflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDDeflater</span><span class="p">(</span><span class="n">nghttp2</span><span class="o">.</span><span class="n">HD_SIDE_REQUEST</span><span class="p">)</span>
-<span class="n">inflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDInflater</span><span class="p">(</span><span class="n">nghttp2</span><span class="o">.</span><span class="n">HD_SIDE_REQUEST</span><span class="p">)</span>
+<span class="n">deflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDDeflater</span><span class="p">()</span>
+<span class="n">inflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDInflater</span><span class="p">()</span>
 
 <span class="n">data</span> <span class="o">=</span> <span class="n">deflater</span><span class="o">.</span><span class="n">deflate</span><span class="p">([(</span><span class="n">b</span><span class="s">&#39;foo&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;bar&#39;</span><span class="p">),</span>
                          <span class="p">(</span><span class="n">b</span><span class="s">&#39;baz&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;buz&#39;</span><span class="p">)])</span>

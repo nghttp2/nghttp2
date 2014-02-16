@@ -190,13 +190,13 @@
 <span class="cm"> *</span>
 <span class="cm"> * The protocol version identification of this library supports.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;HTTP-draft-09/2.0&quot;</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;h2-10&quot;</span>
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
 <span class="cm"> * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_PROTO_VERSION_ID_LEN 17</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID_LEN 5</span>
 
 <span class="k">struct</span> <span class="n">nghttp2_session</span><span class="p">;</span>
 <span class="cm">/**</span>
@@ -514,11 +514,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * The WINDOW_UPDATE frame.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">9</span><span class="p">,</span>
+  <span class="n">NGHTTP2_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * The CONTINUATION frame.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_CONTINUATION</span> <span class="o">=</span> <span class="mi">10</span>
+  <span class="n">NGHTTP2_CONTINUATION</span> <span class="o">=</span> <span class="mi">9</span>
 <span class="p">}</span> <span class="n">nghttp2_frame_type</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -551,7 +551,19 @@
   <span class="cm">/**</span>
 <span class="cm">   * The ACK flag.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_ACK</span> <span class="o">=</span> <span class="mh">0x1</span>
+  <span class="n">NGHTTP2_FLAG_ACK</span> <span class="o">=</span> <span class="mh">0x1</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The END_SEGMENT flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_END_SEGMENT</span> <span class="o">=</span> <span class="mh">0x2</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PAD_LOW flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_PAD_LOW</span> <span class="o">=</span> <span class="mh">0x10</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The PAD_HIGH flag.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_FLAG_PAD_HIGH</span> <span class="o">=</span> <span class="mh">0x20</span>
 <span class="p">}</span> <span class="n">nghttp2_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -570,19 +582,15 @@
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_MAX_CONCURRENT_STREAMS</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_INITIAL_WINDOW_SIZE</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * SETTINGS_FLOW_CONTROL_OPTIONS</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_FLOW_CONTROL_OPTIONS</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+  <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * Maximum ID of :type:`nghttp2_settings_id`.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_MAX</span> <span class="o">=</span> <span class="mi">10</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX</span> <span class="o">=</span> <span class="mi">4</span>
 <span class="p">}</span> <span class="n">nghttp2_settings_id</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -643,7 +651,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * ENHANCE_YOUR_CALM</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_ENHANCE_YOUR_CALM</span> <span class="o">=</span> <span class="mi">420</span>
+  <span class="n">NGHTTP2_ENHANCE_YOUR_CALM</span> <span class="o">=</span> <span class="mi">11</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * INADEQUATE_SECURITY</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_INADEQUATE_SECURITY</span> <span class="o">=</span> <span class="mi">12</span>
 <span class="p">}</span> <span class="n">nghttp2_error_code</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -737,6 +749,11 @@
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length of the padding in this frame. This includes PAD_HIGH</span>
+<span class="cm">   * and PAD_LOW.</span>
+<span class="cm">   */</span>
+  <span class="kt">size_t</span> <span class="n">padlen</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_data</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -780,6 +797,11 @@
 <span class="cm">   * The frame header.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length of the padding in this frame. This includes PAD_HIGH</span>
+<span class="cm">   * and PAD_LOW.</span>
+<span class="cm">   */</span>
+  <span class="kt">size_t</span> <span class="n">padlen</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * The name/value pairs.</span>
 <span class="cm">   */</span>
@@ -871,6 +893,11 @@
 <span class="cm">   * The frame header.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The length of the padding in this frame. This includes PAD_HIGH</span>
+<span class="cm">   * and PAD_LOW.</span>
+<span class="cm">   */</span>
+  <span class="kt">size_t</span> <span class="n">padlen</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * The name/value pairs.</span>
 <span class="cm">   */</span>
@@ -1300,6 +1327,26 @@
  <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked when the library asks application how</span>
+<span class="cm"> * much padding is required for the transmission of the |frame|. The</span>
+<span class="cm"> * application must choose the total length of payload including</span>
+<span class="cm"> * padded bytes in range [frame-&gt;hd.length, max_payloadlen],</span>
+<span class="cm"> * inclusive. Choosing number not in this range will be treated as</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. Returning</span>
+<span class="cm"> * ``frame-&gt;hd.length`` means no padding is added.  Returning</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will make</span>
+<span class="cm"> * `nghttp2_session_send()` function immediately return</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_select_padding_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+ <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+ <span class="kt">size_t</span> <span class="n">max_payloadlen</span><span class="p">,</span>
+ <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
 <span class="cm"> * @struct</span>
 <span class="cm"> *</span>
 <span class="cm"> * Callback functions.</span>
@@ -1362,6 +1409,11 @@
 <span class="cm">   * received.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_on_header_callback</span> <span class="n">on_header_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked when the library asks application how</span>
+<span class="cm">   * much padding is required for the transmission of the given frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_select_padding_callback</span> <span class="n">select_padding_callback</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_session_callbacks</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -1773,9 +1825,6 @@
 <span class="cm"> * window_size_increment with `nghttp2_submit_window_update()`, this</span>
 <span class="cm"> * function returns the number of bytes less than actually received.</span>
 <span class="cm"> *</span>
-<span class="cm"> * If flow control is disabled for that stream, this function returns</span>
-<span class="cm"> * 0.</span>
-<span class="cm"> *</span>
 <span class="cm"> * This function returns -1 if it fails.</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_effective_recv_data_length</span>
@@ -1805,9 +1854,6 @@
 <span class="cm"> * window size is reduced by submitting negative window_size_increment</span>
 <span class="cm"> * with `nghttp2_submit_window_update()`, this function returns the</span>
 <span class="cm"> * number of bytes less than actually received.</span>
-<span class="cm"> *</span>
-<span class="cm"> * If flow control is disabled for a connection, this function returns</span>
-<span class="cm"> * 0.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns -1 if it fails.</span>
 <span class="cm"> */</span>
@@ -2171,8 +2217,8 @@
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |iv| contains invalid value (e.g., attempting to re-enable</span>
-<span class="cm"> *     flow control).</span>
+<span class="cm"> *     The |iv| contains invalid value (e.g., initial window size</span>
+<span class="cm"> *     strictly greater than (1 &lt;&lt; 31) - 1.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
