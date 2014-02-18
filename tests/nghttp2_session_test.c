@@ -3228,7 +3228,7 @@ void test_nghttp2_session_max_concurrent_streams(void)
 
 /*
  * Check that on_stream_close_callback is called when server pushed
- * SYN_STREAM have NGHTTP2_CTRL_FLAG_FIN.
+ * HEADERS have NGHTTP2_FLAG_END_STREAM.
  */
 void test_nghttp2_session_stream_close_on_headers_push(void)
 {
@@ -3280,7 +3280,7 @@ void test_nghttp2_session_stop_data_with_rst_stream(void)
   nghttp2_submit_response(session, 1, NULL, 0, &data_prd);
 
   ud.block_count = 2;
-  /* Sends SYN_REPLY + DATA[0] */
+  /* Sends response HEADERS + DATA[0] */
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_DATA == ud.sent_frame_type);
   /* data for DATA[1] is read from data_prd but it is not sent */
@@ -3688,7 +3688,7 @@ void test_nghttp2_session_on_ctrl_not_send(void)
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENING, &user_data);
 
-  /* Check SYN_REPLY */
+  /* Check response HEADERS */
   /* Send bogus stream ID */
   CU_ASSERT(0 ==
             nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, 3,
@@ -3741,7 +3741,7 @@ void test_nghttp2_session_on_ctrl_not_send(void)
 
   nghttp2_session_del(session);
 
-  /* Check SYN_STREAM */
+  /* Check request HEADERS */
   user_data.frame_not_send_cb_called = 0;
   CU_ASSERT(nghttp2_session_client_new(&session, &callbacks, &user_data) == 0);
   /* Maximum Stream ID is reached */
@@ -3919,7 +3919,7 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void)
                          &data_prd, NULL);
 
   ud.block_count = 2;
-  /* Sends SYN_STREAM + DATA[0] */
+  /* Sends request HEADERS + DATA[0] */
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_DATA == ud.sent_frame_type);
   /* data for DATA[1] is read from data_prd but it is not sent */

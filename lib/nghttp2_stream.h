@@ -35,24 +35,24 @@
 
 /*
  * If local peer is stream initiator:
- * NGHTTP2_STREAM_OPENING : upon sending SYN_STREAM
- * NGHTTP2_STREAM_OPENED : upon receiving SYN_REPLY
+ * NGHTTP2_STREAM_OPENING : upon sending request HEADERS
+ * NGHTTP2_STREAM_OPENED : upon receiving response HEADERS
  * NGHTTP2_STREAM_CLOSING : upon queuing RST_STREAM
  *
  * If remote peer is stream initiator:
- * NGHTTP2_STREAM_OPENING : upon receiving SYN_STREAM
- * NGHTTP2_STREAM_OPENED : upon sending SYN_REPLY
+ * NGHTTP2_STREAM_OPENING : upon receiving request HEADERS
+ * NGHTTP2_STREAM_OPENED : upon sending response HEADERS
  * NGHTTP2_STREAM_CLOSING : upon queuing RST_STREAM
  */
 typedef enum {
   /* Initial state */
   NGHTTP2_STREAM_INITIAL,
-  /* For stream initiator: SYN_STREAM has been sent, but SYN_REPLY is
-     not received yet.  For receiver: SYN_STREAM has been received,
-     but it does not send SYN_REPLY yet. */
+  /* For stream initiator: request HEADERS has been sent, but response
+     HEADERS has not been received yet.  For receiver: request HEADERS
+     has been received, but it does not send response HEADERS yet. */
   NGHTTP2_STREAM_OPENING,
-  /* For stream initiator: SYN_REPLY is received. For receiver:
-     SYN_REPLY is sent. */
+  /* For stream initiator: response HEADERS is received. For receiver:
+     response HEADERS is sent. */
   NGHTTP2_STREAM_OPENED,
   /* RST_STREAM is received, but somehow we need to keep stream in
      memory. */
@@ -93,7 +93,7 @@ typedef struct {
   nghttp2_outbound_item *deferred_data;
   /* stream ID */
   int32_t stream_id;
-  /* Use same value in SYN_STREAM frame */
+  /* Use same value in request HEADERS frame */
   int32_t pri;
   /* Current remote window size. This value is computed against the
      current initial window size of remote endpoint. */
