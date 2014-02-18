@@ -47,6 +47,11 @@ typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1
 } nghttp2_optmask;
 
+typedef enum {
+  NGHTTP2_OB_POP_ITEM,
+  NGHTTP2_OB_SEND_DATA
+} nghttp2_outbound_state;
+
 typedef struct {
   nghttp2_outbound_item *item;
   /* Buffer for outbound frames. Used to pack one frame. The memory
@@ -63,6 +68,7 @@ typedef struct {
   /* Marks the last position to send. This is used to implement
      CONTINUATION */
   size_t framebufmark;
+  nghttp2_outbound_state state;
 } nghttp2_active_outbound_item;
 
 /* Buffer length for inbound raw byte stream. */

@@ -50,31 +50,6 @@ const size_t OUTBUF_MAX_THRES = 64*1024;
 } // namespace
 
 namespace {
-ssize_t send_callback(nghttp2_session *session,
-                      const uint8_t *data, size_t len, int flags,
-                      void *user_data)
-{
-  int rv;
-  auto upstream = static_cast<Http2Upstream*>(user_data);
-  auto handler = upstream->get_client_handler();
-  auto bev = handler->get_bev();
-  auto output = bufferevent_get_output(bev);
-  // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(handler->get_outbuf_length() > OUTBUF_MAX_THRES) {
-    return NGHTTP2_ERR_WOULDBLOCK;
-  }
-
-  rv = evbuffer_add(output, data, len);
-  if(rv == -1) {
-    ULOG(FATAL, upstream) << "evbuffer_add() failed";
-    return NGHTTP2_ERR_CALLBACK_FAILURE;
-  } else {
-    return len;
-  }
-}
-} // namespace
-
-namespace {
 int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
@@ -510,7 +485,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   nghttp2_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(callbacks));
-  callbacks.send_callback = send_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
@@ -580,21 +554,7 @@ int Http2Upstream::on_read()
     return -1;
   }
   evbuffer_drain(input, rv);
-  rv = nghttp2_session_send(session_);
-  if(rv < 0) {
-    ULOG(ERROR, this) << "nghttp2_session_send() returned error: "
-                      << nghttp2_strerror(rv);
-    return -1;
-  }
-  if(nghttp2_session_want_read(session_) == 0 &&
-     nghttp2_session_want_write(session_) == 0 &&
-     handler_->get_outbuf_length() == 0) {
-    if(LOG_ENABLED(INFO)) {
-      ULOG(INFO, this) << "No more read/write for this HTTP2 session";
-    }
-    rv = -1;
-  }
-  return 0;
+  return send();
 }
 
 int Http2Upstream::on_write()
@@ -605,22 +565,41 @@ int Http2Upstream::on_write()
 // After this function call, downstream may be deleted.
 int Http2Upstream::send()
 {
-  int rv = 0;
-  if((rv = nghttp2_session_send(session_)) < 0) {
-    ULOG(ERROR, this) << "nghttp2_session_send() returned error: "
-                      << nghttp2_strerror(rv);
-  }
-  if(rv == 0) {
-    if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0 &&
-       handler_->get_outbuf_length() == 0) {
-      if(LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "No more read/write for this HTTP2 session";
-      }
-      rv = -1;
+  int rv;
+  auto bev = handler_->get_bev();
+  auto output = bufferevent_get_output(bev);
+  for(;;) {
+    // Check buffer length and return WOULDBLOCK if it is large enough.
+    if(handler_->get_outbuf_length() > OUTBUF_MAX_THRES) {
+      break;
+    }
+
+    const uint8_t *data;
+    auto datalen = nghttp2_session_mem_send(session_, &data);
+
+    if(datalen < 0) {
+      ULOG(ERROR, this) << "nghttp2_session_mem_send() returned error: "
+                        << nghttp2_strerror(datalen);
+      return -1;
+    }
+    if(datalen == 0) {
+      break;
+    }
+    rv = evbuffer_add(output, data, datalen);
+    if(rv == -1) {
+      ULOG(FATAL, this) << "evbuffer_add() failed";
+      return -1;
     }
   }
-  return rv;
+  if(nghttp2_session_want_read(session_) == 0 &&
+     nghttp2_session_want_write(session_) == 0 &&
+     handler_->get_outbuf_length() == 0) {
+    if(LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "No more read/write for this HTTP2 session";
+    }
+    return -1;
+  }
+  return 0;
 }
 
 int Http2Upstream::on_event()

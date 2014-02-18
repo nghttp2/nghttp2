@@ -188,6 +188,18 @@ static void init_settings(uint32_t *settings)
     NGHTTP2_INITIAL_WINDOW_SIZE;
 }
 
+static void nghttp2_active_outbound_item_reset
+(nghttp2_active_outbound_item *aob)
+{
+  DEBUGF(fprintf(stderr, "reset nghttp2_active_outbound_item\n"));
+  DEBUGF(fprintf(stderr, "aob->item = %p\n", aob->item));
+  nghttp2_outbound_item_free(aob->item);
+  free(aob->item);
+  aob->item = NULL;
+  aob->framebuflen = aob->framebufoff = aob->framebufmark = 0;
+  aob->state = NGHTTP2_OB_POP_ITEM;
+}
+
 typedef struct {
   nghttp2_session *session;
   int rv;
@@ -265,6 +277,7 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
     goto fail_aob_framebuf;
   }
   (*session_ptr)->aob.framebufmax = NGHTTP2_INITIAL_OUTBOUND_FRAMEBUF_LENGTH;
+  nghttp2_active_outbound_item_reset(&(*session_ptr)->aob);
 
   memset((*session_ptr)->remote_settings, 0,
          sizeof((*session_ptr)->remote_settings));
@@ -368,17 +381,6 @@ static void nghttp2_session_ob_pq_free(nghttp2_pq *pq)
     nghttp2_pq_pop(pq);
   }
   nghttp2_pq_free(pq);
-}
-
-static void nghttp2_active_outbound_item_reset
-(nghttp2_active_outbound_item *aob)
-{
-  DEBUGF(fprintf(stderr, "reset nghttp2_active_outbound_item\n"));
-  DEBUGF(fprintf(stderr, "aob->item = %p\n", aob->item));
-  nghttp2_outbound_item_free(aob->item);
-  free(aob->item);
-  aob->item = NULL;
-  aob->framebuflen = aob->framebufoff = aob->framebufmark = 0;
 }
 
 void nghttp2_session_del(nghttp2_session *session)
@@ -1825,24 +1827,26 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
   assert(0);
 }
 
-int nghttp2_session_send(nghttp2_session *session)
+ssize_t nghttp2_session_mem_send(nghttp2_session *session,
+                                 const uint8_t **data_ptr)
 {
-  int r;
-  while(1) {
-    const uint8_t *data;
-    size_t datalen;
-    ssize_t sentlen;
-    if(session->aob.item == NULL) {
+  int rv;
+
+  *data_ptr = NULL;
+  for(;;) {
+    switch(session->aob.state) {
+    case NGHTTP2_OB_POP_ITEM: {
       nghttp2_outbound_item *item;
       ssize_t framebuflen;
+
       item = nghttp2_session_pop_next_ob_item(session);
       if(item == NULL) {
-        break;
+        return 0;
       }
       framebuflen = nghttp2_session_prep_frame(session, item);
       if(framebuflen == NGHTTP2_ERR_DEFERRED) {
         DEBUGF(fprintf(stderr, "frame deferred\n"));
-        continue;
+        break;
       }
       if(framebuflen < 0) {
         DEBUGF(fprintf(stderr, "frame preparation failed with %s\n",
@@ -1875,9 +1879,8 @@ int nghttp2_session_send(nghttp2_session *session)
         }
         if(nghttp2_is_fatal(framebuflen)) {
           return framebuflen;
-        } else {
-          continue;
         }
+        break;
       }
       session->aob.item = item;
       session->aob.framebuflen = framebuflen;
@@ -1891,37 +1894,66 @@ int nghttp2_session_send(nghttp2_session *session)
         session->aob.framebufmark =
           session->aob.framebufoff + NGHTTP2_FRAME_HEAD_LENGTH +
           nghttp2_get_uint16(session->aob.framebuf + session->aob.framebufoff);
-        r = session_call_before_frame_send(session, frame);
-        if(nghttp2_is_fatal(r)) {
-          return r;
+        rv = session_call_before_frame_send(session, frame);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
         }
       } else {
         session->aob.framebufmark = session->aob.framebuflen;
       }
+      session->aob.state = NGHTTP2_OB_SEND_DATA;
+      break;
     }
+    case NGHTTP2_OB_SEND_DATA: {
+      size_t datalen;
 
-    data = session->aob.framebuf + session->aob.framebufoff;
-    datalen = session->aob.framebufmark - session->aob.framebufoff;
+      if(session->aob.framebufoff == session->aob.framebufmark) {
+        /* Frame has completely sent */
+        rv = nghttp2_session_after_frame_sent(session);
+        if(rv < 0) {
+          /* FATAL */
+          assert(nghttp2_is_fatal(rv));
+          return rv;
+        }
+        /* We have already adjusted the next state */
+        break;
+      }
+
+      *data_ptr = session->aob.framebuf + session->aob.framebufoff;
+      datalen = session->aob.framebufmark - session->aob.framebufoff;
+      /* We increment the offset here. If send_callback does not send
+         everything, we will adjust it. */
+      session->aob.framebufoff += datalen;
+
+      return datalen;
+    }
+    }
+  }
+}
+
+int nghttp2_session_send(nghttp2_session *session)
+{
+  const uint8_t *data;
+  ssize_t datalen;
+  ssize_t sentlen;
+
+  for(;;) {
+    datalen = nghttp2_session_mem_send(session, &data);
+    if(datalen <= 0) {
+      return datalen;
+    }
     sentlen = session->callbacks.send_callback(session, data, datalen, 0,
                                                session->user_data);
     if(sentlen < 0) {
       if(sentlen == NGHTTP2_ERR_WOULDBLOCK) {
+        /* Transmission canceled. Rewind the offset */
+        session->aob.framebufoff -= datalen;
         return 0;
-      } else {
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
-    } else {
-      session->aob.framebufoff += sentlen;
-      if(session->aob.framebufoff == session->aob.framebufmark) {
-        /* Frame has completely sent */
-        r = nghttp2_session_after_frame_sent(session);
-        if(r < 0) {
-          /* FATAL */
-          assert(r < NGHTTP2_ERR_FATAL);
-          return r;
-        }
-      }
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+    /* Rewind the offset to the amount of unsent bytes */
+    session->aob.framebufoff -= datalen - sentlen;
   }
   return 0;
 }
