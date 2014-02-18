@@ -287,10 +287,10 @@ ssize_t nghttp2_frame_pack_priority(uint8_t **buf_ptr, size_t *buflen_ptr,
                                     nghttp2_priority *frame)
 {
   ssize_t framelen= NGHTTP2_FRAME_HEAD_LENGTH + 4;
-  int r;
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
-  if(r != 0) {
-    return r;
+  int rv;
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(rv != 0) {
+    return rv;
   }
   memset(*buf_ptr, 0, framelen);
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
@@ -309,10 +309,10 @@ ssize_t nghttp2_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
                                       nghttp2_rst_stream *frame)
 {
   ssize_t framelen = NGHTTP2_FRAME_HEAD_LENGTH + 4;
-  int r;
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
-  if(r != 0) {
-    return r;
+  int rv;
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(rv != 0) {
+    return rv;
   }
   memset(*buf_ptr, 0, framelen);
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
@@ -331,10 +331,10 @@ ssize_t nghttp2_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
                                     nghttp2_settings *frame)
 {
   ssize_t framelen = NGHTTP2_FRAME_HEAD_LENGTH + frame->hd.length;
-  int r;
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
-  if(r != 0) {
-    return r;
+  int rv;
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(rv != 0) {
+    return rv;
   }
   memset(*buf_ptr, 0, framelen);
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
@@ -452,10 +452,10 @@ ssize_t nghttp2_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
                                 nghttp2_ping *frame)
 {
   ssize_t framelen = NGHTTP2_FRAME_HEAD_LENGTH + 8;
-  int r;
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
-  if(r != 0) {
-    return r;
+  int rv;
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(rv != 0) {
+    return rv;
   }
   memset(*buf_ptr, 0, framelen);
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
@@ -474,10 +474,10 @@ ssize_t nghttp2_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
                                   nghttp2_goaway *frame)
 {
   ssize_t framelen = NGHTTP2_FRAME_HEAD_LENGTH + frame->hd.length;
-  int r;
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
-  if(r != 0) {
-    return r;
+  int rv;
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(rv != 0) {
+    return rv;
   }
   memset(*buf_ptr, 0, framelen);
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);
@@ -502,10 +502,10 @@ ssize_t nghttp2_frame_pack_window_update(uint8_t **buf_ptr, size_t *buflen_ptr,
                                          nghttp2_window_update *frame)
 {
   ssize_t framelen = NGHTTP2_FRAME_HEAD_LENGTH + 4;
-  int r;
-  r = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
-  if(r != 0) {
-    return r;
+  int rv;
+  rv = nghttp2_reserve_buffer(buf_ptr, buflen_ptr, framelen);
+  if(rv != 0) {
+    return rv;
   }
   memset(*buf_ptr, 0, framelen);
   nghttp2_frame_pack_frame_hd(*buf_ptr, &frame->hd);

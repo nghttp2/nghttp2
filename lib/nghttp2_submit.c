@@ -139,7 +139,7 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
 int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
                             int32_t stream_id, int32_t pri)
 {
-  int r;
+  int rv;
   nghttp2_frame *frame;
   if(pri < 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
@@ -149,11 +149,11 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_NOMEM;
   }
   nghttp2_frame_priority_init(&frame->priority, stream_id, pri);
-  r = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
-  if(r != 0) {
+  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+  if(rv != 0) {
     nghttp2_frame_priority_free(&frame->priority);
     free(frame);
-    return r;
+    return rv;
   }
   return 0;
 }
@@ -294,7 +294,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
                         int32_t stream_id,
                         const nghttp2_data_provider *data_prd)
 {
-  int r;
+  int rv;
   nghttp2_private_data *data_frame;
   uint8_t nflags = 0;
 
@@ -306,12 +306,13 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
     nflags |= NGHTTP2_FLAG_END_STREAM;
   }
   nghttp2_frame_private_data_init(data_frame, nflags, stream_id, data_prd);
-  r = nghttp2_session_add_frame(session, NGHTTP2_CAT_DATA, data_frame, NULL);
-  if(r != 0) {
+  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_DATA, data_frame, NULL);
+  if(rv != 0) {
     nghttp2_frame_private_data_free(data_frame);
     free(data_frame);
+    return rv;
   }
-  return r;
+  return 0;
 }
 
 ssize_t nghttp2_pack_settings_payload(uint8_t *buf,
