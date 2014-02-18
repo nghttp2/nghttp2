@@ -1032,6 +1032,11 @@
 <span class="cm"> * must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`. The |user_data|</span>
 <span class="cm"> * pointer is the third argument passed in to the call to</span>
 <span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This callback is required if the application uses</span>
+<span class="cm"> * `nghttp2_session_send()` to send data to the remote endpoint. If</span>
+<span class="cm"> * the application uses `nghttp2_session_mem_send()` instead, this</span>
+<span class="cm"> * callback function is unnecessary.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_send_callback</span><span class="p">)</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -1052,6 +1057,11 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_WOULDBLOCK`. The |user_data| pointer is the</span>
 <span class="cm"> * third argument passed in to the call to</span>
 <span class="cm"> * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This callback is required if the application uses</span>
+<span class="cm"> * `nghttp2_session_recv()` to receive data from the remote</span>
+<span class="cm"> * endpoint. If the application uses `nghttp2_session_mem_recv()`</span>
+<span class="cm"> * instead, this callback function is unnecessary.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_recv_callback</span><span class="p">)</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -1354,12 +1364,16 @@
 <span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="cm">/**</span>
 <span class="cm">   * Callback function invoked when the |session| wants to send data</span>
-<span class="cm">   * to the remote peer.</span>
+<span class="cm">   * to the remote peer. This callback is not necessary if the</span>
+<span class="cm">   * application uses `nghttp2_session_mem_send()` to serialize data</span>
+<span class="cm">   * to transmit.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_send_callback</span> <span class="n">send_callback</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * Callback function invoked when the |session| wants to receive</span>
-<span class="cm">   * data from the remote peer.</span>
+<span class="cm">   * data from the remote peer. This callback is not necessary if the</span>
+<span class="cm">   * application uses `nghttp2_session_mem_recv()` to process received</span>
+<span class="cm">   * data.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_recv_callback</span> <span class="n">recv_callback</span><span class="p">;</span>
   <span class="cm">/**</span>
@@ -1627,6 +1641,39 @@
 <span class="cm"> *     The callback function failed.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_session_send</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns the serialized data to send.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function behaves like `nghttp2_session_mem_send()` except that</span>
+<span class="cm"> * it does not use :member:`nghttp2_session_callbacks.send_callback`</span>
+<span class="cm"> * to transmit data. Instead, it assigns the pointer to the serialized</span>
+<span class="cm"> * data to the |*data_ptr| and returns its length. The other callbacks</span>
+<span class="cm"> * are called in the same way as they are in `nghttp2_session_send()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If no data is available to send, this function returns 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function may not return all serialized data in one</span>
+<span class="cm"> * invocation. To get all data, call this function repeatedly until it</span>
+<span class="cm"> * returns 0 or one of negative error codes.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The assigned |*data_ptr| is valid until the next call of</span>
+<span class="cm"> * `nghttp2_session_mem_send()` or `nghttp2_session_send()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The caller must send all data before sending the next chunk of</span>
+<span class="cm"> * data.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns the length of the data pointed by the</span>
+<span class="cm"> * |*data_ptr| if it succeeds, or one of the following negative error</span>
+<span class="cm"> * codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_session_mem_send</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                 <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">**</span><span class="n">data_ptr</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>

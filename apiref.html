@@ -159,12 +159,11 @@
 </div>
 <div class="section" id="remarks">
 <h2>Remarks<a class="headerlink" href="#remarks" title="Permalink to this headline">¶</a></h2>
-<p>Do not call <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>, <a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> or
-<a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> from the nghttp2 callback functions
-directly or indirectly. It will lead to the crash. You can submit
-requests or frames in the callbacks then call <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>,
-<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> outside of the
-callbacks.</p>
+<p>Do not call <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>, <a class="reference internal" href="#nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a>,
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> from the nghttp2
+callback functions directly or indirectly. It will lead to the
+crash. You can submit requests or frames in the callbacks then call
+these functions outside the callbacks.</p>
 </div>
 <div class="section" id="macros">
 <h2>Macros<a class="headerlink" href="#macros" title="Permalink to this headline">¶</a></h2>
@@ -1355,6 +1354,10 @@ it must return <a class="reference internal" href="#NGHTTP2_ERR_WOULDBLOCK" titl
 must return <a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>. The <em>user_data</em>
 pointer is the third argument passed in to the call to
 <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
+<p>This callback is required if the application uses
+<a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> to send data to the remote endpoint. If
+the application uses <a class="reference internal" href="#nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a> instead, this
+callback function is unnecessary.</p>
 </dd></dl>
 
 <dl class="type">
@@ -1372,6 +1375,10 @@ it gets EOF before it reads any single byte, it must return
 <a class="reference internal" href="#NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a>. The <em>user_data</em> pointer is the
 third argument passed in to the call to
 <a class="reference internal" href="#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
+<p>This callback is required if the application uses
+<a class="reference internal" href="#nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> to receive data from the remote
+endpoint. If the application uses <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>
+instead, this callback function is unnecessary.</p>
 </dd></dl>
 
 <dl class="type">
@@ -1614,14 +1621,18 @@ inclusive. Choosing number not in this range will be treated as
 <dt id="nghttp2_session_callbacks.send_callback">
 <a class="reference internal" href="#nghttp2_send_callback" title="nghttp2_send_callback">nghttp2_send_callback</a> <tt class="descname">send_callback</tt><a class="headerlink" href="#nghttp2_session_callbacks.send_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the <em>session</em> wants to send data
-to the remote peer.</p>
+to the remote peer. This callback is not necessary if the
+application uses <a class="reference internal" href="#nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a> to serialize data
+to transmit.</p>
 </dd></dl>
 
 <dl class="member">
 <dt id="nghttp2_session_callbacks.recv_callback">
 <a class="reference internal" href="#nghttp2_recv_callback" title="nghttp2_recv_callback">nghttp2_recv_callback</a> <tt class="descname">recv_callback</tt><a class="headerlink" href="#nghttp2_session_callbacks.recv_callback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback function invoked when the <em>session</em> wants to receive
-data from the remote peer.</p>
+data from the remote peer. This callback is not necessary if the
+application uses <a class="reference internal" href="#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> to process received
+data.</p>
 </dd></dl>
 
 <dl class="member">
@@ -1861,6 +1872,32 @@ negative error codes:</p>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a></dt>
 <dd>The callback function failed.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="nghttp2_session_mem_send">
+ssize_t <tt class="descname">nghttp2_session_mem_send</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const uint8_t<em>&nbsp;**data_ptr</em><big>)</big><a class="headerlink" href="#nghttp2_session_mem_send" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the serialized data to send.</p>
+<p>This function behaves like <a class="reference internal" href="#nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a> except that
+it does not use <a class="reference internal" href="#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a>
+to transmit data. Instead, it assigns the pointer to the serialized
+data to the <em>*data_ptr</em> and returns its length. The other callbacks
+are called in the same way as they are in <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>.</p>
+<p>If no data is available to send, this function returns 0.</p>
+<p>This function may not return all serialized data in one
+invocation. To get all data, call this function repeatedly until it
+returns 0 or one of negative error codes.</p>
+<p>The assigned <em>*data_ptr</em> is valid until the next call of
+<a class="reference internal" href="#nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a> or <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>.</p>
+<p>The caller must send all data before sending the next chunk of
+data.</p>
+<p>This function returns the length of the data pointed by the
+<em>*data_ptr</em> if it succeeds, or one of the following negative error
+codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
 </dl>
 </dd></dl>
 
