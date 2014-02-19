@@ -1497,7 +1497,7 @@ int nghttp2_session_send(nghttp2_session *session);
  *
  * Returns the serialized data to send.
  *
- * This function behaves like `nghttp2_session_mem_send()` except that
+ * This function behaves like `nghttp2_session_send()` except that
  * it does not use :member:`nghttp2_session_callbacks.send_callback`
  * to transmit data. Instead, it assigns the pointer to the serialized
  * data to the |*data_ptr| and returns its length. The other callbacks
