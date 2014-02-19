@@ -569,7 +569,7 @@ void Http2Session::remove_stream_data(StreamData *sd)
 }
 
 int Http2Session::submit_request(Http2DownstreamConnection *dconn,
-                                 uint8_t pri,
+                                 int32_t pri,
                                  const nghttp2_nv *nva, size_t nvlen,
                                  const nghttp2_data_provider *data_prd)
 {

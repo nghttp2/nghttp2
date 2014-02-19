@@ -65,7 +65,7 @@ public:
   void remove_stream_data(StreamData *sd);
 
   int submit_request(Http2DownstreamConnection *dconn,
-                     uint8_t pri, const nghttp2_nv *nva, size_t nvlen,
+                     int32_t pri, const nghttp2_nv *nva, size_t nvlen,
                      const nghttp2_data_provider *data_prd);
 
   int submit_rst_stream(int32_t stream_id, nghttp2_error_code error_code);
