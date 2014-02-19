@@ -782,72 +782,55 @@ struct HttpClient {
 
   int on_read()
   {
-    int rv = 0;
-    if((rv = nghttp2_session_recv(session)) < 0) {
-      if(rv != NGHTTP2_ERR_EOF) {
-        std::cerr << "nghttp2_session_recv() returned error: "
-                  << nghttp2_strerror(rv) << std::endl;
-      }
-    } else if((rv = nghttp2_session_send(session)) < 0) {
-      std::cerr << "nghttp2_session_send() returned error: "
+    int rv;
+    auto input = bufferevent_get_input(bev);
+    auto inputlen = evbuffer_get_length(input);
+    auto mem = evbuffer_pullup(input, -1);
+
+    rv = nghttp2_session_mem_recv(session, mem, inputlen);
+    if(rv < 0) {
+      std::cerr << "nghttp2_session_mem_recv() returned error: "
                 << nghttp2_strerror(rv) << std::endl;
+      return -1;
     }
-    if(rv == 0) {
-      if(nghttp2_session_want_read(session) == 0 &&
-         nghttp2_session_want_write(session) == 0 &&
-         evbuffer_get_length(bufferevent_get_output(bev)) == 0) {
-        rv = -1;
-      }
-    }
-    return rv;
+    evbuffer_drain(input, rv);
+
+    return on_write();
   }
 
   int on_write()
   {
-    int rv = 0;
-    if((rv = nghttp2_session_send(session)) < 0) {
-      std::cerr << "nghttp2_session_send() returned error: "
-                << nghttp2_strerror(rv) << std::endl;
-    }
-    if(rv == 0) {
-      if(nghttp2_session_want_read(session) == 0 &&
-         nghttp2_session_want_write(session) == 0 &&
-         evbuffer_get_length(bufferevent_get_output(bev)) == 0) {
-        rv = -1;
-      }
-    }
-    return rv;
-  }
-
-  int sendcb(const uint8_t *data, size_t len)
-  {
     int rv;
     auto output = bufferevent_get_output(bev);
-    // Check buffer length and return WOULDBLOCK if it is large enough.
-    if(evbuffer_get_length(output) > config.output_upper_thres) {
-      return NGHTTP2_ERR_WOULDBLOCK;
-    }
 
-    rv = evbuffer_add(output, data, len);
-    if(rv == -1) {
-      std::cerr << "evbuffer_add() failed" << std::endl;
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    } else {
-      return len;
-    }
-  }
+    for(;;) {
+      if(evbuffer_get_length(output) > config.output_upper_thres) {
+        break;
+      }
 
-  int recvcb(uint8_t *buf, size_t len)
-  {
-    auto input = bufferevent_get_input(bev);
-    int nread = evbuffer_remove(input, buf, len);
-    if(nread == -1) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    } else if(nread == 0) {
-      return NGHTTP2_ERR_WOULDBLOCK;
-    } else {
-      return nread;
+      const uint8_t *data;
+      auto datalen = nghttp2_session_mem_send(session, &data);
+
+      if(datalen < 0) {
+        std::cerr << "nghttp2_session_mem_send() returned error: "
+                  << nghttp2_strerror(datalen) << std::endl;
+        return -1;
+      }
+      if(datalen == 0) {
+        break;
+      }
+      rv = evbuffer_add(output, data, datalen);
+      if(rv == -1) {
+        std::cerr << "evbuffer_add() failed" << std::endl;
+        return -1;
+      }
     }
+    if(nghttp2_session_want_read(session) == 0 &&
+       nghttp2_session_want_write(session) == 0 &&
+       evbuffer_get_length(output) == 0) {
+      return -1;
+    }
+    return 0;
   }
 
   bool all_requests_processed() const
@@ -1108,9 +1091,13 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
 namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
+  int rv;
   auto client = get_session(arg);
   nghttp2_session_terminate_session(client->session, NGHTTP2_SETTINGS_TIMEOUT);
-  client->on_write();
+  rv = client->on_write();
+  if(rv != 0) {
+    client->disconnect();
+  }
 }
 } // namespace
 
@@ -1436,27 +1423,6 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 }
 } // namespace
 
-
-namespace {
-ssize_t client_send_callback(nghttp2_session *session,
-                             const uint8_t *data, size_t len, int flags,
-                             void *user_data)
-{
-  auto client = static_cast<HttpClient*>(user_data);
-  return client->sendcb(data, len);
-}
-} // namespace
-
-namespace {
-ssize_t client_recv_callback(nghttp2_session *session,
-                             uint8_t *buf, size_t len, int flags,
-                             void *user_data)
-{
-  auto client = static_cast<HttpClient*>(user_data);
-  return client->recvcb(buf, len);
-}
-} // namespace
-
 namespace {
 int communicate(const std::string& scheme, const std::string& host,
                 uint16_t port,
@@ -1577,8 +1543,6 @@ int run(char **uris, int n)
 {
   nghttp2_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.send_callback = client_send_callback;
-  callbacks.recv_callback = client_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback2;
   callbacks.before_frame_send_callback = before_frame_send_callback;
