@@ -56,7 +56,7 @@ public:
   void set_stream_id(int32_t stream_id);
   int32_t get_stream_id() const;
   void set_priority(int32_t pri);
-  int32_t get_priorty() const;
+  int32_t get_priority() const;
   void pause_read(IOCtrlReason reason);
   int resume_read(IOCtrlReason reason);
   void force_resume_read();

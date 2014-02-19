@@ -403,10 +403,10 @@ int Http2DownstreamConnection::push_request_headers()
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
     data_prd.read_callback = http2_data_read_callback;
-    rv = http2session_->submit_request(this, downstream_->get_priorty(),
+    rv = http2session_->submit_request(this, downstream_->get_priority(),
                                        nva.data(), nva.size(), &data_prd);
   } else {
-    rv = http2session_->submit_request(this, downstream_->get_priorty(),
+    rv = http2session_->submit_request(this, downstream_->get_priority(),
                                        nva.data(), nva.size(), nullptr);
   }
   if(rv != 0) {
@@ -532,7 +532,7 @@ bool Http2DownstreamConnection::get_output_buffer_full()
 int Http2DownstreamConnection::on_priority_change(int32_t pri)
 {
   int rv;
-  if(downstream_->get_priorty() == pri) {
+  if(downstream_->get_priority() == pri) {
     return 0;
   }
   downstream_->set_priority(pri);

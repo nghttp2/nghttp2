@@ -678,7 +678,7 @@ void Downstream::set_priority(int32_t pri)
   priority_ = pri;
 }
 
-int32_t Downstream::get_priorty() const
+int32_t Downstream::get_priority() const
 {
   return priority_;
 }
