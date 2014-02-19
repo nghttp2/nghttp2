@@ -1879,7 +1879,7 @@ negative error codes:</p>
 <dt id="nghttp2_session_mem_send">
 ssize_t <tt class="descname">nghttp2_session_mem_send</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const uint8_t<em>&nbsp;**data_ptr</em><big>)</big><a class="headerlink" href="#nghttp2_session_mem_send" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the serialized data to send.</p>
-<p>This function behaves like <a class="reference internal" href="#nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a> except that
+<p>This function behaves like <a class="reference internal" href="#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> except that
 it does not use <a class="reference internal" href="#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a>
 to transmit data. Instead, it assigns the pointer to the serialized
 data to the <em>*data_ptr</em> and returns its length. The other callbacks

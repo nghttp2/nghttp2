@@ -1647,7 +1647,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * Returns the serialized data to send.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function behaves like `nghttp2_session_mem_send()` except that</span>
+<span class="cm"> * This function behaves like `nghttp2_session_send()` except that</span>
 <span class="cm"> * it does not use :member:`nghttp2_session_callbacks.send_callback`</span>
 <span class="cm"> * to transmit data. Instead, it assigns the pointer to the serialized</span>
 <span class="cm"> * data to the |*data_ptr| and returns its length. The other callbacks</span>
