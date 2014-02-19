@@ -312,41 +312,57 @@ int Http2Handler::setup_bev()
 
 int Http2Handler::on_read()
 {
-  int rv = 0;
-  if((rv = nghttp2_session_recv(session_)) < 0) {
-    if(rv != NGHTTP2_ERR_EOF) {
-      std::cerr << "nghttp2_session_recv() returned error: "
-                << nghttp2_strerror(rv) << std::endl;
-    }
-  } else if((rv = nghttp2_session_send(session_)) < 0) {
-    std::cerr << "nghttp2_session_send() returned error: "
+  int rv;
+  auto input = bufferevent_get_input(bev_);
+  auto inputlen = evbuffer_get_length(input);
+  auto mem = evbuffer_pullup(input, -1);
+
+  rv = nghttp2_session_mem_recv(session_, mem, inputlen);
+  if(rv < 0) {
+    std::cerr << "nghttp2_session_mem_recv() returned error: "
               << nghttp2_strerror(rv) << std::endl;
+    return -1;
   }
-  if(rv == 0) {
-    if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0 &&
-       evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
-      rv = -1;
-    }
-  }
-  return rv;
+
+  evbuffer_drain(input, rv);
+
+  return on_write();
 }
 
 int Http2Handler::on_write()
 {
-  int rv = 0;
-  if((rv = nghttp2_session_send(session_)) < 0) {
-    std::cerr << "nghttp2_session_send() returned error: "
-              << nghttp2_strerror(rv) << std::endl;
-  }
-  if(rv == 0) {
-    if(nghttp2_session_want_read(session_) == 0 &&
-       nghttp2_session_want_write(session_) == 0 &&
-       evbuffer_get_length(bufferevent_get_output(bev_)) == 0) {
-      rv = -1;
+  int rv;
+  auto output = bufferevent_get_output(bev_);
+
+  for(;;) {
+    if(evbuffer_get_length(output) >
+       sessions_->get_config()->output_upper_thres) {
+      break;
+    }
+
+    const uint8_t *data;
+    auto datalen = nghttp2_session_mem_send(session_, &data);
+
+    if(datalen < 0) {
+      std::cerr << "nghttp2_session_mem_send() returned error: "
+                << nghttp2_strerror(datalen) << std::endl;
+      return -1;
+    }
+    if(datalen == 0) {
+      break;
+    }
+    rv = evbuffer_add(output, data, datalen);
+    if(rv != 0) {
+      std::cerr << "evbuffer_add() failed" << std::endl;
+      return -1;
     }
   }
-  return rv;
+  if(nghttp2_session_want_read(session_) == 0 &&
+     nghttp2_session_want_write(session_) == 0 &&
+     evbuffer_get_length(output) == 0) {
+    return -1;
+  }
+  return 0;
 }
 
 namespace {
@@ -418,38 +434,6 @@ int Http2Handler::verify_npn_result()
             << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
             << std::endl;
   return -1;
-}
-
-int Http2Handler::sendcb(const uint8_t *data, size_t len)
-{
-  int rv;
-  auto output = bufferevent_get_output(bev_);
-  // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(evbuffer_get_length(output) >
-     sessions_->get_config()->output_upper_thres) {
-    return NGHTTP2_ERR_WOULDBLOCK;
-  }
-
-  rv = evbuffer_add(output, data, len);
-  if(rv == -1) {
-    std::cerr << "evbuffer_add() failed" << std::endl;
-    return NGHTTP2_ERR_CALLBACK_FAILURE;
-  } else {
-    return len;
-  }
-}
-
-int Http2Handler::recvcb(uint8_t *buf, size_t len)
-{
-  auto input = bufferevent_get_input(bev_);
-  int nread = evbuffer_remove(input, buf, len);
-  if(nread == -1) {
-    return NGHTTP2_ERR_CALLBACK_FAILURE;
-  } else if(nread == 0) {
-    return NGHTTP2_ERR_WOULDBLOCK;
-  } else {
-    return nread;
-  }
 }
 
 int Http2Handler::submit_file_response(const std::string& status,
@@ -592,25 +576,6 @@ void Http2Handler::terminate_session(nghttp2_error_code error_code)
 {
   nghttp2_session_terminate_session(session_, error_code);
 }
-
-namespace {
-ssize_t hd_send_callback(nghttp2_session *session,
-                         const uint8_t *data, size_t len, int flags,
-                         void *user_data)
-{
-  auto hd = static_cast<Http2Handler*>(user_data);
-  return hd->sendcb(data, len);
-}
-} // namespace
-
-namespace {
-ssize_t hd_recv_callback(nghttp2_session *session,
-                         uint8_t *data, size_t len, int flags, void *user_data)
-{
-  auto hd = static_cast<Http2Handler*>(user_data);
-  return hd->recvcb(data, len);
-}
-} // namespace
 
 ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,
@@ -964,8 +929,6 @@ namespace {
 void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
 {
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.send_callback = hd_send_callback;
-  callbacks.recv_callback = hd_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = hd_on_frame_recv_callback;
   callbacks.before_frame_send_callback = hd_before_frame_send_callback;
