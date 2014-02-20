@@ -53,6 +53,11 @@ AC_ARG_ENABLE([werror],
                     [Turn on compile time warnings])],
     [werror=$enableval], [werror=no])
 
+AC_ARG_ENABLE([debug],
+    [AS_HELP_STRING([--enable-debug],
+                    [Turn on debug output])],
+    [debug=$enableval], [debug=no])
+
 AC_ARG_ENABLE([app],
     [AS_HELP_STRING([--enable-app],
                     [Build applications (nghttp, nghttpd and nghttpx) [default=check]])],
@@ -380,6 +385,10 @@ if test "x$werror" != "xno"; then
     CFLAGS="$CFLAGS -Wfloat-equal -Wundef -Wendif-labels -Wempty-body"
     CFLAGS="$CFLAGS -Wcast-align -Wclobbered -Wvla"
     CFLAGS="$CFLAGS -Wno-unused-parameter"
+fi
+
+if test "x$debug" != "xno"; then
+    CFLAGS="$CFLAGS -DDEBUGBUILD"
 fi
 
 AC_SUBST([TESTS_LIBS])
