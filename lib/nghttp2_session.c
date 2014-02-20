@@ -57,6 +57,18 @@ static int nghttp2_session_is_incoming_concurrent_streams_max
 }
 
 /*
+ * Returns non-zero if the number of incoming opened streams is larger
+ * than or equal to
+ * session->pending_local_max_concurrent_stream.
+ */
+static int nghttp2_session_is_incoming_concurrent_streams_pending_max
+(nghttp2_session *session)
+{
+  return session->pending_local_max_concurrent_stream
+    <= session->num_incoming_streams;
+}
+
+/*
  * Returns non-zero if |lib_error| is non-fatal error.
  */
 static int nghttp2_is_non_fatal(int lib_error)
@@ -248,6 +260,9 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   (*session_ptr)->last_stream_id = 0;
 
   (*session_ptr)->inflight_niv = -1;
+
+  (*session_ptr)->pending_local_max_concurrent_stream =
+    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
 
   if(server) {
     (*session_ptr)->server = 1;
@@ -497,7 +512,13 @@ int nghttp2_session_add_frame(nghttp2_session *session,
     case NGHTTP2_RST_STREAM:
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
       if(stream) {
-        stream->state = NGHTTP2_STREAM_CLOSING;
+        /* We rely on the stream state to decide whether number of
+           streams should be decremented or not. For purly reserved
+           streams, they are not counted to those numbers and we must
+           keep this state in order not to decrement the number. */
+        if(stream->state != NGHTTP2_STREAM_RESERVED) {
+          stream->state = NGHTTP2_STREAM_CLOSING;
+        }
       }
       item->pri = -1;
       break;
@@ -1626,8 +1647,10 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         }
         break;
       }
-      case NGHTTP2_HCAT_RESPONSE:
       case NGHTTP2_HCAT_PUSH_RESPONSE:
+        ++session->num_outgoing_streams;
+        /* Fall through */
+      case NGHTTP2_HCAT_RESPONSE:
         stream->state = NGHTTP2_STREAM_OPENED;
         if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
@@ -1690,13 +1713,12 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
         break;
       }
-      /* Only update max concurrent stream here. Applying it without
-         ACK is safe because we can respond to the exceeding streams
-         with REFUSED_STREAM and client will retry later. */
+      /* Extract NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS here and use
+         it to refuse the incoming streams with RST_STREAM. */
       for(i = frame->settings.niv; i > 0; --i) {
         if(frame->settings.iv[i - 1].settings_id ==
            NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
-          session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+          session->pending_local_max_concurrent_stream =
             frame->settings.iv[i - 1].value;
           break;
         }
@@ -2058,27 +2080,6 @@ static int session_detect_idle_stream(nghttp2_session *session,
 }
 
 /*
- * Validates received HEADERS frame |frame| with NGHTTP2_HCAT_REQUEST
- * or NGHTTP2_HCAT_PUSH_RESPONSE category, which both opens new
- * stream.
- *
- * This function returns 0 if it succeeds, or non-zero
- * nghttp2_error_code.
- */
-static int nghttp2_session_validate_request_headers(nghttp2_session *session,
-                                                    nghttp2_headers *frame)
-{
-  if(nghttp2_session_is_incoming_concurrent_streams_max(session)) {
-    /* The spec does not clearly say what to do when max concurrent
-       streams number is reached. The mod_spdy sends
-       NGHTTP2_REFUSED_STREAM and we think it is reasonable. So we
-       follow it. */
-    return NGHTTP2_REFUSED_STREAM;
-  }
-  return 0;
-}
-
-/*
  * Inflates header block in the memory pointed by |in| with |inlen|
  * bytes. If this function returns NGHTTP2_ERR_PAUSE, the caller must
  * call this function again, until it returns 0 or one of negative
@@ -2356,7 +2357,6 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
                                                 nghttp2_frame *frame)
 {
   int rv = 0;
-  nghttp2_error_code error_code;
   nghttp2_stream *stream;
   if(frame->hd.stream_id == 0) {
     return nghttp2_session_inflate_handle_invalid_connection
@@ -2375,11 +2375,13 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   }
   session->last_recv_stream_id = frame->hd.stream_id;
 
-  error_code = nghttp2_session_validate_request_headers(session,
-                                                        &frame->headers);
-  if(error_code != NGHTTP2_NO_ERROR) {
+  if(nghttp2_session_is_incoming_concurrent_streams_max(session)) {
+    return nghttp2_session_inflate_handle_invalid_connection
+      (session, frame, NGHTTP2_ENHANCE_YOUR_CALM);
+  }
+  if(nghttp2_session_is_incoming_concurrent_streams_pending_max(session)) {
     return nghttp2_session_inflate_handle_invalid_stream
-      (session, frame, error_code);
+      (session, frame, NGHTTP2_REFUSED_STREAM);
   }
 
   stream = nghttp2_session_open_stream(session,
@@ -2444,10 +2446,16 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
     /* We don't accept new stream after GOAWAY is sent or received. */
     return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
-  rv = nghttp2_session_validate_request_headers(session, &frame->headers);
-  if(rv != 0) {
-    return nghttp2_session_inflate_handle_invalid_stream(session, frame, rv);
+
+  if(nghttp2_session_is_incoming_concurrent_streams_max(session)) {
+    return nghttp2_session_inflate_handle_invalid_connection
+      (session, frame, NGHTTP2_ENHANCE_YOUR_CALM);
   }
+  if(nghttp2_session_is_incoming_concurrent_streams_pending_max(session)) {
+    return nghttp2_session_inflate_handle_invalid_stream
+      (session, frame, NGHTTP2_REFUSED_STREAM);
+  }
+
   nghttp2_stream_promise_fulfilled(stream);
   ++session->num_incoming_streams;
   rv = session_call_on_begin_headers(session, frame);
@@ -2749,9 +2757,7 @@ static int nghttp2_session_update_local_initial_window_size
 
 /*
  * Apply SETTINGS values |iv| having |niv| elements to the local
- * settings. SETTINGS_MAX_CONCURRENT_STREAMS is not applied here
- * because it has been already applied on transmission of SETTINGS
- * frame.
+ * settings.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -2803,13 +2809,12 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     }
   }
   for(i = 0; i < niv; ++i) {
-    /* SETTINGS_MAX_CONCURRENT_STREAMS has already been applied on
-       transmission of the SETTINGS frame. */
-    if(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX &&
-       iv[i].settings_id != NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
+    if(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX) {
       session->local_settings[iv[i].settings_id] = iv[i].value;
     }
   }
+  session->pending_local_max_concurrent_stream =
+    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
   return 0;
 }
 

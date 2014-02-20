@@ -1079,8 +1079,8 @@ void test_nghttp2_session_on_request_headers_received(void)
 
   nghttp2_frame_headers_free(&frame.headers);
 
-  /* More than max concurrent streams leads REFUSED_STREAM */
-  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  /* More than un-ACKed max concurrent streams leads REFUSED_STREAM */
+  session->pending_local_max_concurrent_stream = 1;
   nghttp2_frame_headers_init(&frame.headers,
                              NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
                              3, NGHTTP2_PRI_DEFAULT, NULL, 0);
@@ -1240,6 +1240,7 @@ void test_nghttp2_session_on_push_response_headers_received(void)
   nghttp2_outbound_item *item;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
   callbacks.on_begin_headers_callback = on_begin_headers_callback;
   callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
 
@@ -1262,8 +1263,9 @@ void test_nghttp2_session_on_push_response_headers_received(void)
   CU_ASSERT(NGHTTP2_STREAM_OPENED == stream->state);
   CU_ASSERT(1 == session->num_incoming_streams);
 
-  /* If max concurrent streams limit is exceeded, RST_STREAMed */
-  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  /* If un-ACKed max concurrent streams limit is exceeded,
+     RST_STREAMed */
+  session->pending_local_max_concurrent_stream = 1;
   stream = nghttp2_session_open_stream(session, 4, NGHTTP2_STREAM_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_RESERVED, NULL);
@@ -1274,6 +1276,27 @@ void test_nghttp2_session_on_push_response_headers_received(void)
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
   CU_ASSERT(NGHTTP2_REFUSED_STREAM == OB_CTRL(item)->rst_stream.error_code);
+  CU_ASSERT(1 == session->num_incoming_streams);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(1 == session->num_incoming_streams);
+
+  /* If ACKed max concurrent streams limit is exceeded, GOAWAY is
+     issued */
+  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+
+  stream = nghttp2_session_open_stream(session, 6, NGHTTP2_STREAM_FLAG_NONE,
+                                       NGHTTP2_PRI_DEFAULT,
+                                       NGHTTP2_STREAM_RESERVED, NULL);
+  frame.hd.stream_id = 6;
+
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_push_response_headers_received
+            (session, &frame, stream));
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+  CU_ASSERT(NGHTTP2_ENHANCE_YOUR_CALM == OB_CTRL(item)->goaway.error_code);
+  CU_ASSERT(1 == session->num_incoming_streams);
 
   nghttp2_frame_headers_free(&frame.headers);
   nghttp2_session_del(session);
@@ -1945,7 +1968,9 @@ void test_nghttp2_session_send_headers_push_reply(void)
   nghttp2_frame_headers_init(&frame->headers, NGHTTP2_FLAG_END_HEADERS, 2,
                              NGHTTP2_PRI_DEFAULT, NULL, 0);
   nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+  CU_ASSERT(0 == session->num_outgoing_streams);
   CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(1 == session->num_outgoing_streams);
   stream = nghttp2_session_get_stream(session, 2);
   CU_ASSERT(NGHTTP2_STREAM_OPENED == stream->state);
 
@@ -2718,9 +2743,7 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(1 == ud.frame_send_cb_called);
 
-  /* Only SETTINGS_MAX_CONCURRENT_STREAMS is applied on transmission */
-  CU_ASSERT(50 ==
-            session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(50 == session->pending_local_max_concurrent_stream);
 
   nghttp2_frame_settings_init(&ack_frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
   CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &ack_frame, 0));
@@ -2729,6 +2752,10 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(16*1024 ==
             session->local_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
   CU_ASSERT(0 == session->hd_inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(50 ==
+            session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
+            session->pending_local_max_concurrent_stream);
 
   nghttp2_session_del(session);
 }
@@ -3207,20 +3234,37 @@ void test_nghttp2_session_max_concurrent_streams(void)
   nghttp2_outbound_item *item;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
   nghttp2_session_server_new(&session, &callbacks, NULL);
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                               NGHTTP2_PRI_DEFAULT,
                               NGHTTP2_STREAM_OPENED, NULL);
+
+  /* Check un-ACKed SETTINGS_MAX_CONCURRENT_STREAMS */
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 3,
                              NGHTTP2_PRI_DEFAULT, NULL, 0);
-  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  session->pending_local_max_concurrent_stream = 1;
 
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
 
   item = nghttp2_session_get_ob_pq_top(session);
   CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
-  CU_ASSERT(NGHTTP2_REFUSED_STREAM == OB_CTRL(item)->rst_stream.error_code)
+  CU_ASSERT(NGHTTP2_REFUSED_STREAM == OB_CTRL(item)->rst_stream.error_code);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  /* Check ACKed SETTINGS_MAX_CONCURRENT_STREAMS */
+  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  frame.hd.stream_id = 5;
+
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_request_headers_received(session, &frame));
+
+  item = nghttp2_session_get_ob_pq_top(session);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+  CU_ASSERT(NGHTTP2_ENHANCE_YOUR_CALM == OB_CTRL(item)->goaway.error_code);
 
   nghttp2_frame_headers_free(&frame.headers);
   nghttp2_session_del(session);

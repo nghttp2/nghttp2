@@ -193,6 +193,9 @@ struct nghttp2_session {
   uint32_t local_settings[NGHTTP2_SETTINGS_MAX+1];
   /* Option flags. This is bitwise-OR of 0 or more of nghttp2_optmask. */
   uint32_t opt_flags;
+  /* Unacked local SETTINGS_MAX_CONCURRENT_STREAMS value. We use this
+     to refuse the incoming stream if it exceeds this value. */
+  uint32_t pending_local_max_concurrent_stream;
   /* Nonzero if the session is server side. */
   uint8_t server;
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
