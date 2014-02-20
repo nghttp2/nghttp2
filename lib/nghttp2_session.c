@@ -1244,25 +1244,23 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
       }
 
       switch(frame->headers.cat) {
-      case NGHTTP2_HCAT_REQUEST: {
-        if(nghttp2_session_open_stream
-           (session, frame->hd.stream_id,
-            NGHTTP2_STREAM_FLAG_NONE,
-            frame->headers.pri,
-            NGHTTP2_STREAM_INITIAL,
-            aux_data ? aux_data->stream_user_data : NULL) == NULL) {
+      case NGHTTP2_HCAT_REQUEST:
+        if(!nghttp2_session_open_stream(session, frame->hd.stream_id,
+                                        NGHTTP2_STREAM_FLAG_NONE,
+                                        frame->headers.pri,
+                                        NGHTTP2_STREAM_INITIAL,
+                                        aux_data ?
+                                        aux_data->stream_user_data : NULL)) {
           return NGHTTP2_ERR_NOMEM;
         }
         break;
-      }
-      case NGHTTP2_HCAT_PUSH_RESPONSE: {
+      case NGHTTP2_HCAT_PUSH_RESPONSE:
         if(aux_data && aux_data->stream_user_data) {
           nghttp2_stream *stream;
           stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
           stream->stream_user_data = aux_data->stream_user_data;
         }
         break;
-      }
       default:
         break;
       }
