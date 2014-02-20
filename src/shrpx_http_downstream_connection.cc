@@ -51,7 +51,8 @@ HttpDownstreamConnection::HttpDownstreamConnection
 (ClientHandler *client_handler)
   : DownstreamConnection(client_handler),
     bev_(nullptr),
-    ioctrl_(nullptr)
+    ioctrl_(nullptr),
+    response_htp_{0}
 {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection()
