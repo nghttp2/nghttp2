@@ -48,10 +48,10 @@ AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_HEADERS([config.h])
 
 dnl Checks for command-line options
-AC_ARG_ENABLE([maintainer-mode],
-    [AS_HELP_STRING([--enable-maintainer-mode],
+AC_ARG_ENABLE([werror],
+    [AS_HELP_STRING([--enable-werror],
                     [Turn on compile time warnings])],
-    [maintainer_mode=$enableval], [maintainer_mode=no])
+    [werror=$enableval], [werror=no])
 
 AC_ARG_ENABLE([app],
     [AS_HELP_STRING([--enable-app],
@@ -370,7 +370,7 @@ case "${host}" in
     ;;
 esac
 
-if test "x$maintainer_mode" != "xno"; then
+if test "x$werror" != "xno"; then
     CFLAGS="$CFLAGS -Wall -Wextra -Werror"
     CFLAGS="$CFLAGS -Wmissing-prototypes -Wstrict-prototypes"
     CFLAGS="$CFLAGS -Wmissing-declarations -Wpointer-arith"
