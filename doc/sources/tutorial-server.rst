@@ -462,7 +462,7 @@ is emitted via ``on_header_callback`` function, which is called after
         }
         stream_data = nghttp2_session_get_stream_user_data(session,
                                                            frame->hd.stream_id);
-        if(stream_data->request_path) {
+        if(!stream_data || stream_data->request_path) {
           break;
         }
         if(namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
@@ -580,6 +580,9 @@ is about to close::
       http2_stream_data *stream_data;
 
       stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
+      if(!stream_data) {
+        return 0;
+      }
       remove_stream(session_data, stream_data);
       delete_http2_stream_data(stream_data);
       return 0;

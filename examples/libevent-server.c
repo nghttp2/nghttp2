@@ -410,7 +410,7 @@ static int on_header_callback(nghttp2_session *session,
     }
     stream_data = nghttp2_session_get_stream_user_data(session,
                                                        frame->hd.stream_id);
-    if(stream_data->request_path) {
+    if(!stream_data || stream_data->request_path) {
       break;
     }
     if(namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
@@ -529,6 +529,9 @@ static int on_stream_close_callback(nghttp2_session *session,
   http2_stream_data *stream_data;
 
   stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
+  if(!stream_data) {
+    return 0;
+  }
   remove_stream(session_data, stream_data);
   delete_http2_stream_data(stream_data);
   return 0;
