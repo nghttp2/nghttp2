@@ -1511,7 +1511,7 @@ void test_nghttp2_session_on_push_promise_received(void)
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENING, NULL);
   nghttp2_frame_push_promise_init(&frame.push_promise,
-                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, 2,
+                                  NGHTTP2_FLAG_END_HEADERS, 1, 2,
                                   NULL, 0);
 
   user_data.begin_headers_cb_called = 0;
@@ -1626,7 +1626,7 @@ void test_nghttp2_session_on_push_promise_received(void)
                                        NGHTTP2_STREAM_RESERVED, NULL);
   /* Attempt to PUSH_PROMISE against reserved (remote) stream */
   nghttp2_frame_push_promise_init(&frame.push_promise,
-                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 2, 4,
+                                  NGHTTP2_FLAG_END_HEADERS, 2, 4,
                                   NULL, 0);
 
   user_data.begin_headers_cb_called = 0;
@@ -1651,7 +1651,7 @@ void test_nghttp2_session_on_push_promise_received(void)
   session->local_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] = 0;
 
   nghttp2_frame_push_promise_init(&frame.push_promise,
-                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, 2,
+                                  NGHTTP2_FLAG_END_HEADERS, 1, 2,
                                   NULL, 0);
 
   user_data.begin_headers_cb_called = 0;
@@ -1674,7 +1674,7 @@ void test_nghttp2_session_on_push_promise_received(void)
                                        NGHTTP2_STREAM_OPENING, NULL);
   nvlen = nghttp2_nv_array_copy(&nva, malformed_nva, ARRLEN(malformed_nva));
   nghttp2_frame_push_promise_init(&frame.push_promise,
-                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, 2,
+                                  NGHTTP2_FLAG_END_HEADERS, 1, 2,
                                   nva, nvlen);
   user_data.begin_headers_cb_called = 0;
   user_data.invalid_frame_recv_cb_called = 0;
@@ -2018,7 +2018,7 @@ void test_nghttp2_session_send_push_promise(void)
                               NGHTTP2_PRI_DEFAULT, NGHTTP2_STREAM_OPENING,
                               NULL);
   nghttp2_frame_push_promise_init(&frame->push_promise,
-                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, -1,
+                                  NGHTTP2_FLAG_END_HEADERS, 1, -1,
                                   NULL, 0);
   nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
 
@@ -2038,7 +2038,7 @@ void test_nghttp2_session_send_push_promise(void)
 
   frame = malloc(sizeof(nghttp2_frame));
   nghttp2_frame_push_promise_init(&frame->push_promise,
-                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, -1,
+                                  NGHTTP2_FLAG_END_HEADERS, 1, -1,
                                   NULL, 0);
   nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
   ud.frame_not_send_cb_called = 0;
@@ -2057,7 +2057,7 @@ void test_nghttp2_session_send_push_promise(void)
                               NULL);
   frame = malloc(sizeof(nghttp2_frame));
   nghttp2_frame_push_promise_init(&frame->push_promise,
-                                  NGHTTP2_FLAG_END_PUSH_PROMISE, 1, -1,
+                                  NGHTTP2_FLAG_END_HEADERS, 1, -1,
                                   NULL, 0);
   nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
 
@@ -2200,7 +2200,7 @@ void test_nghttp2_session_reprioritize_stream(void)
                                        NGHTTP2_STREAM_OPENING, NULL);
 
   CU_ASSERT(0 == nghttp2_submit_push_promise(session,
-                                             NGHTTP2_FLAG_END_PUSH_PROMISE,
+                                             NGHTTP2_FLAG_END_HEADERS,
                                              3, NULL, 0));
   ud.block_count = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));

@@ -272,8 +272,8 @@ void print_flags(const nghttp2_frame_hd& hd)
     }
     break;
   case NGHTTP2_PUSH_PROMISE:
-    if(hd.flags & NGHTTP2_FLAG_END_PUSH_PROMISE) {
-      s += "END_PUSH_PROMISE";
+    if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
+      s += "END_HEADERS";
     }
     if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
       if(!s.empty()) {

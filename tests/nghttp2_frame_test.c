@@ -276,7 +276,7 @@ void test_nghttp2_frame_pack_push_promise()
 
   nva = headers();
   nvlen = HEADERS_LENGTH;
-  nghttp2_frame_push_promise_init(&frame, NGHTTP2_FLAG_END_PUSH_PROMISE,
+  nghttp2_frame_push_promise_init(&frame, NGHTTP2_FLAG_END_HEADERS,
                                   1000000007, (1U << 31) - 1, nva, nvlen);
   framelen = nghttp2_frame_pack_push_promise(&buf, &buflen, &bufoff, &frame,
                                              &deflater);
@@ -285,7 +285,7 @@ void test_nghttp2_frame_pack_push_promise()
                               buf + bufoff, framelen - bufoff));
   check_frame_header(framelen - bufoff - NGHTTP2_FRAME_HEAD_LENGTH,
                      NGHTTP2_PUSH_PROMISE,
-                     NGHTTP2_FLAG_END_PUSH_PROMISE, 1000000007, &oframe.hd);
+                     NGHTTP2_FLAG_END_HEADERS, 1000000007, &oframe.hd);
   CU_ASSERT((1U << 31) - 1 == oframe.promised_stream_id);
 
   nv_offset = bufoff + NGHTTP2_FRAME_HEAD_LENGTH + 4;

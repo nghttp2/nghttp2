@@ -514,7 +514,7 @@ int Http2Handler::submit_push_promise(Request *req,
     http2::make_nv_ll(":scheme", "https"),
     http2::make_nv_ls(":authority", (*itr).second)
   };
-  return nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_PUSH_PROMISE,
+  return nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_HEADERS,
                                      req->stream_id, nva.data(), nva.size());
 }
 

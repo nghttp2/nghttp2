@@ -395,10 +395,6 @@ typedef enum {
    */
   NGHTTP2_FLAG_PRIORITY = 0x8,
   /**
-   * The END_PUSH_PROMISE flag.
-   */
-  NGHTTP2_FLAG_END_PUSH_PROMISE = 0x4,
-  /**
    * The ACK flag.
    */
   NGHTTP2_FLAG_ACK = 0x1,
@@ -2128,7 +2124,7 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  *
  * Submits PUSH_PROMISE frame. The |flags| is currently ignored and
  * the resulting PUSH_PROMISE frame always has
- * :enum:`NGHTTP2_FLAG_END_PUSH_PROMISE` flag set due to the lack of
+ * :enum:`NGHTTP2_FLAG_END_HEADERS` flag set due to the lack of
  * header continuation support in the library.
  *
  * The |stream_id| must be client initiated stream ID.
