@@ -58,11 +58,6 @@ AC_ARG_ENABLE([debug],
                     [Turn on debug output])],
     [debug=$enableval], [debug=no])
 
-AC_ARG_ENABLE([strict-http-parser],
-    [AS_HELP_STRING([--enable-strict-http-parser],
-                    [Turn on strict http parser mode])],
-    [strict_http_parser=$enableval], [strict_http_parser=no])
-
 AC_ARG_ENABLE([app],
     [AS_HELP_STRING([--enable-app],
                     [Build applications (nghttp, nghttpd and nghttpx) [default=check]])],
@@ -394,10 +389,6 @@ fi
 
 if test "x$debug" != "xno"; then
     CFLAGS="$CFLAGS -DDEBUGBUILD"
-fi
-
-if test "x$strict_http_parser" = "xno"; then
-    CFLAGS="$CFLAGS -DHTTP_PARSER_STRICT=0"
 fi
 
 AC_SUBST([TESTS_LIBS])
