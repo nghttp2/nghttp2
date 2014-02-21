@@ -601,13 +601,6 @@ The PRIORITY flag.</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="NGHTTP2_FLAG_END_PUSH_PROMISE">
-<tt class="descname">NGHTTP2_FLAG_END_PUSH_PROMISE</tt><a class="headerlink" href="#NGHTTP2_FLAG_END_PUSH_PROMISE" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">0x4</span></tt>)
-The END_PUSH_PROMISE flag.</p>
-</dd></dl>
-
-<dl class="macro">
 <dt id="NGHTTP2_FLAG_ACK">
 <tt class="descname">NGHTTP2_FLAG_ACK</tt><a class="headerlink" href="#NGHTTP2_FLAG_ACK" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x1</span></tt>)
@@ -2294,14 +2287,13 @@ int <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="refere
 following values:</p>
 <ul class="simple">
 <li><a class="reference internal" href="#NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a></li>
-<li><a class="reference internal" href="#NGHTTP2_FLAG_END_HEADERS" title="NGHTTP2_FLAG_END_HEADERS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_HEADERS</span></tt></a></li>
 <li><a class="reference internal" href="#NGHTTP2_FLAG_PRIORITY" title="NGHTTP2_FLAG_PRIORITY"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_PRIORITY</span></tt></a></li>
 </ul>
 <p>If <em>flags</em> includes <a class="reference internal" href="#NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a>, this frame has
-END_STREAM flag set. The library does not support header
-continuation and the HEADERS frame always has
-<a class="reference internal" href="#NGHTTP2_FLAG_END_HEADERS" title="NGHTTP2_FLAG_END_HEADERS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_HEADERS</span></tt></a> flag set regardless of the <em>flags</em>
-value.</p>
+END_STREAM flag set.</p>
+<p>The library handles the CONTINUATION frame internally and it
+correctly sets END_HEADERS to the last sequence of the PUSH_PROMISE
+or CONTINUATION frame.</p>
 <p>If the <em>stream_id</em> is -1, this frame is assumed as request (i.e.,
 request HEADERS frame which opens new stream). In this case, the
 actual stream ID is assigned just before the frame is sent. For
@@ -2410,10 +2402,10 @@ strictly greater than (1 &lt;&lt; 31) - 1.</dd>
 <dl class="function">
 <dt id="nghttp2_submit_push_promise">
 int <tt class="descname">nghttp2_submit_push_promise</tt><big>(</big><a class="reference internal" href="#nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em><big>)</big><a class="headerlink" href="#nghttp2_submit_push_promise" title="Permalink to this definition">¶</a></dt>
-<dd><p>Submits PUSH_PROMISE frame. The <em>flags</em> is currently ignored and
-the resulting PUSH_PROMISE frame always has
-<a class="reference internal" href="#NGHTTP2_FLAG_END_PUSH_PROMISE" title="NGHTTP2_FLAG_END_PUSH_PROMISE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_PUSH_PROMISE</span></tt></a> flag set due to the lack of
-header continuation support in the library.</p>
+<dd><p>Submits PUSH_PROMISE frame.</p>
+<p>The <em>flags</em> is currently ignored. The library handles the
+CONTINUATION frame internally and it correctly sets END_HEADERS to
+the last sequence of the PUSH_PROMISE or CONTINUATION frame.</p>
 <p>The <em>stream_id</em> must be client initiated stream ID.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
 <em>nvlen</em> elements. The value is opaque sequence of bytes and

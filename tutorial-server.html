@@ -592,7 +592,7 @@ is emitted via <tt class="docutils literal"><span class="pre">on_header_callback
     <span class="p">}</span>
     <span class="n">stream_data</span> <span class="o">=</span> <span class="n">nghttp2_session_get_stream_user_data</span><span class="p">(</span><span class="n">session</span><span class="p">,</span>
                                                        <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">);</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">request_path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">stream_data</span> <span class="o">||</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">request_path</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">break</span><span class="p">;</span>
     <span class="p">}</span>
     <span class="k">if</span><span class="p">(</span><span class="n">namelen</span> <span class="o">==</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">PATH</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">memcmp</span><span class="p">(</span><span class="n">PATH</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">namelen</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
@@ -706,6 +706,9 @@ is about to close:</p>
   <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
 
   <span class="n">stream_data</span> <span class="o">=</span> <span class="n">nghttp2_session_get_stream_user_data</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">stream_id</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">stream_data</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
   <span class="n">remove_stream</span><span class="p">(</span><span class="n">session_data</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
   <span class="n">delete_http2_stream_data</span><span class="p">(</span><span class="n">stream_data</span><span class="p">);</span>
   <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
@@ -1128,7 +1131,7 @@ stream is about to close and we no longer use that object.</p>
     <span class="p">}</span>
     <span class="n">stream_data</span> <span class="o">=</span> <span class="n">nghttp2_session_get_stream_user_data</span><span class="p">(</span><span class="n">session</span><span class="p">,</span>
                                                        <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">);</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">request_path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">stream_data</span> <span class="o">||</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">request_path</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">break</span><span class="p">;</span>
     <span class="p">}</span>
     <span class="k">if</span><span class="p">(</span><span class="n">namelen</span> <span class="o">==</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">PATH</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">memcmp</span><span class="p">(</span><span class="n">PATH</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">namelen</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
@@ -1247,6 +1250,9 @@ stream is about to close and we no longer use that object.</p>
   <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
 
   <span class="n">stream_data</span> <span class="o">=</span> <span class="n">nghttp2_session_get_stream_user_data</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">stream_id</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">stream_data</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
   <span class="n">remove_stream</span><span class="p">(</span><span class="n">session_data</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
   <span class="n">delete_http2_stream_data</span><span class="p">(</span><span class="n">stream_data</span><span class="p">);</span>
   <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>

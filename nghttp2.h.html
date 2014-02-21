@@ -545,10 +545,6 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLAG_PRIORITY</span> <span class="o">=</span> <span class="mh">0x8</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The END_PUSH_PROMISE flag.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_END_PUSH_PROMISE</span> <span class="o">=</span> <span class="mh">0x4</span><span class="p">,</span>
-  <span class="cm">/**</span>
 <span class="cm">   * The ACK flag.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLAG_ACK</span> <span class="o">=</span> <span class="mh">0x1</span><span class="p">,</span>
@@ -2132,14 +2128,14 @@
 <span class="cm"> * following values:</span>
 <span class="cm"> *</span>
 <span class="cm"> * * :enum:`NGHTTP2_FLAG_END_STREAM`</span>
-<span class="cm"> * * :enum:`NGHTTP2_FLAG_END_HEADERS`</span>
 <span class="cm"> * * :enum:`NGHTTP2_FLAG_PRIORITY`</span>
 <span class="cm"> *</span>
 <span class="cm"> * If |flags| includes :enum:`NGHTTP2_FLAG_END_STREAM`, this frame has</span>
-<span class="cm"> * END_STREAM flag set. The library does not support header</span>
-<span class="cm"> * continuation and the HEADERS frame always has</span>
-<span class="cm"> * :enum:`NGHTTP2_FLAG_END_HEADERS` flag set regardless of the |flags|</span>
-<span class="cm"> * value.</span>
+<span class="cm"> * END_STREAM flag set.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The library handles the CONTINUATION frame internally and it</span>
+<span class="cm"> * correctly sets END_HEADERS to the last sequence of the PUSH_PROMISE</span>
+<span class="cm"> * or CONTINUATION frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the |stream_id| is -1, this frame is assumed as request (i.e.,</span>
 <span class="cm"> * request HEADERS frame which opens new stream). In this case, the</span>
@@ -2276,10 +2272,11 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Submits PUSH_PROMISE frame. The |flags| is currently ignored and</span>
-<span class="cm"> * the resulting PUSH_PROMISE frame always has</span>
-<span class="cm"> * :enum:`NGHTTP2_FLAG_END_PUSH_PROMISE` flag set due to the lack of</span>
-<span class="cm"> * header continuation support in the library.</span>
+<span class="cm"> * Submits PUSH_PROMISE frame.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |flags| is currently ignored. The library handles the</span>
+<span class="cm"> * CONTINUATION frame internally and it correctly sets END_HEADERS to</span>
+<span class="cm"> * the last sequence of the PUSH_PROMISE or CONTINUATION frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |stream_id| must be client initiated stream ID.</span>
 <span class="cm"> *</span>
