@@ -678,6 +678,28 @@ void test_nghttp2_hd_change_table_size(void)
 
   nva_out_reset(&out);
 
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+
+  /* Check that encoder can handle the case where its allowable buffer
+     size is less than default size, 4096 */
+  nghttp2_hd_deflate_init2(&deflater, 1024);
+  nghttp2_hd_inflate_init(&inflater);
+
+  CU_ASSERT(127 == deflater.ctx.hd_table.mask);
+  CU_ASSERT(4096 == deflater.ctx.hd_table_bufsize_max);
+
+  /* This emits context update with buffer size 1024 */
+  rv = nghttp2_hd_deflate_hd(&deflater, &buf, &buflen, 0, nva, 2);
+  CU_ASSERT(rv > 0);
+  CU_ASSERT(2 == deflater.ctx.hd_table.len);
+  CU_ASSERT(1024 == deflater.ctx.hd_table_bufsize_max);
+
+  CU_ASSERT(rv == inflate_hd(&inflater, &out, buf, rv));
+  CU_ASSERT(2 == inflater.ctx.hd_table.len);
+  CU_ASSERT(1024 == inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(4096 == inflater.settings_hd_table_bufsize_max);
+
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
   nghttp2_hd_deflate_free(&deflater);
