@@ -1978,14 +1978,14 @@ int nghttp2_submit_response(nghttp2_session *session,
  * following values:
  *
  * * :enum:`NGHTTP2_FLAG_END_STREAM`
- * * :enum:`NGHTTP2_FLAG_END_HEADERS`
  * * :enum:`NGHTTP2_FLAG_PRIORITY`
  *
  * If |flags| includes :enum:`NGHTTP2_FLAG_END_STREAM`, this frame has
- * END_STREAM flag set. The library does not support header
- * continuation and the HEADERS frame always has
- * :enum:`NGHTTP2_FLAG_END_HEADERS` flag set regardless of the |flags|
- * value.
+ * END_STREAM flag set.
+ *
+ * The library handles the CONTINUATION frame internally and it
+ * correctly sets END_HEADERS to the last sequence of the PUSH_PROMISE
+ * or CONTINUATION frame.
  *
  * If the |stream_id| is -1, this frame is assumed as request (i.e.,
  * request HEADERS frame which opens new stream). In this case, the
@@ -2122,10 +2122,11 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
 /**
  * @function
  *
- * Submits PUSH_PROMISE frame. The |flags| is currently ignored and
- * the resulting PUSH_PROMISE frame always has
- * :enum:`NGHTTP2_FLAG_END_HEADERS` flag set due to the lack of
- * header continuation support in the library.
+ * Submits PUSH_PROMISE frame.
+ *
+ * The |flags| is currently ignored. The library handles the
+ * CONTINUATION frame internally and it correctly sets END_HEADERS to
+ * the last sequence of the PUSH_PROMISE or CONTINUATION frame.
  *
  * The |stream_id| must be client initiated stream ID.
  *
