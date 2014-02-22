@@ -127,10 +127,11 @@ int Http2Session::disconnect()
   // Http2DownstreamConnection objects belong to the same ClientHandler
   // object. So first dump ClientHandler objects and delete them once
   // and for all.
-  std::vector<Http2DownstreamConnection*> vec(dconns_.begin(), dconns_.end());
+  std::vector<Http2DownstreamConnection*> vec(std::begin(dconns_),
+                                              std::end(dconns_));
   std::set<ClientHandler*> handlers;
-  for(size_t i = 0; i < vec.size(); ++i) {
-    handlers.insert(vec[i]->get_client_handler());
+  for(auto dc : vec) {
+    handlers.insert(dc->get_client_handler());
   }
   for(auto& h : handlers) {
     delete h;
