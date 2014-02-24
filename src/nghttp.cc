@@ -248,6 +248,7 @@ std::string strip_fragment(const char *raw_uri)
 namespace {
 struct Request {
   Headers res_nva;
+  Headers push_req_nva;
   // URI without fragment
   std::string uri;
   std::string status;
@@ -261,6 +262,7 @@ struct Request {
   int32_t pri;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
+  // For pushed request, |uri| is empty and |u| is zero-cleared.
   Request(const std::string& uri, const http_parser_url &u,
           const nghttp2_data_provider *data_prd, int64_t data_length,
           int32_t pri, int level = 0)
@@ -1150,6 +1152,29 @@ void check_response_header(nghttp2_session *session, Request* req)
 } // namespace
 
 namespace {
+int on_begin_headers_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame,
+                              void *user_data)
+{
+  auto client = get_session(user_data);
+  switch(frame->hd.type) {
+  case NGHTTP2_PUSH_PROMISE: {
+    auto stream_id = frame->push_promise.promised_stream_id;
+    http_parser_url u;
+    memset(&u, 0, sizeof(u));
+    // TODO Set pri and level
+    auto req = util::make_unique<Request>("", u, nullptr, 0, 0, 0);
+    nghttp2_session_set_stream_user_data(session, stream_id, req.get());
+    client->reqvec.push_back(std::move(req));
+    check_stream_id(session, stream_id, user_data);
+    break;
+  }
+  }
+  return 0;
+}
+} //namespace
+
+namespace {
 int on_header_callback(nghttp2_session *session,
                        const nghttp2_frame *frame,
                        const uint8_t *name, size_t namelen,
@@ -1160,17 +1185,30 @@ int on_header_callback(nghttp2_session *session,
     verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
                                user_data);
   }
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
-    return 0;
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS: {
+    if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
+       frame->headers.cat != NGHTTP2_HCAT_PUSH_RESPONSE) {
+      break;
+    }
+    auto req = (Request*)nghttp2_session_get_stream_user_data
+      (session, frame->hd.stream_id);
+    if(!req) {
+      break;
+    }
+    http2::split_add_header(req->res_nva, name, namelen, value, valuelen);
+    break;
   }
-  auto req = (Request*)nghttp2_session_get_stream_user_data
-    (session, frame->hd.stream_id);
-  if(!req) {
-    // Server-pushed stream does not have stream user data
-    return 0;
+  case NGHTTP2_PUSH_PROMISE: {
+    auto req = (Request*)nghttp2_session_get_stream_user_data
+      (session, frame->push_promise.promised_stream_id);
+    if(!req) {
+      break;
+    }
+    http2::split_add_header(req->push_req_nva, name, namelen, value, valuelen);
+    break;
   }
-  http2::split_add_header(req->res_nva, name, namelen, value, valuelen);
+  }
   return 0;
 }
 } // namespace
@@ -1179,8 +1217,13 @@ namespace {
 int on_frame_recv_callback2
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
-  if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
+  auto client = get_session(user_data);
+  switch(frame->hd.type) {
+  case NGHTTP2_HEADERS: {
+    if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
+       frame->headers.cat != NGHTTP2_HCAT_PUSH_RESPONSE) {
+      break;
+    }
     auto req = (Request*)nghttp2_session_get_stream_user_data
       (session, frame->hd.stream_id);
     // If this is the HTTP Upgrade with OPTIONS method to avoid POST,
@@ -1189,14 +1232,65 @@ int on_frame_recv_callback2
       req->record_response_time();
       check_response_header(session, req);
     }
-  } else if(frame->hd.type == NGHTTP2_SETTINGS &&
-     (frame->hd.flags & NGHTTP2_FLAG_ACK)) {
-    auto client = get_session(user_data);
+    break;
+  }
+  case NGHTTP2_SETTINGS:
+    if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+      break;
+    }
     if(client->settings_timerev) {
       evtimer_del(client->settings_timerev);
       event_free(client->settings_timerev);
       client->settings_timerev = nullptr;
     }
+    break;
+  case NGHTTP2_PUSH_PROMISE: {
+    auto req = (Request*)nghttp2_session_get_stream_user_data
+      (session, frame->push_promise.promised_stream_id);
+    if(!req) {
+      break;
+    }
+    std::string scheme, authority, method, path;
+    for(auto& nv : req->push_req_nva) {
+      if(nv.first == ":scheme") {
+        scheme = nv.second;
+        continue;
+      }
+      if(nv.first == ":authority" || nv.first == "host") {
+        authority = nv.second;
+        continue;
+      }
+      if(nv.first == ":method") {
+        method = nv.second;
+        continue;
+      }
+      if(nv.first == ":path") {
+        path = nv.second;
+        continue;
+      }
+    }
+    if(scheme.empty() || authority.empty() || method.empty() || path.empty() ||
+       path[0] != '/') {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                frame->push_promise.promised_stream_id,
+                                NGHTTP2_PROTOCOL_ERROR);
+      break;
+    }
+    std::string uri = scheme;
+    uri += "://";
+    uri += authority;
+    uri += path;
+    http_parser_url u;
+    if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                frame->push_promise.promised_stream_id,
+                                NGHTTP2_PROTOCOL_ERROR);
+      break;
+    }
+    req->uri = uri;
+    req->u = u;
+    break;
+  }
   }
   if(config.verbose) {
     verbose_on_frame_recv_callback(session, frame, user_data);
@@ -1216,9 +1310,9 @@ int on_stream_close_callback
     update_html_parser(client, (*itr).second, nullptr, 0, 1);
     (*itr).second->record_complete_time();
     ++client->complete;
-    if(client->all_requests_processed()) {
-      nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
-    }
+  }
+  if(client->all_requests_processed()) {
+    nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
   }
   return 0;
 }
@@ -1554,6 +1648,7 @@ int run(char **uris, int n)
       verbose_on_unknown_frame_recv_callback;
   }
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_begin_headers_callback = on_begin_headers_callback;
   callbacks.on_header_callback = on_header_callback;
   if(config.padding) {
     callbacks.select_padding_callback = select_padding_callback;
