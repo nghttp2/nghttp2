@@ -876,8 +876,8 @@ Python bindings
 ---------------
 
 This ``python`` directory contains nghttp2 Python bindings. The
-bindings currently only provide HPACK compressor and decompressor
-classes.
+bindings currently provide HPACK compressor and decompressor
+classes and HTTP/2 server.
 
 The extension module is called ``nghttp2``.
 
@@ -886,9 +886,6 @@ determined by configure script. If the detected Python version is not
 what you expect, specify a path to Python executable in ``PYTHON``
 variable as an argument to configure script (e.g., ``./configure
 PYTHON=/usr/bin/python3.3``).
-
-Example
-+++++++
 
 The following example code illustrates basic usage of HPACK compressor
 and decompressor in Python:
@@ -907,3 +904,87 @@ and decompressor in Python:
 
     hdrs = inflater.inflate(data)
     print(hdrs)
+
+The ``nghttp2.HTTP2Server`` class builds on top of the asyncio event
+loop. On construction, *RequestHandlerClass* must be given, which must
+be a subclass of ``nghttp2.BaseRequestHandler`` class.
+
+The ``BaseRequestHandler`` class is used to handle the HTTP/2
+stream. By default, it does not nothing. It must be subclassed to
+handle each event callback method.
+
+The first callback method invoked is ``on_headers()``. It is called
+when HEADERS frame, which includes request header fields, is arrived.
+
+If request has request body, ``on_data(data)`` is invoked for each
+chunk of received data.
+
+When whole request is received, ``on_request_done()`` is invoked.
+
+When stream is closed, ``on_close(error_code)`` is called.
+
+The application can send response using ``send_response()`` method. It
+can be used in ``on_headers()``, ``on_data()`` or
+``on_request_done()``.
+
+The application can push resource using ``push()`` method. It must be
+used before ``send_response()`` call.
+
+The following instance variables are available:
+
+client_address
+    Contains a tuple of the form (host, port) referring to the
+    client's address.
+
+stream_id
+    Stream ID of this stream
+
+scheme
+    Scheme of the request URI. This is a value of :scheme header field.
+
+method
+    Method of this stream. This is a value of :method header field.
+
+host
+    This is a value of :authority or host header field.
+
+path
+    This is a value of :path header field.
+
+The following example illustrates the HTTP2Server and
+BaseRequestHandler usage:
+
+.. code-block:: python
+
+    #!/usr/bin/env python
+
+    import io, ssl
+    from pprint import pprint
+    import nghttp2
+
+    class Handler(nghttp2.BaseRequestHandler):
+
+        def on_headers(self):
+            self.push(path='/css/bootstrap.css',
+                      request_headers = [(b'content-length', b'3')],
+                      status=200,
+                      body='foo')
+
+            self.push(path='/js/bootstrap.js',
+                      method='GET',
+                      request_headers = [(b'content-length', b'10')],
+                      status=200,
+                      body='foobarbuzz')
+
+            self.send_response(status=200,
+                               headers = [(b'content-type', b'text/plain')],
+                               body=io.BytesIO(b'nghttp2-python FTW'))
+
+    ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2
+    ctx.set_npn_protocols(['h2-10'])
+    ctx.load_cert_chain('server.crt', 'server.key')
+
+    # give None to ssl to make the server non-SSL/TLS
+    server = nghttp2.HTTP2Server(('127.0.0.1', 8443), Handler, ssl=ctx)
+    server.serve_forever()
