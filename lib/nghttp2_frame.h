@@ -481,9 +481,6 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
- * NGHTTP2_ERR_INVALID_ARGUMENT
- *     The length of name or value in |nva| is strictly larger than
- *     NGHTTP2_MAX_HD_VALUE_LENGTH.
  */
 ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
                               const nghttp2_nv *nva, size_t nvlen);

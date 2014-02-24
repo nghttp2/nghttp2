@@ -2201,7 +2201,7 @@ void test_nghttp2_session_reprioritize_stream(void)
 
   CU_ASSERT(0 == nghttp2_submit_push_promise(session,
                                              NGHTTP2_FLAG_END_HEADERS,
-                                             3, NULL, 0));
+                                             3, NULL, 0, NULL));
   ud.block_count = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));
   /* Now PUSH_PROMISE is in aob */
@@ -2846,7 +2846,7 @@ void test_nghttp2_submit_push_promise(void)
                               NGHTTP2_PRI_DEFAULT,
                               NGHTTP2_STREAM_OPENING, NULL);
   CU_ASSERT(0 == nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 1,
-                                             nv, ARRLEN(nv)));
+                                             nv, ARRLEN(nv), &ud));
 
   ud.frame_send_cb_called = 0;
   ud.sent_frame_type = 0;
@@ -2855,6 +2855,7 @@ void test_nghttp2_submit_push_promise(void)
   CU_ASSERT(NGHTTP2_PUSH_PROMISE == ud.sent_frame_type);
   stream = nghttp2_session_get_stream(session, 2);
   CU_ASSERT(NGHTTP2_STREAM_RESERVED == stream->state);
+  CU_ASSERT(&ud == nghttp2_session_get_stream_user_data(session, 2));
 
   nghttp2_session_del(session);
 }
@@ -3039,7 +3040,8 @@ void test_nghttp2_submit_invalid_nv(void)
   /* nghttp2_submit_push_promise */
   CU_ASSERT(0 ==
             nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 2,
-                                        empty_name_nv, ARRLEN(empty_name_nv)));
+                                        empty_name_nv, ARRLEN(empty_name_nv),
+                                        NULL));
 
   nghttp2_session_del(session);
 }
@@ -4128,7 +4130,7 @@ void test_nghttp2_session_pack_headers_with_padding(void)
   /* Check PUSH_PROMISE */
   CU_ASSERT(0 ==
             nghttp2_submit_push_promise(sv_session, NGHTTP2_FLAG_NONE, 1,
-                                        nva, ARRLEN(nva)));
+                                        nva, ARRLEN(nva), NULL));
   acc.length = 0;
   CU_ASSERT(0 == nghttp2_session_send(sv_session));
 

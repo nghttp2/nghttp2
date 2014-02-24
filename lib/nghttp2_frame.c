@@ -598,10 +598,6 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
   size_t buflen = 0;
   nghttp2_nv *p;
   for(i = 0; i < nvlen; ++i) {
-    if(nva[i].namelen > NGHTTP2_HD_MAX_NAME ||
-       nva[i].valuelen > NGHTTP2_HD_MAX_VALUE) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
     buflen += nva[i].namelen + nva[i].valuelen;
   }
   /* If all name/value pair is 0-length, remove them */

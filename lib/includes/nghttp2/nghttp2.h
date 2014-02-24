@@ -2140,6 +2140,13 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.
  *
+ * The |promised_stream_user_data| is a pointer to an arbitrary data
+ * which is associated to the promised stream this frame will open and
+ * make it in reserved state. It is available using
+ * `nghttp2_session_get_stream_user_data()`. The application can
+ * access it in :type:`nghttp2_before_frame_send_callback` and
+ * :type:`nghttp2_on_frame_send_callback` of this frame.
+ *
  * Since the library reorders the frames and tries to send the highest
  * prioritized one first and the HTTP/2.0 specification requires the
  * stream ID must be strictly increasing, the promised stream ID
@@ -2160,7 +2167,8 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  */
 int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
                                 int32_t stream_id,
-                                const nghttp2_nv *nva, size_t nvlen);
+                                const nghttp2_nv *nva, size_t nvlen,
+                                void *promised_stream_user_data);
 
 /**
  * @function

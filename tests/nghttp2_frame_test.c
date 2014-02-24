@@ -406,8 +406,9 @@ void test_nghttp2_nv_array_copy(void)
 
   nghttp2_nv_array_del(nva);
 
+  /* Large header field is acceptable */
   rv = nghttp2_nv_array_copy(&nva, &bignv, 1);
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+  CU_ASSERT(1 == rv);
 
   free(bignv.value);
 }

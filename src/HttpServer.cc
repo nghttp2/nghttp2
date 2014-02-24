@@ -515,7 +515,8 @@ int Http2Handler::submit_push_promise(Request *req,
     http2::make_nv_ls(":authority", (*itr).second)
   };
   return nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_HEADERS,
-                                     req->stream_id, nva.data(), nva.size());
+                                     req->stream_id, nva.data(), nva.size(),
+                                     nullptr);
 }
 
 void Http2Handler::add_stream(int32_t stream_id, std::unique_ptr<Request> req)

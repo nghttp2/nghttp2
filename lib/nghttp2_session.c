@@ -1303,6 +1303,9 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
     }
     case NGHTTP2_PUSH_PROMISE: {
       nghttp2_stream *stream;
+      nghttp2_headers_aux_data *aux_data;
+      aux_data = (nghttp2_headers_aux_data*)item->aux_data;
+
       rv = nghttp2_session_predicate_push_promise_send(session,
                                                       frame->hd.stream_id);
       if(rv != 0) {
@@ -1325,12 +1328,13 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
 
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
       assert(stream);
-      if(nghttp2_session_open_stream
+      if(!nghttp2_session_open_stream
          (session, frame->push_promise.promised_stream_id,
           NGHTTP2_STREAM_FLAG_PUSH,
           nghttp2_pushed_stream_pri(stream),
           NGHTTP2_STREAM_RESERVED,
-          NULL) == NULL) {
+          aux_data ?
+          aux_data->stream_user_data : NULL)) {
         return NGHTTP2_ERR_NOMEM;
       }
       break;
