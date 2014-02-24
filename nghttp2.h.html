@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -22,7 +21,7 @@
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:'',
+        URL_ROOT:'./',
         VERSION:'0.4.0-DEV',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
@@ -2290,6 +2289,13 @@
 <span class="cm"> * This function creates copies of all name/value pairs in |nva|.  It</span>
 <span class="cm"> * also lower-cases all names in |nva|.</span>
 <span class="cm"> *</span>
+<span class="cm"> * The |promised_stream_user_data| is a pointer to an arbitrary data</span>
+<span class="cm"> * which is associated to the promised stream this frame will open and</span>
+<span class="cm"> * make it in reserved state. It is available using</span>
+<span class="cm"> * `nghttp2_session_get_stream_user_data()`. The application can</span>
+<span class="cm"> * access it in :type:`nghttp2_before_frame_send_callback` and</span>
+<span class="cm"> * :type:`nghttp2_on_frame_send_callback` of this frame.</span>
+<span class="cm"> *</span>
 <span class="cm"> * Since the library reorders the frames and tries to send the highest</span>
 <span class="cm"> * prioritized one first and the HTTP/2.0 specification requires the</span>
 <span class="cm"> * stream ID must be strictly increasing, the promised stream ID</span>
@@ -2310,7 +2316,8 @@
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                                 <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                                <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
+                                <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">promised_stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>

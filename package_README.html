@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -22,7 +21,7 @@
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:'',
+        URL_ROOT:'./',
         VERSION:'0.4.0-DEV',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
@@ -271,11 +270,12 @@ installed:</p>
 <h2>Build from git<a class="headerlink" href="#build-from-git" title="Permalink to this headline">¶</a></h2>
 <p>Building from git is easy, but please be sure that at least autoconf 2.68 is
 used:</p>
-<div class="highlight-c"><pre>$ autoreconf -i
+<div class="highlight-c"><div class="highlight"><pre>$ autoreconf -i
 $ automake
 $ autoconf
 $ ./configure
-$ make</pre>
+$ make
+</pre></div>
 </div>
 </div>
 <div class="section" id="building-documentation">
@@ -285,7 +285,8 @@ $ make</pre>
 <p class="last">Documentation is still incomplete.</p>
 </div>
 <p>To build documentation, run:</p>
-<div class="highlight-c"><pre>$ make html</pre>
+<div class="highlight-c"><div class="highlight"><pre>$ make html
+</pre></div>
 </div>
 <p>The documents will be generated under <tt class="docutils literal"><span class="pre">doc/manual/html/</span></tt>.</p>
 <p>The generated documents will not be installed with <tt class="docutils literal"><span class="pre">make</span> <span class="pre">install</span></tt>.</p>
@@ -301,7 +302,7 @@ $ make</pre>
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 <p>It has verbose output mode for framing information. Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
-<div class="highlight-c"><pre>$ src/nghttp -nv https://localhost:8443
+<div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nv https://localhost:8443
 [  0.004][NPN] server offers:
           * h2-10
           * spdy/3.1
@@ -341,7 +342,7 @@ The negotiated protocol: h2-10
 [  0.008] (stream_id=1) content-length: 146
 [  0.008] (stream_id=1) content-type: text/html
 [  0.008] (stream_id=1) date: Sat, 15 Feb 2014 08:14:12 GMT
-[  0.008] (stream_id=1) etag: "b1-4e5535a027780-gzip"
+[  0.008] (stream_id=1) etag: &quot;b1-4e5535a027780-gzip&quot;
 [  0.008] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
 [  0.008] (stream_id=1) server: Apache/2.4.6 (Debian)
 [  0.008] (stream_id=1) vary: Accept-Encoding
@@ -354,10 +355,11 @@ The negotiated protocol: h2-10
 [  0.008] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
           ; END_STREAM
 [  0.008] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
-          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])</pre>
+          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+</pre></div>
 </div>
 <p>The HTTP Upgrade is performed like this:</p>
-<div class="highlight-c"><pre>$ src/nghttp -nvu http://localhost:8080
+<div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nvu http://localhost:8080
 [  0.000] HTTP Upgrade request
 GET / HTTP/1.1
 Host: localhost:8080
@@ -389,7 +391,7 @@ Upgrade: h2-10
 [  0.001] (stream_id=1) content-length: 177
 [  0.001] (stream_id=1) content-type: text/html
 [  0.001] (stream_id=1) date: Sat, 15 Feb 2014 08:16:23 GMT
-[  0.001] (stream_id=1) etag: "b1-4e5535a027780"
+[  0.001] (stream_id=1) etag: &quot;b1-4e5535a027780&quot;
 [  0.001] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
 [  0.001] (stream_id=1) server: Apache/2.4.6 (Debian)
 [  0.001] (stream_id=1) vary: Accept-Encoding
@@ -408,7 +410,8 @@ Upgrade: h2-10
           (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 [  0.002] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
-          (niv=0)</pre>
+          (niv=0)
+</pre></div>
 </div>
 </div>
 <div class="section" id="nghttpd-server">
@@ -422,7 +425,7 @@ HTTP/2.0 connection. No HTTP Upgrade is supported.</p>
 <p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
 information. Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
-<div class="highlight-c"><pre>$ src/nghttpd --no-tls -v 8080
+<div class="highlight-c"><div class="highlight"><pre>$ src/nghttpd --no-tls -v 8080
 IPv4: listen on port 8080
 IPv6: listen on port 8080
 [id=1] [  1.027] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
@@ -465,7 +468,8 @@ IPv6: listen on port 8080
           (niv=0)
 [id=1] [  1.028] recv GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
           (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-[id=1] [  1.028] closed</pre>
+[id=1] [  1.028] closed
+</pre></div>
 </div>
 </div>
 <div class="section" id="nghttpx-proxy">
@@ -555,7 +559,8 @@ create proxy.pac script like this:</p>
 machine nghttpx is running.  Please note that Chrome requires valid
 certificate for secure proxy.</p>
 <p>Then run chrome with the following arguments:</p>
-<div class="highlight-c"><pre>$ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn</pre>
+<div class="highlight-c"><div class="highlight"><pre>$ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
+</pre></div>
 </div>
 <p>With <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, it accepts HTTP/2.0, SPDY and HTTP/1.1
 connections and communicates with backend in HTTP/2.0:</p>
@@ -1002,16 +1007,14 @@ corresponding header set was processed. The format is the same as
 <div class="section" id="python-bindings">
 <h2>Python bindings<a class="headerlink" href="#python-bindings" title="Permalink to this headline">¶</a></h2>
 <p>This <tt class="docutils literal"><span class="pre">python</span></tt> directory contains nghttp2 Python bindings. The
-bindings currently only provide HPACK compressor and decompressor
-classes.</p>
+bindings currently provide HPACK compressor and decompressor
+classes and HTTP/2 server.</p>
 <p>The extension module is called <tt class="docutils literal"><span class="pre">nghttp2</span></tt>.</p>
 <p><tt class="docutils literal"><span class="pre">make</span></tt> will build the bindings and target Python version is
 determined by configure script. If the detected Python version is not
 what you expect, specify a path to Python executable in <tt class="docutils literal"><span class="pre">PYTHON</span></tt>
 variable as an argument to configure script (e.g., <tt class="docutils literal"><span class="pre">./configure</span>
 <span class="pre">PYTHON=/usr/bin/python3.3</span></tt>).</p>
-<div class="section" id="example">
-<h3>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h3>
 <p>The following example code illustrates basic usage of HPACK compressor
 and decompressor in Python:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">binascii</span>
@@ -1028,6 +1031,74 @@ and decompressor in Python:</p>
 <span class="k">print</span><span class="p">(</span><span class="n">hdrs</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The <tt class="docutils literal"><span class="pre">nghttp2.HTTP2Server</span></tt> class builds on top of the asyncio event
+loop. On construction, <em>RequestHandlerClass</em> must be given, which must
+be a subclass of <tt class="docutils literal"><span class="pre">nghttp2.BaseRequestHandler</span></tt> class.</p>
+<p>The <tt class="docutils literal"><span class="pre">BaseRequestHandler</span></tt> class is used to handle the HTTP/2
+stream. By default, it does not nothing. It must be subclassed to
+handle each event callback method.</p>
+<p>The first callback method invoked is <tt class="docutils literal"><span class="pre">on_headers()</span></tt>. It is called
+when HEADERS frame, which includes request header fields, is arrived.</p>
+<p>If request has request body, <tt class="docutils literal"><span class="pre">on_data(data)</span></tt> is invoked for each
+chunk of received data.</p>
+<p>When whole request is received, <tt class="docutils literal"><span class="pre">on_request_done()</span></tt> is invoked.</p>
+<p>When stream is closed, <tt class="docutils literal"><span class="pre">on_close(error_code)</span></tt> is called.</p>
+<p>The application can send response using <tt class="docutils literal"><span class="pre">send_response()</span></tt> method. It
+can be used in <tt class="docutils literal"><span class="pre">on_headers()</span></tt>, <tt class="docutils literal"><span class="pre">on_data()</span></tt> or
+<tt class="docutils literal"><span class="pre">on_request_done()</span></tt>.</p>
+<p>The application can push resource using <tt class="docutils literal"><span class="pre">push()</span></tt> method. It must be
+used before <tt class="docutils literal"><span class="pre">send_response()</span></tt> call.</p>
+<p>The following instance variables are available:</p>
+<dl class="docutils">
+<dt>client_address</dt>
+<dd>Contains a tuple of the form (host, port) referring to the
+client&#8217;s address.</dd>
+<dt>stream_id</dt>
+<dd>Stream ID of this stream</dd>
+<dt>scheme</dt>
+<dd>Scheme of the request URI. This is a value of :scheme header field.</dd>
+<dt>method</dt>
+<dd>Method of this stream. This is a value of :method header field.</dd>
+<dt>host</dt>
+<dd>This is a value of :authority or host header field.</dd>
+<dt>path</dt>
+<dd>This is a value of :path header field.</dd>
+</dl>
+<p>The following example illustrates the HTTP2Server and
+BaseRequestHandler usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c">#!/usr/bin/env python</span>
+
+<span class="kn">import</span> <span class="nn">io</span><span class="o">,</span> <span class="nn">ssl</span>
+<span class="kn">from</span> <span class="nn">pprint</span> <span class="kn">import</span> <span class="n">pprint</span>
+<span class="kn">import</span> <span class="nn">nghttp2</span>
+
+<span class="k">class</span> <span class="nc">Handler</span><span class="p">(</span><span class="n">nghttp2</span><span class="o">.</span><span class="n">BaseRequestHandler</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">on_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s">&#39;/css/bootstrap.css&#39;</span><span class="p">,</span>
+                  <span class="n">request_headers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">b</span><span class="s">&#39;content-length&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;3&#39;</span><span class="p">)],</span>
+                  <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                  <span class="n">body</span><span class="o">=</span><span class="s">&#39;foo&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s">&#39;/js/bootstrap.js&#39;</span><span class="p">,</span>
+                  <span class="n">method</span><span class="o">=</span><span class="s">&#39;GET&#39;</span><span class="p">,</span>
+                  <span class="n">request_headers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">b</span><span class="s">&#39;content-length&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;10&#39;</span><span class="p">)],</span>
+                  <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                  <span class="n">body</span><span class="o">=</span><span class="s">&#39;foobarbuzz&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                           <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">b</span><span class="s">&#39;content-type&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;text/plain&#39;</span><span class="p">)],</span>
+                           <span class="n">body</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;nghttp2-python FTW&#39;</span><span class="p">))</span>
+
+<span class="n">ctx</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">SSLContext</span><span class="p">(</span><span class="n">ssl</span><span class="o">.</span><span class="n">PROTOCOL_SSLv23</span><span class="p">)</span>
+<span class="n">ctx</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">OP_ALL</span> <span class="o">|</span> <span class="n">ssl</span><span class="o">.</span><span class="n">OP_NO_SSLv2</span>
+<span class="n">ctx</span><span class="o">.</span><span class="n">set_npn_protocols</span><span class="p">([</span><span class="s">&#39;h2-10&#39;</span><span class="p">])</span>
+<span class="n">ctx</span><span class="o">.</span><span class="n">load_cert_chain</span><span class="p">(</span><span class="s">&#39;server.crt&#39;</span><span class="p">,</span> <span class="s">&#39;server.key&#39;</span><span class="p">)</span>
+
+<span class="c"># give None to ssl to make the server non-SSL/TLS</span>
+<span class="n">server</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HTTP2Server</span><span class="p">((</span><span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="mi">8443</span><span class="p">),</span> <span class="n">Handler</span><span class="p">,</span> <span class="n">ssl</span><span class="o">=</span><span class="n">ctx</span><span class="p">)</span>
+<span class="n">server</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">()</span>
+</pre></div>
 </div>
 </div>
 </div>

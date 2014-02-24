@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -22,7 +21,7 @@
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:'',
+        URL_ROOT:'./',
         VERSION:'0.4.0-DEV',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
@@ -154,7 +153,8 @@ the end of this page.  It also resides in examples directory in the
 archive or repository.</p>
 <p>This simple client takes 1 argument, HTTPS URI, and retrieves the
 resource denoted by the URI. Its synopsis is like this:</p>
-<div class="highlight-c"><pre>$ libevent-client HTTPS_URI</pre>
+<div class="highlight-c"><div class="highlight"><pre>$ libevent-client HTTPS_URI
+</pre></div>
 </div>
 <p>We use libevent in this tutorial to handle networking I/O.  Please
 note that nghttp2 itself does not depend on libevent.</p>
@@ -163,7 +163,7 @@ function <tt class="docutils literal"><span class="pre">main()</span></tt> and <
 library use. The one thing you should look at is setup NPN callback.
 The NPN callback is used for the client to select the next application
 protocol over the SSL/TLS transport. In this tutorial, we use
-<a class="reference internal" href="apiref.html#nghttp2_select_next_protocol" title="nghttp2_select_next_protocol"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_select_next_protocol()</span></tt></a> function to select the HTTP/2.0
+<a class="reference internal" href="apiref.html#c.nghttp2_select_next_protocol" title="nghttp2_select_next_protocol"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_select_next_protocol()</span></tt></a> function to select the HTTP/2.0
 protocol the library supports:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">select_next_proto_cb</span><span class="p">(</span><span class="n">SSL</span><span class="o">*</span> <span class="n">ssl</span><span class="p">,</span>
                                 <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
@@ -310,15 +310,15 @@ finished successfully. We first initialize nghttp2 session object in
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Since we are creating client, we use <a class="reference internal" href="apiref.html#nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> to
+<p>Since we are creating client, we use <a class="reference internal" href="apiref.html#c.nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> to
 initialize nghttp2 session object.  We setup 7 callbacks for the
 nghttp2 session. We&#8217;ll explain these callbacks later.</p>
 <p>The <tt class="xref c c-func docutils literal"><span class="pre">delete_http2_session_data()</span></tt> destroys <tt class="docutils literal"><span class="pre">session_data</span></tt> and frees
 its bufferevent, so it closes underlying connection as well. It also
-calls <a class="reference internal" href="apiref.html#nghttp2_session_del" title="nghttp2_session_del"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_del()</span></tt></a> to delete nghttp2 session object.</p>
+calls <a class="reference internal" href="apiref.html#c.nghttp2_session_del" title="nghttp2_session_del"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_del()</span></tt></a> to delete nghttp2 session object.</p>
 <p>We begin HTTP/2.0 communication by sending client connection header,
 which is 24 bytes magic byte sequence
-(<a class="reference internal" href="apiref.html#NGHTTP2_CLIENT_CONNECTION_HEADER" title="NGHTTP2_CLIENT_CONNECTION_HEADER"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER</span></tt></a>) followed by SETTINGS
+(<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_HEADER" title="NGHTTP2_CLIENT_CONNECTION_HEADER"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER</span></tt></a>) followed by SETTINGS
 frame.  The transmission of client connection header is done in
 <tt class="docutils literal"><span class="pre">send_client_connection_header()</span></tt>:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">send_client_connection_header</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
@@ -342,10 +342,10 @@ frame.  The transmission of client connection header is done in
 <p>Here we specify SETTINGS_MAX_CONCURRENT_STREAMS to 100, which is
 really not needed for this tiny example progoram, but we are
 demonstrating the use of SETTINGS frame. To queue the SETTINGS frame
-for the transmission, we use <a class="reference internal" href="apiref.html#nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a>. Note that
-<a class="reference internal" href="apiref.html#nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a> function only queues the frame and not
+for the transmission, we use <a class="reference internal" href="apiref.html#c.nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a>. Note that
+<a class="reference internal" href="apiref.html#c.nghttp2_submit_settings" title="nghttp2_submit_settings"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_settings()</span></tt></a> function only queues the frame and not
 actually send it. All <tt class="docutils literal"><span class="pre">nghttp2_submit_*()</span></tt> family functions have
-this property. To actually send the frame, <a class="reference internal" href="apiref.html#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> is
+this property. To actually send the frame, <a class="reference internal" href="apiref.html#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> is
 used, which is described about later.</p>
 <p>After the transmission of client connection header, we enqueue HTTP
 request in <tt class="docutils literal"><span class="pre">submit_request()</span></tt> function:</p>
@@ -373,9 +373,9 @@ request in <tt class="docutils literal"><span class="pre">submit_request()</span
 </pre></div>
 </div>
 <p>We build HTTP request header fields in <tt class="docutils literal"><span class="pre">hdrs</span></tt> which is an array of
-<a class="reference internal" href="apiref.html#nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a>. There are 4 header fields to be sent: <tt class="docutils literal"><span class="pre">:method</span></tt>,
+<a class="reference internal" href="apiref.html#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a>. There are 4 header fields to be sent: <tt class="docutils literal"><span class="pre">:method</span></tt>,
 <tt class="docutils literal"><span class="pre">:scheme</span></tt>, <tt class="docutils literal"><span class="pre">:authority</span></tt> and <tt class="docutils literal"><span class="pre">:path</span></tt>. To queue this HTTP request,
-we use <a class="reference internal" href="apiref.html#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> function. The <tt class="xref c c-func docutils literal"><span class="pre">stream_data()</span></tt> is
+we use <a class="reference internal" href="apiref.html#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> function. The <tt class="xref c c-func docutils literal"><span class="pre">stream_data()</span></tt> is
 passed in <em>stream_user_data</em> parameter. It is used in nghttp2
 callbacks which we&#8217;ll describe about later.</p>
 <p>The next bufferevent callback is <tt class="docutils literal"><span class="pre">readcb()</span></tt>, which is invoked when
@@ -402,8 +402,8 @@ data is available to read in the bufferevent input buffer:</p>
 </pre></div>
 </div>
 <p>In this function, we feed all unprocessed, received data to nghttp2
-session object using <a class="reference internal" href="apiref.html#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> function. The
-<a class="reference internal" href="apiref.html#nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> processes the received data and may
+session object using <a class="reference internal" href="apiref.html#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> function. The
+<a class="reference internal" href="apiref.html#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> processes the received data and may
 invoke nghttp2 callbacks and also queue frames. Since there may be
 pending frames, we call <tt class="docutils literal"><span class="pre">session_send()</span></tt> function to send those
 frames. The <tt class="docutils literal"><span class="pre">session_send()</span></tt> function is defined as follows:</p>
@@ -420,10 +420,10 @@ frames. The <tt class="docutils literal"><span class="pre">session_send()</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="apiref.html#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> function serializes the frame into wire
-format and call <a class="reference internal" href="apiref.html#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> with
+<p>The <a class="reference internal" href="apiref.html#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> function serializes the frame into wire
+format and call <a class="reference internal" href="apiref.html#c.nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> with
 it. We set <tt class="docutils literal"><span class="pre">send_callback()</span></tt> function to
-<a class="reference internal" href="apiref.html#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> in
+<a class="reference internal" href="apiref.html#c.nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> in
 <tt class="docutils literal"><span class="pre">initialize_nghttp2_session()</span></tt> function described earlier. It is
 defined as follows:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">send_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -438,13 +438,13 @@ defined as follows:</p>
 </pre></div>
 </div>
 <p>Since we use bufferevent to abstract network I/O, we just write the
-data to the bufferevent object. Note that <a class="reference internal" href="apiref.html#nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>
+data to the bufferevent object. Note that <a class="reference internal" href="apiref.html#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>
 continues to write all frames queued so far. If we were writing the
 data to the non-blocking socket directly using <tt class="docutils literal"><span class="pre">write()</span></tt> system call
-in the <a class="reference internal" href="apiref.html#nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a>, we will
+in the <a class="reference internal" href="apiref.html#c.nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a>, we will
 surely get <tt class="docutils literal"><span class="pre">EAGAIN</span></tt> or <tt class="docutils literal"><span class="pre">EWOULDBLOCK</span></tt> since the socket has limited
 send buffer. If that happens, we can return
-<a class="reference internal" href="apiref.html#NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a> to signal the nghttp2 library to stop
+<a class="reference internal" href="apiref.html#c.NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a> to signal the nghttp2 library to stop
 sending further data. But writing to the bufferevent, we have to
 regulate the amount data to be buffered by ourselves to avoid possible
 huge memory consumption. In this example client, we do not limit
@@ -469,8 +469,8 @@ we have to drop connection or not. The nghttp2 session object keeps
 track of reception and transmission of GOAWAY frame and other error
 conditions as well. Using these information, nghttp2 session object
 will tell whether the connection should be dropped or not. More
-specifically, both <a class="reference internal" href="apiref.html#nghttp2_session_want_read" title="nghttp2_session_want_read"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_read()</span></tt></a> and
-<a class="reference internal" href="apiref.html#nghttp2_session_want_write" title="nghttp2_session_want_write"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_write()</span></tt></a> return 0, we have no business in the
+specifically, both <a class="reference internal" href="apiref.html#c.nghttp2_session_want_read" title="nghttp2_session_want_read"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_read()</span></tt></a> and
+<a class="reference internal" href="apiref.html#c.nghttp2_session_want_write" title="nghttp2_session_want_write"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_want_write()</span></tt></a> return 0, we have no business in the
 connection. But since we are using bufferevent and its deferred
 callback option, the bufferevent output buffer may contain the pending
 data when the <tt class="docutils literal"><span class="pre">writecb()</span></tt> is called. To handle this situation, we
@@ -501,7 +501,7 @@ about to be sent:</p>
 </pre></div>
 </div>
 <p>Remember that we have not get stream ID when we submit HTTP request
-using <a class="reference internal" href="apiref.html#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>. Since nghttp2 library reorders the
+using <a class="reference internal" href="apiref.html#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>. Since nghttp2 library reorders the
 request based on priority and stream ID must be monotonically
 increased, the stream ID is not assigned just before transmission.
 The one of the purpose of this callback is get the stream ID assigned
@@ -510,11 +510,11 @@ HEADERS has several meanings in HTTP/2.0, we check that it is request
 HEADERS (which means that the first HEADERS frame to create a stream).
 The assigned stream ID is <tt class="docutils literal"><span class="pre">frame-&gt;hd.stream_id</span></tt>.  Recall that we
 passed <tt class="docutils literal"><span class="pre">stream_data</span></tt> in the <em>stream_user_data</em> parameter of
-<a class="reference internal" href="apiref.html#nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> function. We can get it using
-<a class="reference internal" href="apiref.html#nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> function. To really sure that
+<a class="reference internal" href="apiref.html#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> function. We can get it using
+<a class="reference internal" href="apiref.html#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> function. To really sure that
 this HEADERS frame is the request HEADERS we have queued, we check
 that <tt class="docutils literal"><span class="pre">session_data-&gt;stream_data</span></tt> and <tt class="docutils literal"><span class="pre">stream_data</span></tt> returned from
-<a class="reference internal" href="apiref.html#nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> are pointing the same
+<a class="reference internal" href="apiref.html#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> are pointing the same
 location. In this example program, we just only uses 1 stream, it is
 unnecessary to compare them, but real applications surely deal with
 multiple streams, and <em>stream_user_data</em> is very handy to identify
@@ -563,7 +563,7 @@ how to use it here.</p>
 </div>
 <p>In this tutorial, we are just interested in the HTTP response
 HEADERS. We check te frame type and its category (it should be
-<a class="reference internal" href="apiref.html#NGHTTP2_HCAT_RESPONSE" title="NGHTTP2_HCAT_RESPONSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_HCAT_RESPONSE</span></tt></a> for HTTP response HEADERS). Also check
+<a class="reference internal" href="apiref.html#c.NGHTTP2_HCAT_RESPONSE" title="NGHTTP2_HCAT_RESPONSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_HCAT_RESPONSE</span></tt></a> for HTTP response HEADERS). Also check
 its stream ID.</p>
 <p>The <tt class="docutils literal"><span class="pre">on_data_chunk_recv_callback()</span></tt> function is invoked when a chunk
 of data is received from the remote peer:</p>
@@ -609,7 +609,7 @@ is about to close:</p>
 <p>If the stream ID matches the one we initiated, it means that its
 stream is going to be closed. Since we have finished to get the
 resource we want (or the stream was reset by RST_STREAM from the
-remote peer), we call <a class="reference internal" href="apiref.html#nghttp2_session_terminate_session" title="nghttp2_session_terminate_session"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_terminate_session()</span></tt></a> to
+remote peer), we call <a class="reference internal" href="apiref.html#c.nghttp2_session_terminate_session" title="nghttp2_session_terminate_session"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_terminate_session()</span></tt></a> to
 commencing the closure of the HTTP/2.0 session gracefully. If you have
 some data associated for the stream to be closed, you may delete it
 here.</p>
