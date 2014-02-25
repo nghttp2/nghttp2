@@ -250,7 +250,7 @@ try:
     import datetime
     import time
 except ImportError:
-    pass
+    asyncio = None
 
 cdef _get_stream_user_data(cnghttp2.nghttp2_session *session,
                            int32_t stream_id):
@@ -659,308 +659,314 @@ cdef class _HTTP2SessionCore:
                           datestr, method, path, handler.status,
                           'P' if handler.pushed else '-'))
 
-class BaseRequestHandler:
+if asyncio:
 
-    """HTTP/2 request (stream) handler base class.
+    class BaseRequestHandler:
 
-    The class is used to handle the HTTP/2 stream. By default, it does
-    not nothing. It must be subclassed to handle each event callback
-    method.
+        """HTTP/2 request (stream) handler base class.
 
-    The first callback method invoked is on_headers(). It is called
-    when HEADERS frame, which includes request header fields, is
-    arrived.
+        The class is used to handle the HTTP/2 stream. By default, it does
+        not nothing. It must be subclassed to handle each event callback
+        method.
 
-    If request has request body, on_data(data) is invoked for each
-    chunk of received data.
+        The first callback method invoked is on_headers(). It is called
+        when HEADERS frame, which includes request header fields, is
+        arrived.
 
-    When whole request is received, on_request_done() is invoked.
+        If request has request body, on_data(data) is invoked for each
+        chunk of received data.
 
-    When stream is closed, on_close(error_code) is called.
+        When whole request is received, on_request_done() is invoked.
 
-    The application can send response using send_response() method. It
-    can be used in on_headers(), on_data() or on_request_done().
+        When stream is closed, on_close(error_code) is called.
 
-    The application can push resource using push() method. It must be
-    used before send_response() call.
+        The application can send response using send_response() method. It
+        can be used in on_headers(), on_data() or on_request_done().
 
-    The following instance variables are available:
+        The application can push resource using push() method. It must be
+        used before send_response() call.
 
-    client_address
-      Contains a tuple of the form (host, port) referring to the client's
-      address.
+        The following instance variables are available:
 
-    stream_id
-      Stream ID of this stream
+        client_address
+          Contains a tuple of the form (host, port) referring to the client's
+          address.
 
-    scheme
-      Scheme of the request URI. This is a value of :scheme header field.
+        stream_id
+          Stream ID of this stream
 
-    method
-      Method of this stream. This is a value of :method header field.
+        scheme
+          Scheme of the request URI. This is a value of :scheme header field.
 
-    host
-      This is a value of :authority or host header field.
+        method
+          Method of this stream. This is a value of :method header field.
 
-    path
-      This is a value of :path header field.
+        host
+          This is a value of :authority or host header field.
 
-    """
+        path
+          This is a value of :path header field.
 
-    def __init__(self, http2, stream_id):
-        self.headers = []
-        self.cookies = []
-        # Stream ID. For promised stream, it is initially -1.
-        self.stream_id = stream_id
-        self.http2 = http2
-        # address of the client
-        self.client_address = self.http2._get_client_address()
-        # :scheme header field in request
-        self.scheme = None
-        # :method header field in request
-        self.method = None
-        # :authority or host header field in request
-        self.host = None
-        # :path header field in request
-        self.path = None
-        # HTTP status
-        self.status = None
-        # True if this is a handler for pushed resource
-        self.pushed = False
+        """
 
-    def on_headers(self):
+        def __init__(self, http2, stream_id):
+            self.headers = []
+            self.cookies = []
+            # Stream ID. For promised stream, it is initially -1.
+            self.stream_id = stream_id
+            self.http2 = http2
+            # address of the client
+            self.client_address = self.http2._get_client_address()
+            # :scheme header field in request
+            self.scheme = None
+            # :method header field in request
+            self.method = None
+            # :authority or host header field in request
+            self.host = None
+            # :path header field in request
+            self.path = None
+            # HTTP status
+            self.status = None
+            # True if this is a handler for pushed resource
+            self.pushed = False
 
-        '''Called when request HEADERS is arrived.
+        def on_headers(self):
 
-        '''
-        pass
+            '''Called when request HEADERS is arrived.
 
-    def on_data(self, data):
+            '''
+            pass
 
-        '''Called when a chunk of request body is arrived. This method will be
-        called multiple times until all data are received.
+        def on_data(self, data):
 
-        '''
-        pass
+            '''Called when a chunk of request body is arrived. This method
+            will be called multiple times until all data are received.
 
-    def on_request_done(self):
+            '''
+            pass
 
-        '''Called when whole request was received
+        def on_request_done(self):
 
-        '''
-        pass
+            '''Called when whole request was received
 
-    def on_close(self, error_code):
+            '''
+            pass
 
-        '''Called when stream is about to close.
+        def on_close(self, error_code):
 
-        '''
-        pass
+            '''Called when stream is about to close.
 
-    def send_response(self, status=200, headers=None, body=None):
+            '''
+            pass
 
-        '''Send response. The status is HTTP status code. The headers is
-        additional response headers. The :status header field is
-        appended by the library. The body is the response body. It
-        could be None if response body is empty. Or it must be
-        instance of either str, bytes or io.IOBase. If instance of str
-        is specified, it is encoded using UTF-8.
+        def send_response(self, status=200, headers=None, body=None):
 
-        The headers is a list of tuple of the form (name, value). The
-        name and value are byte string.
+            '''Send response. The status is HTTP status code. The headers is
+            additional response headers. The :status header field is
+            appended by the library. The body is the response body. It
+            could be None if response body is empty. Or it must be
+            instance of either str, bytes or io.IOBase. If instance of str
+            is specified, it is encoded using UTF-8.
 
-        On error, exception was thrown.
+            The headers is a list of tuple of the form (name, value). The
+            name and value are byte string.
 
-        '''
-        if self.status is not None:
-            raise Exception('response has already been sent')
+            On error, exception was thrown.
 
-        if not status:
-            raise Exception('status must not be empty')
+            '''
+            if self.status is not None:
+                raise Exception('response has already been sent')
 
-        body = self._wrap_body(body)
+            if not status:
+                raise Exception('status must not be empty')
 
-        self._set_response_prop(status, headers, body)
-        self.http2.send_response(self)
+            body = self._wrap_body(body)
 
-    def push(self, path, method='GET', request_headers=None,
-             status=200, headers=None, body=None):
+            self._set_response_prop(status, headers, body)
+            self.http2.send_response(self)
 
-        '''Push a resource. The path is a path portion of request URI for this
-        resource. The method is a method to access this resource. The
-        request_headers is additional request headers to access this
-        resource. The :scheme, :method, :authority and :path are
-        appended by the library. The :scheme and :authority are
-        inherited from the request (not request_headers parameter).
+        def push(self, path, method='GET', request_headers=None,
+                 status=200, headers=None, body=None):
 
-        The status is HTTP status code. The headers is additional
-        response headers. The :status header field is appended by the
-        library. The body is the response body. It could be None if
-        response body is empty. Or it must be instance of either str,
-        bytes or io.IOBase. If instance of str is specified, it is
-        encoded using UTF-8.
+            '''Push a resource. The path is a path portion of request URI
+            for this
+            resource. The method is a method to access this
+            resource. The request_headers is additional request
+            headers to access this resource. The :scheme, :method,
+            :authority and :path are appended by the library. The
+            :scheme and :authority are inherited from the request (not
+            request_headers parameter).
 
-        The headers and request_headers are a list of tuple of the
-        form (name, value). The name and value are byte string.
+            The status is HTTP status code. The headers is additional
+            response headers. The :status header field is appended by the
+            library. The body is the response body. It could be None if
+            response body is empty. Or it must be instance of either str,
+            bytes or io.IOBase. If instance of str is specified, it is
+            encoded using UTF-8.
 
-        On error, exception was thrown.
+            The headers and request_headers are a list of tuple of the
+            form (name, value). The name and value are byte string.
 
-        '''
-        if not status:
-            raise Exception('status must not be empty')
+            On error, exception was thrown.
 
-        if not method:
-            raise Exception('method must not be empty')
+            '''
+            if not status:
+                raise Exception('status must not be empty')
 
-        if not path:
-            raise Exception('path must not be empty')
+            if not method:
+                raise Exception('method must not be empty')
 
-        body = self._wrap_body(body)
+            if not path:
+                raise Exception('path must not be empty')
 
-        promised_handler = self.http2._make_handler(-1)
-        promised_handler.pushed = True
-        promised_handler.scheme = self.scheme
-        promised_handler.method = method.encode('utf-8')
-        promised_handler.host = self.host
-        promised_handler.path = path.encode('utf-8')
-        promised_handler._set_response_prop(status, headers, body)
+            body = self._wrap_body(body)
 
-        if request_headers is None:
-            request_headers = []
+            promised_handler = self.http2._make_handler(-1)
+            promised_handler.pushed = True
+            promised_handler.scheme = self.scheme
+            promised_handler.method = method.encode('utf-8')
+            promised_handler.host = self.host
+            promised_handler.path = path.encode('utf-8')
+            promised_handler._set_response_prop(status, headers, body)
 
-        request_headers = _encode_headers(request_headers)
-        request_headers.append((b':scheme', promised_handler.scheme))
-        request_headers.append((b':method', promised_handler.method))
-        request_headers.append((b':authority', promised_handler.host))
-        request_headers.append((b':path', promised_handler.path))
+            if request_headers is None:
+                request_headers = []
 
-        promised_handler.headers = request_headers
+            request_headers = _encode_headers(request_headers)
+            request_headers.append((b':scheme', promised_handler.scheme))
+            request_headers.append((b':method', promised_handler.method))
+            request_headers.append((b':authority', promised_handler.host))
+            request_headers.append((b':path', promised_handler.path))
 
-        self.http2.push(self, promised_handler)
+            promised_handler.headers = request_headers
 
-    def _set_response_prop(self, status, headers, body):
-        self.status = status
+            self.http2.push(self, promised_handler)
 
-        if headers is None:
-            headers = []
+        def _set_response_prop(self, status, headers, body):
+            self.status = status
 
-        self.response_headers = _encode_headers(headers)
-        self.response_headers.append((b':status', str(status).encode('utf-8')))
+            if headers is None:
+                headers = []
 
-        self.response_body = body
+            self.response_headers = _encode_headers(headers)
+            self.response_headers.append((b':status', str(status)\
+                                          .encode('utf-8')))
 
-    def _wrap_body(self, body):
-        if body is None:
-            return body
-        elif isinstance(body, str):
-            return io.BytesIO(body.encode('utf-8'))
-        elif isinstance(body, bytes):
-            return io.BytesIO(body)
-        elif isinstance(body, io.IOBase):
-            return body
-        else:
-            raise Exception(('body must be None or instance of str or bytes '
-                             'or io.IOBase'))
+            self.response_body = body
 
-def _encode_headers(headers):
-    return [(k if isinstance(k, bytes) else k.encode('utf-8'),
-             v if isinstance(v, bytes) else v.encode('utf-8')) \
-            for k, v in headers]
+        def _wrap_body(self, body):
+            if body is None:
+                return body
+            elif isinstance(body, str):
+                return io.BytesIO(body.encode('utf-8'))
+            elif isinstance(body, bytes):
+                return io.BytesIO(body)
+            elif isinstance(body, io.IOBase):
+                return body
+            else:
+                raise Exception(('body must be None or instance of str or '
+                                 'bytes or io.IOBase'))
 
-class _HTTP2Session(asyncio.Protocol):
+    def _encode_headers(headers):
+        return [(k if isinstance(k, bytes) else k.encode('utf-8'),
+                 v if isinstance(v, bytes) else v.encode('utf-8')) \
+                for k, v in headers]
 
-    def __init__(self, RequestHandlerClass):
-        asyncio.Protocol.__init__(self)
-        self.RequestHandlerClass = RequestHandlerClass
-        self.http2 = None
+    class _HTTP2Session(asyncio.Protocol):
 
-    def connection_made(self, transport):
-        self.transport = transport
-        self.connection_header = cnghttp2.NGHTTP2_CLIENT_CONNECTION_HEADER
-        sock = self.transport.get_extra_info('socket')
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        ssl_ctx = self.transport.get_extra_info('sslcontext')
-        if ssl_ctx:
-            if sock.selected_npn_protocol().encode('utf-8') != \
-               cnghttp2.NGHTTP2_PROTO_VERSION_ID:
-                self.transport.abort()
-
-    def connection_lost(self, exc):
-        if self.http2:
+        def __init__(self, RequestHandlerClass):
+            asyncio.Protocol.__init__(self)
+            self.RequestHandlerClass = RequestHandlerClass
             self.http2 = None
 
-    def data_received(self, data):
-        nread = min(len(data), len(self.connection_header))
-
-        if self.connection_header.startswith(data[:nread]):
-            data = data[nread:]
-            self.connection_header = self.connection_header[nread:]
-            if len(self.connection_header) == 0:
-                try:
-                    self.http2 = _HTTP2SessionCore(self.transport,
-                                                   self.RequestHandlerClass)
-                except Exception as err:
-                    sys.stderr.write(traceback.format_exc())
+        def connection_made(self, transport):
+            self.transport = transport
+            self.connection_header = cnghttp2.NGHTTP2_CLIENT_CONNECTION_HEADER
+            sock = self.transport.get_extra_info('socket')
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            ssl_ctx = self.transport.get_extra_info('sslcontext')
+            if ssl_ctx:
+                if sock.selected_npn_protocol().encode('utf-8') != \
+                   cnghttp2.NGHTTP2_PROTO_VERSION_ID:
                     self.transport.abort()
-                    return
 
-                self.data_received = self.data_received2
-                self.resume_writing = self.resume_writing2
-                self.data_received(data)
-        else:
-            self.transport.abort()
+        def connection_lost(self, exc):
+            if self.http2:
+                self.http2 = None
 
-    def data_received2(self, data):
-        try:
-            self.http2.data_received(data)
-        except Exception as err:
-            sys.stderr.write(traceback.format_exc())
-            self.transport.close()
-            return
+        def data_received(self, data):
+            nread = min(len(data), len(self.connection_header))
 
-    def resume_writing2(self):
-        try:
-            self.http2.send_data()
-        except Exception as err:
-            sys.stderr.write(traceback.format_exc())
-            self.transport.close()
-            return
+            if self.connection_header.startswith(data[:nread]):
+                data = data[nread:]
+                self.connection_header = self.connection_header[nread:]
+                if len(self.connection_header) == 0:
+                    try:
+                        self.http2 = _HTTP2SessionCore\
+                                     (self.transport,
+                                      self.RequestHandlerClass)
+                    except Exception as err:
+                        sys.stderr.write(traceback.format_exc())
+                        self.transport.abort()
+                        return
 
-class HTTP2Server:
+                    self.data_received = self.data_received2
+                    self.resume_writing = self.resume_writing2
+                    self.data_received(data)
+            else:
+                self.transport.abort()
 
-    '''HTTP/2 server.
+        def data_received2(self, data):
+            try:
+                self.http2.data_received(data)
+            except Exception as err:
+                sys.stderr.write(traceback.format_exc())
+                self.transport.close()
+                return
 
-    This class builds on top of the asyncio event loop. On
-    construction, RequestHandlerClass must be given, which must be a
-    subclass of BaseRequestHandler class.
+        def resume_writing2(self):
+            try:
+                self.http2.send_data()
+            except Exception as err:
+                sys.stderr.write(traceback.format_exc())
+                self.transport.close()
+                return
 
-    '''
-    def __init__(self, address, RequestHandlerClass, ssl=None):
+    class HTTP2Server:
 
-        '''address is a tuple of the listening address and port (e.g.,
-        ('127.0.0.1', 8080)). RequestHandlerClass must be a subclass
-        of BaseRequestHandler class to handle a HTTP/2 stream.  The
-        ssl can be ssl.SSLContext instance. If it is not None, the
-        resulting server is SSL/TLS capable.
+        '''HTTP/2 server.
+
+        This class builds on top of the asyncio event loop. On
+        construction, RequestHandlerClass must be given, which must be a
+        subclass of BaseRequestHandler class.
 
         '''
-        def session_factory():
-            return _HTTP2Session(RequestHandlerClass)
+        def __init__(self, address, RequestHandlerClass, ssl=None):
 
-        self.loop = asyncio.get_event_loop()
+            '''address is a tuple of the listening address and port (e.g.,
+            ('127.0.0.1', 8080)). RequestHandlerClass must be a subclass
+            of BaseRequestHandler class to handle a HTTP/2 stream.  The
+            ssl can be ssl.SSLContext instance. If it is not None, the
+            resulting server is SSL/TLS capable.
 
-        if ssl:
-            ssl.set_npn_protocols([cnghttp2.NGHTTP2_PROTO_VERSION_ID\
-                                   .decode('utf-8')])
+            '''
+            def session_factory():
+                return _HTTP2Session(RequestHandlerClass)
 
-        coro = self.loop.create_server(session_factory,
-                                       host=address[0], port=address[1],
-                                       ssl=ssl)
-        self.server = self.loop.run_until_complete(coro)
+            self.loop = asyncio.get_event_loop()
 
-    def serve_forever(self):
-        try:
-            self.loop.run_forever()
-        finally:
-            self.server.close()
-            self.loop.close()
+            if ssl:
+                ssl.set_npn_protocols([cnghttp2.NGHTTP2_PROTO_VERSION_ID\
+                                       .decode('utf-8')])
+
+            coro = self.loop.create_server(session_factory,
+                                           host=address[0], port=address[1],
+                                           ssl=ssl)
+            self.server = self.loop.run_until_complete(coro)
+
+        def serve_forever(self):
+            try:
+                self.loop.run_forever()
+            finally:
+                self.server.close()
+                self.loop.close()
