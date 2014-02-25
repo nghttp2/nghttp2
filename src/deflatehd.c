@@ -95,8 +95,11 @@ static void output_to_json(nghttp2_hd_deflater *deflater,
     json_object_set_new(obj, "wire", json_pack("s#", hex, len * 2));
   }
   json_object_set_new(obj, "headers", dump_headers(nva, nvlen));
-  json_object_set_new(obj, "header_table_size",
-                      json_integer(config.table_size));
+  if(seq == 0) {
+    /* We only change the header table size only once at the beginning */
+    json_object_set_new(obj, "header_table_size",
+                        json_integer(config.table_size));
+  }
   if(config.dump_header_table) {
     json_object_set_new(obj, "header_table",
                         dump_header_table(&deflater->ctx));

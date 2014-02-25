@@ -67,7 +67,8 @@ static void decode_hex(uint8_t *dest, const char *src, size_t len)
 }
 
 static void to_json(nghttp2_hd_inflater *inflater,
-                    json_t *headers, json_t *wire, int seq)
+                    json_t *headers, json_t *wire, int seq,
+                    size_t old_settings_table_size)
 {
   json_t *obj;
 
@@ -75,8 +76,10 @@ static void to_json(nghttp2_hd_inflater *inflater,
   json_object_set_new(obj, "seq", json_integer(seq));
   json_object_set(obj, "wire", wire);
   json_object_set(obj, "headers", headers);
-  json_object_set_new(obj, "header_table_size",
-                      json_integer(inflater->ctx.hd_table_bufsize_max));
+  if(old_settings_table_size != inflater->settings_hd_table_bufsize_max) {
+    json_object_set_new(obj, "header_table_size",
+                        json_integer(inflater->settings_hd_table_bufsize_max));
+  }
   if(config.dump_header_table) {
     json_object_set_new(obj, "header_table",
                         dump_header_table(&inflater->ctx));
@@ -95,6 +98,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq)
   ssize_t rv;
   nghttp2_nv nv;
   int inflate_flags;
+  size_t old_settings_table_size = inflater->settings_hd_table_bufsize_max;
 
   wire = json_object_get(obj, "wire");
   if(wire == NULL) {
@@ -149,7 +153,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq)
   }
   assert(buflen == 0);
   nghttp2_hd_inflate_end_headers(inflater);
-  to_json(inflater, headers, wire, seq);
+  to_json(inflater, headers, wire, seq, old_settings_table_size);
   json_decref(headers);
   free(buf);
   return 0;

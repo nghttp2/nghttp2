@@ -15,7 +15,7 @@ import nghttp2
 
 def testsuite(testdata, filename, outdir, table_size, deflate_table_size):
     res = {
-        'draft':5, 'context': testdata['context'],
+        'draft':6,
         'description': '''\
 Encoded by nghttp2. The basic encoding strategy is described in \
 http://lists.w3.org/Archives/Public/ietf-http-wg/2013JulSep/1135.html \
@@ -28,7 +28,6 @@ result in less bits on the wire.'''
     deflater.change_table_size(table_size)
     for casenum, item  in enumerate(testdata['cases']):
         outitem = {
-            'header_table_size': table_size,
             'headers': item['headers']
         }
         casenum += 1
@@ -37,6 +36,10 @@ result in less bits on the wire.'''
                 for x in item['headers']]
         outitem['wire'] = b2a_hex(deflater.deflate(hdrs)).decode('utf-8')
         cases.append(outitem)
+
+    if cases:
+        cases[0]['header_table_size'] = table_size
+
     res['cases'] = cases
     jsonstr = json.dumps(res, indent=2)
     with open(os.path.join(outdir, filename), 'w') as f:
