@@ -959,30 +959,28 @@ BaseRequestHandler usage:
     #!/usr/bin/env python
 
     import io, ssl
-    from pprint import pprint
     import nghttp2
 
     class Handler(nghttp2.BaseRequestHandler):
 
         def on_headers(self):
             self.push(path='/css/bootstrap.css',
-                      request_headers = [(b'content-length', b'3')],
+                      request_headers = [('content-length', '3')],
                       status=200,
                       body='foo')
 
             self.push(path='/js/bootstrap.js',
                       method='GET',
-                      request_headers = [(b'content-length', b'10')],
+                      request_headers = [('content-length', '10')],
                       status=200,
                       body='foobarbuzz')
 
             self.send_response(status=200,
-                               headers = [(b'content-type', b'text/plain')],
+                               headers = [('content-type', 'text/plain')],
                                body=io.BytesIO(b'nghttp2-python FTW'))
 
     ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
     ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2
-    ctx.set_npn_protocols(['h2-10'])
     ctx.load_cert_chain('server.crt', 'server.key')
 
     # give None to ssl to make the server non-SSL/TLS
