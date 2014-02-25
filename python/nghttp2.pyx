@@ -828,6 +828,7 @@ class BaseRequestHandler:
         if request_headers is None:
             request_headers = []
 
+        request_headers = _encode_headers(request_headers)
         request_headers.append((b':scheme', promised_handler.scheme))
         request_headers.append((b':method', promised_handler.method))
         request_headers.append((b':authority', promised_handler.host))
@@ -839,16 +840,14 @@ class BaseRequestHandler:
 
     def _set_response_prop(self, status, headers, body):
         self.status = status
-        self.response_headers = headers
 
-        if self.response_headers is None:
-            self.response_headers = []
+        if headers is None:
+            headers = []
+
+        self.response_headers = _encode_headers(headers)
         self.response_headers.append((b':status', str(status).encode('utf-8')))
 
-        if body:
-            self.response_body = io.BufferedReader(body)
-        else:
-            self.response_body = None
+        self.response_body = body
 
     def _wrap_body(self, body):
         if body is None:
@@ -862,6 +861,11 @@ class BaseRequestHandler:
         else:
             raise Exception(('body must be None or instance of str or bytes '
                              'or io.BytesIO'))
+
+def _encode_headers(headers):
+    return [(k if isinstance(k, bytes) else k.encode('utf-8'),
+             v if isinstance(v, bytes) else v.encode('utf-8')) \
+            for k, v in headers]
 
 class _HTTP2Session(asyncio.Protocol):
 
