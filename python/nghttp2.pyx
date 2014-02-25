@@ -860,7 +860,7 @@ class BaseRequestHandler:
             return body
         else:
             raise Exception(('body must be None or instance of str or bytes '
-                             'or io.BytesIO'))
+                             'or io.IOBase'))
 
 def _encode_headers(headers):
     return [(k if isinstance(k, bytes) else k.encode('utf-8'),
