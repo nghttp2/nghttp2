@@ -1069,30 +1069,28 @@ BaseRequestHandler usage:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="c">#!/usr/bin/env python</span>
 
 <span class="kn">import</span> <span class="nn">io</span><span class="o">,</span> <span class="nn">ssl</span>
-<span class="kn">from</span> <span class="nn">pprint</span> <span class="kn">import</span> <span class="n">pprint</span>
 <span class="kn">import</span> <span class="nn">nghttp2</span>
 
 <span class="k">class</span> <span class="nc">Handler</span><span class="p">(</span><span class="n">nghttp2</span><span class="o">.</span><span class="n">BaseRequestHandler</span><span class="p">):</span>
 
     <span class="k">def</span> <span class="nf">on_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s">&#39;/css/bootstrap.css&#39;</span><span class="p">,</span>
-                  <span class="n">request_headers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">b</span><span class="s">&#39;content-length&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;3&#39;</span><span class="p">)],</span>
+                  <span class="n">request_headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;content-length&#39;</span><span class="p">,</span> <span class="s">&#39;3&#39;</span><span class="p">)],</span>
                   <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
                   <span class="n">body</span><span class="o">=</span><span class="s">&#39;foo&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s">&#39;/js/bootstrap.js&#39;</span><span class="p">,</span>
                   <span class="n">method</span><span class="o">=</span><span class="s">&#39;GET&#39;</span><span class="p">,</span>
-                  <span class="n">request_headers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">b</span><span class="s">&#39;content-length&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;10&#39;</span><span class="p">)],</span>
+                  <span class="n">request_headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;content-length&#39;</span><span class="p">,</span> <span class="s">&#39;10&#39;</span><span class="p">)],</span>
                   <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
                   <span class="n">body</span><span class="o">=</span><span class="s">&#39;foobarbuzz&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-                           <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">b</span><span class="s">&#39;content-type&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;text/plain&#39;</span><span class="p">)],</span>
+                           <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;content-type&#39;</span><span class="p">,</span> <span class="s">&#39;text/plain&#39;</span><span class="p">)],</span>
                            <span class="n">body</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;nghttp2-python FTW&#39;</span><span class="p">))</span>
 
 <span class="n">ctx</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">SSLContext</span><span class="p">(</span><span class="n">ssl</span><span class="o">.</span><span class="n">PROTOCOL_SSLv23</span><span class="p">)</span>
 <span class="n">ctx</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">OP_ALL</span> <span class="o">|</span> <span class="n">ssl</span><span class="o">.</span><span class="n">OP_NO_SSLv2</span>
-<span class="n">ctx</span><span class="o">.</span><span class="n">set_npn_protocols</span><span class="p">([</span><span class="s">&#39;h2-10&#39;</span><span class="p">])</span>
 <span class="n">ctx</span><span class="o">.</span><span class="n">load_cert_chain</span><span class="p">(</span><span class="s">&#39;server.crt&#39;</span><span class="p">,</span> <span class="s">&#39;server.key&#39;</span><span class="p">)</span>
 
 <span class="c"># give None to ssl to make the server non-SSL/TLS</span>
