@@ -948,6 +948,11 @@ class HTTP2Server:
             return _HTTP2Session(RequestHandlerClass)
 
         self.loop = asyncio.get_event_loop()
+
+        if ssl:
+            ssl.set_npn_protocols([cnghttp2.NGHTTP2_PROTO_VERSION_ID\
+                                   .decode('utf-8')])
+
         coro = self.loop.create_server(session_factory,
                                        host=address[0], port=address[1],
                                        ssl=ssl)
