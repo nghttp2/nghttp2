@@ -531,10 +531,10 @@ static  uint8_t* decode_length(ssize_t *res, int *final, ssize_t initial,
       *final = 1;
       return in + 1;
     }
-  }
-  if(++in == last) {
-    *res = n;
-    return in;
+    if(++in == last) {
+      *res = n;
+      return in;
+    }
   }
   for(r = 0; in != last; ++in, r += 7) {
     n += (*in & 0x7f) << r;
