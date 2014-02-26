@@ -322,6 +322,10 @@ fi
 AM_CONDITIONAL([ENABLE_PYTHON_BINDINGS],
                [test "x${enable_python_bindings}" = "xyes"])
 
+# Produce cython conditional, so that we can distribute generated C
+# source
+AM_CONDITIONAL([HAVE_CYTHON], [test "x${CYTHON}" != "x"])
+
 # failmalloc tests
 AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
 
@@ -406,6 +410,7 @@ AC_CONFIG_FILES([
   src/Makefile
   examples/Makefile
   python/Makefile
+  python/setup.py
   doc/Makefile
   doc/conf.py
   doc/index.rst

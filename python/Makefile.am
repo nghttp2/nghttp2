@@ -21,27 +21,30 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-EXTRA_DIST = cnghttp2.pxd setup.py
+EXTRA_DIST = cnghttp2.pxd nghttp2.pyx setup.py
+
+# Generate nghttp2.c only if we have cython installed
+if HAVE_CYTHON
+
+EXTRA_DIST += nghttp2.c
+
+endif # HAVE_CYTHON
 
 if ENABLE_PYTHON_BINDINGS
 
-distclean-local:
-	-rm -f nghttp2.c
+all-local: nghttp2.c
+	$(PYTHON) setup.py  build
+
+install-exec-local:
+	$(PYTHON) setup.py install --prefix=$(DESTDIR)$(prefix)
+
+uninstall-local:
+	rm -rf $(DESTDIR)$(libdir)/python*/site-packages/*nghttp2*
+
+clean-local:
+	$(PYTHON) setup.py clean --all
 
 .pyx.c:
 	$(CYTHON) -o $@ $<
-
-pyexec_LTLIBRARIES = nghttp2.la
-nghttp2_la_SOURCES = nghttp2.pyx
-nghttp2_la_CPPFLAGS = \
-	$(PYTHON_CPPFLAGS) \
-	-fno-strict-aliasing \
-	-I$(top_srcdir)/lib/includes \
-	-I$(top_builddir)/lib/includes \
-	-I$(top_srcdir)/lib
-nghttp2_la_LDFLAGS = \
-	$(PYTHON_LDFLAGS) \
-	-avoid-version -module
-nghttp2_la_LIBADD = $(top_builddir)/lib/libnghttp2.la
 
 endif # ENABLE_PYTHON_BINDINGS
