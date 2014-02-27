@@ -382,6 +382,93 @@ void show_candidates(const char *unkopt, option *options)
   }
 }
 
+bool has_uri_field(const http_parser_url &u, http_parser_url_fields field)
+{
+  return u.field_set & (1 << field);
+}
+
+bool fieldeq(const char *uri1, const http_parser_url &u1,
+             const char *uri2, const http_parser_url &u2,
+             http_parser_url_fields field)
+{
+  if(!has_uri_field(u1, field)) {
+    if(!has_uri_field(u2, field)) {
+      return true;
+    } else {
+      return false;
+    }
+  } else if(!has_uri_field(u2, field)) {
+    return false;
+  }
+  if(u1.field_data[field].len != u2.field_data[field].len) {
+    return false;
+  }
+  return memcmp(uri1+u1.field_data[field].off,
+                uri2+u2.field_data[field].off,
+                u1.field_data[field].len) == 0;
+}
+
+bool fieldeq(const char *uri, const http_parser_url &u,
+             http_parser_url_fields field,
+             const char *t)
+{
+  if(!has_uri_field(u, field)) {
+    if(!t[0]) {
+      return true;
+    } else {
+      return false;
+    }
+  } else if(!t[0]) {
+    return false;
+  }
+  int i, len = u.field_data[field].len;
+  const char *p = uri+u.field_data[field].off;
+  for(i = 0; i < len && t[i] && p[i] == t[i]; ++i);
+  return i == len && !t[i];
+}
+
+std::string get_uri_field(const char *uri, const http_parser_url &u,
+                          http_parser_url_fields field)
+{
+  if(util::has_uri_field(u, field)) {
+    return std::string(uri+u.field_data[field].off,
+                       u.field_data[field].len);
+  } else {
+    return "";
+  }
+}
+
+uint16_t get_default_port(const char *uri, const http_parser_url &u)
+{
+  if(util::fieldeq(uri, u, UF_SCHEMA, "https")) {
+    return 443;
+  } else if(util::fieldeq(uri, u, UF_SCHEMA, "http")) {
+    return 80;
+  } else {
+    return 443;
+  }
+}
+
+bool porteq(const char *uri1, const http_parser_url &u1,
+            const char *uri2, const http_parser_url &u2)
+{
+  uint16_t port1, port2;
+  port1 = util::has_uri_field(u1, UF_PORT) ?
+    u1.port : get_default_port(uri1, u1);
+  port2 = util::has_uri_field(u2, UF_PORT) ?
+    u2.port : get_default_port(uri2, u2);
+  return port1 == port2;
+}
+
+void write_uri_field(std::ostream& o,
+                     const char *uri, const http_parser_url &u,
+                     http_parser_url_fields field)
+{
+  if(util::has_uri_field(u, field)) {
+    o.write(uri+u.field_data[field].off, u.field_data[field].len);
+  }
+}
+
 } // namespace util
 
 } // namespace nghttp2

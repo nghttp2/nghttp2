@@ -37,6 +37,8 @@
 #include <sstream>
 #include <memory>
 
+#include "http-parser/http_parser.h"
+
 namespace nghttp2 {
 
 namespace util {
@@ -407,6 +409,28 @@ void to_token68(std::string& base64str);
 void to_base64(std::string& token68str);
 
 void show_candidates(const char *unkopt, option *options);
+
+bool has_uri_field(const http_parser_url &u, http_parser_url_fields field);
+
+bool fieldeq(const char *uri1, const http_parser_url &u1,
+             const char *uri2, const http_parser_url &u2,
+             http_parser_url_fields field);
+
+bool fieldeq(const char *uri, const http_parser_url &u,
+             http_parser_url_fields field,
+             const char *t);
+
+std::string get_uri_field(const char *uri, const http_parser_url &u,
+                          http_parser_url_fields field);
+
+uint16_t get_default_port(const char *uri, const http_parser_url &u);
+
+bool porteq(const char *uri1, const http_parser_url &u1,
+            const char *uri2, const http_parser_url &u2);
+
+void write_uri_field(std::ostream& o,
+                     const char *uri, const http_parser_url &u,
+                     http_parser_url_fields field);
 
 } // namespace util
 

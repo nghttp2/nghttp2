@@ -137,105 +137,6 @@ struct RequestStat {
 } // namespace
 
 namespace {
-bool has_uri_field(const http_parser_url &u, http_parser_url_fields field)
-{
-  return u.field_set & (1 << field);
-}
-} // namespace
-
-namespace {
-bool fieldeq(const char *uri1, const http_parser_url &u1,
-             const char *uri2, const http_parser_url &u2,
-             http_parser_url_fields field)
-{
-  if(!has_uri_field(u1, field)) {
-    if(!has_uri_field(u2, field)) {
-      return true;
-    } else {
-      return false;
-    }
-  } else if(!has_uri_field(u2, field)) {
-    return false;
-  }
-  if(u1.field_data[field].len != u2.field_data[field].len) {
-    return false;
-  }
-  return memcmp(uri1+u1.field_data[field].off,
-                uri2+u2.field_data[field].off,
-                u1.field_data[field].len) == 0;
-}
-} // namespace
-
-namespace {
-bool fieldeq(const char *uri, const http_parser_url &u,
-             http_parser_url_fields field,
-             const char *t)
-{
-  if(!has_uri_field(u, field)) {
-    if(!t[0]) {
-      return true;
-    } else {
-      return false;
-    }
-  } else if(!t[0]) {
-    return false;
-  }
-  int i, len = u.field_data[field].len;
-  const char *p = uri+u.field_data[field].off;
-  for(i = 0; i < len && t[i] && p[i] == t[i]; ++i);
-  return i == len && !t[i];
-}
-} // namespace
-
-namespace {
-uint16_t get_default_port(const char *uri, const http_parser_url &u)
-{
-  if(fieldeq(uri, u, UF_SCHEMA, "https")) {
-    return 443;
-  } else if(fieldeq(uri, u, UF_SCHEMA, "http")) {
-    return 80;
-  } else {
-    return 443;
-  }
-}
-} // namespace
-
-namespace {
-std::string get_uri_field(const char *uri, const http_parser_url &u,
-                          http_parser_url_fields field)
-{
-  if(has_uri_field(u, field)) {
-    return std::string(uri+u.field_data[field].off,
-                       u.field_data[field].len);
-  } else {
-    return "";
-  }
-}
-} // namespace
-
-namespace {
-bool porteq(const char *uri1, const http_parser_url &u1,
-            const char *uri2, const http_parser_url &u2)
-{
-  uint16_t port1, port2;
-  port1 = has_uri_field(u1, UF_PORT) ? u1.port : get_default_port(uri1, u1);
-  port2 = has_uri_field(u2, UF_PORT) ? u2.port : get_default_port(uri2, u2);
-  return port1 == port2;
-}
-} // namespace
-
-namespace {
-void write_uri_field(std::ostream& o,
-                     const char *uri, const http_parser_url &u,
-                     http_parser_url_fields field)
-{
-  if(has_uri_field(u, field)) {
-    o.write(uri+u.field_data[field].off, u.field_data[field].len);
-  }
-}
-} // namespace
-
-namespace {
 std::string strip_fragment(const char *raw_uri)
 {
   const char *end;
@@ -308,9 +209,9 @@ struct Request {
 
   std::string make_reqpath() const
   {
-    std::string path = has_uri_field(u, UF_PATH) ?
-      get_uri_field(uri.c_str(), u, UF_PATH) : "/";
-    if(has_uri_field(u, UF_QUERY)) {
+    std::string path = util::has_uri_field(u, UF_PATH) ?
+      util::get_uri_field(uri.c_str(), u, UF_PATH) : "/";
+    if(util::has_uri_field(u, UF_QUERY)) {
       path += "?";
       path.append(uri.c_str()+u.field_data[UF_QUERY].off,
                   u.field_data[UF_QUERY].len);
@@ -320,7 +221,7 @@ struct Request {
 
   bool is_ipv6_literal_addr() const
   {
-    if(has_uri_field(u, UF_HOST)) {
+    if(util::has_uri_field(u, UF_HOST)) {
       return memchr(uri.c_str()+u.field_data[UF_HOST].off, ':',
                     u.field_data[UF_HOST].len);
     } else {
@@ -844,18 +745,19 @@ struct HttpClient {
     if(reqvec.empty()) {
       return;
     }
-    scheme = get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_SCHEMA);
+    scheme = util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u,
+                                 UF_SCHEMA);
     std::stringstream ss;
     if(reqvec[0]->is_ipv6_literal_addr()) {
       ss << "[";
-      write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
+      util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
       ss << "]";
     } else {
-      write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
+      util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
     }
-    if(has_uri_field(reqvec[0]->u, UF_PORT) &&
-       reqvec[0]->u.port != get_default_port(reqvec[0]->uri.c_str(),
-                                             reqvec[0]->u)) {
+    if(util::has_uri_field(reqvec[0]->u, UF_PORT) &&
+       reqvec[0]->u.port != util::get_default_port(reqvec[0]->uri.c_str(),
+                                                   reqvec[0]->u)) {
       ss << ":" << reqvec[0]->u.port;
     }
     hostport = ss.str();
@@ -937,7 +839,7 @@ int submit_request
  Request *req)
 {
   auto path = req->make_reqpath();
-  auto scheme = get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
+  auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
   auto build_headers = std::vector<std::pair<std::string, std::string>>
     {{":method", req->data_prd ? "POST" : "GET"},
      {":path", path},
@@ -1016,9 +918,9 @@ void update_html_parser(HttpClient *client, Request *req,
     auto uri = strip_fragment(p.first.c_str());
     http_parser_url u;
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
-       fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
-       fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
-       porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
+       util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
+       util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
+       util::porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
       int32_t pri = adjust_pri(req->pri, p.second);
       // No POST data for assets
       if ( client->add_request(uri, nullptr, 0, pri, req->level+1) ) {
@@ -1682,11 +1584,11 @@ int run(char **uris, int n)
     http_parser_url u;
     auto uri = strip_fragment(uris[i]);
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
-       has_uri_field(u, UF_SCHEMA)) {
-      uint16_t port = has_uri_field(u, UF_PORT) ?
-        u.port : get_default_port(uri.c_str(), u);
-      if(!fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
-         !fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
+       util::has_uri_field(u, UF_SCHEMA)) {
+      uint16_t port = util::has_uri_field(u, UF_PORT) ?
+        u.port : util::get_default_port(uri.c_str(), u);
+      if(!util::fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
+         !util::fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
          port != prev_port) {
         if(!requests.empty()) {
           if (communicate(prev_scheme, prev_host, prev_port,
@@ -1695,8 +1597,8 @@ int run(char **uris, int n)
           }
           requests.clear();
         }
-        prev_scheme = get_uri_field(uri.c_str(), u, UF_SCHEMA);
-        prev_host = get_uri_field(uri.c_str(), u, UF_HOST);
+        prev_scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
+        prev_host = util::get_uri_field(uri.c_str(), u, UF_HOST);
         prev_port = port;
       }
       requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
