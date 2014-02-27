@@ -769,6 +769,7 @@ struct HttpClient {
                    int level = 0)
   {
     http_parser_url u;
+    memset(&u, 0, sizeof(u));
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       return false;
     }
@@ -917,6 +918,7 @@ void update_html_parser(HttpClient *client, Request *req,
   for(auto& p : req->html_parser->get_links()) {
     auto uri = strip_fragment(p.first.c_str());
     http_parser_url u;
+    memset(&u, 0, sizeof(u));
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
        util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
        util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
@@ -1183,6 +1185,7 @@ int on_frame_recv_callback2
     uri += authority;
     uri += path;
     http_parser_url u;
+    memset(&u, 0, sizeof(u));
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 frame->push_promise.promised_stream_id,
@@ -1582,6 +1585,7 @@ int run(char **uris, int n)
     requests;
   for(int i = 0; i < n; ++i) {
     http_parser_url u;
+    memset(&u, 0, sizeof(u));
     auto uri = strip_fragment(uris[i]);
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
        util::has_uri_field(u, UF_SCHEMA)) {

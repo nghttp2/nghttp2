@@ -259,6 +259,7 @@ void check_rewrite_location_uri(const std::string& new_uri,
                                 uint16_t upstream_port)
 {
   http_parser_url u;
+  memset(&u, 0, sizeof(u));
   CU_ASSERT(0 == http_parser_parse_url(uri.c_str(), uri.size(), 0, &u));
   CU_ASSERT(new_uri ==
             http2::rewrite_location_uri(uri, u, req_host,

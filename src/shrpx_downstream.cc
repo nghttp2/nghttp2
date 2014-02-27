@@ -497,6 +497,7 @@ void Downstream::rewrite_norm_location_response_header
     return;
   }
   http_parser_url u;
+  memset(&u, 0, sizeof(u));
   int rv = http_parser_parse_url((*hd).second.c_str(), (*hd).second.size(),
                                  0, &u);
   if(rv != 0) {
