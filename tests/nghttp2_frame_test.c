@@ -410,6 +410,8 @@ void test_nghttp2_nv_array_copy(void)
   rv = nghttp2_nv_array_copy(&nva, &bignv, 1);
   CU_ASSERT(1 == rv);
 
+  nghttp2_nv_array_del(nva);
+
   free(bignv.value);
 }
 

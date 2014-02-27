@@ -700,6 +700,8 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(1024 == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(4096 == inflater.settings_hd_table_bufsize_max);
 
+  nva_out_reset(&out);
+
   free(buf);
   nghttp2_hd_inflate_free(&inflater);
   nghttp2_hd_deflate_free(&deflater);
