@@ -268,13 +268,13 @@ The HTTP Upgrade is performed like this::
 nghttpd - server
 ++++++++++++++++
 
-``nghttpd`` is static web server. It is single threaded and
+``nghttpd`` is a static web server. It is single threaded and
 multiplexes connections using non-blocking socket.
 
 By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
 disable it.
 
-``nghttpd`` only accept the HTTP/2.0 connection via NPN/ALPN or direct
+``nghttpd`` only accepts the HTTP/2.0 connection via NPN/ALPN or direct
 HTTP/2.0 connection. No HTTP Upgrade is supported.
 
 ``-p`` option allows users to configure server push.
@@ -330,7 +330,7 @@ information. Here is sample output from ``nghttpd`` server::
 nghttpx - proxy
 +++++++++++++++
 
-The ``nghttpx`` is a multi-threaded reverse proxy for
+``nghttpx`` is a multi-threaded reverse proxy for
 h2-10, SPDY and HTTP/1.1. It has several operation modes:
 
 ================== ============================== ============== =============
@@ -344,7 +344,7 @@ default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================== ============== =============
 
 The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens h2-10, SPDY and HTTP/1.1 and
+a reverse proxy and listens for h2-10, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
@@ -357,10 +357,10 @@ The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
 SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
 ``--backend-no-tls`` option.
 
-The ``nghttpx`` supports configuration file. See ``--conf`` option and
+``nghttpx`` supports configuration file. See ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
 
-The ``nghttpx`` does not support server push.
+``nghttpx`` does not support server push.
 
 In the default mode, (without any of ``--http2-proxy``,
 ``--http2-bridge``, ``--client-proxy`` and ``--client`` options),
@@ -392,7 +392,7 @@ create proxy.pac script like this:
 machine nghttpx is running.  Please note that Chrome requires valid
 certificate for secure proxy.
 
-Then run chrome with the following arguments::
+Then run Chrome with the following arguments::
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
@@ -408,7 +408,7 @@ that the backend is HTTP/2.0 proxy::
     Client <-- (HTTP/2.0, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --> HTTP/2.0 Proxy
                                      [forward proxy]               (e.g., nghttpx -s)
 
-The ``Client`` is needs to be configured to use nghttpx as forward
+The ``Client`` needs to be configured to use nghttpx as forward
 proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
 through HTTP Upgrade.  With the above configuration, one can use
 HTTP/1.1 client to access and test their HTTP/2.0 servers.
@@ -423,10 +423,10 @@ The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
 through HTTP Upgrade.
 
 For the operation modes which talk to the backend in HTTP/2.0 over
-SSL/TLS, the backend connections can be tunneled though HTTP
+SSL/TLS, the backend connections can be tunneled through HTTP
 proxy. The proxy is specified using ``--backend-http-proxy-uri``
 option. The following figure illustrates the example of
-``--http2-bridge`` and ``--backend-http-proxy-uri`` option to talk to
+``--http2-bridge`` and ``--backend-http-proxy-uri`` options to talk to
 the outside HTTP/2.0 proxy through HTTP proxy::
 
     Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --
@@ -466,13 +466,14 @@ clients (thus 10 HTTP/2 sessions), and maximum 10 streams per client.
 
 .. warning::
 
-   **Don't use this tool against the publicly available server.** That
-   is considered as DOS attack.
+   **Don't use this tool against publicly available servers.** That
+   is considered a DOS attack. Please only use against your private
+   servers.
 
 HPACK tools
 -----------
 
-The ``src`` directory contains HPACK tools. The ``deflatehd`` is
+The ``src`` directory contains HPACK tools. The ``deflatehd`` is a
 command-line header compression tool. The ``inflatehd`` is
 command-line header decompression tool.  Both tools read input from
 stdin and write output to stdout. The errors are written to
@@ -549,7 +550,7 @@ headers
     The input header set.
 
 header_table_size
-    The header table size adjsuted before deflating header set.
+    The header table size adjusted before deflating header set.
 
 Examples:
 
@@ -617,8 +618,8 @@ The output can be used as the input for ``inflatehd`` and
 ``deflatehd``.
 
 With ``-d`` option, the extra ``header_table`` key is added and its
-associated value includes the state of dyanmic header table after the
-corresponding header set was processed. The value includes at least
+associated value includes the state of dynamic header table after the
+corresponding header set was processed. The value includes at least the
 following keys:
 
 entries
@@ -841,7 +842,7 @@ wire
     The compressed header block in hex string.
 
 header_table_size
-    The header table size adjsuted before inflating compressed header
+    The header table size adjusted before inflating compressed header
     block.
 
 Example:
@@ -903,7 +904,7 @@ The output can be used as the input for ``deflatehd`` and
 ``inflatehd``.
 
 With ``-d`` option, the extra ``header_table`` key is added and its
-associated value includes the state of dyanmic header table after the
+associated value includes the state of dynamic header table after the
 corresponding header set was processed. The format is the same as
 ``deflatehd``.
 
@@ -945,11 +946,11 @@ loop. On construction, *RequestHandlerClass* must be given, which must
 be a subclass of ``nghttp2.BaseRequestHandler`` class.
 
 The ``BaseRequestHandler`` class is used to handle the HTTP/2
-stream. By default, it does not nothing. It must be subclassed to
+stream. By default, it does nothing. It must be subclassed to
 handle each event callback method.
 
 The first callback method invoked is ``on_headers()``. It is called
-when HEADERS frame, which includes request header fields, is arrived.
+when HEADERS frame, which includes request header fields, has arrived.
 
 If request has request body, ``on_data(data)`` is invoked for each
 chunk of received data.
@@ -972,7 +973,7 @@ client_address
     client's address.
 
 stream_id
-    Stream ID of this stream
+    Stream ID of this stream.
 
 scheme
     Scheme of the request URI. This is a value of :scheme header field.
