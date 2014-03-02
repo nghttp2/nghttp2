@@ -74,8 +74,8 @@ required:
 
 ALPN support requires unreleased version OpenSSL >= 1.0.2.
 
-To enable SPDY protocol in the application program ``nghttpx``, the
-following packages are required:
+To enable SPDY protocol in the application program ``nghttpx`` and
+``h2load``, the following packages are required:
 
 * spdylay >= 1.2.3
 
@@ -433,6 +433,41 @@ the outside HTTP/2.0 proxy through HTTP proxy::
 
             --===================---> HTTP/2.0 Proxy
               (HTTP proxy tunnel)     (e.g., nghttpx -s)
+
+Benchmarking tool
+-----------------
+
+The ``h2load`` program is a benchmarking tool for HTTP/2 and SPDY.
+The SPDY support is enabled if the program was built with spdylay
+library. The UI of ``h2load`` is heavily inspired by
+``weighttp`` (https://github.com/lighttpd/weighttp). The typical usage
+is as follows::
+
+    $ src/h2load -n1000 -c10 -m10 https://127.0.0.1:8443/
+    starting benchmark...
+    progress: 10% done
+    progress: 20% done
+    progress: 30% done
+    progress: 40% done
+    progress: 50% done
+    progress: 60% done
+    progress: 70% done
+    progress: 80% done
+    progress: 90% done
+    progress: 100% done
+
+    finished in 0 sec, 152 millisec and 152 microsec, 6572 req/s, 749 kbytes/s
+    requests: 1000 total, 1000 started, 1000 done, 0 succeeded, 1000 failed, 0 errored
+    status codes: 0 2xx, 0 3xx, 1000 4xx, 0 5xx
+    traffic: 141100 bytes total, 840 bytes headers, 116000 bytes data
+
+The above example issued total 1000 requests, using 10 concurrent
+clients (thus 10 HTTP/2 sessions), and maximum 10 streams per client.
+
+.. warning::
+
+   **Don't use this tool against the publicly available server.** That
+   is considered as DOS attack.
 
 HPACK tools
 -----------
