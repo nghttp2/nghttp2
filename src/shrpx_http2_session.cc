@@ -1087,7 +1087,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
 {
   auto http2session = static_cast<Http2Session*>(user_data);
   SSLOG(WARNING, http2session) << "Failed to send control frame type="
-                               << frame->hd.type << ", "
+                               << static_cast<uint32_t>(frame->hd.type)
                                << "lib_error_code=" << lib_error_code << ":"
                                << nghttp2_strerror(lib_error_code);
   if(frame->hd.type == NGHTTP2_HEADERS &&
