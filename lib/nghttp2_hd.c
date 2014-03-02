@@ -1345,18 +1345,22 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
     nghttp2_hd_entry *new_ent;
     uint8_t ent_flags = NGHTTP2_HD_FLAG_VALUE_ALLOC |
       NGHTTP2_HD_FLAG_VALUE_GIFT;
+    int static_name = inflater->index >= inflater->ctx.hd_table.len;
 
-    if(inflater->index < inflater->ctx.hd_table.len) {
+    if(!static_name) {
       ent_flags |= NGHTTP2_HD_FLAG_NAME_ALLOC;
+      /* For entry in static table, we must not touch ref, because it
+         is shared by threads */
+      ++inflater->ent_name->ref;
     }
-    ++inflater->ent_name->ref;
     nv.name = inflater->ent_name->nv.name;
     nv.namelen = inflater->ent_name->nv.namelen;
     nv.value = inflater->valuebuf.buf;
     nv.valuelen = inflater->valuebuf.len;
     new_ent = add_hd_table_incremental(&inflater->ctx, NULL, NULL, NULL, &nv,
                                        ent_flags);
-    if(--inflater->ent_name->ref == 0) {
+    if(!static_name && --inflater->ent_name->ref == 0) {
+      fprintf(stderr, "index=%zu, len=%zu\n", inflater->index, inflater->ctx.hd_table.len);
       nghttp2_hd_entry_free(inflater->ent_name);
       free(inflater->ent_name);
     }
