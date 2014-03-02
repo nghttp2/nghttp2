@@ -31,7 +31,7 @@
 
 namespace h2load {
 
-class Client;
+struct Client;
 
 class SpdySession : public Session {
 public:
