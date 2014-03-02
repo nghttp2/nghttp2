@@ -239,6 +239,28 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   /* next_stream_id is initialized in either
      nghttp2_session_client_new2 or nghttp2_session_server_new2 */
 
+  rv = nghttp2_pq_init(&(*session_ptr)->ob_pq, nghttp2_outbound_item_compar);
+  if(rv != 0) {
+    goto fail_ob_pq;
+  }
+  rv = nghttp2_pq_init(&(*session_ptr)->ob_ss_pq, nghttp2_outbound_item_compar);
+  if(rv != 0) {
+    goto fail_ob_ss_pq;
+  }
+
+  rv = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater);
+  if(rv != 0) {
+    goto fail_hd_deflater;
+  }
+  rv = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater);
+  if(rv != 0) {
+    goto fail_hd_inflater;
+  }
+  rv = nghttp2_map_init(&(*session_ptr)->streams);
+  if(rv != 0) {
+    goto fail_map;
+  }
+
   (*session_ptr)->next_seq = 0;
 
   if((opt_set_mask & NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE) &&
@@ -266,26 +288,6 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
 
   if(server) {
     (*session_ptr)->server = 1;
-  }
-  rv = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater);
-  if(rv != 0) {
-    goto fail_hd_deflater;
-  }
-  rv = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater);
-  if(rv != 0) {
-    goto fail_hd_inflater;
-  }
-  rv = nghttp2_map_init(&(*session_ptr)->streams);
-  if(rv != 0) {
-    goto fail_map;
-  }
-  rv = nghttp2_pq_init(&(*session_ptr)->ob_pq, nghttp2_outbound_item_compar);
-  if(rv != 0) {
-    goto fail_ob_pq;
-  }
-  rv = nghttp2_pq_init(&(*session_ptr)->ob_ss_pq, nghttp2_outbound_item_compar);
-  if(rv != 0) {
-    goto fail_ob_ss_pq;
   }
 
   (*session_ptr)->aob.framebuf = malloc
@@ -318,16 +320,16 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   return 0;
 
  fail_aob_framebuf:
-  nghttp2_pq_free(&(*session_ptr)->ob_ss_pq);
- fail_ob_ss_pq:
-  nghttp2_pq_free(&(*session_ptr)->ob_pq);
- fail_ob_pq:
   nghttp2_map_free(&(*session_ptr)->streams);
  fail_map:
   nghttp2_hd_inflate_free(&(*session_ptr)->hd_inflater);
  fail_hd_inflater:
   nghttp2_hd_deflate_free(&(*session_ptr)->hd_deflater);
  fail_hd_deflater:
+  nghttp2_pq_free(&(*session_ptr)->ob_ss_pq);
+ fail_ob_ss_pq:
+  nghttp2_pq_free(&(*session_ptr)->ob_pq);
+ fail_ob_pq:
   free(*session_ptr);
  fail_session:
   return rv;

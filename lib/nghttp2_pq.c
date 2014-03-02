@@ -26,7 +26,7 @@
 
 int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar compar)
 {
-  pq->capacity = 4096;
+  pq->capacity = 128;
   pq->q = malloc(pq->capacity * sizeof(void*));
   if(pq->q == NULL) {
     return NGHTTP2_ERR_NOMEM;
