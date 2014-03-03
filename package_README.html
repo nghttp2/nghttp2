@@ -417,11 +417,11 @@ Upgrade: h2-10
 </div>
 <div class="section" id="nghttpd-server">
 <h3>nghttpd - server<a class="headerlink" href="#nghttpd-server" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> is static web server. It is single threaded and
+<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> is a static web server. It is single threaded and
 multiplexes connections using non-blocking socket.</p>
 <p>By default, it uses SSL/TLS connection. Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
 disable it.</p>
-<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accept the HTTP/2.0 connection via NPN/ALPN or direct
+<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accepts the HTTP/2.0 connection via NPN/ALPN or direct
 HTTP/2.0 connection. No HTTP Upgrade is supported.</p>
 <p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
@@ -475,7 +475,7 @@ IPv6: listen on port 8080
 </div>
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
 h2-10, SPDY and HTTP/1.1. It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -520,7 +520,7 @@ h2-10, SPDY and HTTP/1.1. It has several operation modes:</p>
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens h2-10, SPDY and HTTP/1.1 and
+a reverse proxy and listens for h2-10, SPDY and HTTP/1.1 and
 can be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
@@ -530,9 +530,9 @@ HTTP/2.0 through HTTP Upgrade.</p>
 <p>The <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client</span></tt> and <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> modes use
 SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
 <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
-<p>The <tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports configuration file. See <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports configuration file. See <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
 sample configuration file <tt class="docutils literal"><span class="pre">nghttpx.conf.sample</span></tt>.</p>
-<p>The <tt class="docutils literal"><span class="pre">nghttpx</span></tt> does not support server push.</p>
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> does not support server push.</p>
 <p>In the default mode, (without any of <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt>,
 <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--client</span></tt> options),
 <tt class="docutils literal"><span class="pre">nghttpx</span></tt> works as reverse proxy to the backend server:</p>
@@ -559,7 +559,7 @@ create proxy.pac script like this:</p>
 <p><tt class="docutils literal"><span class="pre">SERVERADDR</span></tt> and <tt class="docutils literal"><span class="pre">PORT</span></tt> is the hostname/address and port of the
 machine nghttpx is running.  Please note that Chrome requires valid
 certificate for secure proxy.</p>
-<p>Then run chrome with the following arguments:</p>
+<p>Then run Chrome with the following arguments:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 </pre></div>
 </div>
@@ -575,7 +575,7 @@ that the backend is HTTP/2.0 proxy:</p>
                                  <span class="p">[</span><span class="n">forward</span> <span class="n">proxy</span><span class="p">]</span>               <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">nghttpx</span> <span class="o">-</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> is needs to be configured to use nghttpx as forward
+<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> needs to be configured to use nghttpx as forward
 proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
 through HTTP Upgrade.  With the above configuration, one can use
 HTTP/1.1 client to access and test their HTTP/2.0 servers.</p>
@@ -588,10 +588,10 @@ the backend is HTTP/2.0 Web server:</p>
 <p>The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
 through HTTP Upgrade.</p>
 <p>For the operation modes which talk to the backend in HTTP/2.0 over
-SSL/TLS, the backend connections can be tunneled though HTTP
+SSL/TLS, the backend connections can be tunneled through HTTP
 proxy. The proxy is specified using <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt>
 option. The following figure illustrates the example of
-<tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> and <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> option to talk to
+<tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> and <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> options to talk to
 the outside HTTP/2.0 proxy through HTTP proxy:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">--</span>
 
@@ -628,16 +628,19 @@ traffic: 141100 bytes total, 840 bytes headers, 116000 bytes data
 </pre></div>
 </div>
 <p>The above example issued total 1000 requests, using 10 concurrent
-clients (thus 10 HTTP/2 sessions), and maximum 10 streams per client.</p>
+clients (thus 10 HTTP/2 sessions), and maximum 10 streams per client.
+With <tt class="docutils literal"><span class="pre">-t</span></tt> option, <tt class="docutils literal"><span class="pre">h2load</span></tt> will use multiple native threads to
+avoid saturating single core on client side.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last"><strong>Don&#8217;t use this tool against the publicly available server.</strong> That
-is considered as DOS attack.</p>
+<p class="last"><strong>Don&#8217;t use this tool against publicly available servers.</strong> That
+is considered a DOS attack. Please only use against your private
+servers.</p>
 </div>
 </div>
 <div class="section" id="hpack-tools">
 <h2>HPACK tools<a class="headerlink" href="#hpack-tools" title="Permalink to this headline">¶</a></h2>
-<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains HPACK tools. The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> is
+<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains HPACK tools. The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> is a
 command-line header compression tool. The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> is
 command-line header decompression tool.  Both tools read input from
 stdin and write output to stdout. The errors are written to
@@ -700,7 +703,7 @@ value is an array of JSON object, which has at least following keys:</p>
 <dt>headers</dt>
 <dd>The input header set.</dd>
 <dt>header_table_size</dt>
-<dd>The header table size adjsuted before deflating header set.</dd>
+<dd>The header table size adjusted before deflating header set.</dd>
 </dl>
 <p>Examples:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
@@ -764,8 +767,8 @@ value is an array of JSON object, which has at least following keys:</p>
 <p>The output can be used as the input for <tt class="docutils literal"><span class="pre">inflatehd</span></tt> and
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 <p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
-associated value includes the state of dyanmic header table after the
-corresponding header set was processed. The value includes at least
+associated value includes the state of dynamic header table after the
+corresponding header set was processed. The value includes at least the
 following keys:</p>
 <dl class="docutils">
 <dt>entries</dt>
@@ -975,7 +978,7 @@ value is an array of JSON object, which has at least following keys:</p>
 <dt>wire</dt>
 <dd>The compressed header block in hex string.</dd>
 <dt>header_table_size</dt>
-<dd>The header table size adjsuted before inflating compressed header
+<dd>The header table size adjusted before inflating compressed header
 block.</dd>
 </dl>
 <p>Example:</p>
@@ -1034,7 +1037,7 @@ block.</dd>
 <p>The output can be used as the input for <tt class="docutils literal"><span class="pre">deflatehd</span></tt> and
 <tt class="docutils literal"><span class="pre">inflatehd</span></tt>.</p>
 <p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
-associated value includes the state of dyanmic header table after the
+associated value includes the state of dynamic header table after the
 corresponding header set was processed. The format is the same as
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 </div>
@@ -1070,10 +1073,10 @@ and decompressor in Python:</p>
 loop. On construction, <em>RequestHandlerClass</em> must be given, which must
 be a subclass of <tt class="docutils literal"><span class="pre">nghttp2.BaseRequestHandler</span></tt> class.</p>
 <p>The <tt class="docutils literal"><span class="pre">BaseRequestHandler</span></tt> class is used to handle the HTTP/2
-stream. By default, it does not nothing. It must be subclassed to
+stream. By default, it does nothing. It must be subclassed to
 handle each event callback method.</p>
 <p>The first callback method invoked is <tt class="docutils literal"><span class="pre">on_headers()</span></tt>. It is called
-when HEADERS frame, which includes request header fields, is arrived.</p>
+when HEADERS frame, which includes request header fields, has arrived.</p>
 <p>If request has request body, <tt class="docutils literal"><span class="pre">on_data(data)</span></tt> is invoked for each
 chunk of received data.</p>
 <p>When whole request is received, <tt class="docutils literal"><span class="pre">on_request_done()</span></tt> is invoked.</p>
@@ -1089,7 +1092,7 @@ used before <tt class="docutils literal"><span class="pre">send_response()</span
 <dd>Contains a tuple of the form (host, port) referring to the
 client&#8217;s address.</dd>
 <dt>stream_id</dt>
-<dd>Stream ID of this stream</dd>
+<dd>Stream ID of this stream.</dd>
 <dt>scheme</dt>
 <dd>Scheme of the request URI. This is a value of :scheme header field.</dd>
 <dt>method</dt>
