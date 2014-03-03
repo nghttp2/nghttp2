@@ -463,6 +463,8 @@ is as follows::
 
 The above example issued total 1000 requests, using 10 concurrent
 clients (thus 10 HTTP/2 sessions), and maximum 10 streams per client.
+With ``-t`` option, ``h2load`` will use multiple native threads to
+avoid saturating single core on client side.
 
 .. warning::
 
