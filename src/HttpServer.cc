@@ -450,9 +450,11 @@ int Http2Handler::verify_npn_result()
 #endif // OPENSSL_VERSION_NUMBER < 0x10002000L
     }
   }
-  std::cerr << "Client did not advertise HTTP/2.0 protocol."
-            << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
-            << std::endl;
+  if(sessions_->get_config()->verbose) {
+    std::cerr << "Client did not advertise HTTP/2.0 protocol."
+              << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
+              << std::endl;
+  }
   return -1;
 }
 
