@@ -58,18 +58,34 @@ ssize_t send_callback(spdylay_session *session,
   auto handler = upstream->get_client_handler();
   auto bev = handler->get_bev();
   auto output = bufferevent_get_output(bev);
+
   // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(handler->get_outbuf_length() > OUTBUF_MAX_THRES) {
+  if(handler->get_outbuf_length() + upstream->sendbuflen > OUTBUF_MAX_THRES) {
     return SPDYLAY_ERR_WOULDBLOCK;
   }
 
-  rv = evbuffer_add(output, data, len);
-  if(rv == -1) {
-    ULOG(FATAL, upstream) << "evbuffer_add() failed";
-    return SPDYLAY_ERR_CALLBACK_FAILURE;
+  if(upstream->sendbuflen + len > upstream->sendbufmax) {
+    rv = evbuffer_add(output, upstream->sendbuf, upstream->sendbuflen);
+    if(rv == -1) {
+      ULOG(FATAL, upstream) << "evbuffer_add() failed";
+      return SPDYLAY_ERR_CALLBACK_FAILURE;
+    }
+    upstream->sendbuflen = 0;
+    if(len > upstream->sendbufmax) {
+      rv = evbuffer_add(output, data, len);
+      if(rv == -1) {
+        ULOG(FATAL, upstream) << "evbuffer_add() failed";
+        return SPDYLAY_ERR_CALLBACK_FAILURE;
+      }
+    } else {
+      memcpy(upstream->sendbuf + upstream->sendbuflen, data, len);
+      upstream->sendbuflen += len;
+    }
   } else {
-    return len;
+    memcpy(upstream->sendbuf + upstream->sendbuflen, data, len);
+    upstream->sendbuflen += len;
   }
+  return len;
 }
 } // namespace
 
@@ -439,26 +455,16 @@ SpdyUpstream::~SpdyUpstream()
 int SpdyUpstream::on_read()
 {
   int rv = 0;
-  if((rv = spdylay_session_recv(session_)) < 0) {
+
+  rv = spdylay_session_recv(session_);
+  if(rv < 0) {
     if(rv != SPDYLAY_ERR_EOF) {
       ULOG(ERROR, this) << "spdylay_session_recv() returned error: "
                         << spdylay_strerror(rv);
     }
-  } else if((rv = spdylay_session_send(session_)) < 0) {
-    ULOG(ERROR, this) << "spdylay_session_send() returned error: "
-                      << spdylay_strerror(rv);
+    return rv;
   }
-  if(rv == 0) {
-    if(spdylay_session_want_read(session_) == 0 &&
-       spdylay_session_want_write(session_) == 0 &&
-       handler_->get_outbuf_length() == 0) {
-      if(LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "No more read/write for this SPDY session";
-      }
-      rv = -1;
-    }
-  }
-  return rv;
+  return send();
 }
 
 int SpdyUpstream::on_write()
@@ -470,21 +476,33 @@ int SpdyUpstream::on_write()
 int SpdyUpstream::send()
 {
   int rv = 0;
-  if((rv = spdylay_session_send(session_)) < 0) {
+  uint8_t buf[4096];
+
+  sendbuf = buf;
+  sendbuflen = 0;
+  sendbufmax = sizeof(buf);
+
+  rv = spdylay_session_send(session_);
+  if(rv != 0) {
     ULOG(ERROR, this) << "spdylay_session_send() returned error: "
                       << spdylay_strerror(rv);
+    return rv;
   }
-  if(rv == 0) {
-    if(spdylay_session_want_read(session_) == 0 &&
-       spdylay_session_want_write(session_) == 0 &&
-       handler_->get_outbuf_length() == 0) {
-      if(LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "No more read/write for this SPDY session";
-      }
-      rv = -1;
+  rv = bufferevent_write(handler_->get_bev(), sendbuf, sendbuflen);
+  if(rv == -1) {
+    ULOG(FATAL, this) << "evbuffer_add() failed";
+    return -1;
+  }
+
+  if(spdylay_session_want_read(session_) == 0 &&
+     spdylay_session_want_write(session_) == 0 &&
+     handler_->get_outbuf_length() == 0) {
+    if(LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "No more read/write for this SPDY session";
     }
+    return -1;
   }
-  return rv;
+  return 0;
 }
 
 int SpdyUpstream::on_event()

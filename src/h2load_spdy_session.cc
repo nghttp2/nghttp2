@@ -101,8 +101,29 @@ ssize_t send_callback(spdylay_session *session,
                       void *user_data)
 {
   auto client = static_cast<Client*>(user_data);
+  auto spdy_session = static_cast<SpdySession*>(client->session.get());
   auto output = bufferevent_get_output(client->bev);
-  evbuffer_add(output, data, length);
+  int rv;
+
+  if(spdy_session->sendbuflen + length > spdy_session->sendbufmax) {
+    rv = evbuffer_add(output, spdy_session->sendbuf, spdy_session->sendbuflen);
+    if(rv == -1) {
+      return SPDYLAY_ERR_CALLBACK_FAILURE;
+    }
+    spdy_session->sendbuflen = 0;
+    if(length > spdy_session->sendbufmax) {
+      rv = evbuffer_add(output, data, length);
+      if(rv == -1) {
+        return SPDYLAY_ERR_CALLBACK_FAILURE;
+      }
+    } else {
+      memcpy(spdy_session->sendbuf + spdy_session->sendbuflen, data, length);
+      spdy_session->sendbuflen += length;
+    }
+  } else {
+    memcpy(spdy_session->sendbuf + spdy_session->sendbuflen, data, length);
+    spdy_session->sendbuflen += length;
+  }
   return length;
 }
 } //namespace
@@ -150,10 +171,22 @@ ssize_t SpdySession::on_read()
 int SpdySession::on_write()
 {
   int rv;
+  uint8_t buf[4096];
+
+  sendbuf = buf;
+  sendbuflen = 0;
+  sendbufmax = sizeof(buf);
+
   rv = spdylay_session_send(session_);
   if(rv != 0) {
     return -1;
   }
+
+  rv = bufferevent_write(client_->bev, sendbuf, sendbuflen);
+  if(rv == -1) {
+    return -1;
+  }
+
   if(spdylay_session_want_read(session_) == 0 &&
      spdylay_session_want_write(session_) == 0 &&
      evbuffer_get_length(bufferevent_get_output(client_->bev)) == 0) {

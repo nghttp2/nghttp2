@@ -566,11 +566,13 @@ int Http2Upstream::on_write()
 int Http2Upstream::send()
 {
   int rv;
+  uint8_t buf[4096];
+  size_t buflen = 0;
   auto bev = handler_->get_bev();
   auto output = bufferevent_get_output(bev);
   for(;;) {
     // Check buffer length and return WOULDBLOCK if it is large enough.
-    if(handler_->get_outbuf_length() > OUTBUF_MAX_THRES) {
+    if(handler_->get_outbuf_length() + buflen > OUTBUF_MAX_THRES) {
       break;
     }
 
@@ -585,12 +587,32 @@ int Http2Upstream::send()
     if(datalen == 0) {
       break;
     }
-    rv = evbuffer_add(output, data, datalen);
-    if(rv == -1) {
-      ULOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
+    if(buflen + datalen > sizeof(buf)) {
+      rv = evbuffer_add(output, buf, buflen);
+      if(rv == -1) {
+        ULOG(FATAL, this) << "evbuffer_add() failed";
+        return -1;
+      }
+      buflen = 0;
+      if(datalen > static_cast<ssize_t>(sizeof(buf))) {
+        rv = evbuffer_add(output, data, datalen);
+        if(rv == -1) {
+          ULOG(FATAL, this) << "evbuffer_add() failed";
+          return -1;
+        }
+        continue;
+      }
     }
+    memcpy(buf + buflen, data, datalen);
+    buflen += datalen;
   }
+
+  rv = evbuffer_add(output, buf, buflen);
+  if(rv == -1) {
+    ULOG(FATAL, this) << "evbuffer_add() failed";
+    return -1;
+  }
+
   if(nghttp2_session_want_read(session_) == 0 &&
      nghttp2_session_want_write(session_) == 0 &&
      handler_->get_outbuf_length() == 0) {

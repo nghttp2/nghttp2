@@ -42,6 +42,10 @@ public:
   virtual ssize_t on_read();
   virtual int on_write();
   virtual void terminate();
+
+  uint8_t *sendbuf;
+  size_t sendbuflen;
+  size_t sendbufmax;
 private:
   Client *client_;
   spdylay_session *session_;

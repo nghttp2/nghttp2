@@ -67,6 +67,10 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   bool get_flow_control() const;
+
+  uint8_t *sendbuf;
+  size_t sendbuflen;
+  size_t sendbufmax;
 private:
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;

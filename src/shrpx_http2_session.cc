@@ -1258,10 +1258,12 @@ int Http2Session::on_write()
 int Http2Session::send()
 {
   int rv;
+  uint8_t buf[4096];
+  size_t buflen = 0;
   auto output = bufferevent_get_output(bev_);
   for(;;) {
     // Check buffer length and return WOULDBLOCK if it is large enough.
-    if(evbuffer_get_length(output) > Http2Session::OUTBUF_MAX_THRES) {
+    if(evbuffer_get_length(output) + buflen > Http2Session::OUTBUF_MAX_THRES) {
       return NGHTTP2_ERR_WOULDBLOCK;
     }
 
@@ -1276,11 +1278,30 @@ int Http2Session::send()
     if(datalen == 0) {
       break;
     }
-    rv = evbuffer_add(output, data, datalen);
-    if(rv == -1) {
-      SSLOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
+    if(buflen + datalen > sizeof(buf)) {
+      rv = evbuffer_add(output, buf, buflen);
+      if(rv == -1) {
+        SSLOG(FATAL, this) << "evbuffer_add() failed";
+        return -1;
+      }
+      buflen = 0;
+      if(datalen > static_cast<ssize_t>(sizeof(buf))) {
+        rv = evbuffer_add(output, data, datalen);
+        if(rv == -1) {
+          SSLOG(FATAL, this) << "evbuffer_add() failed";
+          return -1;
+        }
+        continue;
+      }
     }
+    memcpy(buf + buflen, data, datalen);
+    buflen += datalen;
+  }
+
+  rv = evbuffer_add(output, buf, buflen);
+  if(rv == -1) {
+    SSLOG(FATAL, this) << "evbuffer_add() failed";
+    return -1;
   }
 
   if(nghttp2_session_want_read(session_) == 0 &&

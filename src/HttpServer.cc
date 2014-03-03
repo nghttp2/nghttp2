@@ -332,10 +332,12 @@ int Http2Handler::on_read()
 int Http2Handler::on_write()
 {
   int rv;
+  uint8_t buf[4096];
+  size_t buflen = 0;
   auto output = bufferevent_get_output(bev_);
 
   for(;;) {
-    if(evbuffer_get_length(output) >
+    if(evbuffer_get_length(output) + buflen >
        sessions_->get_config()->output_upper_thres) {
       break;
     }
@@ -351,11 +353,29 @@ int Http2Handler::on_write()
     if(datalen == 0) {
       break;
     }
-    rv = evbuffer_add(output, data, datalen);
-    if(rv != 0) {
-      std::cerr << "evbuffer_add() failed" << std::endl;
-      return -1;
+    if(buflen + datalen > sizeof(buf)) {
+      rv = evbuffer_add(output, buf, buflen);
+      if(rv != 0) {
+        std::cerr << "evbuffer_add() failed" << std::endl;
+        return -1;
+      }
+      buflen = 0;
+      if(datalen > static_cast<ssize_t>(sizeof(buf))) {
+        rv = evbuffer_add(output, data, datalen);
+        if(rv != 0) {
+          std::cerr << "evbuffer_add() failed" << std::endl;
+          return -1;
+        }
+        continue;
+      }
     }
+    memcpy(buf + buflen, data, datalen);
+    buflen += datalen;
+  }
+  rv = evbuffer_add(output, buf, buflen);
+  if(rv != 0) {
+    std::cerr << "evbuffer_add() failed" << std::endl;
+    return -1;
   }
   if(nghttp2_session_want_read(session_) == 0 &&
      nghttp2_session_want_write(session_) == 0 &&
