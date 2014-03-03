@@ -1155,10 +1155,39 @@ int HttpServer::run()
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       return -1;
     }
-    SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
+
+    SSL_CTX_set_options(ssl_ctx,
+                        SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                        SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
+                        SSL_OP_SINGLE_ECDH_USE |
+                        SSL_OP_NO_TICKET);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+    const unsigned char sid_ctx[] = "nghttpd";
+    SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx)-1);
+    SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+
+#ifndef OPENSSL_NO_EC
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
+#else // OPENSSL_VERSION_NUBMER < 0x10002000L
+    // Use P-256, which is sufficiently secure at the time of this
+    // writing.
+    auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if(ecdh == nullptr) {
+      std::cerr << "EC_KEY_new_by_curv_name failed: "
+                << ERR_error_string(ERR_get_error(), nullptr);
+      return -1;
+    }
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
+    EC_KEY_free(ecdh);
+#endif // OPENSSL_VERSION_NUBMER < 0x10002000L
+
+#endif /* OPENSSL_NO_EC */
+
     if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
                                    config_->private_key_file.c_str(),
                                    SSL_FILETYPE_PEM) != 1) {
