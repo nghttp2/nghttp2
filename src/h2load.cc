@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 #ifdef HAVE_SPDYLAY
 #include <spdylay/spdylay.h>
@@ -60,7 +61,7 @@ Config::Config()
   : addrs(nullptr),
     nreqs(1),
     nclients(1),
-    nworkers(1),
+    nthreads(1),
     max_concurrent_streams(1),
     window_bits(16),
     connection_window_bits(16),
@@ -191,7 +192,8 @@ void Client::process_abandoned_streams()
 
 void Client::report_progress()
 {
-  if(worker->stats.req_done % worker->progress_interval == 0) {
+  if(worker->id == 0 &&
+     worker->stats.req_done % worker->progress_interval == 0) {
     std::cout << "progress: "
               << worker->stats.req_done * 100 / worker->stats.req_todo
               << "% done"
@@ -299,13 +301,14 @@ int Client::on_write()
   return session->on_write();
 }
 
-Worker::Worker(SSL_CTX *ssl_ctx, Config *config)
+Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
+               Config *config)
   : stats{0}, evbase(event_base_new()), ssl_ctx(ssl_ctx), config(config),
-    term_timer_started(false)
+    id(id), term_timer_started(false)
 {
-  stats.req_todo = config->nreqs;
-  progress_interval = std::max((size_t)1, config->nreqs / 10);
-  for(size_t i = 0; i < config->nclients; ++i) {
+  stats.req_todo = req_todo;
+  progress_interval = std::max((size_t)1, req_todo / 10);
+  for(size_t i = 0; i < nclients; ++i) {
     clients.push_back(util::make_unique<Client>(this));
   }
 }
@@ -539,6 +542,8 @@ void print_help(std::ostream& out)
       << config.nreqs << "\n"
       << "  -c, --clients=<N>  Number of concurrent clients. Default: "
       << config.nclients << "\n"
+      << "  -t, --threads=<N>  Number of native threads. Default: "
+      << config.nthreads << "\n"
       << "  -m, --max-concurrent-streams=<N>\n"
       << "                     Max concurrent streams to issue per session. \n"
       << "                     Default: "
@@ -566,7 +571,7 @@ int main(int argc, char **argv)
     static option long_options[] = {
       {"requests", required_argument, nullptr, 'n'},
       {"clients", required_argument, nullptr, 'c'},
-      {"workers", required_argument, nullptr, 't'},
+      {"threads", required_argument, nullptr, 't'},
       {"max-concurrent-streams", required_argument, nullptr, 'm'},
       {"window-bits", required_argument, nullptr, 'w'},
       {"connection-window-bits", required_argument, nullptr, 'W'},
@@ -589,7 +594,7 @@ int main(int argc, char **argv)
       config.nclients = strtoul(optarg, nullptr, 10);
       break;
     case 't':
-      config.nworkers = strtoul(optarg, nullptr, 10);
+      config.nthreads = strtoul(optarg, nullptr, 10);
       break;
     case 'm':
       config.max_concurrent_streams = strtoul(optarg, nullptr, 10);
@@ -653,11 +658,23 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
+  if(config.nthreads == 0) {
+    std::cerr << "-t: the number of threads must be strictly greater than 0."
+              << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   if(config.nreqs < config.nclients) {
     std::cerr << "-n, -c: the number of requests must be greater than or "
               << "equal to the concurrent clients."
               << std::endl;
     exit(EXIT_FAILURE);
+  }
+
+  if(config.nthreads > std::thread::hardware_concurrency()) {
+    std::cerr << "-t: warning: the number of threads is greater than hardware "
+              << "cores."
+              << std::endl;
   }
 
   struct sigaction act;
@@ -728,12 +745,55 @@ int main(int argc, char **argv)
 
   resolve_host();
 
-  Worker worker(ssl_ctx, &config);
+  size_t nreqs_per_thread = config.nreqs / config.nthreads;
+  ssize_t nreqs_rem = config.nreqs % config.nthreads;
+
+  size_t nclients_per_thread = config.nclients / config.nthreads;
+  ssize_t nclients_rem = config.nclients % config.nthreads;
 
   std::cout << "starting benchmark..." << std::endl;
 
+  std::vector<std::thread> threads;
   auto start = std::chrono::steady_clock::now();
+
+  std::vector<std::unique_ptr<Worker>> workers;
+  for(size_t i = 0; i < config.nthreads - 1; ++i) {
+    auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
+    auto nclients = nclients_per_thread + (nclients_rem-- > 0);
+    std::cout << "spawning thread #" << i << ": "
+              << nclients << " concurrent clients, "
+              << nreqs << " total requests"
+              << std::endl;
+    workers.push_back(util::make_unique<Worker>(i, ssl_ctx, nreqs, nclients,
+                                                &config));
+    threads.emplace_back(&Worker::run, workers.back().get());
+  }
+  auto nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
+  auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
+  std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
+            << nclients_last << " concurrent clients, "
+            << nreqs_last << " total requests"
+            << std::endl;
+  Worker worker(config.nthreads - 1, ssl_ctx, nreqs_last, nclients_last,
+                &config);
   worker.run();
+
+  for(size_t i = 0; i < config.nthreads - 1; ++i) {
+    threads[i].join();
+    worker.stats.req_todo += workers[i]->stats.req_todo;
+    worker.stats.req_started += workers[i]->stats.req_started;
+    worker.stats.req_done += workers[i]->stats.req_done;
+    worker.stats.req_success += workers[i]->stats.req_success;
+    worker.stats.req_failed += workers[i]->stats.req_failed;
+    worker.stats.req_error += workers[i]->stats.req_error;
+    worker.stats.bytes_total += workers[i]->stats.bytes_total;
+    worker.stats.bytes_head += workers[i]->stats.bytes_head;
+    worker.stats.bytes_body += workers[i]->stats.bytes_body;
+    for(size_t j = 0; j < 6; ++j) {
+      worker.stats.status[j] += workers[i]->stats.status[j];
+    }
+  }
+
   auto end = std::chrono::steady_clock::now();
   auto duration =
     std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();

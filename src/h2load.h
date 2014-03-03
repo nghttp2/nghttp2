@@ -56,7 +56,7 @@ struct Config {
   addrinfo *addrs;
   size_t nreqs;
   size_t nclients;
-  size_t nworkers;
+  size_t nthreads;
   // The maximum number of concurrent streams per session.
   size_t max_concurrent_streams;
   size_t window_bits;
@@ -109,9 +109,11 @@ struct Worker {
   SSL_CTX *ssl_ctx;
   Config *config;
   size_t progress_interval;
+  uint32_t id;
   bool term_timer_started;
 
-  Worker(SSL_CTX *ssl_ctx, Config *config);
+  Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
+         Config *config);
   ~Worker();
   void run();
   void schedule_terminate();
