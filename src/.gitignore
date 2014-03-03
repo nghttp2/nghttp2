@@ -9,3 +9,4 @@ test-suite.log
 libnghttpx.a
 deflatehd
 inflatehd
+h2load
