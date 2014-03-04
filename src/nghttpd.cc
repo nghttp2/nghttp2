@@ -134,6 +134,7 @@ void print_help(std::ostream& out)
       << "  -n, --workers=<CORE>\n"
       << "                     Set the number of worker threads.\n"
       << "                     Default: 1\n"
+      << "  -e, --error-gzip   Make error response gzipped.\n"
       << "  --version          Display version information and exit.\n"
       << "  -h, --help         Display this help and exit.\n"
       << std::endl;
@@ -156,13 +157,14 @@ int main(int argc, char **argv)
       {"push", required_argument, nullptr, 'p'},
       {"padding", required_argument, nullptr, 'b'},
       {"workers", required_argument, nullptr, 'n'},
+      {"error-gzip", no_argument, nullptr, 'e'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
       {"version", no_argument, &flag, 3},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVb:c:d:hn:p:v", long_options,
+    int c = getopt_long(argc, argv, "DVb:c:d:ehn:p:v", long_options,
                         &option_index);
     char *end;
     if(c == -1) {
@@ -180,6 +182,9 @@ int main(int argc, char **argv)
       break;
     case 'd':
       config.htdocs = optarg;
+      break;
+    case 'e':
+      config.error_gzip = true;
       break;
     case 'n':
       errno = 0;

@@ -74,7 +74,8 @@ Config::Config()
     verbose(false),
     daemon(false),
     verify_client(false),
-    no_tls(false)
+    no_tls(false),
+    error_gzip(false)
 {}
 
 Request::Request(int32_t stream_id)
@@ -671,30 +672,37 @@ void prepare_status_response(Request *req, Http2Handler *hd,
   int pipefd[2];
   if(status == STATUS_304 || pipe(pipefd) == -1) {
     hd->submit_response(status, req->stream_id, 0);
-  } else {
-    std::stringstream ss;
-    ss << "<html><head><title>" << status << "</title></head><body>"
-       << "<h1>" << status << "</h1>"
-       << "<hr>"
-       << "<address>" << NGHTTPD_SERVER
-       << " at port " << hd->get_config()->port
-       << "</address>"
-       << "</body></html>";
-    std::string body = ss.str();
+    return;
+  }
+  std::string body;
+  body.reserve(256);
+  body = "<html><head><title>";
+  body += status;
+  body += "</title></head><body><h1>";
+  body += status;
+  body += "</h1><hr><address>";
+  body += NGHTTPD_SERVER;
+  body += " at port ";
+  body += util::utos(hd->get_config()->port);
+  body += "</address>";
+  body += "</body></html>";
+  if(hd->get_config()->error_gzip) {
     gzFile write_fd = gzdopen(pipefd[1], "w");
     gzwrite(write_fd, body.c_str(), body.size());
     gzclose(write_fd);
-    close(pipefd[1]);
-
-    req->file = pipefd[0];
-    nghttp2_data_provider data_prd;
-    data_prd.source.fd = pipefd[0];
-    data_prd.read_callback = file_read_callback;
-    std::vector<std::pair<std::string, std::string>> headers;
-    headers.emplace_back("content-encoding", "gzip");
-    headers.emplace_back("content-type", "text/html; charset=UTF-8");
-    hd->submit_response(status, req->stream_id, headers, &data_prd);
+  } else {
+    write(pipefd[1], body.c_str(), body.size());
   }
+  close(pipefd[1]);
+
+  req->file = pipefd[0];
+  nghttp2_data_provider data_prd;
+  data_prd.source.fd = pipefd[0];
+  data_prd.read_callback = file_read_callback;
+  std::vector<std::pair<std::string, std::string>> headers;
+  headers.emplace_back("content-encoding", "gzip");
+  headers.emplace_back("content-type", "text/html; charset=UTF-8");
+  hd->submit_response(status, req->stream_id, headers, &data_prd);
 }
 } // namespace
 

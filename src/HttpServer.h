@@ -64,6 +64,7 @@ struct Config {
   bool daemon;
   bool verify_client;
   bool no_tls;
+  bool error_gzip;
   Config();
 };
 
