@@ -417,8 +417,7 @@ Upgrade: h2-10
 </div>
 <div class="section" id="nghttpd-server">
 <h3>nghttpd - server<a class="headerlink" href="#nghttpd-server" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> is a static web server. It is single threaded and
-multiplexes connections using non-blocking socket.</p>
+<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> is a multi-threaded static web server.</p>
 <p>By default, it uses SSL/TLS connection. Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
 disable it.</p>
 <p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accepts the HTTP/2.0 connection via NPN/ALPN or direct
