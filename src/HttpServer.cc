@@ -686,10 +686,13 @@ void prepare_status_response(Request *req, Http2Handler *hd,
   body += util::utos(hd->get_config()->port);
   body += "</address>";
   body += "</body></html>";
+
+  std::vector<std::pair<std::string, std::string>> headers;
   if(hd->get_config()->error_gzip) {
     gzFile write_fd = gzdopen(pipefd[1], "w");
     gzwrite(write_fd, body.c_str(), body.size());
     gzclose(write_fd);
+    headers.emplace_back("content-encoding", "gzip");
   } else {
     write(pipefd[1], body.c_str(), body.size());
   }
@@ -699,8 +702,6 @@ void prepare_status_response(Request *req, Http2Handler *hd,
   nghttp2_data_provider data_prd;
   data_prd.source.fd = pipefd[0];
   data_prd.read_callback = file_read_callback;
-  std::vector<std::pair<std::string, std::string>> headers;
-  headers.emplace_back("content-encoding", "gzip");
   headers.emplace_back("content-type", "text/html; charset=UTF-8");
   hd->submit_response(status, req->stream_id, headers, &data_prd);
 }
