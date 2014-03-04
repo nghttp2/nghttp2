@@ -31,6 +31,7 @@
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
+#include "util.h"
 
 namespace shrpx {
 
@@ -68,9 +69,7 @@ public:
 
   bool get_flow_control() const;
 
-  uint8_t *sendbuf;
-  size_t sendbuflen;
-  size_t sendbufmax;
+  nghttp2::util::EvbufferBuffer sendbuf;
 private:
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;

@@ -56,34 +56,17 @@ ssize_t send_callback(spdylay_session *session,
   int rv;
   auto upstream = static_cast<SpdyUpstream*>(user_data);
   auto handler = upstream->get_client_handler();
-  auto bev = handler->get_bev();
-  auto output = bufferevent_get_output(bev);
 
   // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(handler->get_outbuf_length() + upstream->sendbuflen > OUTBUF_MAX_THRES) {
+  if(handler->get_outbuf_length() + upstream->sendbuf.get_buflen() >
+     OUTBUF_MAX_THRES) {
     return SPDYLAY_ERR_WOULDBLOCK;
   }
 
-  if(upstream->sendbuflen + len > upstream->sendbufmax) {
-    rv = evbuffer_add(output, upstream->sendbuf, upstream->sendbuflen);
-    if(rv == -1) {
-      ULOG(FATAL, upstream) << "evbuffer_add() failed";
-      return SPDYLAY_ERR_CALLBACK_FAILURE;
-    }
-    upstream->sendbuflen = 0;
-    if(len > upstream->sendbufmax) {
-      rv = evbuffer_add(output, data, len);
-      if(rv == -1) {
-        ULOG(FATAL, upstream) << "evbuffer_add() failed";
-        return SPDYLAY_ERR_CALLBACK_FAILURE;
-      }
-    } else {
-      memcpy(upstream->sendbuf + upstream->sendbuflen, data, len);
-      upstream->sendbuflen += len;
-    }
-  } else {
-    memcpy(upstream->sendbuf + upstream->sendbuflen, data, len);
-    upstream->sendbuflen += len;
+  rv = upstream->sendbuf.add(data, len);
+  if(rv != 0) {
+    ULOG(FATAL, upstream) << "evbuffer_add() failed";
+    return SPDYLAY_ERR_CALLBACK_FAILURE;
   }
   return len;
 }
@@ -478,9 +461,7 @@ int SpdyUpstream::send()
   int rv = 0;
   uint8_t buf[4096];
 
-  sendbuf = buf;
-  sendbuflen = 0;
-  sendbufmax = sizeof(buf);
+  sendbuf.reset(bufferevent_get_output(handler_->get_bev()), buf, sizeof(buf));
 
   rv = spdylay_session_send(session_);
   if(rv != 0) {
@@ -488,8 +469,9 @@ int SpdyUpstream::send()
                       << spdylay_strerror(rv);
     return rv;
   }
-  rv = bufferevent_write(handler_->get_bev(), sendbuf, sendbuflen);
-  if(rv == -1) {
+
+  rv = sendbuf.flush();
+  if(rv != 0) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }

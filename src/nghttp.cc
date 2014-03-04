@@ -704,10 +704,12 @@ struct HttpClient {
   int on_write()
   {
     int rv;
+    uint8_t buf[4096];
     auto output = bufferevent_get_output(bev);
-
+    util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
     for(;;) {
-      if(evbuffer_get_length(output) > config.output_upper_thres) {
+      if(evbuffer_get_length(output) + evbbuf.get_buflen() >
+         config.output_upper_thres) {
         break;
       }
 
@@ -722,11 +724,16 @@ struct HttpClient {
       if(datalen == 0) {
         break;
       }
-      rv = evbuffer_add(output, data, datalen);
-      if(rv == -1) {
+      rv = evbbuf.add(data, datalen);
+      if(rv != 0) {
         std::cerr << "evbuffer_add() failed" << std::endl;
         return -1;
       }
+    }
+    rv = evbbuf.flush();
+    if(rv != 0) {
+      std::cerr << "evbuffer_add() failed" << std::endl;
+      return -1;
     }
     if(nghttp2_session_want_read(session) == 0 &&
        nghttp2_session_want_write(session) == 0 &&

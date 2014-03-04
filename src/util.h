@@ -37,6 +37,8 @@
 #include <sstream>
 #include <memory>
 
+#include <event2/buffer.h>
+
 #include "http-parser/http_parser.h"
 
 namespace nghttp2 {
@@ -431,6 +433,21 @@ bool porteq(const char *uri1, const http_parser_url &u1,
 void write_uri_field(std::ostream& o,
                      const char *uri, const http_parser_url &u,
                      http_parser_url_fields field);
+
+class EvbufferBuffer {
+public:
+  EvbufferBuffer();
+  EvbufferBuffer(evbuffer *evbuffer, uint8_t *buf, size_t bufmax);
+  void reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax);
+  int flush();
+  int add(const uint8_t *data, size_t datalen);
+  size_t get_buflen() const;
+private:
+  evbuffer *evbuffer_;
+  uint8_t *buf_;
+  size_t bufmax_;
+  size_t buflen_;
+};
 
 } // namespace util
 

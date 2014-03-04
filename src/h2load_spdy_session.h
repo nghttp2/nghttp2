@@ -29,6 +29,8 @@
 
 #include <spdylay/spdylay.h>
 
+#include "util.h"
+
 namespace h2load {
 
 struct Client;
@@ -43,9 +45,7 @@ public:
   virtual int on_write();
   virtual void terminate();
 
-  uint8_t *sendbuf;
-  size_t sendbuflen;
-  size_t sendbufmax;
+  nghttp2::util::EvbufferBuffer sendbuf;
 private:
   Client *client_;
   spdylay_session *session_;

@@ -469,6 +469,66 @@ void write_uri_field(std::ostream& o,
   }
 }
 
+EvbufferBuffer::EvbufferBuffer()
+  : evbuffer_(nullptr),
+    buf_(nullptr),
+    bufmax_(0),
+    buflen_(0)
+{}
+
+EvbufferBuffer::EvbufferBuffer(evbuffer *evbuffer, uint8_t *buf, size_t bufmax)
+  : evbuffer_(evbuffer),
+    buf_(buf),
+    bufmax_(bufmax),
+    buflen_(0)
+{}
+
+void EvbufferBuffer::reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax)
+{
+  evbuffer_ = evbuffer;
+  buf_ = buf;
+  bufmax_ = bufmax;
+  buflen_ = 0;
+}
+
+int EvbufferBuffer::flush()
+{
+  int rv;
+  rv = evbuffer_add(evbuffer_, buf_, buflen_);
+  if(rv == -1) {
+    return -1;
+  }
+  buflen_ = 0;
+  return 0;
+}
+
+int EvbufferBuffer::add(const uint8_t *data, size_t datalen)
+{
+  int rv;
+  if(buflen_ + datalen > bufmax_) {
+    rv = evbuffer_add(evbuffer_, buf_, buflen_);
+    if(rv == -1) {
+      return -1;
+    }
+    buflen_ = 0;
+    if(datalen > bufmax_) {
+      rv = evbuffer_add(evbuffer_, data, datalen);
+      if(rv == -1) {
+        return -1;
+      }
+      return 0;
+    }
+  }
+  memcpy(buf_ + buflen_, data, datalen);
+  buflen_ += datalen;
+  return 0;
+}
+
+size_t EvbufferBuffer::get_buflen() const
+{
+  return buflen_;
+}
+
 } // namespace util
 
 } // namespace nghttp2
