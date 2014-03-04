@@ -50,6 +50,7 @@
 #ifdef HAVE_SPDYLAY
 #include "h2load_spdy_session.h"
 #endif // HAVE_SPDYLAY
+#include "ssl.h"
 #include "http2.h"
 #include "util.h"
 
@@ -683,6 +684,8 @@ int main(int argc, char **argv)
   sigaction(SIGPIPE, &act, nullptr);
   SSL_load_error_strings();
   SSL_library_init();
+
+  ssl::LibsslGlobalLock();
 
   http_parser_url u;
   memset(&u, 0, sizeof(u));
