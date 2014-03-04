@@ -268,8 +268,7 @@ The HTTP Upgrade is performed like this::
 nghttpd - server
 ++++++++++++++++
 
-``nghttpd`` is a static web server. It is single threaded and
-multiplexes connections using non-blocking socket.
+``nghttpd`` is a multi-threaded static web server.
 
 By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
 disable it.
