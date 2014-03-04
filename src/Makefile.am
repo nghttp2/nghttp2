@@ -67,6 +67,7 @@ nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES}
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
+	ssl.cc ssl.h \
 	HttpServer.cc HttpServer.h
 
 h2load_SOURCES = util.cc util.h http2.cc http2.h h2load.cc h2load.h \

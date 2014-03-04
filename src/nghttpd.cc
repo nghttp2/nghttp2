@@ -42,6 +42,7 @@
 #include "app_helper.h"
 #include "HttpServer.h"
 #include "util.h"
+#include "ssl.h"
 
 namespace nghttp2 {
 
@@ -130,6 +131,9 @@ void print_help(std::ostream& out)
       << "                     root. See --htdocs option.\n"
       << "  -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
       << "                     padding. Specify 0 to disable padding.\n"
+      << "  -n, --workers=<CORE>\n"
+      << "                     Set the number of worker threads.\n"
+      << "                     Default: 1\n"
       << "  --version          Display version information and exit.\n"
       << "  -h, --help         Display this help and exit.\n"
       << std::endl;
@@ -151,13 +155,15 @@ int main(int argc, char **argv)
       {"header-table-size", required_argument, nullptr, 'c'},
       {"push", required_argument, nullptr, 'p'},
       {"padding", required_argument, nullptr, 'b'},
+      {"workers", required_argument, nullptr, 'n'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
       {"version", no_argument, &flag, 3},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVb:c:d:hp:v", long_options, &option_index);
+    int c = getopt_long(argc, argv, "DVb:c:d:hn:p:v", long_options,
+                        &option_index);
     char *end;
     if(c == -1) {
       break;
@@ -174,6 +180,14 @@ int main(int argc, char **argv)
       break;
     case 'd':
       config.htdocs = optarg;
+      break;
+    case 'n':
+      errno = 0;
+      config.num_worker = strtoul(optarg, &end, 10);
+      if(errno == ERANGE || *end != '\0' || config.num_worker == 0) {
+        std::cerr << "-n: Bad option value: " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
       break;
     case 'h':
       print_help(std::cout);
@@ -254,6 +268,8 @@ int main(int argc, char **argv)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+  ssl::LibsslGlobalLock();
+
   reset_timer();
 
   HttpServer server(&config);

@@ -57,6 +57,7 @@ struct Config {
   void *data_ptr;
   size_t output_upper_thres;
   size_t padding;
+  size_t num_worker;
   ssize_t header_table_size;
   uint16_t port;
   bool verbose;
@@ -65,8 +66,6 @@ struct Config {
   bool no_tls;
   Config();
 };
-
-class Sessions;
 
 struct Request {
   Headers headers;
