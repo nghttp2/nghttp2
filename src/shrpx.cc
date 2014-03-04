@@ -54,6 +54,7 @@
 #include "shrpx_ssl.h"
 #include "util.h"
 #include "app_helper.h"
+#include "ssl.h"
 
 using namespace nghttp2;
 
@@ -1081,7 +1082,7 @@ int main(int argc, char **argv)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
-  ssl::setup_ssl_lock();
+  nghttp2::ssl::LibsslGlobalLock();
 
   if(conf_exists(get_config()->conf_path)) {
     if(load_config(get_config()->conf_path) == -1) {
@@ -1236,8 +1237,6 @@ int main(int argc, char **argv)
   sigaction(SIGPIPE, &act, 0);
 
   event_loop();
-
-  ssl::teardown_ssl_lock();
 
   return 0;
 }

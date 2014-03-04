@@ -81,6 +81,7 @@ endif # HAVE_SPDYLAY
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
 	app_helper.cc app_helper.h \
+	ssl.cc ssl.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_listen_handler.cc shrpx_listen_handler.h \

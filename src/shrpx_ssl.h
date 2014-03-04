@@ -53,10 +53,6 @@ bool numeric_host(const char *hostname);
 
 int check_cert(SSL *ssl);
 
-void setup_ssl_lock();
-
-void teardown_ssl_lock();
-
 // Retrieves DNS and IP address in subjectAltNames and commonName from
 // the |cert|.
 void get_altnames(X509 *cert,
