@@ -196,6 +196,8 @@ int Http2Session::init_notification()
     SSLOG(FATAL, this) << "socketpair() failed: errno=" << errno;
     return -1;
   }
+  evutil_make_socket_nonblocking(sockpair[0]);
+  evutil_make_socket_nonblocking(sockpair[1]);
   wrbev_ = bufferevent_socket_new(evbase_, sockpair[0],
                                   BEV_OPT_CLOSE_ON_FREE|
                                   BEV_OPT_DEFER_CALLBACKS);

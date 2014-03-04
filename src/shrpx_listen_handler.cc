@@ -67,6 +67,8 @@ void ListenHandler::create_worker_thread(size_t num)
       LLOG(ERROR, this) << "socketpair() failed: errno=" << errno;
       continue;
     }
+    evutil_make_socket_nonblocking(info->sv[0]);
+    evutil_make_socket_nonblocking(info->sv[1]);
     info->sv_ssl_ctx = sv_ssl_ctx_;
     info->cl_ssl_ctx = cl_ssl_ctx_;
     try {
