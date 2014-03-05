@@ -93,6 +93,11 @@ AC_ARG_WITH([jemalloc],
                     [Use jemalloc [default=check]])],
     [request_jemalloc=$withval], [request_jemalloc=check])
 
+AC_ARG_WITH([spdylay],
+    [AS_HELP_STRING([--with-spdylay],
+                    [Use spdylay [default=check]])],
+    [request_spdylay=$withval], [request_spdylay=check])
+
 AC_ARG_WITH([cython],
     [AS_HELP_STRING([--with-cython=PATH],
                     [Use cython in given PATH])],
@@ -271,15 +276,24 @@ if test "x${request_jemalloc}" = "xyes" &&
   AC_MSG_ERROR([jemalloc was requested (--with-jemalloc) but not found])
 fi
 
-# spdylay (for src/nghttpx)
-PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.2.3],
-                  [have_spdylay=yes], [have_spdylay=no])
-if test "x${have_spdylay}" = "xyes"; then
-  AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])
-else
-  AC_MSG_NOTICE($LIBSPDYLAY_PKG_ERRORS)
-  AC_MSG_NOTICE([The SPDY support in nghttpx will be disabled.])
+# spdylay (for src/nghttpx and src/h2load)
+have_spdylay=no
+if test "x${request_spdylay}" != "xno"; then
+  PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.2.3],
+                    [have_spdylay=yes], [have_spdylay=no])
+  if test "x${have_spdylay}" = "xyes"; then
+    AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])
+  else
+    AC_MSG_NOTICE($LIBSPDYLAY_PKG_ERRORS)
+    AC_MSG_NOTICE([The SPDY support in nghttpx and h2load will be disabled.])
+  fi
 fi
+
+if test "x${request_spdylay}" = "xyes" &&
+   test "x${have_spdylay}" != "xyes"; then
+  AC_MSG_ERROR([spdylay was requested (--with-spdylay) but not found])
+fi
+
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
 # The nghttp, nghttpd and nghttpx under src depend on OpenSSL and
