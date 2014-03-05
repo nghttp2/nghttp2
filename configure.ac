@@ -88,6 +88,11 @@ AC_ARG_WITH([libxml2],
                     [Use libxml2 [default=check]])],
     [request_libxml2=$withval], [request_libxml2=check])
 
+AC_ARG_WITH([jemalloc],
+    [AS_HELP_STRING([--with-jemalloc],
+                    [Use jemalloc [default=check]])],
+    [request_jemalloc=$withval], [request_jemalloc=check])
+
 AC_ARG_WITH([cython],
     [AS_HELP_STRING([--with-cython=PATH],
                     [Use cython in given PATH])],
@@ -248,6 +253,23 @@ if test "x${request_libxml2}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
+
+# jemalloc
+have_jemalloc=no
+if test "x${request_jemalloc}" != "xno"; then
+  LIBS_OLD=$LIBS
+  AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes])
+  LIBS=$LIBS_OLD
+  if test "x${have_jemalloc}" = "xyes"; then
+    JEMALLOC_LIBS="-ljemalloc"
+    AC_SUBST([JEMALLOC_LIBS])
+  fi
+fi
+
+if test "x${request_jemalloc}" = "xyes" &&
+   test "x${have_jemalloc}" != "xyes"; then
+  AC_MSG_ERROR([jemalloc was requested (--with-jemalloc) but not found])
+fi
 
 # spdylay (for src/nghttpx)
 PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.2.3],
@@ -450,6 +472,7 @@ AC_MSG_NOTICE([summary of build options:
     Libevent(SSL):  ${have_libevent_openssl}
     Spdylay:        ${have_spdylay}
     Jansson:        ${have_jansson}
+    Jemalloc:       ${have_jemalloc}
     Applications:   ${enable_app}
     HPACK tools:    ${enable_hpack_tools}
     Examples:       ${enable_examples}
