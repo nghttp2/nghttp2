@@ -186,10 +186,11 @@ void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata)
 {
   frame->hd = pdata->hd;
   frame->padlen = pdata->padlen;
-  /* flags may have NGHTTP2_FLAG_END_STREAM even if the sent chunk
-     is not the end of the stream */
+  /* flags may have NGHTTP2_FLAG_END_STREAM or
+     NGHTTP2_FLAG_END_SEGMENT even if the sent chunk is not the end of
+     the stream */
   if(!pdata->eof) {
-    frame->hd.flags &= ~NGHTTP2_FLAG_END_STREAM;
+    frame->hd.flags &= ~(NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT);
   }
 }
 

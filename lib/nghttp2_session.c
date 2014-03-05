@@ -4532,13 +4532,16 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
 
   /* Clear flags, because this may contain previous flags of previous
      DATA */
-  frame->hd.flags &= ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
-  flags = 0;
+  frame->hd.flags &= (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT);
+  flags = NGHTTP2_FLAG_NONE;
 
   if(eof_flags) {
     frame->eof = 1;
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       flags |= NGHTTP2_FLAG_END_STREAM;
+    }
+    if(frame->hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
+      flags |= NGHTTP2_FLAG_END_SEGMENT;
     }
   }
 

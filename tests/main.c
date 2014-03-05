@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "session_upgrade", test_nghttp2_session_upgrade) ||
       !CU_add_test(pSuite, "session_reprioritize_stream",
                    test_nghttp2_session_reprioritize_stream) ||
+      !CU_add_test(pSuite, "submit_data", test_nghttp2_submit_data) ||
       !CU_add_test(pSuite, "submit_request_with_data",
                    test_nghttp2_submit_request_with_data) ||
       !CU_add_test(pSuite, "submit_request_without_data",

@@ -2231,6 +2231,54 @@ void test_nghttp2_session_reprioritize_stream(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_submit_data(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_data_provider data_prd;
+  my_user_data ud;
+  nghttp2_private_data *data_frame;
+  nghttp2_frame_hd hd;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = block_count_send_callback;
+
+  data_prd.read_callback = fixed_length_data_source_read_callback;
+  ud.data_source_length = NGHTTP2_DATA_PAYLOAD_LENGTH * 2;
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+
+  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                              NGHTTP2_PRI_DEFAULT, NGHTTP2_STREAM_OPENING,
+                              NULL);
+  CU_ASSERT(0 == nghttp2_submit_data(session,
+                                     NGHTTP2_FLAG_END_STREAM |
+                                     NGHTTP2_FLAG_END_SEGMENT, 1, &data_prd));
+  ud.block_count = 0;
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
+  nghttp2_frame_unpack_frame_hd(&hd,
+                                session->aob.framebuf +
+                                session->aob.framebufoff);
+  CU_ASSERT(NGHTTP2_FLAG_NONE == hd.flags);
+  /* frame->hd.flags has these flags */
+  CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT) ==
+            data_frame->hd.flags);
+
+  ud.block_count = 1;
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  data_frame = nghttp2_outbound_item_get_data_frame(session->aob.item);
+  nghttp2_frame_unpack_frame_hd(&hd,
+                                session->aob.framebuf +
+                                session->aob.framebufoff);
+  /* This is the last frame, so we must have following flags */
+  CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT) == hd.flags);
+  /* frame->hd.flags has these flags */
+  CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT) ==
+            data_frame->hd.flags);
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_submit_request_with_data(void)
 {
   nghttp2_session *session;

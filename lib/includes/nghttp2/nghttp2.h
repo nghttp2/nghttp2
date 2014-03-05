@@ -2032,7 +2032,8 @@ int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  * Submits one or more DATA frames to the stream |stream_id|.  The
  * data to be sent are provided by |data_prd|. If |flags| contains
  * :enum:`NGHTTP2_FLAG_END_STREAM`, the last DATA frame has END_STREAM
- * flag set.
+ * flag set. If |flags| contains :enum:`NGHTTP2_FLAG_END_SEGMENT`, the
+ * last DATA frame has END_SEGMENT flag set.
  *
  * This function does not take ownership of the |data_prd|. The
  * function copies the members of the |data_prd|.

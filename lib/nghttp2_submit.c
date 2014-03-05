@@ -309,14 +309,12 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
 {
   int rv;
   nghttp2_private_data *data_frame;
-  uint8_t nflags = 0;
+  uint8_t nflags = flags & (NGHTTP2_FLAG_END_STREAM |
+                            NGHTTP2_FLAG_END_SEGMENT);
 
   data_frame = malloc(sizeof(nghttp2_private_data));
   if(data_frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
-  }
-  if(flags & NGHTTP2_FLAG_END_STREAM) {
-    nflags |= NGHTTP2_FLAG_END_STREAM;
   }
   nghttp2_frame_private_data_init(data_frame, nflags, stream_id, data_prd);
   rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_DATA, data_frame, NULL);
