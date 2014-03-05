@@ -88,6 +88,11 @@ The HPACK tools require the following package:
 
 * jansson >= 2.5
 
+To mitigate heap fragmentation in long running server programs
+(``nghttpd`` and ``nghttpx``), jemalloc is recommended:
+
+* jemalloc
+
 The Python bindings require the following packages:
 
 * cython >= 0.19
@@ -107,6 +112,7 @@ installed:
 * libxml2-dev
 * libevent-dev
 * libjansson-dev
+* libjemalloc-dev
 
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://tatsuhiro-t.github.io/spdylay/
