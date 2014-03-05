@@ -3317,7 +3317,7 @@ void test_nghttp2_session_stop_data_with_rst_stream(void)
   data_prd.read_callback = fixed_length_data_source_read_callback;
 
   ud.frame_send_cb_called = 0;
-  ud.data_source_length = 16*1024;
+  ud.data_source_length = NGHTTP2_DATA_PAYLOAD_LENGTH * 4;
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
@@ -3330,7 +3330,7 @@ void test_nghttp2_session_stop_data_with_rst_stream(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_DATA == ud.sent_frame_type);
   /* data for DATA[1] is read from data_prd but it is not sent */
-  CU_ASSERT(ud.data_source_length == 8*1024);
+  CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOAD_LENGTH * 2);
 
   nghttp2_frame_rst_stream_init(&frame.rst_stream, 1, NGHTTP2_CANCEL);
   CU_ASSERT(0 == nghttp2_session_on_rst_stream_received(session, &frame));
@@ -3342,7 +3342,7 @@ void test_nghttp2_session_stop_data_with_rst_stream(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   /* With RST_STREAM, stream is canceled and further DATA on that
      stream are not sent. */
-  CU_ASSERT(ud.data_source_length == 8*1024);
+  CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOAD_LENGTH * 2);
 
   CU_ASSERT(NULL == nghttp2_session_get_stream(session, 1));
 
@@ -3363,7 +3363,7 @@ void test_nghttp2_session_defer_data(void)
   data_prd.read_callback = defer_data_source_read_callback;
 
   ud.frame_send_cb_called = 0;
-  ud.data_source_length = 16*1024;
+  ud.data_source_length = NGHTTP2_DATA_PAYLOAD_LENGTH * 4;
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
@@ -3376,7 +3376,7 @@ void test_nghttp2_session_defer_data(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_HEADERS == ud.sent_frame_type);
   /* No data is read */
-  CU_ASSERT(ud.data_source_length == 16*1024);
+  CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOAD_LENGTH * 4);
 
   ud.block_count = 1;
   nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
@@ -3390,9 +3390,9 @@ void test_nghttp2_session_defer_data(void)
   OB_DATA(item)->data_prd.read_callback =
     fixed_length_data_source_read_callback;
   ud.block_count = 1;
-  /* Reads 2 4KiB blocks */
+  /* Reads 2 DATA chunks */
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(ud.data_source_length == 8*1024);
+  CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOAD_LENGTH * 2);
 
   /* Deferred again */
   OB_DATA(item)->data_prd.read_callback = defer_data_source_read_callback;
@@ -3400,7 +3400,7 @@ void test_nghttp2_session_defer_data(void)
      sent. No read_callback invocation. */
   ud.block_count = 1;
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(ud.data_source_length == 8*1024);
+  CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOAD_LENGTH * 2);
 
   /* Resume deferred DATA */
 
@@ -3958,7 +3958,7 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void)
   data_prd.read_callback = fixed_length_data_source_read_callback;
 
   ud.frame_send_cb_called = 0;
-  ud.data_source_length = 16*1024;
+  ud.data_source_length = NGHTTP2_DATA_PAYLOAD_LENGTH * 4;
 
   nghttp2_session_client_new(&session, &callbacks, &ud);
   nghttp2_submit_request(session, NGHTTP2_PRI_DEFAULT, NULL, 0,
@@ -3969,7 +3969,7 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_DATA == ud.sent_frame_type);
   /* data for DATA[1] is read from data_prd but it is not sent */
-  CU_ASSERT(ud.data_source_length == 8*1024);
+  CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOAD_LENGTH * 2);
 
   nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
   ud.block_count = 2;
@@ -3977,7 +3977,7 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_PING == ud.sent_frame_type);
   /* data for DATA[2] is read from data_prd but it is not sent */
-  CU_ASSERT(ud.data_source_length == 4*1024);
+  CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOAD_LENGTH);
 
   ud.block_count = 2;
   /* Sends DATA[2..3] */

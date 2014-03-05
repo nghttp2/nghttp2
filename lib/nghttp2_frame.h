@@ -42,8 +42,10 @@
 /* The maximum payload length of a frame */
 #define NGHTTP2_MAX_FRAME_LENGTH ((1 << 14) - 1)
 
-/* The maximum length of DATA frame payload. */
-#define NGHTTP2_DATA_PAYLOAD_LENGTH 4096
+/* The maximum length of DATA frame payload. To fit entire DATA frame
+   into 4096K buffer, we use subtract header size (8 bytes) + 2 bytes
+   padding. See nghttp2_session_pack_data(). */
+#define NGHTTP2_DATA_PAYLOAD_LENGTH 4086
 
 /* The number of bytes of frame header. */
 #define NGHTTP2_FRAME_HEAD_LENGTH 8
