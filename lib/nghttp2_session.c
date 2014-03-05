@@ -3606,6 +3606,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       switch(iframe->frame.hd.type) {
       case NGHTTP2_DATA: {
         DEBUGF(fprintf(stderr, "DATA\n"));
+        iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_STREAM |
+                                   NGHTTP2_FLAG_END_SEGMENT |
+                                   NGHTTP2_FLAG_PAD_LOW |
+                                   NGHTTP2_FLAG_PAD_HIGH);
         /* Check stream is open. If it is not open or closing,
            ignore payload. */
         busy = 1;
@@ -3637,6 +3641,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
       case NGHTTP2_HEADERS:
+        iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_STREAM |
+                                   NGHTTP2_FLAG_END_SEGMENT |
+                                   NGHTTP2_FLAG_END_HEADERS |
+                                   NGHTTP2_FLAG_PRIORITY |
+                                   NGHTTP2_FLAG_PAD_LOW |
+                                   NGHTTP2_FLAG_PAD_HIGH);
         DEBUGF(fprintf(stderr, "HEADERS\n"));
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
         if(rv < 0) {
@@ -3690,6 +3700,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           break;
         }
 #endif /* DEBUGBUILD */
+        iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
         if(iframe->payloadleft != 4) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -3700,6 +3711,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       case NGHTTP2_SETTINGS:
         DEBUGF(fprintf(stderr, "SETTINGS\n"));
+        iframe->frame.hd.flags &= NGHTTP2_FLAG_ACK;
         if((iframe->frame.hd.length % NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) ||
            ((iframe->frame.hd.flags & NGHTTP2_FLAG_ACK) &&
             iframe->payloadleft > 0)) {
@@ -3718,6 +3730,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       case NGHTTP2_PUSH_PROMISE:
         DEBUGF(fprintf(stderr, "PUSH_PROMISE\n"));
+        iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_HEADERS |
+                                   NGHTTP2_FLAG_PAD_LOW |
+                                   NGHTTP2_FLAG_PAD_HIGH);
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
         if(rv < 0) {
           busy = 1;
@@ -3743,6 +3758,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       case NGHTTP2_PING:
         DEBUGF(fprintf(stderr, "PING\n"));
+        iframe->frame.hd.flags &= NGHTTP2_FLAG_ACK;
         if(iframe->payloadleft != 8) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -3753,6 +3769,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       case NGHTTP2_GOAWAY:
         DEBUGF(fprintf(stderr, "GOAWAY\n"));
+        iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
         if(iframe->payloadleft < 8) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
