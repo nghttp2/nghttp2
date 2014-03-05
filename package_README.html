@@ -244,6 +244,11 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 <ul class="simple">
 <li>jansson &gt;= 2.5</li>
 </ul>
+<p>To mitigate heap fragmentation in long running server programs
+(<tt class="docutils literal"><span class="pre">nghttpd</span></tt> and <tt class="docutils literal"><span class="pre">nghttpx</span></tt>), jemalloc is recommended:</p>
+<ul class="simple">
+<li>jemalloc</li>
+</ul>
 <p>The Python bindings require the following packages:</p>
 <ul class="simple">
 <li>cython &gt;= 0.19</li>
@@ -263,6 +268,7 @@ installed:</p>
 <li>libxml2-dev</li>
 <li>libevent-dev</li>
 <li>libjansson-dev</li>
+<li>libjemalloc-dev</li>
 </ul>
 <p>spdylay is not packaged in Ubuntu, so you need to build it yourself:
 <a class="reference external" href="http://tatsuhiro-t.github.io/spdylay/">http://tatsuhiro-t.github.io/spdylay/</a></p>

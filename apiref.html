@@ -2330,7 +2330,8 @@ int <tt class="descname">nghttp2_submit_data</tt><big>(</big><a class="reference
 <dd><p>Submits one or more DATA frames to the stream <em>stream_id</em>.  The
 data to be sent are provided by <em>data_prd</em>. If <em>flags</em> contains
 <a class="reference internal" href="#c.NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a>, the last DATA frame has END_STREAM
-flag set.</p>
+flag set. If <em>flags</em> contains <a class="reference internal" href="#c.NGHTTP2_FLAG_END_SEGMENT" title="NGHTTP2_FLAG_END_SEGMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_SEGMENT</span></tt></a>, the
+last DATA frame has END_SEGMENT flag set.</p>
 <p>This function does not take ownership of the <em>data_prd</em>. The
 function copies the members of the <em>data_prd</em>.</p>
 <p>This function returns 0 if it succeeds, or one of the following

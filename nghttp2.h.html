@@ -2182,7 +2182,8 @@
 <span class="cm"> * Submits one or more DATA frames to the stream |stream_id|.  The</span>
 <span class="cm"> * data to be sent are provided by |data_prd|. If |flags| contains</span>
 <span class="cm"> * :enum:`NGHTTP2_FLAG_END_STREAM`, the last DATA frame has END_STREAM</span>
-<span class="cm"> * flag set.</span>
+<span class="cm"> * flag set. If |flags| contains :enum:`NGHTTP2_FLAG_END_SEGMENT`, the</span>
+<span class="cm"> * last DATA frame has END_SEGMENT flag set.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function does not take ownership of the |data_prd|. The</span>
 <span class="cm"> * function copies the members of the |data_prd|.</span>
