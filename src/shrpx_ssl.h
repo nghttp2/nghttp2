@@ -45,9 +45,12 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
 
 SSL_CTX* create_ssl_client_context();
 
-ClientHandler* accept_connection(event_base *evbase, SSL_CTX *ssl_ctx,
-                                 evutil_socket_t fd,
-                                 sockaddr *addr, int addrlen);
+ClientHandler* accept_connection
+(event_base *evbase,
+ bufferevent_rate_limit_group *rate_limit_group,
+ SSL_CTX *ssl_ctx,
+ evutil_socket_t fd,
+ sockaddr *addr, int addrlen);
 
 bool numeric_host(const char *hostname);
 

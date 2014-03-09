@@ -33,6 +33,7 @@
 #include <openssl/ssl.h>
 
 #include <event.h>
+#include <event2/bufferevent.h>
 
 namespace shrpx {
 
@@ -63,6 +64,7 @@ private:
   // Shared backend HTTP2 session. NULL if multi-threaded. In
   // multi-threaded case, see shrpx_worker.cc.
   Http2Session *http2session_;
+  bufferevent_rate_limit_group *rate_limit_group_;
   size_t num_worker_;
   unsigned int worker_round_robin_cnt_;
 };

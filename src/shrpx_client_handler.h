@@ -31,6 +31,8 @@
 #include <memory>
 
 #include <event.h>
+#include <event2/bufferevent.h>
+
 #include <openssl/ssl.h>
 
 namespace shrpx {
@@ -42,7 +44,9 @@ class HttpsUpstream;
 
 class ClientHandler {
 public:
-  ClientHandler(bufferevent *bev, int fd, SSL *ssl, const char *ipaddr);
+  ClientHandler(bufferevent *bev,
+                bufferevent_rate_limit_group *rate_limit_group,
+                int fd, SSL *ssl, const char *ipaddr);
   ~ClientHandler();
   int on_read();
   int on_event();

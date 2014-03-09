@@ -96,7 +96,8 @@ void Worker::run()
       DIE();
     }
   }
-  auto receiver = util::make_unique<ThreadEventReceiver>(sv_ssl_ctx_,
+  auto receiver = util::make_unique<ThreadEventReceiver>(evbase.get(),
+                                                         sv_ssl_ctx_,
                                                          http2session.get());
   bufferevent_enable(bev.get(), EV_READ);
   bufferevent_setcb(bev.get(), readcb, nullptr, eventcb, receiver.get());

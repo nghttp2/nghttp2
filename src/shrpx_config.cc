@@ -104,6 +104,10 @@ const char SHRPX_OPT_READ_RATE[] = "read-rate";
 const char SHRPX_OPT_READ_BURST[] = "read-burst";
 const char SHRPX_OPT_WRITE_RATE[] = "write-rate";
 const char SHRPX_OPT_WRITE_BURST[] = "write-burst";
+const char SHRPX_OPT_WORKER_READ_RATE[] = "worker-read-rate";
+const char SHRPX_OPT_WORKER_READ_BURST[] = "worker-read-burst";
+const char SHRPX_OPT_WORKER_WRITE_RATE[] = "worker-write-rate";
+const char SHRPX_OPT_WORKER_WRITE_BURST[] = "worker-write-burst";
 const char SHRPX_OPT_NPN_LIST[] = "npn-list";
 const char SHRPX_OPT_TLS_PROTO_LIST[] = "tls-proto-list";
 const char SHRPX_OPT_VERIFY_CLIENT[] = "verify-client";
@@ -452,6 +456,14 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->write_rate = strtoul(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_WRITE_BURST)) {
     mod_config()->write_burst = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_WORKER_READ_RATE)) {
+    mod_config()->worker_read_rate = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_WORKER_READ_BURST)) {
+    mod_config()->worker_read_burst = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_WORKER_WRITE_RATE)) {
+    mod_config()->worker_write_rate = strtoul(optarg, nullptr, 10);
+  } else if(util::strieq(opt, SHRPX_OPT_WORKER_WRITE_BURST)) {
+    mod_config()->worker_write_burst = strtoul(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_NPN_LIST)) {
     delete [] mod_config()->npn_list;
     mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,

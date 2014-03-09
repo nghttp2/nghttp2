@@ -48,12 +48,16 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
     cl_ssl_ctx_(cl_ssl_ctx),
     workers_(nullptr),
     http2session_(nullptr),
+    rate_limit_group_(bufferevent_rate_limit_group_new
+                      (evbase, get_config()->worker_rate_limit_cfg)),
     num_worker_(0),
     worker_round_robin_cnt_(0)
 {}
 
 ListenHandler::~ListenHandler()
-{}
+{
+  bufferevent_rate_limit_group_free(rate_limit_group_);
+}
 
 void ListenHandler::create_worker_thread(size_t num)
 {
@@ -106,26 +110,26 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
   if(num_worker_ == 0) {
-    auto client = ssl::accept_connection(evbase_, sv_ssl_ctx_,
-                                         fd, addr, addrlen);
+    auto client = ssl::accept_connection(evbase_, rate_limit_group_,
+                                         sv_ssl_ctx_, fd, addr, addrlen);
     if(!client) {
       LLOG(ERROR, this) << "ClientHandler creation failed";
       return 0;
     }
     client->set_http2_session(http2session_);
-  } else {
-    size_t idx = worker_round_robin_cnt_ % num_worker_;
-    ++worker_round_robin_cnt_;
-    WorkerEvent wev;
-    memset(&wev, 0, sizeof(wev));
-    wev.client_fd = fd;
-    memcpy(&wev.client_addr, addr, addrlen);
-    wev.client_addrlen = addrlen;
-    auto output = bufferevent_get_output(workers_[idx].bev);
-    if(evbuffer_add(output, &wev, sizeof(wev)) != 0) {
-      LLOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
-    }
+    return 0;
+  }
+  size_t idx = worker_round_robin_cnt_ % num_worker_;
+  ++worker_round_robin_cnt_;
+  WorkerEvent wev;
+  memset(&wev, 0, sizeof(wev));
+  wev.client_fd = fd;
+  memcpy(&wev.client_addr, addr, addrlen);
+  wev.client_addrlen = addrlen;
+  auto output = bufferevent_get_output(workers_[idx].bev);
+  if(evbuffer_add(output, &wev, sizeof(wev)) != 0) {
+    LLOG(FATAL, this) << "evbuffer_add() failed";
+    return -1;
   }
   return 0;
 }

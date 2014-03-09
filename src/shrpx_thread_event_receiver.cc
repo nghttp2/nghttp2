@@ -33,14 +33,20 @@
 
 namespace shrpx {
 
-ThreadEventReceiver::ThreadEventReceiver(SSL_CTX *ssl_ctx,
+ThreadEventReceiver::ThreadEventReceiver(event_base *evbase,
+                                         SSL_CTX *ssl_ctx,
                                          Http2Session *http2session)
-  : ssl_ctx_(ssl_ctx),
-    http2session_(http2session)
+  : evbase_(evbase),
+    ssl_ctx_(ssl_ctx),
+    http2session_(http2session),
+    rate_limit_group_(bufferevent_rate_limit_group_new
+                      (evbase_, get_config()->worker_rate_limit_cfg))
 {}
 
 ThreadEventReceiver::~ThreadEventReceiver()
-{}
+{
+  bufferevent_rate_limit_group_free(rate_limit_group_);
+}
 
 void ThreadEventReceiver::on_read(bufferevent *bev)
 {
@@ -62,12 +68,14 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
                        << ", addrlen=" << wev.client_addrlen;
     }
     auto evbase = bufferevent_get_base(bev);
-    auto client_handler = ssl::accept_connection(evbase, ssl_ctx_,
+    auto client_handler = ssl::accept_connection(evbase, rate_limit_group_,
+                                                 ssl_ctx_,
                                                  wev.client_fd,
                                                  &wev.client_addr.sa,
                                                  wev.client_addrlen);
     if(client_handler) {
       client_handler->set_http2_session(http2session_);
+
       if(LOG_ENABLED(INFO)) {
         TLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created";
       }
