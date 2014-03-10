@@ -185,7 +185,7 @@ static void nghttp2_inbound_frame_reset(nghttp2_session *session)
   }
   memset(&iframe->frame, 0, sizeof(nghttp2_frame));
   iframe->state = NGHTTP2_IB_READ_HEAD;
-  iframe->left = NGHTTP2_FRAME_HEAD_LENGTH;
+  iframe->left = NGHTTP2_FRAME_HDLEN;
   iframe->niv = 0;
   iframe->payloadleft = 0;
   iframe->padlen = 0;
@@ -1614,7 +1614,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         cont_hd.flags = NGHTTP2_FLAG_NONE;
 
         /* Reuse previous buffers for frame header */
-        framebuf->pos -= NGHTTP2_FRAME_HEAD_LENGTH;
+        framebuf->pos -= NGHTTP2_FRAME_HDLEN;
 
         if(cont_hd.length + framebuf->mark == framebuf->last) {
           size_t padlen;
@@ -1973,7 +1973,7 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
            NGHTTP2_MAX_FRAME_LENGTH */
         frame = nghttp2_outbound_item_get_ctrl_frame(item);
 
-        framebuf->mark = framebuf->pos + NGHTTP2_FRAME_HEAD_LENGTH +
+        framebuf->mark = framebuf->pos + NGHTTP2_FRAME_HDLEN +
           nghttp2_get_uint16(framebuf->pos);
 
         rv = session_call_before_frame_send(session, frame);
@@ -4072,7 +4072,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       iframe->frame.hd.flags &=
         ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
       if((iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
-        inbound_frame_reset_left(iframe, NGHTTP2_FRAME_HEAD_LENGTH);
+        inbound_frame_reset_left(iframe, NGHTTP2_FRAME_HDLEN);
         iframe->padlen = 0;
         if(iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
           iframe->state = NGHTTP2_IB_EXPECT_CONTINUATION;
@@ -4654,7 +4654,7 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
      the correct flags */
   frame->hd.flags |= flags;
 
-  memset(buf->pos, 0, NGHTTP2_FRAME_HEAD_LENGTH);
+  memset(buf->pos, 0, NGHTTP2_FRAME_HDLEN);
 
   hd = frame->hd;
   hd.flags = flags;

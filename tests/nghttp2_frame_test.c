@@ -257,7 +257,7 @@ void test_nghttp2_frame_pack_settings()
                               nghttp2_frame_iv_copy(iv, 3), 3);
   framelen = nghttp2_frame_pack_settings(&buf, &frame);
 
-  CU_ASSERT(NGHTTP2_FRAME_HEAD_LENGTH +
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN +
             3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH == framelen);
   CU_ASSERT(framelen == nghttp2_buf_len(&buf));
 

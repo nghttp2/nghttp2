@@ -436,9 +436,9 @@ static void run_nghttp2_frame_pack_settings(void)
     goto fail;
   }
   rv = nghttp2_frame_unpack_settings(&oframe.settings,
-                                     &buf[0], NGHTTP2_FRAME_HEAD_LENGTH,
-                                     &buf[NGHTTP2_FRAME_HEAD_LENGTH],
-                                     framelen-NGHTTP2_FRAME_HEAD_LENGTH);
+                                     &buf[0], NGHTTP2_FRAME_HDLEN,
+                                     &buf[NGHTTP2_FRAME_HDLEN],
+                                     framelen-NGHTTP2_FRAME_HDLEN);
   if(rv != 0) {
     goto fail;
   }

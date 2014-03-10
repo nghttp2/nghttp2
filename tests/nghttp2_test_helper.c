@@ -36,8 +36,8 @@ int unpack_framebuf(nghttp2_frame *frame, nghttp2_buf *buf)
 int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
 {
   ssize_t rv = 0;
-  const uint8_t *payload = in + NGHTTP2_FRAME_HEAD_LENGTH;
-  size_t payloadlen = len - NGHTTP2_FRAME_HEAD_LENGTH;
+  const uint8_t *payload = in + NGHTTP2_FRAME_HDLEN;
+  size_t payloadlen = len - NGHTTP2_FRAME_HDLEN;
   size_t payloadoff;
 
   nghttp2_frame_unpack_frame_hd(&frame->hd, in);

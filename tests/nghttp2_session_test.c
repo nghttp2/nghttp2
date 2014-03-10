@@ -734,7 +734,7 @@ void test_nghttp2_session_recv_continuation(void)
   cont_hd.stream_id = 1;
 
   nghttp2_frame_pack_frame_hd(data + datalen, &cont_hd);
-  datalen += NGHTTP2_FRAME_HEAD_LENGTH;
+  datalen += NGHTTP2_FRAME_HDLEN;
 
   memcpy(data + datalen, buf.pos, cont_hd.length);
   datalen += cont_hd.length;
@@ -918,7 +918,7 @@ void test_nghttp2_session_continue(void)
 
   recv_frame = user_data.frame;
   CU_ASSERT(NGHTTP2_HEADERS == recv_frame->hd.type);
-  CU_ASSERT(framelen1 - NGHTTP2_FRAME_HEAD_LENGTH == recv_frame->hd.length);
+  CU_ASSERT(framelen1 - NGHTTP2_FRAME_HDLEN == recv_frame->hd.length);
 
   CU_ASSERT(1 == user_data.begin_headers_cb_called);
   CU_ASSERT(1 == user_data.header_cb_called);
@@ -950,7 +950,7 @@ void test_nghttp2_session_continue(void)
 
   recv_frame = user_data.frame;
   CU_ASSERT(NGHTTP2_HEADERS == recv_frame->hd.type);
-  CU_ASSERT(framelen2 - NGHTTP2_FRAME_HEAD_LENGTH == recv_frame->hd.length);
+  CU_ASSERT(framelen2 - NGHTTP2_FRAME_HDLEN == recv_frame->hd.length);
 
   CU_ASSERT(1 == user_data.begin_headers_cb_called);
   CU_ASSERT(1 == user_data.header_cb_called);
@@ -1002,7 +1002,7 @@ void test_nghttp2_session_continue(void)
   rv = nghttp2_session_mem_recv(session,
                                 databuf.pos, nghttp2_buf_len(&databuf));
 
-  CU_ASSERT(16 + NGHTTP2_FRAME_HEAD_LENGTH == rv);
+  CU_ASSERT(16 + NGHTTP2_FRAME_HDLEN == rv);
   CU_ASSERT(0 == user_data.frame_recv_cb_called);
 
   /* Next nghttp2_session_mem_recv invokes on_frame_recv_callback and
@@ -1011,7 +1011,7 @@ void test_nghttp2_session_continue(void)
   user_data.frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv(session,
                                 databuf.pos, nghttp2_buf_len(&databuf));
-  CU_ASSERT(16 + NGHTTP2_FRAME_HEAD_LENGTH == rv);
+  CU_ASSERT(16 + NGHTTP2_FRAME_HDLEN == rv);
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
 
   /* And finally call on_frame_recv_callback with 0 size input */
@@ -3638,10 +3638,10 @@ void test_nghttp2_session_flow_control_data_recv(void)
   hd.flags = NGHTTP2_FLAG_END_STREAM;
   hd.stream_id = 1;
   nghttp2_frame_pack_frame_hd(data, &hd);
-  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HEAD_LENGTH ==
+  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HDLEN ==
             nghttp2_session_mem_recv(session, data,
                                      NGHTTP2_MAX_FRAME_LENGTH +
-                                     NGHTTP2_FRAME_HEAD_LENGTH));
+                                     NGHTTP2_FRAME_HDLEN));
 
   item = nghttp2_session_get_next_ob_item(session);
   /* Since this is the last frame, stream-level WINDOW_UPDATE is not
@@ -3658,10 +3658,10 @@ void test_nghttp2_session_flow_control_data_recv(void)
      RST_STREAM is issued by the remote, but the local side keeps
      sending DATA frames. Without calculating connection-level window,
      the subsequent flow control gets confused. */
-  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HEAD_LENGTH ==
+  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HDLEN ==
             nghttp2_session_mem_recv(session, data,
                                      NGHTTP2_MAX_FRAME_LENGTH +
-                                     NGHTTP2_FRAME_HEAD_LENGTH));
+                                     NGHTTP2_FRAME_HDLEN));
 
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
@@ -3699,12 +3699,12 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void)
   hd.stream_id = 1;
   nghttp2_frame_pack_frame_hd(data, &hd);
   /* Add 2 byte padding (PAD_LOW itself is padding) */
-  data[NGHTTP2_FRAME_HEAD_LENGTH] = 1;
-  data[NGHTTP2_FRAME_HEAD_LENGTH + 1] = 1;
+  data[NGHTTP2_FRAME_HDLEN] = 1;
+  data[NGHTTP2_FRAME_HDLEN + 1] = 1;
 
-  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HEAD_LENGTH + hd.length) ==
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + hd.length) ==
             nghttp2_session_mem_recv(session, data,
-                                     NGHTTP2_FRAME_HEAD_LENGTH + hd.length));
+                                     NGHTTP2_FRAME_HDLEN + hd.length));
 
   CU_ASSERT((int32_t)hd.length == session->recv_window_size);
   CU_ASSERT((int32_t)hd.length == stream->recv_window_size);

@@ -51,7 +51,6 @@
 
 /* The number of bytes of frame header. */
 #define NGHTTP2_FRAME_HDLEN 8
-#define NGHTTP2_FRAME_HEAD_LENGTH NGHTTP2_FRAME_HDLEN
 
 /* The number of bytes for each SETTINGS entry */
 #define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 5
