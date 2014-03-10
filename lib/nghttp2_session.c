@@ -1238,11 +1238,18 @@ static ssize_t session_headers_add_pad(nghttp2_session *session,
   return nghttp2_buf_len(&session->aob.framebuf);
 }
 
-static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
-                                          nghttp2_outbound_item *item)
+/*
+ * This function serializes frame for transmission.
+ *
+ * This function returns 0 if it succeeds, or one of negative error
+ * codes, including both fatal and non-fatal ones.
+ */
+static int nghttp2_session_prep_frame(nghttp2_session *session,
+                                      nghttp2_outbound_item *item)
 {
   ssize_t framebuflen = 0;
   int rv;
+
   if(item->frame_cat == NGHTTP2_CAT_CTRL) {
     nghttp2_frame *frame;
     frame = nghttp2_outbound_item_get_ctrl_frame(item);
@@ -1420,9 +1427,9 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
       }
       break;
     default:
-      framebuflen = NGHTTP2_ERR_INVALID_ARGUMENT;
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
-    return framebuflen;
+    return 0;
   } else if(item->frame_cat == NGHTTP2_CAT_DATA) {
     size_t next_readmax;
     nghttp2_stream *stream;
@@ -1460,8 +1467,10 @@ static ssize_t nghttp2_session_prep_frame(nghttp2_session *session,
       }
       return framebuflen;
     }
-    /* This handles framebuflen < 0 case */
-    return framebuflen;
+    if(framebuflen < 0) {
+      return framebuflen;
+    }
+    return 0;
   } else {
     /* Unreachable */
     assert(0);
@@ -1917,32 +1926,32 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
     switch(aob->state) {
     case NGHTTP2_OB_POP_ITEM: {
       nghttp2_outbound_item *item;
-      ssize_t framebuflen;
 
       item = nghttp2_session_pop_next_ob_item(session);
       if(item == NULL) {
         return 0;
       }
-      framebuflen = nghttp2_session_prep_frame(session, item);
-      if(framebuflen == NGHTTP2_ERR_DEFERRED) {
+      rv = nghttp2_session_prep_frame(session, item);
+      if(rv == NGHTTP2_ERR_DEFERRED) {
         DEBUGF(fprintf(stderr, "frame deferred\n"));
+        rv = 0;
         break;
       }
-      if(framebuflen < 0) {
+      if(rv < 0) {
         DEBUGF(fprintf(stderr, "frame preparation failed with %s\n",
-                       nghttp2_strerror(framebuflen)));
+                       nghttp2_strerror(rv)));
         /* TODO If the error comes from compressor, the connection
            must be closed. */
         if(item->frame_cat == NGHTTP2_CAT_CTRL &&
            session->callbacks.on_frame_not_send_callback &&
-           nghttp2_is_non_fatal(framebuflen)) {
+           nghttp2_is_non_fatal(rv)) {
           /* The library is responsible for the transmission of
              WINDOW_UPDATE frame, so we don't call error callback for
              it. */
           nghttp2_frame *frame = nghttp2_outbound_item_get_ctrl_frame(item);
           if(frame->hd.type != NGHTTP2_WINDOW_UPDATE) {
             if(session->callbacks.on_frame_not_send_callback
-               (session, frame, framebuflen, session->user_data) != 0) {
+               (session, frame, rv, session->user_data) != 0) {
               return NGHTTP2_ERR_CALLBACK_FAILURE;
             }
           }
@@ -1951,15 +1960,16 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
         free(item);
         nghttp2_active_outbound_item_reset(aob);
 
-        if(framebuflen == NGHTTP2_ERR_HEADER_COMP) {
+        if(rv == NGHTTP2_ERR_HEADER_COMP) {
           /* If header compression error occurred, should terminiate
              connection. */
-          framebuflen = nghttp2_session_terminate_session
-            (session, NGHTTP2_INTERNAL_ERROR);
+          rv = nghttp2_session_terminate_session(session,
+                                                 NGHTTP2_INTERNAL_ERROR);
         }
-        if(nghttp2_is_fatal(framebuflen)) {
-          return framebuflen;
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
         }
+        rv = 0;
         break;
       }
       aob->item = item;
