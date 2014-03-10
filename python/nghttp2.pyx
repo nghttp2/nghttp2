@@ -106,25 +106,36 @@ cdef class HDDeflater:
                                         malloc(sizeof(cnghttp2.nghttp2_nv)*\
                                         len(headers))
         cdef cnghttp2.nghttp2_nv *nvap = nva
+
         for k, v in headers:
             nvap[0].name = k
             nvap[0].namelen = len(k)
             nvap[0].value = v
             nvap[0].valuelen = len(v)
             nvap += 1
-        cdef uint8_t *out = NULL
+
+        cdef cnghttp2.nghttp2_buf buf
         cdef size_t outcap = 0
         cdef ssize_t rv
-        rv = cnghttp2.nghttp2_hd_deflate_hd(&self._deflater, &out, &outcap,
-                                            0, nva, len(headers))
+
+        cnghttp2.nghttp2_buf_init(&buf)
+
+        rv = cnghttp2.nghttp2_hd_deflate_hd(&self._deflater, &buf,
+                                            nva, len(headers))
         free(nva)
+
         if rv < 0:
+            cnghttp2.nghttp2_buf_free(&buf);
+
             raise Exception(_strerror(rv))
+
         cdef bytes res
+
         try:
-            res = out[:rv]
+            res = buf.pos[:rv]
         finally:
-            cnghttp2.nghttp2_free(out)
+            cnghttp2.nghttp2_buf_free(&buf)
+
         return res
 
     def set_no_refset(self, no_refset):

@@ -33,6 +33,7 @@
 
 #include "nghttp2_hd_huffman.h"
 #include "nghttp2_buffer.h"
+#include "nghttp2_buf.h"
 
 #define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE (1 << 12)
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
@@ -295,16 +296,13 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
 
 /*
  * Deflates the |nva|, which has the |nvlen| name/value pairs, into
- * the buffer pointed by the |*buf_ptr| with the length |*buflen_ptr|.
- * The output starts after |nv_offset| bytes from |*buf_ptr|.
+ * the buffer pointed by the |buf|. The caller must ensure that
+ * nghttp2_buf_len(buf) == 0 holds. Write starts at buf->last.
  *
- * This function expands |*buf_ptr| as necessary to store the
- * result. When expansion occurred, memory previously pointed by
- * |*buf_ptr| may change.  |*buf_ptr| and |*buflen_ptr| are updated
- * accordingly.
+ * This function expands |buf| as necessary to store the result.
  *
- * This function copies necessary data into |*buf_ptr|. After this
- * function returns, it is safe to delete the |nva|.
+ * This function copies necessary data into |buf|. After this function
+ * returns, it is safe to delete the |nva|.
  *
  * TODO: The rest of the code call nghttp2_hd_end_headers() after this
  * call, but it is just a regacy of the first implementation. Now it
@@ -319,8 +317,7 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
  *     Deflation process has failed.
  */
 ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
-                              uint8_t **buf_ptr, size_t *buflen_ptr,
-                              size_t nv_offset,
+                              nghttp2_buf *buf,
                               nghttp2_nv *nva, size_t nvlen);
 
 typedef enum {
@@ -373,19 +370,16 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_indname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
-                                  size_t *offset_ptr, size_t index,
+int nghttp2_hd_emit_indname_block(nghttp2_buf *buf, size_t index,
                                   const uint8_t *value, size_t valuelen,
                                   int inc_indexing);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_newname_block(uint8_t **buf_ptr, size_t *buflen_ptr,
-                                  size_t *offset_ptr, nghttp2_nv *nv,
+int nghttp2_hd_emit_newname_block(nghttp2_buf *buf, nghttp2_nv *nv,
                                   int inc_indexing);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_table_size(uint8_t **buf_ptr, size_t *buflen_ptr,
-                               size_t *offset_ptr, size_t table_size);
+int nghttp2_hd_emit_table_size(nghttp2_buf *buf, size_t table_size);
 
 /* For unittesting purpose */
 nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,

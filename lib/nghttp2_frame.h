@@ -32,6 +32,7 @@
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_hd.h"
 #include "nghttp2_buffer.h"
+#include "nghttp2_buf.h"
 
 #define NGHTTP2_FRAME_LENGTH_MASK ((1 << 14) - 1)
 #define NGHTTP2_STREAM_ID_MASK ((1u << 31) - 1)
@@ -39,7 +40,8 @@
 #define NGHTTP2_WINDOW_SIZE_INCREMENT_MASK ((1u << 31) - 1)
 #define NGHTTP2_SETTINGS_ID_MASK ((1 << 24) - 1)
 
-/* The maximum payload length of a frame */
+/* The maximum payload length of a frame TODO: Must be renamed as
+   NGHTTP2_MAX_PAYLOAD_LENGTH */
 #define NGHTTP2_MAX_FRAME_LENGTH ((1 << 14) - 1)
 
 /* The maximum length of DATA frame payload. To fit entire DATA frame
@@ -48,7 +50,8 @@
 #define NGHTTP2_DATA_PAYLOAD_LENGTH 4086
 
 /* The number of bytes of frame header. */
-#define NGHTTP2_FRAME_HEAD_LENGTH 8
+#define NGHTTP2_FRAME_HDLEN 8
+#define NGHTTP2_FRAME_HEAD_LENGTH NGHTTP2_FRAME_HDLEN
 
 /* The number of bytes for each SETTINGS entry */
 #define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 5
@@ -100,15 +103,12 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
 size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
 
 /*
- * Packs HEADERS frame |frame| in wire format and store it in
- * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
- * This function expands |*buf_ptr| as necessary to store frame. When
- * expansion occurred, memory previously pointed by |*buf_ptr| may
- * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
+ * Packs HEADERS frame |frame| in wire format and store it in |buf|.
+ * This function expands |buf| as necessary to store frame. The caller
+ * must make sure that nghttp2_buf_len(buf) == 0 holds when calling
+ * this function.
  *
- * The first byte the frame is serialized is returned in the
- * |*bufoff_ptr|. Currently, it is always 2 to account for possible
- * PAD_HIGH and PAD_LOW.
+ * The first byte the frame is serialized is returned in the |buf|.
  *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
@@ -116,8 +116,8 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
  * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
  *
- * This function returns the size of packed frame (which includes
- * |*bufoff_ptr| bytes) if it succeeds, or returns one of the
+ * This function returns the size of packed frame (which equals to
+ * nghttp2_buf_len(buf)) if it succeeds, or returns one of the
  * following negative error codes:
  *
  * NGHTTP2_ERR_HEADER_COMP
@@ -127,9 +127,7 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_headers(uint8_t **buf_ptr,
-                                   size_t *buflen_ptr,
-                                   size_t *bufoff_ptr,
+ssize_t nghttp2_frame_pack_headers(nghttp2_buf *buf,
                                    nghttp2_headers *frame,
                                    nghttp2_hd_deflater *deflater);
 
@@ -149,9 +147,8 @@ int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
 
 /*
  * Packs PRIORITY frame |frame| in wire format and store it in
- * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
- * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|.
+ * |buf|. This function expands |buf| as necessary to store given
+ * |frame|.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
@@ -159,7 +156,7 @@ int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_priority(uint8_t **buf_ptr, size_t *buflen_ptr,
+ssize_t nghttp2_frame_pack_priority(nghttp2_buf *buf,
                                     nghttp2_priority *frame);
 
 /*
@@ -171,10 +168,8 @@ void nghttp2_frame_unpack_priority_payload(nghttp2_priority *frame,
 
 /*
  * Packs RST_STREAM frame |frame| in wire frame format and store it in
- * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
- * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. In spdy/2 spec, RST_STREAM wire format is always 16
- * bytes long.
+ * |buf|. This function expands |buf| as necessary to store given
+ * |frame|.
  *
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
@@ -182,7 +177,7 @@ void nghttp2_frame_unpack_priority_payload(nghttp2_priority *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_rst_stream(uint8_t **buf_ptr, size_t *buflen_ptr,
+ssize_t nghttp2_frame_pack_rst_stream(nghttp2_buf *buf,
                                       nghttp2_rst_stream *frame);
 
 /*
@@ -194,9 +189,8 @@ void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
 
 /*
  * Packs SETTINGS frame |frame| in wire format and store it in
- * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
- * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|.
+ * |buf|. This function expands |buf| as necessary to store given
+ * |frame|.
  *
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
@@ -204,7 +198,7 @@ void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_settings(uint8_t **buf_ptr, size_t *buflen_ptr,
+ssize_t nghttp2_frame_pack_settings(nghttp2_buf *buf,
                                     nghttp2_settings *frame);
 
 /*
@@ -253,14 +247,11 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
 
 /*
  * Packs PUSH_PROMISE frame |frame| in wire format and store it in
- * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr| bytes.
- * This function expands |*buf_ptr| as necessary to store frame. When
- * expansion occurred, memory previously pointed by |*buf_ptr| may
- * change.  |*buf_ptr| and |*buflen_ptr| are updated accordingly.
+ * |buf|.  This function expands |buf| as necessary to store
+ * frame. The caller must make sure that nghttp2_buf_len(buf) == 0
+ * holds when calling this function.
  *
- * The first byte the frame is serialized is returned in the
- * |*bufoff_ptr|. Currently, it is always 2 to account for possible
- * PAD_HIGH and PAD_LOW.
+ * The first byte the frame is serialized is returned in the |buf|.
  *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
@@ -268,12 +259,9 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
  * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
  *
- * This function returns the size of packed frame (which includes
- * |*bufoff_ptr| bytes) if it succeeds, or returns one of the
+ * This function returns the size of packed frame (which equals to
+ * nghttp2_buf_len(buf)) if it succeeds, or returns one of the
  * following negative error codes:
- *
- * This function returns the size of packed frame if it succeeds, or
- * returns one of the following negative error codes:
  *
  * NGHTTP2_ERR_HEADER_COMP
  *     The deflate operation failed.
@@ -282,9 +270,7 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_push_promise(uint8_t **buf_ptr,
-                                        size_t *buflen_ptr,
-                                        size_t *bufoff_ptr,
+ssize_t nghttp2_frame_pack_push_promise(nghttp2_buf *buf,
                                         nghttp2_push_promise *frame,
                                         nghttp2_hd_deflater *deflater);
 
@@ -303,10 +289,8 @@ int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
                                               size_t payloadlen);
 
 /*
- * Packs PING frame |frame| in wire format and store it in
- * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
- * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|.
+ * Packs PING frame |frame| in wire format and store it in |buf|. This
+ * function expands |buf| as necessary to store given |frame|.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
@@ -314,8 +298,7 @@ int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_ping(uint8_t **buf_ptr, size_t *buflen_ptr,
-                                nghttp2_ping *frame);
+ssize_t nghttp2_frame_pack_ping(nghttp2_buf *buf, nghttp2_ping *frame);
 
 /*
  * Unpacks PING wire format into |frame|.
@@ -326,9 +309,8 @@ void nghttp2_frame_unpack_ping_payload(nghttp2_ping *frame,
 
 /*
  * Packs GOAWAY frame |frame | in wire format and store it in
- * |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
- * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|.
+ * |buf|. This function expands |buf| as necessary to store given
+ * |frame|.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
@@ -336,8 +318,7 @@ void nghttp2_frame_unpack_ping_payload(nghttp2_ping *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_goaway(uint8_t **buf_ptr, size_t *buflen_ptr,
-                                  nghttp2_goaway *frame);
+ssize_t nghttp2_frame_pack_goaway(nghttp2_buf *buf, nghttp2_goaway *frame);
 
 /*
  * Unpacks GOAWAY wire format into |frame|.
@@ -348,9 +329,8 @@ void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
 
 /*
  * Packs WINDOW_UPDATE frame |frame| in wire frame format and store it
- * in |*buf_ptr|. The capacity of |*buf_ptr| is |*buflen_ptr|
- * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|.
+ * in |buf|. This function expands |buf| as necessary to store given
+ * |frame|.
  *
  * This function returns the size of packed frame if it succeeds, or
  * returns one of the following negative error codes:
@@ -358,7 +338,7 @@ void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_frame_pack_window_update(uint8_t **buf_ptr, size_t *buflen_ptr,
+ssize_t nghttp2_frame_pack_window_update(nghttp2_buf *buf,
                                          nghttp2_window_update *frame);
 
 /*
@@ -508,29 +488,22 @@ void nghttp2_nv_array_del(nghttp2_nv *nva);
 int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
 
 /*
- * Add padding to the payload in the |*buf_ptr| of length
- * |*buflen_ptr|. The payload length is given in |payloadlen|. The
- * frame header starts at offset |*bufoff_ptr|. Therefore, the payload
- * must start at offset *bufoff_ptr + NGHTTP2_FRAME_HEAD_LENGTH from
- * |*buf_ptr| to account for PAD_HIGH and PAD_LOW. The padding is
+ * Sets PAD_HIGH and PAD_LOW fields, flags and adjust buf->pos and
+ * buf->last accordingly based on given padding length. The padding is
  * given in the |padlen|.
  *
  * The |*flags_ptr| is updated to include NGHTTP2_FLAG_PAD_LOW and
- * NGHTTP2_FLAG_PAD_HIGH based on the padding length. The
- * |*bufoff_ptr| will have the offset starting the frame header in
- * |*buf_ptr|.
+ * NGHTTP2_FLAG_PAD_HIGH based on the padding length.
  *
- * The |*buf_ptr| and |*buflen_ptr| may be extended to include padding
- * bytes.
+ * This function does not allocate memory at all.
  *
  * The padding specifier PAD_HIGH and PAD_LOW are located right after
  * the frame header. But they may not be there depending of the length
- * of the padding. To save the additional buffer copy, we allocate
- * buffer size as if these 2 bytes always exist. Depending of the
- * length of the padding, we move the location of frame header and
- * adjust |*bufoff_ptr|. If more than or equal to 256 padding is made,
- * the |*bufoff_ptr| is 0 and the content of the |*buf_ptr| looks like
- * this:
+ * of the padding. To save the additional buffer copy, we shift
+ * buf->pos to 2 bytes right before this call. Depending of the length
+ * of the padding, we shift left buf->pos and buf->last. If more than
+ * or equal to 256 padding is made, 2 left shift is done |buf| looks
+ * like this:
  *
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -543,8 +516,8 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  * +---------------+---------------+-------------------------------+
  *
  *
- * If padding is less than 256 but strictly more than 0, the
- * |*bufoff_ptr| is 1 and the |*buf_ptr| looks like this:
+ * If padding is less than 256 but strictly more than 0, the |buf| is
+ * 1 left shift and the |buf| looks like this:
  *
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -556,8 +529,8 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  * . Frame Header  | Pad low       | Payload                     ...
  * +---------------+---------------+-------------------------------+
  *
- * If no padding is added, the |*bufoff_ptr| is 2 and the |*buf_ptr|
- * looks like this:
+ * If no padding is added, no shift is done and the |buf| looks like
+ * this:
  *
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -571,17 +544,10 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  *
  * Notice that the position of payload does not change. This way, we
  * can set PAD_HIGH and PAD_LOW after payload was serialized and no
- * additional copy operation is required (if the |*buf_ptr| is large
- * enough to account the additional padding, of course).
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * additional copy operation is required (if the |buf| is large enough
+ * to account the additional padding, of course).
  */
-int nghttp2_frame_add_pad(uint8_t **buf_ptr, size_t *buflen_ptr,
-                          size_t *bufoff_ptr, uint8_t *flags_ptr,
-                          size_t payloadlen, size_t padlen);
+void nghttp2_frame_set_pad(nghttp2_buf *buf, uint8_t *flags_ptr,
+                           size_t padlen);
 
 #endif /* NGHTTP2_FRAME_H */

@@ -126,4 +126,11 @@ int nghttp2_should_send_window_update(int32_t local_window_size,
  */
 void nghttp2_free(void *ptr);
 
+/*
+ * Copies the buffer |src| of length |len| to the destination pointed
+ * by the |dest|, assuming that the |dest| is at lest |len| bytes long
+ * . Returns dest + len.
+ */
+uint8_t* nghttp2_cpymem(uint8_t *dest, uint8_t *src, size_t len);
+
 #endif /* NGHTTP2_HELPER_H */

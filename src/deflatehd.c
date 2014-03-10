@@ -72,12 +72,15 @@ static void to_hex(char *dest, const uint8_t *src, size_t len)
 }
 
 static void output_to_json(nghttp2_hd_deflater *deflater,
-                           const uint8_t *buf, size_t len, size_t inputlen,
+                           nghttp2_buf *buf, size_t inputlen,
                            nghttp2_nv *nva, size_t nvlen,
                            int seq)
 {
   json_t *obj;
   char *hex = NULL;
+  size_t len;
+
+  len = nghttp2_buf_len(buf);
 
   if(len > 0) {
     hex = malloc(len * 2);
@@ -88,7 +91,7 @@ static void output_to_json(nghttp2_hd_deflater *deflater,
   json_object_set_new(obj, "output_length", json_integer(len));
   json_object_set_new(obj, "percentage_of_original_size",
                       json_real((double)len / inputlen * 100));
-  to_hex(hex, buf, len);
+  to_hex(hex, buf->pos, len);
   if(len == 0) {
     json_object_set_new(obj, "wire", json_string(""));
   } else {
@@ -114,17 +117,21 @@ static void deflate_hd(nghttp2_hd_deflater *deflater,
                        nghttp2_nv *nva, size_t nvlen, size_t inputlen, int seq)
 {
   ssize_t rv;
-  uint8_t *buf = NULL;
-  size_t buflen = 0;
-  rv = nghttp2_hd_deflate_hd(deflater, &buf, &buflen, 0, nva, nvlen);
+  nghttp2_buf buf;
+
+  nghttp2_buf_init(&buf);
+
+  rv = nghttp2_hd_deflate_hd(deflater, &buf, nva, nvlen);
   if(rv < 0) {
     fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
     exit(EXIT_FAILURE);
   }
+
   input_sum += inputlen;
   output_sum += rv;
-  output_to_json(deflater, buf, rv, inputlen, nva, nvlen, seq);
-  free(buf);
+
+  output_to_json(deflater, &buf, inputlen, nva, nvlen, seq);
+  nghttp2_buf_free(&buf);
 }
 
 static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater, int seq)

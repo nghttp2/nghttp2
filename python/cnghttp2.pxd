@@ -291,8 +291,7 @@ cdef extern from 'nghttp2_hd.h':
                                              size_t hd_table_bufsize_max)
 
     ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
-                                  uint8_t **buf_ptr, size_t *buflen_ptr,
-                                  size_t nv_offset,
+                                  nghttp2_buf *buf,
                                   nghttp2_nv *nva, size_t nvlen)
 
     ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
@@ -303,3 +302,14 @@ cdef extern from 'nghttp2_hd.h':
 
     nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                            size_t index)
+
+cdef extern from 'nghttp2_buf.h':
+
+    ctypedef struct nghttp2_buf:
+        uint8_t *pos
+        uint8_t *last
+
+
+    void nghttp2_buf_init(nghttp2_buf *buf)
+
+    void nghttp2_buf_free(nghttp2_buf *buf)

@@ -38,6 +38,7 @@
 #include "nghttp2_buffer.h"
 #include "nghttp2_outbound_item.h"
 #include "nghttp2_int.h"
+#include "nghttp2_buf.h"
 
 /*
  * Option flags.
@@ -54,27 +55,15 @@ typedef enum {
 
 typedef struct {
   nghttp2_outbound_item *item;
-  /* Buffer for outbound frames. Used to pack one frame. The memory
-     pointed by framebuf is initially allocated by
-     nghttp2_session_{client,server}_new() and deallocated by
-     nghttp2_session_del() */
-  uint8_t *framebuf;
-  /* The capacity of framebuf in bytes */
-  size_t framebufmax;
-  /* The length of the frame stored in framebuf */
-  size_t framebuflen;
-  /* The number of bytes has been sent */
-  size_t framebufoff;
-  /* Marks the last position to send. This is used to implement
-     CONTINUATION */
-  size_t framebufmark;
+
+  nghttp2_buf framebuf;
   nghttp2_outbound_state state;
 } nghttp2_active_outbound_item;
 
 /* Buffer length for inbound raw byte stream. */
 #define NGHTTP2_INBOUND_BUFFER_LENGTH 16384
 
-#define NGHTTP2_INITIAL_OUTBOUND_FRAMEBUF_LENGTH 4096
+#define NGHTTP2_INITIAL_OUTBOUND_FRAMEBUF_LENGTH 16384
 
 #define NGHTTP2_INITIAL_NV_BUFFER_LENGTH 4096
 
@@ -538,8 +527,7 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
  *     The read_callback failed (session error).
  */
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
-                                  uint8_t **buf_ptr, size_t *buflen_ptr,
-                                  size_t *bufoff_ptr,
+                                  nghttp2_buf *buf,
                                   size_t datamax,
                                   nghttp2_private_data *frame);
 

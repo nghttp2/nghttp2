@@ -92,6 +92,9 @@ void test_nghttp2_session_set_option(void);
 void test_nghttp2_session_data_backoff_by_high_pri_frame(void);
 void test_nghttp2_session_pack_data_with_padding(void);
 void test_nghttp2_session_pack_headers_with_padding(void);
+void test_nghttp2_session_pack_headers_with_padding2(void);
+void test_nghttp2_session_pack_headers_with_padding3(void);
+void test_nghttp2_session_pack_headers_with_padding4(void);
 void test_nghttp2_pack_settings_payload(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

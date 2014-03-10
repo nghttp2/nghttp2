@@ -54,6 +54,8 @@
     free(a);                                                \
   } while(0);
 
+int unpack_framebuf(nghttp2_frame *frame, nghttp2_buf *buf);
+
 int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len);
 
 int strmemeq(const char *a, const uint8_t *b, size_t bn);
