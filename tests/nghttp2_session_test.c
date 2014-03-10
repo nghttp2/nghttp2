@@ -3628,19 +3628,19 @@ void test_nghttp2_session_flow_control_data_recv(void)
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENED, NULL);
 
-  session->local_window_size = NGHTTP2_MAX_FRAME_LENGTH;
-  stream->local_window_size = NGHTTP2_MAX_FRAME_LENGTH;
+  session->local_window_size = NGHTTP2_MAX_PAYLOADLEN;
+  stream->local_window_size = NGHTTP2_MAX_PAYLOADLEN;
 
   /* Create DATA frame */
   memset(data, 0, sizeof(data));
-  hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+  hd.length = NGHTTP2_MAX_PAYLOADLEN;
   hd.type = NGHTTP2_DATA;
   hd.flags = NGHTTP2_FLAG_END_STREAM;
   hd.stream_id = 1;
   nghttp2_frame_pack_frame_hd(data, &hd);
-  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HDLEN ==
+  CU_ASSERT(NGHTTP2_MAX_PAYLOADLEN+NGHTTP2_FRAME_HDLEN ==
             nghttp2_session_mem_recv(session, data,
-                                     NGHTTP2_MAX_FRAME_LENGTH +
+                                     NGHTTP2_MAX_PAYLOADLEN +
                                      NGHTTP2_FRAME_HDLEN));
 
   item = nghttp2_session_get_next_ob_item(session);
@@ -3648,7 +3648,7 @@ void test_nghttp2_session_flow_control_data_recv(void)
      issued, but connection-level does. */
   CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
   CU_ASSERT(0 == OB_CTRL(item)->hd.stream_id);
-  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH ==
+  CU_ASSERT(NGHTTP2_MAX_PAYLOADLEN ==
             OB_CTRL(item)->window_update.window_size_increment);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
@@ -3658,15 +3658,15 @@ void test_nghttp2_session_flow_control_data_recv(void)
      RST_STREAM is issued by the remote, but the local side keeps
      sending DATA frames. Without calculating connection-level window,
      the subsequent flow control gets confused. */
-  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH+NGHTTP2_FRAME_HDLEN ==
+  CU_ASSERT(NGHTTP2_MAX_PAYLOADLEN+NGHTTP2_FRAME_HDLEN ==
             nghttp2_session_mem_recv(session, data,
-                                     NGHTTP2_MAX_FRAME_LENGTH +
+                                     NGHTTP2_MAX_PAYLOADLEN +
                                      NGHTTP2_FRAME_HDLEN));
 
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_WINDOW_UPDATE == OB_CTRL_TYPE(item));
   CU_ASSERT(0 == OB_CTRL(item)->hd.stream_id);
-  CU_ASSERT(NGHTTP2_MAX_FRAME_LENGTH ==
+  CU_ASSERT(NGHTTP2_MAX_PAYLOADLEN ==
             OB_CTRL(item)->window_update.window_size_increment);
 
   nghttp2_session_del(session);
@@ -4199,7 +4199,7 @@ void test_nghttp2_session_pack_headers_with_padding(void)
                                    nva, ARRLEN(nva), NULL, NULL));
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  CU_ASSERT(acc.length > NGHTTP2_MAX_FRAME_LENGTH);
+  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
   ud.frame_recv_cb_called = 0;
   CU_ASSERT((ssize_t)acc.length ==
             nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));
@@ -4213,7 +4213,7 @@ void test_nghttp2_session_pack_headers_with_padding(void)
   acc.length = 0;
   CU_ASSERT(0 == nghttp2_session_send(sv_session));
 
-  CU_ASSERT(acc.length > NGHTTP2_MAX_FRAME_LENGTH);
+  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
   ud.frame_recv_cb_called = 0;
   CU_ASSERT((ssize_t)acc.length ==
             nghttp2_session_mem_recv(session, acc.buf, acc.length));
@@ -4261,7 +4261,7 @@ void test_nghttp2_session_pack_headers_with_padding2(void)
                                    nva, ARRLEN(nva), NULL, NULL));
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  CU_ASSERT(acc.length > NGHTTP2_MAX_FRAME_LENGTH);
+  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
 
   ud.frame_recv_cb_called = 0;
   CU_ASSERT((ssize_t)acc.length ==
@@ -4310,7 +4310,7 @@ void test_nghttp2_session_pack_headers_with_padding3(void)
                                    nva, ARRLEN(nva), NULL, NULL));
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  CU_ASSERT(acc.length > NGHTTP2_MAX_FRAME_LENGTH);
+  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
   ud.frame_recv_cb_called = 0;
   CU_ASSERT((ssize_t)acc.length ==
             nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));
@@ -4354,7 +4354,7 @@ void test_nghttp2_session_pack_headers_with_padding4(void)
                                    nva, ARRLEN(nva), NULL, NULL));
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  CU_ASSERT(acc.length < NGHTTP2_MAX_FRAME_LENGTH);
+  CU_ASSERT(acc.length < NGHTTP2_MAX_PAYLOADLEN);
   ud.frame_recv_cb_called = 0;
   CU_ASSERT((ssize_t)acc.length ==
             nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));

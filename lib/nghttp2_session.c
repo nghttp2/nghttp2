@@ -1178,15 +1178,15 @@ static ssize_t session_headers_add_pad(nghttp2_session *session,
   DEBUGF(fprintf(stderr, "padding selected: payloadlen=%zu, padlen=%zu\n",
                  frame->hd.length, frame->headers.padlen));
 
-  if(frame->hd.length > NGHTTP2_MAX_FRAME_LENGTH) {
+  if(frame->hd.length > NGHTTP2_MAX_PAYLOADLEN) {
     nghttp2_frame_hd hd = frame->hd;
     hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
-    hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+    hd.length = NGHTTP2_MAX_PAYLOADLEN;
 
-    if(NGHTTP2_MAX_FRAME_LENGTH > frame->hd.length - frame->headers.padlen) {
+    if(NGHTTP2_MAX_PAYLOADLEN > frame->hd.length - frame->headers.padlen) {
       size_t padlen;
 
-      padlen = NGHTTP2_MAX_FRAME_LENGTH -
+      padlen = NGHTTP2_MAX_PAYLOADLEN -
         (frame->hd.length - frame->headers.padlen);
 
       DEBUGF(fprintf(stderr, "padding across 2 frames\n"));
@@ -1608,7 +1608,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         nghttp2_frame_hd cont_hd;
 
         cont_hd.length = nghttp2_min(framebuf->last - framebuf->mark,
-                                     NGHTTP2_MAX_FRAME_LENGTH);
+                                     NGHTTP2_MAX_PAYLOADLEN);
         cont_hd.type = NGHTTP2_CONTINUATION;
         cont_hd.stream_id = frame->hd.stream_id;
         cont_hd.flags = NGHTTP2_FLAG_NONE;
@@ -1970,7 +1970,7 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
         /* We have to get frame size from headers, because
            frame->hd.length does not always shows the actual frame
            size, especially for HEADERS size >
-           NGHTTP2_MAX_FRAME_LENGTH */
+           NGHTTP2_MAX_PAYLOADLEN */
         frame = nghttp2_outbound_item_get_ctrl_frame(item);
 
         framebuf->mark = framebuf->pos + NGHTTP2_FRAME_HDLEN +

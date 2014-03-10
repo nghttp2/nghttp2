@@ -42,7 +42,7 @@
 
 /* The maximum payload length of a frame TODO: Must be renamed as
    NGHTTP2_MAX_PAYLOAD_LENGTH */
-#define NGHTTP2_MAX_FRAME_LENGTH ((1 << 14) - 1)
+#define NGHTTP2_MAX_PAYLOADLEN ((1 << 14) - 1)
 
 /* The maximum length of DATA frame payload. To fit entire DATA frame
    into 4096K buffer, we use subtract header size (8 bytes) + 2 bytes
@@ -111,9 +111,9 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
- * NGHTTP2_MAX_FRAME_LENGTH, payload data is still serialized as is,
- * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
- * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
+ * NGHTTP2_MAX_PAYLOADLEN, payload data is still serialized as is, but
+ * serialized header's payload length is set to NGHTTP2_MAX_PAYLOADLEN
+ * and NGHTTP2_FLAG_END_HEADERS flag is cleared.
  *
  * This function returns the size of packed frame (which equals to
  * nghttp2_buf_len(buf)) if it succeeds, or returns one of the
@@ -254,9 +254,9 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  *
  * frame->hd.length is assigned after length is determined during
  * packing process. If payload length is strictly larger than
- * NGHTTP2_MAX_FRAME_LENGTH, payload data is still serialized as is,
- * but frame->hd.length is set to NGHTTP2_MAX_FRAME_LENGTH and
- * NGHTTP2_FLAG_END_HEADERS flag is cleared from frame->hd.flags.
+ * NGHTTP2_MAX_PAYLOADLEN, payload data is still serialized as is, but
+ * serialized header's payload length is set to NGHTTP2_MAX_PAYLOADLEN
+ * and NGHTTP2_FLAG_END_HEADERS flag is cleared.
  *
  * This function returns the size of packed frame (which equals to
  * nghttp2_buf_len(buf)) if it succeeds, or returns one of the

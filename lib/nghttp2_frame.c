@@ -264,13 +264,13 @@ ssize_t nghttp2_frame_pack_headers(nghttp2_buf *buf,
      frame */
   memset(buf->pos, 0, NGHTTP2_FRAME_HDLEN);
 
-  /* pack ctrl header after length is determined */
-  if(NGHTTP2_MAX_FRAME_LENGTH < frame->hd.length) {
+  /* pack frame header after length is determined */
+  if(NGHTTP2_MAX_PAYLOADLEN < frame->hd.length) {
     /* Needs CONTINUATION */
     nghttp2_frame_hd hd = frame->hd;
 
     hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
-    hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+    hd.length = NGHTTP2_MAX_PAYLOADLEN;
 
     nghttp2_frame_pack_frame_hd(buf->pos, &hd);
   } else {
@@ -473,13 +473,13 @@ ssize_t nghttp2_frame_pack_push_promise(nghttp2_buf *buf,
      frame */
   memset(buf->pos, 0, NGHTTP2_FRAME_HDLEN);
 
-  /* pack ctrl header after length is determined */
-  if(NGHTTP2_MAX_FRAME_LENGTH < frame->hd.length) {
+  /* pack frame header after length is determined */
+  if(NGHTTP2_MAX_PAYLOADLEN < frame->hd.length) {
     /* Needs CONTINUATION */
     nghttp2_frame_hd hd = frame->hd;
 
     hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
-    hd.length = NGHTTP2_MAX_FRAME_LENGTH;
+    hd.length = NGHTTP2_MAX_PAYLOADLEN;
 
     nghttp2_frame_pack_frame_hd(buf->pos, &hd);
   } else {
