@@ -104,7 +104,7 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx)
 }
 
 ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
-                               nghttp2_buffer *dest,
+                               nghttp2_bufs *bufs,
                                const uint8_t *src, size_t srclen, int final)
 {
   size_t i, j;
@@ -119,7 +119,7 @@ ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
         return NGHTTP2_ERR_HEADER_COMP;
       }
       if(t->flags & NGHTTP2_HUFF_SYM) {
-        rv = nghttp2_buffer_add_byte(dest, t->sym);
+        rv = nghttp2_bufs_addb(bufs, t->sym);
         if(rv != 0) {
           return rv;
         }

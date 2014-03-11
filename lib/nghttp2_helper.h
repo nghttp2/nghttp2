@@ -131,6 +131,6 @@ void nghttp2_free(void *ptr);
  * by the |dest|, assuming that the |dest| is at lest |len| bytes long
  * . Returns dest + len.
  */
-uint8_t* nghttp2_cpymem(uint8_t *dest, uint8_t *src, size_t len);
+uint8_t* nghttp2_cpymem(uint8_t *dest, const void *src, size_t len);
 
 #endif /* NGHTTP2_HELPER_H */

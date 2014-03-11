@@ -32,7 +32,6 @@
 #include <nghttp2/nghttp2.h>
 
 #include "nghttp2_hd_huffman.h"
-#include "nghttp2_buffer.h"
 #include "nghttp2_buf.h"
 
 #define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE (1 << 12)
@@ -41,7 +40,7 @@
 /* The maximum value length of name/value pair. This is not specified
    by the spec. We just chose the arbitrary size */
 #define NGHTTP2_HD_MAX_NAME 256
-#define NGHTTP2_HD_MAX_VALUE 4096
+#define NGHTTP2_HD_MAX_VALUE 8192
 #define NGHTTP2_HD_MAX_BUFFER_LENGTH (1 << 15)
 
 /* Default size of maximum table buffer size for encoder. Even if
@@ -146,9 +145,9 @@ typedef struct {
 typedef struct {
   nghttp2_hd_context ctx;
   /* header name buffer */
-  nghttp2_buffer namebuf;
+  nghttp2_bufs namebufs;
   /* header value buffer */
-  nghttp2_buffer valuebuf;
+  nghttp2_bufs valuebufs;
   /* Stores current state of huffman decoding */
   nghttp2_hd_huff_decode_context huff_decode_ctx;
   /* Pointer to the nghttp2_hd_entry which is used current header
@@ -418,7 +417,8 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
  * be initialized by nghttp2_hd_huff_decode_context_init(). The result
  * will be added to |dest|. This function may expand |dest| as
  * needed. The caller is responsible to release the memory of |dest|
- * by calling nghttp2_buffer_free().
+ * by calling nghttp2_bufs_free() or export its content using
+ * nghttp2_bufs_remove().
  *
  * The caller must set the |final| to nonzero if the given input is
  * the final block.
@@ -436,7 +436,7 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
  *     Decoding process has failed.
  */
 ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
-                               nghttp2_buffer *dest,
+                               nghttp2_bufs *bufs,
                                const uint8_t *src, size_t srclen, int final);
 
 #endif /* NGHTTP2_HD_H */

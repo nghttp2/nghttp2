@@ -134,4 +134,39 @@ void nghttp2_buf_reset(nghttp2_buf *buf);
  */
 void nghttp2_buf_wrap_init(nghttp2_buf *buf, uint8_t *begin, size_t len);
 
+/*
+ * List of nghttp2_buf
+ */
+
+struct nghttp2_buf_chain;
+
+typedef struct nghttp2_buf_chain nghttp2_buf_chain;
+
+struct nghttp2_buf_chain {
+  nghttp2_buf_chain *next;
+  nghttp2_buf buf;
+};
+
+typedef struct {
+  nghttp2_buf_chain *head;
+  nghttp2_buf_chain *cur;
+  /* The buffer capacity of each buf */
+  size_t chunk_length;
+  /* The maximum number of nghttp2_buf_chain */
+  size_t chunk_left;
+} nghttp2_bufs;
+
+int nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_length,
+                      size_t max_chunk);
+
+void nghttp2_bufs_free(nghttp2_bufs *bufs);
+
+int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len);
+
+int nghttp2_bufs_addb(nghttp2_bufs *bufs, uint8_t b);
+
+ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out);
+
+void nghttp2_bufs_reset(nghttp2_bufs *bufs);
+
 #endif /* NGHTTP2_BUF_H */

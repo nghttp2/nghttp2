@@ -383,7 +383,7 @@ int nghttp2_check_header_value(const uint8_t *value, size_t len)
   return 1;
 }
 
-uint8_t* nghttp2_cpymem(uint8_t *dest, uint8_t *src, size_t len)
+uint8_t* nghttp2_cpymem(uint8_t *dest, const void *src, size_t len)
 {
   memcpy(dest, src, len);
 
