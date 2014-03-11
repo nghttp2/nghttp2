@@ -31,7 +31,6 @@
 
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_hd.h"
-#include "nghttp2_buffer.h"
 #include "nghttp2_buf.h"
 
 #define NGHTTP2_FRAME_LENGTH_MASK ((1 << 14) - 1)

@@ -31,7 +31,6 @@ check_PROGRAMS += failmalloc
 endif # ENABLE_FAILMALLOC
 
 OBJECTS = main.c nghttp2_pq_test.c nghttp2_map_test.c nghttp2_queue_test.c \
-	nghttp2_buffer_test.c \
 	nghttp2_test_helper.c \
 	nghttp2_frame_test.c \
 	nghttp2_stream_test.c \
@@ -42,7 +41,7 @@ OBJECTS = main.c nghttp2_pq_test.c nghttp2_map_test.c nghttp2_queue_test.c \
 	nghttp2_helper_test.c
 
 HFILES = nghttp2_pq_test.h nghttp2_map_test.h nghttp2_queue_test.h \
-	nghttp2_buffer_test.h nghttp2_session_test.h \
+	nghttp2_session_test.h \
 	nghttp2_frame_test.h nghttp2_stream_test.h nghttp2_hd_test.h \
 	nghttp2_npn_test.h nghttp2_gzip_test.h nghttp2_helper_test.h \
 	nghttp2_test_helper.h

@@ -29,7 +29,6 @@
 #include "nghttp2_pq_test.h"
 #include "nghttp2_map_test.h"
 #include "nghttp2_queue_test.h"
-#include "nghttp2_buffer_test.h"
 #include "nghttp2_session_test.h"
 #include "nghttp2_frame_test.h"
 #include "nghttp2_stream_test.h"
@@ -72,7 +71,6 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "map_functional", test_nghttp2_map_functional) ||
       !CU_add_test(pSuite, "map_each_free", test_nghttp2_map_each_free) ||
       !CU_add_test(pSuite, "queue", test_nghttp2_queue) ||
-      !CU_add_test(pSuite, "buffer", test_nghttp2_buffer) ||
       !CU_add_test(pSuite, "npn", test_nghttp2_npn) ||
       !CU_add_test(pSuite, "session_recv", test_nghttp2_session_recv) ||
       !CU_add_test(pSuite, "session_recv_invalid_stream_id",

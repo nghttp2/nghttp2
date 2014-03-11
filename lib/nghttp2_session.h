@@ -35,7 +35,6 @@
 #include "nghttp2_frame.h"
 #include "nghttp2_hd.h"
 #include "nghttp2_stream.h"
-#include "nghttp2_buffer.h"
 #include "nghttp2_outbound_item.h"
 #include "nghttp2_int.h"
 #include "nghttp2_buf.h"
