@@ -4467,7 +4467,7 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
   ssize_t payloadlen;
   ssize_t padded_payloadlen;
   size_t padlen;
-  nghttp2_frame data_frame = {{0}}; /* FIXME padlen is also initialized? */
+  nghttp2_frame data_frame;
   nghttp2_frame_hd hd;
   nghttp2_buf *buf;
 
@@ -4519,6 +4519,7 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
   data_frame.hd.stream_id = frame->hd.stream_id;
   data_frame.hd.type = NGHTTP2_DATA;
   data_frame.hd.flags = flags;
+  data_frame.data.padlen = 0;
 
   padded_payloadlen = session_call_select_padding(session, &data_frame,
                                                   datamax);
