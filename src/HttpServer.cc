@@ -141,7 +141,7 @@ public:
   int64_t get_next_session_id()
   {
     auto session_id = next_session_id_;
-    if(next_session_id_ == INT64_MAX) {
+    if(next_session_id_ == std::numeric_limits<int64_t>::max()) {
       next_session_id_ = 1;
     }
     return session_id;
