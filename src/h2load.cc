@@ -527,8 +527,8 @@ void print_version(std::ostream& out)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: h2load [OPTIONS]... <URI>\n"
-      << "benchmarking tool for HTTP/2 and SPDY server" << std::endl;
+  out << R"(Usage: h2load [OPTIONS]... <URI>
+benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
 }
 } // namespace
 
@@ -536,31 +536,29 @@ namespace {
 void print_help(std::ostream& out)
 {
   print_usage(out);
-  out << "\n"
-      << "  <URI>              Specify URI to access.\n"
-      << "Options:\n"
-      << "  -n, --requests=<N> Number of requests. Default: "
-      << config.nreqs << "\n"
-      << "  -c, --clients=<N>  Number of concurrent clients. Default: "
-      << config.nclients << "\n"
-      << "  -t, --threads=<N>  Number of native threads. Default: "
-      << config.nthreads << "\n"
-      << "  -m, --max-concurrent-streams=<N>\n"
-      << "                     Max concurrent streams to issue per session. \n"
-      << "                     Default: "
-      << config.max_concurrent_streams << "\n"
-      << "  -w, --window-bits=<N>\n"
-      << "                     Sets the stream level initial window size\n"
-      << "                     to (2**<N>)-1. For SPDY, 2**<N> is used\n"
-      << "                     instead.\n"
-      << "  -W, --connection-window-bits=<N>\n"
-      << "                     Sets the connection level initial window\n"
-      << "                     size to 2**<N>-1. This option does not work\n"
-      << "                     with SPDY.\n"
-      << "                     instead.\n"
-      << "  -v, --verbose      Output debug information.\n"
-      << "  --version          Display version information and exit.\n"
-      << "  -h, --help         Display this help and exit.\n"
+
+  out << R"(
+  <URI>              Specify URI to access.
+Options:
+  -n, --requests=<N> Number of requests. Default: )"
+      << config.nreqs << R"(
+  -c, --clients=<N>  Number of concurrent clients. Default: )"
+      << config.nclients << R"(
+  -t, --threads=<N>  Number of native threads. Default: )"
+      << config.nthreads << R"(
+  -m, --max-concurrent-streams=<N>
+                     Max concurrent streams to issue per session.
+                     Default: )"
+      << config.max_concurrent_streams << R"(
+  -w, --window-bits=<N>
+                     Sets  the stream  level  initial  window size  to
+                     (2**<N>)-1.  For SPDY, 2**<N> is used instead.
+  -W, --connection-window-bits=<N>
+                     Sets the connection level  initial window size to
+                     (2**<N>)-1.  This option does not work with SPDY.
+  -v, --verbose      Output debug information.
+  --version          Display version information and exit.
+  -h, --help         Display this help and exit.)"
       << std::endl;
 }
 } // namespace
