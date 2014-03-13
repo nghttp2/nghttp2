@@ -31,12 +31,13 @@
 int nghttp2_map_init(nghttp2_map *map)
 {
   map->tablelen = INITIAL_TABLE_LENGTH;
-  map->table = malloc(sizeof(nghttp2_map_entry*) * map->tablelen);
+  map->table = calloc(map->tablelen, sizeof(nghttp2_map_entry*));
   if(map->table == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
-  memset(map->table, 0, sizeof(nghttp2_map_entry*) * map->tablelen);
+
   map->size = 0;
+
   return 0;
 }
 
@@ -118,11 +119,11 @@ static int resize(nghttp2_map *map, size_t new_tablelen)
 {
   size_t i;
   nghttp2_map_entry **new_table;
-  new_table = malloc(sizeof(nghttp2_map_entry*) * new_tablelen);
+  new_table = calloc(new_tablelen, sizeof(nghttp2_map_entry*));
   if(new_table == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
-  memset(new_table, 0, sizeof(nghttp2_map_entry*) * new_tablelen);
+
   for(i = 0; i < map->tablelen; ++i) {
     nghttp2_map_entry *entry;
     for(entry = map->table[i]; entry;) {

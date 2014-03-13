@@ -67,12 +67,12 @@ void nghttp2_frame_headers_init(nghttp2_headers *frame,
                                 uint8_t flags, int32_t stream_id, int32_t pri,
                                 nghttp2_nv *nva, size_t nvlen)
 {
-  memset(frame, 0, sizeof(nghttp2_headers));
   nghttp2_frame_set_hd(&frame->hd, 0, NGHTTP2_HEADERS, flags, stream_id);
-  frame->pri = pri;
+  frame->padlen = 0;
   frame->nva = nva;
   frame->nvlen = nvlen;
   frame->cat = NGHTTP2_HCAT_REQUEST;
+  frame->pri = pri;
 }
 
 void nghttp2_frame_headers_free(nghttp2_headers *frame)
@@ -83,7 +83,6 @@ void nghttp2_frame_headers_free(nghttp2_headers *frame)
 void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
                                  int32_t pri)
 {
-  memset(frame, 0, sizeof(nghttp2_priority));
   nghttp2_frame_set_hd(&frame->hd, 4, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE,
                        stream_id);
   frame->pri = pri;
@@ -96,7 +95,6 @@ void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
                                    int32_t stream_id,
                                    nghttp2_error_code error_code)
 {
-  memset(frame, 0, sizeof(nghttp2_rst_stream));
   nghttp2_frame_set_hd(&frame->hd, 4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE,
                        stream_id);
   frame->error_code = error_code;
@@ -109,7 +107,6 @@ void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame)
 void nghttp2_frame_settings_init(nghttp2_settings *frame, uint8_t flags,
                                  nghttp2_settings_entry *iv, size_t niv)
 {
-  memset(frame, 0, sizeof(nghttp2_settings));
   nghttp2_frame_set_hd(&frame->hd, niv * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH,
                        NGHTTP2_SETTINGS, flags, 0);
   frame->niv = niv;
@@ -126,11 +123,11 @@ void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame,
                                      int32_t promised_stream_id,
                                      nghttp2_nv *nva, size_t nvlen)
 {
-  memset(frame, 0, sizeof(nghttp2_push_promise));
   nghttp2_frame_set_hd(&frame->hd, 0, NGHTTP2_PUSH_PROMISE, flags, stream_id);
-  frame->promised_stream_id = promised_stream_id;
+  frame->padlen = 0;
   frame->nva = nva;
   frame->nvlen = nvlen;
+  frame->promised_stream_id = promised_stream_id;
 }
 
 void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame)
@@ -141,10 +138,11 @@ void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame)
 void nghttp2_frame_ping_init(nghttp2_ping *frame, uint8_t flags,
                              const uint8_t *opaque_data)
 {
-  memset(frame, 0, sizeof(nghttp2_ping));
   nghttp2_frame_set_hd(&frame->hd, 8, NGHTTP2_PING, flags, 0);
   if(opaque_data) {
     memcpy(frame->opaque_data, opaque_data, sizeof(frame->opaque_data));
+  } else {
+    memset(frame->opaque_data, 0, sizeof(frame->opaque_data));
   }
 }
 
@@ -155,7 +153,6 @@ void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
                                nghttp2_error_code error_code,
                                uint8_t *opaque_data, size_t opaque_data_len)
 {
-  memset(frame, 0, sizeof(nghttp2_goaway));
   nghttp2_frame_set_hd(&frame->hd, 8+opaque_data_len, NGHTTP2_GOAWAY,
                        NGHTTP2_FLAG_NONE, 0);
   frame->last_stream_id = last_stream_id;
@@ -174,7 +171,6 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
                                       int32_t stream_id,
                                       int32_t window_size_increment)
 {
-  memset(frame, 0, sizeof(nghttp2_window_update));
   nghttp2_frame_set_hd(&frame->hd, 4, NGHTTP2_WINDOW_UPDATE, flags, stream_id);
   frame->window_size_increment = window_size_increment;
 }
@@ -206,10 +202,11 @@ void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
                                      int32_t stream_id,
                                      const nghttp2_data_provider *data_prd)
 {
-  memset(frame, 0, sizeof(nghttp2_private_data));
   /* At this moment, the length of DATA frame is unknown */
   nghttp2_frame_set_hd(&frame->hd, 0, NGHTTP2_DATA, flags, stream_id);
   frame->data_prd = *data_prd;
+  frame->padlen = 0;
+  frame->eof = 0;
 }
 
 void nghttp2_frame_private_data_free(nghttp2_private_data *frame)

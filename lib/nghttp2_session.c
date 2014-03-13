@@ -229,12 +229,11 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
 {
   int rv;
 
-  *session_ptr = malloc(sizeof(nghttp2_session));
+  *session_ptr = calloc(1, sizeof(nghttp2_session));
   if(*session_ptr == NULL) {
     rv = NGHTTP2_ERR_NOMEM;
     goto fail_session;
   }
-  memset(*session_ptr, 0, sizeof(nghttp2_session));
 
   /* next_stream_id is initialized in either
      nghttp2_session_client_new2 or nghttp2_session_server_new2 */
@@ -301,11 +300,6 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   }
 
   nghttp2_active_outbound_item_reset(&(*session_ptr)->aob);
-
-  memset((*session_ptr)->remote_settings, 0,
-         sizeof((*session_ptr)->remote_settings));
-  memset((*session_ptr)->local_settings, 0,
-         sizeof((*session_ptr)->local_settings));
 
   init_settings((*session_ptr)->remote_settings);
   init_settings((*session_ptr)->local_settings);
