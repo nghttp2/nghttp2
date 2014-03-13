@@ -1046,7 +1046,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
       for(; num_emits > 0; --num_emits) {
         rv = emit_indexed_block(bufs, index);
         if(rv != 0) {
-          break;
+          return rv;
         }
       }
     }
