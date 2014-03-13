@@ -1636,8 +1636,8 @@ void print_version(std::ostream& out)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttp [OPTIONS]... <URI>...\n"
-      << "HTTP/2 experimental client" << std::endl;
+  out << R"(Usage: nghttp [OPTIONS]... <URI>...
+HTTP/2 experimental client)" << std::endl;
 }
 } // namespace
 
@@ -1645,60 +1645,58 @@ namespace {
 void print_help(std::ostream& out)
 {
   print_usage(out);
-  out << "\n"
-      << "  <URI>              Specify URI to access.\n"
-      << "Options:\n"
-      << "  -v, --verbose      Print debug information such as reception/\n"
-      << "                     transmission of frames and name/value pairs.\n"
-      << "  -n, --null-out     Discard downloaded data.\n"
-      << "  -O, --remote-name  Save download data in the current directory.\n"
-      << "                     The filename is dereived from URI. If URI\n"
-      << "                     ends with '/', 'index.html' is used as a\n"
-      << "                     filename. Not implemented yet.\n"
-      << "  -t, --timeout=<N>  Timeout each request after <N> seconds.\n"
-      << "  -w, --window-bits=<N>\n"
-      << "                     Sets the stream level initial window size\n"
-      << "                     to 2**<N>-1.\n"
-      << "  -W, --connection-window-bits=<N>\n"
-      << "                     Sets the connection level initial window\n"
-      << "                     size to 2**<N>-1.\n"
-      << "  -a, --get-assets   Download assets such as stylesheets, images\n"
-      << "                     and script files linked from the downloaded\n"
-      << "                     resource. Only links whose origins are the\n"
-      << "                     same with the linking resource will be\n"
-      << "                     downloaded.\n"
-      << "  -s, --stat         Print statistics.\n"
-      << "  -H, --header       Add a header to the requests.\n"
-      << "  --cert=<CERT>      Use the specified client certificate file.\n"
-      << "                     The file must be in PEM format.\n"
-      << "  --key=<KEY>        Use the client private key file. The file\n"
-      << "                     must be in PEM format.\n"
-      << "  -d, --data=<FILE>  Post FILE to server. If - is given, data\n"
-      << "                     will be read from stdin.\n"
-      << "  -m, --multiply=<N> Request each URI <N> times. By default, same\n"
-      << "                     URI is not requested twice. This option\n"
-      << "                     disables it too.\n"
-      << "  -u, --upgrade      Perform HTTP Upgrade for HTTP/2.0. This\n"
-      << "                     option is ignored if the request URI has\n"
-      << "                     https scheme.\n"
-      << "                     If -d is used, the HTTP upgrade request is\n"
-      << "                     performed with OPTIONS method.\n"
-      << "  -p, --pri=<PRIORITY>\n"
-      << "                     Sets stream priority. Default: "
-      << NGHTTP2_PRI_DEFAULT << "\n"
-      << "  -M, --peer-max-concurrent-streams=<N>\n"
-      << "                     Use <N> as SETTINGS_MAX_CONCURRENT_STREAMS\n"
-      << "                     value of remote endpoint as if it is\n"
-      << "                     received in SETTINGS frame. The default\n"
-      << "                     is large enough as it is seen as unlimited.\n"
-      << "  -c, --header-table-size=<N>\n"
-      << "                     Specify decoder header table size.\n"
-      << "  -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
-      << "                     padding. Specify 0 to disable padding.\n"
-      << "  --color            Force colored log output.\n"
-      << "  --continuation     Send large header to test CONTINUATION.\n"
-      << "  --version          Display version information and exit.\n"
-      << "  -h, --help         Display this help and exit.\n"
+  out << R"(
+  <URI>              Specify URI to access.
+Options:
+  -v, --verbose      Print  debug information  such  as reception  and
+                     transmission of frames and name/value pairs.
+  -n, --null-out     Discard downloaded data.
+  -O, --remote-name  Save download data in the current directory.  The
+                     filename is dereived from  URI.  If URI ends with
+                     '/',  'index.html' is  used as  a filename.   Not
+                     implemented yet.
+  -t, --timeout=<N>  Timeout each request after <N> seconds.
+  -w, --window-bits=<N>
+                     Sets  the stream  level  initial  window size  to
+                     2**<N>-1.
+  -W, --connection-window-bits=<N>
+                     Sets the connection level  initial window size to
+                     2**<N>-1.
+  -a, --get-assets   Download assets  such as stylesheets,  images and
+                     script files linked from the downloaded resource.
+                     Only links  whose origins  are the same  with the
+                     linking resource will be downloaded.
+  -s, --stat         Print statistics.
+  -H, --header       Add a header to the requests.
+  --cert=<CERT>      Use the  specified client certificate  file.  The
+                     file must be in PEM format.
+  --key=<KEY>        Use the  client private key file.   The file must
+                     be in PEM format.
+  -d, --data=<FILE>  Post FILE to  server. If '-' is  given, data will
+                     be read from stdin.
+  -m, --multiply=<N> Request each URI <N> times.  By default, same URI
+                     is not requested twice.   This option disables it
+                     too.
+  -u, --upgrade      Perform HTTP  Upgrade for HTTP/2.0.   This option
+                     is ignored  if the request URI  has https scheme.
+                     If  -d  is  used,  the HTTP  upgrade  request  is
+                     performed with OPTIONS method.
+  -p, --pri=<PRIORITY>
+                     Sets stream priority. Default: )"
+      << NGHTTP2_PRI_DEFAULT << R"(
+  -M, --peer-max-concurrent-streams=<N>
+                     Use <N>  as SETTINGS_MAX_CONCURRENT_STREAMS value
+                     of  remote  endpoint  as  if it  is  received  in
+                     SETTINGS frame.   The default is large  enough as
+                     it is seen as unlimited.
+  -c, --header-table-size=<N>
+                     Specify decoder header table size.
+  -b, --padding=<N>  Add  at most  <N>  bytes to  a  frame payload  as
+                     padding.  Specify 0 to disable padding.
+  --color            Force colored log output.
+  --continuation     Send large header to test CONTINUATION.
+  --version          Display version information and exit.
+  -h, --help         Display this help and exit.)"
       << std::endl;
 }
 } // namespace
