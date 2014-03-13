@@ -24,6 +24,8 @@
  */
 #include "nghttp2_buf.h"
 
+#include <stdio.h>
+
 #include "nghttp2_helper.h"
 
 void nghttp2_buf_init(nghttp2_buf *buf)
@@ -197,7 +199,7 @@ ssize_t nghttp2_bufs_len(nghttp2_bufs *bufs)
 static int nghttp2_bufs_avail(nghttp2_bufs *bufs)
 {
   return nghttp2_buf_avail(&bufs->cur->buf) +
-    (bufs->chunk_left - bufs->offset) * bufs->chunk_left;
+    (bufs->chunk_length - bufs->offset) * bufs->chunk_left;
 }
 
 static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
@@ -219,6 +221,10 @@ static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
   if(rv != 0) {
     return rv;
   }
+
+  DEBUGF(fprintf(stderr,
+                 "new buffer %zu bytes allocated for bufs %p, left %zu\n",
+                 bufs->chunk_length, bufs, bufs->chunk_left));
 
   --bufs->chunk_left;
 
@@ -254,6 +260,7 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len)
       }
       continue;
     }
+
     buf->last = nghttp2_cpymem(buf->last, p, nwrite);
     p += len;
     len -= nwrite;
