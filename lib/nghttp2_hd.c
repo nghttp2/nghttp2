@@ -1534,7 +1534,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       }
       in += rv;
       if(!rfin) {
-        return in - first;
+        goto almost_ok;
       }
       DEBUGF(fprintf(stderr, "table_size=%zd\n", inflater->left));
       inflater->ctx.hd_table_bufsize_max = inflater->left;
@@ -1552,7 +1552,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       }
       in += rv;
       if(!rfin) {
-        return in - first;
+        goto almost_ok;
       }
       DEBUGF(fprintf(stderr, "index=%zd\n", inflater->left));
       if(inflater->opcode == NGHTTP2_HD_OPCODE_INDEXED) {
@@ -1596,7 +1596,8 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(!rfin) {
         DEBUGF(fprintf(stderr, "integer not fully decoded. current=%zd\n",
                        inflater->left));
-        return in - first;
+
+        goto almost_ok;
       }
 
       rv = 0;
@@ -1622,7 +1623,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(inflater->left) {
         DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
 
-        return in - first;
+        goto almost_ok;
       }
 
       inflater->state = NGHTTP2_HD_STATE_CHECK_VALUELEN;
@@ -1640,7 +1641,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(inflater->left) {
         DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
 
-        return in - first;
+        goto almost_ok;
       }
 
       inflater->state = NGHTTP2_HD_STATE_CHECK_VALUELEN;
@@ -1664,7 +1665,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       in += rv;
 
       if(!rfin) {
-        return in - first;
+        goto almost_ok;
       }
 
       DEBUGF(fprintf(stderr, "valuelen=%zd\n", inflater->left));
@@ -1703,7 +1704,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(inflater->left) {
         DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
 
-        return in - first;
+        goto almost_ok;
       }
 
       if(inflater->opcode == NGHTTP2_HD_OPCODE_NEWNAME) {
@@ -1734,7 +1735,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       if(inflater->left) {
         DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
-        return in - first;
+        goto almost_ok;
       }
 
       if(inflater->opcode == NGHTTP2_HD_OPCODE_NEWNAME) {
@@ -1776,6 +1777,14 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
     *inflate_flags |= NGHTTP2_HD_INFLATE_FINAL;
   }
   return in - first;
+
+ almost_ok:
+  if(in_final && inflater->state != NGHTTP2_HD_STATE_OPCODE) {
+    rv = NGHTTP2_ERR_HEADER_COMP;
+    goto fail;
+  }
+  return in - first;
+
  fail:
   inflater->ctx.bad = 1;
   return rv;
