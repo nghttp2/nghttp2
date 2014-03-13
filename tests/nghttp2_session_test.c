@@ -4240,7 +4240,7 @@ void test_nghttp2_session_pack_headers_with_padding(void)
   accumulator acc;
   my_user_data ud;
   nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[8190];
+  nghttp2_nv nva[4086];
   size_t i;
 
   for(i = 0; i < ARRLEN(nva); ++i) {
@@ -4302,7 +4302,7 @@ void test_nghttp2_session_pack_headers_with_padding2(void)
   accumulator acc;
   my_user_data ud;
   nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[16382];
+  nghttp2_nv nva[8182];
   size_t i;
 
   for(i = 0; i < ARRLEN(nva); ++i) {
@@ -4321,8 +4321,7 @@ void test_nghttp2_session_pack_headers_with_padding2(void)
   acc.length = 0;
   ud.acc = &acc;
 
-  /* In this test, padding is laid out across 2 frames: HEADERS and
-     CONTINUATION frames */
+  /* In this test, padding is laid out across 2 CONTINUATION frames */
   nghttp2_session_client_new(&session, &callbacks, &ud);
   nghttp2_session_server_new(&sv_session, &callbacks, &ud);
 
@@ -4351,7 +4350,7 @@ void test_nghttp2_session_pack_headers_with_padding3(void)
   accumulator acc;
   my_user_data ud;
   nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[8192];
+  nghttp2_nv nva[9120];
   size_t i;
 
   for(i = 0; i < ARRLEN(nva); ++i) {
