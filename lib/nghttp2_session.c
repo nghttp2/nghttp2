@@ -2286,19 +2286,22 @@ static int session_after_header_block_received(nghttp2_session *session)
   nghttp2_frame *frame = &session->iframe.frame;
   nghttp2_stream *stream;
 
-  /* We call on_frame_recv_callback regardless of the existence of
-     stream */
+  /* We don't call on_frame_recv_callback if stream has been closed
+     already or being closed. */
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  if(!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
+    return 0;
+  }
+
   rv = nghttp2_session_call_on_frame_received(session, frame);
   if(nghttp2_is_fatal(rv)) {
     return rv;
   }
+
   if(frame->hd.type !=  NGHTTP2_HEADERS) {
     return 0;
   }
-  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-  if(!stream) {
-    return 0;
-  }
+
   switch(frame->headers.cat) {
   case NGHTTP2_HCAT_REQUEST:
     return nghttp2_session_end_request_headers_received
@@ -3184,20 +3187,21 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
   int rv = 0;
   nghttp2_stream *stream;
 
-  /* We call on_frame_recv_callback even if stream has been closed
-     already */
-  rv = nghttp2_session_call_on_frame_received(session, frame);
-  if(nghttp2_is_fatal(rv)) {
-    return rv;
-  }
-
+  /* We don't call on_frame_recv_callback if stream has been closed
+     already or being closed. */
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-  if(!stream) {
+  if(!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
     /* This should be treated as stream error, but it results in lots
        of RST_STREAM. So just ignore frame against nonexistent stream
        for now. */
     return 0;
   }
+
+  rv = nghttp2_session_call_on_frame_received(session, frame);
+  if(nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
