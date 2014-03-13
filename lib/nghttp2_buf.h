@@ -134,39 +134,202 @@ void nghttp2_buf_reset(nghttp2_buf *buf);
  */
 void nghttp2_buf_wrap_init(nghttp2_buf *buf, uint8_t *begin, size_t len);
 
-/*
- * List of nghttp2_buf
- */
-
 struct nghttp2_buf_chain;
 
 typedef struct nghttp2_buf_chain nghttp2_buf_chain;
 
+/* Chains 2 buffers */
 struct nghttp2_buf_chain {
+  /* Points to the subsequent buffer. NULL if there is no such
+     buffer. */
   nghttp2_buf_chain *next;
   nghttp2_buf buf;
 };
 
 typedef struct {
+  /* Points to the first buffer */
   nghttp2_buf_chain *head;
+  /* Buffer pointer where write occurs. */
   nghttp2_buf_chain *cur;
   /* The buffer capacity of each buf */
   size_t chunk_length;
   /* The maximum number of nghttp2_buf_chain */
   size_t chunk_left;
+  /* pos offset from begin in each buffers. On initialization and
+     reset, buf->pos and buf->last are positioned at buf->begin +
+     offset. */
+  size_t offset;
 } nghttp2_bufs;
 
+/*
+ * This is the same as calling nghttp2_bufs_init2 with the given
+ * arguments and offset = 0.
+ */
 int nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_length,
                       size_t max_chunk);
 
+/*
+ * Initializes |bufs|. Each buffer size is given in the
+ * |chunk_length|.  The maximum number of buffers is given in the
+ * |max_chunk|. Each buffer will have bufs->pos and bufs->last shifted
+ * to left by |offset| bytes on creation and reset.
+ *
+ * This function allocates first buffer.  bufs->head and bufs->cur
+ * will point to the first buffer after this call.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     max_chunk is 0
+ */
+int nghttp2_bufs_init2(nghttp2_bufs *bufs, size_t chunk_length,
+                       size_t max_chunk, size_t offset);
+
+/*
+ * Frees any related resources to the |bufs|.
+ */
 void nghttp2_bufs_free(nghttp2_bufs *bufs);
 
+/*
+ * Appends the |data| of length |len| to the |bufs|. The write starts
+ * at bufs->cur->buf.last. A new buffers will be allocated to store
+ * all data.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
+ */
 int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len);
 
+/*
+ * Appends a single byte |b| to the |bufs|. The write starts at
+ * bufs->cur->buf.last. A new buffers will be allocated to store all
+ * data.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
+ */
 int nghttp2_bufs_addb(nghttp2_bufs *bufs, uint8_t b);
 
+/*
+ * Behaves like nghttp2_bufs_addb(), but this does not update
+ * buf->last pointer.
+ */
+int nghttp2_bufs_addb_hold(nghttp2_bufs *bufs, uint8_t b);
+
+#define nghttp2_bufs_fast_addb(BUFS, B)          \
+  do {                                           \
+    *(BUFS)->cur->buf.last++ = B;                \
+  } while(0)
+
+#define nghttp2_bufs_fast_addb_hold(BUFS, B)     \
+  do {                                           \
+    *(BUFS)->cur->buf.last = B;                  \
+  } while(0)
+
+/*
+ * Performs bitwise-OR of |b| at bufs->cur->buf.last. A new buffers
+ * will be allocated if necessary.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
+ */
+int nghttp2_bufs_orb(nghttp2_bufs *bufs, uint8_t b);
+
+/*
+ * Behaves like nghttp2_bufs_orb(), but does not update buf->last
+ * pointer.
+ */
+int nghttp2_bufs_orb_hold(nghttp2_bufs *bufs, uint8_t b);
+
+#define nghttp2_bufs_fast_orb(BUFS, B)          \
+  do {                                          \
+    *(BUFS)->cur->buf.last++ |= B;              \
+  } while(0)
+
+#define nghttp2_bufs_fast_orb_hold(BUFS, B)     \
+  do {                                          \
+    *(BUFS)->cur->buf.last |= B;                \
+  } while(0)
+
+/*
+ * Copies all data stored in |bufs| to the contagious buffer.  This
+ * function allocates the contagious memory to store all data in
+ * |bufs| and assigns it to |*out|.
+ *
+ * On successful return, nghttp2_bufs_len(bufs) returns 0, just like
+ * after calling nghttp2_bufs_reset().
+
+ * This function returns the length of copied data and assigns the
+ * pointer to copied data to |*out| if it succeeds, or one of the
+ * following negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
 ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out);
 
+/*
+ * Resets |bufs| and makes the buffers empty.
+ */
 void nghttp2_bufs_reset(nghttp2_bufs *bufs);
+
+/*
+ * Moves bufs->cur to bufs->cur->next.  If resulting bufs->cur is
+ * NULL, this function allocates new buffers and bufs->cur points to
+ * it.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
+ */
+int nghttp2_bufs_advance(nghttp2_bufs *bufs);
+
+/* Sets bufs->cur to bufs->head */
+#define nghttp2_bufs_rewind(BUFS)               \
+  do {                                          \
+    (BUFS)->cur = (BUFS)->head;                 \
+  } while(0)
+
+/*
+ * Move bufs->cur, from the current position, using next member, to
+ * the last buf which has nghttp2_buf_len(buf) > 0 without seeing buf
+ * which satisfies nghttp2_buf_len(buf) == 0. If bufs->cur->next is
+ * NULL, bufs->cur is unchanged.
+ */
+void nghttp2_bufs_seek_last_present(nghttp2_bufs *bufs);
+
+/*
+ * Returns nonzero if bufs->cur->next is not emtpy.
+ */
+int nghttp2_bufs_next_present(nghttp2_bufs *bufs);
+
+#define nghttp2_bufs_cur_avail(BUFS) nghttp2_buf_avail(&(BUFS)->cur->buf)
+
+/*
+ * Returns the buffer length of |bufs|.
+ */
+ssize_t nghttp2_bufs_len(nghttp2_bufs *bufs);
 
 #endif /* NGHTTP2_BUF_H */

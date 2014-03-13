@@ -28,8 +28,15 @@
 
 #include <CUnit/CUnit.h>
 
-int unpack_framebuf(nghttp2_frame *frame, nghttp2_buf *buf)
+#include "nghttp2_helper.h"
+
+int unpack_framebuf(nghttp2_frame *frame, nghttp2_bufs *bufs)
 {
+  nghttp2_buf *buf;
+
+  /* Assuming we have required data in first buffer. We don't decode
+     header block so, we don't mind its space */
+  buf = &bufs->head->buf;
   return unpack_frame(frame, buf->pos, nghttp2_buf_len(buf));
 }
 
@@ -143,28 +150,66 @@ void add_out(nva_out *out, nghttp2_nv *nv)
 }
 
 ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
-                   uint8_t *buf, size_t buflen)
+                   nghttp2_bufs *bufs, size_t offset)
 {
   ssize_t rv;
   nghttp2_nv nv;
   int inflate_flags;
-  size_t initial = buflen;
+  nghttp2_buf_chain *ci;
+  nghttp2_buf *buf;
+  nghttp2_buf bp;
+  int final;
+  size_t processed;
 
-  for(;;) {
-    inflate_flags = 0;
-    rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, buf, buflen, 1);
-    if(rv < 0) {
-      return rv;
+  processed = 0;
+
+  for(ci = bufs->head; ci; ci = ci->next) {
+    buf = &ci->buf;
+    final = nghttp2_buf_len(buf) == 0 || ci->next == NULL;
+    bp = *buf;
+
+    if(offset) {
+      int n;
+
+      n = nghttp2_min((ssize_t)offset, nghttp2_buf_len(&bp));
+      bp.pos += n;
+      offset -= n;
     }
-    buf += rv;
-    buflen -= rv;
-    if(inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
-      add_out(out, &nv);
-    }
-    if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
-      break;
+
+    for(;;) {
+      inflate_flags = 0;
+      rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags,
+                                 bp.pos, nghttp2_buf_len(&bp), final);
+
+      if(rv < 0) {
+        return rv;
+      }
+
+      bp.pos += rv;
+      processed += rv;
+
+      if(inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
+        add_out(out, &nv);
+      }
+      if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
+        break;
+      }
     }
   }
+
   nghttp2_hd_inflate_end_headers(inflater);
-  return initial - buflen;
+
+  return processed;
+}
+
+void frame_pack_bufs_init(nghttp2_bufs *bufs)
+{
+  /* 2 for PAD_HIGH and PAD_LOW */
+  nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 2);
+}
+
+void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size)
+{
+  /* 2 for PAD_HIGH and PAD_LOW */
+  nghttp2_bufs_init2(bufs, chunk_size, 16, NGHTTP2_FRAME_HDLEN + 2);
 }

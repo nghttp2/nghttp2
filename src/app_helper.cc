@@ -324,7 +324,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   }
   switch(frame->hd.type) {
   case NGHTTP2_DATA:
-    if(frame->hd.flags & (NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW)) {
+    if(frame->data.padlen > 0) {
       print_frame_attr_indent();
       fprintf(outfile, "(padlen=%zu)\n", frame->data.padlen);
     }

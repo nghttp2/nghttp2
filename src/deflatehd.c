@@ -72,26 +72,36 @@ static void to_hex(char *dest, const uint8_t *src, size_t len)
 }
 
 static void output_to_json(nghttp2_hd_deflater *deflater,
-                           nghttp2_buf *buf, size_t inputlen,
+                           nghttp2_bufs *bufs, size_t inputlen,
                            nghttp2_nv *nva, size_t nvlen,
                            int seq)
 {
   json_t *obj;
-  char *hex = NULL;
+  char *hex = NULL, *hexp;
   size_t len;
+  nghttp2_buf_chain *ci;
+  nghttp2_buf *buf;
 
-  len = nghttp2_buf_len(buf);
+  len = nghttp2_bufs_len(bufs);
 
   if(len > 0) {
     hex = malloc(len * 2);
   }
+
   obj = json_object();
   json_object_set_new(obj, "seq", json_integer(seq));
   json_object_set_new(obj, "input_length", json_integer(inputlen));
   json_object_set_new(obj, "output_length", json_integer(len));
   json_object_set_new(obj, "percentage_of_original_size",
                       json_real((double)len / inputlen * 100));
-  to_hex(hex, buf->pos, len);
+
+  hexp = hex;
+  for(ci = bufs->head; ci; ci = ci->next) {
+    buf = &ci->buf;
+    to_hex(hexp, buf->pos, nghttp2_buf_len(buf));
+    hexp += nghttp2_buf_len(buf);
+  }
+
   if(len == 0) {
     json_object_set_new(obj, "wire", json_string(""));
   } else {
@@ -117,11 +127,11 @@ static void deflate_hd(nghttp2_hd_deflater *deflater,
                        nghttp2_nv *nva, size_t nvlen, size_t inputlen, int seq)
 {
   ssize_t rv;
-  nghttp2_buf buf;
+  nghttp2_bufs bufs;
 
-  nghttp2_buf_init(&buf);
+  nghttp2_bufs_init2(&bufs, 4096, 16, 0);
 
-  rv = nghttp2_hd_deflate_hd(deflater, &buf, nva, nvlen);
+  rv = nghttp2_hd_deflate_hd(deflater, &bufs, nva, nvlen);
   if(rv < 0) {
     fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
     exit(EXIT_FAILURE);
@@ -130,8 +140,8 @@ static void deflate_hd(nghttp2_hd_deflater *deflater,
   input_sum += inputlen;
   output_sum += rv;
 
-  output_to_json(deflater, &buf, inputlen, nva, nvlen, seq);
-  nghttp2_buf_free(&buf);
+  output_to_json(deflater, &bufs, inputlen, nva, nvlen, seq);
+  nghttp2_bufs_free(&bufs);
 }
 
 static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater, int seq)

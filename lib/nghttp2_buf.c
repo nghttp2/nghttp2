@@ -124,10 +124,16 @@ static void nghttp2_buf_chain_del(nghttp2_buf_chain *chain)
 int nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_length,
                       size_t max_chunk)
 {
+  return nghttp2_bufs_init2(bufs, chunk_length, max_chunk, 0);
+}
+
+int nghttp2_bufs_init2(nghttp2_bufs *bufs, size_t chunk_length,
+                       size_t max_chunk, size_t offset)
+{
   int rv;
   nghttp2_buf_chain *chain;
 
-  if(max_chunk == 0) {
+  if(max_chunk == 0 || chunk_length < offset) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
@@ -136,8 +142,12 @@ int nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_length,
     return rv;
   }
 
+  bufs->offset = offset;
+
   bufs->head = chain;
   bufs->cur = bufs->head;
+
+  nghttp2_buf_shift_right(&bufs->cur->buf, offset);
 
   bufs->chunk_length = chunk_length;
   bufs->chunk_left = max_chunk - 1;
@@ -158,10 +168,36 @@ void nghttp2_bufs_free(nghttp2_bufs *bufs)
   }
 }
 
+void nghttp2_bufs_seek_last_present(nghttp2_bufs *bufs)
+{
+  nghttp2_buf_chain *ci;
+
+  for(ci = bufs->cur; ci->next; ci = ci->next) {
+    if(nghttp2_buf_len(&ci->buf) == 0) {
+      return;
+    } else {
+      bufs->cur = ci;
+    }
+  }
+}
+
+ssize_t nghttp2_bufs_len(nghttp2_bufs *bufs)
+{
+  nghttp2_buf_chain *ci;
+  ssize_t len;
+
+  len = 0;
+  for(ci = bufs->head; ci; ci = ci->next) {
+    len += nghttp2_buf_len(&ci->buf);
+  }
+
+  return len;
+}
+
 static int nghttp2_bufs_avail(nghttp2_bufs *bufs)
 {
   return nghttp2_buf_avail(&bufs->cur->buf) +
-    bufs->chunk_left * bufs->chunk_left;
+    (bufs->chunk_left - bufs->offset) * bufs->chunk_left;
 }
 
 static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
@@ -189,6 +225,8 @@ static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
   bufs->cur->next = chain;
   bufs->cur = chain;
 
+  nghttp2_buf_shift_right(&bufs->cur->buf, bufs->offset);
+
   return 0;
 }
 
@@ -199,7 +237,7 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len)
   nghttp2_buf *buf;
   const uint8_t *p;
 
-  if((size_t)nghttp2_bufs_avail(bufs) < len) {
+  if(nghttp2_bufs_avail(bufs) < (ssize_t)len) {
     return NGHTTP2_ERR_BUFFER_ERROR;
   }
 
@@ -224,7 +262,7 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len)
   return 0;
 }
 
-int nghttp2_bufs_addb(nghttp2_bufs *bufs, uint8_t b)
+static int nghttp2_bufs_ensure_addb(nghttp2_bufs *bufs)
 {
   int rv;
   nghttp2_buf *buf;
@@ -232,7 +270,6 @@ int nghttp2_bufs_addb(nghttp2_bufs *bufs, uint8_t b)
   buf = &bufs->cur->buf;
 
   if(nghttp2_buf_avail(buf) > 0) {
-    *buf->last++ = b;
     return 0;
   }
 
@@ -241,9 +278,61 @@ int nghttp2_bufs_addb(nghttp2_bufs *bufs, uint8_t b)
     return rv;
   }
 
-  buf = &bufs->cur->buf;
+  return 0;
+}
 
-  *buf->last++ = b;
+int nghttp2_bufs_addb(nghttp2_bufs *bufs, uint8_t b)
+{
+  int rv;
+
+  rv = nghttp2_bufs_ensure_addb(bufs);
+  if(rv != 0) {
+    return rv;
+  }
+
+  *bufs->cur->buf.last++ = b;
+
+  return 0;
+}
+
+int nghttp2_bufs_addb_hold(nghttp2_bufs *bufs, uint8_t b)
+{
+  int rv;
+
+  rv = nghttp2_bufs_ensure_addb(bufs);
+  if(rv != 0) {
+    return rv;
+  }
+
+  *bufs->cur->buf.last = b;
+
+  return 0;
+}
+
+int nghttp2_bufs_orb(nghttp2_bufs *bufs, uint8_t b)
+{
+  int rv;
+
+  rv = nghttp2_bufs_ensure_addb(bufs);
+  if(rv != 0) {
+    return rv;
+  }
+
+  *bufs->cur->buf.last++ |= b;
+
+  return 0;
+}
+
+int nghttp2_bufs_orb_hold(nghttp2_bufs *bufs, uint8_t b)
+{
+  int rv;
+
+  rv = nghttp2_bufs_ensure_addb(bufs);
+  if(rv != 0) {
+    return rv;
+  }
+
+  *bufs->cur->buf.last |= b;
 
   return 0;
 }
@@ -272,7 +361,9 @@ ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out)
   for(chain = bufs->head; chain; chain = chain->next) {
     buf = &chain->buf;
     resbuf.last = nghttp2_cpymem(resbuf.last, buf->pos, nghttp2_buf_len(buf));
+
     nghttp2_buf_reset(buf);
+    nghttp2_buf_shift_right(&chain->buf, bufs->offset);
   }
 
   bufs->cur = bufs->head;
@@ -288,5 +379,23 @@ void nghttp2_bufs_reset(nghttp2_bufs *bufs)
 
   for(chain = bufs->head; chain; chain = chain->next) {
     nghttp2_buf_reset(&chain->buf);
+    nghttp2_buf_shift_right(&chain->buf, bufs->offset);
   }
+
+  bufs->cur = bufs->head;
 }
+
+int nghttp2_bufs_advance(nghttp2_bufs *bufs)
+{
+  return nghttp2_bufs_alloc_chain(bufs);
+}
+
+int nghttp2_bufs_next_present(nghttp2_bufs *bufs)
+{
+  nghttp2_buf_chain *chain;
+
+  chain = bufs->cur->next;
+
+  return chain && nghttp2_buf_len(&chain->buf);
+}
+

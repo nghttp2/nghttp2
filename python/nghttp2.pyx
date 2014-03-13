@@ -114,27 +114,36 @@ cdef class HDDeflater:
             nvap[0].valuelen = len(v)
             nvap += 1
 
-        cdef cnghttp2.nghttp2_buf buf
+        cdef cnghttp2.nghttp2_bufs bufs
         cdef size_t outcap = 0
         cdef ssize_t rv
+        cdef uint8_t *out
 
-        cnghttp2.nghttp2_buf_init(&buf)
+        cnghttp2.nghttp2_bufs_init(&bufs, 4096, 16)
 
-        rv = cnghttp2.nghttp2_hd_deflate_hd(&self._deflater, &buf,
+        rv = cnghttp2.nghttp2_hd_deflate_hd(&self._deflater, &bufs,
                                             nva, len(headers))
         free(nva)
 
         if rv < 0:
-            cnghttp2.nghttp2_buf_free(&buf);
+            cnghttp2.nghttp2_bufs_free(&bufs);
+
+            raise Exception(_strerror(rv))
+
+        rv = cnghttp2.nghttp2_bufs_remove(&bufs, &out)
+
+        if rv < 0:
+            cnghttp2.nghttp2_bufs_free(&bufs);
 
             raise Exception(_strerror(rv))
 
         cdef bytes res
 
         try:
-            res = buf.pos[:rv]
+            res = out[:rv]
         finally:
-            cnghttp2.nghttp2_buf_free(&buf)
+            cnghttp2.nghttp2_free(out)
+            cnghttp2.nghttp2_bufs_free(&bufs)
 
         return res
 

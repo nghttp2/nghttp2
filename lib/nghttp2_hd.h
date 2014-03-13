@@ -295,29 +295,29 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
 
 /*
  * Deflates the |nva|, which has the |nvlen| name/value pairs, into
- * the buffer pointed by the |buf|. The caller must ensure that
- * nghttp2_buf_len(buf) == 0 holds. Write starts at buf->last.
+ * the |bufs|.
  *
- * This function expands |buf| as necessary to store the result.
+ * This function expands |bufs| as necessary to store the result. If
+ * buffers is full and the process still requires more space, this
+ * funtion fails and returns NGHTTP2_ERR_HEADER_COMP.
  *
- * This function copies necessary data into |buf|. After this function
- * returns, it is safe to delete the |nva|.
+ * After this function returns, it is safe to delete the |nva|.
  *
  * TODO: The rest of the code call nghttp2_hd_end_headers() after this
  * call, but it is just a regacy of the first implementation. Now it
  * is not required to be called as of now.
  *
- * This function returns the number of bytes outputted if it succeeds,
- * or one of the following negative error codes:
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_HEADER_COMP
  *     Deflation process has failed.
  */
-ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
-                              nghttp2_buf *buf,
-                              nghttp2_nv *nva, size_t nvlen);
+int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
+                          nghttp2_bufs *bufs,
+                          nghttp2_nv *nva, size_t nvlen);
 
 typedef enum {
   NGHTTP2_HD_INFLATE_NONE = 0,
@@ -369,16 +369,16 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_indname_block(nghttp2_buf *buf, size_t index,
+int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t index,
                                   const uint8_t *value, size_t valuelen,
                                   int inc_indexing);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_newname_block(nghttp2_buf *buf, nghttp2_nv *nv,
+int nghttp2_hd_emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
                                   int inc_indexing);
 
 /* For unittesting purpose */
-int nghttp2_hd_emit_table_size(nghttp2_buf *buf, size_t table_size);
+int nghttp2_hd_emit_table_size(nghttp2_bufs *bufs, size_t table_size);
 
 /* For unittesting purpose */
 nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
@@ -396,19 +396,19 @@ nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
 size_t nghttp2_hd_huff_encode_count(const uint8_t *src, size_t len);
 
 /*
- * Encodes the given data |src| with length |srclen| to the given
- * memory location pointed by |dest|, allocated at lest |destlen|
- * bytes. The caller is responsible to specify |destlen| at least the
- * length that nghttp2_hd_huff_encode_count() returns.
+ * Encodes the given data |src| with length |srclen| to the |bufs|.
+ * This function expands extra buffers in |bufs| if necessary.
  *
- * This function returns the number of written bytes, including
- * padding of prefix of terminal symbol code. This return value is
- * exactly the same with the return value of
- * nghttp2_hd_huff_encode_count() if it is given with the same |src|
- * and |srclen|. This function always succeeds.
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
  */
-ssize_t nghttp2_hd_huff_encode(uint8_t *dest, size_t destlen,
-                               const uint8_t *src, size_t srclen);
+int nghttp2_hd_huff_encode(nghttp2_bufs *bufs,
+                           const uint8_t *src, size_t srclen);
 
 void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
 

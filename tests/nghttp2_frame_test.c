@@ -72,14 +72,14 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_headers frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
   nghttp2_nv *nva;
   ssize_t nvlen;
   nva_out out;
   ssize_t hdblocklen;
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   nva_out_init(&out);
   nghttp2_hd_deflate_init(&deflater);
@@ -91,22 +91,24 @@ void test_nghttp2_frame_pack_headers()
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
                              1000000007,
                              1 << 20, nva, nvlen);
-  framelen = nghttp2_frame_pack_headers(&buf, &frame, &deflater);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  nghttp2_bufs_rewind(&bufs);
 
-  check_frame_header(nghttp2_buf_len(&buf) - NGHTTP2_FRAME_HDLEN,
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
+
+  check_frame_header(nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN,
                      NGHTTP2_HEADERS,
                      NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS,
                      1000000007, &oframe.hd);
   /* We didn't include PRIORITY flag so priority is not packed */
   CU_ASSERT(1 << 30 == oframe.pri);
 
-  hdblocklen = nghttp2_buf_len(&buf) - NGHTTP2_FRAME_HDLEN;
+  hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN;
   CU_ASSERT(hdblocklen ==
-            inflate_hd(&inflater, &out,
-                       buf.pos + NGHTTP2_FRAME_HDLEN, hdblocklen));
+            inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN));
 
   CU_ASSERT(7 == out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
@@ -114,33 +116,33 @@ void test_nghttp2_frame_pack_headers()
 
   nghttp2_frame_headers_free(&oframe);
   nva_out_reset(&out);
-  nghttp2_buf_reset(&buf);
+  nghttp2_bufs_reset(&bufs);
 
   memset(&oframe, 0, sizeof(oframe));
   /* Next, include PRIORITY flag */
   frame.hd.flags |= NGHTTP2_FLAG_PRIORITY;
-  framelen = nghttp2_frame_pack_headers(&buf, &frame, &deflater);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
 
-  check_frame_header(nghttp2_buf_len(&buf) - NGHTTP2_FRAME_HDLEN,
+  check_frame_header(nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN,
                      NGHTTP2_HEADERS,
                      NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
                      NGHTTP2_FLAG_PRIORITY,
                      1000000007, &oframe.hd);
   CU_ASSERT(1 << 20 == oframe.pri);
 
-  hdblocklen = nghttp2_buf_len(&buf) - NGHTTP2_FRAME_HDLEN - 4;
+  hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN - 4;
   CU_ASSERT(hdblocklen ==
-            inflate_hd(&inflater, &out,
-                       buf.pos + NGHTTP2_FRAME_HDLEN + 4, hdblocklen));
+            inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN + 4));
 
   nghttp2_nv_array_sort(out.nva, out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
 
   nva_out_reset(&out);
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_headers_free(&oframe);
   nghttp2_frame_headers_free(&frame);
   nghttp2_hd_inflate_free(&inflater);
@@ -151,16 +153,16 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
 {
   nghttp2_hd_deflater deflater;
   nghttp2_headers frame;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
   nghttp2_nv *nva;
   ssize_t nvlen;
   size_t big_vallen = NGHTTP2_HD_MAX_VALUE;
   nghttp2_nv big_hds[16];
   size_t big_hdslen = ARRLEN(big_hds);
   size_t i;
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   for(i = 0; i < big_hdslen; ++i) {
     big_hds[i].name = (uint8_t*)"header";
@@ -177,11 +179,11 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
                              1000000007,
                              0, nva, nvlen);
-  framelen = nghttp2_frame_pack_headers(&buf, &frame, &deflater);
-  CU_ASSERT_EQUAL(NGHTTP2_ERR_HEADER_COMP, framelen);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == rv);
 
   nghttp2_frame_headers_free(&frame);
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   for(i = 0; i < big_hdslen; ++i) {
     free(big_hds[i].value);
   }
@@ -191,21 +193,22 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
 void test_nghttp2_frame_pack_priority(void)
 {
   nghttp2_priority frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_priority_init(&frame, 1000000007, 1 << 30);
-  framelen = nghttp2_frame_pack_priority(&buf, &frame);
+  rv = nghttp2_frame_pack_priority(&bufs, &frame);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(12 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(4, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 1000000007,
                      &oframe.hd);
   CU_ASSERT(1 << 30 == oframe.pri);
 
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_priority_free(&oframe);
   nghttp2_frame_priority_free(&frame);
 }
@@ -213,21 +216,22 @@ void test_nghttp2_frame_pack_priority(void)
 void test_nghttp2_frame_pack_rst_stream(void)
 {
   nghttp2_rst_stream frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_rst_stream_init(&frame, 1000000007, NGHTTP2_PROTOCOL_ERROR);
-  framelen = nghttp2_frame_pack_rst_stream(&buf, &frame);
+  rv = nghttp2_frame_pack_rst_stream(&bufs, &frame);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(12 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, 1000000007,
                      &oframe.hd);
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == oframe.error_code);
 
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_rst_stream_free(&oframe);
   nghttp2_frame_rst_stream_free(&frame);
 }
@@ -235,9 +239,9 @@ void test_nghttp2_frame_pack_rst_stream(void)
 void test_nghttp2_frame_pack_settings()
 {
   nghttp2_settings frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
   int i;
+  int rv;
   nghttp2_settings_entry iv[] =
     {
       {
@@ -251,17 +255,17 @@ void test_nghttp2_frame_pack_settings()
       }
     };
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_settings_init(&frame, NGHTTP2_FLAG_NONE,
                               nghttp2_frame_iv_copy(iv, 3), 3);
-  framelen = nghttp2_frame_pack_settings(&buf, &frame);
+  rv = nghttp2_frame_pack_settings(&bufs, &frame);
 
-  CU_ASSERT(NGHTTP2_FRAME_HDLEN +
-            3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH == framelen);
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH ==
+            nghttp2_bufs_len(&bufs));
 
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(3 * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH,
                      NGHTTP2_SETTINGS, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
   CU_ASSERT(3 == oframe.niv);
@@ -270,7 +274,7 @@ void test_nghttp2_frame_pack_settings()
     CU_ASSERT(iv[i].value == oframe.iv[i].value);
   }
 
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_settings_free(&frame);
   nghttp2_frame_settings_free(&oframe);
 }
@@ -280,14 +284,14 @@ void test_nghttp2_frame_pack_push_promise()
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_push_promise frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
   nghttp2_nv *nva;
   ssize_t nvlen;
   nva_out out;
   ssize_t hdblocklen;
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   nva_out_init(&out);
   nghttp2_hd_deflate_init(&deflater);
@@ -297,27 +301,27 @@ void test_nghttp2_frame_pack_push_promise()
   nvlen = HEADERS_LENGTH;
   nghttp2_frame_push_promise_init(&frame, NGHTTP2_FLAG_END_HEADERS,
                                   1000000007, (1U << 31) - 1, nva, nvlen);
-  framelen = nghttp2_frame_pack_push_promise(&buf, &frame, &deflater);
+  rv = nghttp2_frame_pack_push_promise(&bufs, &frame, &deflater);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
 
-  check_frame_header(nghttp2_buf_len(&buf) - NGHTTP2_FRAME_HDLEN,
+  check_frame_header(nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN,
                      NGHTTP2_PUSH_PROMISE,
                      NGHTTP2_FLAG_END_HEADERS, 1000000007, &oframe.hd);
   CU_ASSERT((1U << 31) - 1 == oframe.promised_stream_id);
 
-  hdblocklen = nghttp2_buf_len(&buf) - NGHTTP2_FRAME_HDLEN - 4;
+  hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN - 4;
   CU_ASSERT(hdblocklen ==
-            inflate_hd(&inflater, &out,
-                       buf.pos + NGHTTP2_FRAME_HDLEN + 4, hdblocklen));
+            inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN + 4));
 
   CU_ASSERT(7 == out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
   CU_ASSERT(nvvalueeq("GET", &out.nva[0]));
 
   nva_out_reset(&out);
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_push_promise_free(&oframe);
   nghttp2_frame_push_promise_free(&frame);
   nghttp2_hd_inflate_free(&inflater);
@@ -327,22 +331,23 @@ void test_nghttp2_frame_pack_push_promise()
 void test_nghttp2_frame_pack_ping(void)
 {
   nghttp2_ping frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
   const uint8_t opaque_data[] = "01234567";
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_ping_init(&frame, NGHTTP2_FLAG_ACK, opaque_data);
-  framelen = nghttp2_frame_pack_ping(&buf, &frame);
+  rv = nghttp2_frame_pack_ping(&bufs, &frame);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(16 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(8, NGHTTP2_PING, NGHTTP2_FLAG_ACK, 0, &oframe.hd);
   CU_ASSERT(memcmp(opaque_data, oframe.opaque_data, sizeof(opaque_data) - 1)
             == 0);
 
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_ping_free(&oframe);
   nghttp2_frame_ping_free(&frame);
 }
@@ -350,20 +355,21 @@ void test_nghttp2_frame_pack_ping(void)
 void test_nghttp2_frame_pack_goaway()
 {
   nghttp2_goaway frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
   size_t opaque_data_len = 16;
   uint8_t *opaque_data = malloc(opaque_data_len);
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   memcpy(opaque_data, "0123456789abcdef", opaque_data_len);
   nghttp2_frame_goaway_init(&frame, 1000000007, NGHTTP2_PROTOCOL_ERROR,
                             opaque_data, opaque_data_len);
-  framelen = nghttp2_frame_pack_goaway(&buf, &frame);
+  rv = nghttp2_frame_pack_goaway(&bufs, &frame);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT((ssize_t)(16 + opaque_data_len) == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(24, NGHTTP2_GOAWAY, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
   CU_ASSERT(1000000007 == oframe.last_stream_id);
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == oframe.error_code);
@@ -373,7 +379,7 @@ void test_nghttp2_frame_pack_goaway()
   /* CU_ASSERT(opaque_data_len == oframe.opaque_data_len); */
   /* CU_ASSERT(memcmp(opaque_data, oframe.opaque_data, opaque_data_len) == 0); */
 
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_goaway_free(&oframe);
   nghttp2_frame_goaway_free(&frame);
 }
@@ -381,22 +387,23 @@ void test_nghttp2_frame_pack_goaway()
 void test_nghttp2_frame_pack_window_update(void)
 {
   nghttp2_window_update frame, oframe;
-  nghttp2_buf buf;
-  ssize_t framelen;
+  nghttp2_bufs bufs;
+  int rv;
 
-  nghttp2_buf_init(&buf);
+  frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_window_update_init(&frame, NGHTTP2_FLAG_NONE,
                                    1000000007, 4096);
-  framelen = nghttp2_frame_pack_window_update(&buf, &frame);
+  rv = nghttp2_frame_pack_window_update(&bufs, &frame);
 
-  CU_ASSERT(framelen == nghttp2_buf_len(&buf));
-  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &buf));
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(12 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(4, NGHTTP2_WINDOW_UPDATE, NGHTTP2_FLAG_NONE,
                      1000000007, &oframe.hd);
   CU_ASSERT(4096 == oframe.window_size_increment);
 
-  nghttp2_buf_free(&buf);
+  nghttp2_bufs_free(&bufs);
   nghttp2_frame_window_update_free(&oframe);
   nghttp2_frame_window_update_free(&frame);
 }

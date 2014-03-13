@@ -55,14 +55,12 @@ typedef enum {
 typedef struct {
   nghttp2_outbound_item *item;
 
-  nghttp2_buf framebuf;
+  nghttp2_bufs framebufs;
   nghttp2_outbound_state state;
 } nghttp2_active_outbound_item;
 
 /* Buffer length for inbound raw byte stream. */
 #define NGHTTP2_INBOUND_BUFFER_LENGTH 16384
-
-#define NGHTTP2_INITIAL_OUTBOUND_FRAMEBUF_LENGTH 16384
 
 #define NGHTTP2_INITIAL_NV_BUFFER_LENGTH 4096
 
@@ -526,7 +524,7 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
  *     The read_callback failed (session error).
  */
 ssize_t nghttp2_session_pack_data(nghttp2_session *session,
-                                  nghttp2_buf *buf,
+                                  nghttp2_bufs *bufs,
                                   size_t datamax,
                                   nghttp2_private_data *frame);
 

@@ -54,7 +54,7 @@
     free(a);                                                \
   } while(0);
 
-int unpack_framebuf(nghttp2_frame *frame, nghttp2_buf *buf);
+int unpack_framebuf(nghttp2_frame *frame, nghttp2_bufs *bufs);
 
 int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len);
 
@@ -75,6 +75,10 @@ void nva_out_reset(nva_out *out);
 void add_out(nva_out *out, nghttp2_nv *nv);
 
 ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
-                   uint8_t *buf, size_t buflen);
+                   nghttp2_bufs *bufs, size_t offset);
+
+void frame_pack_bufs_init(nghttp2_bufs *bufs);
+
+void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size);
 
 #endif /* NGHTTP2_TEST_HELPER_H */
