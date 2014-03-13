@@ -555,7 +555,9 @@ Options:
                      (2**<N>)-1.  For SPDY, 2**<N> is used instead.
   -W, --connection-window-bits=<N>
                      Sets the connection level  initial window size to
-                     (2**<N>)-1.  This option does not work with SPDY.
+                     (2**<N>)-1.  For  SPDY, if  <N> is  strictly less
+                     than  16,  this  option  is  ignored.   Otherwise
+                     2**<N> is used for SPDY.
   -v, --verbose      Output debug information.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)"

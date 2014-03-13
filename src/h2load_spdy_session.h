@@ -44,6 +44,7 @@ public:
   virtual ssize_t on_read();
   virtual int on_write();
   virtual void terminate();
+  void handle_window_update(int32_t stream_id, size_t recvlen);
 
   nghttp2::util::EvbufferBuffer sendbuf;
 private:

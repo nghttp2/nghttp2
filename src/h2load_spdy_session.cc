@@ -82,6 +82,10 @@ void on_data_chunk_recv_callback
 {
   auto client = static_cast<Client*>(user_data);
   client->worker->stats.bytes_body += len;
+
+  auto spdy_session = static_cast<SpdySession*>(client->session.get());
+
+  spdy_session->handle_window_update(stream_id, len);
 }
 } // namespace
 
@@ -123,12 +127,25 @@ void SpdySession::on_connect()
 
   spdylay_session_client_new(&session_, spdy_version_, &callbacks, client_);
 
+  int val = 1;
+  spdylay_session_set_option(session_, SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE,
+                             &val, sizeof(val));
+
   spdylay_settings_entry iv[1];
   iv[0].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
   iv[0].value = (1 << client_->worker->config->window_bits);
   spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE, iv,
                           sizeof(iv) / sizeof(iv[0]));
+
+  auto config = client_->worker->config;
+
+  if(spdy_version_ >= SPDYLAY_PROTO_SPDY3_1 &&
+     config->connection_window_bits > 16) {
+    auto delta = (1 << config->connection_window_bits)
+      - SPDYLAY_INITIAL_WINDOW_SIZE;
+    spdylay_submit_window_update(session_, 0, delta);
+  }
 }
 
 void SpdySession::submit_request()
@@ -180,6 +197,54 @@ int SpdySession::on_write()
 void SpdySession::terminate()
 {
   spdylay_session_fail_session(session_, SPDYLAY_OK);
+}
+
+namespace {
+int32_t determine_window_update_transmission(spdylay_session *session,
+                                             int32_t stream_id,
+                                             size_t window_bits)
+{
+  int32_t recv_length;
+
+  if(stream_id == 0) {
+    recv_length = spdylay_session_get_recv_data_length(session);
+  } else {
+    recv_length = spdylay_session_get_stream_recv_data_length
+      (session, stream_id);
+  }
+
+  auto window_size = 1 << window_bits;
+
+  if(recv_length != -1 && recv_length >= window_size / 2) {
+    return recv_length;
+  }
+
+  return -1;
+}
+} // namespace
+
+void SpdySession::handle_window_update(int32_t stream_id, size_t recvlen)
+{
+  auto config = client_->worker->config;
+  size_t connection_window_bits;
+
+  if(config->connection_window_bits > 16) {
+    connection_window_bits = config->connection_window_bits;
+  } else {
+    connection_window_bits = 16;
+  }
+
+  auto delta = determine_window_update_transmission
+    (session_, 0, connection_window_bits);
+  if(delta > 0) {
+    spdylay_submit_window_update(session_, 0, delta);
+  }
+
+  delta = determine_window_update_transmission
+    (session_, stream_id, config->window_bits);
+  if(delta > 0) {
+    spdylay_submit_window_update(session_, stream_id, delta);
+  }
 }
 
 } // namespace h2load
