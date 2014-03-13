@@ -879,8 +879,8 @@ void test_nghttp2_session_recv_premature_headers(void)
 
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NULL != item);
-  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
-  CU_ASSERT(NGHTTP2_COMPRESSION_ERROR == OB_CTRL(item)->goaway.error_code);
+  CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
+  CU_ASSERT(NGHTTP2_COMPRESSION_ERROR == OB_CTRL(item)->rst_stream.error_code);
 
   nghttp2_bufs_free(&bufs);
   nghttp2_hd_deflate_free(&deflater);

@@ -2151,6 +2151,8 @@ static ssize_t inflate_header_block(nghttp2_session *session,
   ssize_t rv;
   int inflate_flags;
   nghttp2_nv nv;
+  nghttp2_stream *stream;
+
   *readlen_ptr = 0;
 
   DEBUGF(fprintf(stderr, "processing header block %zu bytes\n", inlen));
@@ -2163,15 +2165,26 @@ static ssize_t inflate_header_block(nghttp2_session *session,
     }
     if(rv < 0) {
       if(session->iframe.state == NGHTTP2_IB_READ_HEADER_BLOCK) {
-        rv = nghttp2_session_handle_invalid_connection
-          (session, frame, NGHTTP2_COMPRESSION_ERROR);
-      } else {
-        rv = nghttp2_session_terminate_session(session,
-                                               NGHTTP2_COMPRESSION_ERROR);
+        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+
+        if(stream && stream->state != NGHTTP2_STREAM_CLOSING) {
+          /* Adding RST_STREAM here is very important. It prevents
+             from invoking subsequent callbacks for the same stream
+             ID. */
+          rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
+                                              NGHTTP2_COMPRESSION_ERROR);
+
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
       }
-      if(rv != 0) {
+      rv = nghttp2_session_terminate_session(session,
+                                             NGHTTP2_COMPRESSION_ERROR);
+      if(nghttp2_is_fatal(rv)) {
         return rv;
       }
+
       return NGHTTP2_ERR_HEADER_COMP;
     }
     in += rv;
