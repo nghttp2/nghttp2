@@ -63,7 +63,7 @@ Config::Config()
     nreqs(1),
     nclients(1),
     nthreads(1),
-    max_concurrent_streams(1),
+    max_concurrent_streams(-1),
     window_bits(16),
     connection_window_bits(16),
     port(0),
@@ -111,6 +111,7 @@ Client::Client(Worker *worker)
     ssl(nullptr),
     bev(nullptr),
     next_addr(config.addrs),
+    reqidx(0),
     state(CLIENT_IDLE)
 {}
 
@@ -279,7 +280,7 @@ int Client::on_connect()
 
   auto nreq = std::min(worker->stats.req_todo - worker->stats.req_started,
                        std::min(worker->stats.req_todo / worker->clients.size(),
-                                config.max_concurrent_streams));
+                                (size_t)config.max_concurrent_streams));
   for(; nreq > 0; --nreq) {
     submit_request();
   }
@@ -500,6 +501,26 @@ void resolve_host()
 } // namespace
 
 namespace {
+std::string get_reqline(const char *uri, const http_parser_url& u)
+{
+  std::string reqline;
+
+  if(util::has_uri_field(u, UF_PATH)) {
+    reqline = util::get_uri_field(uri, u, UF_PATH);
+  } else {
+    reqline = "/";
+  }
+
+  if(util::has_uri_field(u, UF_QUERY)) {
+    reqline += "?";
+    reqline += util::get_uri_field(uri, u, UF_QUERY);
+  }
+
+  return reqline;
+}
+} // namespace
+
+namespace {
 int client_select_next_proto_cb(SSL* ssl,
                                 unsigned char **out, unsigned char *outlen,
                                 const unsigned char *in, unsigned int inlen,
@@ -527,7 +548,7 @@ void print_version(std::ostream& out)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << R"(Usage: h2load [OPTIONS]... <URI>
+  out << R"(Usage: h2load [OPTIONS]... <URI>...
 benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
 }
 } // namespace
@@ -538,7 +559,13 @@ void print_help(std::ostream& out)
   print_usage(out);
 
   out << R"(
-  <URI>              Specify URI to access.
+  <URI>              Specify  URI to  access.   Multiple  URIs can  be
+                     specified.  URIs are used  in this order for each
+                     client.   All URIs  are used,  then first  URI is
+                     used and  then 2nd URI,  and so on.   The scheme,
+                     host and port in the subsequent URIs, if present,
+                     are  ignored.  Those  in the  first URI  are used
+                     solely.
 Options:
   -n, --requests=<N> Number of requests. Default: )"
       << config.nreqs << R"(
@@ -546,10 +573,10 @@ Options:
       << config.nclients << R"(
   -t, --threads=<N>  Number of native threads. Default: )"
       << config.nthreads << R"(
-  -m, --max-concurrent-streams=<N>
-                     Max concurrent streams to issue per session.
-                     Default: )"
-      << config.max_concurrent_streams << R"(
+  -m, --max-concurrent-streams=(auto|<N>)
+                     Max concurrent streams to  issue per session.  If
+                     "auto"  is given,  the  number of  given URIs  is
+                     used.  Default: auto
   -w, --window-bits=<N>
                      Sets  the stream  level  initial  window size  to
                      (2**<N>)-1.  For SPDY, 2**<N> is used instead.
@@ -598,7 +625,11 @@ int main(int argc, char **argv)
       config.nthreads = strtoul(optarg, nullptr, 10);
       break;
     case 'm':
-      config.max_concurrent_streams = strtoul(optarg, nullptr, 10);
+      if(util::strieq("auto", optarg)) {
+        config.max_concurrent_streams = -1;
+      } else {
+        config.max_concurrent_streams = strtoul(optarg, nullptr, 10);
+      }
       break;
     case 'w':
     case 'W': {
@@ -687,6 +718,17 @@ int main(int argc, char **argv)
 
   ssl::LibsslGlobalLock();
 
+  auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  if(!ssl_ctx) {
+    std::cerr << "Failed to create SSL_CTX: "
+              << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  SSL_CTX_set_next_proto_select_cb(ssl_ctx,
+                                   client_select_next_proto_cb, nullptr);
+
+  // First URI is treated specially.  We use scheme, host and port of
+  // this URI and ignore those in the remaining URIs if present.
   http_parser_url u;
   memset(&u, 0, sizeof(u));
   auto uri = argv[optind];
@@ -703,48 +745,71 @@ int main(int argc, char **argv)
   } else {
     config.port = util::get_default_port(uri, u);
   }
-  if(util::has_uri_field(u, UF_PATH)) {
-    config.path = util::get_uri_field(uri, u, UF_PATH);
-  } else {
-    config.path = "/";
+
+  std::vector<std::string> reqlines;
+
+  reqlines.push_back(get_reqline(uri, u));
+
+  ++optind;
+  for(int i = optind; i < argc; ++i) {
+    memset(&u, 0, sizeof(u));
+
+    auto uri = argv[i];
+
+    if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+      std::cerr << "invalid URI: " << uri << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    reqlines.push_back(get_reqline(uri, u));
   }
 
-  auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
-  if(!ssl_ctx) {
-    std::cerr << "Failed to create SSL_CTX: "
-              << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-    exit(EXIT_FAILURE);
+  if(config.max_concurrent_streams == -1) {
+    config.max_concurrent_streams = reqlines.size();
   }
-  SSL_CTX_set_next_proto_select_cb(ssl_ctx,
-                                   client_select_next_proto_cb, nullptr);
-  // For nghttp2
-  Headers nva;
-  nva.emplace_back(":scheme", config.scheme);
+
+  Headers shared_nva;
+  shared_nva.emplace_back(":scheme", config.scheme);
   if(config.port != util::get_default_port(uri, u)) {
-    nva.emplace_back(":authority",
+    shared_nva.emplace_back(":authority",
                      config.host + ":" + util::utos(config.port));
   } else {
-    nva.emplace_back(":authority", config.host);
+    shared_nva.emplace_back(":authority", config.host);
   }
-  nva.emplace_back(":path", config.path);
-  nva.emplace_back(":method", "GET");
+  shared_nva.emplace_back(":method", "GET");
 
-  for(auto& nv : nva) {
-    config.nva.push_back(http2::make_nv(nv.first, nv.second));
-  }
+  for(auto& req : reqlines) {
+    // For nghttp2
+    std::vector<nghttp2_nv> nva;
 
-  // For spdylay
-  for(auto& nv : nva) {
-    if(nv.first == ":authority") {
-      config.nv.push_back(":host");
-    } else {
-      config.nv.push_back(nv.first.c_str());
+    nva.push_back(http2::make_nv_ls(":path", req));
+
+    for(auto& nv : shared_nva) {
+      nva.push_back(http2::make_nv(nv.first, nv.second));
     }
-    config.nv.push_back(nv.second.c_str());
+
+    config.nva.push_back(std::move(nva));
+
+    // For spdylay
+    std::vector<const char*> cva;
+
+    cva.push_back(":path");
+    cva.push_back(req.c_str());
+
+    for(auto& nv : shared_nva) {
+      if(nv.first == ":authority") {
+        cva.push_back(":host");
+      } else {
+        cva.push_back(nv.first.c_str());
+      }
+      cva.push_back(nv.second.c_str());
+    }
+    cva.push_back(":version");
+    cva.push_back("HTTP/1.1");
+    cva.push_back(nullptr);
+
+    config.nv.push_back(std::move(cva));
   }
-  config.nv.push_back(":version");
-  config.nv.push_back("HTTP/1.1");
-  config.nv.push_back(nullptr);
 
   resolve_host();
 

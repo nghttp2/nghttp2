@@ -48,17 +48,16 @@ namespace h2load {
 class Session;
 
 struct Config {
-  std::vector<nghttp2_nv> nva;
-  std::vector<const char*> nv;
+  std::vector<std::vector<nghttp2_nv>> nva;
+  std::vector<std::vector<const char*>> nv;
   std::string scheme;
   std::string host;
-  std::string path;
   addrinfo *addrs;
   size_t nreqs;
   size_t nclients;
   size_t nthreads;
   // The maximum number of concurrent streams per session.
-  size_t max_concurrent_streams;
+  ssize_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
   uint16_t port;
@@ -132,6 +131,7 @@ struct Client {
   SSL *ssl;
   bufferevent *bev;
   addrinfo *next_addr;
+  size_t reqidx;
   ClientState state;
 
   Client(Worker *worker);

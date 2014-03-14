@@ -150,8 +150,14 @@ void SpdySession::on_connect()
 
 void SpdySession::submit_request()
 {
-  spdylay_submit_request(session_, 0, client_->worker->config->nv.data(),
-                         nullptr, nullptr);
+  auto config = client_->worker->config;
+  auto& nv = config->nv[client_->reqidx++];
+
+  if(client_->reqidx == config->nv.size()) {
+    client_->reqidx = 0;
+  }
+
+  spdylay_submit_request(session_, 0, nv.data(), nullptr, nullptr);
 }
 
 ssize_t SpdySession::on_read()
