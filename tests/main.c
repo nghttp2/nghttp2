@@ -36,6 +36,7 @@
 #include "nghttp2_npn_test.h"
 #include "nghttp2_gzip_test.h"
 #include "nghttp2_helper_test.h"
+#include "nghttp2_buf_test.h"
 
 static int init_suite1(void)
 {
@@ -258,7 +259,17 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "check_header_name",
                    test_nghttp2_check_header_name) ||
       !CU_add_test(pSuite, "check_header_value",
-                   test_nghttp2_check_header_value)
+                   test_nghttp2_check_header_value) ||
+      !CU_add_test(pSuite, "bufs_add", test_nghttp2_bufs_add) ||
+      !CU_add_test(pSuite, "bufs_addb", test_nghttp2_bufs_addb) ||
+      !CU_add_test(pSuite, "bufs_orb", test_nghttp2_bufs_orb) ||
+      !CU_add_test(pSuite, "bufs_remove", test_nghttp2_bufs_remove) ||
+      !CU_add_test(pSuite, "bufs_reset", test_nghttp2_bufs_reset) ||
+      !CU_add_test(pSuite, "bufs_advance", test_nghttp2_bufs_advance) ||
+      !CU_add_test(pSuite, "bufs_seek_present",
+                   test_nghttp2_bufs_seek_last_present) ||
+      !CU_add_test(pSuite, "bufs_next_present",
+                   test_nghttp2_bufs_next_present)
       ) {
      CU_cleanup_registry();
      return CU_get_error();

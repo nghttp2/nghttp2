@@ -174,7 +174,7 @@ void nghttp2_bufs_seek_last_present(nghttp2_bufs *bufs)
 {
   nghttp2_buf_chain *ci;
 
-  for(ci = bufs->cur; ci->next; ci = ci->next) {
+  for(ci = bufs->cur; ci; ci = ci->next) {
     if(nghttp2_buf_len(&ci->buf) == 0) {
       return;
     } else {

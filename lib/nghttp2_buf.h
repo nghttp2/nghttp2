@@ -315,8 +315,9 @@ int nghttp2_bufs_advance(nghttp2_bufs *bufs);
 /*
  * Move bufs->cur, from the current position, using next member, to
  * the last buf which has nghttp2_buf_len(buf) > 0 without seeing buf
- * which satisfies nghttp2_buf_len(buf) == 0. If bufs->cur->next is
- * NULL, bufs->cur is unchanged.
+ * which satisfies nghttp2_buf_len(buf) == 0.  If
+ * nghttp2_buf_len(&bufs->cur->buf) == 0 or bufs->cur->next is NULL,
+ * bufs->cur is unchanged.
  */
 void nghttp2_bufs_seek_last_present(nghttp2_bufs *bufs);
 
