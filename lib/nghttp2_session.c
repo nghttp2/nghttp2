@@ -3962,10 +3962,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       if(iframe->payloadleft) {
         break;
       }
-      /* Clear PAD_HIGH and PAD_LOW, because we rely on those flags
-         in the next CONTINUATION frame. */
+      /* Clear PAD_HIGH and PAD_LOW, because we rely on those flags in
+         the next CONTINUATION frame. Also we don't show these flags
+         to user callback */
       iframe->frame.hd.flags &=
         ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
+
       if((iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) == 0) {
         inbound_frame_reset_left(iframe, NGHTTP2_FRAME_HDLEN);
         iframe->padlen = 0;
@@ -4258,6 +4260,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       if(iframe->payloadleft) {
         break;
       }
+
+      /* Clear PAD_HIGH and PAD_LOW, because we don't show these flags
+         to user callback */
+      session->iframe.frame.hd.flags &=
+        ~(NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW);
+
       rv = nghttp2_session_process_data_frame(session);
       if(nghttp2_is_fatal(rv)) {
         return rv;
