@@ -497,11 +497,13 @@ void EvbufferBuffer::reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax)
 int EvbufferBuffer::flush()
 {
   int rv;
-  rv = evbuffer_add(evbuffer_, buf_, buflen_);
-  if(rv == -1) {
-    return -1;
+  if(buflen_ > 0) {
+    rv = evbuffer_add(evbuffer_, buf_, buflen_);
+    if(rv == -1) {
+      return -1;
+    }
+    buflen_ = 0;
   }
-  buflen_ = 0;
   return 0;
 }
 
@@ -509,11 +511,13 @@ int EvbufferBuffer::add(const uint8_t *data, size_t datalen)
 {
   int rv;
   if(buflen_ + datalen > bufmax_) {
-    rv = evbuffer_add(evbuffer_, buf_, buflen_);
-    if(rv == -1) {
-      return -1;
+    if(buflen_ > 0) {
+      rv = evbuffer_add(evbuffer_, buf_, buflen_);
+      if(rv == -1) {
+        return -1;
+      }
+      buflen_ = 0;
     }
-    buflen_ = 0;
     if(datalen > bufmax_) {
       rv = evbuffer_add(evbuffer_, data, datalen);
       if(rv == -1) {
