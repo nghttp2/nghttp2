@@ -444,10 +444,11 @@ struct HttpClient {
       } else {
         host_string = host.c_str();
       }
-      if (!SSL_set_tlsext_host_name(ssl, host_string)) {
-        std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-        return -1;
+
+      if (!util::numeric_host(host_string)) {
+        SSL_set_tlsext_host_name(ssl, host_string);
       }
+
       bev = bufferevent_openssl_socket_new(evbase, -1, ssl,
                                            BUFFEREVENT_SSL_CONNECTING,
                                            BEV_OPT_DEFER_CALLBACKS);

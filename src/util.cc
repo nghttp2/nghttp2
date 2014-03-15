@@ -25,6 +25,9 @@
 #include "util.h"
 
 #include <time.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #include <cassert>
 #include <cstdio>
@@ -527,6 +530,20 @@ int EvbufferBuffer::add(const uint8_t *data, size_t datalen)
 size_t EvbufferBuffer::get_buflen() const
 {
   return buflen_;
+}
+
+bool numeric_host(const char *hostname)
+{
+  struct addrinfo hints;
+  struct addrinfo* res;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_flags = AI_NUMERICHOST;
+  if(getaddrinfo(hostname, nullptr, &hints, &res)) {
+    return false;
+  }
+  freeaddrinfo(res);
+  return true;
 }
 
 } // namespace util

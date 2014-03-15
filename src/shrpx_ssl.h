@@ -52,8 +52,6 @@ ClientHandler* accept_connection
  evutil_socket_t fd,
  sockaddr *addr, int addrlen);
 
-bool numeric_host(const char *hostname);
-
 int check_cert(SSL *ssl);
 
 // Retrieves DNS and IP address in subjectAltNames and commonName from

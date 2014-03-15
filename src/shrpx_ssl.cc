@@ -485,20 +485,6 @@ ClientHandler* accept_connection
   }
 }
 
-bool numeric_host(const char *hostname)
-{
-  struct addrinfo hints;
-  struct addrinfo* res;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_flags = AI_NUMERICHOST;
-  if(getaddrinfo(hostname, nullptr, &hints, &res)) {
-    return false;
-  }
-  freeaddrinfo(res);
-  return true;
-}
-
 namespace {
 bool tls_hostname_match(const char *pattern, const char *hostname)
 {
@@ -541,7 +527,7 @@ int verify_hostname(const char *hostname,
                     const std::vector<std::string>& ip_addrs,
                     const std::string& common_name)
 {
-  if(numeric_host(hostname)) {
+  if(util::numeric_host(hostname)) {
     if(ip_addrs.empty()) {
       return util::strieq(common_name.c_str(), hostname) ? 0 : -1;
     }

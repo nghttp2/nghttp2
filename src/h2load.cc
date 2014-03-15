@@ -124,6 +124,13 @@ int Client::connect()
 {
   if(config.scheme == "https") {
     ssl = SSL_new(worker->ssl_ctx);
+
+    auto config = worker->config;
+
+    if(!util::numeric_host(config->host.c_str())) {
+      SSL_set_tlsext_host_name(ssl, config->host.c_str());
+    }
+
     bev = bufferevent_openssl_socket_new(worker->evbase, -1, ssl,
                                          BUFFEREVENT_SSL_CONNECTING,
                                          BEV_OPT_DEFER_CALLBACKS);

@@ -421,7 +421,7 @@ int Http2Session::initiate_connection()
         sni_name = get_config()->downstream_host;
       }
 
-      if(!ssl::numeric_host(sni_name)) {
+      if(!util::numeric_host(sni_name)) {
         // TLS extensions: SNI. There is no documentation about the return
         // code for this function (actually this is macro wrapping SSL_ctrl
         // at the time of this writing).

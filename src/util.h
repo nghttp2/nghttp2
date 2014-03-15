@@ -449,6 +449,8 @@ private:
   size_t buflen_;
 };
 
+bool numeric_host(const char *hostname);
+
 } // namespace util
 
 } // namespace nghttp2
