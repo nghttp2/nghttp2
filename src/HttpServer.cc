@@ -367,7 +367,7 @@ int Http2Handler::on_read()
 int Http2Handler::on_write()
 {
   int rv;
-  uint8_t buf[4096];
+  uint8_t buf[16384];
   auto output = bufferevent_get_output(bev_);
   util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
 

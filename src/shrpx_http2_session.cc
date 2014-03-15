@@ -1260,7 +1260,7 @@ int Http2Session::on_write()
 int Http2Session::send()
 {
   int rv;
-  uint8_t buf[4096];
+  uint8_t buf[16384];
   auto output = bufferevent_get_output(bev_);
   util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
   for(;;) {

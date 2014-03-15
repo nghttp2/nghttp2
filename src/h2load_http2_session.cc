@@ -170,7 +170,7 @@ ssize_t Http2Session::on_read()
 int Http2Session::on_write()
 {
   int rv;
-  uint8_t buf[4096];
+  uint8_t buf[16384];
   auto output = bufferevent_get_output(client_->bev);
   util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
   for(;;) {

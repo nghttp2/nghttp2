@@ -178,7 +178,7 @@ ssize_t SpdySession::on_read()
 int SpdySession::on_write()
 {
   int rv;
-  uint8_t buf[4096];
+  uint8_t buf[16384];
 
   sendbuf.reset(bufferevent_get_output(client_->bev), buf, sizeof(buf));
 

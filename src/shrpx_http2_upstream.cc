@@ -566,7 +566,7 @@ int Http2Upstream::on_write()
 int Http2Upstream::send()
 {
   int rv;
-  uint8_t buf[4096];
+  uint8_t buf[16384];
   auto bev = handler_->get_bev();
   auto output = bufferevent_get_output(bev);
   util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));

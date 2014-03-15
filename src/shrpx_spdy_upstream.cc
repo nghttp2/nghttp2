@@ -459,7 +459,7 @@ int SpdyUpstream::on_write()
 int SpdyUpstream::send()
 {
   int rv = 0;
-  uint8_t buf[4096];
+  uint8_t buf[16384];
 
   sendbuf.reset(bufferevent_get_output(handler_->get_bev()), buf, sizeof(buf));
 
