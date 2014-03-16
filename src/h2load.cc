@@ -887,7 +887,7 @@ int main(int argc, char **argv)
   if(duration > 0) {
     auto secd = static_cast<double>(duration) / (1000 * 1000);
     rps = worker.stats.req_todo / secd;
-    kbps = (worker.stats.bytes_head + worker.stats.bytes_body) / secd / 1024;
+    kbps = worker.stats.bytes_total / secd / 1024;
   } else {
     rps = 0;
     kbps = 0;
