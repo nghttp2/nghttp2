@@ -132,10 +132,16 @@ int nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_length,
 int nghttp2_bufs_init2(nghttp2_bufs *bufs, size_t chunk_length,
                        size_t max_chunk, size_t offset)
 {
+  return nghttp2_bufs_init3(bufs, chunk_length, max_chunk, max_chunk, offset);
+}
+
+int nghttp2_bufs_init3(nghttp2_bufs *bufs, size_t chunk_length,
+                       size_t max_chunk, size_t chunk_keep, size_t offset)
+{
   int rv;
   nghttp2_buf_chain *chain;
 
-  if(max_chunk == 0 || chunk_length < offset) {
+  if(chunk_keep == 0 || max_chunk < chunk_keep || chunk_length < offset) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
@@ -152,7 +158,9 @@ int nghttp2_bufs_init2(nghttp2_bufs *bufs, size_t chunk_length,
   nghttp2_buf_shift_right(&bufs->cur->buf, offset);
 
   bufs->chunk_length = chunk_length;
-  bufs->chunk_left = max_chunk - 1;
+  bufs->chunk_used = 1;
+  bufs->max_chunk = max_chunk;
+  bufs->chunk_keep = chunk_keep;
 
   return 0;
 }
@@ -199,7 +207,7 @@ ssize_t nghttp2_bufs_len(nghttp2_bufs *bufs)
 static int nghttp2_bufs_avail(nghttp2_bufs *bufs)
 {
   return nghttp2_buf_avail(&bufs->cur->buf) +
-    (bufs->chunk_length - bufs->offset) * bufs->chunk_left;
+    (bufs->chunk_length - bufs->offset) * (bufs->max_chunk - bufs->chunk_used);
 }
 
 static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
@@ -213,7 +221,7 @@ static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
     return 0;
   }
 
-  if(bufs->chunk_left == 0) {
+  if(bufs->max_chunk == bufs->chunk_used) {
     return NGHTTP2_ERR_BUFFER_ERROR;
   }
 
@@ -226,7 +234,7 @@ static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
                  "new buffer %zu bytes allocated for bufs %p, left %zu\n",
                  bufs->chunk_length, bufs, bufs->chunk_left));
 
-  --bufs->chunk_left;
+  ++bufs->chunk_used;
 
   bufs->cur->next = chain;
   bufs->cur = chain;
@@ -382,11 +390,33 @@ ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out)
 
 void nghttp2_bufs_reset(nghttp2_bufs *bufs)
 {
-  nghttp2_buf_chain *chain;
+  nghttp2_buf_chain *chain, *ci;
+  size_t k;
 
-  for(chain = bufs->head; chain; chain = chain->next) {
-    nghttp2_buf_reset(&chain->buf);
-    nghttp2_buf_shift_right(&chain->buf, bufs->offset);
+  k = bufs->chunk_keep;
+
+  for(ci = bufs->head; ci; ci = ci->next) {
+    nghttp2_buf_reset(&ci->buf);
+    nghttp2_buf_shift_right(&ci->buf, bufs->offset);
+
+    if(--k == 0) {
+      break;
+    }
+  }
+
+  if(ci) {
+    chain = ci->next;
+    ci->next = NULL;
+
+    for(ci = chain; ci;) {
+      chain = ci->next;
+
+      nghttp2_buf_chain_del(ci);
+
+      ci = chain;
+    }
+
+    bufs->chunk_used = bufs->chunk_keep;
   }
 
   bufs->cur = bufs->head;

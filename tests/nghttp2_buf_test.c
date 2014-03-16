@@ -203,7 +203,7 @@ void test_nghttp2_bufs_reset(void)
   nghttp2_buf_chain *ci;
   ssize_t offset = 9;
 
-  rv = nghttp2_bufs_init2(&bufs, 250, 3, offset);
+  rv = nghttp2_bufs_init3(&bufs, 250, 3, 1, offset);
   CU_ASSERT(0 == rv);
 
   rv = nghttp2_bufs_add(&bufs, "foo", 3);
@@ -226,6 +226,8 @@ void test_nghttp2_bufs_reset(void)
     CU_ASSERT(offset == ci->buf.pos - ci->buf.begin);
     CU_ASSERT(ci->buf.pos == ci->buf.last);
   }
+
+  CU_ASSERT(bufs.head->next == NULL);
 
   nghttp2_bufs_free(&bufs);
 }

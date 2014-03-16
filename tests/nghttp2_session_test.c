@@ -1996,7 +1996,7 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
   nghttp2_nv *nva;
   ssize_t nvlen;
   size_t vallen = NGHTTP2_HD_MAX_VALUE;
-  nghttp2_nv nv[16];
+  nghttp2_nv nv[28];
   size_t nnv = ARRLEN(nv);
   size_t i;
 

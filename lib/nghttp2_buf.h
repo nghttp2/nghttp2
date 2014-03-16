@@ -154,7 +154,11 @@ typedef struct {
   /* The buffer capacity of each buf */
   size_t chunk_length;
   /* The maximum number of nghttp2_buf_chain */
-  size_t chunk_left;
+  size_t max_chunk;
+  /* The number of nghttp2_buf_chain allocated */
+  size_t chunk_used;
+  /* The number of nghttp2_buf_chain to keep on reset */
+  size_t chunk_keep;
   /* pos offset from begin in each buffers. On initialization and
      reset, buf->pos and buf->last are positioned at buf->begin +
      offset. */
@@ -169,10 +173,18 @@ int nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_length,
                       size_t max_chunk);
 
 /*
+ * This is the same as calling nghttp2_bufs_init3 with the given
+ * arguments and chunk_keep = max_chunk.
+ */
+int nghttp2_bufs_init2(nghttp2_bufs *bufs, size_t chunk_length,
+                       size_t max_chunk, size_t offset);
+
+/*
  * Initializes |bufs|. Each buffer size is given in the
  * |chunk_length|.  The maximum number of buffers is given in the
- * |max_chunk|. Each buffer will have bufs->pos and bufs->last shifted
- * to left by |offset| bytes on creation and reset.
+ * |max_chunk|.  On reset, first |chunk_keep| buffers are kept and
+ * remaining buffers are deleted.  Each buffer will have bufs->pos and
+ * bufs->last shifted to left by |offset| bytes on creation and reset.
  *
  * This function allocates first buffer.  bufs->head and bufs->cur
  * will point to the first buffer after this call.
@@ -183,10 +195,11 @@ int nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_length,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_INVALID_ARGUMENT
- *     max_chunk is 0
+ *     chunk_keep is 0; or max_chunk < chunk_keep; or offset is too
+ *     long.
  */
-int nghttp2_bufs_init2(nghttp2_bufs *bufs, size_t chunk_length,
-                       size_t max_chunk, size_t offset);
+int nghttp2_bufs_init3(nghttp2_bufs *bufs, size_t chunk_length,
+                       size_t max_chunk, size_t chunk_keep, size_t offset);
 
 /*
  * Frees any related resources to the |bufs|.
