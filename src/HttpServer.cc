@@ -42,8 +42,18 @@
 #include <zlib.h>
 
 #include <event.h>
-#include <event2/bufferevent_ssl.h>
 #include <event2/listener.h>
+#include <event2/bufferevent.h>
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+#include "nghttp2_helper.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 #include "app_helper.h"
 #include "http2.h"
@@ -66,7 +76,6 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 
 Config::Config()
   : data_ptr(nullptr),
-    output_upper_thres(1024*1024),
     padding(0),
     num_worker(1),
     header_table_size(-1),
@@ -212,16 +221,27 @@ Http2Handler::Http2Handler(Sessions *sessions,
   : session_id_(session_id),
     session_(nullptr),
     sessions_(sessions),
-    bev_(nullptr),
     ssl_(ssl),
+    rev_(nullptr),
+    wev_(nullptr),
     settings_timerev_(nullptr),
+    pending_data_(nullptr),
+    pending_datalen_(0),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN),
     fd_(fd)
-{}
+{
+  nghttp2_buf_wrap_init(&sendbuf_, sendbufarray_, sizeof(sendbufarray_));
+}
 
 Http2Handler::~Http2Handler()
 {
   on_session_closed(this, session_id_);
+  if(rev_) {
+    event_free(rev_);
+  }
+  if(wev_) {
+    event_free(wev_);
+  }
   if(settings_timerev_) {
     event_free(settings_timerev_);
   }
@@ -229,10 +249,6 @@ Http2Handler::~Http2Handler()
   if(ssl_) {
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl_);
-  }
-  if(bev_) {
-    bufferevent_disable(bev_, EV_READ | EV_WRITE);
-    bufferevent_free(bev_);
   }
   if(ssl_) {
     SSL_free(ssl_);
@@ -247,137 +263,325 @@ void Http2Handler::remove_self()
 }
 
 namespace {
-void readcb(bufferevent *bev, void *ptr)
+void rev_cb(evutil_socket_t fd, short what, void *arg)
 {
   int rv;
-  auto handler = static_cast<Http2Handler*>(ptr);
-  rv = handler->on_read();
-  if(rv != 0) {
-    delete_handler(handler);
+  auto handler = static_cast<Http2Handler*>(arg);
+
+  if(what & EV_READ) {
+    rv = handler->on_read();
+    if(rv == -1) {
+      delete_handler(handler);
+    }
   }
 }
 } // namespace
 
 namespace {
-void writecb(bufferevent *bev, void *ptr)
+void wev_cb(evutil_socket_t fd, short what, void *arg)
 {
-  if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
-    return;
-  }
   int rv;
-  auto handler = static_cast<Http2Handler*>(ptr);
-  rv = handler->on_write();
-  if(rv != 0) {
-    delete_handler(handler);
+  auto handler = static_cast<Http2Handler*>(arg);
+
+  if(what & EV_WRITE) {
+    rv = handler->on_write();
+    if(rv == -1) {
+      delete_handler(handler);
+    }
   }
 }
 } // namespace
 
-namespace {
-void eventcb(bufferevent *bev, short events, void *ptr)
+int Http2Handler::handle_ssl_temporal_error(int err)
 {
-  auto handler = static_cast<Http2Handler*>(ptr);
-  if(events & BEV_EVENT_CONNECTED) {
-    // SSL/TLS handshake completed
-    if(handler->verify_npn_result() != 0) {
+  auto sslerr = SSL_get_error(ssl_, err);
+
+  switch(sslerr) {
+  case SSL_ERROR_WANT_READ:
+    event_add(rev_, nullptr);
+    return 1;
+  case SSL_ERROR_WANT_WRITE:
+    event_add(wev_, nullptr);
+    return 1;
+  }
+
+  return -1;
+}
+
+int Http2Handler::tls_write(const uint8_t *data, size_t datalen)
+{
+  int rv;
+  size_t max_avail;
+
+  // OpenSSL sends at most 16K bytes
+  max_avail = ssl_ ?
+    std::min((ssize_t)16384, nghttp2_buf_avail(&sendbuf_)) :
+    nghttp2_buf_avail(&sendbuf_);
+
+  if(max_avail < datalen) {
+    if(nghttp2_buf_len(&sendbuf_) > 0) {
+      rv = tls_write_pending();
+
+      if(rv == -1) {
+        return -1;
+      }
+
+      if(rv == 1) {
+        pending_data_ = data;
+        pending_datalen_ = datalen;
+
+        return 1;
+      }
+    }
+
+    assert(nghttp2_buf_avail(&sendbuf_) >= (ssize_t)datalen);
+  }
+  //std::cerr << "DBG: copy " << datalen << " bytes" << std::endl;
+  sendbuf_.last = nghttp2_cpymem(sendbuf_.last, data, datalen);
+
+  return 0;
+}
+
+int Http2Handler::tls_write_pending()
+{
+  int rv;
+
+  if(nghttp2_buf_len(&sendbuf_) == 0) {
+    return 0;
+  }
+
+  for(;;) {
+    if(ssl_) {
+      ERR_clear_error();
+
+      rv = SSL_write(ssl_, sendbuf_.pos, nghttp2_buf_len(&sendbuf_));
+
+      if(rv == 0) {
+        return -1;
+      }
+      if(rv < 0) {
+        return handle_ssl_temporal_error(rv);
+      }
+    } else {
+      while((rv = write(fd_, sendbuf_.pos, nghttp2_buf_len(&sendbuf_))) &&
+            rv == -1 && errno == EINTR);
+
+      if(rv == 0) {
+        continue;
+      }
+      if(rv < 0) {
+        if(errno == EAGAIN || errno == EWOULDBLOCK) {
+          event_add(wev_, nullptr);
+          return 1;
+        }
+        return -1;
+      }
+    }
+
+    sendbuf_.pos += rv;
+
+    if(nghttp2_buf_len(&sendbuf_) == 0) {
+      nghttp2_buf_reset(&sendbuf_);
+
+      if(pending_data_) {
+        assert(nghttp2_buf_avail(&sendbuf_) >= (ssize_t)pending_datalen_);
+        sendbuf_.last = nghttp2_cpymem(sendbuf_.last,
+                                      pending_data_, pending_datalen_);
+        pending_data_ = nullptr;
+        pending_datalen_ = 0;
+
+        continue;
+      }
+
+      return 0;
+    }
+  }
+}
+
+namespace {
+void tls_handshake_cb(evutil_socket_t fd, short what, void *arg)
+{
+  int rv;
+  auto handler = static_cast<Http2Handler*>(arg);
+
+  if(what & (EV_READ | EV_WRITE)) {
+    rv = handler->tls_handshake();
+    if(rv == -1) {
       delete_handler(handler);
       return;
     }
-    if(handler->on_connect() != 0) {
+    if(rv == 1) {
+      return;
+    }
+
+    rv = handler->on_connect();
+    if(rv != 0) {
       delete_handler(handler);
       return;
     }
-  } else if(events & BEV_EVENT_EOF) {
-    delete_handler(handler);
-    return;
-  } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-    delete_handler(handler);
-    return;
   }
 }
 } // namespace
 
-namespace {
-void connhd_readcb(bufferevent *bev, void *ptr)
+int Http2Handler::tls_handshake()
 {
-  uint8_t data[24];
-  auto handler = static_cast<Http2Handler*>(ptr);
-  size_t leftlen = handler->get_left_connhd_len();
-  auto input = bufferevent_get_input(bev);
-  int readlen = evbuffer_remove(input, data, leftlen);
-  if(readlen == -1) {
-    delete_handler(handler);
-    return;
+  int rv;
+
+  ERR_clear_error();
+
+  rv = SSL_accept(ssl_);
+  if(rv == 0) {
+    return -1;
   }
-  const char *conhead = NGHTTP2_CLIENT_CONNECTION_HEADER;
-  if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_HEADER_LEN - leftlen,
-            data, readlen) != 0) {
-    delete_handler(handler);
-    return;
-  }
-  leftlen -= readlen;
-  handler->set_left_connhd_len(leftlen);
-  if(leftlen == 0) {
-    bufferevent_setcb(bev, readcb, writecb, eventcb, ptr);
-    // Run on_read to process data left in buffer since they are not
-    // notified further
-    if(handler->on_read() != 0) {
-      delete_handler(handler);
-      return;
+  if(rv < 0) {
+    auto sslerr = SSL_get_error(ssl_, rv);
+
+    switch(sslerr) {
+    case SSL_ERROR_NONE:
+    case SSL_ERROR_WANT_X509_LOOKUP:
+    case SSL_ERROR_ZERO_RETURN:
+      break;
+    case SSL_ERROR_WANT_READ:
+      event_add(rev_, nullptr);
+      return 1;
+    case SSL_ERROR_WANT_WRITE:
+      event_add(wev_, nullptr);
+      return 1;
     }
   }
+
+  if(sessions_->get_config()->verbose) {
+    std::cerr << "SSL/TLS handshake completed" << std::endl;
+  }
+
+  if(verify_npn_result() != 0) {
+    return -1;
+  }
+
+  event_del(rev_);
+  event_del(wev_);
+
+  event_assign(rev_, sessions_->get_evbase(), fd_, EV_READ, rev_cb, this);
+  event_assign(wev_, sessions_->get_evbase(), fd_, EV_WRITE, wev_cb, this);
+
+  return 0;
 }
-} // namespace
 
 int Http2Handler::setup_bev()
 {
   if(ssl_) {
-    bev_ = bufferevent_openssl_socket_new
-      (sessions_->get_evbase(), fd_, ssl_,
-       BUFFEREVENT_SSL_ACCEPTING, BEV_OPT_DEFER_CALLBACKS);
+    rev_ = event_new(sessions_->get_evbase(), fd_, EV_READ, tls_handshake_cb,
+                     this);
+    wev_ = event_new(sessions_->get_evbase(), fd_, EV_WRITE, tls_handshake_cb,
+                     this);
   } else {
-    bev_ = bufferevent_socket_new(sessions_->get_evbase(), fd_,
-                                  BEV_OPT_DEFER_CALLBACKS);
+    rev_ = event_new(sessions_->get_evbase(), fd_, EV_READ, rev_cb, this);
+    wev_ = event_new(sessions_->get_evbase(), fd_, EV_WRITE, wev_cb, this);
   }
-  bufferevent_enable(bev_, EV_READ);
-  bufferevent_setcb(bev_, connhd_readcb, writecb, eventcb, this);
+
+  event_add(rev_, nullptr);
   // TODO set up timeout here
+
   return 0;
+}
+
+int Http2Handler::wait_events()
+{
+  int active = 0;
+
+  if(nghttp2_session_want_read(session_)) {
+    event_add(rev_, nullptr);
+    active = 1;
+  }
+
+  if(nghttp2_session_want_write(session_)) {
+    event_add(wev_, nullptr);
+    active = 1;
+  }
+
+  return active ? 0 : -1;
 }
 
 int Http2Handler::on_read()
 {
   int rv;
-  auto input = bufferevent_get_input(bev_);
-  auto inputlen = evbuffer_get_length(input);
-  auto mem = evbuffer_pullup(input, -1);
+  uint8_t buf[16384];
+  uint8_t *bufp;
+  size_t nread;
 
-  rv = nghttp2_session_mem_recv(session_, mem, inputlen);
+  if(ssl_) {
+    ERR_clear_error();
+    rv = SSL_read(ssl_, buf, sizeof(buf));
+
+    if(rv == 0) {
+      return -1;
+    }
+    if(rv < 0) {
+      return handle_ssl_temporal_error(rv);
+    }
+  } else {
+    while((rv = read(fd_, buf, sizeof(buf))) && rv == -1 && errno == EINTR);
+
+    if(rv == 0) {
+      return -1;
+    }
+    if(rv < 0) {
+      if(errno == EAGAIN || errno == EWOULDBLOCK) {
+        event_add(rev_, nullptr);
+        return 1;
+      }
+      return -1;
+    }
+  }
+
+  nread = rv;
+  bufp = buf;
+
+  if(left_connhd_len_ > 0) {
+    auto len = std::min(left_connhd_len_, nread);
+    const char *conhead = NGHTTP2_CLIENT_CONNECTION_HEADER;
+
+    if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_HEADER_LEN -
+              left_connhd_len_, bufp, len) != 0) {
+      return -1;
+    }
+
+    left_connhd_len_ -= len;
+    nread -= len;
+
+    if(nread == 0) {
+      wait_events();
+
+      return 0;
+    }
+
+    bufp += len;
+  }
+
+  rv = nghttp2_session_mem_recv(session_, bufp, nread);
   if(rv < 0) {
     std::cerr << "nghttp2_session_mem_recv() returned error: "
               << nghttp2_strerror(rv) << std::endl;
     return -1;
   }
 
-  evbuffer_drain(input, rv);
-
-  return on_write();
+  return wait_events();
 }
 
 int Http2Handler::on_write()
 {
   int rv;
-  uint8_t buf[16384];
-  auto output = bufferevent_get_output(bev_);
-  util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
+
+  //std::cerr << "DBG: on_write" << std::endl;
+
+  rv = tls_write_pending();
+  if(rv != 0) {
+    return rv;
+  }
 
   for(;;) {
-    if(evbuffer_get_length(output) + evbbuf.get_buflen() >
-       sessions_->get_config()->output_upper_thres) {
-      break;
-    }
-
     const uint8_t *data;
+
     auto datalen = nghttp2_session_mem_send(session_, &data);
 
     if(datalen < 0) {
@@ -385,26 +589,24 @@ int Http2Handler::on_write()
                 << nghttp2_strerror(datalen) << std::endl;
       return -1;
     }
+
     if(datalen == 0) {
       break;
     }
-    rv = evbbuf.add(data, datalen);
+
+    rv = tls_write(data, datalen);
+
     if(rv != 0) {
-      std::cerr << "evbuffer_add() failed" << std::endl;
-      return -1;
+      return rv;
     }
   }
-  rv = evbbuf.flush();
+
+  rv = tls_write_pending();
   if(rv != 0) {
-    std::cerr << "evbuffer_add() failed" << std::endl;
-    return -1;
+    return rv;
   }
-  if(nghttp2_session_want_read(session_) == 0 &&
-     nghttp2_session_want_write(session_) == 0 &&
-     evbuffer_get_length(output) == 0) {
-    return -1;
-  }
-  return 0;
+
+  return wait_events();
 }
 
 namespace {
@@ -1252,6 +1454,9 @@ int HttpServer::run()
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 
+    SSL_CTX_set_cipher_list(ssl_ctx, "HIGH:!aNULL:!MD5");
+
+
     const unsigned char sid_ctx[] = "nghttpd";
     SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx)-1);
     SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
@@ -1310,7 +1515,11 @@ int HttpServer::run()
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
   }
 
-  auto evbase = event_base_new();
+  auto evcfg = event_config_new();
+  event_config_set_flag(evcfg, EVENT_BASE_FLAG_NOLOCK);
+
+  auto evbase = event_base_new_with_config(evcfg);
+
   Sessions sessions(evbase, config_, ssl_ctx);
   if(start_listen(evbase, &sessions, config_) != 0) {
     std::cerr << "Could not listen" << std::endl;
