@@ -245,7 +245,8 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
   hd = *frame_hd;
   hd.length = nghttp2_buf_len(buf);
 
-  DEBUGF(fprintf(stderr, "HEADERS/PUSH_PROMISE, payloadlen=%zu\n", hd.length));
+  DEBUGF(fprintf(stderr,
+                 "send: HEADERS/PUSH_PROMISE, payloadlen=%zu\n", hd.length));
 
   /* We have multiple frame buffers, which means one or more
      CONTINUATION frame is involved. Remove END_HEADERS flag from the
@@ -270,7 +271,8 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
 
       hd.length = nghttp2_buf_len(buf);
 
-      DEBUGF(fprintf(stderr, "int CONTINUATION, payloadlen=%zu\n", hd.length));
+      DEBUGF(fprintf(stderr,
+                     "send: int CONTINUATION, payloadlen=%zu\n", hd.length));
 
       buf->pos -= NGHTTP2_FRAME_HDLEN;
       nghttp2_frame_pack_frame_hd(buf->pos, &hd);
@@ -281,7 +283,8 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
     /* Set END_HEADERS flag for last CONTINUATION */
     hd.flags = NGHTTP2_FLAG_END_HEADERS;
 
-    DEBUGF(fprintf(stderr, "last CONTINUATION, payloadlen=%zu\n", hd.length));
+    DEBUGF(fprintf(stderr,
+                   "send: last CONTINUATION, payloadlen=%zu\n", hd.length));
 
     buf->pos -= NGHTTP2_FRAME_HDLEN;
     nghttp2_frame_pack_frame_hd(buf->pos, &hd);
@@ -731,7 +734,7 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
   size_t trail_padlen;
 
   if(padlen > 256) {
-    DEBUGF(fprintf(stderr, "padlen=%zu, shift left 2 bytes\n", padlen));
+    DEBUGF(fprintf(stderr, "send: padlen=%zu, shift left 2 bytes\n", padlen));
 
     memmove(buf->pos - 2, buf->pos, NGHTTP2_FRAME_HDLEN);
 
@@ -746,7 +749,7 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
     buf->pos[NGHTTP2_FRAME_HDLEN + 1] = trail_padlen & 0xff;
 
   } else if(padlen > 0) {
-    DEBUGF(fprintf(stderr, "padlen=%zu, shift left 1 bytes\n", padlen));
+    DEBUGF(fprintf(stderr, "send: padlen=%zu, shift left 1 bytes\n", padlen));
 
     memmove(buf->pos - 1, buf->pos, NGHTTP2_FRAME_HDLEN);
 
@@ -760,7 +763,7 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
     buf->pos[NGHTTP2_FRAME_HDLEN] = trail_padlen;
 
   } else {
-    DEBUGF(fprintf(stderr, "padlen=0, no shift left was made\n"));
+    DEBUGF(fprintf(stderr, "send: padlen=0, no shift left was made\n"));
 
     return;
   }
@@ -784,7 +787,7 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
   nghttp2_frame_hd last_hd;
 
   if(padlen == 0) {
-    DEBUGF(fprintf(stderr, "padlen = 0, nothing to do\n"));
+    DEBUGF(fprintf(stderr, "send: padlen = 0, nothing to do\n"));
 
     return 0;
   }
@@ -817,7 +820,7 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
 
   if(last_avail >= padlen) {
     /* Last frame can include all paddings bytes */
-    DEBUGF(fprintf(stderr, "last frame includes all paddings\n"));
+    DEBUGF(fprintf(stderr, "send: last frame includes all paddings\n"));
 
     frame_set_pad(buf, padlen);
 
@@ -846,9 +849,10 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
 
     /* former last frame may have zero buffer available */
     if(trail_padlen == 0) {
-      DEBUGF(fprintf(stderr, "last frame has no space to include padding\n"));
+      DEBUGF(fprintf(stderr,
+                     "send: last frame has no space to include padding\n"));
     } else {
-      DEBUGF(fprintf(stderr, "padding across 2 frames\n"));
+      DEBUGF(fprintf(stderr, "send: padding across 2 frames\n"));
 
       frame_set_pad(buf, trail_padlen);
     }
@@ -876,7 +880,7 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
 
   hd->length += padlen;
 
-  DEBUGF(fprintf(stderr, "final payloadlen=%zu, padlen=%zu\n",
+  DEBUGF(fprintf(stderr, "send: final payloadlen=%zu, padlen=%zu\n",
                  hd->length, padlen));
 
   return 0;

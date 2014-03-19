@@ -397,7 +397,7 @@ static size_t entry_room(size_t namelen, size_t valuelen)
 
 static int emit_indexed_header(nghttp2_nv *nv_out, nghttp2_hd_entry *ent)
 {
-  DEBUGF(fprintf(stderr, "Header emission:\n"));
+  DEBUGF(fprintf(stderr, "inflatehd: header emission: "));
   DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
   DEBUGF(fprintf(stderr, ": "));
   DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
@@ -412,7 +412,7 @@ static int emit_indexed_header(nghttp2_nv *nv_out, nghttp2_hd_entry *ent)
 
 static int emit_literal_header(nghttp2_nv *nv_out, nghttp2_nv *nv)
 {
-  DEBUGF(fprintf(stderr, "Header emission:\n"));
+  DEBUGF(fprintf(stderr, "inflatehd: header emission: "));
   DEBUGF(fwrite(nv->name, nv->namelen, 1, stderr));
   DEBUGF(fprintf(stderr, ": "));
   DEBUGF(fwrite(nv->value, nv->valuelen, 1, stderr));
@@ -540,6 +540,8 @@ static int emit_clear_refset(nghttp2_bufs *bufs)
   int rv;
   uint8_t sb[] = {0x80u, 0x80u};
 
+  DEBUGF(fprintf(stderr, "deflatehd: emit clear refset\n"));
+
   rv = nghttp2_bufs_add(bufs, sb, sizeof(sb));
   if(rv != 0) {
     return nghttp2_hd_handle_buffer_error(rv);
@@ -555,13 +557,13 @@ static int emit_table_size(nghttp2_bufs *bufs, size_t table_size)
   size_t blocklen;
   uint8_t sb[16];
 
+  DEBUGF(fprintf(stderr, "deflatehd: emit table_size=%zu\n", table_size));
+
   blocklen = 1 + count_encoded_length(table_size, 7);
 
   if(sizeof(sb) < blocklen) {
     return NGHTTP2_ERR_HEADER_COMP;
   }
-
-  DEBUGF(fprintf(stderr, "emit table_size=%zu\n", table_size));
 
   bufp = sb;
 
@@ -585,6 +587,9 @@ static int emit_indexed_block(nghttp2_bufs *bufs, size_t index)
   uint8_t *bufp;
 
   blocklen = count_encoded_length(index + 1, 7);
+
+  DEBUGF(fprintf(stderr, "deflatehd: emit indexed index=%zu, %zu bytes\n",
+                 index, blocklen));
 
   if(sizeof(sb) < blocklen) {
     return NGHTTP2_ERR_HEADER_COMP;
@@ -612,6 +617,12 @@ static int emit_string(nghttp2_bufs *bufs,
   size_t blocklen;
 
   blocklen = count_encoded_length(enclen, 7);
+
+  DEBUGF(fprintf(stderr,
+                 "deflatehd: emit string str="));
+  DEBUGF(fwrite(str, len, 1, stderr));
+  DEBUGF(fprintf(stderr, ", length=%zu, huffman=%d, encoded_length=%zu\n",
+                 len, huffman, enclen));
 
   if(sizeof(sb) < blocklen) {
     return NGHTTP2_ERR_HEADER_COMP;
@@ -646,6 +657,11 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t index,
   size_t blocklen;
   int huffman;
   uint8_t sb[16];
+
+  DEBUGF(fprintf(stderr,
+                 "deflatehd: emit indname index=%zu, valuelen=%zu, "
+                 "indexing=%d\n",
+                 index, valuelen, inc_indexing));
 
   encvallen = nghttp2_hd_huff_encode_count(value, valuelen);
   blocklen = count_encoded_length(index + 1, 6);
@@ -685,6 +701,11 @@ static int emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
   size_t encvallen;
   int name_huffman;
   int value_huffman;
+
+  DEBUGF(fprintf(stderr,
+                 "deflatehd: emit newname namelen=%u, valuelen=%u, "
+                 "indexing=%d\n",
+                 nv->namelen, nv->valuelen, inc_indexing));
 
   encnamelen = nghttp2_hd_huff_encode_count(nv->name, nv->namelen);
   encvallen = nghttp2_hd_huff_encode_count(nv->value, nv->valuelen);
@@ -762,7 +783,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
         }
       }
     }
-    DEBUGF(fprintf(stderr, "Remove item from header table:\n"));
+    DEBUGF(fprintf(stderr, "hpack: remove item from header table: "));
     DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
     DEBUGF(fprintf(stderr, ": "));
     DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
@@ -982,10 +1003,19 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
   nghttp2_hd_entry *ent;
   search_result res;
 
+  DEBUGF(fprintf(stderr, "deflatehd: deflating "));
+  DEBUGF(fwrite(nv->name, nv->namelen, 1, stderr));
+  DEBUGF(fprintf(stderr, ": "));
+  DEBUGF(fwrite(nv->value, nv->valuelen, 1, stderr));
+  DEBUGF(fprintf(stderr, "\n"));
+
   res = search_hd_table(&deflater->ctx, nv);
 
   if(res.index != -1 && res.name_value_match) {
     size_t index = res.index;
+
+    DEBUGF(fprintf(stderr, "deflatehd: name/value match index=%zd\n",
+                   res.index));
 
     ent = nghttp2_hd_table_get(&deflater->ctx, index);
     if(index >= deflater->ctx.hd_table.len) {
@@ -1054,6 +1084,9 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
     ssize_t index = -1;
     int incidx = 0;
     if(res.index != -1) {
+      DEBUGF(fprintf(stderr, "deflatehd: name match index=%zd\n",
+                     res.index));
+
       index = res.index;
     }
     if(hd_deflate_should_indexing(deflater, nv)) {
@@ -1152,6 +1185,10 @@ int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
       goto fail;
     }
   }
+
+  DEBUGF(fprintf(stderr,
+                 "deflatehd: all input name/value pairs were deflated\n"));
+
   for(i = 0; i < deflater->ctx.hd_table.len; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_ringbuf_get(&deflater->ctx.hd_table, i);
 
@@ -1163,6 +1200,8 @@ int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
 
   return 0;
  fail:
+  DEBUGF(fprintf(stderr, "deflatehd: error return %d\n", rv));
+
   deflater->ctx.bad = 1;
   return rv;
 }
@@ -1195,11 +1234,13 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater,
   *rfin = 0;
   nin = decode_length(&inflater->left, rfin, inflater->left, in, last, prefix);
   if(inflater->left == -1) {
-    DEBUGF(fprintf(stderr, "invalid integer\n"));
+    DEBUGF(fprintf(stderr, "inflatehd: invalid integer\n"));
     return NGHTTP2_ERR_HEADER_COMP;
   }
   if((size_t)inflater->left > maxlen) {
-    DEBUGF(fprintf(stderr, "integer exceeds the maximum value %zu\n", maxlen));
+    DEBUGF(fprintf(stderr,
+                   "inflatehd: integer exceeded the maximum value %zu\n",
+                   maxlen));
     return NGHTTP2_ERR_HEADER_COMP;
   }
   return nin - in;
@@ -1234,7 +1275,7 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
     return NGHTTP2_ERR_HEADER_COMP;
   }
   if(rv < 0) {
-    DEBUGF(fprintf(stderr, "huffman decoding failed\n"));
+    DEBUGF(fprintf(stderr, "inflatehd: huffman decoding failed\n"));
     return rv;
   }
   inflater->left -= rv;
@@ -1302,7 +1343,7 @@ static int hd_inflate_commit_indexed(nghttp2_hd_inflater *inflater,
     emit_indexed_header(nv_out, ent);
     return 0;
   }
-  DEBUGF(fprintf(stderr, "Toggle off item:\n"));
+  DEBUGF(fprintf(stderr, "inflatehd: toggle off item: "));
   DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
   DEBUGF(fprintf(stderr, ": "));
   DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
@@ -1474,7 +1515,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
     return NGHTTP2_ERR_HEADER_COMP;
   }
 
-  DEBUGF(fprintf(stderr, "nghtp2_hd_infalte_hd start state=%d\n",
+  DEBUGF(fprintf(stderr, "inflatehd: start state=%d\n",
                  inflater->state));
   hd_inflate_keep_free(inflater);
   *inflate_flags = NGHTTP2_HD_INFLATE_NONE;
@@ -1482,26 +1523,28 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
     switch(inflater->state) {
     case NGHTTP2_HD_STATE_OPCODE:
       if(*in == 0x80u) {
-        DEBUGF(fprintf(stderr, "Encoding context update\n"));
+        DEBUGF(fprintf(stderr, "inflatehd: encoding context update\n"));
         inflater->opcode = NGHTTP2_HD_OPCODE_INDEXED;
         inflater->state = NGHTTP2_HD_STATE_CONTEXT_UPDATE;
         ++in;
       } else if(*in & 0x80u) {
-        DEBUGF(fprintf(stderr, "Indexed repr\n"));
+        DEBUGF(fprintf(stderr, "inflatehd: indexed repr\n"));
         inflater->opcode = NGHTTP2_HD_OPCODE_INDEXED;
         inflater->state = NGHTTP2_HD_STATE_READ_INDEX;
       } else {
         if(*in == 0x40 || *in == 0) {
-          DEBUGF(fprintf(stderr, "Literal header repr - new name\n"));
+          DEBUGF(fprintf(stderr,
+                         "inflatehd: literal header repr - new name\n"));
           inflater->opcode = NGHTTP2_HD_OPCODE_NEWNAME;
           inflater->state = NGHTTP2_HD_STATE_NEWNAME_CHECK_NAMELEN;
         } else {
-          DEBUGF(fprintf(stderr, "Literal header repr - indexed name\n"));
+          DEBUGF(fprintf(stderr,
+                         "inflatehd: literal header repr - indexed name\n"));
           inflater->opcode = NGHTTP2_HD_OPCODE_INDNAME;
           inflater->state = NGHTTP2_HD_STATE_READ_INDEX;
         }
         inflater->index_required = (*in & 0x40) == 0;
-        DEBUGF(fprintf(stderr, "indexing required=%d\n",
+        DEBUGF(fprintf(stderr, "inflatehd: indexing required=%d\n",
                        inflater->index_required != 0));
         if(inflater->opcode == NGHTTP2_HD_OPCODE_NEWNAME) {
           ++in;
@@ -1516,13 +1559,13 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
           goto fail;
         }
         ++in;
-        DEBUGF(fprintf(stderr, "Clearing reference set\n"));
+        DEBUGF(fprintf(stderr, "inflatehd: clearing reference set\n"));
         clear_refset(&inflater->ctx);
         inflater->state = NGHTTP2_HD_STATE_OPCODE;
         break;
       }
       /* Header table size change */
-      DEBUGF(fprintf(stderr, "Header table size change\n"));
+      DEBUGF(fprintf(stderr, "inflatehd: header table size change\n"));
       inflater->state = NGHTTP2_HD_STATE_READ_TABLE_SIZE;
       break;
     case NGHTTP2_HD_STATE_READ_TABLE_SIZE:
@@ -1536,7 +1579,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(!rfin) {
         goto almost_ok;
       }
-      DEBUGF(fprintf(stderr, "table_size=%zd\n", inflater->left));
+      DEBUGF(fprintf(stderr, "inflatehd: table_size=%zd\n", inflater->left));
       inflater->ctx.hd_table_bufsize_max = inflater->left;
       hd_context_shrink_table_size(&inflater->ctx);
       inflater->state = NGHTTP2_HD_STATE_OPCODE;
@@ -1554,7 +1597,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(!rfin) {
         goto almost_ok;
       }
-      DEBUGF(fprintf(stderr, "index=%zd\n", inflater->left));
+      DEBUGF(fprintf(stderr, "inflatehd: index=%zd\n", inflater->left));
       if(inflater->opcode == NGHTTP2_HD_OPCODE_INDEXED) {
         inflater->index = inflater->left;
         assert(inflater->index > 0);
@@ -1582,7 +1625,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       hd_inflate_set_huffman_encoded(inflater, in);
       inflater->state = NGHTTP2_HD_STATE_NEWNAME_READ_NAMELEN;
       inflater->left = 0;
-      DEBUGF(fprintf(stderr, "huffman encoded=%d\n",
+      DEBUGF(fprintf(stderr, "inflatehd: huffman encoded=%d\n",
                      inflater->huffman_encoded != 0));
       /* Fall through */
     case NGHTTP2_HD_STATE_NEWNAME_READ_NAMELEN:
@@ -1594,7 +1637,8 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       }
       in += rv;
       if(!rfin) {
-        DEBUGF(fprintf(stderr, "integer not fully decoded. current=%zd\n",
+        DEBUGF(fprintf(stderr,
+                       "inflatehd: integer not fully decoded. current=%zd\n",
                        inflater->left));
 
         goto almost_ok;
@@ -1618,10 +1662,11 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       in += rv;
 
-      DEBUGF(fprintf(stderr, "%zd bytes read\n", rv));
+      DEBUGF(fprintf(stderr, "inflatehd: %zd bytes read\n", rv));
 
       if(inflater->left) {
-        DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
+        DEBUGF(fprintf(stderr,
+                       "inflatehd: still %zd bytes to go\n", inflater->left));
 
         goto almost_ok;
       }
@@ -1637,9 +1682,10 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       in += rv;
 
-      DEBUGF(fprintf(stderr, "%zd bytes read\n", rv));
+      DEBUGF(fprintf(stderr, "inflatehd: %zd bytes read\n", rv));
       if(inflater->left) {
-        DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
+        DEBUGF(fprintf(stderr,
+                       "inflatehd: still %zd bytes to go\n", inflater->left));
 
         goto almost_ok;
       }
@@ -1651,7 +1697,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       hd_inflate_set_huffman_encoded(inflater, in);
       inflater->state = NGHTTP2_HD_STATE_READ_VALUELEN;
       inflater->left = 0;
-      DEBUGF(fprintf(stderr, "huffman encoded=%d\n",
+      DEBUGF(fprintf(stderr, "inflatehd: huffman encoded=%d\n",
                      inflater->huffman_encoded != 0));
       /* Fall through */
     case NGHTTP2_HD_STATE_READ_VALUELEN:
@@ -1668,7 +1714,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
         goto almost_ok;
       }
 
-      DEBUGF(fprintf(stderr, "valuelen=%zd\n", inflater->left));
+      DEBUGF(fprintf(stderr, "inflatehd: valuelen=%zd\n", inflater->left));
       if(inflater->left == 0) {
         if(inflater->opcode == NGHTTP2_HD_OPCODE_NEWNAME) {
           rv = hd_inflate_commit_newname(inflater, nv_out);
@@ -1699,10 +1745,11 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       in += rv;
 
-      DEBUGF(fprintf(stderr, "%zd bytes read\n", rv));
+      DEBUGF(fprintf(stderr, "inflatehd: %zd bytes read\n", rv));
 
       if(inflater->left) {
-        DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
+        DEBUGF(fprintf(stderr,
+                       "inflatehd: still %zd bytes to go\n", inflater->left));
 
         goto almost_ok;
       }
@@ -1724,17 +1771,18 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
     case NGHTTP2_HD_STATE_READ_VALUE:
       rv = hd_inflate_read(inflater, &inflater->valuebufs, in, last);
       if(rv < 0) {
-        DEBUGF(fprintf(stderr, "value read failure %zd: %s\n",
+        DEBUGF(fprintf(stderr, "inflatehd: value read failure %zd: %s\n",
                        rv, nghttp2_strerror(rv)));
         goto fail;
       }
 
       in += rv;
 
-      DEBUGF(fprintf(stderr, "%zd bytes read\n", rv));
+      DEBUGF(fprintf(stderr, "inflatehd: %zd bytes read\n", rv));
 
       if(inflater->left) {
-        DEBUGF(fprintf(stderr, "still %zd bytes to go\n", inflater->left));
+        DEBUGF(fprintf(stderr,
+                       "inflatehd: still %zd bytes to go\n", inflater->left));
         goto almost_ok;
       }
 
@@ -1754,10 +1802,19 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       return in - first;
     }
   }
+
   assert(in == last);
+
+  DEBUGF(fprintf(stderr, "inflatehd: all input bytes were processed\n"));
+
   if(in_final) {
+    DEBUGF(fprintf(stderr, "inflatehd: in_final set\n"));
+
     if(inflater->state != NGHTTP2_HD_STATE_OPCODE) {
+      DEBUGF(fprintf(stderr, "inflatehd: unacceptable state=%d\n",
+                     inflater->state));
       rv = NGHTTP2_ERR_HEADER_COMP;
+
       goto fail;
     }
     for(; inflater->end_headers_index < inflater->ctx.hd_table.len;
@@ -1780,12 +1837,17 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
  almost_ok:
   if(in_final && inflater->state != NGHTTP2_HD_STATE_OPCODE) {
+    DEBUGF(fprintf(stderr, "inflatehd: input ended prematurely\n"));
+
     rv = NGHTTP2_ERR_HEADER_COMP;
+
     goto fail;
   }
   return in - first;
 
  fail:
+  DEBUGF(fprintf(stderr, "inflatehd: error return %zd\n", rv));
+
   inflater->ctx.bad = 1;
   return rv;
 }
