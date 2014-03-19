@@ -231,8 +231,8 @@ static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
   }
 
   DEBUGF(fprintf(stderr,
-                 "new buffer %zu bytes allocated for bufs %p, left %zu\n",
-                 bufs->chunk_length, bufs, bufs->chunk_left));
+                 "new buffer %zu bytes allocated for bufs %p, used %zu\n",
+                 bufs->chunk_length, bufs, bufs->chunk_used));
 
   ++bufs->chunk_used;
 
