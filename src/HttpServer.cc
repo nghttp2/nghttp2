@@ -161,6 +161,18 @@ void add_stream_read_timeout(Stream *stream)
 } // namespace
 
 namespace {
+void add_stream_read_timeout_if_pending(Stream *stream)
+{
+  auto hd = stream->handler;
+  auto config = hd->get_config();
+
+  if(evtimer_pending(stream->rtimer, nullptr)) {
+    evtimer_add(stream->rtimer, &config->stream_read_timeout);
+  }
+}
+} // namespace
+
+namespace {
 void add_stream_write_timeout(Stream *stream)
 {
   auto hd = stream->handler;
@@ -913,17 +925,27 @@ ssize_t file_read_callback
  uint8_t *buf, size_t length, int *eof,
  nghttp2_data_source *source, void *user_data)
 {
+  auto hd = static_cast<Http2Handler*>(user_data);
+  auto stream = hd->get_stream(stream_id);
+
   int fd = source->fd;
   ssize_t r;
+
   while((r = read(fd, buf, length)) == -1 && errno == EINTR);
   if(r == -1) {
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  } else {
-    if(r == 0) {
-      *eof = 1;
+    if(stream) {
+      remove_stream_read_timeout(stream);
+      remove_stream_write_timeout(stream);
     }
-    return r;
+
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
+
+  if(r == 0) {
+    *eof = 1;
+  }
+
+  return r;
 }
 
 namespace {
@@ -1152,19 +1174,23 @@ int hd_on_frame_recv_callback
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   switch(frame->hd.type) {
-  case NGHTTP2_DATA:
+  case NGHTTP2_DATA: {
     // TODO Handle POST
-    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      auto stream = hd->get_stream(frame->hd.stream_id);
-      if(!stream) {
-        return 0;
-      }
+    auto stream = hd->get_stream(frame->hd.stream_id);
+    if(!stream) {
+      return 0;
+    }
 
-      evtimer_del(stream->rtimer);
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      remove_stream_read_timeout(stream);
 
       prepare_response(stream, hd);
+    } else {
+      add_stream_read_timeout(stream);
     }
+
     break;
+  }
   case NGHTTP2_HEADERS:
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST: {
@@ -1193,6 +1219,8 @@ int hd_on_frame_recv_callback
         return 0;
       }
       if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        remove_stream_read_timeout(stream);
+
         prepare_response(stream, hd);
       } else {
         add_stream_read_timeout(stream);
@@ -1261,28 +1289,39 @@ int hd_on_frame_send_callback
     }
 
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      evtimer_del(stream->wtimer);
-    } else {
+      remove_stream_write_timeout(stream);
+    } else if(nghttp2_session_get_stream_remote_window_size
+              (session, frame->hd.stream_id) == 0) {
+      // If stream is blocked by flow control, enable write timeout.
+      add_stream_read_timeout_if_pending(stream);
       add_stream_write_timeout(stream);
+    } else {
+      add_stream_read_timeout_if_pending(stream);
+      remove_stream_write_timeout(stream);
     }
 
     break;
   }
   case NGHTTP2_PUSH_PROMISE: {
     auto promised_stream_id = frame->push_promise.promised_stream_id;
-    auto stream = hd->get_stream(promised_stream_id);
+    auto promised_stream = hd->get_stream(promised_stream_id);
+    auto stream = hd->get_stream(frame->hd.stream_id);
 
-    if(!stream) {
+    if(!promised_stream) {
       return 0;
     }
 
-    if(setup_stream_timeout(stream) != 0) {
+    if(setup_stream_timeout(promised_stream) != 0) {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 promised_stream_id, NGHTTP2_INTERNAL_ERROR);
 
       return 0;
     }
-    prepare_response(stream, hd, /*allow_push */ false);
+
+    add_stream_read_timeout_if_pending(stream);
+    add_stream_write_timeout(stream);
+
+    prepare_response(promised_stream, hd, /*allow_push */ false);
   }
   }
   return 0;
