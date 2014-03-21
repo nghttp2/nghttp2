@@ -175,7 +175,7 @@ int HttpDownstreamConnection::push_request_headers()
       http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).second.size());
       hdrs += ", ";
     }
-    hdrs += downstream_->get_upstream()->get_client_handler()->get_ipaddr();
+    hdrs += client_handler_->get_ipaddr();
     hdrs += "\r\n";
   } else if(xff != end_headers) {
     hdrs += "X-Forwarded-For: ";
@@ -188,7 +188,7 @@ int HttpDownstreamConnection::push_request_headers()
     if(!downstream_->get_request_http2_scheme().empty()) {
       hdrs += downstream_->get_request_http2_scheme();
       hdrs += "\r\n";
-    } else if(util::istartsWith(downstream_->get_request_path(), "https:")) {
+    } else if(client_handler_->get_ssl()) {
       hdrs += "https\r\n";
     } else {
       hdrs += "http\r\n";

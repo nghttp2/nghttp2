@@ -246,15 +246,16 @@ int Http2DownstreamConnection::push_request_headers()
   downstream_->concat_norm_request_headers();
   auto end_headers = std::end(downstream_->get_request_headers());
 
-  // 6 means:
+  // 7 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
   // 4. :authority (optional)
   // 5. via (optional)
   // 6. x-forwarded-for (optional)
+  // 7. x-forwarded-proto (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 6);
+  nva.reserve(nheader + 7);
   std::string via_value;
   std::string xff_value;
   std::string scheme, authority, path, query;
@@ -308,9 +309,11 @@ int Http2DownstreamConnection::push_request_headers()
       }
     }
     if(scheme.empty()) {
-      // The default scheme is http. For HTTP2 upstream, the path must
-      // be absolute URI, so scheme should be provided.
-      nva.push_back(http2::make_nv_ll(":scheme", "http"));
+      if(client_handler_->get_ssl()) {
+        nva.push_back(http2::make_nv_ll(":scheme", "https"));
+      } else {
+        nva.push_back(http2::make_nv_ll(":scheme", "http"));
+      }
     } else {
       nva.push_back(http2::make_nv_ls(":scheme", scheme));
     }
@@ -368,6 +371,19 @@ int Http2DownstreamConnection::push_request_headers()
     nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
   } else if(xff != end_headers) {
     nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).second));
+  }
+
+  if(downstream_->get_request_method() != "CONNECT") {
+    // We use same protocol with :scheme header field
+    if(scheme.empty()) {
+      if(client_handler_->get_ssl()) {
+        nva.push_back(http2::make_nv_ll("x-forwarded-proto", "https"));
+      } else {
+        nva.push_back(http2::make_nv_ll("x-forwarded-proto", "http"));
+      }
+    } else {
+      nva.push_back(http2::make_nv_ls("x-forwarded-proto", scheme.c_str()));
+    }
   }
 
   auto via = downstream_->get_norm_request_header("via");
