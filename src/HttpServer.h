@@ -63,6 +63,8 @@ struct Config {
   std::string host;
   std::string private_key_file;
   std::string cert_file;
+  timeval stream_read_timeout;
+  timeval stream_write_timeout;
   void *data_ptr;
   size_t padding;
   size_t num_worker;
@@ -76,12 +78,17 @@ struct Config {
   Config();
 };
 
+class Http2Handler;
+
 struct Request {
   Headers headers;
   std::pair<std::string, size_t> response_body;
+  Http2Handler *handler;
+  event *rtimer;
+  event *wtimer;
   int32_t stream_id;
   int file;
-  Request(int32_t stream_id);
+  Request(Http2Handler *handler, int32_t stream_id);
   ~Request();
 };
 
@@ -118,6 +125,8 @@ public:
    nghttp2_data_provider *data_prd);
 
   int submit_push_promise(Request *req, const std::string& push_path);
+
+  int submit_rst_stream(Request *req, nghttp2_error_code error_code);
 
   void add_stream(int32_t stream_id, std::unique_ptr<Request> req);
   void remove_stream(int32_t stream_id);

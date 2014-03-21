@@ -74,8 +74,25 @@ const std::string DEFAULT_HTML = "index.html";
 const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 } // namespace
 
+namespace {
+void delete_handler(Http2Handler *handler)
+{
+  handler->remove_self();
+  delete handler;
+}
+} // namespace
+
+namespace {
+void print_session_id(int64_t id)
+{
+  std::cout << "[id=" << id << "] ";
+}
+} // namespace
+
 Config::Config()
-  : data_ptr(nullptr),
+  : stream_read_timeout{60, 0},
+    stream_write_timeout{60, 0},
+    data_ptr(nullptr),
     padding(0),
     num_worker(1),
     header_table_size(-1),
@@ -87,8 +104,11 @@ Config::Config()
     error_gzip(false)
 {}
 
-Request::Request(int32_t stream_id)
-  : stream_id(stream_id),
+Request::Request(Http2Handler *handler, int32_t stream_id)
+  : handler(handler),
+    rtimer(nullptr),
+    wtimer(nullptr),
+    stream_id(stream_id),
     file(-1)
 {}
 
@@ -97,7 +117,76 @@ Request::~Request()
   if(file != -1) {
     close(file);
   }
+
+  if(wtimer) {
+    event_free(wtimer);
+  }
+
+  if(rtimer) {
+    event_free(rtimer);
+  }
 }
+
+namespace {
+void stream_timeout_cb(evutil_socket_t fd, short what, void *arg)
+{
+  int rv;
+  auto stream = static_cast<Request*>(arg);
+  auto hd = stream->handler;
+  auto config = hd->get_config();
+
+  if(config->verbose) {
+    print_session_id(hd->session_id());
+    print_timer();
+    std::cout << " timeout stream_id=" << stream->stream_id << std::endl;
+  }
+
+  hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
+
+  rv = hd->on_write();
+  if(rv == -1) {
+    delete_handler(hd);
+  }
+}
+} // namespace
+
+namespace {
+void add_stream_read_timeout(Request *req)
+{
+  auto hd = req->handler;
+  auto config = hd->get_config();
+
+  evtimer_add(req->rtimer, &config->stream_read_timeout);
+}
+} // namespace
+
+namespace {
+void add_stream_write_timeout(Request *req)
+{
+  auto hd = req->handler;
+  auto config = hd->get_config();
+
+  evtimer_add(req->wtimer, &config->stream_write_timeout);
+}
+} // namespace
+
+namespace {
+void remove_stream_read_timeout(Request *req)
+{
+  if(req->rtimer) {
+    evtimer_del(req->rtimer);
+  }
+}
+} // namespace
+
+namespace {
+void remove_stream_write_timeout(Request *req)
+{
+  if(req->wtimer) {
+    evtimer_del(req->wtimer);
+  }
+}
+} // namespace
 
 class Sessions {
 public:
@@ -185,21 +274,6 @@ private:
   SSL_CTX *ssl_ctx_;
   int64_t next_session_id_;
 };
-
-namespace {
-void delete_handler(Http2Handler *handler)
-{
-  handler->remove_self();
-  delete handler;
-}
-} // namespace
-
-namespace {
-void print_session_id(int64_t id)
-{
-  std::cout << "[id=" << id << "] ";
-}
-} // namespace
 
 namespace {
 void on_session_closed(Http2Handler *hd, int64_t session_id)
@@ -765,6 +839,16 @@ int Http2Handler::submit_push_promise(Request *req,
                                      nullptr);
 }
 
+int Http2Handler::submit_rst_stream(Request *req,
+                                    nghttp2_error_code error_code)
+{
+  remove_stream_read_timeout(req);
+  remove_stream_write_timeout(req);
+
+  return nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE,
+                                   req->stream_id, error_code);
+}
+
 void Http2Handler::add_stream(int32_t stream_id, std::unique_ptr<Request> req)
 {
   id2req_[stream_id] = std::move(req);
@@ -1013,17 +1097,47 @@ int on_header_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
+int setup_stream_timeout(Request *req)
+{
+  auto hd = req->handler;
+  auto evbase = hd->get_sessions()->get_evbase();
+
+  req->rtimer = evtimer_new(evbase, stream_timeout_cb, req);
+  if(!req->rtimer) {
+    return -1;
+  }
+
+  req->wtimer = evtimer_new(evbase, stream_timeout_cb, req);
+  if(!req->wtimer) {
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int on_begin_headers_callback(nghttp2_session *session,
                               const nghttp2_frame *frame,
                               void *user_data)
 {
   auto hd = static_cast<Http2Handler*>(user_data);
+
   if(frame->hd.type != NGHTTP2_HEADERS ||
      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
-  auto stream = util::make_unique<Request>(frame->hd.stream_id);
-  hd->add_stream(frame->hd.stream_id, std::move(stream));
+
+  auto req = util::make_unique<Request>(hd, frame->hd.stream_id);
+  if(setup_stream_timeout(req.get()) != 0) {
+    hd->submit_rst_stream(req.get(), NGHTTP2_INTERNAL_ERROR);
+    return 0;
+  }
+
+  add_stream_read_timeout(req.get());
+
+  hd->add_stream(frame->hd.stream_id, std::move(req));
+
   return 0;
 }
 } // namespace
@@ -1045,6 +1159,9 @@ int hd_on_frame_recv_callback
       if(!stream) {
         return 0;
       }
+
+      evtimer_del(stream->rtimer);
+
       prepare_response(stream, hd);
     }
     break;
@@ -1055,18 +1172,15 @@ int hd_on_frame_recv_callback
       if(!stream) {
         return 0;
       }
+
       http2::normalize_headers(stream->headers);
       if(!http2::check_http2_headers(stream->headers)) {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                  frame->hd.stream_id,
-                                  NGHTTP2_PROTOCOL_ERROR);
+        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
       for(size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
         if(!http2::get_unique_header(stream->headers, REQUIRED_HEADERS[i])) {
-          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                    frame->hd.stream_id,
-                                    NGHTTP2_PROTOCOL_ERROR);
+          hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
           return 0;
         }
       }
@@ -1075,13 +1189,13 @@ int hd_on_frame_recv_callback
       // provide host HTTP/1.1 header field.
       if(!http2::get_unique_header(stream->headers, ":authority") &&
          !http2::get_unique_header(stream->headers, "host")) {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                  frame->hd.stream_id,
-                                  NGHTTP2_PROTOCOL_ERROR);
+        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
       if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
         prepare_response(stream, hd);
+      } else {
+        add_stream_read_timeout(stream);
       }
       break;
     }
@@ -1111,11 +1225,13 @@ int hd_before_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
   auto hd = static_cast<Http2Handler*>(user_data);
+
   if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
     auto stream_id = frame->push_promise.promised_stream_id;
-    auto req = util::make_unique<Request>(stream_id);
+    auto req = util::make_unique<Request>(hd, stream_id);
     auto nva = http2::sort_nva(frame->push_promise.nva,
                                frame->push_promise.nvlen);
+
     append_nv(req.get(), nva);
     hd->add_stream(stream_id, std::move(req));
   }
@@ -1129,15 +1245,45 @@ int hd_on_frame_send_callback
  void *user_data)
 {
   auto hd = static_cast<Http2Handler*>(user_data);
-  if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
-    auto stream = hd->get_stream(frame->push_promise.promised_stream_id);
-    if(stream) {
-      prepare_response(stream, hd, /*allow_push */ false);
-    }
-  }
+
   if(hd->get_config()->verbose) {
     print_session_id(hd->session_id());
     verbose_on_frame_send_callback(session, frame, user_data);
+  }
+
+  switch(frame->hd.type) {
+  case NGHTTP2_DATA:
+  case NGHTTP2_HEADERS: {
+    auto stream = hd->get_stream(frame->hd.stream_id);
+
+    if(!stream) {
+      return 0;
+    }
+
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      evtimer_del(stream->wtimer);
+    } else {
+      add_stream_write_timeout(stream);
+    }
+
+    break;
+  }
+  case NGHTTP2_PUSH_PROMISE: {
+    auto promised_stream_id = frame->push_promise.promised_stream_id;
+    auto stream = hd->get_stream(promised_stream_id);
+
+    if(!stream) {
+      return 0;
+    }
+
+    if(setup_stream_timeout(stream) != 0) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                promised_stream_id, NGHTTP2_INTERNAL_ERROR);
+
+      return 0;
+    }
+    prepare_response(stream, hd, /*allow_push */ false);
+  }
   }
   return 0;
 }
@@ -1158,7 +1304,17 @@ int on_data_chunk_recv_callback
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
  const uint8_t *data, size_t len, void *user_data)
 {
+  auto hd = static_cast<Http2Handler*>(user_data);
+  auto req = hd->get_stream(stream_id);
+
+  if(!req) {
+    return 0;
+  }
+
   // TODO Handle POST
+
+  add_stream_read_timeout(req);
+
   return 0;
 }
 } // namespace
