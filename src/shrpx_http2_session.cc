@@ -880,10 +880,8 @@ int on_response_headers(Http2Session *http2session,
   }
   downstream->set_response_http_status(strtoul(status->second.c_str(),
                                                nullptr, 10));
-  // Just assume it is HTTP/1.1. But we really consider to say 2.0
-  // here.
-  downstream->set_response_major(1);
-  downstream->set_response_minor(1);
+  downstream->set_response_major(2);
+  downstream->set_response_minor(0);
 
   auto content_length = http2::get_header(nva, "content-length");
   if(!content_length && downstream->get_request_method() != "HEAD" &&

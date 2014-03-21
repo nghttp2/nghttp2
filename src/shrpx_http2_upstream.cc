@@ -229,6 +229,11 @@ int on_begin_headers_callback(nghttp2_session *session,
   upstream->add_downstream(downstream);
   downstream->init_response_body_buf();
 
+  // Although, we deprecated minor version from HTTP/2, we supply
+  // minor version 0 to use via header field in a conventional way.
+  downstream->set_request_major(2);
+  downstream->set_request_minor(0);
+
   return 0;
 }
 } // namespace
