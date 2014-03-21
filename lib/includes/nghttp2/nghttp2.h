@@ -1769,6 +1769,18 @@ int32_t nghttp2_session_get_effective_local_window_size
 /**
  * @function
  *
+ * Returns the remote window size for a given stream |stream_id|.
+ * This is the amount of flow-controlled payload (e.g., DATA) that the
+ * local endpoint can send without WINDOW_UPDATE.
+ *
+ * This function returns -1 if it fails.
+ */
+int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session* session,
+                                                      int32_t stream_id);
+
+/**
+ * @function
+ *
  * Signals the session so that the connection should be terminated.
  *
  * GOAWAY frame with the given |error_code| will be submitted if it

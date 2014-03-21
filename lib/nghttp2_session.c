@@ -4666,6 +4666,19 @@ int32_t nghttp2_session_get_effective_local_window_size
   return session->local_window_size;
 }
 
+int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session* session,
+                                                      int32_t stream_id)
+{
+  nghttp2_stream *stream;
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if(stream == NULL) {
+    return -1;
+  }
+
+  return nghttp2_session_next_data_read(session, stream);
+}
+
 int nghttp2_session_upgrade(nghttp2_session *session,
                             const uint8_t *settings_payload,
                             size_t settings_payloadlen,
