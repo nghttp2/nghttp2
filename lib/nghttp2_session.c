@@ -581,6 +581,13 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session,
 {
   int rv;
   nghttp2_frame *frame;
+  nghttp2_stream *stream;
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if(stream && stream->state == NGHTTP2_STREAM_CLOSING) {
+    return 0;
+  }
+
   frame = malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;

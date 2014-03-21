@@ -229,6 +229,10 @@ int nghttp2_session_add_frame(nghttp2_session *session,
  * code |error_code|. This is a convenient function built on top of
  * nghttp2_session_add_frame() to add RST_STREAM easily.
  *
+ * This function simply returns 0 without adding RST_STREAM frame if
+ * given stream is in NGHTTP2_STREAM_CLOSING state, because multiple
+ * RST_STREAM for a stream is redundant.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
