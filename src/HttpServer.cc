@@ -104,7 +104,7 @@ Config::Config()
     error_gzip(false)
 {}
 
-Request::Request(Http2Handler *handler, int32_t stream_id)
+Stream::Stream(Http2Handler *handler, int32_t stream_id)
   : handler(handler),
     rtimer(nullptr),
     wtimer(nullptr),
@@ -112,7 +112,7 @@ Request::Request(Http2Handler *handler, int32_t stream_id)
     file(-1)
 {}
 
-Request::~Request()
+Stream::~Stream()
 {
   if(file != -1) {
     close(file);
@@ -131,7 +131,7 @@ namespace {
 void stream_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
   int rv;
-  auto stream = static_cast<Request*>(arg);
+  auto stream = static_cast<Stream*>(arg);
   auto hd = stream->handler;
   auto config = hd->get_config();
 
@@ -151,39 +151,39 @@ void stream_timeout_cb(evutil_socket_t fd, short what, void *arg)
 } // namespace
 
 namespace {
-void add_stream_read_timeout(Request *req)
+void add_stream_read_timeout(Stream *stream)
 {
-  auto hd = req->handler;
+  auto hd = stream->handler;
   auto config = hd->get_config();
 
-  evtimer_add(req->rtimer, &config->stream_read_timeout);
+  evtimer_add(stream->rtimer, &config->stream_read_timeout);
 }
 } // namespace
 
 namespace {
-void add_stream_write_timeout(Request *req)
+void add_stream_write_timeout(Stream *stream)
 {
-  auto hd = req->handler;
+  auto hd = stream->handler;
   auto config = hd->get_config();
 
-  evtimer_add(req->wtimer, &config->stream_write_timeout);
+  evtimer_add(stream->wtimer, &config->stream_write_timeout);
 }
 } // namespace
 
 namespace {
-void remove_stream_read_timeout(Request *req)
+void remove_stream_read_timeout(Stream *stream)
 {
-  if(req->rtimer) {
-    evtimer_del(req->rtimer);
+  if(stream->rtimer) {
+    evtimer_del(stream->rtimer);
   }
 }
 } // namespace
 
 namespace {
-void remove_stream_write_timeout(Request *req)
+void remove_stream_write_timeout(Stream *stream)
 {
-  if(req->wtimer) {
-    evtimer_del(req->wtimer);
+  if(stream->wtimer) {
+    evtimer_del(stream->wtimer);
   }
 }
 } // namespace
@@ -812,17 +812,17 @@ int Http2Handler::submit_response(const std::string& status,
                                  data_prd);
 }
 
-int Http2Handler::submit_push_promise(Request *req,
+int Http2Handler::submit_push_promise(Stream *stream,
                                       const std::string& push_path)
 {
   std::string authority;
-  auto itr = std::lower_bound(std::begin(req->headers),
-                              std::end(req->headers),
+  auto itr = std::lower_bound(std::begin(stream->headers),
+                              std::end(stream->headers),
                               std::make_pair(std::string(":authority"),
                                              std::string("")));
-  if(itr == std::end(req->headers) || (*itr).first != ":authority") {
-    itr = std::lower_bound(std::begin(req->headers),
-                           std::end(req->headers),
+  if(itr == std::end(stream->headers) || (*itr).first != ":authority") {
+    itr = std::lower_bound(std::begin(stream->headers),
+                           std::end(stream->headers),
                            std::make_pair(std::string("host"),
                                           std::string("")));
   }
@@ -835,34 +835,34 @@ int Http2Handler::submit_push_promise(Request *req,
     http2::make_nv_ls(":authority", (*itr).second)
   };
   return nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_HEADERS,
-                                     req->stream_id, nva.data(), nva.size(),
+                                     stream->stream_id, nva.data(), nva.size(),
                                      nullptr);
 }
 
-int Http2Handler::submit_rst_stream(Request *req,
+int Http2Handler::submit_rst_stream(Stream *stream,
                                     nghttp2_error_code error_code)
 {
-  remove_stream_read_timeout(req);
-  remove_stream_write_timeout(req);
+  remove_stream_read_timeout(stream);
+  remove_stream_write_timeout(stream);
 
   return nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE,
-                                   req->stream_id, error_code);
+                                   stream->stream_id, error_code);
 }
 
-void Http2Handler::add_stream(int32_t stream_id, std::unique_ptr<Request> req)
+void Http2Handler::add_stream(int32_t stream_id, std::unique_ptr<Stream> stream)
 {
-  id2req_[stream_id] = std::move(req);
+  id2stream_[stream_id] = std::move(stream);
 }
 
 void Http2Handler::remove_stream(int32_t stream_id)
 {
-  id2req_.erase(stream_id);
+  id2stream_.erase(stream_id);
 }
 
-Request* Http2Handler::get_stream(int32_t stream_id)
+Stream* Http2Handler::get_stream(int32_t stream_id)
 {
-  auto itr = id2req_.find(stream_id);
-  if(itr == std::end(id2req_)) {
+  auto itr = id2stream_.find(stream_id);
+  if(itr == std::end(id2stream_)) {
     return nullptr;
   } else {
     return (*itr).second.get();
@@ -939,12 +939,12 @@ bool check_url(const std::string& url)
 } // namespace
 
 namespace {
-void prepare_status_response(Request *req, Http2Handler *hd,
+void prepare_status_response(Stream *stream, Http2Handler *hd,
                              const std::string& status)
 {
   int pipefd[2];
   if(status == STATUS_304 || pipe(pipefd) == -1) {
-    hd->submit_response(status, req->stream_id, 0);
+    hd->submit_response(status, stream->stream_id, 0);
     return;
   }
   std::string body;
@@ -971,30 +971,30 @@ void prepare_status_response(Request *req, Http2Handler *hd,
   }
   close(pipefd[1]);
 
-  req->file = pipefd[0];
+  stream->file = pipefd[0];
   nghttp2_data_provider data_prd;
   data_prd.source.fd = pipefd[0];
   data_prd.read_callback = file_read_callback;
   headers.emplace_back("content-type", "text/html; charset=UTF-8");
-  hd->submit_response(status, req->stream_id, headers, &data_prd);
+  hd->submit_response(status, stream->stream_id, headers, &data_prd);
 }
 } // namespace
 
 namespace {
-void prepare_response(Request *req, Http2Handler *hd, bool allow_push = true)
+void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
 {
   int rv;
-  auto url = (*std::lower_bound(std::begin(req->headers),
-                                std::end(req->headers),
+  auto url = (*std::lower_bound(std::begin(stream->headers),
+                                std::end(stream->headers),
                                 std::make_pair(std::string(":path"),
                                                std::string()))).second;
-  auto ims = std::lower_bound(std::begin(req->headers),
-                              std::end(req->headers),
+  auto ims = std::lower_bound(std::begin(stream->headers),
+                              std::end(stream->headers),
                               std::make_pair(std::string("if-modified-since"),
                                              std::string()));
   time_t last_mod = 0;
   bool last_mod_found = false;
-  if(ims != std::end(req->headers) &&
+  if(ims != std::end(stream->headers) &&
      (*ims).first == "if-modified-since") {
       last_mod_found = true;
       last_mod = util::parse_http_date((*ims).second);
@@ -1010,13 +1010,13 @@ void prepare_response(Request *req, Http2Handler *hd, bool allow_push = true)
   }
   url = util::percentDecode(url.begin(), url.end());
   if(!check_url(url)) {
-    prepare_status_response(req, hd, STATUS_404);
+    prepare_status_response(stream, hd, STATUS_404);
     return;
   }
   auto push_itr = hd->get_config()->push.find(url);
   if(allow_push && push_itr != std::end(hd->get_config()->push)) {
     for(auto& push_path : (*push_itr).second) {
-      rv = hd->submit_push_promise(req, push_path);
+      rv = hd->submit_push_promise(stream, push_path);
       if(rv != 0) {
         std::cerr << "nghttp2_submit_push_promise() returned error: "
                   << nghttp2_strerror(rv) << std::endl;
@@ -1029,21 +1029,21 @@ void prepare_response(Request *req, Http2Handler *hd, bool allow_push = true)
   }
   int file = open(path.c_str(), O_RDONLY | O_BINARY);
   if(file == -1) {
-    prepare_status_response(req, hd, STATUS_404);
+    prepare_status_response(stream, hd, STATUS_404);
   } else {
     struct stat buf;
     if(fstat(file, &buf) == -1) {
       close(file);
-      prepare_status_response(req, hd, STATUS_404);
+      prepare_status_response(stream, hd, STATUS_404);
     } else {
-      req->file = file;
+      stream->file = file;
       nghttp2_data_provider data_prd;
       data_prd.source.fd = file;
       data_prd.read_callback = file_read_callback;
       if(last_mod_found && buf.st_mtime <= last_mod) {
-        prepare_status_response(req, hd, STATUS_304);
+        prepare_status_response(stream, hd, STATUS_304);
       } else {
-        hd->submit_file_response(STATUS_200, req->stream_id, buf.st_mtime,
+        hd->submit_file_response(STATUS_200, stream->stream_id, buf.st_mtime,
                                  buf.st_size, &data_prd);
       }
     }
@@ -1052,10 +1052,10 @@ void prepare_response(Request *req, Http2Handler *hd, bool allow_push = true)
 } // namespace
 
 namespace {
-void append_nv(Request *req, const std::vector<nghttp2_nv>& nva)
+void append_nv(Stream *stream, const std::vector<nghttp2_nv>& nva)
 {
   for(auto& nv : nva) {
-    http2::split_add_header(req->headers,
+    http2::split_add_header(stream->headers,
                             nv.name, nv.namelen, nv.value, nv.valuelen);
   }
 }
@@ -1097,18 +1097,18 @@ int on_header_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int setup_stream_timeout(Request *req)
+int setup_stream_timeout(Stream *stream)
 {
-  auto hd = req->handler;
+  auto hd = stream->handler;
   auto evbase = hd->get_sessions()->get_evbase();
 
-  req->rtimer = evtimer_new(evbase, stream_timeout_cb, req);
-  if(!req->rtimer) {
+  stream->rtimer = evtimer_new(evbase, stream_timeout_cb, stream);
+  if(!stream->rtimer) {
     return -1;
   }
 
-  req->wtimer = evtimer_new(evbase, stream_timeout_cb, req);
-  if(!req->wtimer) {
+  stream->wtimer = evtimer_new(evbase, stream_timeout_cb, stream);
+  if(!stream->wtimer) {
     return -1;
   }
 
@@ -1128,15 +1128,15 @@ int on_begin_headers_callback(nghttp2_session *session,
     return 0;
   }
 
-  auto req = util::make_unique<Request>(hd, frame->hd.stream_id);
-  if(setup_stream_timeout(req.get()) != 0) {
-    hd->submit_rst_stream(req.get(), NGHTTP2_INTERNAL_ERROR);
+  auto stream = util::make_unique<Stream>(hd, frame->hd.stream_id);
+  if(setup_stream_timeout(stream.get()) != 0) {
+    hd->submit_rst_stream(stream.get(), NGHTTP2_INTERNAL_ERROR);
     return 0;
   }
 
-  add_stream_read_timeout(req.get());
+  add_stream_read_timeout(stream.get());
 
-  hd->add_stream(frame->hd.stream_id, std::move(req));
+  hd->add_stream(frame->hd.stream_id, std::move(stream));
 
   return 0;
 }
@@ -1228,12 +1228,12 @@ int hd_before_frame_send_callback
 
   if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
     auto stream_id = frame->push_promise.promised_stream_id;
-    auto req = util::make_unique<Request>(hd, stream_id);
+    auto stream = util::make_unique<Stream>(hd, stream_id);
     auto nva = http2::sort_nva(frame->push_promise.nva,
                                frame->push_promise.nvlen);
 
-    append_nv(req.get(), nva);
-    hd->add_stream(stream_id, std::move(req));
+    append_nv(stream.get(), nva);
+    hd->add_stream(stream_id, std::move(stream));
   }
   return 0;
 }
@@ -1305,15 +1305,15 @@ int on_data_chunk_recv_callback
  const uint8_t *data, size_t len, void *user_data)
 {
   auto hd = static_cast<Http2Handler*>(user_data);
-  auto req = hd->get_stream(stream_id);
+  auto stream = hd->get_stream(stream_id);
 
-  if(!req) {
+  if(!stream) {
     return 0;
   }
 
   // TODO Handle POST
 
-  add_stream_read_timeout(req);
+  add_stream_read_timeout(stream);
 
   return 0;
 }

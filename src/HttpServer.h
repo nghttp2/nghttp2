@@ -80,7 +80,7 @@ struct Config {
 
 class Http2Handler;
 
-struct Request {
+struct Stream {
   Headers headers;
   std::pair<std::string, size_t> response_body;
   Http2Handler *handler;
@@ -88,8 +88,8 @@ struct Request {
   event *wtimer;
   int32_t stream_id;
   int file;
-  Request(Http2Handler *handler, int32_t stream_id);
-  ~Request();
+  Stream(Http2Handler *handler, int32_t stream_id);
+  ~Stream();
 };
 
 class Sessions;
@@ -124,13 +124,13 @@ public:
    const std::vector<std::pair<std::string, std::string>>& headers,
    nghttp2_data_provider *data_prd);
 
-  int submit_push_promise(Request *req, const std::string& push_path);
+  int submit_push_promise(Stream *stream, const std::string& push_path);
 
-  int submit_rst_stream(Request *req, nghttp2_error_code error_code);
+  int submit_rst_stream(Stream *stream, nghttp2_error_code error_code);
 
-  void add_stream(int32_t stream_id, std::unique_ptr<Request> req);
+  void add_stream(int32_t stream_id, std::unique_ptr<Stream> stream);
   void remove_stream(int32_t stream_id);
-  Request* get_stream(int32_t stream_id);
+  Stream* get_stream(int32_t stream_id);
   int64_t session_id() const;
   Sessions* get_sessions() const;
   const Config* get_config() const;
@@ -145,7 +145,7 @@ private:
   int tls_write_pending();
   int wait_events();
 
-  std::map<int32_t, std::unique_ptr<Request>> id2req_;
+  std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
   nghttp2_buf sendbuf_;
   int64_t session_id_;
   nghttp2_session *session_;
