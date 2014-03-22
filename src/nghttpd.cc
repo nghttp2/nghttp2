@@ -93,50 +93,48 @@ namespace {
 void print_help(std::ostream& out)
 {
   print_usage(out);
-  out << "\n"
-      << "  <PORT>             Specify listening port number.\n"
-      << "  <PRIVATE_KEY>      Set path to server's private key. Required\n"
-      << "                     unless --no-tls is specified.\n"
-      << "  <CERT>             Set path to server's certificate. Required\n"
-      << "                     unless --no-tls is specified.\n"
-      << "\n"
-      << "Options:\n"
-      << "  -D, --daemon       Run in a background. If -D is used, the\n"
-      << "                     current working directory is changed to '/'.\n"
-      << "                     Therefore if this option is used, -d option\n"
-      << "                     must be specified.\n"
-      << "  -V, --verify-client\n"
-      << "                     The server sends a client certificate\n"
-      << "                     request. If the client did not return a\n"
-      << "                     certificate, the handshake is terminated.\n"
-      << "                     Currently, this option just requests a\n"
-      << "                     client certificate and does not verify it.\n"
-      << "  -d, --htdocs=<PATH>\n"
-      << "                     Specify document root. If this option is\n"
-      << "                     not specified, the document root is the\n"
-      << "                     current working directory.\n"
-      << "  -v, --verbose      Print debug information such as reception/\n"
-      << "                     transmission of frames and name/value pairs.\n"
-      << "  --no-tls           Disable SSL/TLS.\n"
-      << "  -c, --header-table-size=<N>\n"
-      << "                     Specify decoder header table size.\n"
-      << "  --color            Force colored log output.\n"
-      << "  -p, --push=<PATH>=<PUSH_PATH,...>\n"
-      << "                     Push resources PUSH_PATHs when PATH is\n"
-      << "                     requested. This option can be used\n"
-      << "                     repeatedly to specify multiple push\n"
-      << "                     configurations. For example,\n"
-      << "                       -p/=/foo.png -p/doc=/bar.css\n"
-      << "                     PATH and PUSH_PATHs are relative to document\n"
-      << "                     root. See --htdocs option.\n"
-      << "  -b, --padding=<N>  Add at most <N> bytes to a frame payload as\n"
-      << "                     padding. Specify 0 to disable padding.\n"
-      << "  -n, --workers=<CORE>\n"
-      << "                     Set the number of worker threads.\n"
-      << "                     Default: 1\n"
-      << "  -e, --error-gzip   Make error response gzipped.\n"
-      << "  --version          Display version information and exit.\n"
-      << "  -h, --help         Display this help and exit.\n"
+  out << R"(
+  <PORT>             Specify listening port number.
+  <PRIVATE_KEY>      Set  path  to  server's  private  key.   Required
+                     unless --no-tls is specified.
+  <CERT>             Set  path  to   server's  certificate.   Required
+                     unless --no-tls is specified.
+Options:
+  -D, --daemon       Run in a background.  If  -D is used, the current
+                     working directory  is changed to  '/'.  Therefore
+                     if  this  option  is  used,  -d  option  must  be
+                     specified.
+  -V, --verify-client
+                     The  server sends  a client  certificate request.
+                     If the  client did not return  a certificate, the
+                     handshake is terminated.   Currently, this option
+                     just requests  a client certificate and  does not
+                     verify it.
+  -d, --htdocs=<PATH>
+                     Specify  document root.   If this  option is  not
+                     specified,  the  document  root  is  the  current
+                     working directory.
+  -v, --verbose      Print  debug   information  such   as  reception/
+                     transmission of frames and name/value pairs.
+  --no-tls           Disable SSL/TLS.
+  -c, --header-table-size=<N>
+                     Specify decoder header table size.
+  --color            Force colored log output.
+  -p, --push=<PATH>=<PUSH_PATH,...>
+                     Push  resources   <PUSH_PATH>s  when   <PATH>  is
+                     requested.  This option can be used repeatedly to
+                     specify multiple push configurations.  <PATH> and
+                     <PUSH_PATH>s are relative  to document root.  See
+                     --htdocs    option.      Example:    -p/=/foo.png
+                     -p/doc=/bar.css
+  -b, --padding=<N>  Add  at most  <N>  bytes to  a  frame payload  as
+                     padding.  Specify 0 to disable padding.
+  -n, --workers=<CORE>
+                     Set the number of worker threads.
+                     Default: 1
+  -e, --error-gzip   Make error response gzipped.
+  --version          Display version information and exit.
+  -h, --help         Display this help and exit.)"
       << std::endl;
 }
 } // namespace
