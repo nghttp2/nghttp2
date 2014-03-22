@@ -2230,7 +2230,7 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
  */
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           nghttp2_error_code error_code,
-                          uint8_t *opaque_data, size_t opaque_data_len);
+                          const uint8_t *opaque_data, size_t opaque_data_len);
 
 /**
  * @function

@@ -167,7 +167,7 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
 
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           nghttp2_error_code error_code,
-                          uint8_t *opaque_data, size_t opaque_data_len)
+                          const uint8_t *opaque_data, size_t opaque_data_len)
 {
   return nghttp2_session_add_goaway(session, session->last_stream_id,
                                     error_code, opaque_data, opaque_data_len);
