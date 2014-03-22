@@ -54,15 +54,13 @@ typedef enum {
 
 typedef struct {
   nghttp2_outbound_item *item;
-
   nghttp2_bufs framebufs;
   nghttp2_outbound_state state;
 } nghttp2_active_outbound_item;
 
-/* Buffer length for inbound raw byte stream. */
+/* Buffer length for inbound raw byte stream used in
+   nghttp2_session_recv(). */
 #define NGHTTP2_INBOUND_BUFFER_LENGTH 16384
-
-#define NGHTTP2_INITIAL_NV_BUFFER_LENGTH 4096
 
 /* Internal state when receiving incoming frame */
 typedef enum {
