@@ -467,8 +467,8 @@ void print_version(std::ostream& out)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << "Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]\n"
-      << "A reverse proxy for HTTP/2, HTTP/1 and SPDY." << std::endl;
+  out << R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
+A reverse proxy for HTTP/2, HTTP/1 and SPDY.)" << std::endl;
 }
 } // namespace
 
@@ -476,313 +476,308 @@ namespace {
 void print_help(std::ostream& out)
 {
   print_usage(out);
-  out << "\n"
-      << "  <PRIVATE_KEY>      Set path to server's private key. Required\n"
-      << "                     unless -p, --client or --frontend-no-tls\n"
-      << "                     are given.\n"
-      << "  <CERT>             Set path to server's certificate. Required\n"
-      << "                     unless -p, --client or --frontend-no-tls\n"
-      << "                     are given.\n"
-      << "Options:\n"
-      << "  The options are categorized into several groups.\n"
-      << "\n"
-      << "Connections:\n"
-      << "  -b, --backend=<HOST,PORT>\n"
-      << "                     Set backend host and port.\n"
-      << "                     Default: '"
+  out << R"(
+  <PRIVATE_KEY>      Set  path  to  server's  private  key.   Required
+                     unless  -p,  --client  or  --frontend-no-tls  are
+                     given.
+  <CERT>             Set  path  to   server's  certificate.   Required
+                     unless  -p,  --client  or  --frontend-no-tls  are
+                     given.
+Options:
+  The options are categorized into several groups.
+
+Connections:
+  -b, --backend=<HOST,PORT>
+                     Set backend host and port.
+                     Default: ')"
       << get_config()->downstream_host << ","
-      << get_config()->downstream_port << "'\n"
-      << "  -f, --frontend=<HOST,PORT>\n"
-      << "                     Set frontend host and port.\n"
-      << "                     Default: '"
-      << get_config()->host << "," << get_config()->port << "'\n"
-      << "  --backlog=<NUM>    Set listen backlog size. If -1 is given,\n"
-      << "                     libevent will choose suitable value.\n"
-      << "                     Default: "
-      << get_config()->backlog << "\n"
-      << "  --backend-ipv4     Resolve backend hostname to IPv4 address\n"
-      << "                     only.\n"
-      << "  --backend-ipv6     Resolve backend hostname to IPv6 address\n"
-      << "                     only.\n"
-      << "\n"
-      << "Performance:\n"
-      << "  -n, --workers=<CORES>\n"
-      << "                     Set the number of worker threads.\n"
-      << "                     Default: "
-      << get_config()->num_worker << "\n"
-      << "  --read-rate=<RATE> Set maximum average read rate on frontend\n"
-      << "                     connection. Setting 0 to this option means\n"
-      << "                     read rate is unlimited.\n"
-      << "                     Default: "
-      << get_config()->read_rate << "\n"
-      << "  --read-burst=<SIZE>\n"
-      << "                     Set maximum read burst size on frontend\n"
-      << "                     connection. Setting 0 to this option means\n"
-      << "                     read burst size is unlimited.\n"
-      << "                     Default: "
-      << get_config()->read_burst << "\n"
-      << "  --write-rate=<RATE>\n"
-      << "                     Set maximum average write rate on frontend\n"
-      << "                     connection. Setting 0 to this option means\n"
-      << "                     write rate is unlimited.\n"
-      << "                     Default: "
-      << get_config()->write_rate << "\n"
-      << "  --write-burst=<SIZE>\n"
-      << "                     Set maximum write burst size on frontend\n"
-      << "                     connection. Setting 0 to this option means\n"
-      << "                     write burst size is unlimited.\n"
-      << "                     Default: "
-      << get_config()->write_burst << "\n"
-      << "  --worker-read-rate=<RATE>\n"
-      << "                     Set maximum average read rate on frontend\n"
-      << "                     connection per worker. Setting 0 to this\n"
-      << "                     option means read rate is unlimited.\n"
-      << "                     Default: "
-      << get_config()->worker_read_rate << "\n"
-      << "  --worker-read-burst=<SIZE>\n"
-      << "                     Set maximum read burst size on frontend\n"
-      << "                     connection per worker. Setting 0 to this\n"
-      << "                     option means read burst size is unlimited.\n"
-      << "                     Default: "
-      << get_config()->worker_read_burst << "\n"
-      << "  --worker-write-rate=<RATE>\n"
-      << "                     Set maximum average write rate on frontend\n"
-      << "                     connection per worker. Setting 0 to this\n"
-      << "                     option means write rate is unlimited.\n"
-      << "                     Default: "
-      << get_config()->worker_write_rate << "\n"
-      << "  --worker-write-burst=<SIZE>\n"
-      << "                     Set maximum write burst size on frontend\n"
-      << "                     connection per worker. Setting 0 to this\n"
-      << "                     option means write burst size is unlimited.\n"
-      << "                     Default: "
-      << get_config()->worker_write_burst << "\n"
-      << "\n"
-      << "Timeout:\n"
-      << "  --frontend-http2-read-timeout=<SEC>\n"
-      << "                     Specify read timeout for HTTP/2.0 and SPDY frontend\n"
-      << "                     connection. Default: "
-      << get_config()->http2_upstream_read_timeout.tv_sec << "\n"
-      << "  --frontend-read-timeout=<SEC>\n"
-      << "                     Specify read timeout for HTTP/1.1 frontend\n"
-      << "                     connection. Default: "
-      << get_config()->upstream_read_timeout.tv_sec << "\n"
-      << "  --frontend-write-timeout=<SEC>\n"
-      << "                     Specify write timeout for all frontends.\n"
-      << "                     connection. Default: "
-      << get_config()->upstream_write_timeout.tv_sec << "\n"
-      << "  --backend-read-timeout=<SEC>\n"
-      << "                     Specify read timeout for backend connection.\n"
-      << "                     Default: "
-      << get_config()->downstream_read_timeout.tv_sec << "\n"
-      << "  --backend-write-timeout=<SEC>\n"
-      << "                     Specify write timeout for backend\n"
-      << "                     connection. Default: "
-      << get_config()->downstream_write_timeout.tv_sec << "\n"
-      << "  --backend-keep-alive-timeout=<SEC>\n"
-      << "                     Specify keep-alive timeout for backend\n"
-      << "                     connection. Default: "
-      << get_config()->downstream_idle_read_timeout.tv_sec << "\n"
-      << "  --backend-http-proxy-uri=<URI>\n"
-      << "                     Specify proxy URI in the form\n"
-      << "                     http://[<USER>:<PASS>@]<PROXY>:<PORT>. If\n"
-      << "                     a proxy requires authentication, specify\n"
-      << "                     <USER> and <PASS>. Note that they must be\n"
-      << "                     properly percent-encoded. This proxy is used\n"
-      << "                     when the backend connection is HTTP/2.0. First,\n"
-      << "                     make a CONNECT request to the proxy and\n"
-      << "                     it connects to the backend on behalf of\n"
-      << "                     nghttpx. This forms tunnel. After that, nghttpx\n"
-      << "                     performs SSL/TLS handshake with the\n"
-      << "                     downstream through the tunnel. The timeouts\n"
-      << "                     when connecting and making CONNECT request\n"
-      << "                     can be specified by --backend-read-timeout\n"
-      << "                     and --backend-write-timeout options.\n"
-      << "\n"
-      << "SSL/TLS:\n"
-      << "  --ciphers=<SUITE>  Set allowed cipher list. The format of the\n"
-      << "                     string is described in OpenSSL ciphers(1).\n"
-      << "                     If this option is used, --honor-cipher-order\n"
-      << "                     is implicitly enabled.\n"
-      << "  --honor-cipher-order\n"
-      << "                     Honor server cipher order, giving the\n"
-      << "                     ability to mitigate BEAST attacks.\n"
-      << "  -k, --insecure     Don't verify backend server's certificate\n"
-      << "                     if -p, --client or --http2-bridge are given\n"
-      << "                     and --backend-no-tls is not given\n"
-      << "  --cacert=<PATH>    Set path to trusted CA certificate file\n"
-      << "                     if -p, --client or --http2-bridge are given\n"
-      << "                     and --backend-no-tls is not given\n"
-      << "                     The file must be in PEM format. It can\n"
-      << "                     contain multiple certificates. If the\n"
-      << "                     linked OpenSSL is configured to load system\n"
-      << "                     wide certificates, they are loaded\n"
-      << "                     at startup regardless of this option.\n"
-      << "  --private-key-passwd-file=<FILEPATH>\n"
-      << "                     Path to file that contains password for the\n"
-      << "                     server's private key. If none is given and\n"
-      << "                     the private key is password protected it'll\n"
-      << "                     be requested interactively.\n"
-      << "  --subcert=<KEYPATH>:<CERTPATH>\n"
-      << "                     Specify additional certificate and private\n"
-      << "                     key file. nghttpx will choose certificates\n"
-      << "                     based on the hostname indicated by client\n"
-      << "                     using TLS SNI extension. This option can be\n"
-      << "                     used multiple times.\n"
-      << "  --backend-tls-sni-field=<HOST>\n"
-      << "                     Explicitly set the content of the TLS SNI\n"
-      << "                     extension.  This will default to the backend\n"
-      << "                     HOST name.\n"
-      << "  --dh-param-file=<PATH>\n"
-      << "                     Path to file that contains DH parameters in\n"
-      << "                     PEM format. Without this option, DHE cipher\n"
-      << "                     suites are not available.\n"
-      << "  --npn-list=<LIST>  Comma delimited list of NPN/ALPN protocol sorted\n"
-      << "                     in the order of preference. That means\n"
-      << "                     most desirable protocol comes first.\n"
-      << "                     The parameter must be delimited by a single\n"
-      << "                     comma only and any white spaces are treated\n"
-      << "                     as a part of protocol string.\n"
-      << "                     Default: " << DEFAULT_NPN_LIST << "\n"
-      << "  --verify-client    Require and verify client certificate.\n"
-      << "  --verify-client-cacert=<PATH>\n"
-      << "                     Path to file that contains CA certificates\n"
-      << "                     to verify client certificate.\n"
-      << "                     The file must be in PEM format. It can\n"
-      << "                     contain multiple certificates.\n"
-      << "  --client-private-key-file=<PATH>\n"
-      << "                     Path to file that contains client private\n"
-      << "                     key used in backend client authentication.\n"
-      << "  --client-cert-file=<PATH>\n"
-      << "                     Path to file that contains client\n"
-      << "                     certificate used in backend client\n"
-      << "                     authentication.\n"
-      << "  --tls-proto-list=<LIST>\n"
-      << "                     Comma delimited list of SSL/TLS protocol to\n"
-      << "                     be enabled.\n"
-      << "                     The following protocols are available:\n"
-      << "                     TLSv1.2, TLSv1.1, TLSv1.0, SSLv3\n"
-      << "                     The name matching is done in case-insensitive\n"
-      << "                     manner.\n"
-      << "                     The parameter must be delimited by a single\n"
-      << "                     comma only and any white spaces are treated\n"
-      << "                     as a part of protocol string.\n"
-      << "                     Default: " << DEFAULT_TLS_PROTO_LIST << "\n"
-      << "\n"
-      << "HTTP/2.0 and SPDY:\n"
-      << "  -c, --http2-max-concurrent-streams=<NUM>\n"
-      << "                     Set the maximum number of the concurrent\n"
-      << "                     streams in one HTTP/2.0 and SPDY session.\n"
-      << "                     Default: "
-      << get_config()->http2_max_concurrent_streams << "\n"
-      << "  --frontend-http2-window-bits=<N>\n"
-      << "                     Sets the per-stream initial window size of HTTP/2.0\n"
-      << "                     SPDY frontend connection. For HTTP/2.0, the size is\n"
-      << "                     2**<N>-1. For SPDY, the size is 2**<N>\n"
-      << "                     Default: "
-      << get_config()->http2_upstream_window_bits << "\n"
-      << "  --frontend-http2-connection-window-bits=<N>\n"
-      << "                     Sets the per-connection window size of HTTP/2.0 and\n"
-      << "                     SPDY frontend connection. For HTTP/2.0, the size is\n"
-      << "                     2**<N>-1. For SPDY, the size is 2**<N>.\n"
-      << "                     Default: "
-      << get_config()->http2_upstream_connection_window_bits << "\n"
-      << "  --frontend-no-tls  Disable SSL/TLS on frontend connections.\n"
-      << "  --backend-http2-window-bits=<N>\n"
-      << "                     Sets the initial window size of HTTP/2.0 backend\n"
-      << "                     connection to 2**<N>-1.\n"
-      << "                     Default: "
-      << get_config()->http2_downstream_window_bits << "\n"
-      << "  --backend-http2-connection-window-bits=<N>\n"
-      << "                     Sets the per-connection window size of HTTP/2.0\n"
-      << "                     backend connection to 2**<N>-1.\n"
-      << "                     Default: "
-      << get_config()->http2_downstream_connection_window_bits << "\n"
-      << "  --backend-no-tls   Disable SSL/TLS on backend connections.\n"
-      << "  --http2-no-cookie-crumbling\n"
-      << "                     Don't crumble cookie header field.\n"
-      << "  --padding=<N>      Add at most <N> bytes to a HTTP/2 frame payload\n"
-      << "                     as padding.\n"
-      << "                     Specify 0 to disable padding. This option is\n"
-      << "                     meant for debugging purpose and not intended\n"
-      << "                     to enhance protocol security.\n"
-      << "\n"
-      << "Mode:\n"
-      << "  (default mode)     Accept HTTP/2.0, SPDY and HTTP/1.1 over\n"
-      << "                     SSL/TLS. If --frontend-no-tls is used,\n"
-      << "                     accept HTTP/2.0 and HTTP/1.1. The incoming\n"
-      << "                     HTTP/1.1 connection can be upgraded to\n"
-      << "                     HTTP/2.0 through HTTP Upgrade.\n"
-      << "                     The protocol to the backend is HTTP/1.1.\n"
-      << "  -s, --http2-proxy  Like default mode, but enable secure proxy mode.\n"
-      << "  --http2-bridge     Like default mode, but communicate with the\n"
-      << "                     backend in HTTP/2.0 over SSL/TLS. Thus the\n"
-      << "                     incoming all connections are converted\n"
-      << "                     to HTTP/2.0 connection and relayed to\n"
-      << "                     the backend. See --backend-http-proxy-uri\n"
-      << "                     option if you are behind the proxy and want\n"
-      << "                     to connect to the outside HTTP/2.0 proxy.\n"
-      << "  --client           Accept HTTP/2.0 and HTTP/1.1 without SSL/TLS.\n"
-      << "                     The incoming HTTP/1.1 connection can be\n"
-      << "                     upgraded to HTTP/2.0 connection through\n"
-      << "                     HTTP Upgrade.\n"
-      << "                     The protocol to the backend is HTTP/2.0.\n"
-      << "                     To use nghttpx as a forward proxy, use -p\n"
-      << "                     option instead.\n"
-      << "  -p, --client-proxy Like --client option, but it also requires\n"
-      << "                     the request path from frontend must be\n"
-      << "                     an absolute URI, suitable for use as a\n"
-      << "                     forward proxy.\n"
-      << "\n"
-      << "Logging:\n"
-      << "  -L, --log-level=<LEVEL>\n"
-      << "                     Set the severity level of log output.\n"
-      << "                     INFO, WARNING, ERROR and FATAL.\n"
-      << "                     Default: WARNING\n"
-      << "  --accesslog        Print simple accesslog to stderr.\n"
-      << "  --syslog           Send log messages to syslog.\n"
-      << "  --syslog-facility=<FACILITY>\n"
-      << "                     Set syslog facility.\n"
-      << "                     Default: "
-      << str_syslog_facility(get_config()->syslog_facility) << "\n"
-      << "\n"
-      << "Misc:\n"
-      << "  --add-x-forwarded-for\n"
-      << "                     Append X-Forwarded-For header field to the\n"
-      << "                     downstream request.\n"
-      << "  --no-via           Don't append to Via header field. If Via\n"
-      << "                     header field is received, it is left\n"
-      << "                     unaltered.\n"
-      << "  --frontend-http2-dump-request-header=<PATH>\n"
-      << "                     Dumps request headers received by HTTP/2.0\n"
-      << "                     frontend to the file denoted in PATH.\n"
-      << "                     The output is done in HTTP/1 header field\n"
-      << "                     format and each header block is followed by\n"
-      << "                     an empty line.\n"
-      << "                     This option is not thread safe and MUST NOT\n"
-      << "                     be used with option -n=N, where N >= 2.\n"
-      << "  --frontend-http2-dump-response-header=<PATH>\n"
-      << "                     Dumps response headers sent from HTTP/2.0\n"
-      << "                     frontend to the file denoted in PATH.\n"
-      << "                     The output is done in HTTP/1 header field\n"
-      << "                     format and each header block is followed by\n"
-      << "                     an empty line.\n"
-      << "                     This option is not thread safe and MUST NOT\n"
-      << "                     be used with option -n=N, where N >= 2.\n"
-      << "  -o, --frontend-frame-debug\n"
-      << "                     Print HTTP/2 frames in frontend to stderr.\n"
-      << "                     This option is not thread safe and MUST NOT\n"
-      << "                     be used with option -n=N, where N >= 2.\n"
-      << "  -D, --daemon       Run in a background. If -D is used, the\n"
-      << "                     current working directory is changed to '/'.\n"
-      << "  --pid-file=<PATH>  Set path to save PID of this program.\n"
-      << "  --user=<USER>      Run this program as USER. This option is\n"
-      << "                     intended to be used to drop root privileges.\n"
-      << "  --conf=<PATH>      Load configuration from PATH.\n"
-      << "                     Default: "
-      << get_config()->conf_path << "\n"
-      << "  -v, --version      Print version and exit.\n"
-      << "  -h, --help         Print this help and exit.\n"
+      << get_config()->downstream_port << R"('
+  -f, --frontend=<HOST,PORT>
+                     Set frontend host and port.
+                     Default: ')"
+      << get_config()->host << "," << get_config()->port << R"('
+  --backlog=<NUM>    Set  listen  backlog  size.    If  -1  is  given,
+                     libevent will choose suitable value.
+                     Default: )"
+      << get_config()->backlog << R"(
+  --backend-ipv4     Resolve backend hostname to IPv4 address only.
+  --backend-ipv6     Resolve backend hostname to IPv6 address only.
+
+Performance:
+  -n, --workers=<CORES>
+                     Set the number of worker threads.
+                     Default: )"
+      << get_config()->num_worker << R"(
+  --read-rate=<RATE>
+                     Set  maximum   average  read  rate   on  frontend
+                     connection.  Setting 0 to  this option means read
+                     rate is unlimited.
+                     Default: )"
+      << get_config()->read_rate << R"(
+  --read-burst=<SIZE>
+                     Set   maximum  read   burst   size  on   frontend
+                     connection.  Setting 0 to  this option means read
+                     burst size is unlimited.
+                     Default: )"
+      << get_config()->read_burst << R"(
+  --write-rate=<RATE>
+                     Set  maximum  average   write  rate  on  frontend
+                     connection.  Setting 0 to this option means write
+                     rate is unlimited.
+                     Default: )"
+      << get_config()->write_rate << R"(
+  --write-burst=<SIZE>
+                     Set   maximum  write   burst  size   on  frontend
+                     connection.  Setting 0 to this option means write
+                     burst size is unlimited.
+                     Default: )"
+      << get_config()->write_burst << R"(
+  --worker-read-rate=<RATE>
+                     Set  maximum   average  read  rate   on  frontend
+                     connection per worker.  Setting  0 to this option
+                     means read rate is unlimited.
+                     Default: )"
+      << get_config()->worker_read_rate << R"(
+  --worker-read-burst=<SIZE>
+                     Set   maximum  read   burst   size  on   frontend
+                     connection per worker.  Setting  0 to this option
+                     means read burst size is unlimited.
+                     Default: )"
+      << get_config()->worker_read_burst << R"(
+  --worker-write-rate=<RATE>
+                     Set  maximum  average   write  rate  on  frontend
+                     connection per worker.  Setting  0 to this option
+                     means write rate is unlimited.
+                     Default: )"
+      << get_config()->worker_write_rate << R"(
+  --worker-write-burst=<SIZE>
+                     Set   maximum  write   burst  size   on  frontend
+                     connection per worker.  Setting  0 to this option
+                     means write burst size is unlimited.
+                     Default: )"
+      << get_config()->worker_write_burst << R"(
+
+Timeout:
+  --frontend-http2-read-timeout=<SEC>
+                     Specify read timeout for HTTP/2 and SPDY frontend
+                     connection.
+                     Default: )"
+      << get_config()->http2_upstream_read_timeout.tv_sec << R"(
+  --frontend-read-timeout=<SEC>
+                     Specify  read   timeout  for   HTTP/1.1  frontend
+                     connection.
+                     Default: )"
+      << get_config()->upstream_read_timeout.tv_sec << R"(
+  --frontend-write-timeout=<SEC>
+                     Specify   write   timeout    for   all   frontend
+                     connections.
+                     Default: )"
+      << get_config()->upstream_write_timeout.tv_sec << R"(
+  --backend-read-timeout=<SEC>
+                     Specify read timeout for backend connection.
+                     Default: )"
+      << get_config()->downstream_read_timeout.tv_sec << R"(
+  --backend-write-timeout=<SEC>
+                     Specify write timeout for backend connection.
+                     Default: )"
+      << get_config()->downstream_write_timeout.tv_sec << R"(
+  --backend-keep-alive-timeout=<SEC>
+                     Specify    keep-alive    timeout   for    backend
+                     connection.
+                     Default: )"
+      << get_config()->downstream_idle_read_timeout.tv_sec << R"(
+  --backend-http-proxy-uri=<URI>
+                     Specify     proxy     URI     in     the     form
+                     http://[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
+                     proxy requires authentication, specify <USER> and
+                     <PASS>.    Note  that   they  must   be  properly
+                     percent-encoded.   This proxy  is  used when  the
+                     backend  connection  is  HTTP/2.  First,  make  a
+                     CONNECT request  to the proxy and  it connects to
+                     the  backend on  behalf of  nghttpx.  This  forms
+                     tunnel.   After  that, nghttpx  performs  SSL/TLS
+                     handshake with the downstream through the tunnel.
+                     The timeouts  when connecting and  making CONNECT
+                     request       can      be       specified      by
+                     --backend-read-timeout                        and
+                     --backend-write-timeout options.
+
+SSL/TLS:
+  --ciphers=<SUITE>  Set  allowed  cipher  list.  The  format  of  the
+                     string  is described  in OpenSSL  ciphers(1).  If
+                     this  option  is  used,  --honor-cipher-order  is
+                     implicitly enabled.
+  --honor-cipher-order
+                     Honor server cipher order,  giving the ability to
+                     mitigate BEAST attacks.
+  -k, --insecure
+                     Don't verify backend  server's certificate if -p,
+                     --client   or   --http2-bridge  are   given   and
+                     --backend-no-tls is not given.
+  --cacert=<PATH>    Set path  to trusted  CA certificate file  if -p,
+                     --client   or   --http2-bridge  are   given   and
+                     --backend-no-tls is not given.   The file must be
+                     in   PEM  format.    It   can  contain   multiple
+                     certificates.    If   the   linked   OpenSSL   is
+                     configured to load system wide certificates, they
+                     are loaded at startup regardless of this option.
+  --private-key-passwd-file=<FILEPATH>
+                     Path  to  file  that contains  password  for  the
+                     server's private  key.  If none is  given and the
+                     private  key  is   password  protected  it'll  be
+                     requested interactively.
+  --subcert=<KEYPATH>:<CERTPATH>
+                     Specify  additional certificate  and private  key
+                     file.  nghttpx will  choose certificates based on
+                     the hostname  indicated by  client using  TLS SNI
+                     extension.   This  option  can be  used  multiple
+                     times.
+  --backend-tls-sni-field=<HOST>
+                     Explicitly  set  the  content   of  the  TLS  SNI
+                     extension.  This will default to the backend HOST
+                     name.
+  --dh-param-file=<PATH>
+                     Path to  file that contains DH  parameters in PEM
+                     format.  Without  this option, DHE  cipher suites
+                     are not available.
+  --npn-list=<LIST>  Comma delimited list  of NPN/ALPN protocol sorted
+                     in  the order  of  preference.   That means  most
+                     desirable  protocol comes  first.  The  parameter
+                     must be delimited by a  single comma only and any
+                     white spaces  are treated  as a part  of protocol
+                     string.
+                     Default: )" << DEFAULT_NPN_LIST << R"(
+  --verify-client    Require and verify client certificate.
+  --verify-client-cacert=<PATH>
+                     Path  to file  that contains  CA certificates  to
+                     verify client  certificate.  The file must  be in
+                     PEM    format.    It    can   contain    multiple
+                     certificates.
+  --client-private-key-file=<PATH>
+                     Path  to file  that contains  client private  key
+                     used in backend client authentication.
+  --client-cert-file=<PATH>
+                     Path  to file  that  contains client  certificate
+                     used in backend client authentication.
+  --tls-proto-list=<LIST>
+                     Comma delimited  list of  SSL/TLS protocol  to be
+                     enabled.  The following  protocols are available:
+                     TLSv1.2,  TLSv1.1, TLSv1.0  and SSLv3.   The name
+                     matching is done in case-insensitive manner.  The
+                     parameter  must be  delimited by  a single  comma
+                     only and any  white spaces are treated  as a part
+                     of protocol string.
+                     Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
+
+HTTP/2 and SPDY:
+  -c, --http2-max-concurrent-streams=<NUM>
+                     Set the maximum number  of the concurrent streams
+                     in one HTTP/2 and SPDY session.
+                     Default: )"
+      << get_config()->http2_max_concurrent_streams << R"(
+  --frontend-http2-window-bits=<N>
+                     Sets the per-stream initial window size of HTTP/2
+                     SPDY frontend  connection.  For HTTP/2,  the size
+                     is 2**<N>-1.  For SPDY, the size is 2**<N>.
+                     Default: )"
+      << get_config()->http2_upstream_window_bits << R"(
+  --frontend-http2-connection-window-bits=<N>
+                     Sets the per-connection window size of HTTP/2 and
+                     SPDY frontend  connection.  For HTTP/2,  the size
+                     is 2**<N>-1. For SPDY, the size is 2**<N>.
+                     Default: )"
+      << get_config()->http2_upstream_connection_window_bits << R"(
+  --frontend-no-tls  Disable SSL/TLS on frontend connections.
+  --backend-http2-window-bits=<N>
+                     Sets the  initial window  size of  HTTP/2 backend
+                     connection to 2**<N>-1.
+                     Default: )"
+      << get_config()->http2_downstream_window_bits << R"(
+  --backend-http2-connection-window-bits=<N>
+                     Sets  the per-connection  window  size of  HTTP/2
+                     backend connection to 2**<N>-1.
+                     Default: )"
+      << get_config()->http2_downstream_connection_window_bits << R"(
+  --backend-no-tls   Disable SSL/TLS on backend connections.
+  --http2-no-cookie-crumbling
+                     Don't crumble cookie header field.
+  --padding=<N>      Add at most  <N> bytes to a  HTTP/2 frame payload
+                     as padding.  Specify 0  to disable padding.  This
+                     option  is meant  for debugging  purpose and  not
+                     intended to enhance protocol security.
+
+Mode:
+  (default mode)     Accept  HTTP/2, SPDY  and HTTP/1.1  over SSL/TLS.
+                     If --frontend-no-tls  is used, accept  HTTP/2 and
+                     HTTP/1.1.  The  incoming HTTP/1.1  connection can
+                     be upgraded to HTTP/2  through HTTP Upgrade.  The
+                     protocol to the backend is HTTP/1.1.
+  -s, --http2-proxy  Like default mode, but enable secure proxy mode.
+  --http2-bridge     Like  default  mode,  but  communicate  with  the
+                     backend  in   HTTP/2  over  SSL/TLS.    Thus  the
+                     incoming all connections  are converted to HTTP/2
+                     connection  and  relayed  to  the  backend.   See
+                     --backend-http-proxy-uri option if you are behind
+                     the  proxy and  want  to connect  to the  outside
+                     HTTP/2 proxy.
+  --client           Accept HTTP/2 and  HTTP/1.1 without SSL/TLS.  The
+                     incoming HTTP/1.1  connection can be  upgraded to
+                     HTTP/2  connection  through  HTTP  Upgrade.   The
+                     protocol  to  the  backend  is  HTTP/2.   To  use
+                     nghttpx  as  a  forward   proxy,  use  -p  option
+                     instead.
+  -p, --client-proxy
+                     Like --client  option, but  it also  requires the
+                     request path  from frontend  must be  an absolute
+                     URI, suitable for use as a forward proxy.
+
+Logging:
+  -L, --log-level=<LEVEL>
+                     Set the  severity level  of log  output.  <LEVEL>
+                     must be one of INFO, WARNING, ERROR and FATAL.
+                     Default: WARNING
+  --accesslog        Print simple accesslog to stderr.
+  --syslog           Send log messages to syslog.
+  --syslog-facility=<FACILITY>
+                     Set syslog facility to <FACILITY>.
+                     Default: )"
+      << str_syslog_facility(get_config()->syslog_facility) << R"(
+
+Misc:
+  --add-x-forwarded-for
+                     Append  X-Forwarded-For   header  field   to  the
+                     downstream request.
+  --no-via           Don't append to Via  header field.  If Via header
+                     field is received, it is left unaltered.
+  --frontend-http2-dump-request-header=<PATH>
+                     Dumps request headers received by HTTP/2 frontend
+                     to  the file  denoted in  <PATH>.  The  output is
+                     done  in  HTTP/1  header field  format  and  each
+                     header block is followed  by an empty line.  This
+                     option is  not thread safe  and MUST NOT  be used
+                     with option -n<N>, where <N> >= 2.
+  --frontend-http2-dump-response-header=<PATH>
+                     Dumps response headers  sent from HTTP/2 frontend
+                     to  the file  denoted in  <PATH>.  The  output is
+                     done  in  HTTP/1  header field  format  and  each
+                     header block is followed  by an empty line.  This
+                     option is  not thread safe  and MUST NOT  be used
+                     with option -n<N>, where <N> >= 2.
+  -o, --frontend-frame-debug
+                     Print HTTP/2 frames in  frontend to stderr.  This
+                     option is  not thread safe  and MUST NOT  be used
+                     with option -n=N, where N >= 2.
+  -D, --daemon
+                     Run in a background.  If  -D is used, the current
+                     working directory is changed to '/'.
+  --pid-file=<PATH>  Set path to save PID of this program.
+  --user=<USER>      Run  this  program  as <USER>.   This  option  is
+                     intended to be used to drop root privileges.
+  --conf=<PATH>      Load configuration from <PATH>.
+                     Default: )"
+      << get_config()->conf_path << R"(
+  -v, --version      Print version and exit.
+  -h, --help         Print this help and exit.)"
       << std::endl;
 }
 } // namespace
