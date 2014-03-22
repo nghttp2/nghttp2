@@ -330,9 +330,31 @@ void nghttp2_frame_unpack_ping_payload(nghttp2_ping *frame,
 int nghttp2_frame_pack_goaway(nghttp2_bufs *bufs, nghttp2_goaway *frame);
 
 /*
- * Unpacks GOAWAY wire format into |frame|.
+ * Unpacks GOAWAY wire format into |frame|.  The |payload| of length
+ * |payloadlen| contains first 8 bytes of payload.  The
+ * |var_gift_payload| of length |var_gift_payloadlen| contains
+ * remaining payload and its buffer is gifted to the function and then
+ * |frame|.  The |var_gift_payloadlen| must be freed by
+ * nghttp2_frame_goaway_free().
  */
 void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
+                                         const uint8_t *payload,
+                                         size_t payloadlen,
+                                         uint8_t *var_gift_payload,
+                                         size_t var_gift_payloadlen);
+
+/*
+ * Unpacks GOAWAY wire format into |frame|.  This function only exists
+ * for unit test.  After allocating buffer for debug data, this
+ * function internally calls nghttp2_frame_unpack_goaway_payload().
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
                                          const uint8_t *payload,
                                          size_t payloadlen);
 

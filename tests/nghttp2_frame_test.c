@@ -373,11 +373,9 @@ void test_nghttp2_frame_pack_goaway()
   check_frame_header(24, NGHTTP2_GOAWAY, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
   CU_ASSERT(1000000007 == oframe.last_stream_id);
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == oframe.error_code);
-  /* TODO Currently, opaque data is discarded */
-  CU_ASSERT(0 == oframe.opaque_data_len);
-  CU_ASSERT(NULL == oframe.opaque_data);
-  /* CU_ASSERT(opaque_data_len == oframe.opaque_data_len); */
-  /* CU_ASSERT(memcmp(opaque_data, oframe.opaque_data, opaque_data_len) == 0); */
+
+  CU_ASSERT(opaque_data_len == oframe.opaque_data_len);
+  CU_ASSERT(memcmp(opaque_data, oframe.opaque_data, opaque_data_len) == 0);
 
   nghttp2_bufs_free(&bufs);
   nghttp2_frame_goaway_free(&oframe);

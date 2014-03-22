@@ -3099,7 +3099,11 @@ static int session_process_goaway_frame(nghttp2_session *session)
 
   nghttp2_frame_unpack_goaway_payload(&frame->goaway,
                                       iframe->sbuf.pos,
-                                      nghttp2_buf_len(&iframe->sbuf));
+                                      nghttp2_buf_len(&iframe->sbuf),
+                                      iframe->lbuf.pos,
+                                      nghttp2_buf_len(&iframe->lbuf));
+
+  nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
 
   return nghttp2_session_on_goaway_received(session, frame);
 }
@@ -4009,12 +4013,28 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         nghttp2_inbound_frame_reset(session);
 
         break;
-      case NGHTTP2_GOAWAY:
+      case NGHTTP2_GOAWAY: {
+        size_t debuglen;
+
+        /* 8 is Last-stream-ID + Error Code */
+        debuglen = iframe->frame.hd.length - 8;
+
+        if(debuglen > 0) {
+          iframe->raw_lbuf = malloc(debuglen);
+
+          if(iframe->raw_lbuf == NULL) {
+            return NGHTTP2_ERR_NOMEM;
+          }
+
+          nghttp2_buf_wrap_init(&iframe->lbuf, iframe->raw_lbuf, debuglen);
+        }
+
         busy = 1;
 
         iframe->state = NGHTTP2_IB_READ_GOAWAY_DEBUG;
 
         break;
+      }
       case NGHTTP2_WINDOW_UPDATE:
         rv = session_process_window_update_frame(session);
         if(nghttp2_is_fatal(rv)) {
@@ -4224,6 +4244,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       DEBUGF(fprintf(stderr, "recv: [IB_READ_GOAWAY_DEBUG]\n"));
 
       readlen = inbound_frame_payload_readlen(iframe, in, last);
+
+      iframe->lbuf.last = nghttp2_cpymem(iframe->lbuf.last, in, readlen);
+
       iframe->payloadleft -= readlen;
       in += readlen;
 
@@ -4231,6 +4254,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                      readlen, iframe->payloadleft));
 
       if(iframe->payloadleft) {
+        assert(nghttp2_buf_avail(&iframe->lbuf) > 0);
+
         break;
       }
 

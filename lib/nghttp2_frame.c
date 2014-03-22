@@ -562,13 +562,44 @@ int nghttp2_frame_pack_goaway(nghttp2_bufs *bufs, nghttp2_goaway *frame)
 
 void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
                                          const uint8_t *payload,
-                                         size_t payloadlen)
+                                         size_t payloadlen,
+                                         uint8_t *var_gift_payload,
+                                         size_t var_gift_payloadlen)
 {
   frame->last_stream_id = nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
   frame->error_code = nghttp2_get_uint32(payload+4);
-  /* TODO Currently we don't buffer debug data */
-  frame->opaque_data = NULL;
-  frame->opaque_data_len = 0;
+
+  frame->opaque_data = var_gift_payload;
+  frame->opaque_data_len = var_gift_payloadlen;
+}
+
+int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
+                                         const uint8_t *payload,
+                                         size_t payloadlen)
+{
+  uint8_t *var_gift_payload;
+  size_t var_gift_payloadlen;
+
+  if(payloadlen > 8) {
+    var_gift_payloadlen = payloadlen - 8;
+  } else {
+    var_gift_payloadlen = 0;
+  }
+
+  payloadlen -= var_gift_payloadlen;
+
+  var_gift_payload = malloc(var_gift_payloadlen);
+
+  if(var_gift_payload == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  memcpy(var_gift_payload, payload + 8, var_gift_payloadlen);
+
+  nghttp2_frame_unpack_goaway_payload(frame, payload, payloadlen,
+                                      var_gift_payload, var_gift_payloadlen);
+
+  return 0;
 }
 
 int nghttp2_frame_pack_window_update(nghttp2_bufs *bufs,

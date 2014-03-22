@@ -77,7 +77,7 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
       (&frame->ping, payload, payloadlen);
     break;
   case NGHTTP2_GOAWAY:
-    nghttp2_frame_unpack_goaway_payload
+    nghttp2_frame_unpack_goaway_payload2
       (&frame->goaway, payload, payloadlen);
     break;
   case NGHTTP2_WINDOW_UPDATE:
