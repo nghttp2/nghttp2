@@ -52,6 +52,7 @@ typedef struct {
 
 #define nghttp2_buf_len(BUF) ((BUF)->last - (BUF)->pos)
 #define nghttp2_buf_avail(BUF) ((BUF)->end - (BUF)->last)
+#define nghttp2_buf_mark_avail(BUF) ((BUF)->mark - (BUF)->last)
 #define nghttp2_buf_cap(BUF) ((BUF)->end - (BUF)->begin)
 
 #define nghttp2_buf_pos_offset(BUF) ((BUF)->pos - (BUF)->begin)

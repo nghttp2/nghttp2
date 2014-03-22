@@ -88,18 +88,20 @@ typedef struct {
      about the defined settings ID. If unknown ID is received, it is
      subject to connection error */
   nghttp2_settings_entry iv[5];
+  /* buffer pointers to small buffer, raw_sbuf */
+  nghttp2_buf sbuf;
+  /* buffer pointers to large buffer, raw_lbuf */
+  nghttp2_buf lbuf;
+  /* Large buffer, malloced on demand */
+  uint8_t *raw_lbuf;
   /* The number of entry filled in |iv| */
   size_t niv;
-  /* How many bytes we still need to receive in the |buf| */
-  size_t left;
   /* How many bytes we still need to receive for current frame */
   size_t payloadleft;
   /* padding length for the current frame */
   size_t padlen;
   nghttp2_inbound_state state;
-  uint8_t buf[8];
-  /* How many bytes have been written to |buf| */
-  uint8_t buflen;
+  uint8_t raw_sbuf[8];
 } nghttp2_inbound_frame;
 
 typedef enum {

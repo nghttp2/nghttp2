@@ -1141,8 +1141,7 @@ void test_nghttp2_session_on_request_headers_received(void)
   callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
 
   nghttp2_session_server_new(&session, &callbacks, &user_data);
-  memset(session->iframe.buf, 0, 4);
-  session->iframe.buflen = 4;
+
   nghttp2_frame_headers_init(&frame.headers,
                              NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
                              stream_id, 1 << 20, NULL, 0);
@@ -1190,8 +1189,7 @@ void test_nghttp2_session_on_request_headers_received(void)
 
   /* Check malformed headers. The library accept it. */
   nghttp2_session_server_new(&session, &callbacks, &user_data);
-  memset(session->iframe.buf, 0, 4);
-  session->iframe.buflen = 4;
+
   nvlen = nghttp2_nv_array_copy(&nva, malformed_nva, ARRLEN(malformed_nva));
   nghttp2_frame_headers_init(&frame.headers,
                              NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
@@ -1584,8 +1582,7 @@ void test_nghttp2_session_on_push_promise_received(void)
   callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
 
   nghttp2_session_client_new(&session, &callbacks, &user_data);
-  memset(session->iframe.buf, 0, 4);
-  session->iframe.buflen = 4;
+
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENING, NULL);
@@ -1660,8 +1657,6 @@ void test_nghttp2_session_on_push_promise_received(void)
   nghttp2_session_del(session);
 
   nghttp2_session_client_new(&session, &callbacks, &user_data);
-  memset(session->iframe.buf, 0, 4);
-  session->iframe.buflen = 4;
 
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
@@ -1698,8 +1693,7 @@ void test_nghttp2_session_on_push_promise_received(void)
   nghttp2_session_del(session);
 
   nghttp2_session_client_new(&session, &callbacks, &user_data);
-  memset(session->iframe.buf, 0, 4);
-  session->iframe.buflen = 4;
+
   stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_RESERVED, NULL);
@@ -1721,8 +1715,7 @@ void test_nghttp2_session_on_push_promise_received(void)
 
   /* Disable PUSH */
   nghttp2_session_client_new(&session, &callbacks, &user_data);
-  memset(session->iframe.buf, 0, 4);
-  session->iframe.buflen = 4;
+
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENING, NULL);
@@ -1746,8 +1739,7 @@ void test_nghttp2_session_on_push_promise_received(void)
 
   /* Check malformed headers. We accept malformed headers */
   nghttp2_session_client_new(&session, &callbacks, &user_data);
-  memset(session->iframe.buf, 0, 4);
-  session->iframe.buflen = 4;
+
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                                        NGHTTP2_PRI_DEFAULT,
                                        NGHTTP2_STREAM_OPENING, NULL);
