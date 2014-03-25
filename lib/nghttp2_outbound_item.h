@@ -32,10 +32,12 @@
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_frame.h"
 
-/* Priority for PING */
-#define NGHTTP2_OB_PRI_PING -10
-/* Priority for SETTINGS */
-#define NGHTTP2_OB_PRI_SETTINGS -9
+/* A bit higher weight for non-DATA frames */
+#define NGHTTP2_OB_EX_WEIGHT 256
+/* Higher weight for SETTINGS */
+#define NGHTTP2_OB_SETTINGS_WEIGHT 257
+/* Highest weight for PING */
+#define NGHTTP2_OB_PING_WEIGHT 258
 
 typedef struct {
   nghttp2_data_provider *data_prd;
@@ -49,8 +51,11 @@ typedef struct {
   /* Type of |frame|. NGHTTP2_CTRL: nghttp2_frame*, NGHTTP2_DATA:
      nghttp2_private_data* */
   nghttp2_frame_category frame_cat;
-  /* The priority used in priority comparion */
-  int32_t pri;
+  /* The priority used in priority comparion.  Larger is served
+     ealier. */
+  int32_t weight;
+  /* nonzero if this object is queued. */
+  uint8_t queued;
 } nghttp2_outbound_item;
 
 /*

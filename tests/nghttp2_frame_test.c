@@ -32,6 +32,7 @@
 #include "nghttp2_frame.h"
 #include "nghttp2_helper.h"
 #include "nghttp2_test_helper.h"
+#include "nghttp2_priority_spec.h"
 
 static nghttp2_nv make_nv(const char *name, const char *value)
 {
@@ -74,6 +75,7 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_headers frame, oframe;
   nghttp2_bufs bufs;
   nghttp2_nv *nva;
+  nghttp2_priority_spec pri_spec;
   ssize_t nvlen;
   nva_out out;
   ssize_t hdblocklen;
@@ -87,10 +89,13 @@ void test_nghttp2_frame_pack_headers()
 
   nva = headers();
   nvlen = HEADERS_LENGTH;
+
+  pri_spec.pri_type = NGHTTP2_PRIORITY_TYPE_NONE;
+
   nghttp2_frame_headers_init(&frame,
-                             NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
-                             1000000007,
-                             1 << 20, nva, nvlen);
+                             NGHTTP2_FLAG_END_STREAM |
+                             NGHTTP2_FLAG_END_HEADERS,
+                             1000000007, &pri_spec, nva, nvlen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
 
   nghttp2_bufs_rewind(&bufs);
@@ -103,8 +108,8 @@ void test_nghttp2_frame_pack_headers()
                      NGHTTP2_HEADERS,
                      NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS,
                      1000000007, &oframe.hd);
-  /* We didn't include PRIORITY flag so priority is not packed */
-  CU_ASSERT(1 << 30 == oframe.pri);
+  /* We include NGHTTP2_PRIORITY_TYPE_NONE */
+  CU_ASSERT(NGHTTP2_PRIORITY_TYPE_NONE == oframe.pri_spec.pri_type);
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN;
   CU_ASSERT(hdblocklen ==
@@ -119,8 +124,10 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_bufs_reset(&bufs);
 
   memset(&oframe, 0, sizeof(oframe));
-  /* Next, include PRIORITY flag */
-  frame.hd.flags |= NGHTTP2_FLAG_PRIORITY;
+  /* Next, include NGHTTP2_PRIORITY_TYPE_GROUP */
+  nghttp2_priority_spec_group_init(&frame.pri_spec, 1000000009, 12);
+  frame.hd.flags |= NGHTTP2_FLAG_PRIORITY_GROUP;
+
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
 
   CU_ASSERT(0 == rv);
@@ -130,20 +137,64 @@ void test_nghttp2_frame_pack_headers()
   check_frame_header(nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN,
                      NGHTTP2_HEADERS,
                      NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
-                     NGHTTP2_FLAG_PRIORITY,
+                     NGHTTP2_FLAG_PRIORITY_GROUP,
                      1000000007, &oframe.hd);
-  CU_ASSERT(1 << 20 == oframe.pri);
 
-  hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN - 4;
+  CU_ASSERT(NGHTTP2_PRIORITY_TYPE_GROUP == oframe.pri_spec.pri_type);
+  CU_ASSERT(1000000009 == oframe.pri_spec.group.pri_group_id);
+  CU_ASSERT(12 == oframe.pri_spec.group.weight);
+
+  hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN
+    - nghttp2_frame_priority_len(oframe.hd.flags);
   CU_ASSERT(hdblocklen ==
-            inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN + 4));
+            inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN
+                       + nghttp2_frame_priority_len(oframe.hd.flags)));
 
   nghttp2_nv_array_sort(out.nva, out.nvlen);
   CU_ASSERT(nvnameeq("method", &out.nva[0]));
 
+  nghttp2_frame_headers_free(&oframe);
+  nva_out_reset(&out);
+  nghttp2_bufs_reset(&bufs);
+
+  memset(&oframe, 0, sizeof(oframe));
+
+  /* Next, include NGHTTP2_PRIORITY_TYPE_DEP */
+  nghttp2_priority_spec_dep_init(&frame.pri_spec, 123, 1);
+
+  frame.hd.flags =
+    NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
+    NGHTTP2_FLAG_PRIORITY_DEPENDENCY;
+
+  rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
+
+  check_frame_header(nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN,
+                     NGHTTP2_HEADERS,
+                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
+                     NGHTTP2_FLAG_PRIORITY_DEPENDENCY,
+                     1000000007, &oframe.hd);
+
+  CU_ASSERT(NGHTTP2_PRIORITY_TYPE_DEP == oframe.pri_spec.pri_type);
+  CU_ASSERT(123 == oframe.pri_spec.dep.stream_id);
+  CU_ASSERT(1 == oframe.pri_spec.dep.exclusive);
+
+  hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN
+    - nghttp2_frame_priority_len(oframe.hd.flags);
+  CU_ASSERT(hdblocklen ==
+            inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN
+                       + nghttp2_frame_priority_len(oframe.hd.flags)));
+
+  nghttp2_nv_array_sort(out.nva, out.nvlen);
+  CU_ASSERT(nvnameeq("method", &out.nva[0]));
+
+  nghttp2_frame_headers_free(&oframe);
   nva_out_reset(&out);
   nghttp2_bufs_free(&bufs);
-  nghttp2_frame_headers_free(&oframe);
+
   nghttp2_frame_headers_free(&frame);
   nghttp2_hd_inflate_free(&inflater);
   nghttp2_hd_deflate_free(&deflater);
@@ -155,6 +206,7 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   nghttp2_headers frame;
   nghttp2_bufs bufs;
   nghttp2_nv *nva;
+  nghttp2_priority_spec pri_spec;
   ssize_t nvlen;
   size_t big_vallen = NGHTTP2_HD_MAX_VALUE;
   nghttp2_nv big_hds[16];
@@ -173,12 +225,13 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
     big_hds[i].valuelen = big_vallen;
   }
 
+  pri_spec.pri_type = NGHTTP2_PRIORITY_TYPE_NONE;
+
   nvlen = nghttp2_nv_array_copy(&nva, big_hds, big_hdslen);
   nghttp2_hd_deflate_init(&deflater);
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
-                             1000000007,
-                             0, nva, nvlen);
+                             1000000007, &pri_spec, nva, nvlen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
   CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == rv);
 
@@ -194,22 +247,53 @@ void test_nghttp2_frame_pack_priority(void)
 {
   nghttp2_priority frame, oframe;
   nghttp2_bufs bufs;
+  nghttp2_priority_spec pri_spec;
   int rv;
 
   frame_pack_bufs_init(&bufs);
 
-  nghttp2_frame_priority_init(&frame, 1000000007, 1 << 30);
+  /* First, pack priority with priority group and weight */
+  nghttp2_priority_spec_group_init(&pri_spec, 1000000009, 12);
+
+  nghttp2_frame_priority_init(&frame, 1000000007, &pri_spec);
+  rv = nghttp2_frame_pack_priority(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(13 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
+  check_frame_header(4, NGHTTP2_PRIORITY, NGHTTP2_FLAG_PRIORITY_GROUP,
+                     1000000007, &oframe.hd);
+
+  CU_ASSERT(NGHTTP2_PRIORITY_TYPE_GROUP == oframe.pri_spec.pri_type);
+  CU_ASSERT(1000000009 == oframe.pri_spec.group.pri_group_id);
+  CU_ASSERT(12 == oframe.pri_spec.group.weight);
+
+  nghttp2_frame_priority_free(&oframe);
+  nghttp2_bufs_reset(&bufs);
+
+  memset(&oframe, 0, sizeof(oframe));
+
+  /* Next, pack priority with stream dependency */
+  nghttp2_priority_spec_dep_init(&pri_spec, 79, 1);
+
+  nghttp2_frame_priority_init(&frame, 1000000007, &pri_spec);
   rv = nghttp2_frame_pack_priority(&bufs, &frame);
 
   CU_ASSERT(0 == rv);
   CU_ASSERT(12 == nghttp2_bufs_len(&bufs));
+
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
-  check_frame_header(4, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 1000000007,
-                     &oframe.hd);
-  CU_ASSERT(1 << 30 == oframe.pri);
+  check_frame_header(4, NGHTTP2_PRIORITY, NGHTTP2_FLAG_PRIORITY_DEPENDENCY,
+                     1000000007, &oframe.hd);
+
+  CU_ASSERT(NGHTTP2_PRIORITY_TYPE_DEP == oframe.pri_spec.pri_type);
+  CU_ASSERT(79 == oframe.pri_spec.dep.stream_id);
+  CU_ASSERT(1 == oframe.pri_spec.dep.exclusive);
+
+  nghttp2_frame_priority_free(&oframe);
+  nghttp2_bufs_reset(&bufs);
 
   nghttp2_bufs_free(&bufs);
-  nghttp2_frame_priority_free(&oframe);
   nghttp2_frame_priority_free(&frame);
 }
 

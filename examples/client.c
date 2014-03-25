@@ -521,7 +521,6 @@ static void ctl_poll(struct pollfd *pollfd, struct Connection *connection)
  */
 static void submit_request(struct Connection *connection, struct Request *req)
 {
-  int pri = 0;
   int rv;
   const nghttp2_nv nva[] = {
     /* Make sure that the last item is NULL */
@@ -532,7 +531,7 @@ static void submit_request(struct Connection *connection, struct Request *req)
     MAKE_NV("accept", "*/*"),
     MAKE_NV("user-agent", "nghttp2/"NGHTTP2_VERSION)
   };
-  rv = nghttp2_submit_request(connection->session, pri,
+  rv = nghttp2_submit_request(connection->session, NULL,
                               nva, sizeof(nva)/sizeof(nva[0]), NULL, req);
   if(rv != 0) {
     diec("nghttp2_submit_request", rv);

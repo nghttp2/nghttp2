@@ -85,7 +85,7 @@ struct Config {
   size_t padding;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
-  int32_t pri;
+  int32_t weight;
   int multiply;
   // milliseconds
   int timeout;
@@ -103,7 +103,7 @@ struct Config {
       padding(0),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1),
-      pri(NGHTTP2_PRI_DEFAULT),
+      weight(NGHTTP2_DEFAULT_WEIGHT),
       multiply(1),
       timeout(-1),
       window_bits(-1),
@@ -147,6 +147,16 @@ std::string strip_fragment(const char *raw_uri)
 } // namespace
 
 namespace {
+struct Request;
+} // namespace
+
+namespace {
+struct Dependency {
+  std::vector<std::vector<Request*>> deps;
+};
+} // namespace
+
+namespace {
 struct Request {
   Headers res_nva;
   Headers push_req_nva;
@@ -154,28 +164,37 @@ struct Request {
   std::string uri;
   std::string status;
   http_parser_url u;
+  std::shared_ptr<Dependency> dep;
+  nghttp2_priority_spec pri_spec;
   RequestStat stat;
   int64_t data_length;
   int64_t data_offset;
   nghttp2_gzip *inflater;
   HtmlParser *html_parser;
   const nghttp2_data_provider *data_prd;
-  int32_t pri;
+  int32_t stream_id;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
+  // RequestPriority value defined in HtmlParser.h
+  int pri;
+
   // For pushed request, |uri| is empty and |u| is zero-cleared.
   Request(const std::string& uri, const http_parser_url &u,
           const nghttp2_data_provider *data_prd, int64_t data_length,
-          int32_t pri, int level = 0)
+          const nghttp2_priority_spec& pri_spec,
+          std::shared_ptr<Dependency> dep, int level = 0)
     : uri(uri),
       u(u),
+      dep(std::move(dep)),
+      pri_spec(pri_spec),
       data_length(data_length),
       data_offset(0),
       inflater(nullptr),
       html_parser(nullptr),
       data_prd(data_prd),
-      pri(pri),
-      level(level)
+      stream_id(-1),
+      level(level),
+      pri(0)
   {}
 
   ~Request()
@@ -217,6 +236,55 @@ struct Request {
                   u.field_data[UF_QUERY].len);
     }
     return path;
+  }
+
+  int32_t find_dep_stream_id(int start)
+  {
+    for(auto i = start; i >= 0; --i) {
+      for(auto req : dep->deps[i]) {
+        if(req->stat.stage != STAT_ON_COMPLETE) {
+          return req->stream_id;
+        }
+      }
+    }
+    return -1;
+  }
+
+  nghttp2_priority_spec resolve_dep(int32_t pri)
+  {
+    nghttp2_priority_spec pri_spec = { NGHTTP2_PRIORITY_TYPE_NONE };
+    int exclusive = 0;
+    int32_t stream_id = -1;
+
+    if(pri == 0) {
+      return pri_spec;
+    }
+
+    auto start = std::min(pri, (int)dep->deps.size() - 1);
+
+    for(auto i = start; i >= 0; --i) {
+      if(dep->deps[i][0]->pri < pri) {
+        stream_id = find_dep_stream_id(i);
+
+        if(i != (int)dep->deps.size() - 1) {
+          exclusive = 1;
+        }
+
+        break;
+      } else if(dep->deps[i][0]->pri == pri) {
+        stream_id = find_dep_stream_id(i - 1);
+
+        break;
+      }
+    }
+
+    if(stream_id == -1) {
+      return pri_spec;
+    }
+
+    nghttp2_priority_spec_dep_init(&pri_spec, stream_id, exclusive);
+
+    return pri_spec;
   }
 
   bool is_ipv6_literal_addr() const
@@ -773,7 +841,8 @@ struct HttpClient {
   bool add_request(const std::string& uri,
                    const nghttp2_data_provider *data_prd,
                    int64_t data_length,
-                   int32_t pri,
+                   const nghttp2_priority_spec& pri_spec,
+                   std::shared_ptr<Dependency> dep,
                    int level = 0)
   {
     http_parser_url u;
@@ -787,8 +856,11 @@ struct HttpClient {
       if(config.multiply == 1) {
         path_cache.insert(uri);
       }
+
       reqvec.push_back(util::make_unique<Request>(uri, u, data_prd,
-                                                  data_length, pri, level));
+                                                  data_length,
+                                                  pri_spec, std::move(dep),
+                                                  level));
       return true;
     }
   }
@@ -892,25 +964,15 @@ int submit_request
   for(auto& kv : build_headers) {
     nva.push_back(http2::make_nv(kv.first, kv.second));
   }
-  int rv = nghttp2_submit_request(client->session, req->pri,
-                                  nva.data(), nva.size(), req->data_prd, req);
+
+  auto rv = nghttp2_submit_request(client->session, &req->pri_spec,
+                                   nva.data(), nva.size(), req->data_prd, req);
   if(rv != 0) {
     std::cerr << "nghttp2_submit_request() returned error: "
               << nghttp2_strerror(rv) << std::endl;
     return -1;
   }
   return 0;
-}
-} // namespace
-
-namespace {
-int32_t adjust_pri(int32_t base_pri, int32_t rel_pri)
-{
-  if((int32_t)NGHTTP2_PRI_LOWEST - rel_pri < base_pri) {
-    return NGHTTP2_PRI_LOWEST;
-  } else {
-    return base_pri + rel_pri;
-  }
 }
 } // namespace
 
@@ -931,9 +993,23 @@ void update_html_parser(HttpClient *client, Request *req,
        util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
        util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
        util::porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
-      int32_t pri = adjust_pri(req->pri, p.second);
       // No POST data for assets
-      if ( client->add_request(uri, nullptr, 0, pri, req->level+1) ) {
+
+      nghttp2_priority_spec pri_spec;
+
+      // We always specify priority group of parent stream, so that
+      // even if the parent stream is closed, the dependent stream is
+      // in the same priority group.  We adjust the priority using
+      // separate PRIORITY frame after stream ID becomes known.
+      nghttp2_priority_spec_group_init(&pri_spec, req->stream_id,
+                                       config.weight);
+
+      if ( client->add_request(uri, nullptr, 0, pri_spec, req->dep,
+                               req->level+1) ) {
+        auto& req = client->reqvec.back();
+
+        req->pri = p.second;
+
         submit_request(client, config.headers,
                        client->reqvec.back().get());
       }
@@ -997,8 +1073,48 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
   auto req = (Request*)nghttp2_session_get_stream_user_data(session,
                                                             stream_id);
   assert(req);
+  req->stream_id = stream_id;
   client->streams[stream_id] = req;
   req->record_request_time();
+
+  if(req->pri == 0) {
+    assert(req->dep->deps.empty());
+
+    req->dep->deps.push_back(std::vector<Request*>{req});
+
+    return;
+  }
+
+  if(stream_id % 2 == 0) {
+    return;
+  }
+
+  auto pri_spec = req->resolve_dep(req->pri);
+
+  if(pri_spec.pri_type == NGHTTP2_PRIORITY_TYPE_DEP) {
+    nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, stream_id,
+                            &pri_spec);
+  }
+
+  auto itr = std::begin(req->dep->deps);
+  for(; itr != std::end(req->dep->deps); ++itr) {
+    if((*itr)[0]->pri == req->pri) {
+      (*itr).push_back(req);
+
+      break;
+    }
+
+    if((*itr)[0]->pri > req->pri) {
+      auto v = std::vector<Request*>{req};
+      req->dep->deps.insert(itr, std::move(v));
+
+      break;
+    }
+  }
+
+  if(itr == std::end(req->dep->deps)) {
+    req->dep->deps.push_back(std::vector<Request*>{req});
+  }
 }
 } // namespace
 
@@ -1075,7 +1191,10 @@ int on_begin_headers_callback(nghttp2_session *session,
     http_parser_url u;
     memset(&u, 0, sizeof(u));
     // TODO Set pri and level
-    auto req = util::make_unique<Request>("", u, nullptr, 0, 0, 0);
+    nghttp2_priority_spec pri_spec = { NGHTTP2_PRIORITY_TYPE_NONE };
+
+    auto req = util::make_unique<Request>("", u, nullptr, 0, pri_spec,
+                                          nullptr);
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());
     client->reqvec.push_back(std::move(req));
     check_stream_id(session, stream_id, user_data);
@@ -1484,10 +1603,18 @@ int communicate(const std::string& scheme, const std::string& host,
   }
   {
     HttpClient client{callbacks, evbase, ssl_ctx};
+
+    nghttp2_priority_spec pri_spec = { NGHTTP2_PRIORITY_TYPE_NONE };
+
+    if(config.weight != NGHTTP2_DEFAULT_WEIGHT) {
+      nghttp2_priority_spec_group_init(&pri_spec, -1, config.weight);
+    }
+
     for(auto req : requests) {
       for(int i = 0; i < config.multiply; ++i) {
+        auto dep = std::make_shared<Dependency>();
         client.add_request(std::get<0>(req), std::get<1>(req),
-                           std::get<2>(req), config.pri);
+                           std::get<2>(req), pri_spec, std::move(dep));
       }
     }
     client.update_hostport();
@@ -1682,9 +1809,9 @@ Options:
                      is ignored  if the request URI  has https scheme.
                      If  -d  is  used,  the HTTP  upgrade  request  is
                      performed with OPTIONS method.
-  -p, --pri=<PRIORITY>
-                     Sets stream priority. Default: )"
-      << NGHTTP2_PRI_DEFAULT << R"(
+  -p, --weight=<WEIGHT>
+                     Sets priority group weight. Default: )"
+      << NGHTTP2_DEFAULT_WEIGHT << R"(
   -M, --peer-max-concurrent-streams=<N>
                      Use <N>  as SETTINGS_MAX_CONCURRENT_STREAMS value
                      of  remote  endpoint  as  if it  is  received  in
@@ -1721,7 +1848,7 @@ int main(int argc, char **argv)
       {"data", required_argument, nullptr, 'd'},
       {"multiply", required_argument, nullptr, 'm'},
       {"upgrade", no_argument, nullptr, 'u'},
-      {"pri", required_argument, nullptr, 'p'},
+      {"weight", required_argument, nullptr, 'p'},
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
       {"header-table-size", required_argument, nullptr, 'c'},
       {"padding", required_argument, nullptr, 'b'},
@@ -1758,11 +1885,11 @@ int main(int argc, char **argv)
       break;
     case 'p': {
       auto n = strtoul(optarg, nullptr, 10);
-      if(n <= NGHTTP2_PRI_LOWEST) {
-        config.pri = n;
+      if(n <= NGHTTP2_MAX_WEIGHT) {
+        config.weight = n;
       } else {
         std::cerr << "-p: specify the integer in the range [0, "
-                  << NGHTTP2_PRI_LOWEST << "], inclusive"
+                  << NGHTTP2_MAX_WEIGHT << "], inclusive"
                   << std::endl;
         exit(EXIT_FAILURE);
       }

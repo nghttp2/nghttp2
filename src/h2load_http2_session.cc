@@ -148,7 +148,7 @@ void Http2Session::submit_request()
     client_->reqidx = 0;
   }
 
-  nghttp2_submit_request(session_, 0, nva.data(), nva.size(),
+  nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
                          nullptr, nullptr);
 }
 

@@ -402,7 +402,7 @@ static void submit_request(http2_session_data *session_data)
   };
   fprintf(stderr, "Request headers:\n");
   print_headers(stderr, hdrs, ARRLEN(hdrs));
-  rv = nghttp2_submit_request(session_data->session, NGHTTP2_PRI_DEFAULT,
+  rv = nghttp2_submit_request(session_data->session, NULL,
                               hdrs, ARRLEN(hdrs), NULL, stream_data);
   if(rv != 0) {
     errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(rv));

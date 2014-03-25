@@ -116,6 +116,7 @@ typedef enum {
 
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
+  nghttp2_map /* <nghttp2_stream_group*> */ stream_groups;
   /* Queue for outbound frames other than stream-creating HEADERS */
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
   /* Queue for outbound stream-creating HEADERS frame */
@@ -307,9 +308,8 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 
 /*
  * Creates new stream in |session| with stream ID |stream_id|,
- * priority |pri| and flags |flags|. NGHTTP2_FLAG_END_STREAM flag is
- * set in |flags|, the sender of HEADERS will not send any further
- * data in this stream. Since this function is called when initial
+ * priority |pri_spec| and flags |flags|.  The |flags| is bitwise OR
+ * of nghttp2_stream_flag.  Since this function is called when initial
  * HEADERS is sent or received, these flags are taken from it.  The
  * state of stream is set to |initial_state|. The |stream_user_data|
  * is a pointer to the arbitrary user supplied data to be associated
@@ -320,7 +320,8 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
  */
 nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
                                             int32_t stream_id,
-                                            uint8_t flags, int32_t pri,
+                                            uint8_t flags,
+                                            nghttp2_priority_spec *pri_spec,
                                             nghttp2_stream_state initial_state,
                                             void *stream_user_data);
 
@@ -332,8 +333,12 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
  * This function returns 0 if it succeeds, or one the following
  * negative error codes:
  *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  * NGHTTP2_ERR_INVALID_ARGUMENT
  *     The specified stream does not exist.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
  */
 int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
                                  nghttp2_error_code error_code);
@@ -507,6 +512,14 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
                                            int32_t stream_id);
 
 /*
+ * Returns nghttp2_stream_group* object whose priority group ID is
+ * |pri_group_id|.  It could be NULL if such priority group does not
+ * exist.
+ */
+nghttp2_stream_group* nghttp2_session_get_stream_group
+(nghttp2_session *session, int32_t pri_group_id);
+
+/*
  * Packs DATA frame |frame| in wire frame format and stores it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
@@ -580,9 +593,32 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
                                           size_t niv);
 
 /*
- * Re-prioritize |stream|. The new priority is |pri|.
+ * Re-prioritize |stream|. The new priority specification is
+ * |pri_spec|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_session_reprioritize_stream
-(nghttp2_session *session, nghttp2_stream *stream, int32_t pri);
+int nghttp2_session_reprioritize_stream
+(nghttp2_session *session, nghttp2_stream *stream,
+ const nghttp2_priority_spec *pri_spec);
+
+/*
+ * Creates new priority group using given values.
+ *
+ * This function returns created priority group if it succeeds, or
+ * NULL.
+ */
+nghttp2_stream_group* nghttp2_session_open_stream_group
+(nghttp2_session *session, int32_t pri_group_id, int32_t weight);
+
+/*
+ * Closes priority group if it does not include any streams.
+ */
+void nghttp2_session_close_stream_group_if_empty
+(nghttp2_session *session, nghttp2_stream_group *stream_group);
 
 #endif /* NGHTTP2_SESSION_H */

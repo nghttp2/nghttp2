@@ -97,15 +97,16 @@ typedef struct {
 /**
  * @macro
  *
- * The default priority value
+ * The default weight of priority group.
  */
-#define NGHTTP2_PRI_DEFAULT (1 << 30)
+#define NGHTTP2_DEFAULT_WEIGHT 16
+
 /**
  * @macro
  *
- * The lowest priority value
+ * The maximum weight of priority group.
  */
-#define NGHTTP2_PRI_LOWEST ((1U << 31) - 1)
+#define NGHTTP2_MAX_WEIGHT 255
 
 /**
  * @macro
@@ -279,6 +280,11 @@ typedef enum {
    */
   NGHTTP2_ERR_PUSH_DISABLED = -528,
   /**
+   * DATA frame for a given stream has been already submitted and has
+   * not been fully processed yet.
+   */
+  NGHTTP2_ERR_DATA_EXIST = -529,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and cannot process any further data
    * reliably (e.g., out of memory).
@@ -391,10 +397,6 @@ typedef enum {
    */
   NGHTTP2_FLAG_END_HEADERS = 0x4,
   /**
-   * The PRIORITY flag.
-   */
-  NGHTTP2_FLAG_PRIORITY = 0x8,
-  /**
    * The ACK flag.
    */
   NGHTTP2_FLAG_ACK = 0x1,
@@ -405,11 +407,19 @@ typedef enum {
   /**
    * The PAD_LOW flag.
    */
-  NGHTTP2_FLAG_PAD_LOW = 0x10,
+  NGHTTP2_FLAG_PAD_LOW = 0x08,
   /**
    * The PAD_HIGH flag.
    */
-  NGHTTP2_FLAG_PAD_HIGH = 0x20
+  NGHTTP2_FLAG_PAD_HIGH = 0x10,
+  /**
+   * The PRIORITY_GROUP flag.
+   */
+  NGHTTP2_FLAG_PRIORITY_GROUP = 0x20,
+  /**
+   * The PRIORITY_DEPENDENCY flag.
+   */
+  NGHTTP2_FLAG_PRIORITY_DEPENDENCY = 0x40
 } nghttp2_flag;
 
 /**
@@ -635,6 +645,85 @@ typedef enum {
 } nghttp2_headers_category;
 
 /**
+ * @enum
+ *
+ * The type of priority specified in :type:`nghttp2_priority_spec`.
+ */
+typedef enum {
+  /**
+   * No priority is given.
+   */
+  NGHTTP2_PRIORITY_TYPE_NONE,
+  /**
+   * Priority group ID and its weight are specified.
+   */
+  NGHTTP2_PRIORITY_TYPE_GROUP,
+  /**
+   * The stream ID of a stream to depend on and its exclusive flag is
+   * specified.
+   */
+  NGHTTP2_PRIORITY_TYPE_DEP
+} nghttp2_priority_type;
+
+/**
+ * @struct
+ *
+ * This structure stores priority group ID and its weight.
+ */
+typedef struct {
+  /**
+   * The priority group ID
+   */
+  int32_t pri_group_id;
+  /**
+   * The weight of the priority group
+   */
+  uint8_t weight;
+} nghttp2_priority_group;
+
+/**
+ * @struct
+ *
+ * This structure stores stream ID of the stream to depend on and its
+ * dependency is exclusive or not.
+ */
+typedef struct {
+  /**
+   * The stream ID of the stream to depend on.
+   */
+  int32_t stream_id;
+  /**
+   * nonzero means exclusive dependency
+   */
+  uint8_t exclusive;
+} nghttp2_priority_dep;
+
+/**
+ * @struct
+ *
+ * The structure to specify stream dependency.  To specify stream
+ * dependency, specify |pri_type| and fill the |group| or |dep| member
+ * according to |pri_type|.
+ */
+typedef struct {
+  /**
+   * Type of priority specification.  If |pri_type| is
+   * :enum:`NGHTTP2_PRIORITY_TYPE_GROUP`, fill |group|.  If |pri_type|
+   * is :enum:`NGHTTP2_PRIORITY_TYPE_DEP`, fill |dep|.  If |pri_type|
+   * is :enum:`NGHTTP2_PRIORITY_TYPE_NONE`, the other data members are
+   * ignored and it means that default priority group ID (which is
+   * same as the stream ID) and default weight
+   * :macro:`NGHTTP2_DEFAULT_WEIGHT` are specified.
+   */
+  nghttp2_priority_type pri_type;
+
+  union {
+    nghttp2_priority_group group;
+    nghttp2_priority_dep dep;
+  };
+} nghttp2_priority_spec;
+
+/**
  * @struct
  * The HEADERS frame. It has the following members:
  */
@@ -649,6 +738,10 @@ typedef struct {
    */
   size_t padlen;
   /**
+   * The priority specification
+   */
+  nghttp2_priority_spec pri_spec;
+  /**
    * The name/value pairs.
    */
   nghttp2_nv *nva;
@@ -660,10 +753,6 @@ typedef struct {
    * The category of this HEADERS frame.
    */
   nghttp2_headers_category cat;
-  /**
-   * The priority.
-   */
-  int32_t pri;
 } nghttp2_headers;
 
 /**
@@ -676,9 +765,9 @@ typedef struct {
    */
   nghttp2_frame_hd hd;
   /**
-   * The priority.
+   * The priority specification.
    */
-  int32_t pri;
+  nghttp2_priority_spec pri_spec;
 } nghttp2_priority;
 
 /**
@@ -1886,10 +1975,36 @@ const char* nghttp2_strerror(int lib_error_code);
 /**
  * @function
  *
+ * Initializes |pri_spec| with priority group ID |pri_group_id| and
+ * its weight |weight|.  To specify weight for the default priority
+ * group (which is the same as the stream ID of the stream) in
+ * `nghttp2_submit_request()` and `nghttp2_submit_headers()` and its
+ * stream ID is not known in advance, specify -1 to |pri_group_id|.
+ */
+void nghttp2_priority_spec_group_init(nghttp2_priority_spec *pri_spec,
+                                      int32_t pri_group_id, uint8_t weight);
+
+/**
+ * @function
+ *
+ * Initializes |pri_spec| with the |stream_id| of the stream to depend
+ * on and its exclusive flag. If |exclusive| is nonzero, exclusive
+ * flag is set.
+ */
+void nghttp2_priority_spec_dep_init(nghttp2_priority_spec *pri_spec,
+                                    int32_t stream_id, int exclusive);
+
+/**
+ * @function
+ *
  * Submits HEADERS frame and optionally one or more DATA frames.
  *
- * The |pri| is priority of this request. 0 is the highest priority
- * value and :macro:`NGHTTP2_PRI_LOWEST` is the lowest value.
+ * The |pri_spec| is priority specification of this request.  ``NULL``
+ * means the default priority (priority group ID becomes its stream ID
+ * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT).  To specify the
+ * priority, use either `nghttp2_priority_spec_group_init()` or
+ * `nghttp2_priority_spec_dep_init()`.  If |pri_spec| is not ``NULL``,
+ * this function will copy its data members.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
  * |nvlen| elements. The value is opaque sequence of bytes and
@@ -1931,12 +2046,11 @@ const char* nghttp2_strerror(int lib_error_code);
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
+int nghttp2_submit_request(nghttp2_session *session,
+                           const nghttp2_priority_spec *pri_spec,
                            const nghttp2_nv *nva, size_t nvlen,
                            const nghttp2_data_provider *data_prd,
                            void *stream_user_data);
@@ -1990,7 +2104,6 @@ int nghttp2_submit_response(nghttp2_session *session,
  * following values:
  *
  * * :enum:`NGHTTP2_FLAG_END_STREAM`
- * * :enum:`NGHTTP2_FLAG_PRIORITY`
  *
  * If |flags| includes :enum:`NGHTTP2_FLAG_END_STREAM`, this frame has
  * END_STREAM flag set.
@@ -2004,7 +2117,12 @@ int nghttp2_submit_response(nghttp2_session *session,
  * actual stream ID is assigned just before the frame is sent. For
  * response, specify stream ID in |stream_id|.
  *
- * The |pri| is priority of this request.
+ * The |pri_spec| is priority specification of this request.  ``NULL``
+ * means the default priority (priority group ID becomes its stream ID
+ * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT).  To specify the
+ * priority, use either `nghttp2_priority_spec_group_init()` or
+ * `nghttp2_priority_spec_dep_init()`.  If |pri_spec| is not ``NULL``,
+ * this function will copy its data members.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
  * |nvlen| elements. The value is opaque sequence of bytes and
@@ -2028,13 +2146,12 @@ int nghttp2_submit_response(nghttp2_session *session,
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is invalid
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
 int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
-                           int32_t stream_id, int32_t pri,
+                           int32_t stream_id,
+                           const nghttp2_priority_spec *pri_spec,
                            const nghttp2_nv *nva, size_t nvlen,
                            void *stream_user_data);
 
@@ -2064,10 +2181,16 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  * @function
  *
  * Submits PRIORITY frame to change the priority of stream |stream_id|
- * to the priority value |pri|.
+ * to the priority specification |pri_spec|.
  *
  * The |flags| is currently ignored and should be
  * :enum:`NGHTTP2_FLAG_NONE`.
+ *
+ * The |pri_spec| is priority specification of this request.  ``NULL``
+ * is not allowed for this function.  To specify the priority, use
+ * either `nghttp2_priority_spec_group_init()` or
+ * `nghttp2_priority_spec_dep_init()`.  This function will copy its
+ * data members.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -2075,10 +2198,11 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri| is negative.
+ *     The |pri_spec| is NULL; or trying to depend on itself.
  */
 int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
-                            int32_t stream_id, int32_t pri);
+                            int32_t stream_id,
+                            const nghttp2_priority_spec *pri_spec);
 
 /**
  * @function

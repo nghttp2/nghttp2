@@ -223,9 +223,12 @@ int on_begin_headers_callback(nghttp2_session *session,
     ULOG(INFO, upstream) << "Received upstream request HEADERS stream_id="
                          << frame->hd.stream_id;
   }
+
+  // TODO Use priority 0 for now
   auto downstream = new Downstream(upstream,
                                    frame->hd.stream_id,
-                                   frame->headers.pri);
+                                   0);
+
   upstream->add_downstream(downstream);
   downstream->init_response_body_buf();
 
@@ -367,10 +370,11 @@ int on_frame_recv_callback
     if(!downstream) {
       break;
     }
-    rv = downstream->change_priority(frame->priority.pri);
-    if(rv != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
+    // TODO comment out for now
+    // rv = downstream->change_priority(frame->priority.pri);
+    // if(rv != 0) {
+    //   return NGHTTP2_ERR_CALLBACK_FAILURE;
+    // }
     break;
   }
   case NGHTTP2_SETTINGS:

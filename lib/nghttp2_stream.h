@@ -32,6 +32,8 @@
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_outbound_item.h"
 #include "nghttp2_map.h"
+#include "nghttp2_pq.h"
+#include "nghttp2_int.h"
 
 /*
  * If local peer is stream initiator:
@@ -79,22 +81,53 @@ typedef enum {
 } nghttp2_stream_flag;
 
 typedef enum {
+  NGHTTP2_STREAM_DPRI_NONE = 0,
+  NGHTTP2_STREAM_DPRI_NO_DATA = 0x01,
+  NGHTTP2_STREAM_DPRI_TOP = 0x02,
+  NGHTTP2_STREAM_DPRI_REST = 0x04
+} nghttp2_stream_dpri;
+
+typedef enum {
   NGHTTP2_DEFERRED_NONE = 0,
   /* Indicates the DATA is deferred due to flow control. */
   NGHTTP2_DEFERRED_FLOW_CONTROL = 0x01
 } nghttp2_deferred_flag;
 
-typedef struct {
+struct nghttp2_stream_group;
+
+typedef struct nghttp2_stream_group nghttp2_stream_group;
+
+struct nghttp2_stream;
+
+typedef struct nghttp2_stream nghttp2_stream;
+
+struct nghttp2_stream {
   /* Intrusive Map */
   nghttp2_map_entry map_entry;
+  /* pointers to form dependency tree.  If multiple streams depend on
+     a stream, only one stream (left most) has non-NULL dep_prev which
+     points to the stream it depends on. The remaining streams are
+     linked using sib_prev and sib_next.  The stream which has
+     non-NULL dep_prev always NULL sib_prev.  The right most stream
+     has NULL sib_next.  If this stream is a root of dependency tree,
+     dep_prev and sib_prev are NULL. */
+  nghttp2_stream *dep_prev, *dep_next;
+  nghttp2_stream *sib_prev, *sib_next;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
+  /* Active DATA frame */
+  nghttp2_outbound_item *data;
   /* Deferred DATA frame */
   nghttp2_outbound_item *deferred_data;
   /* stream ID */
   int32_t stream_id;
-  /* Use same value in request HEADERS frame */
-  int32_t pri;
+  /* priority group this stream belongs to */
+  nghttp2_stream_group *stream_group;
+  /* categorized priority of this stream.  Only stream bearing
+     NGHTTP2_STREAM_DPRI_TOP can send DATA frame. */
+  nghttp2_stream_dpri dpri;
+  /* the number of nodes in subtree */
+  size_t num_substreams;
   /* Current remote window size. This value is computed against the
      current initial window size of remote endpoint. */
   int32_t remote_window_size;
@@ -117,10 +150,10 @@ typedef struct {
   /* The flags for defered DATA. Bitwise OR of zero or more
      nghttp2_deferred_flag values */
   uint8_t deferred_flags;
-} nghttp2_stream;
+};
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
-                         uint8_t flags, int32_t pri,
+                         uint8_t flags,
                          nghttp2_stream_state initial_state,
                          int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
@@ -147,7 +180,8 @@ void nghttp2_stream_defer_data(nghttp2_stream *stream,
  * Detaches deferred data from this stream. This function does not
  * free deferred data.
  */
-void nghttp2_stream_detach_deferred_data(nghttp2_stream *stream);
+int nghttp2_stream_detach_deferred_data(nghttp2_stream *stream,
+                                        nghttp2_pq *pq);
 
 /*
  * Updates the remote window size with the new value
@@ -181,5 +215,155 @@ int nghttp2_stream_update_local_initial_window_size
  * NGHTTP2_STREAM_OPENED.
  */
 void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream);
+
+/*
+ * Returns the stream positioned in root of the dependency tree the
+ * |stream| belongs to.
+ */
+nghttp2_stream* nghttp2_stream_get_dep_root(nghttp2_stream *stream);
+
+/*
+ * Returns nonzero if |target| is found in subtree of |stream|.
+ */
+int nghttp2_stream_dep_subtree_find(nghttp2_stream *stream,
+                                    nghttp2_stream *target);
+
+/*
+ * Makes the |stream| depend on the |dep_stream|.  This dependency is
+ * exclusive.  All existing direct descendants of |dep_stream| become
+ * the descendants of the |stream|.  This function assumes
+ * |stream->data| is NULL and no dpri members are changed in this
+ * dependency tree.  It also does not change stream->stream_group.
+ */
+void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
+                               nghttp2_stream *stream);
+
+/*
+ * Makes the |stream| depend on the |dep_stream|.  This dependency is
+ * not exclusive.  This function assumes |stream->data| is NULL and no
+ * dpri members are changed in this dependency tree.  It also does not
+ * change stream->stream_group.
+ */
+void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
+                            nghttp2_stream *stream);
+
+/*
+ * Removes the |stream| from the current dependency tree.  This
+ * function assumes |stream->data| is NULL.
+ */
+void nghttp2_stream_dep_remove(nghttp2_stream *stream);
+
+/*
+ * Attaches |data| to |stream|.  Updates dpri members in this
+ * dependency tree.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
+int nghttp2_stream_attach_data(nghttp2_stream *stream,
+                               nghttp2_outbound_item *data,
+                               nghttp2_pq *pq);
+
+/*
+ * Detaches |data| from |stream|.  Updates dpri members in this
+ * dependency tree.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
+int nghttp2_stream_detach_data(nghttp2_stream *stream, nghttp2_pq *pq);
+
+
+/*
+ * Makes the |stream| depend on the |dep_stream|.  This dependency is
+ * exclusive.  Updates dpri members in this dependency tree.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
+int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
+                                      nghttp2_stream *stream,
+                                      nghttp2_pq *pq);
+
+/*
+ * Makes the |stream| depend on the |dep_stream|.  This dependency is
+ * not exclusive.  Updates dpri members in this dependency tree.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
+int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
+                                   nghttp2_stream *stream,
+                                   nghttp2_pq *pq);
+
+/*
+ * Removes subtree whose root stream is |stream|.  Removing subtree
+ * does not change dpri values.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
+void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream);
+
+/*
+ * Makes the |stream| as root for |stream_group|.  Updates dpri
+ * members in this dependency tree.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
+int nghttp2_stream_dep_make_root(nghttp2_stream_group *stream_group,
+                                 nghttp2_stream *stream,
+                                 nghttp2_pq *pq);
+
+/*
+ * Priority group of streams.
+ */
+struct nghttp2_stream_group {
+  /* Intrusive Map */
+  nghttp2_map_entry map_entry;
+  /* The number of streams this priority group contains */
+  size_t num_streams;
+  /* The priority group ID */
+  int32_t pri_group_id;
+  /* The weight of this group */
+  int32_t weight;
+};
+
+void nghttp2_stream_group_init(nghttp2_stream_group *stream_group,
+                               int32_t pri_group_id,
+                               int32_t weight);
+
+void nghttp2_stream_group_free(nghttp2_stream_group *stream_group);
+
+/*
+ * Adds |stream| to |stream_group|.
+ */
+void nghttp2_stream_group_add_stream(nghttp2_stream_group *stream_group,
+                                     nghttp2_stream *stream);
+
+/*
+ * Removes |stream| from |stream_group|.
+ */
+void nghttp2_stream_group_remove_stream(nghttp2_stream_group *stream_group,
+                                        nghttp2_stream *stream);
 
 #endif /* NGHTTP2_STREAM */

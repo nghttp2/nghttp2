@@ -75,7 +75,8 @@ int htp_msg_begin(http_parser *htp)
     ULOG(INFO, upstream) << "HTTP request started";
   }
   upstream->reset_current_header_length();
-  auto downstream = new Downstream(upstream, 0, NGHTTP2_PRI_DEFAULT);
+  // TODO specify 0 as priority for now
+  auto downstream = new Downstream(upstream, 0, 0);
   upstream->attach_downstream(downstream);
   return 0;
 }

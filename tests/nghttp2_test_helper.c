@@ -29,6 +29,7 @@
 #include <CUnit/CUnit.h>
 
 #include "nghttp2_helper.h"
+#include "nghttp2_priority_spec.h"
 
 int unpack_framebuf(nghttp2_frame *frame, nghttp2_bufs *bufs)
 {
@@ -212,4 +213,48 @@ void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size)
 {
   /* 2 for PAD_HIGH and PAD_LOW */
   nghttp2_bufs_init2(bufs, chunk_size, 16, NGHTTP2_FRAME_HDLEN + 2);
+}
+
+nghttp2_stream* open_stream(nghttp2_session *session, int32_t stream_id)
+{
+  nghttp2_priority_spec pri_spec;
+
+  nghttp2_priority_spec_group_init(&pri_spec, stream_id,
+                                   NGHTTP2_DEFAULT_WEIGHT);
+
+  return nghttp2_session_open_stream(session, stream_id,
+                                     NGHTTP2_STREAM_FLAG_NONE,
+                                     &pri_spec,
+                                     NGHTTP2_STREAM_OPENED,
+                                     NULL);
+}
+
+nghttp2_stream* open_stream_with_dep(nghttp2_session *session,
+                                     int32_t stream_id,
+                                     nghttp2_stream *dep_stream)
+{
+  nghttp2_priority_spec pri_spec;
+
+  nghttp2_priority_spec_dep_init(&pri_spec, dep_stream->stream_id, 0);
+
+  return nghttp2_session_open_stream(session, stream_id,
+                                     NGHTTP2_STREAM_FLAG_NONE,
+                                     &pri_spec,
+                                     NGHTTP2_STREAM_OPENED,
+                                     NULL);
+}
+
+nghttp2_stream* open_stream_with_dep_excl(nghttp2_session *session,
+                                          int32_t stream_id,
+                                          nghttp2_stream *dep_stream)
+{
+  nghttp2_priority_spec pri_spec;
+
+  nghttp2_priority_spec_dep_init(&pri_spec, dep_stream->stream_id, 1);
+
+  return nghttp2_session_open_stream(session, stream_id,
+                                     NGHTTP2_STREAM_FLAG_NONE,
+                                     &pri_spec,
+                                     NGHTTP2_STREAM_OPENED,
+                                     NULL);
 }

@@ -31,6 +31,7 @@
 
 #include "nghttp2_frame.h"
 #include "nghttp2_hd.h"
+#include "nghttp2_session.h"
 
 #define MAKE_NV(NAME, VALUE)                                            \
   { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
@@ -80,5 +81,15 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
 void frame_pack_bufs_init(nghttp2_bufs *bufs);
 
 void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size);
+
+nghttp2_stream* open_stream(nghttp2_session *session, int32_t stream_id);
+
+nghttp2_stream* open_stream_with_dep(nghttp2_session *session,
+                                     int32_t stream_id,
+                                     nghttp2_stream *dep_stream);
+
+nghttp2_stream* open_stream_with_dep_excl(nghttp2_session *session,
+                                          int32_t stream_id,
+                                          nghttp2_stream *dep_stream);
 
 #endif /* NGHTTP2_TEST_HELPER_H */

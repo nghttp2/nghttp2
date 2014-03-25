@@ -84,6 +84,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_recv_data) ||
       !CU_add_test(pSuite, "session_recv_continuation",
                    test_nghttp2_session_recv_continuation) ||
+      !CU_add_test(pSuite, "session_recv_headers_with_priority",
+                   test_nghttp2_session_recv_headers_with_priority) ||
       !CU_add_test(pSuite, "session_recv_premature_headers",
                    test_nghttp2_session_recv_premature_headers) ||
       !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
@@ -209,6 +211,18 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_pack_headers_with_padding4) ||
       !CU_add_test(pSuite, "pack_settings_payload",
                    test_nghttp2_pack_settings_payload) ||
+      !CU_add_test(pSuite, "session_stream_dep_add",
+                   test_nghttp2_session_stream_dep_add) ||
+      !CU_add_test(pSuite, "session_stream_dep_remove",
+                   test_nghttp2_session_stream_dep_remove) ||
+      !CU_add_test(pSuite, "session_stream_dep_add_subtree",
+                   test_nghttp2_session_stream_dep_add_subtree) ||
+      !CU_add_test(pSuite, "session_stream_dep_remove_subtree",
+                   test_nghttp2_session_stream_dep_remove_subtree) ||
+      !CU_add_test(pSuite, "session_stream_attach_data",
+                   test_nghttp2_session_stream_attach_data) ||
+      !CU_add_test(pSuite, "session_stream_attach_data_subtree",
+                   test_nghttp2_session_stream_attach_data_subtree) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",

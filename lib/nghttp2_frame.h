@@ -35,6 +35,7 @@
 
 #define NGHTTP2_FRAME_LENGTH_MASK ((1 << 14) - 1)
 #define NGHTTP2_STREAM_ID_MASK ((1u << 31) - 1)
+#define NGHTTP2_PRI_GROUP_ID_MASK ((1u << 31) - 1)
 #define NGHTTP2_PRIORITY_MASK ((1u << 31) - 1)
 #define NGHTTP2_WINDOW_SIZE_INCREMENT_MASK ((1u << 31) - 1)
 #define NGHTTP2_SETTINGS_ID_MASK ((1 << 24) - 1)
@@ -96,6 +97,31 @@ int nghttp2_frame_is_data_frame(uint8_t *head);
 void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd);
 
 void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
+
+/**
+ * Returns the number of priority field depending on the |flags|.  If
+ * |flags| has neither NGHTTP2_FLAG_PRIORITY_GROUP nor
+ * NGHTTP2_FLAG_PRIORITY_DEPENDENCY set, return 0.
+ */
+size_t nghttp2_frame_priority_len(uint8_t flags);
+
+/**
+ * Packs the |pri_spec| in |buf|.  This function assumes |buf| has
+ * enough space for serialization.
+ */
+void nghttp2_frame_pack_priority_spec(uint8_t *buf,
+                                      const nghttp2_priority_spec *pri_spec);
+
+/**
+ * Unpacks the priority specification from payload |payload| of length
+ * |payloadlen| to |pri_spec|.  The |flags| is used to determine what
+ * kind of priority specification is in |payload|.  This function
+ * assumes the |payload| contains whole priority specification.
+ */
+void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
+                                        uint8_t flags,
+                                        const uint8_t *payload,
+                                        size_t payloadlen);
 
 /*
  * Returns the offset from the HEADERS frame payload where the
@@ -387,14 +413,15 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
  * not assigned yet, it must be -1.
  */
 void nghttp2_frame_headers_init(nghttp2_headers *frame,
-                                uint8_t flags, int32_t stream_id, int32_t pri,
+                                uint8_t flags, int32_t stream_id,
+                                const nghttp2_priority_spec *pri_spec,
                                 nghttp2_nv *nva, size_t nvlen);
 
 void nghttp2_frame_headers_free(nghttp2_headers *frame);
 
 
 void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
-                                 int32_t pri);
+                                 const nghttp2_priority_spec *pri_spec);
 
 void nghttp2_frame_priority_free(nghttp2_priority *frame);
 

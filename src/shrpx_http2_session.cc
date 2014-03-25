@@ -578,7 +578,8 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
 {
   assert(state_ == CONNECTED);
   auto sd = util::make_unique<StreamData>();
-  int rv = nghttp2_submit_request(session_, pri, nva, nvlen,
+  // TODO Specify nullptr to pri_spec for now
+  int rv = nghttp2_submit_request(session_, nullptr, nva, nvlen,
                                   data_prd, sd.get());
   if(rv == 0) {
     dconn->attach_stream_data(sd.get());
@@ -640,9 +641,15 @@ int Http2Session::submit_priority(Http2DownstreamConnection *dconn,
     return 0;
   }
   int rv;
-  rv = nghttp2_submit_priority(session_, NGHTTP2_FLAG_NONE,
-                               dconn->get_downstream()->
-                               get_downstream_stream_id(), pri);
+
+  // TODO Disabled temporarily
+
+  // rv = nghttp2_submit_priority(session_, NGHTTP2_FLAG_NONE,
+  //                              dconn->get_downstream()->
+  //                              get_downstream_stream_id(), pri);
+
+  rv = 0;
+
   if(rv < NGHTTP2_ERR_FATAL) {
     SSLOG(FATAL, this) << "nghttp2_submit_priority() failed: "
                        << nghttp2_strerror(rv);

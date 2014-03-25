@@ -31,6 +31,7 @@ void test_nghttp2_session_recv_invalid_frame(void);
 void test_nghttp2_session_recv_eof(void);
 void test_nghttp2_session_recv_data(void);
 void test_nghttp2_session_recv_continuation(void);
+void test_nghttp2_session_recv_headers_with_priority(void);
 void test_nghttp2_session_recv_premature_headers(void);
 void test_nghttp2_session_continue(void);
 void test_nghttp2_session_add_frame(void);
@@ -96,5 +97,11 @@ void test_nghttp2_session_pack_headers_with_padding2(void);
 void test_nghttp2_session_pack_headers_with_padding3(void);
 void test_nghttp2_session_pack_headers_with_padding4(void);
 void test_nghttp2_pack_settings_payload(void);
+void test_nghttp2_session_stream_dep_add(void);
+void test_nghttp2_session_stream_dep_remove(void);
+void test_nghttp2_session_stream_dep_add_subtree(void);
+void test_nghttp2_session_stream_dep_remove_subtree(void);
+void test_nghttp2_session_stream_attach_data(void);
+void test_nghttp2_session_stream_attach_data_subtree(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */
