@@ -875,19 +875,16 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
      may be PROTOCOL_ERROR, but without notifying stream closure will
      hang the stream in a local endpoint.
   */
-  /* TODO Should on_stream_close_callback be called against
-     NGHTTP2_STREAM_RESERVED? It is actually not opened yet.
 
-     Maybe we should call callback in this case. */
-  if(stream->state != NGHTTP2_STREAM_RESERVED) {
-    if(session->callbacks.on_stream_close_callback) {
-      if(session->callbacks.on_stream_close_callback
-         (session, stream_id,
-          error_code,
-          session->user_data) != 0) {
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
-      }
+  if(session->callbacks.on_stream_close_callback) {
+    if(session->callbacks.on_stream_close_callback
+       (session, stream_id, error_code, session->user_data) != 0) {
+
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+  }
+
+  if(stream->state != NGHTTP2_STREAM_RESERVED) {
     if(nghttp2_session_is_my_stream_id(session, stream_id)) {
       --session->num_outgoing_streams;
     } else {
