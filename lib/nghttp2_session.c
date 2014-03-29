@@ -463,6 +463,7 @@ int nghttp2_session_reprioritize_stream
   nghttp2_stream_group *stream_group;
   nghttp2_stream_group *old_stream_group;
   nghttp2_stream *dep_stream;
+  nghttp2_stream *root_stream;
   const nghttp2_priority_group *group;
   const nghttp2_priority_dep *dep;
 
@@ -529,11 +530,20 @@ int nghttp2_session_reprioritize_stream
 
     nghttp2_stream_dep_remove_subtree(stream);
 
-    if(dep->exclusive) {
-      rv = nghttp2_stream_dep_insert_subtree(dep_stream, stream,
-                                             &session->ob_pq);
+    root_stream = nghttp2_stream_get_dep_root(dep_stream);
+
+    if(root_stream->num_substreams + stream->num_substreams >
+       NGHTTP2_MAX_DEP_TREE_LENGTH) {
+      rv = nghttp2_stream_dep_make_root(dep_stream->stream_group, stream,
+                                        &session->ob_pq);
     } else {
-      rv = nghttp2_stream_dep_add_subtree(dep_stream, stream, &session->ob_pq);
+      if(dep->exclusive) {
+        rv = nghttp2_stream_dep_insert_subtree(dep_stream, stream,
+                                               &session->ob_pq);
+      } else {
+        rv = nghttp2_stream_dep_add_subtree(dep_stream, stream,
+                                            &session->ob_pq);
+      }
     }
 
     if(rv != 0) {
@@ -719,6 +729,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   int rv;
   nghttp2_stream *stream;
   nghttp2_stream *dep_stream;
+  nghttp2_stream *root_stream;
   int32_t pri_group_id;
   uint8_t weight;
   nghttp2_stream_group *stream_group;
@@ -809,10 +820,14 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     return stream;
   }
 
-  if(pri_spec->dep.exclusive) {
-    nghttp2_stream_dep_insert(dep_stream, stream);
-  } else {
-    nghttp2_stream_dep_add(dep_stream, stream);
+  root_stream = nghttp2_stream_get_dep_root(dep_stream);
+
+  if(root_stream->num_substreams < NGHTTP2_MAX_DEP_TREE_LENGTH) {
+    if(pri_spec->dep.exclusive) {
+      nghttp2_stream_dep_insert(dep_stream, stream);
+    } else {
+      nghttp2_stream_dep_add(dep_stream, stream);
+    }
   }
 
   return stream;

@@ -36,6 +36,11 @@
 #include "nghttp2_int.h"
 
 /*
+ * Maximum number of streams in one dependency tree.
+ */
+#define NGHTTP2_MAX_DEP_TREE_LENGTH 100
+
+/*
  * If local peer is stream initiator:
  * NGHTTP2_STREAM_OPENING : upon sending request HEADERS
  * NGHTTP2_STREAM_OPENED : upon receiving response HEADERS
