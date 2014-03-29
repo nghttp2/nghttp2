@@ -346,17 +346,17 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     break;
   case NGHTTP2_HEADERS:
     print_frame_attr_indent();
-    fprintf(outfile, "(");
+    fprintf(outfile, "(padlen=%zu", frame->headers.padlen);
     if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
-      fprintf(outfile, "pri_group_id=%d, weight=%u, ",
+      fprintf(outfile, ", pri_group_id=%d, weight=%u",
               frame->headers.pri_spec.group.pri_group_id,
               frame->headers.pri_spec.group.weight);
     } else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
-      fprintf(outfile, "stream_id=%d, exclusive=%d, ",
+      fprintf(outfile, ", stream_id=%d, exclusive=%d",
               frame->headers.pri_spec.dep.stream_id,
               frame->headers.pri_spec.dep.exclusive);
     }
-    fprintf(outfile, "padlen=%zu)\n", frame->headers.padlen);
+    fprintf(outfile, ")\n");
     switch(frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST:
       print_frame_attr_indent();
@@ -413,9 +413,9 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     break;
   case NGHTTP2_PUSH_PROMISE:
     print_frame_attr_indent();
-    fprintf(outfile, "(promised_stream_id=%d, padlen=%zu)\n",
-            frame->push_promise.promised_stream_id,
-            frame->push_promise.padlen);
+    fprintf(outfile, "(padlen=%zu, promised_stream_id=%d)\n",
+            frame->push_promise.padlen,
+            frame->push_promise.promised_stream_id);
     print_nv(frame->push_promise.nva, frame->push_promise.nvlen);
     break;
   case NGHTTP2_PING:
