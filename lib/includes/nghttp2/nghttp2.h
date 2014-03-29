@@ -651,18 +651,18 @@ typedef enum {
  */
 typedef enum {
   /**
-   * No priority is given.
+   * No priority is given.  The default priority will be used.
    */
-  NGHTTP2_PRIORITY_TYPE_NONE,
+  NGHTTP2_PRIORITY_TYPE_NONE = 0,
   /**
    * Priority group ID and its weight are specified.
    */
-  NGHTTP2_PRIORITY_TYPE_GROUP,
+  NGHTTP2_PRIORITY_TYPE_GROUP = 1,
   /**
    * The stream ID of a stream to depend on and its exclusive flag is
    * specified.
    */
-  NGHTTP2_PRIORITY_TYPE_DEP
+  NGHTTP2_PRIORITY_TYPE_DEP = 2
 } nghttp2_priority_type;
 
 /**
@@ -718,7 +718,17 @@ typedef struct {
   nghttp2_priority_type pri_type;
 
   union {
+    /**
+     * Specify priority group ID and its weight.  This field is
+     * interpreted only when |pri_type| member is
+     * :enum:`NGHTTP2_PRIORITY_TYPE_GROUP`.
+     */
     nghttp2_priority_group group;
+    /**
+     * Specify stream ID of a stream to depend on and exclusive flag.
+     * This field is interpreted only when |pri_type| member is
+     * :enum:`NGHTTP2_PRIORITY_TYPE_DEP`.
+     */
     nghttp2_priority_dep dep;
   };
 } nghttp2_priority_spec;
