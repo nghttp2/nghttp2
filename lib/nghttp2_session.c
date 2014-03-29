@@ -4582,6 +4582,16 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
 
+      switch(iframe->frame.hd.type) {
+      case NGHTTP2_HEADERS:
+      case NGHTTP2_PUSH_PROMISE:
+        /* Mark inflater bad so that we won't perform further decoding */
+        session->hd_inflater.ctx.bad = 1;
+        break;
+      default:
+        break;
+      }
+
       nghttp2_inbound_frame_reset(session);
 
       break;
@@ -4713,9 +4723,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
-
-        /* Mark inflater bad so that we won't perform further decoding */
-        session->hd_inflater.ctx.bad = 1;
 
         busy = 1;
 
