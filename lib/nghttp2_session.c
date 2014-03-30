@@ -537,9 +537,7 @@ int nghttp2_session_reprioritize_stream
                      "stream(%p)=%d\n",
                      dep_stream, dep_stream->stream_id,
                      stream, stream->stream_id));
-
-      return nghttp2_session_terminate_session(session,
-                                               NGHTTP2_PROTOCOL_ERROR);
+      return 0;
     }
 
     nghttp2_stream_dep_remove_subtree(stream);
