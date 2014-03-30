@@ -25,7 +25,7 @@ from libc.stdint cimport uint8_t, uint16_t, uint32_t, int32_t
 cdef extern from 'nghttp2/nghttp2.h':
 
     const char NGHTTP2_PROTO_VERSION_ID[]
-    const char NGHTTP2_CLIENT_CONNECTION_HEADER[]
+    const char NGHTTP2_CLIENT_CONNECTION_PREFACE[]
     const size_t NGHTTP2_INITIAL_WINDOW_SIZE
 
     ctypedef struct nghttp2_session:

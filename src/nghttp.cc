@@ -713,8 +713,8 @@ struct HttpClient {
       }
     }
     // Send connection header here
-    bufferevent_write(bev, NGHTTP2_CLIENT_CONNECTION_HEADER,
-                      NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+    bufferevent_write(bev, NGHTTP2_CLIENT_CONNECTION_PREFACE,
+                      NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
     // If upgrade succeeds, the SETTINGS value sent with
     // HTTP2-Settings header field has already been submitted to
     // session object.

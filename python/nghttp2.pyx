@@ -901,7 +901,7 @@ if asyncio:
 
         def connection_made(self, transport):
             self.transport = transport
-            self.connection_header = cnghttp2.NGHTTP2_CLIENT_CONNECTION_HEADER
+            self.connection_header = cnghttp2.NGHTTP2_CLIENT_CONNECTION_PREFACE
             sock = self.transport.get_extra_info('socket')
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             ssl_ctx = self.transport.get_extra_info('sslcontext')

@@ -1219,8 +1219,8 @@ int Http2Session::on_connect()
     }
   }
 
-  rv = bufferevent_write(bev_, NGHTTP2_CLIENT_CONNECTION_HEADER,
-                         NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+  rv = bufferevent_write(bev_, NGHTTP2_CLIENT_CONNECTION_PREFACE,
+                         NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
   if(rv != 0) {
     SSLOG(FATAL, this) << "bufferevent_write() failed";
     return -1;

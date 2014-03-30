@@ -613,8 +613,8 @@ static void fetch_uri(const struct URI *uri)
   connection.want_io = IO_NONE;
 
   /* Send connection header in blocking I/O mode */
-  SSL_write(ssl, NGHTTP2_CLIENT_CONNECTION_HEADER,
-            NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+  SSL_write(ssl, NGHTTP2_CLIENT_CONNECTION_PREFACE,
+            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
 
   /* Here make file descriptor non-block */
   make_non_block(fd);

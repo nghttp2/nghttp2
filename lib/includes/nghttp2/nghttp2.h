@@ -135,18 +135,36 @@ typedef struct {
  */
 #define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 << 16)
 
+
 /**
  * @macro
  *
- * The client connection header.
+ * The client connection preface.
  */
-#define NGHTTP2_CLIENT_CONNECTION_HEADER "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+#define NGHTTP2_CLIENT_CONNECTION_PREFACE "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
+/**
+ * @macro
+ *
+ * The length of :macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`.
+ */
+#define NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN 24
+
+/**
+ * @macro
+ *
+ * The client connection header.  This macro is obsoleted by
+ * NGHTTP2_CLIENT_CONNECTION_PREFACE.
+ */
+#define NGHTTP2_CLIENT_CONNECTION_HEADER NGHTTP2_CLIENT_CONNECTION_PREFACE
+
 /**
  * @macro
  *
  * The length of :macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.
  */
-#define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN 24
+#define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN    \
+  NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN
 
 /**
  * @enum

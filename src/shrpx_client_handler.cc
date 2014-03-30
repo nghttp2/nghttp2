@@ -138,7 +138,7 @@ namespace {
 void upstream_http2_connhd_readcb(bufferevent *bev, void *arg)
 {
   // This callback assumes upstream is Http2Upstream.
-  uint8_t data[NGHTTP2_CLIENT_CONNECTION_HEADER_LEN];
+  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
   auto handler = static_cast<ClientHandler*>(arg);
   auto leftlen = handler->get_left_connhd_len();
   auto input = bufferevent_get_input(bev);
@@ -147,8 +147,8 @@ void upstream_http2_connhd_readcb(bufferevent *bev, void *arg)
     delete handler;
     return;
   }
-  if(memcmp(NGHTTP2_CLIENT_CONNECTION_HEADER +
-            NGHTTP2_CLIENT_CONNECTION_HEADER_LEN - leftlen,
+  if(memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - leftlen,
             data, readlen) != 0) {
     // There is no downgrade path here. Just drop the connection.
     if(LOG_ENABLED(INFO)) {
@@ -175,7 +175,7 @@ namespace {
 void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 {
   // This callback assumes upstream is HttpsUpstream.
-  uint8_t data[NGHTTP2_CLIENT_CONNECTION_HEADER_LEN];
+  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
   auto handler = static_cast<ClientHandler*>(arg);
   auto leftlen = handler->get_left_connhd_len();
   auto input = bufferevent_get_input(bev);
@@ -184,15 +184,15 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
     delete handler;
     return;
   }
-  if(memcmp(NGHTTP2_CLIENT_CONNECTION_HEADER +
-            NGHTTP2_CLIENT_CONNECTION_HEADER_LEN - leftlen,
+  if(memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - leftlen,
             data, readlen) != 0) {
     if(LOG_ENABLED(INFO)) {
       CLOG(INFO, handler) << "This is HTTP/1.1 connection, "
                           << "but may be upgraded to HTTP/2 later.";
     }
     // Reset header length for later HTTP/2 upgrade
-    handler->set_left_connhd_len(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+    handler->set_left_connhd_len(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
     handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
     if(handler->on_read() != 0) {
       delete handler;
@@ -254,7 +254,7 @@ ClientHandler::ClientHandler(bufferevent *bev,
     bev_(bev),
     http2session_(nullptr),
     ssl_(ssl),
-    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN),
+    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
     fd_(fd),
     should_close_after_write_(false),
     tls_handshake_(false),

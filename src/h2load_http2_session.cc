@@ -135,8 +135,8 @@ void Http2Session::on_connect()
                                  extra_connection_window);
   }
 
-  bufferevent_write(client_->bev, NGHTTP2_CLIENT_CONNECTION_HEADER,
-                    NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+  bufferevent_write(client_->bev, NGHTTP2_CLIENT_CONNECTION_PREFACE,
+                    NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
 }
 
 void Http2Session::submit_request()

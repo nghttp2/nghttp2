@@ -371,8 +371,8 @@ static void send_client_connection_header(http2_session_data *session_data)
   int rv;
 
   bufferevent_write(session_data->bev,
-                    NGHTTP2_CLIENT_CONNECTION_HEADER,
-                    NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+                    NGHTTP2_CLIENT_CONNECTION_PREFACE,
+                    NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
   rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
                                iv, ARRLEN(iv));
   if(rv != 0) {

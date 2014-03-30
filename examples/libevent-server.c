@@ -190,7 +190,7 @@ static http2_session_data* create_http2_session_data(app_context *app_ctx,
     (app_ctx->evbase, fd, ssl,
      BUFFEREVENT_SSL_ACCEPTING,
      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  session_data->handshake_leftlen = NGHTTP2_CLIENT_CONNECTION_HEADER_LEN;
+  session_data->handshake_leftlen = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
   rv = getnameinfo(addr, addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
   if(rv != 0) {
     session_data->client_addr = strdup("(unknown)");
@@ -629,9 +629,9 @@ static void handshake_readcb(struct bufferevent *bev, void *ptr)
   uint8_t data[24];
   struct evbuffer *input = bufferevent_get_input(session_data->bev);
   int readlen = evbuffer_remove(input, data, session_data->handshake_leftlen);
-  const char *conhead = NGHTTP2_CLIENT_CONNECTION_HEADER;
+  const char *conhead = NGHTTP2_CLIENT_CONNECTION_PREFACE;
 
-  if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_HEADER_LEN
+  if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN
             - session_data->handshake_leftlen, data, readlen) != 0) {
     delete_http2_session_data(session_data);
     return;

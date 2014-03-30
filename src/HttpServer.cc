@@ -313,7 +313,7 @@ Http2Handler::Http2Handler(Sessions *sessions,
     settings_timerev_(nullptr),
     pending_data_(nullptr),
     pending_datalen_(0),
-    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN),
+    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
     fd_(fd)
 {
   nghttp2_buf_wrap_init(&sendbuf_, sendbufarray_, sizeof(sendbufarray_));
@@ -625,9 +625,9 @@ int Http2Handler::on_read()
 
   if(left_connhd_len_ > 0) {
     auto len = std::min(left_connhd_len_, nread);
-    const char *conhead = NGHTTP2_CLIENT_CONNECTION_HEADER;
+    const char *conhead = NGHTTP2_CLIENT_CONNECTION_PREFACE;
 
-    if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_HEADER_LEN -
+    if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN -
               left_connhd_len_, bufp, len) != 0) {
       return -1;
     }
