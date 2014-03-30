@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -549,7 +549,7 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
   nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
 }
 
-/* Send HTTP/2.0 client connection header, which includes 24 bytes
+/* Send HTTP/2 client connection header, which includes 24 bytes
    magic octets and SETTINGS frame */
 static int send_server_connection_header(http2_session_data *session_data)
 {

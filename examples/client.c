@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -146,7 +146,7 @@ static size_t GZIP_LEN = sizeof(GZIP) - 1;
 
 /*
  * Check response is content-encoding: gzip. We need this because
- * HTTP/2.0 client is required to support gzip.
+ * HTTP/2 client is required to support gzip.
  */
 static void check_gzip(struct Request *req, nghttp2_nv *nva, size_t nvlen)
 {
@@ -395,7 +395,7 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks)
 
 /*
  * Callback function for TLS NPN. Since this program only supports
- * HTTP/2.0 protocol, if server does not offer HTTP/2.0 the nghttp2
+ * HTTP/2 protocol, if server does not offer HTTP/2 the nghttp2
  * library supports, we terminate program.
  */
 static int select_next_proto_cb(SSL* ssl,
@@ -404,11 +404,11 @@ static int select_next_proto_cb(SSL* ssl,
                                 void *arg)
 {
   int rv;
-  /* nghttp2_select_next_protocol() selects HTTP/2.0 protocol the
+  /* nghttp2_select_next_protocol() selects HTTP/2 protocol the
      nghttp2 library supports. */
   rv = nghttp2_select_next_protocol(out, outlen, in, inlen);
   if(rv <= 0) {
-    die("Server did not advertise HTTP/2.0 protocol");
+    die("Server did not advertise HTTP/2 protocol");
   }
   return SSL_TLSEXT_ERR_OK;
 }

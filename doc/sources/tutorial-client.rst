@@ -1,7 +1,7 @@
-Tutorial: HTTP/2.0 client
+Tutorial: HTTP/2 client
 =========================
 
-In this tutorial, we are going to write very primitive HTTP/2.0
+In this tutorial, we are going to write very primitive HTTP/2
 client. The complete source code, `libevent-client.c`_, is attached at
 the end of this page.  It also resides in examples directory in the
 archive or repository.
@@ -19,7 +19,7 @@ function ``main()`` and ``run()``, which is not so relevant to nghttp2
 library use. The one thing you should look at is setup NPN callback.
 The NPN callback is used for the client to select the next application
 protocol over the SSL/TLS transport. In this tutorial, we use
-`nghttp2_select_next_protocol()` function to select the HTTP/2.0
+`nghttp2_select_next_protocol()` function to select the HTTP/2
 protocol the library supports::
 
     static int select_next_proto_cb(SSL* ssl,
@@ -52,7 +52,7 @@ The callback is set to the SSL_CTX object using
     }
 
 We use ``http2_session_data`` structure to store the data related to
-the HTTP/2.0 session::
+the HTTP/2 session::
 
     typedef struct {
       nghttp2_session *session;
@@ -176,7 +176,7 @@ The `delete_http2_session_data()` destroys ``session_data`` and frees
 its bufferevent, so it closes underlying connection as well. It also
 calls `nghttp2_session_del()` to delete nghttp2 session object.
 
-We begin HTTP/2.0 communication by sending client connection header,
+We begin HTTP/2 communication by sending client connection header,
 which is 24 bytes magic byte sequence
 (:macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`) followed by SETTINGS
 frame.  The transmission of client connection header is done in
@@ -371,7 +371,7 @@ request based on priority and stream ID must be monotonically
 increased, the stream ID is not assigned just before transmission.
 The one of the purpose of this callback is get the stream ID assigned
 to the frame. First we check that the frame is HEADERS frame. Since
-HEADERS has several meanings in HTTP/2.0, we check that it is request
+HEADERS has several meanings in HTTP/2, we check that it is request
 HEADERS (which means that the first HEADERS frame to create a stream).
 The assigned stream ID is ``frame->hd.stream_id``.  Recall that we
 passed ``stream_data`` in the *stream_user_data* parameter of
@@ -479,6 +479,6 @@ If the stream ID matches the one we initiated, it means that its
 stream is going to be closed. Since we have finished to get the
 resource we want (or the stream was reset by RST_STREAM from the
 remote peer), we call `nghttp2_session_terminate_session()` to
-commencing the closure of the HTTP/2.0 session gracefully. If you have
+commencing the closure of the HTTP/2 session gracefully. If you have
 some data associated for the stream to be closed, you may delete it
 here.

@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -374,13 +374,13 @@ void fill_default_config()
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout.tv_sec = 60;
 
-  // window bits for HTTP/2.0 and SPDY upstream/downstream connection
-  // per stream. 2**16-1 = 64KiB-1, which is HTTP/2.0 default. Please
+  // window bits for HTTP/2 and SPDY upstream/downstream connection
+  // per stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please
   // note that SPDY/3 default is 64KiB.
   mod_config()->http2_upstream_window_bits = 16;
   mod_config()->http2_downstream_window_bits = 16;
 
-  // HTTP/2.0 SPDY/3.1 has connection-level flow control. The default
+  // HTTP/2 SPDY/3.1 has connection-level flow control. The default
   // window size for HTTP/2 is 64KiB - 1. SPDY/3's default is 64KiB
   mod_config()->http2_upstream_connection_window_bits = 16;
   mod_config()->http2_downstream_connection_window_bits = 16;

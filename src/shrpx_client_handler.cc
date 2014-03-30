@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -189,9 +189,9 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
             data, readlen) != 0) {
     if(LOG_ENABLED(INFO)) {
       CLOG(INFO, handler) << "This is HTTP/1.1 connection, "
-                          << "but may be upgraded to HTTP/2.0 later.";
+                          << "but may be upgraded to HTTP/2 later.";
     }
-    // Reset header length for later HTTP/2.0 upgrade
+    // Reset header length for later HTTP/2 upgrade
     handler->set_left_connhd_len(NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
     handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
     if(handler->on_read() != 0) {
@@ -208,7 +208,7 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
   handler->set_left_connhd_len(leftlen);
   if(leftlen == 0) {
     if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "direct HTTP/2.0 connection";
+      CLOG(INFO, handler) << "direct HTTP/2 connection";
     }
     handler->direct_http2_upgrade();
     handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
@@ -291,7 +291,7 @@ ClientHandler::ClientHandler(bufferevent *bev,
     evbuffer_add_cb(output, tls_raw_writecb, this);
   } else {
     // For non-TLS version, first create HttpsUpstream. It may be
-    // upgraded to HTTP/2.0 through HTTP Upgrade or direct HTTP/2.0
+    // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
     // connection.
     upstream_ = util::make_unique<HttpsUpstream>(this);
     set_bev_cb(upstream_http1_connhd_readcb, nullptr, upstream_eventcb);

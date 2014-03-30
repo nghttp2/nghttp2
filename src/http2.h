@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -58,7 +58,7 @@ void copy_url_component(std::string& dest, const http_parser_url *u, int field,
                         const char* url);
 
 // Returns true if the header field |name| with length |namelen| bytes
-// is valid for HTTP/2.0.
+// is valid for HTTP/2.
 bool check_http2_allowed_header(const uint8_t *name, size_t namelen);
 
 // Calls check_http2_allowed_header with |name| and strlen(name),
@@ -66,7 +66,7 @@ bool check_http2_allowed_header(const uint8_t *name, size_t namelen);
 bool check_http2_allowed_header(const char *name);
 
 // Checks that headers |nva| do not contain disallowed header fields
-// in HTTP/2.0 spec. This function returns true if |nva| does not
+// in HTTP/2 spec. This function returns true if |nva| does not
 // contains such headers.
 bool check_http2_headers(const Headers& nva);
 
@@ -151,7 +151,7 @@ nghttp2_nv make_nv_ls(const char(&name)[N], const std::string& value)
 }
 
 // Appends headers in |headers| to |nv|. Certain headers, including
-// disallowed headers in HTTP/2.0 spec and headers which require
+// disallowed headers in HTTP/2 spec and headers which require
 // special handling (i.e. via), are not copied.
 void copy_norm_headers_to_nva
 (std::vector<nghttp2_nv>& nva, const Headers& headers);

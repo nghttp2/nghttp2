@@ -1,4 +1,4 @@
-# nghttp2 - HTTP/2.0 C Library
+# nghttp2 - HTTP/2 C Library
 
 # Copyright (c) 2013 Tatsuhiro Tsujikawa
 
@@ -674,7 +674,7 @@ cdef class _HTTP2SessionCore:
             path = handler.path.decode('utf-8')
         except:
             path = handler.path
-        sys.stderr.write('{} - - [{}] "{} {} HTTP/2.0" {} - {}\n'.format\
+        sys.stderr.write('{} - - [{}] "{} {} HTTP/2" {} - {}\n'.format\
                          (handler.client_address[0],
                           datestr, method, path, handler.status,
                           'P' if handler.pushed else '-'))

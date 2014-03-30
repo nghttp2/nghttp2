@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -206,7 +206,7 @@ static int perform(void)
 
 static void print_help(void)
 {
-  printf("HPACK HTTP/2.0 header decoder\n"
+  printf("HPACK HTTP/2 header decoder\n"
          "Usage: inflatehd [OPTIONS] < INPUT\n"
          "\n"
          "Reads JSON data from stdin and outputs inflated name/value pairs\n"

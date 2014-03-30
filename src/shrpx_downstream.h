@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -79,7 +79,7 @@ public:
   // Returns true if the upgrade is succeded as a result of the call
   // check_upgrade_fulfilled().
   bool get_upgraded() const;
-  // Returns true if the request is HTTP Upgrade for HTTP/2.0
+  // Returns true if the request is HTTP Upgrade for HTTP/2
   bool http2_upgrade_request() const;
   // downstream request API
   const Headers& get_request_headers() const;

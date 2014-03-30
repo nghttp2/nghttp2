@@ -1,4 +1,4 @@
-# nghttp2 - HTTP/2.0 C Library
+# nghttp2 - HTTP/2 C Library
 
 # Copyright (c) 2013 Tatsuhiro Tsujikawa
 
@@ -25,7 +25,7 @@ from distutils.extension import Extension
 
 setup(
     name = 'python-nghttp2',
-    description = 'Python HTTP/2.0 library on top of nghttp2',
+    description = 'Python HTTP/2 library on top of nghttp2',
     author = 'Tatsuhiro Tsujikawa',
     author_email = 'tatsuhiro.t@gmail.com',
     url = 'http://tatsuhiro-t.github.io/nghttp2/',

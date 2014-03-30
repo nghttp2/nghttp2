@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -73,7 +73,7 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   bool get_flow_control() const;
-  // Perform HTTP/2.0 upgrade from |upstream|. On success, this object
+  // Perform HTTP/2 upgrade from |upstream|. On success, this object
   // takes ownership of the |upstream|. This function returns 0 if it
   // succeeds, or -1.
   int upgrade_upstream(HttpsUpstream *upstream);

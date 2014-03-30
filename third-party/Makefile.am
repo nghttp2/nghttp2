@@ -1,4 +1,4 @@
-# nghttp2 - HTTP/2.0 C Library
+# nghttp2 - HTTP/2 C Library
 
 # Copyright (c) 2014 Tatsuhiro Tsujikawa
 

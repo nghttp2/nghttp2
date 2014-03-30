@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013, 2014 Tatsuhiro Tsujikawa
  *
@@ -52,7 +52,7 @@ struct nghttp2_session;
 /**
  * @struct
  *
- * The primary structure to hold the resources needed for a HTTP/2.0
+ * The primary structure to hold the resources needed for a HTTP/2
  * session. The details of this structure are intentionally hidden
  * from the public API.
  */
@@ -332,7 +332,7 @@ typedef struct {
 
 /**
  * @enum
- * The control frame types in HTTP/2.0.
+ * The control frame types in HTTP/2.
  */
 typedef enum {
   /**
@@ -380,7 +380,7 @@ typedef enum {
 /**
  * @enum
  *
- * The flags for HTTP/2.0 frames. This enum defines all flags for
+ * The flags for HTTP/2 frames. This enum defines all flags for
  * frames, assuming that the same flag name has the same mask.
  */
 typedef enum {
@@ -616,7 +616,7 @@ typedef struct {
  * @enum
  *
  * The category of HEADERS, which indicates the role of the frame. In
- * HTTP/2.0 spec, request, response, push response and other arbitrary
+ * HTTP/2 spec, request, response, push response and other arbitrary
  * headers (e.g., trailers) are all called just HEADERS. To give the
  * application the role of incoming HEADERS frame, we define several
  * categories.
@@ -2023,7 +2023,7 @@ void nghttp2_priority_spec_dep_init(nghttp2_priority_spec *pri_spec,
  * appearing in different header fields, it has to concatenate them
  * using NULL byte (0x0) before passing them to this function.
  *
- * HTTP/2.0 specification has requirement about header fields in the
+ * HTTP/2 specification has requirement about header fields in the
  * request HEADERS. See the specification for more details.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
@@ -2042,7 +2042,7 @@ void nghttp2_priority_spec_dep_init(nghttp2_priority_spec *pri_spec,
  * `nghttp2_session_get_stream_user_data()`.
  *
  * Since the library reorders the frames and tries to send the highest
- * prioritized one first and the HTTP/2.0 specification requires the
+ * prioritized one first and the HTTP/2 specification requires the
  * stream ID must be strictly increasing, the stream ID of this
  * request cannot be known until it is about to sent.  To know the
  * stream ID of the request, the application can use
@@ -2078,7 +2078,7 @@ int nghttp2_submit_request(nghttp2_session *session,
  * appearing in different header fields, it has to concatenate them
  * using NULL byte (0x0) before passing them to this function.
  *
- * HTTP/2.0 specification has requirement about header fields in the
+ * HTTP/2 specification has requirement about header fields in the
  * response HEADERS. See the specification for more details.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
@@ -2299,7 +2299,7 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * :type:`nghttp2_on_frame_send_callback` of this frame.
  *
  * Since the library reorders the frames and tries to send the highest
- * prioritized one first and the HTTP/2.0 specification requires the
+ * prioritized one first and the HTTP/2 specification requires the
  * stream ID must be strictly increasing, the promised stream ID
  * cannot be known until it is about to sent.  To know the promised
  * stream ID, the application can use
@@ -2434,7 +2434,7 @@ int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs);
  *
  * The selection algorithm is as follows:
  *
- * 1. If peer's list contains HTTP/2.0 protocol the library supports,
+ * 1. If peer's list contains HTTP/2 protocol the library supports,
  *    it is selected and returns 1. The following step is not taken.
  *
  * 2. If peer's list contains ``http/1.1``, this function selects

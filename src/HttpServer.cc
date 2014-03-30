@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -761,7 +761,7 @@ int Http2Handler::verify_npn_result()
     }
   }
   if(sessions_->get_config()->verbose) {
-    std::cerr << "Client did not advertise HTTP/2.0 protocol."
+    std::cerr << "Client did not advertise HTTP/2 protocol."
               << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
               << std::endl;
   }

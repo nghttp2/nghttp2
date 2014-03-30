@@ -1,4 +1,4 @@
-dnl nghttp2 - HTTP/2.0 C Library
+dnl nghttp2 - HTTP/2 C Library
 
 dnl Copyright (c) 2012, 2013 Tatsuhiro Tsujikawa
 

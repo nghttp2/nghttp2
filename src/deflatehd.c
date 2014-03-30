@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -316,7 +316,7 @@ static int perform_from_http1text(void)
 
 static void print_help(void)
 {
-  printf("HPACK HTTP/2.0 header encoder\n"
+  printf("HPACK HTTP/2 header encoder\n"
          "Usage: deflatehd [OPTIONS] < INPUT\n"
          "\n"
          "Reads JSON data or HTTP/1-style header fields from stdin and\n"

@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -1388,7 +1388,7 @@ void print_stats(const HttpClient& client)
 namespace {
 void print_protocol_nego_error()
 {
-  std::cerr << "HTTP/2.0 protocol was not selected."
+  std::cerr << "HTTP/2 protocol was not selected."
             << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
             << std::endl;
 }
@@ -1805,10 +1805,10 @@ Options:
   -m, --multiply=<N> Request each URI <N> times.  By default, same URI
                      is not requested twice.   This option disables it
                      too.
-  -u, --upgrade      Perform HTTP  Upgrade for HTTP/2.0.   This option
-                     is ignored  if the request URI  has https scheme.
-                     If  -d  is  used,  the HTTP  upgrade  request  is
-                     performed with OPTIONS method.
+  -u, --upgrade      Perform HTTP Upgrade for  HTTP/2.  This option is
+                     ignored if the request  URI has https scheme.  If
+                     -d is used, the HTTP upgrade request is performed
+                     with OPTIONS method.
   -p, --weight=<WEIGHT>
                      Sets priority group weight. Default: )"
       << NGHTTP2_DEFAULT_WEIGHT << R"(

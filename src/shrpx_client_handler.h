@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -71,10 +71,10 @@ public:
   Http2Session* get_http2_session() const;
   size_t get_left_connhd_len() const;
   void set_left_connhd_len(size_t left);
-  // Call this function when HTTP/2.0 connection header is received at
+  // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
   void direct_http2_upgrade();
-  // Performs HTTP/2.0 Upgrade from the connection managed by
+  // Performs HTTP/2 Upgrade from the connection managed by
   // |http|. If this function fails, the connection must be
   // terminated. This function returns 0 if it succeeds, or -1.
   int perform_http2_upgrade(HttpsUpstream *http);
@@ -94,7 +94,7 @@ private:
   // HTTP2. Not deleted by this object.
   Http2Session *http2session_;
   SSL *ssl_;
-  // The number of bytes of HTTP/2.0 client connection header to read
+  // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   int fd_;
   bool should_close_after_write_;

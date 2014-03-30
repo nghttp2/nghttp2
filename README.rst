@@ -1,8 +1,8 @@
-nghttp2 - HTTP/2.0 C Library
+nghttp2 - HTTP/2 C Library
 ============================
 
 This is an experimental implementation of Hypertext Transfer Protocol
-version 2.0.
+version 2.
 
 Development Status
 ------------------
@@ -150,12 +150,12 @@ http://tatsuhiro-t.github.io/nghttp2/
 Client, Server and Proxy programs
 ---------------------------------
 
-The src directory contains HTTP/2.0 client, server and proxy programs.
+The src directory contains HTTP/2 client, server and proxy programs.
 
 nghttp - client
 +++++++++++++++
 
-``nghttp`` is a HTTP/2.0 client. It can connect to the HTTP/2.0 server
+``nghttp`` is a HTTP/2 client. It can connect to the HTTP/2 server
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
 
 It has verbose output mode for framing information. Here is sample
@@ -279,8 +279,8 @@ nghttpd - server
 By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
 disable it.
 
-``nghttpd`` only accepts the HTTP/2.0 connection via NPN/ALPN or direct
-HTTP/2.0 connection. No HTTP Upgrade is supported.
+``nghttpd`` only accepts the HTTP/2 connection via NPN/ALPN or direct
+HTTP/2 connection. No HTTP Upgrade is supported.
 
 ``-p`` option allows users to configure server push.
 
@@ -338,15 +338,15 @@ nghttpx - proxy
 ``nghttpx`` is a multi-threaded reverse proxy for
 h2-10, SPDY and HTTP/1.1. It has several operation modes:
 
-================== ============================== ============== =============
-Mode option        Frontend                       Backend        Note
-================== ============================== ============== =============
-default mode       HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
-``--http2-proxy``  HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/1.1       SPDY proxy
-``--http2-bridge`` HTTP/2.0, SPDY, HTTP/1.1 (TLS) HTTP/2.0 (TLS)
-``--client``       HTTP/2.0, HTTP/1.1             HTTP/2.0 (TLS)
-``--client-proxy`` HTTP/2.0, HTTP/1.1             HTTP/2.0 (TLS) Forward proxy
-================== ============================== ============== =============
+================== ============================ ============== =============
+Mode option        Frontend                     Backend        Note
+================== ============================ ============== =============
+default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
+``--http2-proxy``  HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       SPDY proxy
+``--http2-bridge`` HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/2 (TLS)
+``--client``       HTTP/2, HTTP/1.1             HTTP/2 (TLS)
+``--client-proxy`` HTTP/2, HTTP/1.1             HTTP/2 (TLS)   Forward proxy
+================== ============================ ============== =============
 
 The interesting mode at the moment is the default mode. It works like
 a reverse proxy and listens for h2-10, SPDY and HTTP/1.1 and
@@ -356,7 +356,7 @@ The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
 SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
 ``--frontend-no-tls`` option. If that option is used, SPDY is disabled
 in the frontend and incoming HTTP/1.1 connection can be upgraded to
-HTTP/2.0 through HTTP Upgrade.
+HTTP/2 through HTTP Upgrade.
 
 The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
 SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
@@ -371,13 +371,13 @@ In the default mode, (without any of ``--http2-proxy``,
 ``--http2-bridge``, ``--client-proxy`` and ``--client`` options),
 ``nghttpx`` works as reverse proxy to the backend server::
 
-    Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Web Server
+    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Web Server
                                           [reverse proxy]
 
 With ``--http2-proxy`` option, it works as so called secure proxy (aka
 SPDY proxy)::
 
-    Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
+    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
                                            [secure proxy]            (e.g., Squid)
 
 The ``Client`` in the above is needs to be configured to use
@@ -401,42 +401,42 @@ Then run Chrome with the following arguments::
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
-With ``--http2-bridge``, it accepts HTTP/2.0, SPDY and HTTP/1.1
-connections and communicates with backend in HTTP/2.0::
+With ``--http2-bridge``, it accepts HTTP/2, SPDY and HTTP/1.1
+connections and communicates with backend in HTTP/2::
 
-    Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --> Web or HTTP/2.0 Proxy etc
+    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> Web or HTTP/2 Proxy etc
                                                                          (e.g., nghttpx -s)
 
 With ``--client-proxy`` option, it works as forward proxy and expects
-that the backend is HTTP/2.0 proxy::
+that the backend is HTTP/2 proxy::
 
-    Client <-- (HTTP/2.0, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --> HTTP/2.0 Proxy
+    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> HTTP/2 Proxy
                                      [forward proxy]               (e.g., nghttpx -s)
 
 The ``Client`` needs to be configured to use nghttpx as forward
-proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
+proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.  With the above configuration, one can use
-HTTP/1.1 client to access and test their HTTP/2.0 servers.
+HTTP/1.1 client to access and test their HTTP/2 servers.
 
 With ``--client`` option, it works as reverse proxy and expects that
-the backend is HTTP/2.0 Web server::
+the backend is HTTP/2 Web server::
 
-    Client <-- (HTTP/2.0, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --> Web Server
+    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> Web Server
                                     [reverse proxy]
 
-The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
+The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.
 
-For the operation modes which talk to the backend in HTTP/2.0 over
+For the operation modes which talk to the backend in HTTP/2 over
 SSL/TLS, the backend connections can be tunneled through HTTP
 proxy. The proxy is specified using ``--backend-http-proxy-uri``
 option. The following figure illustrates the example of
 ``--http2-bridge`` and ``--backend-http-proxy-uri`` options to talk to
-the outside HTTP/2.0 proxy through HTTP proxy::
+the outside HTTP/2 proxy through HTTP proxy::
 
-    Client <-- (HTTP/2.0, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2.0) --
+    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
 
-            --===================---> HTTP/2.0 Proxy
+            --===================---> HTTP/2 Proxy
               (HTTP proxy tunnel)     (e.g., nghttpx -s)
 
 Benchmarking tool

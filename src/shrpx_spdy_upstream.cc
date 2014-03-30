@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2012 Tatsuhiro Tsujikawa
  *
@@ -351,7 +351,7 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
 } // namespace
 
 namespace {
-// Infer upstream RST_STREAM status code from downstream HTTP/2.0
+// Infer upstream RST_STREAM status code from downstream HTTP/2
 // error code.
 uint32_t infer_upstream_rst_stream_status_code
 (nghttp2_error_code downstream_error_code)

@@ -1,5 +1,5 @@
 /*
- * nghttp2 - HTTP/2.0 C Library
+ * nghttp2 - HTTP/2 C Library
  *
  * Copyright (c) 2013 Tatsuhiro Tsujikawa
  *
@@ -190,7 +190,7 @@ static ssize_t send_callback(nghttp2_session *session,
 
 /* nghttp2_before_frame_send_callback: Called when nghttp2 library is
    about to send a frame. We use this callback to get stream ID of new
-   stream. Since HEADERS in HTTP/2.0 has several roles, we check that
+   stream. Since HEADERS in HTTP/2 has several roles, we check that
    it is a HTTP request HEADERS. */
 static int before_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
@@ -308,7 +308,7 @@ static int on_stream_close_callback(nghttp2_session *session,
 }
 
 /* NPN TLS extension client callback. We check that server advertised
-   the HTTP/2.0 protocol the nghttp2 library supports. If not, exit
+   the HTTP/2 protocol the nghttp2 library supports. If not, exit
    the program. */
 static int select_next_proto_cb(SSL* ssl,
                                 unsigned char **out, unsigned char *outlen,
