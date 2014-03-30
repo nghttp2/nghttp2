@@ -1315,21 +1315,11 @@ static int nghttp2_session_predicate_window_update_send
 /*
  * This function checks SETTINGS can be sent at this time.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS
- *     There is already another in-flight SETTINGS.  Note that the
- *     current implementation only allows 1 in-flight SETTINGS frame
- *     without ACK flag set.
+ * Currently this function always returns 0.
  */
 static int nghttp2_session_predicate_settings_send(nghttp2_session *session,
                                                    nghttp2_frame *frame)
 {
-  if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0 &&
-     session->inflight_niv != -1) {
-    return NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS;
-  }
   return 0;
 }
 
@@ -2024,28 +2014,9 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         return rv;
       }
       break;
-    case NGHTTP2_SETTINGS: {
-      size_t i;
-      if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
-        break;
-      }
-      /* Extract NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS here and use
-         it to refuse the incoming streams with RST_STREAM. */
-      for(i = frame->settings.niv; i > 0; --i) {
-        if(frame->settings.iv[i - 1].settings_id ==
-           NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
-          session->pending_local_max_concurrent_stream =
-            frame->settings.iv[i - 1].value;
-          break;
-        }
-      }
-      assert(session->inflight_niv == -1);
-      session->inflight_iv = frame->settings.iv;
-      session->inflight_niv = frame->settings.niv;
-      frame->settings.iv = NULL;
-      frame->settings.niv = 0;
+    case NGHTTP2_SETTINGS:
+      /* nothing to do */
       break;
-    }
     case NGHTTP2_PUSH_PROMISE:
       /* nothing to do */
       break;
@@ -5204,7 +5175,17 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 {
   nghttp2_frame *frame;
   nghttp2_settings_entry *iv_copy;
+  size_t i;
   int rv;
+
+  if(flags & NGHTTP2_FLAG_ACK) {
+    if(niv != 0) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+  } else if(session->inflight_niv != -1) {
+    return NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS;
+  }
+
   if(!nghttp2_iv_check(iv, niv)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
@@ -5217,15 +5198,50 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
     free(frame);
     return NGHTTP2_ERR_NOMEM;
   }
+
+  if((flags & NGHTTP2_FLAG_ACK) == 0) {
+    if(niv > 0) {
+      session->inflight_iv = nghttp2_frame_iv_copy(iv, niv);
+
+      if(session->inflight_iv == NULL) {
+        free(iv_copy);
+        free(frame);
+        return NGHTTP2_ERR_NOMEM;
+      }
+    } else {
+      session->inflight_iv = NULL;
+    }
+
+    session->inflight_niv = niv;
+  }
+
   nghttp2_frame_settings_init(&frame->settings, flags, iv_copy, niv);
   rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
   if(rv != 0) {
     /* The only expected error is fatal one */
     assert(nghttp2_is_fatal(rv));
+
+    if((flags & NGHTTP2_FLAG_ACK) == 0) {
+      free(session->inflight_iv);
+      session->inflight_iv = NULL;
+      session->inflight_niv = -1;
+    }
+
     nghttp2_frame_settings_free(&frame->settings);
     free(frame);
+
     return rv;
   }
+
+  /* Extract NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS here and use
+     it to refuse the incoming streams with RST_STREAM. */
+  for(i = niv; i > 0; --i) {
+    if(iv[i - 1].settings_id == NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
+      session->pending_local_max_concurrent_stream = iv[i - 1].value;
+      break;
+    }
+  }
+
   return 0;
 }
 

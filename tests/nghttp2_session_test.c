@@ -5355,8 +5355,6 @@ void test_nghttp2_session_keep_closed_stream(void)
 
   nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
 
-  nghttp2_session_send(session);
-
   for(i = 0; i < max_concurrent_streams; ++i) {
     open_stream(session, i * 2 + 1);
   }
