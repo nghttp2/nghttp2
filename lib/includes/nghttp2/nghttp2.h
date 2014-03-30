@@ -38,7 +38,8 @@ extern "C" {
 /**
  * @macro
  *
- * The protocol version identification of this library supports.
+ * The protocol version identification string of this library
+ * supports.  This identifier is used if HTTP/2 is used over TLS.
  */
 #define NGHTTP2_PROTO_VERSION_ID "h2-10"
 /**
@@ -47,6 +48,22 @@ extern "C" {
  * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.
  */
 #define NGHTTP2_PROTO_VERSION_ID_LEN 5
+
+/**
+ * @macro
+ *
+ * The protocol version identification string of this library
+ * supports.  This identifier is used if HTTP/2 is used over cleartext
+ * TCP.
+ */
+#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "h2c-10"
+
+/**
+ * @macro
+ *
+ * The length of :macro:`NGHTTP2_CLEARTEXT_PROTO_VERSION_ID`.
+ */
+#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID_LEN 6
 
 struct nghttp2_session;
 /**

@@ -611,7 +611,7 @@ struct HttpClient {
     req += hostport;
     req += "\r\n"
       "Connection: Upgrade, HTTP2-Settings\r\n"
-      "Upgrade: " NGHTTP2_PROTO_VERSION_ID "\r\n"
+      "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
       "HTTP2-Settings: ";
     req += token68;
     req += "\r\n"

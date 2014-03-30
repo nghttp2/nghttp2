@@ -734,10 +734,12 @@ bool Downstream::http2_upgrade_request() const
   bool upgrade_seen = false;
   bool http2_settings_seen = false;
   for(auto& hd : request_headers_) {
-    // For now just check NGHTTP2_PROTO_VERSION_ID in Upgrade header
-    // field and existence of HTTP2-Settings header field.
+    // For now just check NGHTTP2_CLEARTEXT_PROTO_VERSION_ID in
+    // Upgrade header field and existence of HTTP2-Settings header
+    // field.
     if(util::strieq(hd.first.c_str(), "upgrade")) {
-       if(util::strieq(hd.second.c_str(), NGHTTP2_PROTO_VERSION_ID)) {
+       if(util::strieq(hd.second.c_str(),
+                       NGHTTP2_CLEARTEXT_PROTO_VERSION_ID)) {
         upgrade_seen = true;
       }
     } else if(util::strieq(hd.first.c_str(), "http2-settings")) {
