@@ -2011,7 +2011,7 @@ void nghttp2_priority_spec_dep_init(nghttp2_priority_spec *pri_spec,
  *
  * The |pri_spec| is priority specification of this request.  ``NULL``
  * means the default priority (priority group ID becomes its stream ID
- * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT).  To specify the
+ * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT`).  To specify the
  * priority, use either `nghttp2_priority_spec_group_init()` or
  * `nghttp2_priority_spec_dep_init()`.  If |pri_spec| is not ``NULL``,
  * this function will copy its data members.
@@ -2129,7 +2129,7 @@ int nghttp2_submit_response(nghttp2_session *session,
  *
  * The |pri_spec| is priority specification of this request.  ``NULL``
  * means the default priority (priority group ID becomes its stream ID
- * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT).  To specify the
+ * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT`).  To specify the
  * priority, use either `nghttp2_priority_spec_group_init()` or
  * `nghttp2_priority_spec_dep_init()`.  If |pri_spec| is not ``NULL``,
  * this function will copy its data members.
