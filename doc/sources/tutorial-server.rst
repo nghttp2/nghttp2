@@ -94,19 +94,20 @@ data::
       int fd;
     } http2_stream_data;
 
-1 HTTP/2 session can have multiple streams.  We manage these
-multiple streams by intrusive doubly linked list to add and remove the
-object in O(1). The first element of this list is pointed by the
+1 HTTP/2 session can have multiple streams.  We manage these multiple
+streams by intrusive doubly linked list to add and remove the object
+in O(1). The first element of this list is pointed by the
 ``root->next`` in ``http2_session_data``.  Initially, ``root->next``
-is ``NULL``. The ``handshake_leftlen`` member of
+is ``NULL``.  The ``handshake_leftlen`` member of
 ``http2_session_data`` is used to track the number of bytes remaining
-when receiving first 24 bytes magic value
-(:macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`) from the client.  We use
-libevent's bufferevent structure to perform network I/O. Notice that
-bufferevent object is in ``http2_session_data`` and not in
-``http2_stream_data``. This is because ``http2_stream_data`` is just a
-logical stream multiplexed over the single connection managed by
-bufferevent in ``http2_session_data``.
+when receiving first client connection preface
+(:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`), which is 24 bytes magic
+byte string, from the client.  We use libevent's bufferevent structure
+to perform network I/O. Notice that bufferevent object is in
+``http2_session_data`` and not in ``http2_stream_data``. This is
+because ``http2_stream_data`` is just a logical stream multiplexed
+over the single connection managed by bufferevent in
+``http2_session_data``.
 
 We first create listener object to accept incoming connections.
 We use libevent's ``struct evconnlistener`` for this purpose::
@@ -200,9 +201,9 @@ it::
       uint8_t data[24];
       struct evbuffer *input = bufferevent_get_input(session_data->bev);
       int readlen = evbuffer_remove(input, data, session_data->handshake_leftlen);
-      const char *conhead = NGHTTP2_CLIENT_CONNECTION_HEADER;
+      const char *conhead = NGHTTP2_CLIENT_CONNECTION_PREFACE;
 
-      if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_HEADER_LEN
+      if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN
                 - session_data->handshake_leftlen, data, readlen) != 0) {
         delete_http2_session_data(session_data);
         return;
@@ -225,7 +226,7 @@ it::
     }
 
 We check that the received byte string matches
-:macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.  When they match, the
+:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`.  When they match, the
 connection state is ready for starting HTTP/2 communication. First
 we change the callback functions for the bufferevent object. We use
 same ``eventcb`` as before. But we specify new ``readcb`` and

@@ -176,10 +176,10 @@ The `delete_http2_session_data()` destroys ``session_data`` and frees
 its bufferevent, so it closes underlying connection as well. It also
 calls `nghttp2_session_del()` to delete nghttp2 session object.
 
-We begin HTTP/2 communication by sending client connection header,
+We begin HTTP/2 communication by sending client connection preface,
 which is 24 bytes magic byte sequence
-(:macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`) followed by SETTINGS
-frame.  The transmission of client connection header is done in
+(:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`) and SETTINGS frame.  The
+transmission of client connection header is done in
 ``send_client_connection_header()``::
 
     static void send_client_connection_header(http2_session_data *session_data)
@@ -190,8 +190,8 @@ frame.  The transmission of client connection header is done in
       int rv;
 
       bufferevent_write(session_data->bev,
-                        NGHTTP2_CLIENT_CONNECTION_HEADER,
-                        NGHTTP2_CLIENT_CONNECTION_HEADER_LEN);
+                        NGHTTP2_CLIENT_CONNECTION_PREFACE,
+                        NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
       rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
                                    iv, ARRLEN(iv));
       if(rv != 0) {
@@ -226,7 +226,7 @@ request in ``submit_request()`` function::
       };
       fprintf(stderr, "Request headers:\n");
       print_headers(stderr, hdrs, ARRLEN(hdrs));
-      rv = nghttp2_submit_request(session_data->session, NGHTTP2_PRI_DEFAULT,
+      rv = nghttp2_submit_request(session_data->session, NULL,
                                   hdrs, ARRLEN(hdrs), NULL, stream_data);
       if(rv != 0) {
         errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(rv));
