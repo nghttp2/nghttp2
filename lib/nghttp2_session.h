@@ -130,6 +130,12 @@ struct nghttp2_session {
      enqueue if priority is equal. */
   int64_t next_seq;
   void *user_data;
+  /* Points to the latest closed stream.  NULL if there is no closed
+     stream. */
+  nghttp2_stream *closed_stream_head;
+  /* Points to the oldest closed stream.  NULL if there is no closed
+     stream. */
+  nghttp2_stream *closed_stream_tail;
   /* In-flight SETTINGS values. NULL does not necessarily mean there
      is no in-flight SETTINGS. */
   nghttp2_settings_entry *inflight_iv;
@@ -142,6 +148,11 @@ struct nghttp2_session {
   /* The number of incoming streams. This will be capped by
      local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]. */
   size_t num_incoming_streams;
+  /* The number of closed streams still kept in |streams| hash.  The
+     closed streams can be accessed through single linked list
+     |closed_stream_head|.  The current implementation only keeps
+     incoming streams and session is initialized as server. */
+  size_t num_closed_streams;
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
@@ -330,6 +341,11 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
  * is indicated by the |error_code|. When closing the stream,
  * on_stream_close_callback will be called.
  *
+ * If the session is initialized as server and |stream| is incoming
+ * stream, stream is just marked closed and this function calls
+ * nghttp2_session_keep_closed_stream() with |stream|.  Otherwise,
+ * |stream| will be deleted from memory.
+ *
  * This function returns 0 if it succeeds, or one the following
  * negative error codes:
  *
@@ -342,6 +358,33 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
  */
 int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
                                  nghttp2_error_code error_code);
+
+/*
+ * Deletes |stream| from memory.  After this function returns, stream
+ * cannot be accessed.
+ *
+ */
+void nghttp2_session_destroy_stream(nghttp2_session *session,
+                                    nghttp2_stream *stream);
+
+/*
+ * Tries to keep incoming closed stream |stream|.  Due to the
+ * limitation of maximum number of streams in memory, |stream| is not
+ * closed and just deleted from memory (see
+ * nghttp2_session_destroy_stream).
+ */
+void nghttp2_session_keep_closed_stream(nghttp2_session *session,
+                                        nghttp2_stream *stream);
+
+/*
+ * Deletes closed stream to ensure that number of incoming streams
+ * including active and closed is in the maximum number of allowed
+ * stream.  If |offset| is nonzero, it is decreased from the maximum
+ * number of allowed stream when comparing number of active and closed
+ * stream and the maximum number.
+ */
+void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
+                                          ssize_t offset);
 
 /*
  * If further receptions and transmissions over the stream |stream_id|
@@ -506,10 +549,18 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
 
 /*
  * Returns nghttp2_stream* object whose stream ID is |stream_id|.  It
- * could be NULL if such stream does not exist.
+ * could be NULL if such stream does not exist.  This function returns
+ * NULL if stream is marked as closed.
  */
 nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
                                            int32_t stream_id);
+
+/*
+ * This function behaves like nghttp2_session_get_stream(), but it
+ * returns stream object even if it is marked as closed.
+ */
+nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
+                                               int32_t stream_id);
 
 /*
  * Returns nghttp2_stream_group* object whose priority group ID is

@@ -129,6 +129,20 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
 nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
                                            int32_t stream_id)
 {
+  nghttp2_stream *stream;
+
+  stream = (nghttp2_stream*)nghttp2_map_find(&session->streams, stream_id);
+
+  if(stream == NULL || (stream->flags & NGHTTP2_STREAM_FLAG_CLOSED)) {
+    return NULL;
+  }
+
+  return stream;
+}
+
+nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
+                                               int32_t stream_id)
+{
   return (nghttp2_stream*)nghttp2_map_find(&session->streams, stream_id);
 }
 
@@ -510,7 +524,7 @@ int nghttp2_session_reprioritize_stream
 
     old_stream_group = stream->stream_group;
 
-    dep_stream = nghttp2_session_get_stream(session, dep->stream_id);
+    dep_stream = nghttp2_session_get_stream_raw(session, dep->stream_id);
 
     if(dep_stream == NULL) {
       return 0;
@@ -736,6 +750,10 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
 
   dep_stream = NULL;
 
+  if(session->server && !nghttp2_session_is_my_stream_id(session, stream_id)) {
+    nghttp2_session_adjust_closed_stream(session, 1);
+  }
+
   switch(pri_spec->pri_type) {
   case NGHTTP2_PRIORITY_TYPE_GROUP:
     pri_group_id = pri_spec->group.pri_group_id;
@@ -743,7 +761,8 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
 
     break;
   case NGHTTP2_PRIORITY_TYPE_DEP:
-    dep_stream = nghttp2_session_get_stream(session, pri_spec->dep.stream_id);
+    dep_stream = nghttp2_session_get_stream_raw(session,
+                                                pri_spec->dep.stream_id);
 
     if(dep_stream) {
       pri_group_id = dep_stream->stream_group->pri_group_id;
@@ -838,7 +857,6 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
 {
   int rv;
   nghttp2_stream *stream;
-  nghttp2_stream_group *stream_group;
 
   stream = nghttp2_session_get_stream(session, stream_id);
 
@@ -892,6 +910,29 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
     }
   }
 
+  /* Closes both directions just in case they are not closed yet */
+  stream->flags |= NGHTTP2_STREAM_FLAG_CLOSED;
+
+  if(session->server && !nghttp2_session_is_my_stream_id(session, stream_id)) {
+    /* On server side, retain incoming stream object at most
+       MAX_CONCURRENT_STREAMS combined with the current active streams
+       to make dependency tree work better. */
+    nghttp2_session_keep_closed_stream(session, stream);
+  } else {
+    nghttp2_session_destroy_stream(session, stream);
+  }
+
+  return 0;
+}
+
+void nghttp2_session_destroy_stream(nghttp2_session *session,
+                                    nghttp2_stream *stream)
+{
+  nghttp2_stream_group *stream_group;
+
+  DEBUGF(fprintf(stderr, "stream: destroy closed stream(%p)=%d\n",
+                 stream, stream->stream_id));
+
   nghttp2_stream_dep_remove(stream);
 
   stream_group = stream->stream_group;
@@ -899,11 +940,55 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
   nghttp2_stream_group_remove_stream(stream_group, stream);
   nghttp2_session_close_stream_group_if_empty(session, stream_group);
 
-  nghttp2_map_remove(&session->streams, stream_id);
+  nghttp2_map_remove(&session->streams, stream->stream_id);
   nghttp2_stream_free(stream);
   free(stream);
+}
 
-  return 0;
+void nghttp2_session_keep_closed_stream(nghttp2_session *session,
+                                        nghttp2_stream *stream)
+{
+  DEBUGF(fprintf(stderr, "stream: keep closed stream(%p)=%d\n",
+                 stream, stream->stream_id));
+
+  if(session->closed_stream_tail) {
+    session->closed_stream_tail->closed_next = stream;
+  } else {
+    session->closed_stream_head = stream;
+  }
+  session->closed_stream_tail = stream;
+
+  ++session->num_closed_streams;
+
+  nghttp2_session_adjust_closed_stream(session, 0);
+}
+
+void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
+                                          ssize_t offset)
+{
+  DEBUGF(fprintf(stderr, "stream: adjusting kept closed streams "
+                 "num_closed_streams=%zu, num_incoming_streams=%zu, "
+                 "max_concurrent_streams=%u\n",
+                 session->num_closed_streams, session->num_incoming_streams,
+                 session->pending_local_max_concurrent_stream));
+
+  while(session->num_closed_streams > 0 &&
+        session->num_closed_streams + session->num_incoming_streams + offset
+        > session->pending_local_max_concurrent_stream) {
+    nghttp2_stream *head_stream;
+
+    head_stream = session->closed_stream_head;
+
+    session->closed_stream_head = head_stream->closed_next;
+
+    if(session->closed_stream_tail == head_stream) {
+      session->closed_stream_tail = NULL;
+    }
+
+    nghttp2_session_destroy_stream(session, head_stream);
+    /* head_stream is now freed */
+    --session->num_closed_streams;
+  }
 }
 
 /*

@@ -103,5 +103,6 @@ void test_nghttp2_session_stream_dep_add_subtree(void);
 void test_nghttp2_session_stream_dep_remove_subtree(void);
 void test_nghttp2_session_stream_attach_data(void);
 void test_nghttp2_session_stream_attach_data_subtree(void);
+void test_nghttp2_session_keep_closed_stream(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

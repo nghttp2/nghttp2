@@ -82,7 +82,9 @@ typedef enum {
 typedef enum {
   NGHTTP2_STREAM_FLAG_NONE = 0,
   /* Indicates that this stream is pushed stream */
-  NGHTTP2_STREAM_FLAG_PUSH = 0x01
+  NGHTTP2_STREAM_FLAG_PUSH = 0x01,
+  /* Indicates that this stream was closed */
+  NGHTTP2_STREAM_FLAG_CLOSED = 0x02
 } nghttp2_stream_flag;
 
 typedef enum {
@@ -118,6 +120,11 @@ struct nghttp2_stream {
      dep_prev and sib_prev are NULL. */
   nghttp2_stream *dep_prev, *dep_next;
   nghttp2_stream *sib_prev, *sib_next;
+  /* When stream is kept after closure, it may be kept in single
+     linked list pointed by nghttp2_session closed_stream_head.
+     closed_next points to the next stream object if it is the element
+     of the list. */
+  nghttp2_stream *closed_next;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
   /* Active DATA frame */

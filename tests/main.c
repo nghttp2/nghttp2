@@ -223,6 +223,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_stream_attach_data) ||
       !CU_add_test(pSuite, "session_stream_attach_data_subtree",
                    test_nghttp2_session_stream_attach_data_subtree) ||
+      !CU_add_test(pSuite, "session_stream_keep_closed_stream",
+                   test_nghttp2_session_keep_closed_stream) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",

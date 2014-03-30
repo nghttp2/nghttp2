@@ -5335,3 +5335,57 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
 
   nghttp2_session_del(session);
 }
+
+void test_nghttp2_session_keep_closed_stream(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  /* nghttp2_stream *stream; */
+  const size_t max_concurrent_streams = 5;
+  nghttp2_settings_entry iv = {
+    NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+    max_concurrent_streams
+  };
+  size_t i;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  nghttp2_session_send(session);
+
+  for(i = 0; i < max_concurrent_streams; ++i) {
+    open_stream(session, i * 2 + 1);
+  }
+
+  CU_ASSERT(0 == session->num_closed_streams);
+
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(1 == session->closed_stream_tail->stream_id);
+  CU_ASSERT(session->closed_stream_tail == session->closed_stream_head);
+
+  nghttp2_session_close_stream(session, 5, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(2 == session->num_closed_streams);
+  CU_ASSERT(5 == session->closed_stream_tail->stream_id);
+  CU_ASSERT(1 == session->closed_stream_head->stream_id);
+
+  open_stream(session, 11);
+
+  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(5 == session->closed_stream_tail->stream_id);
+  CU_ASSERT(session->closed_stream_tail == session->closed_stream_head);
+
+  open_stream(session, 13);
+
+  CU_ASSERT(0 == session->num_closed_streams);
+  CU_ASSERT(NULL == session->closed_stream_tail);
+  CU_ASSERT(NULL == session->closed_stream_head);
+
+  nghttp2_session_del(session);
+}
