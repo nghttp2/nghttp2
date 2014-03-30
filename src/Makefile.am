@@ -141,8 +141,8 @@ bin_PROGRAMS += inflatehd deflatehd
 
 HPACK_TOOLS_COMMON_SRCS = comp_helper.c comp_helper.h
 
-inflatehd_SOURCES = inflatehd.c $(HPACK_TOOLS_COMMON_SRCS)
+inflatehd_SOURCES = inflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 
-deflatehd_SOURCES = deflatehd.c $(HPACK_TOOLS_COMMON_SRCS)
+deflatehd_SOURCES = deflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 
 endif # ENABLE_HPACK_TOOLS

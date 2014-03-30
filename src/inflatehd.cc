@@ -26,20 +26,27 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+
+#include <cstdio>
+#include <cstring>
 #include <assert.h>
-#include <errno.h>
-#include <stdlib.h>
+#include <cerrno>
+#include <cstdlib>
+#include <vector>
+#include <iostream>
 
 #include <jansson.h>
+
+extern "C" {
 
 #include "nghttp2_hd.h"
 #include "nghttp2_frame.h"
 
 #include "comp_helper.h"
+
+}
 
 typedef struct {
   int dump_header_table;
@@ -70,9 +77,7 @@ static void to_json(nghttp2_hd_inflater *inflater,
                     json_t *headers, json_t *wire, int seq,
                     size_t old_settings_table_size)
 {
-  json_t *obj;
-
-  obj = json_object();
+  auto obj = json_object();
   json_object_set_new(obj, "seq", json_integer(seq));
   json_object_set(obj, "wire", wire);
   json_object_set(obj, "headers", headers);
@@ -91,21 +96,20 @@ static void to_json(nghttp2_hd_inflater *inflater,
 
 static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq)
 {
-  json_t *wire, *table_size, *headers;
-  size_t inputlen;
-  uint8_t *buf, *p;
-  size_t buflen;
   ssize_t rv;
   nghttp2_nv nv;
   int inflate_flags;
   size_t old_settings_table_size = inflater->settings_hd_table_bufsize_max;
 
-  wire = json_object_get(obj, "wire");
-  if(wire == NULL) {
+  auto wire = json_object_get(obj, "wire");
+
+  if(wire == nullptr) {
     fprintf(stderr, "'wire' key is missing at %d\n", seq);
     return -1;
   }
-  table_size = json_object_get(obj, "header_table_size");
+
+  auto table_size = json_object_get(obj, "header_table_size");
+
   if(table_size) {
     if(!json_is_integer(table_size)) {
       fprintf(stderr,
@@ -122,18 +126,22 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq)
       return -1;
     }
   }
-  inputlen = strlen(json_string_value(wire));
+
+  auto inputlen = strlen(json_string_value(wire));
+
   if(inputlen & 1) {
     fprintf(stderr, "Badly formatted output value at %d\n", seq);
     exit(EXIT_FAILURE);
   }
-  buflen = inputlen / 2;
-  buf = malloc(buflen);
-  decode_hex(buf, json_string_value(wire), inputlen);
 
-  headers = json_array();
+  auto buflen = inputlen / 2;
+  auto buf = std::vector<uint8_t>(buflen);
 
-  p = buf;
+  decode_hex(buf.data(), json_string_value(wire), inputlen);
+
+  auto headers = json_array();
+
+  auto p = buf.data();
   for(;;) {
     inflate_flags = 0;
     rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, p, buflen, 1);
@@ -155,37 +163,40 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq)
   nghttp2_hd_inflate_end_headers(inflater);
   to_json(inflater, headers, wire, seq, old_settings_table_size);
   json_decref(headers);
-  free(buf);
+
   return 0;
 }
 
 static int perform(void)
 {
   nghttp2_hd_inflater inflater;
-  size_t i;
-  json_t *json, *cases;
   json_error_t error;
-  size_t len;
 
-  json = json_loadf(stdin, 0, &error);
-  if(json == NULL) {
+  auto json = json_loadf(stdin, 0, &error);
+
+  if(json == nullptr) {
     fprintf(stderr, "JSON loading failed\n");
     exit(EXIT_FAILURE);
   }
-  cases = json_object_get(json, "cases");
-  if(cases == NULL) {
+
+  auto cases = json_object_get(json, "cases");
+
+  if(cases == nullptr) {
     fprintf(stderr, "Missing 'cases' key in root object\n");
     exit(EXIT_FAILURE);
   }
+
   if(!json_is_array(cases)) {
     fprintf(stderr, "'cases' must be JSON array\n");
     exit(EXIT_FAILURE);
   }
+
   nghttp2_hd_inflate_init(&inflater);
   output_json_header();
-  len = json_array_size(cases);
-  for(i = 0; i < len; ++i) {
-    json_t *obj = json_array_get(cases, i);
+  auto len = json_array_size(cases);
+
+  for(size_t i = 0; i < len; ++i) {
+    auto obj = json_array_get(cases, i);
     if(!json_is_object(obj)) {
       fprintf(stderr, "Unexpected JSON type at %zu. It should be object.\n",
               i);
@@ -201,47 +212,49 @@ static int perform(void)
   output_json_footer();
   nghttp2_hd_inflate_free(&inflater);
   json_decref(json);
+
   return 0;
 }
 
 static void print_help(void)
 {
-  printf("HPACK HTTP/2 header decoder\n"
-         "Usage: inflatehd [OPTIONS] < INPUT\n"
-         "\n"
-         "Reads JSON data from stdin and outputs inflated name/value pairs\n"
-         "in JSON.\n"
-         "\n"
-         "The root JSON object must contain \"context\" key, which indicates\n"
-         "which compression context is used. If it is \"request\", request\n"
-         "compression context is used. Otherwise, response compression\n"
-         "context is used. The value of \"cases\" key contains the sequence\n"
-         "of compressed header block. They share the same compression\n"
-         "context and are processed in the order they appear. Each item in\n"
-         "the sequence is a JSON object and it must have at least \"wire\"\n"
-         "key. Its value is a string containing compressed header block in\n"
-         "hex string.\n"
-         "\n"
-         "Example:\n"
-         "{\n"
-         "  \"context\": \"request\",\n"
-         "  \"cases\":\n"
-         "  [\n"
-         "    { \"wire\": \"0284f77778ff\" },\n"
-         "    { \"wire\": \"0185fafd3c3c7f81\" }\n"
-         "  ]\n"
-         "}\n"
-         "\n"
-         "The output of this program can be used as input for deflatehd.\n"
-         "\n"
-         "OPTIONS:\n"
-         "    -d, --dump-header-table\n"
-         "                      Output dynamic header table.\n");
+  std::cout << R"(HPACK HTTP/2 header decoder
+Usage: inflatehd [OPTIONS] < INPUT
+
+Reads JSON  data from stdin  and outputs inflated name/value  pairs in
+JSON.
+
+The root JSON object must contain "context" key, which indicates which
+compression context is used.  If  it is "request", request compression
+context  is used.   Otherwise, response  compression context  is used.
+The value  of "cases" key  contains the sequence of  compressed header
+block.  They share  the same compression context and  are processed in
+the order they appear.  Each item in the sequence is a JSON object and
+it must  have at least "wire"  key.  Its value is  a string containing
+compressed header block in hex string.
+
+Example:
+
+{
+  "context": "request",
+  "cases":
+  [
+    { "wire": "0284f77778ff" },
+    { "wire": "0185fafd3c3c7f81" }
+  ]
+}
+
+The output of this program can be used as input for deflatehd.
+
+OPTIONS:
+    -d, --dump-header-table
+                      Output dynamic header table.)"
+            << std::endl;;
 }
 
 static struct option long_options[] = {
-  {"dump-header-table", no_argument, NULL, 'd'},
-  {NULL, 0, NULL, 0 }
+  {"dump-header-table", no_argument, nullptr, 'd'},
+  {nullptr, 0, nullptr, 0 }
 };
 
 int main(int argc, char **argv)
