@@ -686,7 +686,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
 
     stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
     if(stream) {
-      item->weight = stream->stream_group->weight;
+      item->weight = nghttp2_stream_group_shared_wait(stream->stream_group);
 
       rv = nghttp2_stream_attach_data(stream, item, &session->ob_pq);
     }
@@ -2087,7 +2087,8 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
     assert(stream);
     next_item = nghttp2_session_get_next_ob_item(session);
 
-    outbound_item_cycle_weight(aob->item, stream->stream_group->weight);
+    outbound_item_cycle_weight
+      (aob->item, nghttp2_stream_group_shared_wait(stream->stream_group));
 
     /* If priority of this stream is higher or equal to other stream
        waiting at the top of the queue, we continue to send this

@@ -138,8 +138,11 @@ struct nghttp2_stream {
   /* categorized priority of this stream.  Only stream bearing
      NGHTTP2_STREAM_DPRI_TOP can send DATA frame. */
   nghttp2_stream_dpri dpri;
-  /* the number of nodes in subtree */
+  /* the number of streams in subtree */
   size_t num_substreams;
+  /* the number of streams marked as NGHTTP2_STREAM_DPRI_TOP in
+     subtree */
+  ssize_t num_subtop;
   /* Current remote window size. This value is computed against the
      current initial window size of remote endpoint. */
   int32_t remote_window_size;
@@ -322,7 +325,8 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
 
 /*
  * Removes subtree whose root stream is |stream|.  Removing subtree
- * does not change dpri values.
+ * does not change dpri values and removed subtree is still in the
+ * same stream_group.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -354,6 +358,8 @@ struct nghttp2_stream_group {
   nghttp2_map_entry map_entry;
   /* The number of streams this priority group contains */
   size_t num_streams;
+  /* The number of streams marked as NGHTTP2_STREAM_DPRI_TOP */
+  ssize_t num_top;
   /* The priority group ID */
   int32_t pri_group_id;
   /* The weight of this group */
@@ -377,5 +383,16 @@ void nghttp2_stream_group_add_stream(nghttp2_stream_group *stream_group,
  */
 void nghttp2_stream_group_remove_stream(nghttp2_stream_group *stream_group,
                                         nghttp2_stream *stream);
+
+/*
+ * Updates |stream_group->num_top| += |delta|
+ */
+void nghttp2_stream_group_update_num_top(nghttp2_stream_group *stream_group,
+                                         ssize_t delta);
+
+/*
+ * Returns shared weight among the streams belongs to |stream_group|.
+ */
+size_t nghttp2_stream_group_shared_wait(nghttp2_stream_group *stream_group);
 
 #endif /* NGHTTP2_STREAM */

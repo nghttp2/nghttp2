@@ -5224,6 +5224,12 @@ void test_nghttp2_session_stream_attach_data(void)
 
   CU_ASSERT(1 == db->queued);
 
+  CU_ASSERT(1 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
   dc = create_data_ob_item();
 
   nghttp2_stream_attach_data(c, dc, &session->ob_pq);
@@ -5234,6 +5240,12 @@ void test_nghttp2_session_stream_attach_data(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
 
   CU_ASSERT(1 == dc->queued);
+
+  CU_ASSERT(2 == a->stream_group->num_top);
+  CU_ASSERT(2 == a->num_subtop);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(1 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
 
   da = create_data_ob_item();
 
@@ -5246,12 +5258,24 @@ void test_nghttp2_session_stream_attach_data(void)
 
   CU_ASSERT(1 == da->queued);
 
+  CU_ASSERT(1 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(0 == b->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
   nghttp2_stream_detach_data(a, &session->ob_pq);
 
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+
+  CU_ASSERT(2 == a->stream_group->num_top);
+  CU_ASSERT(2 == a->num_subtop);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(1 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
 
   dd = create_data_ob_item();
 
@@ -5264,6 +5288,12 @@ void test_nghttp2_session_stream_attach_data(void)
 
   CU_ASSERT(0 == dd->queued);
 
+  CU_ASSERT(2 == a->stream_group->num_top);
+  CU_ASSERT(2 == a->num_subtop);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(1 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
   nghttp2_stream_detach_data(c, &session->ob_pq);
 
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
@@ -5273,6 +5303,12 @@ void test_nghttp2_session_stream_attach_data(void)
 
   CU_ASSERT(1 == dd->queued);
 
+  CU_ASSERT(2 == a->stream_group->num_top);
+  CU_ASSERT(2 == a->num_subtop);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(1 == c->num_subtop);
+  CU_ASSERT(1 == d->num_subtop);
+
   nghttp2_session_del(session);
 }
 
@@ -5280,8 +5316,8 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b, *c, *d, *e, *f;
-  nghttp2_outbound_item *db, *de;
+  nghttp2_stream *a, *b, *c, *d, *e, *f, *g, *h;
+  nghttp2_outbound_item *db, *dd, *de;
 
   (void)d;
 
@@ -5296,8 +5332,9 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
 
   e = open_stream(session, 9);
   f = open_stream_with_dep(session, 11, e);
-
-  /* a        e
+  /* gr.1     gr.9
+   *
+   * a        e
    * |        |
    * b--c     f
    *    |
@@ -5312,9 +5349,16 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
 
   nghttp2_stream_attach_data(b, db, &session->ob_pq);
 
+  CU_ASSERT(1 == a->stream_group->num_top);
+  CU_ASSERT(1 == e->stream_group->num_top);
+
+  /* Insert subtree e under a */
+
   nghttp2_stream_dep_insert_subtree(a, e, &session->ob_pq);
 
-  /* a
+  /* gr.1
+   *
+   * a
    * |
    * e
    * |
@@ -5327,11 +5371,184 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
 
+  CU_ASSERT(1 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(1 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+  CU_ASSERT(0 == b->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
+  /* Remove subtree b */
+
   nghttp2_stream_dep_remove_subtree(b);
 
   nghttp2_stream_dep_make_root(b->stream_group, b, &session->ob_pq);
 
+  /* gr.1    gr.1
+   *
+   * a       b
+   * |
+   * e
+   * |
+   * f--c
+   *    |
+   *    d
+   */
+
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
+
+  /* a and b are still same group */
+  CU_ASSERT(b->stream_group == a->stream_group);
+
+  CU_ASSERT(2 == b->stream_group->num_top);
+  CU_ASSERT(1 == b->num_subtop);
+
+  CU_ASSERT(2 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(1 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
+  /* Remove subtree a */
+
+  nghttp2_stream_dep_remove_subtree(a);
+
+  nghttp2_stream_dep_make_root(a->stream_group, a, &session->ob_pq);
+
+  CU_ASSERT(2 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(1 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
+  /* Remove subtree c */
+
+  nghttp2_stream_dep_remove_subtree(c);
+
+  nghttp2_stream_dep_make_root(c->stream_group, c, &session->ob_pq);
+
+  /* gr.1    gr.1  gr.1
+   *
+   * a       b     c
+   * |             |
+   * e             d
+   * |
+   * f
+   */
+
+  CU_ASSERT(2 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(1 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
+  dd = create_data_ob_item();
+
+  nghttp2_stream_attach_data(d, dd, &session->ob_pq);
+
+  CU_ASSERT(3 == a->stream_group->num_top);
+  CU_ASSERT(1 == c->num_subtop);
+  CU_ASSERT(1 == d->num_subtop);
+
+  /* Add subtree c to a */
+
+  nghttp2_stream_dep_add_subtree(a, c, &session->ob_pq);
+
+  /* gr.1    gr.1
+   *
+   * a       b
+   * |
+   * e--c
+   * |  |
+   * f  d
+   */
+
+  CU_ASSERT(3 == a->stream_group->num_top);
+  CU_ASSERT(2 == a->num_subtop);
+  CU_ASSERT(1 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+  CU_ASSERT(1 == c->num_subtop);
+  CU_ASSERT(1 == d->num_subtop);
+
+  /* Insert b under a */
+
+  nghttp2_stream_dep_insert_subtree(a, b, &session->ob_pq);
+
+  /* gr.1
+   *
+   * a
+   * |
+   * b
+   * |
+   * e--c
+   * |  |
+   * f  d
+   */
+
+  CU_ASSERT(1 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(0 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
+  g = open_stream(session, 13);
+  h = open_stream(session, 15);
+
+  nghttp2_stream_dep_make_root(a->stream_group, h, &session->ob_pq);
+
+  nghttp2_stream_dep_make_root(g->stream_group, a, &session->ob_pq);
+
+  /* gr.13   gr.13  gr.1
+   *
+   * a       g      h
+   * |
+   * b
+   * |
+   * e--c
+   * |  |
+   * f  d
+   */
+
+  CU_ASSERT(g->stream_group == a->stream_group);
+
+  CU_ASSERT(0 == h->stream_group->num_top);
+
+  CU_ASSERT(1 == a->stream_group->num_top);
+  CU_ASSERT(1 == a->num_subtop);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(0 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
+  /* Remove subtree b */
+
+  nghttp2_stream_dep_remove_subtree(b);
+
+  /* gr.13   gr.13  gr.13  gr.1
+   *
+   * b       a      g      h
+   * |
+   * e--c
+   * |  |
+   * f  d
+   */
+
+  CU_ASSERT(1 == b->stream_group->num_top);
+  CU_ASSERT(1 == b->num_subtop);
+  CU_ASSERT(0 == e->num_subtop);
+  CU_ASSERT(0 == f->num_subtop);
+  CU_ASSERT(0 == c->num_subtop);
+  CU_ASSERT(0 == d->num_subtop);
+
+  CU_ASSERT(0 == a->num_subtop);
 
   nghttp2_session_del(session);
 }
