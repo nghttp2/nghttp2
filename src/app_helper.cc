@@ -326,6 +326,25 @@ const char* frame_name_ansi_esc(print_type ptype)
 } // namespace
 
 namespace {
+std::string ascii_dump(const uint8_t *data, size_t len)
+{
+  std::string res;
+
+  for(size_t i = 0; i < len; ++i) {
+    auto c = data[i];
+
+    if(c >= 0x20 && c < 0x7f) {
+      res += c;
+    } else {
+      res += ".";
+    }
+  }
+
+  return res;
+}
+} // namespace
+
+namespace {
 void print_frame(print_type ptype, const nghttp2_frame *frame)
 {
   fprintf(outfile, "%s%s%s frame ",
@@ -431,8 +450,8 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
             strstatus(frame->goaway.error_code),
             frame->goaway.error_code,
             static_cast<unsigned int>(frame->goaway.opaque_data_len),
-            util::format_hex(frame->goaway.opaque_data,
-                             frame->goaway.opaque_data_len).c_str());
+            ascii_dump(frame->goaway.opaque_data,
+                       frame->goaway.opaque_data_len).c_str());
     break;
   case NGHTTP2_WINDOW_UPDATE:
     print_frame_attr_indent();
