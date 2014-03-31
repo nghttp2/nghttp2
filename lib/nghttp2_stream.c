@@ -76,6 +76,31 @@ void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag)
   stream->shut_flags |= flag;
 }
 
+static int stream_push_data(nghttp2_stream *stream, nghttp2_pq *pq)
+{
+  int rv;
+  ssize_t weight;
+
+  assert(stream->data);
+  assert(stream->data->queued == 0);
+
+  weight = nghttp2_stream_group_shared_wait(stream->stream_group);
+
+  if(stream->data->weight > weight) {
+    stream->data->weight = weight;
+  }
+
+  rv = nghttp2_pq_push(pq, stream->data);
+
+  if(rv != 0) {
+    return rv;
+  }
+
+  stream->data->queued = 1;
+
+  return 0;
+}
+
 static nghttp2_stream* stream_first_sib(nghttp2_stream *stream)
 {
   for(; stream->sib_prev; stream = stream->sib_prev);
@@ -202,13 +227,11 @@ static ssize_t stream_update_dep_set_top(nghttp2_stream *stream,
                    stream->stream_id));
 
     if(!stream->data->queued) {
-      rv = nghttp2_pq_push(pq, stream->data);
+      rv = stream_push_data(stream, pq);
 
       if(rv != 0) {
         return rv;
       }
-
-      stream->data->queued = 1;
     }
 
     stream->dpri = NGHTTP2_STREAM_DPRI_TOP;
