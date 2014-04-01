@@ -53,11 +53,16 @@ cdef extern from 'nghttp2/nghttp2.h':
         NGHTTP2_PUSH_PROMISE
         NGHTTP2_GOAWAY
 
+    ctypedef enum nghttp2_nv_flag:
+        NGHTTP2_NV_FLAG_NONE
+        NGHTTP2_NV_FLAG_NO_INDEX
+
     ctypedef struct nghttp2_nv:
         uint8_t *name
         uint8_t *value
         uint16_t namelen
         uint16_t valuelen
+        uint8_t flags
 
     ctypedef enum nghttp2_settings_id:
         SETTINGS_HEADER_TABLE_SIZE
@@ -146,6 +151,7 @@ cdef extern from 'nghttp2/nghttp2.h':
          const nghttp2_frame *frame,
          const uint8_t *name, size_t namelen,
          const uint8_t *value, size_t valuelen,
+         uint8_t flags,
          void *user_data)
 
     ctypedef int (*nghttp2_on_frame_send_callback)\

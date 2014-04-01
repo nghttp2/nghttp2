@@ -112,6 +112,7 @@ cdef class HDDeflater:
             nvap[0].namelen = len(k)
             nvap[0].value = v
             nvap[0].valuelen = len(v)
+            nvap[0].flags = cnghttp2.NGHTTP2_NV_FLAG_NONE
             nvap += 1
 
         cdef cnghttp2.nghttp2_bufs bufs
@@ -294,6 +295,7 @@ cdef size_t _make_nva(cnghttp2.nghttp2_nv **nva_ptr, headers):
         nva[i].namelen = len(k)
         nva[i].value = v
         nva[i].valuelen = len(v)
+        nva[i].flags = cnghttp2.NGHTTP2_NV_FLAG_NONE
 
     nva_ptr[0] = nva
 
@@ -303,6 +305,7 @@ cdef int server_on_header(cnghttp2.nghttp2_session *session,
                           const cnghttp2.nghttp2_frame *frame,
                           const uint8_t *name, size_t namelen,
                           const uint8_t *value, size_t valuelen,
+                          uint8_t flags,
                           void *user_data):
     cdef http2 = <_HTTP2SessionCore>user_data
 
