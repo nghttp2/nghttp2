@@ -390,7 +390,7 @@ void nghttp2_frame_pack_priority_spec(uint8_t *buf,
   case NGHTTP2_PRIORITY_TYPE_GROUP:
 
     nghttp2_put_uint32be(buf, pri_spec->group.pri_group_id);
-    buf[4] = pri_spec->group.weight;
+    buf[4] = pri_spec->group.weight - 1;
 
     return;
   case NGHTTP2_PRIORITY_TYPE_DEP:
@@ -413,10 +413,10 @@ void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
 {
   if(flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
     int32_t pri_group_id;
-    uint8_t weight;
+    int32_t weight;
 
     pri_group_id = nghttp2_get_uint32(payload) & NGHTTP2_PRI_GROUP_ID_MASK;
-    weight = payload[4];
+    weight = payload[4] + 1;
 
     nghttp2_priority_spec_group_init(pri_spec, pri_group_id, weight);
   } else if(flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {

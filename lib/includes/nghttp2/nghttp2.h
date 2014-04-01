@@ -123,7 +123,14 @@ typedef struct {
  *
  * The maximum weight of priority group.
  */
-#define NGHTTP2_MAX_WEIGHT 255
+#define NGHTTP2_MAX_WEIGHT 256
+
+/**
+ * @macro
+ *
+ * The minimum weight of priority group.
+ */
+#define NGHTTP2_MIN_WEIGHT 1
 
 /**
  * @macro
@@ -717,7 +724,7 @@ typedef struct {
   /**
    * The weight of the priority group
    */
-  uint8_t weight;
+  int32_t weight;
 } nghttp2_priority_group;
 
 /**
@@ -2073,13 +2080,21 @@ const char* nghttp2_strerror(int lib_error_code);
  * @function
  *
  * Initializes |pri_spec| with priority group ID |pri_group_id| and
- * its weight |weight|.  To specify weight for the default priority
- * group (which is the same as the stream ID of the stream) in
- * `nghttp2_submit_request()` and `nghttp2_submit_headers()` and its
- * stream ID is not known in advance, specify -1 to |pri_group_id|.
+ * its weight |weight|.
+ *
+ * The |weight| must be in [:enum:`NGHTTP2_MIN_WEIGHT`,
+ * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If |weight| is strictly
+ * less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes
+ * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than
+ * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.
+ *
+ * To specify weight for the default priority group (which is the same
+ * as the stream ID of the stream) in `nghttp2_submit_request()` and
+ * `nghttp2_submit_headers()` and its stream ID is not known in
+ * advance, specify -1 to |pri_group_id|.
  */
 void nghttp2_priority_spec_group_init(nghttp2_priority_spec *pri_spec,
-                                      int32_t pri_group_id, uint8_t weight);
+                                      int32_t pri_group_id, int32_t weight);
 
 /**
  * @function

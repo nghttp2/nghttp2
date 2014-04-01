@@ -33,11 +33,11 @@
 #include "nghttp2_frame.h"
 
 /* A bit higher weight for non-DATA frames */
-#define NGHTTP2_OB_EX_WEIGHT 256
+#define NGHTTP2_OB_EX_WEIGHT 300
 /* Higher weight for SETTINGS */
-#define NGHTTP2_OB_SETTINGS_WEIGHT 257
+#define NGHTTP2_OB_SETTINGS_WEIGHT 301
 /* Highest weight for PING */
-#define NGHTTP2_OB_PING_WEIGHT 258
+#define NGHTTP2_OB_PING_WEIGHT 302
 
 typedef struct {
   nghttp2_data_provider *data_prd;

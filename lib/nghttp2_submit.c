@@ -102,6 +102,17 @@ static int nghttp2_submit_headers_shared
   return rv;
 }
 
+static void adjust_priority_spec_group_weight(nghttp2_priority_spec *pri_spec)
+{
+  assert(pri_spec->pri_type == NGHTTP2_PRIORITY_TYPE_GROUP);
+
+  if(pri_spec->group.weight < NGHTTP2_MIN_WEIGHT) {
+    pri_spec->group.weight = NGHTTP2_MIN_WEIGHT;
+  } else if(pri_spec->group.weight > NGHTTP2_MAX_WEIGHT) {
+    pri_spec->group.weight = NGHTTP2_MAX_WEIGHT;
+  }
+}
+
 static int nghttp2_submit_headers_shared_nva
 (nghttp2_session *session,
  uint8_t flags,
@@ -114,24 +125,25 @@ static int nghttp2_submit_headers_shared_nva
 {
   ssize_t rv;
   nghttp2_nv *nva_copy;
-  nghttp2_priority_spec pri_spec_none = {
+  nghttp2_priority_spec copy_pri_spec = {
     NGHTTP2_PRIORITY_TYPE_NONE
   };
-  const nghttp2_priority_spec *pri_spec_ptr;
 
   rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
   if(rv < 0) {
     return rv;
   }
 
-  if(pri_spec == NULL) {
-    pri_spec_ptr = &pri_spec_none;
-  } else {
-    pri_spec_ptr = pri_spec;
+  if(pri_spec) {
+    copy_pri_spec = *pri_spec;
+
+    if(copy_pri_spec.pri_type == NGHTTP2_PRIORITY_TYPE_GROUP) {
+      adjust_priority_spec_group_weight(&copy_pri_spec);
+    }
   }
 
   return nghttp2_submit_headers_shared(session, flags, stream_id,
-                                       pri_spec_ptr, nva_copy, rv, data_prd,
+                                       &copy_pri_spec, nva_copy, rv, data_prd,
                                        stream_user_data);
 }
 
@@ -176,16 +188,21 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
 {
   int rv;
   nghttp2_frame *frame;
+  nghttp2_priority_spec copy_pri_spec;
 
   if(pri_spec == NULL) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  switch(pri_spec->pri_type) {
+  copy_pri_spec = *pri_spec;
+
+  switch(copy_pri_spec.pri_type) {
   case NGHTTP2_PRIORITY_TYPE_GROUP:
+    adjust_priority_spec_group_weight(&copy_pri_spec);
+
     break;
   case NGHTTP2_PRIORITY_TYPE_DEP:
-    if(stream_id == pri_spec->dep.stream_id) {
+    if(stream_id == copy_pri_spec.dep.stream_id) {
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
 
@@ -200,7 +217,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_frame_priority_init(&frame->priority, stream_id, pri_spec);
+  nghttp2_frame_priority_init(&frame->priority, stream_id, &copy_pri_spec);
 
   rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
 

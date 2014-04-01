@@ -748,7 +748,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   nghttp2_stream *dep_stream;
   nghttp2_stream *root_stream;
   int32_t pri_group_id;
-  uint8_t weight;
+  int32_t weight;
   nghttp2_stream_group *stream_group;
 
   dep_stream = NULL;
@@ -1883,7 +1883,7 @@ static int session_call_on_frame_send(nghttp2_session *session,
 static void outbound_item_cycle_weight(nghttp2_outbound_item *item,
                                        int32_t ini_weight)
 {
-  if(item->weight == 0 || item->weight > ini_weight) {
+  if(item->weight == NGHTTP2_MIN_WEIGHT || item->weight > ini_weight) {
     item->weight = ini_weight;
   } else {
     --item->weight;

@@ -25,7 +25,7 @@
 #include "nghttp2_priority_spec.h"
 
 void nghttp2_priority_spec_group_init(nghttp2_priority_spec *pri_spec,
-                                      int32_t pri_group_id, uint8_t weight)
+                                      int32_t pri_group_id, int32_t weight)
 {
   pri_spec->pri_type = NGHTTP2_PRIORITY_TYPE_GROUP;
   pri_spec->group.pri_group_id = pri_group_id;
