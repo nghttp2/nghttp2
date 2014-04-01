@@ -409,7 +409,11 @@ typedef enum {
   /**
    * The CONTINUATION frame.
    */
-  NGHTTP2_CONTINUATION = 9
+  NGHTTP2_CONTINUATION = 9,
+  /**
+   * The ALTSVC frame.
+   */
+  NGHTTP2_ALTSVC = 10
 } nghttp2_frame_type;
 
 /**
@@ -951,6 +955,50 @@ typedef struct {
 } nghttp2_window_update;
 
 /**
+ * @struct
+ *
+ * The ALTSVC frame.  It has following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+  /**
+   * Protocol ID
+   */
+  uint8_t *protocol_id;
+  /**
+   * Host
+   */
+  uint8_t *host;
+  /**
+   * Origin
+   */
+  uint8_t *origin;
+  /**
+   * The length of |protocol_id|
+   */
+  size_t protocol_id_len;
+  /**
+   * The length of |host|
+   */
+  size_t host_len;
+  /**
+   * The length of |origin|
+   */
+  size_t origin_len;
+  /**
+   * Max-Age
+   */
+  uint32_t max_age;
+  /**
+   * Port
+   */
+  uint16_t port;
+} nghttp2_altsvc;
+
+/**
  * @union
  *
  * This union includes all frames to pass them to various function
@@ -998,6 +1046,10 @@ typedef union {
    * The WINDOW_UPDATE frame.
    */
   nghttp2_window_update window_update;
+  /**
+   * The ALTSVC frame.
+   */
+  nghttp2_altsvc altsvc;
 } nghttp2_frame;
 
 /**
@@ -2441,6 +2493,40 @@ int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
 int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
                                  int32_t stream_id,
                                  int32_t window_size_increment);
+
+/**
+ * @function
+ *
+ * Submits ALTSVC frame with given parameters.
+ *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
+ *
+ * Only the server can send the ALTSVC frame.  If |session| is
+ * initialized as client, this function fails and returns
+ * NGHTTP2_ERR_INVALID_STATE.
+ *
+ * If the |protocol_id_len| is 0, the |protocol_id| could be ``NULL``.
+ *
+ * If the |host_len| is 0, the |host| could be ``NULL``.
+ *
+ * If the |origin_len| is 0, the |origin| could be ``NULL``.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     The function is invoked with |session| which was initialized as
+ *     client.
+ */
+int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
+                          int32_t stream_id,
+                          uint32_t max_age, uint16_t port,
+                          const uint8_t *protocol_id, size_t protocol_id_len,
+                          const uint8_t *host, size_t host_len,
+                          const uint8_t *origin, size_t origin_len);
 
 /**
  * @function

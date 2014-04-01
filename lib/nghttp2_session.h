@@ -73,6 +73,7 @@ typedef enum {
   NGHTTP2_IB_FRAME_SIZE_ERROR,
   NGHTTP2_IB_READ_SETTINGS,
   NGHTTP2_IB_READ_GOAWAY_DEBUG,
+  NGHTTP2_IB_READ_ALTSVC,
   NGHTTP2_IB_EXPECT_CONTINUATION,
   NGHTTP2_IB_IGN_CONTINUATION,
   NGHTTP2_IB_READ_PAD_CONTINUATION,
@@ -433,6 +434,11 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_IGN_HEADER_BLOCK
+ *     Frame was rejected and header block must be decoded but
+ *     result must be ignored.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The read_callback failed
  */
 int nghttp2_session_on_headers_received(nghttp2_session *session,
                                         nghttp2_frame *frame,
@@ -448,6 +454,8 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The read_callback failed
  */
 int nghttp2_session_on_priority_received(nghttp2_session *session,
                                          nghttp2_frame *frame);
@@ -459,7 +467,10 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
  * This function returns 0 if it succeeds, or one the following
  * negative error codes:
  *
- * TBD
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The read_callback failed
  */
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame);
@@ -475,8 +486,6 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
- * NGHTTP2_ERR_PAUSE
- *     Callback function returns NGHTTP2_ERR_PAUSE
  * NGHTTP2_ERR_CALLBACK_FAILURE
  *     The read_callback failed
  */
@@ -493,6 +502,11 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_IGN_HEADER_BLOCK
+ *     Frame was rejected and header block must be decoded but
+ *     result must be ignored.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The read_callback failed
  */
 int nghttp2_session_on_push_promise_received(nghttp2_session *session,
                                              nghttp2_frame *frame);
@@ -506,6 +520,8 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
  */
 int nghttp2_session_on_ping_received(nghttp2_session *session,
                                      nghttp2_frame *frame);
@@ -514,7 +530,13 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
  * Called when GOAWAY is received, assuming |frame| is properly
  * initialized.
  *
- * This function returns 0 and never fail.
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
  */
 int nghttp2_session_on_goaway_received(nghttp2_session *session,
                                        nghttp2_frame *frame);
@@ -528,9 +550,26 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
  */
 int nghttp2_session_on_window_update_received(nghttp2_session *session,
                                               nghttp2_frame *frame);
+
+/*
+ * Called when ALTSVC is received, assuming |frame| is properly
+ * initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
+ */
+int nghttp2_session_on_altsvc_received(nghttp2_session *session,
+                                       nghttp2_frame *frame);
 
 /*
  * Called when DATA is received, assuming |frame| is properly

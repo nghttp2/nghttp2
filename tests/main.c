@@ -88,6 +88,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_recv_headers_with_priority) ||
       !CU_add_test(pSuite, "session_recv_premature_headers",
                    test_nghttp2_session_recv_premature_headers) ||
+      !CU_add_test(pSuite, "session_recv_altsvc",
+                   test_nghttp2_session_recv_altsvc) ||
       !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
@@ -161,6 +163,7 @@ int main(int argc, char* argv[])
                    test_nghttp2_submit_window_update) ||
       !CU_add_test(pSuite, "submit_window_update_local_window_size",
                    test_nghttp2_submit_window_update_local_window_size) ||
+      !CU_add_test(pSuite, "submit_altsvc", test_nghttp2_submit_altsvc) ||
       !CU_add_test(pSuite, "submit_invalid_nv",
                    test_nghttp2_submit_invalid_nv) ||
       !CU_add_test(pSuite, "session_open_stream",
@@ -242,6 +245,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_frame_pack_goaway) ||
       !CU_add_test(pSuite, "frame_pack_window_update",
                    test_nghttp2_frame_pack_window_update) ||
+      !CU_add_test(pSuite, "frame_pack_altsvc",
+                   test_nghttp2_frame_pack_altsvc) ||
       !CU_add_test(pSuite, "nv_array_copy", test_nghttp2_nv_array_copy) ||
       !CU_add_test(pSuite, "iv_check", test_nghttp2_iv_check) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||

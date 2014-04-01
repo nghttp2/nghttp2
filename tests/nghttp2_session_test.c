@@ -57,6 +57,7 @@ typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
   int frame_recv_cb_called, invalid_frame_recv_cb_called;
+  nghttp2_frame_type recv_frame_type;
   int frame_send_cb_called;
   nghttp2_frame_type sent_frame_type;
   int frame_not_send_cb_called;
@@ -161,6 +162,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
 {
   my_user_data *ud = (my_user_data*)user_data;
   ++ud->frame_recv_cb_called;
+  ud->recv_frame_type = frame->hd.type;
   return 0;
 }
 
@@ -1081,6 +1083,100 @@ void test_nghttp2_session_recv_premature_headers(void)
 
   nghttp2_bufs_free(&bufs);
   nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_recv_altsvc(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_frame frame;
+  size_t protocol_id_len, host_len, origin_len;
+  uint8_t *protocol_id, *host, *origin;
+  uint8_t *data;
+  size_t datalen;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  ssize_t rv;
+  my_user_data ud;
+  nghttp2_outbound_item *item;
+
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+
+  protocol_id_len = strlen("h2");
+  host_len = strlen("h2.example.org");
+  origin_len = strlen("www.example.org");
+
+  datalen = protocol_id_len + host_len + origin_len;
+  data = malloc(datalen);
+
+  memcpy(data, "h2", protocol_id_len);
+  protocol_id = data;
+
+  memcpy(data + protocol_id_len, "h2.example.org", host_len);
+  host = data + protocol_id_len;
+
+  memcpy(data + protocol_id_len + host_len,
+         "http://www.example.org", origin_len);
+  origin = data + protocol_id_len + host_len;
+
+  nghttp2_frame_altsvc_init(&frame.altsvc, 1000000007, 1u << 31, 4000,
+                            protocol_id, protocol_id_len,
+                            host, host_len, origin, origin_len);
+
+  rv = nghttp2_frame_pack_altsvc(&bufs, &frame.altsvc);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_altsvc_free(&frame.altsvc);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  /* error if server receives ALTSVC */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(rv == nghttp2_buf_len(buf));
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(rv == nghttp2_buf_len(buf));
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+  CU_ASSERT(NGHTTP2_ALTSVC == ud.recv_frame_type);
+
+  /* premature payload */
+  nghttp2_put_uint16be(buf->pos, 8);
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, NGHTTP2_FRAME_HDLEN + 8);
+
+  CU_ASSERT(rv == NGHTTP2_FRAME_HDLEN + 8);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+
+  nghttp2_bufs_free(&bufs);
   nghttp2_session_del(session);
 }
 
@@ -3377,6 +3473,73 @@ void test_nghttp2_submit_window_update_local_window_size(void)
   CU_ASSERT(NGHTTP2_ERR_FLOW_CONTROL ==
             nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0,
                                          NGHTTP2_MAX_WINDOW_SIZE));
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_submit_altsvc(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  const char protocol_id[] = "h2";
+  const char host[] = "localhost";
+  const char origin[] = "http://localhost/";
+  nghttp2_frame *frame;
+  nghttp2_outbound_item *item;
+  my_user_data ud;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_STATE ==
+            nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE,
+                                  0, 0, 3000,
+                                  (const uint8_t*)protocol_id,
+                                  strlen(protocol_id),
+                                  (const uint8_t*)host, strlen(host),
+                                  (const uint8_t*)origin, strlen(origin)));
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  CU_ASSERT(0 ==
+            nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE,
+                                  9, 12345, 3000,
+                                  (const uint8_t*)protocol_id,
+                                  strlen(protocol_id),
+                                  (const uint8_t*)host, strlen(host),
+                                  (const uint8_t*)origin, strlen(origin)));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  frame = OB_CTRL(item);
+
+  CU_ASSERT(NGHTTP2_ALTSVC == frame->hd.type);
+  CU_ASSERT(9 == frame->hd.stream_id);
+
+  CU_ASSERT(12345 == frame->altsvc.max_age);
+  CU_ASSERT(3000 == frame->altsvc.port);
+
+  CU_ASSERT(strlen(protocol_id) == frame->altsvc.protocol_id_len);
+  CU_ASSERT(strlen(host) == frame->altsvc.host_len);
+  CU_ASSERT(strlen(origin) == frame->altsvc.origin_len);
+
+  CU_ASSERT(0 == memcmp(protocol_id, frame->altsvc.protocol_id,
+                        frame->altsvc.protocol_id_len));
+  CU_ASSERT(0 == memcmp(host, frame->altsvc.host, frame->altsvc.host_len));
+  CU_ASSERT(0 == memcmp(origin, frame->altsvc.origin,
+                        frame->altsvc.origin_len));
+
+  ud.frame_send_cb_called = 0;
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(1 == ud.frame_send_cb_called);
+  CU_ASSERT(NGHTTP2_ALTSVC == ud.sent_frame_type);
 
   nghttp2_session_del(session);
 }

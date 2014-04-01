@@ -199,6 +199,9 @@ static void nghttp2_inbound_frame_reset(nghttp2_session *session)
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_window_update_free(&iframe->frame.window_update);
     break;
+  case NGHTTP2_ALTSVC:
+    nghttp2_frame_altsvc_free(&iframe->frame.altsvc);
+    break;
   }
   memset(&iframe->frame, 0, sizeof(nghttp2_frame));
 
@@ -661,6 +664,8 @@ int nghttp2_session_add_frame(nghttp2_session *session,
       /* Should GOAWAY have higher priority? */
       break;
     case NGHTTP2_WINDOW_UPDATE:
+      break;
+    case NGHTTP2_ALTSVC:
       break;
     }
 
@@ -1666,6 +1671,15 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
         return framebuflen;
       }
       break;
+    case NGHTTP2_ALTSVC:
+      framebuflen = nghttp2_frame_pack_altsvc(&session->aob.framebufs,
+                                              &frame->altsvc);
+
+      if(framebuflen < 0) {
+        return framebuflen;
+      }
+
+      break;
     default:
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
@@ -2025,6 +2039,9 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       session->goaway_flags |= NGHTTP2_GOAWAY_SEND;
       break;
     case NGHTTP2_WINDOW_UPDATE:
+      /* nothing to do */
+      break;
+    case NGHTTP2_ALTSVC:
       /* nothing to do */
       break;
     }
@@ -3518,6 +3535,42 @@ static int session_process_goaway_frame(nghttp2_session *session)
   return nghttp2_session_on_goaway_received(session, frame);
 }
 
+int nghttp2_session_on_altsvc_received(nghttp2_session *session,
+                                       nghttp2_frame *frame)
+{
+  /* ALTSVC is exptected to be received by client only.  We have
+     already rejected ALTSVC if it is received by server. */
+  if(frame->hd.stream_id != 0 &&
+     !nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_PROTOCOL_ERROR);
+  }
+
+  return nghttp2_session_call_on_frame_received(session, frame);
+}
+
+static int session_process_altsvc_frame(nghttp2_session *session)
+{
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  nghttp2_frame *frame = &iframe->frame;
+  int rv;
+
+  rv = nghttp2_frame_unpack_altsvc_payload(&frame->altsvc,
+                                           iframe->sbuf.pos,
+                                           nghttp2_buf_len(&iframe->sbuf),
+                                           iframe->lbuf.pos,
+                                           nghttp2_buf_len(&iframe->lbuf));
+
+  if(rv != 0) {
+    return nghttp2_session_handle_invalid_connection(session, frame,
+                                                     NGHTTP2_FRAME_SIZE_ERROR);
+  }
+
+  nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
+
+  return nghttp2_session_on_altsvc_received(session, frame);
+}
+
 static int nghttp2_push_back_deferred_data_func(nghttp2_map_entry *entry,
                                                 void *ptr)
 {
@@ -4321,6 +4374,37 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         inbound_frame_set_mark(iframe, 8);
 
         break;
+      case NGHTTP2_ALTSVC:
+        DEBUGF(fprintf(stderr, "recv: ALTSVC\n"));
+
+        iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
+
+        if(session->server) {
+          rv = nghttp2_session_terminate_session(session,
+                                                 NGHTTP2_PROTOCOL_ERROR);
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+
+          busy = 1;
+
+          iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+          break;
+        }
+
+        if(iframe->payloadleft < 9) {
+          busy = 1;
+
+          iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
+
+          break;
+        }
+
+        iframe->state = NGHTTP2_IB_READ_NBYTE;
+        inbound_frame_set_mark(iframe, 8);
+
+        break;
       default:
         DEBUGF(fprintf(stderr, "recv: unknown frame\n"));
 
@@ -4503,6 +4587,25 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         nghttp2_inbound_frame_reset(session);
 
         break;
+      case NGHTTP2_ALTSVC: {
+        size_t varlen;
+
+        varlen = iframe->frame.hd.length - 8;
+
+        iframe->raw_lbuf = malloc(varlen);
+
+        if(iframe->raw_lbuf == NULL) {
+          return NGHTTP2_ERR_NOMEM;
+        }
+
+        nghttp2_buf_wrap_init(&iframe->lbuf, iframe->raw_lbuf, varlen);
+
+        busy = 1;
+
+        iframe->state = NGHTTP2_IB_READ_ALTSVC;
+
+        break;
+      }
       default:
         /* This is unknown frame */
         nghttp2_inbound_frame_reset(session);
@@ -4710,7 +4813,14 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
       break;
     case NGHTTP2_IB_READ_GOAWAY_DEBUG:
-      DEBUGF(fprintf(stderr, "recv: [IB_READ_GOAWAY_DEBUG]\n"));
+    case NGHTTP2_IB_READ_ALTSVC:
+#ifdef DEBUGBUILD
+      if(iframe->state == NGHTTP2_IB_READ_GOAWAY_DEBUG) {
+        fprintf(stderr, "recv: [IB_READ_GOAWAY_DEBUG]\n");
+      } else {
+        fprintf(stderr, "recv: [IB_READ_ALTSVC]\n");
+      }
+#endif /* DEBUGBUILD */
 
       readlen = inbound_frame_payload_readlen(iframe, in, last);
 
@@ -4728,7 +4838,11 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
 
-      rv = session_process_goaway_frame(session);
+      if(iframe->state == NGHTTP2_IB_READ_GOAWAY_DEBUG) {
+        rv = session_process_goaway_frame(session);
+      } else {
+        rv = session_process_altsvc_frame(session);
+      }
 
       if(nghttp2_is_fatal(rv)) {
         return rv;

@@ -490,6 +490,133 @@ void test_nghttp2_frame_pack_window_update(void)
   nghttp2_frame_window_update_free(&frame);
 }
 
+void test_nghttp2_frame_pack_altsvc(void)
+{
+  nghttp2_altsvc frame, oframe;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  size_t protocol_id_len, host_len, origin_len;
+  uint8_t *protocol_id, *host, *origin;
+  uint8_t *data;
+  size_t datalen;
+  int rv;
+  size_t payloadlen;
+
+  protocol_id_len = strlen("h2");
+  host_len = strlen("h2.example.org");
+  origin_len = strlen("www.example.org");
+
+  datalen = protocol_id_len + host_len + origin_len;
+  data = malloc(datalen);
+
+  memcpy(data, "h2", protocol_id_len);
+  protocol_id = data;
+
+  memcpy(data + protocol_id_len, "h2.example.org", host_len);
+  host = data + protocol_id_len;
+
+  memcpy(data + protocol_id_len + host_len,
+         "http://www.example.org", origin_len);
+  origin = data + protocol_id_len + host_len;
+
+  frame_pack_bufs_init(&bufs);
+
+  nghttp2_frame_altsvc_init(&frame, 1000000007, 1u << 31, 4000,
+                            protocol_id, protocol_id_len,
+                            host, host_len, origin, origin_len);
+
+  rv = nghttp2_frame_pack_altsvc(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+
+  /* 1 for HOST_LEN */
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + 8 + 1 + datalen) ==
+            nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
+
+  check_frame_header(8 + 1 + datalen, NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE,
+                     1000000007, &oframe.hd);
+  CU_ASSERT(1u << 31 == oframe.max_age);
+  CU_ASSERT(4000 == oframe.port);
+
+  CU_ASSERT(protocol_id_len == oframe.protocol_id_len);
+  CU_ASSERT(memcmp(protocol_id, oframe.protocol_id, protocol_id_len) == 0);
+
+  CU_ASSERT(host_len == oframe.host_len);
+  CU_ASSERT(memcmp(host, oframe.host, host_len) == 0);
+
+  CU_ASSERT(origin_len == oframe.origin_len);
+  CU_ASSERT(memcmp(origin, oframe.origin, origin_len) == 0);
+
+  nghttp2_frame_altsvc_free(&oframe);
+  nghttp2_frame_altsvc_free(&frame);
+
+  memset(&oframe, 0, sizeof(oframe));
+
+  buf = &bufs.head->buf;
+
+  CU_ASSERT(buf->pos - buf->begin == 2);
+
+  /* Check no origin case */
+
+  payloadlen = 8 + protocol_id_len + 1 + host_len;
+  nghttp2_put_uint16be(buf->pos, payloadlen);
+
+  CU_ASSERT(0 ==
+            nghttp2_frame_unpack_altsvc_payload
+            (&oframe,
+             buf->pos + NGHTTP2_FRAME_HDLEN,
+             8,
+             buf->pos + NGHTTP2_FRAME_HDLEN + 8,
+             payloadlen - 8));
+
+  CU_ASSERT(host_len == oframe.host_len);
+  CU_ASSERT(0 == oframe.origin_len);
+
+  /* Check insufficient payload length for host */
+  payloadlen = 8 + protocol_id_len + 1 + host_len - 1;
+  nghttp2_put_uint16be(buf->pos, payloadlen);
+
+  CU_ASSERT(NGHTTP2_ERR_FRAME_SIZE_ERROR ==
+            nghttp2_frame_unpack_altsvc_payload
+            (&oframe,
+             buf->pos + NGHTTP2_FRAME_HDLEN,
+             8,
+             buf->pos + NGHTTP2_FRAME_HDLEN + 8,
+             payloadlen - 8));
+
+  /* Check no host case */
+  payloadlen = 8 + protocol_id_len + 1;
+  nghttp2_put_uint16be(buf->pos, payloadlen);
+  buf->pos[NGHTTP2_FRAME_HDLEN + 8 + protocol_id_len] = 0;
+
+  CU_ASSERT(0 ==
+            nghttp2_frame_unpack_altsvc_payload
+            (&oframe,
+             buf->pos + NGHTTP2_FRAME_HDLEN,
+             8,
+             buf->pos + NGHTTP2_FRAME_HDLEN + 8,
+             payloadlen - 8));
+
+  CU_ASSERT(0 == oframe.host_len);
+  CU_ASSERT(0 == oframe.origin_len);
+
+  /* Check missing HOST_LEN */
+  payloadlen = 8 + protocol_id_len;
+  nghttp2_put_uint16be(buf->pos, payloadlen);
+
+  CU_ASSERT(NGHTTP2_ERR_FRAME_SIZE_ERROR ==
+            nghttp2_frame_unpack_altsvc_payload
+            (&oframe,
+             buf->pos + NGHTTP2_FRAME_HDLEN,
+             8,
+             buf->pos + NGHTTP2_FRAME_HDLEN + 8,
+             payloadlen - 8));
+
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_nv_array_copy(void)
 {
   nghttp2_nv *nva;

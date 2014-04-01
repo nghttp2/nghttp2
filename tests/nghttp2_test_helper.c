@@ -47,6 +47,8 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
   const uint8_t *payload = in + NGHTTP2_FRAME_HDLEN;
   size_t payloadlen = len - NGHTTP2_FRAME_HDLEN;
   size_t payloadoff;
+  uint8_t *gift_payload;
+  size_t gift_payloadlen;
 
   nghttp2_frame_unpack_frame_hd(&frame->hd, in);
   switch(frame->hd.type) {
@@ -84,6 +86,18 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_unpack_window_update_payload
       (&frame->window_update, payload, payloadlen);
+    break;
+  case NGHTTP2_ALTSVC:
+    gift_payloadlen = payloadlen - 8;
+    gift_payload = malloc(gift_payloadlen);
+
+    memcpy(gift_payload, payload + 8, gift_payloadlen);
+
+    payloadlen -= 8;
+
+    rv = nghttp2_frame_unpack_altsvc_payload(&frame->altsvc,
+                                             payload, payloadlen,
+                                             gift_payload, gift_payloadlen);
     break;
   default:
     /* Must not be reachable */

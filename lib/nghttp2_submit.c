@@ -316,6 +316,79 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
+int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
+                          int32_t stream_id,
+                          uint32_t max_age, uint16_t port,
+                          const uint8_t *protocol_id, size_t protocol_id_len,
+                          const uint8_t *host, size_t host_len,
+                          const uint8_t *origin, size_t origin_len)
+{
+  int rv;
+  size_t varlen;
+  uint8_t *var, *varp;
+  nghttp2_frame *frame;
+  uint8_t *copy_protocol_id, *copy_host, *copy_origin;
+
+  if(!session->server) {
+    return NGHTTP2_ERR_INVALID_STATE;
+  }
+
+  varlen = protocol_id_len + host_len + origin_len;
+
+  if(varlen == 0) {
+    var = NULL;
+    copy_protocol_id = NULL;
+    copy_host = NULL;
+    copy_origin = NULL;
+  } else {
+    var = malloc(varlen);
+
+    if(var == NULL) {
+      return NGHTTP2_ERR_NOMEM;
+    }
+
+    varp = var;
+
+    memcpy(varp, protocol_id, protocol_id_len);
+
+    copy_protocol_id = varp;
+    varp += protocol_id_len;
+
+    memcpy(varp, host, host_len);
+
+    copy_host = varp;
+    varp += host_len;
+
+    memcpy(varp, origin, origin_len);
+
+    copy_origin = varp;
+    varp += origin_len;
+  }
+
+  frame = malloc(sizeof(nghttp2_frame));
+
+  if(frame == NULL) {
+    free(var);
+
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  nghttp2_frame_altsvc_init(&frame->altsvc, stream_id, max_age, port,
+                            copy_protocol_id, protocol_id_len,
+                            copy_host, host_len, copy_origin, origin_len);
+
+  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+
+  if(rv != 0) {
+    nghttp2_frame_altsvc_free(&frame->altsvc);
+    free(frame);
+
+    return rv;
+  }
+
+  return 0;
+}
+
 static uint8_t set_request_flags(const nghttp2_priority_spec *pri_spec,
                                  const nghttp2_data_provider *data_prd)
 {
