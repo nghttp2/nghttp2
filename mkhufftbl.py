@@ -120,18 +120,18 @@ tables = {}
 root = Node()
 
 for line in sys.stdin:
-    m = re.match(r'.*\(\s*(\d+)\) ([|01]+) \[(\d+)\]\s+(\S+).*', line)
+    m = re.match(r'.*\(\s*(\d+)\)\s+([|01]+)\s+(\S+)\s+\[\s*(\d+)\].*', line)
     if m:
-        #print m.group(1), m.group(2), m.group(3)
-        if len(m.group(4)) > 8:
+        #print m.group(1), m.group(2), m.group(4)
+        if len(m.group(3)) > 8:
             raise Error('Code is more than 4 bytes long')
         sym = int(m.group(1))
         bits = re.sub(r'\|', '', m.group(2))
-        nbits = int(m.group(3))
+        nbits = int(m.group(4))
         assert(len(bits) == nbits)
         binpat = to_bin(bits)
         assert(len(binpat) == (nbits+7)/8)
-        symbol_tbl[sym] = (binpat, nbits, m.group(4))
+        symbol_tbl[sym] = (binpat, nbits, m.group(3))
         #print "Inserting", sym
         insert(root, sym, bits)
 
