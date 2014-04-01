@@ -828,6 +828,7 @@ void nghttp2_stream_group_update_num_top(nghttp2_stream_group *stream_group,
 {
   DEBUGF(fprintf(stderr, "stream_group: stream_group(%p)=%d "
                  "update num_top current=%zd, delta=%zd, after=%zd\n",
+                 stream_group, stream_group->pri_group_id,
                  stream_group->num_top, delta, stream_group->num_top + delta));
 
   stream_group->num_top += delta;
