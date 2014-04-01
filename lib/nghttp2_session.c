@@ -2420,6 +2420,7 @@ static int session_call_on_header(nghttp2_session *session,
     rv = session->callbacks.on_header_callback(session, frame,
                                                nv->name, nv->namelen,
                                                nv->value, nv->valuelen,
+                                               nv->flags,
                                                session->user_data);
     if(rv == NGHTTP2_ERR_PAUSE ||
        rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {

@@ -1338,12 +1338,15 @@ typedef int (*nghttp2_on_begin_headers_callback)
  * @functypedef
  *
  * Callback function invoked when a header name/value pair is received
- * for the |frame|. When this callback is invoked, ``frame->hd.type``
- * is either :enum:`NGHTTP2_HEADERS` or :enum:`NGHTTP2_PUSH_PROMISE`.
- * After all header name/value pairs are processed with this callback,
- * and no error has been detected,
- * :type:`nghttp2_on_frame_recv_callback` will be invoked.  If there
- * is an error in decompression,
+ * for the |frame|.  The |name| of length |namelen| is header name.
+ * The |value| of length |valuelen| is header value.  The |flags| is
+ * bitwise OR of one or more of :type:`nghttp2_nv_flag`.
+ *
+ * When this callback is invoked, ``frame->hd.type`` is either
+ * :enum:`NGHTTP2_HEADERS` or :enum:`NGHTTP2_PUSH_PROMISE`.  After all
+ * header name/value pairs are processed with this callback, and no
+ * error has been detected, :type:`nghttp2_on_frame_recv_callback`
+ * will be invoked.  If there is an error in decompression,
  * :type:`nghttp2_on_frame_recv_callback` for the |frame| will not be
  * invoked.
  *
@@ -1393,6 +1396,7 @@ typedef int (*nghttp2_on_header_callback)
  const nghttp2_frame *frame,
  const uint8_t *name, size_t namelen,
  const uint8_t *value, size_t valuelen,
+ uint8_t flags,
  void *user_data);
 
 /**

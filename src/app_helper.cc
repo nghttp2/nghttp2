@@ -469,6 +469,7 @@ int verbose_on_header_callback(nghttp2_session *session,
                                const nghttp2_frame *frame,
                                const uint8_t *name, size_t namelen,
                                const uint8_t *value, size_t valuelen,
+                               uint8_t flags,
                                void *user_data)
 {
   nghttp2_nv nv = {
@@ -476,7 +477,8 @@ int verbose_on_header_callback(nghttp2_session *session,
     static_cast<uint16_t>(namelen), static_cast<uint16_t>(valuelen)
   };
   print_timer();
-  fprintf(outfile, " (stream_id=%d) ", frame->hd.stream_id);
+  fprintf(outfile, " (stream_id=%d, noind=%d) ", frame->hd.stream_id,
+          (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0);
   print_nv(&nv, 1, false /* no indent */);
   return 0;
 }
