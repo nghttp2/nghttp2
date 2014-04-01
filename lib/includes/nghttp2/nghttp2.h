@@ -347,6 +347,22 @@ typedef enum {
 } nghttp2_io_flag;
 
 /**
+ * @enum
+ *
+ * The flags for header field name/value pair.
+ */
+typedef enum {
+  /**
+   * No flag set.
+   */
+  NGHTTP2_NV_FLAG_NONE = 0,
+  /**
+   * Indicates that this name/value pair must not be indexed.
+   */
+  NGHTTP2_NV_FLAG_NO_INDEX = 0x1
+} nghttp2_nv_flag;
+
+/**
  * @struct
  *
  * The name/value pair, which mainly used to represent header fields.
@@ -370,6 +386,10 @@ typedef struct {
    * The length of the |value|.
    */
   uint16_t valuelen;
+  /**
+   * Bitwise OR of one or more of :type:`nghttp2_nv_flag`.
+   */
+  uint8_t flags;
 } nghttp2_nv;
 
 /**

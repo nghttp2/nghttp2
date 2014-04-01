@@ -919,6 +919,8 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
   data = (uint8_t*)(*nva_ptr) + sizeof(nghttp2_nv)*nvlen;
 
   for(i = 0; i < nvlen; ++i) {
+    p->flags = nva[i].flags;
+
     memcpy(data, nva[i].name, nva[i].namelen);
     p->name = data;
     p->namelen = nva[i].namelen;

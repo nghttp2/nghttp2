@@ -341,7 +341,8 @@ nghttp2_nv make_nv(const std::string& name, const std::string& value)
   return {
     (uint8_t*)name.c_str(),
       (uint8_t*)value.c_str(),
-      (uint16_t)name.size(), (uint16_t)value.size()
+      (uint16_t)name.size(), (uint16_t)value.size(),
+      NGHTTP2_NV_FLAG_NONE
       };
 }
 

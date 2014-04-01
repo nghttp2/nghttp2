@@ -38,7 +38,8 @@
 using namespace nghttp2;
 
 #define MAKE_NV(K, V) {(uint8_t*)K, (uint8_t*)V,        \
-      (uint16_t)(sizeof(K)-1), (uint16_t)(sizeof(V)-1)}
+      (uint16_t)(sizeof(K)-1), (uint16_t)(sizeof(V)-1), \
+      NGHTTP2_NV_FLAG_NONE }
 
 namespace shrpx {
 

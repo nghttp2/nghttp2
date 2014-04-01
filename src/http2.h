@@ -130,7 +130,8 @@ template<size_t N, size_t M>
 nghttp2_nv make_nv_ll(const char(&name)[N], const char(&value)[M])
 {
   return { (uint8_t*)name, (uint8_t*)value,
-      (uint16_t)(N - 1), (uint16_t)(M - 1) };
+      (uint16_t)(N - 1), (uint16_t)(M - 1),
+      NGHTTP2_NV_FLAG_NONE };
 }
 
 // Create nghttp2_nv from string literal |name| and c-string |value|.
@@ -138,7 +139,8 @@ template<size_t N>
 nghttp2_nv make_nv_lc(const char(&name)[N], const char *value)
 {
   return { (uint8_t*)name, (uint8_t*)value,
-      (uint16_t)(N - 1), (uint16_t)strlen(value) };
+      (uint16_t)(N - 1), (uint16_t)strlen(value),
+      NGHTTP2_NV_FLAG_NONE };
 }
 
 // Create nghttp2_nv from string literal |name| and std::string
@@ -147,7 +149,8 @@ template<size_t N>
 nghttp2_nv make_nv_ls(const char(&name)[N], const std::string& value)
 {
   return { (uint8_t*)name, (uint8_t*)value.c_str(),
-      (uint16_t)(N - 1), (uint16_t)value.size() };
+      (uint16_t)(N - 1), (uint16_t)value.size(),
+      NGHTTP2_NV_FLAG_NONE };
 }
 
 // Appends headers in |headers| to |nv|. Certain headers, including

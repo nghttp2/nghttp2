@@ -34,7 +34,8 @@
 #include "nghttp2_session.h"
 
 #define MAKE_NV(NAME, VALUE)                                            \
-  { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE) }
+  { (uint8_t*)NAME, (uint8_t*)VALUE, strlen(NAME), strlen(VALUE),       \
+      NGHTTP2_NV_FLAG_NONE }
 #define ARRLEN(ARR) (sizeof(ARR)/sizeof(ARR[0]))
 
 #define assert_nv_equal(A, B, len)                          \

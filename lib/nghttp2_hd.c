@@ -34,7 +34,7 @@
 
 /* Make scalar initialization form of nghttp2_nv */
 #define MAKE_STATIC_ENT(I, N, V, NH, VH)                                \
-  { { { (uint8_t*)N, (uint8_t*)V, sizeof(N) - 1, sizeof(V) - 1 },       \
+  { { { (uint8_t*)N, (uint8_t*)V, sizeof(N) - 1, sizeof(V) - 1, 0 },    \
         NH, VH, 1, NGHTTP2_HD_FLAG_NONE }, I }
 
 /* Sorted by hash(name) and its table index */
@@ -144,6 +144,11 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
                           uint8_t *value, uint16_t valuelen)
 {
   int rv = 0;
+
+  /* Since nghttp2_hd_entry is used for indexing, ent->nv.flags always
+     NGHTTP2_NV_FLAG_NONE */
+  ent->nv.flags = NGHTTP2_NV_FLAG_NONE;
+
   if((flags & NGHTTP2_HD_FLAG_NAME_ALLOC) &&
      (flags & NGHTTP2_HD_FLAG_NAME_GIFT) == 0) {
     if(namelen == 0) {
@@ -1402,6 +1407,9 @@ static int hd_inflate_commit_newname(nghttp2_hd_inflater *inflater,
     return NGHTTP2_ERR_NOMEM;
   }
 
+  /* Set NGHTTP2_NV_FLAG_NO_INDEX if never indexing repr is used */
+  nv.flags = NGHTTP2_NV_FLAG_NONE;
+
   if(inflater->index_required) {
     nghttp2_hd_entry *new_ent;
     uint8_t ent_flags;
@@ -1454,6 +1462,9 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
   if(rv != 0) {
     return NGHTTP2_ERR_NOMEM;
   }
+
+  /* Set NGHTTP2_NV_FLAG_NO_INDEX if never indexing repr is used */
+  nv.flags = NGHTTP2_NV_FLAG_NONE;
 
   nv.name = inflater->ent_name->nv.name;
   nv.namelen = inflater->ent_name->nv.namelen;

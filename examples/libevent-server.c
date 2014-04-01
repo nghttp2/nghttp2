@@ -49,7 +49,8 @@
 #define ARRLEN(x) (sizeof(x)/sizeof(x[0]))
 
 #define MAKE_NV(NAME, VALUE)                                            \
-  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1 }
+  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1, \
+      NGHTTP2_NV_FLAG_NONE }
 
 struct app_context;
 typedef struct app_context app_context;

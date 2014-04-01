@@ -381,10 +381,12 @@ static void send_client_connection_header(http2_session_data *session_data)
 }
 
 #define MAKE_NV(NAME, VALUE, VALUELEN)                                  \
-  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, VALUELEN }
+  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, VALUELEN,        \
+      NGHTTP2_NV_FLAG_NONE }
 
 #define MAKE_NV2(NAME, VALUE)                                           \
-  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1 }
+  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1, \
+      NGHTTP2_NV_FLAG_NONE }
 
 /* Send HTTP request to the remote peer */
 static void submit_request(http2_session_data *session_data)
