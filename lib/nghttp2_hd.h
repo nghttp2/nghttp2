@@ -103,7 +103,7 @@ typedef enum {
 
 typedef enum {
   NGHTTP2_HD_STATE_OPCODE,
-  NGHTTP2_HD_STATE_CONTEXT_UPDATE,
+  NGHTTP2_HD_STATE_CLEAR_REFSET,
   NGHTTP2_HD_STATE_READ_TABLE_SIZE,
   NGHTTP2_HD_STATE_READ_INDEX,
   NGHTTP2_HD_STATE_NEWNAME_CHECK_NAMELEN,
@@ -177,6 +177,9 @@ typedef struct {
   uint8_t huffman_encoded;
   /* nonzero if deflater requires that current entry is indexed */
   uint8_t index_required;
+  /* nonzero if deflater requires that current entry must not be
+     indexed */
+  uint8_t no_index;
 } nghttp2_hd_inflater;
 
 /*
@@ -370,8 +373,7 @@ int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t index,
-                                  const uint8_t *value, size_t valuelen,
-                                  int inc_indexing);
+                                  nghttp2_nv *nv, int inc_indexing);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,

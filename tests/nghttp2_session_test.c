@@ -2347,6 +2347,7 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
     memset(nv[i].value, '0'+i, vallen);
     nv[i].value[vallen] = '\0';
     nv[i].valuelen = vallen;
+    nv[i].flags = NGHTTP2_NV_FLAG_NONE;
   }
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
@@ -4665,6 +4666,7 @@ void test_nghttp2_session_pack_headers_with_padding(void)
     nva[i].namelen = 5;
     nva[i].value = (uint8_t*)"/";
     nva[i].valuelen = 1;
+    nva[i].flags = NGHTTP2_NV_FLAG_NONE;
   }
 
   memset(&callbacks, 0, sizeof(callbacks));
@@ -4729,6 +4731,7 @@ void test_nghttp2_session_pack_headers_with_padding2(void)
     nva[i].namelen = 5;
     nva[i].value = (uint8_t*)"/";
     nva[i].valuelen = 1;
+    nva[i].flags = NGHTTP2_NV_FLAG_NONE;
   }
 
   memset(&callbacks, 0, sizeof(callbacks));
@@ -4777,6 +4780,7 @@ void test_nghttp2_session_pack_headers_with_padding3(void)
     nva[i].namelen = 5;
     nva[i].value = (uint8_t*)"/";
     nva[i].valuelen = 1;
+    nva[i].flags = NGHTTP2_NV_FLAG_NONE;
   }
 
   memset(&callbacks, 0, sizeof(callbacks));
@@ -4817,12 +4821,7 @@ void test_nghttp2_session_pack_headers_with_padding4(void)
   accumulator acc;
   my_user_data ud;
   nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[1];
-
-  nva[0].name = (uint8_t*)":path";
-  nva[0].namelen = 5;
-  nva[0].value = (uint8_t*)"/";
-  nva[0].valuelen = 1;
+  nghttp2_nv nv = MAKE_NV(":path", "/");
 
   memset(&callbacks, 0, sizeof(callbacks));
   callbacks.send_callback = accumulator_send_callback;
@@ -4841,7 +4840,7 @@ void test_nghttp2_session_pack_headers_with_padding4(void)
 
   CU_ASSERT(0 ==
             nghttp2_submit_request(session, NULL,
-                                   nva, ARRLEN(nva), NULL, NULL));
+                                   &nv, 1, NULL, NULL));
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   CU_ASSERT(acc.length < NGHTTP2_MAX_PAYLOADLEN);

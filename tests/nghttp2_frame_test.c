@@ -41,6 +41,8 @@ static nghttp2_nv make_nv(const char *name, const char *value)
   nv.value = (uint8_t*)value;
   nv.namelen = strlen(name);
   nv.valuelen = strlen(value);
+  nv.flags = NGHTTP2_NV_FLAG_NONE;
+
   return nv;
 }
 
@@ -223,6 +225,7 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
     big_hds[i].value[big_vallen] = '\0';
     big_hds[i].namelen = strlen((char*)big_hds[i].name);
     big_hds[i].valuelen = big_vallen;
+    big_hds[i].flags = NGHTTP2_NV_FLAG_NONE;
   }
 
   pri_spec.pri_type = NGHTTP2_PRIORITY_TYPE_NONE;

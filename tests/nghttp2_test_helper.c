@@ -161,6 +161,9 @@ void add_out(nva_out *out, nghttp2_nv *nv)
   }
   onv->namelen = nv->namelen;
   onv->valuelen = nv->valuelen;
+
+  onv->flags = nv->flags;
+
   ++out->nvlen;
 }
 

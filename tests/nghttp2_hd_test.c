@@ -329,9 +329,7 @@ void test_nghttp2_hd_inflate_indname_noinc(void)
   nghttp2_hd_inflate_init(&inflater);
 
   for(i = 0; i < ARRLEN(nv); ++i) {
-    CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 56,
-                                                 nv[i].value, nv[i].valuelen,
-                                                 0));
+    CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 56, &nv[i], 0));
 
     blocklen = nghttp2_bufs_len(&bufs);
 
@@ -363,8 +361,7 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   nva_out_init(&out);
   nghttp2_hd_inflate_init(&inflater);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 56,
-                                               nv.value, nv.valuelen, 1));
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 56, &nv, 1));
 
   blocklen = nghttp2_bufs_len(&bufs);
 
@@ -390,6 +387,7 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   ssize_t blocklen;
   uint8_t value[1024];
   nva_out out;
+  nghttp2_nv nv;
 
   frame_pack_bufs_init(&bufs);
 
@@ -397,14 +395,15 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
   nghttp2_hd_inflate_init(&inflater);
 
   memset(value, '0', sizeof(value));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 13,
-                                               value, sizeof(value), 1));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 14,
-                                               value, sizeof(value), 1));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 15,
-                                               value, sizeof(value), 1));
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 16,
-                                               value, sizeof(value), 1));
+  nv.value = value;
+  nv.valuelen = sizeof(value);
+
+  nv.flags = NGHTTP2_NV_FLAG_NONE;
+
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 13, &nv, 1));
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 14, &nv, 1));
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 15, &nv, 1));
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 16, &nv, 1));
 
   blocklen = nghttp2_bufs_len(&bufs);
 
@@ -519,6 +518,8 @@ void test_nghttp2_hd_inflate_clearall_inc(void)
   memset(value, '0', sizeof(value));
   nv.value = value;
   nv.valuelen = sizeof(value);
+
+  nv.flags = NGHTTP2_NV_FLAG_NONE;
 
   nghttp2_hd_inflate_init(&inflater);
 
@@ -988,6 +989,57 @@ void test_nghttp2_hd_deflate_inflate(void)
   check_deflate_inflate(&deflater, &inflater, nv9, ARRLEN(nv9));
   check_deflate_inflate(&deflater, &inflater, nv10, ARRLEN(nv10));
 
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+}
+
+void test_nghttp2_hd_no_index(void)
+{
+  nghttp2_hd_deflater deflater;
+  nghttp2_hd_inflater inflater;
+  nghttp2_bufs bufs;
+  ssize_t blocklen;
+  nghttp2_nv nva[] = {
+    MAKE_NV(":method", "GET"),
+    MAKE_NV(":method", "POST"),
+    MAKE_NV(":path", "/foo"),
+    MAKE_NV("version", "HTTP/1.1"),
+    MAKE_NV(":method", "GET"),
+  };
+  size_t i;
+  nva_out out;
+  int rv;
+
+  /* 1st :method: GET can be indexable, last one is not */
+  for(i = 1; i < ARRLEN(nva); ++i) {
+    nva[i].flags = NGHTTP2_NV_FLAG_NO_INDEX;
+  }
+
+  frame_pack_bufs_init(&bufs);
+
+  nva_out_init(&out);
+
+  nghttp2_hd_deflate_init(&deflater);
+  nghttp2_hd_inflate_init(&inflater);
+
+  rv = nghttp2_hd_deflate_hd(&deflater, &bufs, nva, ARRLEN(nva));
+  blocklen = nghttp2_bufs_len(&bufs);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(blocklen > 0);
+  CU_ASSERT(blocklen == inflate_hd(&inflater, &out, &bufs, 0));
+
+  CU_ASSERT(ARRLEN(nva) == out.nvlen);
+  assert_nv_equal(nva, out.nva, ARRLEN(nva));
+
+  CU_ASSERT(out.nva[0].flags == NGHTTP2_NV_FLAG_NONE);
+  for(i = 1; i < ARRLEN(nva); ++i) {
+    CU_ASSERT(out.nva[i].flags == NGHTTP2_NV_FLAG_NO_INDEX);
+  }
+
+  nva_out_reset(&out);
+
+  nghttp2_bufs_free(&bufs);
   nghttp2_hd_inflate_free(&inflater);
   nghttp2_hd_deflate_free(&deflater);
 }

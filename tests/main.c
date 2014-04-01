@@ -274,6 +274,7 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_change_table_size) ||
       !CU_add_test(pSuite, "hd_deflate_inflate",
                    test_nghttp2_hd_deflate_inflate) ||
+      !CU_add_test(pSuite, "hd_no_index", test_nghttp2_hd_no_index) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "adjust_local_window_size",
                    test_nghttp2_adjust_local_window_size) ||
