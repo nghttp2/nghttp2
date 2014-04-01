@@ -1476,7 +1476,7 @@ static int session_headers_add_pad(nghttp2_session *session,
 static int nghttp2_session_prep_frame(nghttp2_session *session,
                                       nghttp2_outbound_item *item)
 {
-  ssize_t framebuflen = 0;
+  ssize_t framerv = 0;
   int rv;
 
   if(item->frame_cat == NGHTTP2_CAT_CTRL) {
@@ -1519,20 +1519,20 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
           return rv;
         }
       }
-      framebuflen = nghttp2_frame_pack_headers(&session->aob.framebufs,
-                                               &frame->headers,
-                                               &session->hd_deflater);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_headers(&session->aob.framebufs,
+                                           &frame->headers,
+                                           &session->hd_deflater);
+      if(framerv < 0) {
+        return framerv;
       }
 
       DEBUGF(fprintf(stderr,
                      "send: before padding, HEADERS serialized in %zd bytes\n",
                      nghttp2_bufs_len(&session->aob.framebufs)));
 
-      framebuflen = session_headers_add_pad(session, frame);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = session_headers_add_pad(session, frame);
+      if(framerv < 0) {
+        return framerv;
       }
 
       switch(frame->headers.cat) {
@@ -1568,18 +1568,18 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       if(rv != 0) {
         return rv;
       }
-      framebuflen = nghttp2_frame_pack_priority(&session->aob.framebufs,
-                                                &frame->priority);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_priority(&session->aob.framebufs,
+                                            &frame->priority);
+      if(framerv < 0) {
+        return framerv;
       }
       break;
     }
     case NGHTTP2_RST_STREAM:
-      framebuflen = nghttp2_frame_pack_rst_stream(&session->aob.framebufs,
-                                                  &frame->rst_stream);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_rst_stream(&session->aob.framebufs,
+                                              &frame->rst_stream);
+      if(framerv < 0) {
+        return framerv;
       }
       break;
     case NGHTTP2_SETTINGS: {
@@ -1587,10 +1587,10 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       if(rv != 0) {
         return rv;
       }
-      framebuflen = nghttp2_frame_pack_settings(&session->aob.framebufs,
-                                                &frame->settings);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_settings(&session->aob.framebufs,
+                                            &frame->settings);
+      if(framerv < 0) {
+        return framerv;
       }
       break;
     }
@@ -1608,15 +1608,15 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       }
       frame->push_promise.promised_stream_id = session->next_stream_id;
       session->next_stream_id += 2;
-      framebuflen = nghttp2_frame_pack_push_promise(&session->aob.framebufs,
-                                                    &frame->push_promise,
-                                                    &session->hd_deflater);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_push_promise(&session->aob.framebufs,
+                                                &frame->push_promise,
+                                                &session->hd_deflater);
+      if(framerv < 0) {
+        return framerv;
       }
-      framebuflen = session_headers_add_pad(session, frame);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = session_headers_add_pad(session, frame);
+      if(framerv < 0) {
+        return framerv;
       }
 
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -1638,10 +1638,10 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_PING:
-      framebuflen = nghttp2_frame_pack_ping(&session->aob.framebufs,
-                                            &frame->ping);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_ping(&session->aob.framebufs,
+                                        &frame->ping);
+      if(framerv < 0) {
+        return framerv;
       }
       break;
     case NGHTTP2_WINDOW_UPDATE: {
@@ -1650,10 +1650,10 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       if(rv != 0) {
         return rv;
       }
-      framebuflen = nghttp2_frame_pack_window_update(&session->aob.framebufs,
-                                                     &frame->window_update);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_window_update(&session->aob.framebufs,
+                                                 &frame->window_update);
+      if(framerv < 0) {
+        return framerv;
       }
       break;
     }
@@ -1665,18 +1665,18 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
            peer that last-stream-id. */
         return NGHTTP2_ERR_GOAWAY_ALREADY_SENT;
       }
-      framebuflen = nghttp2_frame_pack_goaway(&session->aob.framebufs,
-                                              &frame->goaway);
-      if(framebuflen < 0) {
-        return framebuflen;
+      framerv = nghttp2_frame_pack_goaway(&session->aob.framebufs,
+                                          &frame->goaway);
+      if(framerv < 0) {
+        return framerv;
       }
       break;
     case NGHTTP2_ALTSVC:
-      framebuflen = nghttp2_frame_pack_altsvc(&session->aob.framebufs,
-                                              &frame->altsvc);
+      framerv = nghttp2_frame_pack_altsvc(&session->aob.framebufs,
+                                          &frame->altsvc);
 
-      if(framebuflen < 0) {
-        return framebuflen;
+      if(framerv < 0) {
+        return framerv;
       }
 
       break;
@@ -1724,17 +1724,17 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
     }
-    framebuflen = nghttp2_session_pack_data(session,
-                                            &session->aob.framebufs,
-                                            next_readmax,
-                                            data_frame);
-    if(framebuflen == NGHTTP2_ERR_DEFERRED) {
+    framerv = nghttp2_session_pack_data(session,
+                                        &session->aob.framebufs,
+                                        next_readmax,
+                                        data_frame);
+    if(framerv == NGHTTP2_ERR_DEFERRED) {
       nghttp2_stream_defer_data(stream, item, NGHTTP2_DEFERRED_NONE);
       session->aob.item = NULL;
       nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
     }
-    if(framebuflen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+    if(framerv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
       rv = nghttp2_stream_detach_data(stream, &session->ob_pq);
 
       if(nghttp2_is_fatal(rv)) {
@@ -1746,10 +1746,10 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       if(rv != 0) {
         return rv;
       }
-      return framebuflen;
+      return framerv;
     }
-    if(framebuflen < 0) {
-      return framebuflen;
+    if(framerv < 0) {
+      return framerv;
     }
     return 0;
   } else {
@@ -2161,7 +2161,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
 
         return 0;
       }
-      assert(rv >= 0);
+      assert(rv == 0);
 
       return 0;
     }
@@ -5358,10 +5358,10 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
-ssize_t nghttp2_session_pack_data(nghttp2_session *session,
-                                  nghttp2_bufs *bufs,
-                                  size_t datamax,
-                                  nghttp2_private_data *frame)
+int nghttp2_session_pack_data(nghttp2_session *session,
+                              nghttp2_bufs *bufs,
+                              size_t datamax,
+                              nghttp2_private_data *frame)
 {
   ssize_t rv;
   int eof_flags;
@@ -5446,7 +5446,7 @@ ssize_t nghttp2_session_pack_data(nghttp2_session *session,
   frame->hd.flags |= hd.flags;
   frame->padlen = padlen;
 
-  return nghttp2_buf_len(buf);
+  return 0;
 }
 
 void* nghttp2_session_get_stream_user_data(nghttp2_session *session,

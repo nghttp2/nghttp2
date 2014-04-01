@@ -621,8 +621,8 @@ nghttp2_stream_group* nghttp2_session_get_stream_group
  * filled using |frame->data_prd|. The length of payload is at most
  * |datamax| bytes.
  *
- * This function returns the size of packed frame if it succeeds, or
- * one of the following negative error codes:
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
  *
  * NGHTTP2_ERR_DEFERRED
  *     The DATA frame is postponed.
@@ -633,10 +633,10 @@ nghttp2_stream_group* nghttp2_session_get_stream_group
  * NGHTTP2_ERR_CALLBACK_FAILURE
  *     The read_callback failed (session error).
  */
-ssize_t nghttp2_session_pack_data(nghttp2_session *session,
-                                  nghttp2_bufs *bufs,
-                                  size_t datamax,
-                                  nghttp2_private_data *frame);
+int nghttp2_session_pack_data(nghttp2_session *session,
+                              nghttp2_bufs *bufs,
+                              size_t datamax,
+                              nghttp2_private_data *frame);
 
 /*
  * Returns top of outbound frame queue. This function returns NULL if
