@@ -5237,7 +5237,7 @@ int nghttp2_session_add_goaway(nghttp2_session *session,
   nghttp2_frame *frame;
   uint8_t *opaque_data_copy = NULL;
   if(opaque_data_len) {
-    if(opaque_data_len > UINT16_MAX - 8) {
+    if(opaque_data_len + 8 > NGHTTP2_MAX_PAYLOADLEN) {
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
     opaque_data_copy = malloc(opaque_data_len);

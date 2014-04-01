@@ -283,6 +283,8 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     The |opaque_data_len| is too large.
  */
 int nghttp2_session_add_goaway(nghttp2_session *session,
                                int32_t last_stream_id,

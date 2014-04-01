@@ -335,6 +335,11 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
 
   varlen = protocol_id_len + host_len + origin_len;
 
+  /* 9 = fixed part 8 bytes + HOST_LEN 1 byte */
+  if(varlen + 9 > NGHTTP2_MAX_PAYLOADLEN) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
   if(varlen == 0) {
     var = NULL;
     copy_protocol_id = NULL;

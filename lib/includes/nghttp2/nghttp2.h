@@ -2452,6 +2452,8 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     The |opaque_data_len| is too large.
  */
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           nghttp2_error_code error_code,
@@ -2520,6 +2522,9 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_INVALID_STATE`
  *     The function is invoked with |session| which was initialized as
  *     client.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     The combined length of |protocol_id_len|, |host_len| and
+ *     |origin_len| is is too large.
  */
 int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
                           int32_t stream_id,
