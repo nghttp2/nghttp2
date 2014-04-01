@@ -329,7 +329,7 @@ void test_nghttp2_hd_inflate_indname_noinc(void)
   nghttp2_hd_inflate_init(&inflater);
 
   for(i = 0; i < ARRLEN(nv); ++i) {
-    CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 56, &nv[i], 0));
+    CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 57, &nv[i], 0));
 
     blocklen = nghttp2_bufs_len(&bufs);
 
@@ -361,7 +361,7 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   nva_out_init(&out);
   nghttp2_hd_inflate_init(&inflater);
 
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 56, &nv, 1));
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 57, &nv, 1));
 
   blocklen = nghttp2_bufs_len(&bufs);
 
@@ -400,10 +400,10 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void)
 
   nv.flags = NGHTTP2_NV_FLAG_NONE;
 
-  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 13, &nv, 1));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 14, &nv, 1));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 15, &nv, 1));
   CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 16, &nv, 1));
+  CU_ASSERT(0 == nghttp2_hd_emit_indname_block(&bufs, 17, &nv, 1));
 
   blocklen = nghttp2_bufs_len(&bufs);
 
