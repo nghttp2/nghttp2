@@ -5468,12 +5468,9 @@ int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id)
   nghttp2_stream *stream;
   stream = nghttp2_session_get_stream(session, stream_id);
   if(stream == NULL ||
-     nghttp2_stream_check_deferred_by_flow_control(stream)) {
+     nghttp2_stream_check_deferred_by_flow_control(stream) ||
+     !nghttp2_stream_check_deferred_data(stream)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-
-  if(!nghttp2_stream_check_deferred_data(stream)) {
-    return 0;
   }
 
   rv = nghttp2_stream_resume_deferred_data(stream, &session->ob_pq);

@@ -1848,7 +1848,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The stream does not exist or no deferred data exist.
+ *     The stream does not exist; or no deferred data exist; or data
+ *     was deferred by flow control.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
