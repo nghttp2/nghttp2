@@ -42,9 +42,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->state = initial_state;
   stream->shut_flags = NGHTTP2_SHUT_NONE;
   stream->stream_user_data = stream_user_data;
-  stream->data = NULL;
-  stream->deferred_data = NULL;
-  stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
+  stream->data_item = NULL;
   stream->remote_window_size = remote_initial_window_size;
   stream->local_window_size = local_initial_window_size;
   stream->recv_window_size = 0;
@@ -65,10 +63,12 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
 
 void nghttp2_stream_free(nghttp2_stream *stream)
 {
-  nghttp2_outbound_item_free(stream->deferred_data);
-  free(stream->deferred_data);
+  if(stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) {
+    nghttp2_outbound_item_free(stream->data_item);
+    free(stream->data_item);
+  }
 
-  /* We don't free stream->data. */
+  /* We don't free stream->data_item otherwise. */
 }
 
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag)
@@ -81,22 +81,22 @@ static int stream_push_data(nghttp2_stream *stream, nghttp2_pq *pq)
   int rv;
   ssize_t weight;
 
-  assert(stream->data);
-  assert(stream->data->queued == 0);
+  assert(stream->data_item);
+  assert(stream->data_item->queued == 0);
 
   weight = nghttp2_stream_group_shared_wait(stream->stream_group);
 
-  if(stream->data->weight > weight) {
-    stream->data->weight = weight;
+  if(stream->data_item->weight > weight) {
+    stream->data_item->weight = weight;
   }
 
-  rv = nghttp2_pq_push(pq, stream->data);
+  rv = nghttp2_pq_push(pq, stream->data_item);
 
   if(rv != 0) {
     return rv;
   }
 
-  stream->data->queued = 1;
+  stream->data_item->queued = 1;
 
   return 0;
 }
@@ -190,7 +190,7 @@ static void stream_update_dep_set_rest(nghttp2_stream *stream)
 
 /*
  * Performs dfs starting |stream|, search stream which can become
- * NGHTTP2_STREAM_DPRI_TOP and queues its data.
+ * NGHTTP2_STREAM_DPRI_TOP and queues its data_item.
  *
  * This function returns the number of stream marked as
  * NGHTTP2_STREAM_DPRI_TOP (including already marked as such) if it
@@ -226,7 +226,7 @@ static ssize_t stream_update_dep_set_top(nghttp2_stream *stream,
     DEBUGF(fprintf(stderr, "stream: stream=%d data is top\n",
                    stream->stream_id));
 
-    if(!stream->data->queued) {
+    if(!stream->data_item->queued) {
       rv = stream_push_data(stream, pq);
 
       if(rv != 0) {
@@ -329,16 +329,21 @@ static int stream_update_dep_on_detach_data(nghttp2_stream *stream,
 }
 
 int nghttp2_stream_attach_data(nghttp2_stream *stream,
-                               nghttp2_outbound_item *data,
+                               nghttp2_outbound_item *data_item,
                                nghttp2_pq *pq)
 {
-  assert(stream->data == NULL);
-  assert(stream->deferred_data == NULL);
+  /* This function may be called when stream->data_item is not-NULL.
+     In this case, stream->data_item == data_item. */
+  assert((stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) == 0);
 
-  stream->data = data;
+  if(stream->data_item) {
+    assert(stream->data_item == data_item);
+  } else {
+    stream->data_item = data_item;
+  }
 
   DEBUGF(fprintf(stderr, "stream: stream=%d attach data=%p\n",
-                 stream->stream_id, data));
+                 stream->stream_id, data_item));
 
   return stream_update_dep_on_attach_data(stream, pq);
 }
@@ -346,40 +351,41 @@ int nghttp2_stream_attach_data(nghttp2_stream *stream,
 int nghttp2_stream_detach_data(nghttp2_stream *stream, nghttp2_pq *pq)
 {
   DEBUGF(fprintf(stderr, "stream: stream=%d detach data=%p\n",
-                 stream->stream_id, stream->data));
+                 stream->stream_id, stream->data_item));
 
-  stream->data = NULL;
+  stream->data_item = NULL;
+  stream->flags &= ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL;
 
   return stream_update_dep_on_detach_data(stream, pq);
 }
 
-void nghttp2_stream_defer_data(nghttp2_stream *stream,
-                               nghttp2_outbound_item *data,
-                               uint8_t flags)
+void nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags)
 {
-  assert(stream->data);
-  assert(stream->data == data);
-  assert(stream->deferred_data == NULL);
+  assert(stream->data_item);
 
-  stream->deferred_data = data;
-  stream->deferred_flags = flags;
-
-  stream->data = NULL;
+  stream->flags |= flags;
 }
 
 int nghttp2_stream_detach_deferred_data(nghttp2_stream *stream,
                                         nghttp2_pq *pq)
 {
-  nghttp2_outbound_item *data;
-  assert(stream->data == NULL);
-  assert(stream->deferred_data);
+  assert(stream->data_item);
 
-  data = stream->deferred_data;
+  stream->flags &= ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL;
 
-  stream->deferred_data = NULL;
-  stream->deferred_flags = NGHTTP2_DEFERRED_NONE;
+  return nghttp2_stream_attach_data(stream, stream->data_item, pq);
+}
 
-  return nghttp2_stream_attach_data(stream, data, pq);
+int nghttp2_stream_check_deferred_data(nghttp2_stream *stream)
+{
+  return stream->data_item &&
+    (stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL);
+}
+
+int nghttp2_stream_check_deferred_by_flow_control(nghttp2_stream *stream)
+{
+  return stream->data_item &&
+    (stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
 }
 
 static int update_initial_window_size
@@ -466,7 +472,7 @@ void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
 {
   nghttp2_stream *si;
 
-  assert(stream->data == NULL);
+  assert(stream->data_item == NULL);
 
   DEBUGF(fprintf(stderr,
                  "stream: dep_insert dep_stream(%p)=%d, stream(%p)=%d\n",
@@ -493,7 +499,7 @@ void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
 {
   nghttp2_stream *last_sib;
 
-  assert(stream->data == NULL);
+  assert(stream->data_item == NULL);
 
   DEBUGF(fprintf(stderr,
                  "stream: dep_add dep_stream(%p)=%d, stream(%p)=%d\n",

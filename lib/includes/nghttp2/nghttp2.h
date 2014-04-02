@@ -2308,6 +2308,8 @@ int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_DATA_EXIST`
+ *     DATA has been already submitted and not fully processed yet.
  */
 int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
                         int32_t stream_id,

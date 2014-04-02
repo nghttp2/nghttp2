@@ -451,7 +451,7 @@ void nghttp2_session_del(nghttp2_session *session)
   free(session->inflight_iv);
 
   /* Have to free streams first, so that we can check
-     stream->data->queued */
+     stream->data_item->queued */
   nghttp2_map_each_free(&session->streams, nghttp2_free_streams, NULL);
   nghttp2_map_free(&session->streams);
 
@@ -688,9 +688,13 @@ int nghttp2_session_add_frame(nghttp2_session *session,
 
     stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
     if(stream) {
-      item->weight = nghttp2_stream_group_shared_wait(stream->stream_group);
+      if(stream->data_item) {
+        rv = NGHTTP2_ERR_DATA_EXIST;
+      } else {
+        item->weight = nghttp2_stream_group_shared_wait(stream->stream_group);
 
-      rv = nghttp2_stream_attach_data(stream, item, &session->ob_pq);
+        rv = nghttp2_stream_attach_data(stream, item, &session->ob_pq);
+      }
     }
 
   } else {
@@ -867,10 +871,10 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
   DEBUGF(fprintf(stderr, "stream: stream(%p)=%d close\n",
                  stream, stream->stream_id));
 
-  if(stream->data) {
+  if(stream->data_item) {
     nghttp2_outbound_item *item;
 
-    item = stream->data;
+    item = stream->data_item;
 
     rv = nghttp2_stream_detach_data(stream, &session->ob_pq);
 
@@ -1364,8 +1368,6 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
  * NGHTTP2_ERR_STREAM_SHUT_WR
  *     The transmission is not allowed for this stream (e.g., a frame
  *     with END_STREAM flag set has already sent)
- * NGHTTP2_ERR_DEFERRED_DATA_EXIST
- *     Another DATA frame has already been deferred.
  * NGHTTP2_ERR_STREAM_CLOSING
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
@@ -1379,12 +1381,6 @@ static int nghttp2_session_predicate_data_send(nghttp2_session *session,
   rv = nghttp2_predicate_stream_for_send(stream);
   if(rv != 0) {
     return rv;
-  }
-  if(stream->deferred_data != NULL) {
-    /* stream->deferred_data != NULL means previously queued DATA
-       frame has not been sent. We don't allow new DATA frame is sent
-       in this case. */
-    return NGHTTP2_ERR_DEFERRED_DATA_EXIST;
   }
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
     /* Request body data */
@@ -1689,17 +1685,13 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
     data_frame = nghttp2_outbound_item_get_data_frame(item);
     stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
 
-    if(stream && stream->data && stream->data != item) {
-      /* We don't allow multiple DATA for a stream at the same
-         time. */
-      return NGHTTP2_ERR_DATA_EXIST;
+    if(stream) {
+      assert(stream->data_item == item);
     }
 
     rv = nghttp2_session_predicate_data_send(session, data_frame->hd.stream_id);
     if(rv != 0) {
       int rv2;
-
-      stream = nghttp2_session_get_stream(session, data_frame->hd.stream_id);
 
       if(stream) {
         rv2 = nghttp2_stream_detach_data(stream, &session->ob_pq);
@@ -1716,7 +1708,8 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
     next_readmax = nghttp2_session_next_data_read(session, stream);
 
     if(next_readmax == 0) {
-      nghttp2_stream_defer_data(stream, item, NGHTTP2_DEFERRED_FLOW_CONTROL);
+      nghttp2_stream_defer_data(stream,
+                                NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
       session->aob.item = NULL;
       nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
@@ -1726,7 +1719,7 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
                                         next_readmax,
                                         data_frame);
     if(framerv == NGHTTP2_ERR_DEFERRED) {
-      nghttp2_stream_defer_data(stream, item, NGHTTP2_DEFERRED_NONE);
+      nghttp2_stream_defer_data(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER);
       session->aob.item = NULL;
       nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
@@ -1953,8 +1946,8 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
-          /* If rv is not fatal, the only possible error is closed
-             stream, so we have nothing to do here. */
+          /* TODO nghttp2_submit_data() may fail if stream has already
+             DATA frame item.  We might have to handle it here. */
         }
         break;
       }
@@ -2114,8 +2107,8 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       next_readmax = nghttp2_session_next_data_read(session, stream);
 
       if(next_readmax == 0) {
-        nghttp2_stream_defer_data(stream, aob->item,
-                                  NGHTTP2_DEFERRED_FLOW_CONTROL);
+        nghttp2_stream_defer_data(stream,
+                                  NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
         aob->item = NULL;
         nghttp2_active_outbound_item_reset(aob);
 
@@ -2130,7 +2123,7 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         return rv;
       }
       if(rv == NGHTTP2_ERR_DEFERRED) {
-        nghttp2_stream_defer_data(stream, aob->item, NGHTTP2_DEFERRED_NONE);
+        nghttp2_stream_defer_data(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER);
         aob->item = NULL;
         nghttp2_active_outbound_item_reset(aob);
 
@@ -3086,8 +3079,7 @@ static int nghttp2_update_remote_initial_window_size_func
   }
   /* If window size gets positive, push deferred DATA frame to
      outbound queue. */
-  if(stream->deferred_data &&
-     (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL) &&
+  if(nghttp2_stream_check_deferred_by_flow_control(stream) &&
      stream->remote_window_size > 0 &&
      arg->session->remote_window_size > 0) {
 
@@ -3581,8 +3573,7 @@ static int nghttp2_push_back_deferred_data_func(nghttp2_map_entry *entry,
 
   /* If DATA frame is deferred due to flow control, push it back to
      outbound queue. */
-  if(stream->deferred_data &&
-     (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL) &&
+  if(nghttp2_stream_check_deferred_by_flow_control(stream) &&
      stream->remote_window_size > 0) {
 
     rv = nghttp2_stream_detach_deferred_data(stream, &session->ob_pq);
@@ -3653,8 +3644,7 @@ static int session_on_stream_window_update_received
   stream->remote_window_size += frame->window_update.window_size_increment;
   if(stream->remote_window_size > 0 &&
      session->remote_window_size > 0 &&
-     stream->deferred_data != NULL &&
-     (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
+     nghttp2_stream_check_deferred_by_flow_control(stream)) {
 
     rv = nghttp2_stream_detach_deferred_data(stream, &session->ob_pq);
 
@@ -5477,9 +5467,13 @@ int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id)
   int rv;
   nghttp2_stream *stream;
   stream = nghttp2_session_get_stream(session, stream_id);
-  if(stream == NULL || stream->deferred_data == NULL ||
-     (stream->deferred_flags & NGHTTP2_DEFERRED_FLOW_CONTROL)) {
+  if(stream == NULL ||
+     nghttp2_stream_check_deferred_by_flow_control(stream)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if(!nghttp2_stream_check_deferred_data(stream)) {
+    return 0;
   }
 
   rv = nghttp2_stream_detach_deferred_data(stream, &session->ob_pq);

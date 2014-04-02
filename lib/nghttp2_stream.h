@@ -84,7 +84,15 @@ typedef enum {
   /* Indicates that this stream is pushed stream */
   NGHTTP2_STREAM_FLAG_PUSH = 0x01,
   /* Indicates that this stream was closed */
-  NGHTTP2_STREAM_FLAG_CLOSED = 0x02
+  NGHTTP2_STREAM_FLAG_CLOSED = 0x02,
+  /* Indicates the DATA is deferred due to flow control. */
+  NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL = 0x04,
+  /* Indicates the DATA is deferred by user callback */
+  NGHTTP2_STREAM_FLAG_DEFERRED_USER = 0x08,
+  /* bitwise OR of NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and
+     NGHTTP2_STREAM_FLAG_DEFERRED_USER. */
+  NGHTTP2_STREAM_FLAG_DEFERRED_ALL =  0x0c,
+
 } nghttp2_stream_flag;
 
 typedef enum {
@@ -93,12 +101,6 @@ typedef enum {
   NGHTTP2_STREAM_DPRI_TOP = 0x02,
   NGHTTP2_STREAM_DPRI_REST = 0x04
 } nghttp2_stream_dpri;
-
-typedef enum {
-  NGHTTP2_DEFERRED_NONE = 0,
-  /* Indicates the DATA is deferred due to flow control. */
-  NGHTTP2_DEFERRED_FLOW_CONTROL = 0x01
-} nghttp2_deferred_flag;
 
 struct nghttp2_stream_group;
 
@@ -127,10 +129,8 @@ struct nghttp2_stream {
   nghttp2_stream *closed_next;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
-  /* Active DATA frame */
-  nghttp2_outbound_item *data;
-  /* Deferred DATA frame */
-  nghttp2_outbound_item *deferred_data;
+  /* DATA frame item */
+  nghttp2_outbound_item *data_item;
   /* stream ID */
   int32_t stream_id;
   /* priority group this stream belongs to */
@@ -162,9 +162,6 @@ struct nghttp2_stream {
   uint8_t flags;
   /* Bitwise OR of zero or more nghttp2_shut_flag values */
   uint8_t shut_flags;
-  /* The flags for defered DATA. Bitwise OR of zero or more
-     nghttp2_deferred_flag values */
-  uint8_t deferred_flags;
 };
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
@@ -183,20 +180,32 @@ void nghttp2_stream_free(nghttp2_stream *stream);
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
 
 /*
- * Defer DATA frame |data|. We won't call this function in the
- * situation where stream->deferred_data != NULL.  If |flags| is
- * bitwise OR of zero or more nghttp2_deferred_flag values.
+ * Defer DATA frame |stream->data_item|.  We won't call this function
+ * in the situation where |stream->data_item| == NULL.  If |flags| is
+ * bitwise OR of zero or more of NGHTTP2_STREAM_FLAG_DEFERRED_USER and
+ * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL.  The |flags| indicates
+ * the reason of this action.
  */
-void nghttp2_stream_defer_data(nghttp2_stream *stream,
-                               nghttp2_outbound_item *data,
-                               uint8_t flags);
+void nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags);
 
 /*
- * Detaches deferred data from this stream. This function does not
- * free deferred data.
+ * Detaches deferred data in this stream and it is back to active
+ * state.  The flags NGHTTP2_STREAM_FLAG_DEFERRED_USER and
+ * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL are cleared if they are
+ * set.
  */
 int nghttp2_stream_detach_deferred_data(nghttp2_stream *stream,
                                         nghttp2_pq *pq);
+
+/*
+ * Returns nonzero if data item is deferred by whatever reason.
+ */
+int nghttp2_stream_check_deferred_data(nghttp2_stream *stream);
+
+/*
+ * Returns nonzero if data item is deferred by flow control.
+ */
+int nghttp2_stream_check_deferred_by_flow_control(nghttp2_stream *stream);
 
 /*
  * Updates the remote window size with the new value
@@ -269,7 +278,7 @@ void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
 void nghttp2_stream_dep_remove(nghttp2_stream *stream);
 
 /*
- * Attaches |data| to |stream|.  Updates dpri members in this
+ * Attaches |data_item| to |stream|.  Updates dpri members in this
  * dependency tree.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -279,12 +288,13 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream);
  *     Out of memory
  */
 int nghttp2_stream_attach_data(nghttp2_stream *stream,
-                               nghttp2_outbound_item *data,
+                               nghttp2_outbound_item *data_item,
                                nghttp2_pq *pq);
 
 /*
- * Detaches |data| from |stream|.  Updates dpri members in this
- * dependency tree.
+ * Detaches |stream->data_item|.  Updates dpri members in this
+ * dependency tree.  This function does not free |stream->data_item|.
+ * The caller must free it.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:

@@ -2201,13 +2201,13 @@ void test_nghttp2_session_on_window_update_received(void)
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024 == stream->remote_window_size);
 
-  nghttp2_stream_defer_data(stream, data_item, NGHTTP2_DEFERRED_FLOW_CONTROL);
+  nghttp2_stream_defer_data(stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(2 == user_data.frame_recv_cb_called);
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE+16*1024*2 ==
             stream->remote_window_size);
-  CU_ASSERT(NULL == stream->deferred_data);
+  CU_ASSERT(0 == (stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL));
 
   nghttp2_frame_window_update_free(&frame.window_update);
 
@@ -4233,9 +4233,9 @@ void test_nghttp2_session_data_read_temporal_failure(void)
   CU_ASSERT(data_size - NGHTTP2_INITIAL_WINDOW_SIZE == ud.data_source_length);
 
   stream = nghttp2_session_get_stream(session, 1);
-  CU_ASSERT(NULL != stream->deferred_data);
-  CU_ASSERT(NGHTTP2_CAT_DATA == stream->deferred_data->frame_cat);
-  data_frame = (nghttp2_private_data*)stream->deferred_data->frame;
+  CU_ASSERT(nghttp2_stream_check_deferred_by_flow_control(stream));
+  CU_ASSERT(NGHTTP2_CAT_DATA == stream->data_item->frame_cat);
+  data_frame = (nghttp2_private_data*)stream->data_item->frame;
   data_frame->data_prd.read_callback =
     temporal_failure_data_source_read_callback;
 
