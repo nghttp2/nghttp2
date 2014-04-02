@@ -194,7 +194,7 @@ void nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags);
  * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL are cleared if they are
  * set.
  */
-int nghttp2_stream_detach_deferred_data(nghttp2_stream *stream,
+int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream,
                                         nghttp2_pq *pq);
 
 /*

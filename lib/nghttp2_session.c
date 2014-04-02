@@ -3083,7 +3083,7 @@ static int nghttp2_update_remote_initial_window_size_func
      stream->remote_window_size > 0 &&
      arg->session->remote_window_size > 0) {
 
-    rv = nghttp2_stream_detach_deferred_data(stream, &arg->session->ob_pq);
+    rv = nghttp2_stream_resume_deferred_data(stream, &arg->session->ob_pq);
 
     if(nghttp2_is_fatal(rv)) {
       return rv;
@@ -3576,7 +3576,7 @@ static int nghttp2_push_back_deferred_data_func(nghttp2_map_entry *entry,
   if(nghttp2_stream_check_deferred_by_flow_control(stream) &&
      stream->remote_window_size > 0) {
 
-    rv = nghttp2_stream_detach_deferred_data(stream, &session->ob_pq);
+    rv = nghttp2_stream_resume_deferred_data(stream, &session->ob_pq);
 
     if(nghttp2_is_fatal(rv)) {
       return rv;
@@ -3646,7 +3646,7 @@ static int session_on_stream_window_update_received
      session->remote_window_size > 0 &&
      nghttp2_stream_check_deferred_by_flow_control(stream)) {
 
-    rv = nghttp2_stream_detach_deferred_data(stream, &session->ob_pq);
+    rv = nghttp2_stream_resume_deferred_data(stream, &session->ob_pq);
 
     if(nghttp2_is_fatal(rv)) {
       return rv;
@@ -5476,7 +5476,7 @@ int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id)
     return 0;
   }
 
-  rv = nghttp2_stream_detach_deferred_data(stream, &session->ob_pq);
+  rv = nghttp2_stream_resume_deferred_data(stream, &session->ob_pq);
 
   if(nghttp2_is_fatal(rv)) {
     return rv;
