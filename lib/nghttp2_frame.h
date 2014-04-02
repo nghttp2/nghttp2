@@ -43,18 +43,16 @@
 /* The number of bytes of frame header. */
 #define NGHTTP2_FRAME_HDLEN 8
 
-/* The maximum frame and payload length. The spec allows maximum
-   payload length up to 16383 bytes. Due to efficient buffer
-   allocation, we choose smaller buffer. Actual payload limit offsets
-   frame header and possible PAD_HIGH and PAD_LOW to ease
-   serialization and save memcopying. */
-#define NGHTTP2_MAX_FRAMELEN 8192
-#define NGHTTP2_MAX_PAYLOADLEN (NGHTTP2_MAX_FRAMELEN - NGHTTP2_FRAME_HDLEN - 2)
+#define NGHTTP2_MAX_PAYLOADLEN 16383
+/* The one frame buffer length for tranmission.  We may use several of
+   them to support CONTINUATION.  To account for padding specifiers
+   (PAD_HIGH and PAD_LOW), we allocate extra 2 bytes, which saves
+   extra large memcopying. */
+#define NGHTTP2_FRAMEBUF_CHUNKLEN \
+  (NGHTTP2_FRAME_HDLEN + 2 + NGHTTP2_MAX_PAYLOADLEN)
 
-/* The maximum length of DATA frame payload. To fit entire DATA frame
-   into 4096K buffer, we use subtract header size (8 bytes) + 2 bytes
-   padding. See nghttp2_session_pack_data(). */
-#define NGHTTP2_DATA_PAYLOAD_LENGTH (4096 - NGHTTP2_FRAME_HDLEN - 2)
+/* The maximum length of DATA frame payload. */
+#define NGHTTP2_DATA_PAYLOAD_LENGTH 4096
 
 /* The number of bytes for each SETTINGS entry */
 #define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 5

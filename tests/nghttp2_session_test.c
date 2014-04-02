@@ -4659,7 +4659,7 @@ void test_nghttp2_session_pack_headers_with_padding(void)
   accumulator acc;
   my_user_data ud;
   nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[4086];
+  nghttp2_nv nva[8172];
   size_t i;
   nghttp2_priority_spec pri_spec;
 
@@ -4725,7 +4725,7 @@ void test_nghttp2_session_pack_headers_with_padding2(void)
   accumulator acc;
   my_user_data ud;
   nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[8182];
+  nghttp2_nv nva[16364];
   size_t i;
 
   for(i = 0; i < ARRLEN(nva); ++i) {

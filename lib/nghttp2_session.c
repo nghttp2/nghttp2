@@ -321,12 +321,9 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
     (*session_ptr)->server = 1;
   }
 
-  /* 2 for PAD_HIGH and PAD_LOW. We have maximum 64KB of frame
-     serialization buffer for transmission */
+  /* 2 for PAD_HIGH and PAD_LOW. */
   rv = nghttp2_bufs_init3(&(*session_ptr)->aob.framebufs,
-                          NGHTTP2_MAX_FRAMELEN,
-                          (1 << 17) / NGHTTP2_MAX_FRAMELEN,
-                          (1 << 13) / NGHTTP2_MAX_FRAMELEN,
+                          NGHTTP2_FRAMEBUF_CHUNKLEN, 8, 1,
                           NGHTTP2_FRAME_HDLEN + 2);
   if(rv != 0) {
     goto fail_aob_framebuf;
