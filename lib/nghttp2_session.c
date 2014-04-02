@@ -1331,7 +1331,7 @@ static int nghttp2_session_predicate_settings_send(nghttp2_session *session,
 static size_t nghttp2_session_next_data_read(nghttp2_session *session,
                                              nghttp2_stream *stream)
 {
-  int32_t window_size = NGHTTP2_DATA_PAYLOAD_LENGTH;
+  int32_t window_size = NGHTTP2_DATA_PAYLOADLEN;
 
   DEBUGF(fprintf(stderr,
                  "send: remote windowsize connection=%d, "
