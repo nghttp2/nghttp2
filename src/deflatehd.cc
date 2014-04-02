@@ -182,6 +182,8 @@ static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater, int seq)
 
       nva[i].value = (uint8_t*)json_string_value(value);
       nva[i].valuelen = strlen(json_string_value(value));
+
+      nva[i].flags = NGHTTP2_NV_FLAG_NONE;
     }
 
     inputlen += nva[i].namelen + nva[i].valuelen;
@@ -295,6 +297,8 @@ static int perform_from_http1text(void)
       nv->valuelen = strlen(val);
       nv->name = (uint8_t*)strdup(line);
       nv->value = (uint8_t*)strdup(val);
+      nv->flags = NGHTTP2_NV_FLAG_NONE;
+
       ++nvlen;
       inputlen += nv->namelen + nv->valuelen;
     }
