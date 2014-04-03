@@ -205,12 +205,18 @@ bool isHexDigit(const char c);
 
 bool inRFC3986UnreservedChars(const char c);
 
+// Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
+bool in_token(char c);
+
 std::string percentEncode(const unsigned char* target, size_t len);
 
 std::string percentEncode(const std::string& target);
 
 std::string percentDecode
 (std::string::const_iterator first, std::string::const_iterator last);
+
+// Percent encode |target| if character is not in token or '%'.
+std::string percent_encode_token(const std::string& target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 

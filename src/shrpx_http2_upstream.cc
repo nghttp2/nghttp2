@@ -532,13 +532,40 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE,
                                entry,
                                sizeof(entry)/sizeof(nghttp2_settings_entry));
-  assert(rv == 0);
+  if(rv != 0) {
+    ULOG(ERROR, this) << "nghttp2_submit_settings() returned error: "
+                      << nghttp2_strerror(rv);
+  }
 
   if(get_config()->http2_upstream_connection_window_bits > 16) {
     int32_t delta = (1 << get_config()->http2_upstream_connection_window_bits)
       - 1 - NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
     rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
-    assert(rv == 0);
+
+    if(rv != 0) {
+      ULOG(ERROR, this) << "nghttp2_submit_window_update() returned error: "
+                        << nghttp2_strerror(rv);
+    }
+  }
+
+  if(get_config()->altsvc_port != 0 && get_config()->altsvc_protocol_id) {
+    // Set max_age to 24hrs, which is default for alt-svc header
+    // field.
+    rv = nghttp2_submit_altsvc
+      (session_, NGHTTP2_FLAG_NONE, 0,
+       86400,
+       get_config()->altsvc_port,
+       reinterpret_cast<const uint8_t*>(get_config()->altsvc_protocol_id),
+       get_config()->altsvc_protocol_id_len,
+       reinterpret_cast<const uint8_t*>(get_config()->altsvc_host),
+       get_config()->altsvc_host_len,
+       reinterpret_cast<const uint8_t*>(get_config()->altsvc_origin),
+       get_config()->altsvc_origin_len);
+
+    if(rv != 0) {
+      ULOG(ERROR, this) << "nghttp2_submit_altsvc() returned error: "
+                        << nghttp2_strerror(rv);
+    }
   }
 }
 

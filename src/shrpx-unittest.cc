@@ -112,7 +112,9 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "util_inp_strlower",
                    shrpx::test_util_inp_strlower) ||
       !CU_add_test(pSuite, "util_to_base64",
-                   shrpx::test_util_to_base64)) {
+                   shrpx::test_util_to_base64) ||
+      !CU_add_test(pSuite, "util_percent_encode_token",
+                   shrpx::test_util_percent_encode_token)) {
      CU_cleanup_registry();
      return CU_get_error();
    }

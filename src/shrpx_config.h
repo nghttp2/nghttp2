@@ -108,6 +108,10 @@ extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[];
 extern const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[];
 extern const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[];
 extern const char SHRPX_OPT_PADDING[];
+extern const char SHRPX_OPT_ALTSVC_PORT[];
+extern const char SHRPX_OPT_ALTSVC_PROTOCOL_ID[];
+extern const char SHRPX_OPT_ALTSVC_HOST[];
+extern const char SHRPX_OPT_ALTSVC_ORIGIN[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -170,6 +174,9 @@ struct Config {
   char *client_cert_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
+  char *altsvc_protocol_id;
+  char *altsvc_host;
+  char *altsvc_origin;
   size_t downstream_addrlen;
   size_t num_worker;
   size_t http2_max_concurrent_streams;
@@ -192,6 +199,9 @@ struct Config {
   // The number of elements in tls_proto_list
   size_t tls_proto_list_len;
   size_t padding;
+  size_t altsvc_protocol_id_len;
+  size_t altsvc_host_len;
+  size_t altsvc_origin_len;
   // downstream protocol; this will be determined by given options.
   shrpx_proto downstream_proto;
   int syslog_facility;
@@ -202,6 +212,7 @@ struct Config {
   uint16_t downstream_port;
   // port in http proxy URI
   uint16_t downstream_http_proxy_port;
+  uint16_t altsvc_port;
   bool verbose;
   bool daemon;
   bool verify_client;

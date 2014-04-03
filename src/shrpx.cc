@@ -443,6 +443,14 @@ void fill_default_config()
   mod_config()->http2_no_cookie_crumbling = false;
   mod_config()->upstream_frame_debug = false;
   mod_config()->padding = 0;
+
+  mod_config()->altsvc_port = 0;
+  mod_config()->altsvc_protocol_id = nullptr;
+  mod_config()->altsvc_protocol_id_len = 0;
+  mod_config()->altsvc_host = nullptr;
+  mod_config()->altsvc_host_len = 0;
+  mod_config()->altsvc_origin = nullptr;
+  mod_config()->altsvc_origin_len = 0;
 }
 } // namespace
 
@@ -749,6 +757,19 @@ Misc:
                      downstream request.
   --no-via           Don't append to Via  header field.  If Via header
                      field is received, it is left unaltered.
+  --altsvc-port=<PORT>
+                     Port number of  alternative service advertised in
+                     alt-svc header field or HTTP/2 ALTSVC frame.
+  --altsvc-protocol-id=<PROTOID>
+                     ALPN protocol  identifier of  alternative service
+                     advertised  in  alt-svc  header field  or  HTTP/2
+                     ALTSVC frame.
+  --altsvc-host=<HOST>
+                     Host name  that alternative service  is available
+                     upon, which is advertised in HTTP/2 ALTSVC frame.
+  --altsvc-origin=<ORIGIN>
+                     Origin that alternative service is applicable to,
+                     which is advertised in HTTP/2 ALTSVC frame.
   --frontend-http2-dump-request-header=<PATH>
                      Dumps request headers received by HTTP/2 frontend
                      to  the file  denoted in  <PATH>.  The  output is
@@ -855,6 +876,10 @@ int main(int argc, char **argv)
       {"worker-read-burst", required_argument, &flag, 51},
       {"worker-write-rate", required_argument, &flag, 52},
       {"worker-write-burst", required_argument, &flag, 53},
+      {"altsvc-port", required_argument, &flag, 54},
+      {"altsvc-protocol-id", required_argument, &flag, 55},
+      {"altsvc-host", required_argument, &flag, 56},
+      {"altsvc-origin", required_argument, &flag, 57},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1110,6 +1135,22 @@ int main(int argc, char **argv)
       case 53:
         // --worker-write-burst
         cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_BURST, optarg);
+        break;
+      case 54:
+        // --altsvc-port
+        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC_PORT, optarg);
+        break;
+      case 55:
+        // --altsvc-protocol-id
+        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC_PROTOCOL_ID, optarg);
+        break;
+      case 56:
+        // --altsvc-host
+        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC_HOST, optarg);
+        break;
+      case 57:
+        // --altsvc-origin
+        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC_ORIGIN, optarg);
         break;
       default:
         break;

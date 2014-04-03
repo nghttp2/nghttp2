@@ -125,6 +125,8 @@ const char* strframetype(uint8_t type)
     return "GOAWAY";
   case NGHTTP2_WINDOW_UPDATE:
     return "WINDOW_UPDATE";
+  case NGHTTP2_ALTSVC:
+    return "ALTSVC";
   default:
     return "UNKNOWN";
   }
@@ -457,6 +459,25 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     print_frame_attr_indent();
     fprintf(outfile, "(window_size_increment=%d)\n",
             frame->window_update.window_size_increment);
+    break;
+  case NGHTTP2_ALTSVC:
+    print_frame_attr_indent();
+    fprintf(outfile, "(max-age=%u, port=%u, protocol_id=",
+            frame->altsvc.max_age, frame->altsvc.port);
+    if(frame->altsvc.protocol_id_len) {
+      fwrite(frame->altsvc.protocol_id, frame->altsvc.protocol_id_len, 1,
+             outfile);
+    }
+    fprintf(outfile, ", host=");
+    if(frame->altsvc.host_len) {
+      fwrite(frame->altsvc.host, frame->altsvc.host_len, 1, outfile);
+    }
+    fprintf(outfile, ", origin=");
+    if(frame->altsvc.origin_len) {
+      fwrite(frame->altsvc.origin, frame->altsvc.origin_len, 1, outfile);
+    }
+    fprintf(outfile, ")\n");
+
     break;
   default:
     fprintf(outfile, "\n");

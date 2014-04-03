@@ -86,6 +86,34 @@ std::string percentEncode(const std::string& target)
                        target.size());
 }
 
+bool in_token(char c)
+{
+  static const char extra[] = {
+    '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'
+  };
+
+  return isAlpha(c) || isDigit(c) ||
+    std::find(&extra[0], &extra[sizeof(extra)], c) != &extra[sizeof(extra)];
+}
+
+std::string percent_encode_token(const std::string& target)
+{
+  auto len = target.size();
+  std::string dest;
+
+  for(size_t i = 0; i < len; ++i) {
+    char c = target[i];
+    if(c != '%' && in_token(c)) {
+      dest += c;
+    } else {
+      char temp[4];
+      snprintf(temp, sizeof(temp), "%%%02X", c);
+      dest += temp;
+    }
+  }
+  return dest;
+}
+
 std::string percentDecode
 (std::string::const_iterator first, std::string::const_iterator last)
 {

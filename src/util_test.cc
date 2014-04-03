@@ -93,4 +93,12 @@ void test_util_to_base64(void)
   CU_ASSERT("AAA++B/B" == x);
 }
 
+void test_util_percent_encode_token(void)
+{
+  CU_ASSERT("h2" == util::percent_encode_token("h2"));
+  CU_ASSERT("h3~" == util::percent_encode_token("h3~"));
+  CU_ASSERT("100%25" == util::percent_encode_token("100%"));
+  CU_ASSERT("http%202" == util::percent_encode_token("http 2"));
+}
+
 } // namespace shrpx
