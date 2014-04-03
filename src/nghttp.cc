@@ -950,7 +950,11 @@ int submit_request
     if(i < num_initial_headers) {
       continue;
     }
-    build_headers.emplace_back(kv.first, kv.second);
+
+    // To test "never index" repr, don't index authorization header
+    // field unconditionally.
+    auto no_index = util::strieq(kv.first, "authorization");
+    build_headers.emplace_back(kv.first, kv.second, no_index);
   }
   std::stable_sort(std::begin(build_headers), std::end(build_headers),
                    [](const Headers::value_type& lhs,
@@ -965,7 +969,7 @@ int submit_request
   nva.reserve(build_headers.size());
 
   for(auto& kv : build_headers) {
-    nva.push_back(http2::make_nv(kv.name, kv.value, false));
+    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
   auto rv = nghttp2_submit_request(client->session, &req->pri_spec,
