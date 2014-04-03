@@ -38,7 +38,33 @@
 
 namespace nghttp2 {
 
-typedef std::vector<std::pair<std::string, std::string>> Headers;
+struct Header {
+  Header(std::string name, std::string value, bool no_index=false)
+    : name(std::move(name)),
+      value(std::move(value)),
+      no_index(no_index)
+  {}
+
+  Header()
+    : no_index(false)
+  {}
+
+  bool operator==(const Header& other) const
+  {
+    return name == other.name && value == other.value;
+  }
+
+  bool operator<(const Header& rhs) const
+  {
+    return name < rhs.name || (name == rhs.name && value < rhs.value);
+  }
+
+  std::string name;
+  std::string value;
+  bool no_index;
+};
+
+typedef std::vector<Header> Headers;
 
 namespace http2 {
 
@@ -75,15 +101,18 @@ bool name_less(const Headers::value_type& lhs, const Headers::value_type& rhs);
 void normalize_headers(Headers& nva);
 
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
-                              const uint8_t *value, size_t valuelen);
+                              const uint8_t *value, size_t valuelen,
+                              bool no_index);
 
 // Add name/value pairs to |nva|. The name is given in the |name| with
 // |namelen| bytes. This function inspects the |value| and split it
 // using '\0' as delimiter. Each token is added to the |nva| with the
-// name |name|.
+// name |name|.  If |no_index| is true, this name/value pair won't be
+// indexed when it is forwarded to the next hop.
 void split_add_header(Headers& nva,
                       const uint8_t *name, size_t namelen,
-                      const uint8_t *value, size_t valuelen);
+                      const uint8_t *value, size_t valuelen,
+                      bool no_index);
 
 // Returns sorted |nva| with |nvlen| elements. The headers are sorted
 // by name only and not necessarily stable. In addition to the
@@ -122,8 +151,10 @@ Headers concat_norm_headers(Headers headers);
 
 // Creates nghttp2_nv using |name| and |value| and returns it. The
 // returned value only references the data pointer to name.c_str() and
-// value.c_str().
-nghttp2_nv make_nv(const std::string& name, const std::string& value);
+// value.c_str().  If |no_index| is true, nghttp2_nv flags member has
+// NGHTTP2_NV_FLAG_NO_INDEX flag set.
+nghttp2_nv make_nv(const std::string& name, const std::string& value,
+                   bool no_index);
 
 // Create nghttp2_nv from string literal |name| and |value|.
 template<size_t N, size_t M>

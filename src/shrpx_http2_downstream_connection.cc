@@ -356,21 +356,21 @@ int Http2DownstreamConnection::push_request_headers()
   auto transfer_encoding =
     downstream_->get_norm_request_header("transfer-encoding");
   if(transfer_encoding != end_headers &&
-     util::strieq((*transfer_encoding).second.c_str(), "chunked")) {
+     util::strieq((*transfer_encoding).value.c_str(), "chunked")) {
     chunked_encoding = true;
   }
 
   auto xff = downstream_->get_norm_request_header("x-forwarded-for");
   if(get_config()->add_x_forwarded_for) {
     if(xff != end_headers) {
-      xff_value = (*xff).second;
+      xff_value = (*xff).value;
       xff_value += ", ";
     }
     xff_value += downstream_->get_upstream()->get_client_handler()->
       get_ipaddr();
     nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
   } else if(xff != end_headers) {
-    nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).second));
+    nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).value));
   }
 
   if(downstream_->get_request_method() != "CONNECT") {
@@ -389,11 +389,11 @@ int Http2DownstreamConnection::push_request_headers()
   auto via = downstream_->get_norm_request_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
-      nva.push_back(http2::make_nv_ls("via", (*via).second));
+      nva.push_back(http2::make_nv_ls("via", (*via).value));
     }
   } else {
     if(via != end_headers) {
-      via_value = (*via).second;
+      via_value = (*via).value;
       via_value += ", ";
     }
     via_value += http::create_via_header_value

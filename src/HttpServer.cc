@@ -805,7 +805,7 @@ int Http2Handler::submit_response
     http2::make_nv_ls("date", date_str)
   };
   for(size_t i = 0; i < headers.size(); ++i) {
-    nva.push_back(http2::make_nv(headers[i].first, headers[i].second));
+    nva.push_back(http2::make_nv(headers[i].first, headers[i].second, false));
   }
   int r = nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
                                   data_prd);
@@ -830,21 +830,21 @@ int Http2Handler::submit_push_promise(Stream *stream,
   std::string authority;
   auto itr = std::lower_bound(std::begin(stream->headers),
                               std::end(stream->headers),
-                              std::make_pair(std::string(":authority"),
-                                             std::string("")));
-  if(itr == std::end(stream->headers) || (*itr).first != ":authority") {
+                              Header(":authority", ""));
+
+  if(itr == std::end(stream->headers) || (*itr).name != ":authority") {
     itr = std::lower_bound(std::begin(stream->headers),
                            std::end(stream->headers),
-                           std::make_pair(std::string("host"),
-                                          std::string("")));
+                           Header("host", ""));
   }
+
   auto nva = std::vector<nghttp2_nv>{
     http2::make_nv_ll(":method", "GET"),
     http2::make_nv_ls(":path", push_path),
     get_config()->no_tls ?
     http2::make_nv_ll(":scheme", "http") :
     http2::make_nv_ll(":scheme", "https"),
-    http2::make_nv_ls(":authority", (*itr).second)
+    http2::make_nv_ls(":authority", (*itr).value)
   };
   return nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_HEADERS,
                                      stream->stream_id, nva.data(), nva.size(),
@@ -1008,18 +1008,17 @@ void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
   int rv;
   auto url = (*std::lower_bound(std::begin(stream->headers),
                                 std::end(stream->headers),
-                                std::make_pair(std::string(":path"),
-                                               std::string()))).second;
+                                Header(":path", ""))).value;
   auto ims = std::lower_bound(std::begin(stream->headers),
                               std::end(stream->headers),
-                              std::make_pair(std::string("if-modified-since"),
-                                             std::string()));
+                              Header("if-modified-since", ""));
+
   time_t last_mod = 0;
   bool last_mod_found = false;
   if(ims != std::end(stream->headers) &&
-     (*ims).first == "if-modified-since") {
+     (*ims).name == "if-modified-since") {
       last_mod_found = true;
-      last_mod = util::parse_http_date((*ims).second);
+      last_mod = util::parse_http_date((*ims).value);
   }
   auto query_pos = url.find("?");
   if(query_pos != std::string::npos) {
@@ -1078,7 +1077,8 @@ void append_nv(Stream *stream, const std::vector<nghttp2_nv>& nva)
 {
   for(auto& nv : nva) {
     http2::split_add_header(stream->headers,
-                            nv.name, nv.namelen, nv.value, nv.valuelen);
+                            nv.name, nv.namelen, nv.value, nv.valuelen,
+                            nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
   }
 }
 } // namespace
@@ -1114,7 +1114,8 @@ int on_header_callback(nghttp2_session *session,
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
   }
-  http2::split_add_header(stream->headers, name, namelen, value, valuelen);
+  http2::split_add_header(stream->headers, name, namelen, value, valuelen,
+                          flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;
 }
 } // namespace

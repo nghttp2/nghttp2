@@ -44,13 +44,12 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-void check_nv(const std::pair<std::string, std::string>& a,
-              const nghttp2_nv *b)
+void check_nv(const Header& a, const nghttp2_nv *b)
 {
-  CU_ASSERT(a.first.size() == b->namelen);
-  CU_ASSERT(a.second.size() == b->valuelen);
-  CU_ASSERT(memcmp(a.first.c_str(), b->name, b->namelen) == 0);
-  CU_ASSERT(memcmp(a.second.c_str(), b->value, b->valuelen) == 0);
+  CU_ASSERT(a.name.size() == b->namelen);
+  CU_ASSERT(a.value.size() == b->valuelen);
+  CU_ASSERT(memcmp(a.name.c_str(), b->name, b->namelen) == 0);
+  CU_ASSERT(memcmp(a.value.c_str(), b->value, b->valuelen) == 0);
 }
 } // namespace
 
@@ -78,7 +77,7 @@ void test_http2_split_add_header(void)
   const uint8_t concatval[] = { '4', 0x00, 0x00, '6', 0x00, '5', '9', 0x00 };
   auto nva = Headers();
   http2::split_add_header(nva, (const uint8_t*)"delta", 5,
-                          concatval, sizeof(concatval));
+                          concatval, sizeof(concatval), false);
   CU_ASSERT(Headers::value_type("delta", "4") == nva[0]);
   CU_ASSERT(Headers::value_type("delta", "6") == nva[1]);
   CU_ASSERT(Headers::value_type("delta", "59") == nva[2]);
@@ -86,14 +85,16 @@ void test_http2_split_add_header(void)
   nva.clear();
 
   http2::split_add_header(nva, (const uint8_t*)"alpha", 5,
-                          (const uint8_t*)"123", 3);
+                          (const uint8_t*)"123", 3, false);
   CU_ASSERT(Headers::value_type("alpha", "123") == nva[0]);
+  CU_ASSERT(!nva[0].no_index);
 
   nva.clear();
 
   http2::split_add_header(nva, (const uint8_t*)"alpha", 5,
-                          (const uint8_t*)"", 0);
+                          (const uint8_t*)"", 0, true);
   CU_ASSERT(Headers::value_type("alpha", "") == nva[0]);
+  CU_ASSERT(nva[0].no_index);
 }
 
 void test_http2_check_http2_headers(void)
@@ -133,7 +134,7 @@ void test_http2_get_unique_header(void)
   const Headers::value_type *rv;
   rv = http2::get_unique_header(nva, "delta");
   CU_ASSERT(rv != nullptr);
-  CU_ASSERT("delta" == rv->first);
+  CU_ASSERT("delta" == rv->name);
 
   rv = http2::get_unique_header(nva, "bravo");
   CU_ASSERT(rv == nullptr);
@@ -155,11 +156,11 @@ void test_http2_get_header(void)
   const Headers::value_type *rv;
   rv = http2::get_header(nva, "delta");
   CU_ASSERT(rv != nullptr);
-  CU_ASSERT("delta" == rv->first);
+  CU_ASSERT("delta" == rv->name);
 
   rv = http2::get_header(nva, "bravo");
   CU_ASSERT(rv != nullptr);
-  CU_ASSERT("bravo" == rv->first);
+  CU_ASSERT("bravo" == rv->name);
 
   rv = http2::get_header(nva, "foxtrot");
   CU_ASSERT(rv == nullptr);
@@ -182,8 +183,8 @@ void test_http2_value_lws(void)
 }
 
 namespace {
-auto headers = std::vector<std::pair<std::string, std::string>>
-  {{"alpha", "0"},
+auto headers = Headers
+  {{"alpha", "0", true},
    {"bravo", "1"},
    {"connection", "2"},
    {"connection", "3"},
@@ -207,7 +208,7 @@ void test_http2_concat_norm_headers(void)
   hds.emplace_back("set-cookie", "buzz");
   auto res = http2::concat_norm_headers(hds);
   CU_ASSERT(14 == res.size());
-  CU_ASSERT(std::string("2") + '\0' + std::string("3") == res[2].second);
+  CU_ASSERT(std::string("2") + '\0' + std::string("3") == res[2].value);
 }
 
 void test_http2_copy_norm_headers_to_nva(void)
@@ -218,6 +219,12 @@ void test_http2_copy_norm_headers_to_nva(void)
   auto ans = std::vector<int>{0, 1, 4, 6, 7, 12};
   for(size_t i = 0; i < ans.size(); ++i) {
     check_nv(headers[ans[i]], &nva[i]);
+
+    if(ans[i] == 0) {
+      CU_ASSERT(nva[i].flags & NGHTTP2_NV_FLAG_NO_INDEX);
+    } else {
+      CU_ASSERT(NGHTTP2_NV_FLAG_NONE == nva[i].flags);
+    }
   }
 }
 

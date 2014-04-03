@@ -792,7 +792,7 @@ int main(int argc, char **argv)
     nva.push_back(http2::make_nv_ls(":path", req));
 
     for(auto& nv : shared_nva) {
-      nva.push_back(http2::make_nv(nv.first, nv.second));
+      nva.push_back(http2::make_nv(nv.name, nv.value, false));
     }
 
     config.nva.push_back(std::move(nva));
@@ -804,12 +804,12 @@ int main(int argc, char **argv)
     cva.push_back(req.c_str());
 
     for(auto& nv : shared_nva) {
-      if(nv.first == ":authority") {
+      if(nv.name == ":authority") {
         cva.push_back(":host");
       } else {
-        cva.push_back(nv.first.c_str());
+        cva.push_back(nv.name.c_str());
       }
-      cva.push_back(nv.second.c_str());
+      cva.push_back(nv.value.c_str());
     }
     cva.push_back(":version");
     cva.push_back("HTTP/1.1");

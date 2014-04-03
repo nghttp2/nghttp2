@@ -101,8 +101,8 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
   std::string settings_payload;
   auto downstream = http->get_downstream();
   for(auto& hd : downstream->get_request_headers()) {
-    if(util::strieq(hd.first.c_str(), "http2-settings")) {
-      auto val = hd.second;
+    if(util::strieq(hd.name.c_str(), "http2-settings")) {
+      auto val = hd.value;
       util::to_base64(val);
       settings_payload = base64::decode(std::begin(val), std::end(val));
       break;
@@ -205,7 +205,8 @@ int on_header_callback(nghttp2_session *session,
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
   }
-  downstream->split_add_request_header(name, namelen, value, valuelen);
+  downstream->split_add_request_header(name, namelen, value, valuelen,
+                                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;
 }
 } // namespace
@@ -259,7 +260,7 @@ int on_request_headers(Http2Upstream *upstream,
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(auto& nv : nva) {
-      ss << TTY_HTTP_HD << nv.first << TTY_RST << ": " << nv.second << "\n";
+      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
     }
     ULOG(INFO, upstream) << "HTTP request headers. stream_id="
                          << downstream->get_stream_id()
@@ -280,7 +281,7 @@ int on_request_headers(Http2Upstream *upstream,
   auto path = http2::get_unique_header(nva, ":path");
   auto method = http2::get_unique_header(nva, ":method");
   auto scheme = http2::get_unique_header(nva, ":scheme");
-  bool is_connect = method  && "CONNECT" == method->second;
+  bool is_connect = method  && "CONNECT" == method->value;
   bool having_host = http2::non_empty_value(host);
   bool having_authority = http2::non_empty_value(authority);
 
@@ -1014,11 +1015,11 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   auto via = downstream->get_norm_response_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
-      nva.push_back(http2::make_nv_ls("via", (*via).second));
+      nva.push_back(http2::make_nv_ls("via", (*via).value));
     }
   } else {
     if(via != end_headers) {
-      via_value = (*via).second;
+      via_value = (*via).value;
       via_value += ", ";
     }
     via_value += http::create_via_header_value

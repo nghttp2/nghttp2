@@ -206,14 +206,14 @@ auto nv_name_less = [](const nghttp2_nv& lhs, const nghttp2_nv& rhs)
 bool name_less(const Headers::value_type& lhs,
                const Headers::value_type& rhs)
 {
-  return lhs.first < rhs.first;
+  return lhs.name < rhs.name;
 }
 
 bool check_http2_headers(const Headers& nva)
 {
   for(size_t i = 0; i < DISALLOWED_HDLEN; ++i) {
     if(std::binary_search(std::begin(nva), std::end(nva),
-                          std::make_pair(DISALLOWED_HD[i], ""), name_less)) {
+                          Header(DISALLOWED_HD[i], ""), name_less)) {
       return false;
     }
   }
@@ -223,7 +223,7 @@ bool check_http2_headers(const Headers& nva)
 void normalize_headers(Headers& nva)
 {
   for(auto& kv : nva) {
-    util::inp_strlower(kv.first);
+    util::inp_strlower(kv.name);
   }
   std::stable_sort(std::begin(nva), std::end(nva), name_less);
 }
@@ -260,20 +260,23 @@ std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen)
 }
 
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
-                              const uint8_t *value, size_t valuelen)
+                              const uint8_t *value, size_t valuelen,
+                              bool no_index)
 {
-  return std::make_pair(std::string(reinterpret_cast<const char*>(name),
-                                    namelen),
-                        std::string(reinterpret_cast<const char*>(value),
-                                    valuelen));
+  return Header(std::string(reinterpret_cast<const char*>(name),
+                            namelen),
+                std::string(reinterpret_cast<const char*>(value),
+                            valuelen),
+                no_index);
 }
 
 void split_add_header(Headers& nva,
                       const uint8_t *name, size_t namelen,
-                      const uint8_t *value, size_t valuelen)
+                      const uint8_t *value, size_t valuelen,
+                      bool no_index)
 {
   if(valuelen == 0) {
-    nva.push_back(to_header(name, namelen, value, valuelen));
+    nva.push_back(to_header(name, namelen, value, valuelen, no_index));
     return;
   }
   auto j = value;
@@ -289,7 +292,7 @@ void split_add_header(Headers& nva,
       break;
     }
     auto l = std::find(j, end, '\0');
-    nva.push_back(to_header(name, namelen, j, l-j));
+    nva.push_back(to_header(name, namelen, j, l-j, no_index));
     j = l;
   }
 }
@@ -299,9 +302,9 @@ const Headers::value_type* get_unique_header(const Headers& nva,
 {
   auto nv = Headers::value_type(name, "");
   auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, name_less);
-  if(i != std::end(nva) && (*i).first == nv.first) {
+  if(i != std::end(nva) && (*i).name == nv.name) {
     auto j = i + 1;
-    if(j == std::end(nva) || (*j).first != nv.first) {
+    if(j == std::end(nva) || (*j).name != nv.name) {
       return &(*i);
     }
   }
@@ -312,7 +315,7 @@ const Headers::value_type* get_header(const Headers& nva, const char *name)
 {
   auto nv = Headers::value_type(name, "");
   auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, name_less);
-  if(i != std::end(nva) && (*i).first == nv.first) {
+  if(i != std::end(nva) && (*i).name == nv.name) {
     return &(*i);
   }
   return nullptr;
@@ -321,14 +324,14 @@ const Headers::value_type* get_header(const Headers& nva, const char *name)
 std::string value_to_str(const Headers::value_type *nv)
 {
   if(nv) {
-    return nv->second;
+    return nv->value;
   }
   return "";
 }
 
 bool value_lws(const Headers::value_type *nv)
 {
-  return (*nv).second.find_first_not_of("\t ") == std::string::npos;
+  return (*nv).value.find_first_not_of("\t ") == std::string::npos;
 }
 
 bool non_empty_value(const Headers::value_type *nv)
@@ -336,13 +339,18 @@ bool non_empty_value(const Headers::value_type *nv)
   return nv && !value_lws(nv);
 }
 
-nghttp2_nv make_nv(const std::string& name, const std::string& value)
+nghttp2_nv make_nv(const std::string& name, const std::string& value,
+                   bool no_index)
 {
+  uint8_t flags;
+
+  flags = no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE;
+
   return {
     (uint8_t*)name.c_str(),
       (uint8_t*)value.c_str(),
       (uint16_t)name.size(), (uint16_t)value.size(),
-      NGHTTP2_NV_FLAG_NONE
+      flags
       };
 }
 
@@ -351,12 +359,17 @@ Headers concat_norm_headers(Headers headers)
   auto res = Headers();
   res.reserve(headers.size());
   for(auto& kv : headers) {
-    if(!res.empty() && res.back().first == kv.first &&
-       kv.first != "cookie" && kv.first != "set-cookie") {
-      if(!kv.second.empty()) {
-        res.back().second.append(1, '\0');
-        res.back().second += kv.second;
+    if(!res.empty() && res.back().name == kv.name &&
+       kv.name != "cookie" && kv.name != "set-cookie") {
+
+      auto& last = res.back();
+
+      if(!kv.value.empty()) {
+        last.value.append(1, '\0');
+        last.value += kv.value;
       }
+      // We do ORing nv flags.  This is done even if value is empty.
+      last.no_index |= kv.no_index;
     } else {
       res.push_back(std::move(kv));
     }
@@ -369,10 +382,11 @@ void copy_norm_headers_to_nva
 {
   size_t i, j;
   for(i = 0, j = 0; i < headers.size() && j < IGN_HDLEN;) {
-    int rv = strcmp(headers[i].first.c_str(), IGN_HD[j]);
+    auto& kv = headers[i];
+    int rv = strcmp(kv.name.c_str(), IGN_HD[j]);
     if(rv < 0) {
-      if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
-        nva.push_back(make_nv(headers[i].first, headers[i].second));
+      if(!kv.name.empty() && kv.name.c_str()[0] != ':') {
+        nva.push_back(make_nv(kv.name, kv.value, kv.no_index));
       }
       ++i;
     } else if(rv > 0) {
@@ -382,8 +396,9 @@ void copy_norm_headers_to_nva
     }
   }
   for(; i < headers.size(); ++i) {
-    if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
-      nva.push_back(make_nv(headers[i].first, headers[i].second));
+    auto& kv = headers[i];
+    if(!kv.name.empty() && kv.name.c_str()[0] != ':') {
+      nva.push_back(make_nv(kv.name, kv.value, kv.no_index));
     }
   }
 }
@@ -393,14 +408,16 @@ void build_http1_headers_from_norm_headers
 {
   size_t i, j;
   for(i = 0, j = 0; i < headers.size() && j < HTTP1_IGN_HDLEN;) {
-    int rv = strcmp(headers[i].first.c_str(), HTTP1_IGN_HD[j]);
+    auto& kv = headers[i];
+    auto rv = strcmp(kv.name.c_str(), HTTP1_IGN_HD[j]);
+
     if(rv < 0) {
-      if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
-        hdrs += headers[i].first;
-        capitalize(hdrs, hdrs.size()-headers[i].first.size());
+      if(!kv.name.empty() && kv.name.c_str()[0] != ':') {
+        hdrs += kv.name;
+        capitalize(hdrs, hdrs.size() - kv.name.size());
         hdrs += ": ";
-        hdrs += headers[i].second;
-        sanitize_header_value(hdrs, hdrs.size() - headers[i].second.size());
+        hdrs += kv.value;
+        sanitize_header_value(hdrs, hdrs.size() - kv.value.size());
         hdrs += "\r\n";
       }
       ++i;
@@ -411,12 +428,14 @@ void build_http1_headers_from_norm_headers
     }
   }
   for(; i < headers.size(); ++i) {
-    if(!headers[i].first.empty() && headers[i].first.c_str()[0] != ':') {
-      hdrs += headers[i].first;
-      capitalize(hdrs, hdrs.size()-headers[i].first.size());
+    auto& kv = headers[i];
+
+    if(!kv.name.empty() && kv.name.c_str()[0] != ':') {
+      hdrs += kv.name;
+      capitalize(hdrs, hdrs.size() - kv.name.size());
       hdrs += ": ";
-      hdrs += headers[i].second;
-      sanitize_header_value(hdrs, hdrs.size() - headers[i].second.size());
+      hdrs += kv.value;
+      sanitize_header_value(hdrs, hdrs.size() - kv.value.size());
       hdrs += "\r\n";
     }
   }
@@ -472,9 +491,9 @@ void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen)
 void dump_nv(FILE *out, const Headers& nva)
 {
   for(auto& nv : nva) {
-    fwrite(nv.first.c_str(), nv.first.size(), 1, out);
+    fwrite(nv.name.c_str(), nv.name.size(), 1, out);
     fwrite(": ", 2, 1, out);
-    fwrite(nv.second.c_str(), nv.second.size(), 1, out);
+    fwrite(nv.value.c_str(), nv.value.size(), 1, out);
     fwrite("\n", 1, 1, out);
   }
   fwrite("\n", 1, 1, out);

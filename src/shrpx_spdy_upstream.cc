@@ -864,18 +864,18 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
   for(auto& hd : downstream->get_response_headers()) {
-    if(hd.first.empty() || hd.first.c_str()[0] == ':' ||
-       util::strieq(hd.first.c_str(), "transfer-encoding") ||
-       util::strieq(hd.first.c_str(), "keep-alive") || // HTTP/1.0?
-       util::strieq(hd.first.c_str(), "connection") ||
-       util::strieq(hd.first.c_str(), "proxy-connection")) {
+    if(hd.name.empty() || hd.name.c_str()[0] == ':' ||
+       util::strieq(hd.name.c_str(), "transfer-encoding") ||
+       util::strieq(hd.name.c_str(), "keep-alive") || // HTTP/1.0?
+       util::strieq(hd.name.c_str(), "connection") ||
+       util::strieq(hd.name.c_str(), "proxy-connection")) {
       // These are ignored
     } else if(!get_config()->no_via &&
-              util::strieq(hd.first.c_str(), "via")) {
-      via_value = hd.second;
+              util::strieq(hd.name.c_str(), "via")) {
+      via_value = hd.value;
     } else {
-      nv[hdidx++] = hd.first.c_str();
-      nv[hdidx++] = hd.second.c_str();
+      nv[hdidx++] = hd.name.c_str();
+      nv[hdidx++] = hd.value.c_str();
     }
   }
   if(!get_config()->no_via) {

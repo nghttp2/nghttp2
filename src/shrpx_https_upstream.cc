@@ -159,8 +159,8 @@ int htp_hdrs_completecb(http_parser *htp)
        << downstream->get_request_minor() << "\n";
     const auto& headers = downstream->get_request_headers();
     for(size_t i = 0; i < headers.size(); ++i) {
-      ss << TTY_HTTP_HD << headers[i].first << TTY_RST << ": "
-         << headers[i].second << "\n";
+      ss << TTY_HTTP_HD << headers[i].name << TTY_RST << ": "
+         << headers[i].value << "\n";
     }
     ULOG(INFO, upstream) << "HTTP request headers\n" << ss.str();
   }
@@ -682,15 +682,15 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   if(get_config()->no_via) {
     if(via != end_headers) {
       hdrs += "Via: ";
-      hdrs += (*via).second;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
+      hdrs += (*via).value;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += "\r\n";
     }
   } else {
     hdrs += "Via: ";
     if(via != end_headers) {
-      hdrs += (*via).second;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
+      hdrs += (*via).value;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += ", ";
     }
     hdrs += http::create_via_header_value

@@ -921,7 +921,7 @@ int submit_request
 {
   auto path = req->make_reqpath();
   auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
-  auto build_headers = std::vector<std::pair<std::string, std::string>>
+  auto build_headers = Headers
     {{":method", req->data_prd ? "POST" : "GET"},
      {":path", path},
      {":scheme", scheme},
@@ -942,27 +942,30 @@ int submit_request
   for(auto& kv : headers) {
     size_t i;
     for(i = 0; i < num_initial_headers; ++i) {
-      if(util::strieq(kv.first, build_headers[i].first)) {
-        build_headers[i].second = kv.second;
+      if(util::strieq(kv.first, build_headers[i].name)) {
+        build_headers[i].value = kv.second;
         break;
       }
     }
     if(i < num_initial_headers) {
       continue;
     }
-    build_headers.push_back(kv);
+    build_headers.emplace_back(kv.first, kv.second);
   }
   std::stable_sort(std::begin(build_headers), std::end(build_headers),
-                   [](const std::pair<std::string, std::string>& lhs,
-                      const std::pair<std::string, std::string>& rhs)
+                   [](const Headers::value_type& lhs,
+                      const Headers::value_type& rhs)
                    {
-                     return lhs.first < rhs.first;
+                     return lhs.name < rhs.name;
                    });
+
   build_headers = http2::concat_norm_headers(std::move(build_headers));
+
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(build_headers.size());
+
   for(auto& kv : build_headers) {
-    nva.push_back(http2::make_nv(kv.first, kv.second));
+    nva.push_back(http2::make_nv(kv.name, kv.value, false));
   }
 
   auto rv = nghttp2_submit_request(client->session, &req->pri_spec,
@@ -1157,13 +1160,13 @@ void check_response_header(nghttp2_session *session, Request* req)
 {
   bool gzip = false;
   for(auto& nv : req->res_nva) {
-    if("content-encoding" == nv.first) {
-      gzip = util::strieq("gzip", nv.second) ||
-        util::strieq("deflate", nv.second);
+    if("content-encoding" == nv.name) {
+      gzip = util::strieq("gzip", nv.value) ||
+        util::strieq("deflate", nv.value);
       continue;
     }
-    if(":status" == nv.first) {
-      req->status.assign(nv.second);
+    if(":status" == nv.name) {
+      req->status.assign(nv.value);
     }
   }
   if(gzip) {
@@ -1228,7 +1231,8 @@ int on_header_callback(nghttp2_session *session,
     if(!req) {
       break;
     }
-    http2::split_add_header(req->res_nva, name, namelen, value, valuelen);
+    http2::split_add_header(req->res_nva, name, namelen, value, valuelen,
+                            flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -1237,7 +1241,8 @@ int on_header_callback(nghttp2_session *session,
     if(!req) {
       break;
     }
-    http2::split_add_header(req->push_req_nva, name, namelen, value, valuelen);
+    http2::split_add_header(req->push_req_nva, name, namelen, value, valuelen,
+                            flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
   }
   }
@@ -1284,20 +1289,20 @@ int on_frame_recv_callback2
     }
     std::string scheme, authority, method, path;
     for(auto& nv : req->push_req_nva) {
-      if(nv.first == ":scheme") {
-        scheme = nv.second;
+      if(nv.name == ":scheme") {
+        scheme = nv.value;
         continue;
       }
-      if(nv.first == ":authority" || nv.first == "host") {
-        authority = nv.second;
+      if(nv.name == ":authority" || nv.name == "host") {
+        authority = nv.value;
         continue;
       }
-      if(nv.first == ":method") {
-        method = nv.second;
+      if(nv.name == ":method") {
+        method = nv.value;
         continue;
       }
-      if(nv.first == ":path") {
-        path = nv.second;
+      if(nv.name == ":path") {
+        path = nv.value;
         continue;
       }
     }

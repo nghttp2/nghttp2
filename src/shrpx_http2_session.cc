@@ -814,7 +814,8 @@ int on_header_callback(nghttp2_session *session,
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
   }
-  downstream->split_add_response_header(name, namelen, value, valuelen);
+  downstream->split_add_response_header(name, namelen, value, valuelen,
+                                        flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;
 }
 } // namespace
@@ -886,7 +887,7 @@ int on_response_headers(Http2Session *http2session,
     call_downstream_readcb(http2session, downstream);
     return 0;
   }
-  downstream->set_response_http_status(strtoul(status->second.c_str(),
+  downstream->set_response_http_status(strtoul(status->value.c_str(),
                                                nullptr, 10));
   downstream->set_response_major(2);
   downstream->set_response_minor(0);
@@ -916,7 +917,7 @@ int on_response_headers(Http2Session *http2session,
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(auto& nv : nva) {
-      ss << TTY_HTTP_HD << nv.first << TTY_RST << ": " << nv.second << "\n";
+      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
     }
     SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
                               << frame->hd.stream_id

@@ -171,16 +171,16 @@ int HttpDownstreamConnection::push_request_headers()
   if(get_config()->add_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
     if(xff != end_headers) {
-      hdrs += (*xff).second;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).second.size());
+      hdrs += (*xff).value;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
       hdrs += ", ";
     }
     hdrs += client_handler_->get_ipaddr();
     hdrs += "\r\n";
   } else if(xff != end_headers) {
     hdrs += "X-Forwarded-For: ";
-    hdrs += (*xff).second;
-    http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).second.size());
+    hdrs += (*xff).value;
+    http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
     hdrs += "\r\n";
   }
   if(downstream_->get_request_method() != "CONNECT") {
@@ -196,25 +196,25 @@ int HttpDownstreamConnection::push_request_headers()
   }
   auto expect = downstream_->get_norm_request_header("expect");
   if(expect != end_headers &&
-     !util::strifind((*expect).second.c_str(), "100-continue")) {
+     !util::strifind((*expect).value.c_str(), "100-continue")) {
     hdrs += "Expect: ";
-    hdrs += (*expect).second;
-    http2::sanitize_header_value(hdrs, hdrs.size() - (*expect).second.size());
+    hdrs += (*expect).value;
+    http2::sanitize_header_value(hdrs, hdrs.size() - (*expect).value.size());
     hdrs += "\r\n";
   }
   auto via = downstream_->get_norm_request_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
       hdrs += "Via: ";
-      hdrs += (*via).second;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
+      hdrs += (*via).value;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += "\r\n";
     }
   } else {
     hdrs += "Via: ";
     if(via != end_headers) {
-      hdrs += (*via).second;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).second.size());
+      hdrs += (*via).value;
+      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += ", ";
     }
     hdrs += http::create_via_header_value(downstream_->get_request_major(),

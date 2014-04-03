@@ -1342,6 +1342,10 @@ typedef int (*nghttp2_on_begin_headers_callback)
  * The |value| of length |valuelen| is header value.  The |flags| is
  * bitwise OR of one or more of :type:`nghttp2_nv_flag`.
  *
+ * If :enum:`NGHTTP2_NV_FLAG_NO_INDEX` is set in |flags|, the receiver
+ * must not index this name/value pair when forwarding it to the next
+ * hop.
+ *
  * When this callback is invoked, ``frame->hd.type`` is either
  * :enum:`NGHTTP2_HEADERS` or :enum:`NGHTTP2_PUSH_PROMISE`.  After all
  * header name/value pairs are processed with this callback, and no

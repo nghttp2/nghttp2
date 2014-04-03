@@ -103,7 +103,8 @@ public:
   void set_last_request_header_value(std::string value);
 
   void split_add_request_header(const uint8_t *name, size_t namelen,
-                                const uint8_t *value, size_t valuelen);
+                                const uint8_t *value, size_t valuelen,
+                                bool no_index);
 
   bool get_request_header_key_prev() const;
   void append_last_request_header_key(const char *data, size_t len);
@@ -171,7 +172,8 @@ public:
   void set_last_response_header_value(std::string value);
 
   void split_add_response_header(const uint8_t *name, size_t namelen,
-                                 const uint8_t *value, size_t valuelen);
+                                 const uint8_t *value, size_t valuelen,
+                                 bool no_index);
 
   bool get_response_header_key_prev() const;
   void append_last_response_header_key(const char *data, size_t len);
