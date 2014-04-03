@@ -1708,8 +1708,14 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
     next_readmax = nghttp2_session_next_data_read(session, stream);
 
     if(next_readmax == 0) {
-      nghttp2_stream_defer_data(stream,
-                                NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
+      rv = nghttp2_stream_defer_data(stream,
+                                     NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL,
+                                     &session->ob_pq);
+
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
       session->aob.item = NULL;
       nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
@@ -1719,7 +1725,13 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
                                         next_readmax,
                                         data_frame);
     if(framerv == NGHTTP2_ERR_DEFERRED) {
-      nghttp2_stream_defer_data(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER);
+      rv = nghttp2_stream_defer_data(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER,
+                                     &session->ob_pq);
+
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
       session->aob.item = NULL;
       nghttp2_active_outbound_item_reset(&session->aob);
       return NGHTTP2_ERR_DEFERRED;
@@ -2107,8 +2119,13 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
       next_readmax = nghttp2_session_next_data_read(session, stream);
 
       if(next_readmax == 0) {
-        nghttp2_stream_defer_data(stream,
-                                  NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
+        rv = nghttp2_stream_defer_data
+          (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, &session->ob_pq);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
         aob->item = NULL;
         nghttp2_active_outbound_item_reset(aob);
 
@@ -2123,7 +2140,14 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
         return rv;
       }
       if(rv == NGHTTP2_ERR_DEFERRED) {
-        nghttp2_stream_defer_data(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER);
+        rv = nghttp2_stream_defer_data(stream,
+                                       NGHTTP2_STREAM_FLAG_DEFERRED_USER,
+                                       &session->ob_pq);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
         aob->item = NULL;
         nghttp2_active_outbound_item_reset(aob);
 

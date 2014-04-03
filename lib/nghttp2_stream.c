@@ -359,11 +359,17 @@ int nghttp2_stream_detach_data(nghttp2_stream *stream, nghttp2_pq *pq)
   return stream_update_dep_on_detach_data(stream, pq);
 }
 
-void nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags)
+int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
+                              nghttp2_pq *pq)
 {
   assert(stream->data_item);
 
+  DEBUGF(fprintf(stderr, "stream: stream=%d defer data=%p cause=%02x\n",
+                 stream->stream_id, stream->data_item, flags));
+
   stream->flags |= flags;
+
+  return stream_update_dep_on_detach_data(stream, pq);
 }
 
 int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream,

@@ -185,8 +185,15 @@ void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
  * bitwise OR of zero or more of NGHTTP2_STREAM_FLAG_DEFERRED_USER and
  * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL.  The |flags| indicates
  * the reason of this action.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags);
+int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
+                              nghttp2_pq *pq);
 
 /*
  * Detaches deferred data in this stream and it is back to active
