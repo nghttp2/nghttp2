@@ -49,7 +49,8 @@ public:
 
   virtual int on_downstream_header_complete(Downstream *downstream) = 0;
   virtual int on_downstream_body(Downstream *downstream,
-                                 const uint8_t *data, size_t len) = 0;
+                                 const uint8_t *data, size_t len,
+                                 bool flush) = 0;
   virtual int on_downstream_body_complete(Downstream *downstream) = 0;
 
   virtual void pause_read(IOCtrlReason reason) = 0;

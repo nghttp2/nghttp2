@@ -905,11 +905,13 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   assert(body);
+
   int nread = evbuffer_remove(body, buf, length);
   if(nread == -1) {
     ULOG(FATAL, upstream) << "evbuffer_remove() failed";
     return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
+
   if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     if(!downstream->get_upgraded()) {
@@ -1094,7 +1096,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
 // WARNING: Never call directly or indirectly nghttp2_session_send or
 // nghttp2_session_recv. These calls may delete downstream.
 int Http2Upstream::on_downstream_body(Downstream *downstream,
-                                      const uint8_t *data, size_t len)
+                                      const uint8_t *data, size_t len,
+                                      bool flush)
 {
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
@@ -1104,11 +1107,18 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
     ULOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
-  nghttp2_session_resume_data(session_, downstream->get_stream_id());
+
+  if(flush) {
+    nghttp2_session_resume_data(session_, downstream->get_stream_id());
+  }
 
   auto outbuflen = handler->get_outbuf_length() +
     evbuffer_get_length(body);
   if(outbuflen > OUTBUF_MAX_THRES) {
+    if(!flush) {
+      nghttp2_session_resume_data(session_, downstream->get_stream_id());
+    }
+
     downstream->pause_read(SHRPX_NO_BUFFER);
   }
 

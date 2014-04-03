@@ -919,7 +919,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 // WARNING: Never call directly or indirectly spdylay_session_send or
 // spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_body(Downstream *downstream,
-                                     const uint8_t *data, size_t len)
+                                     const uint8_t *data, size_t len,
+                                     bool flush)
 {
   auto upstream = downstream->get_upstream();
   auto body = downstream->get_response_body_buf();
@@ -928,11 +929,18 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
     ULOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
-  spdylay_session_resume_data(session_, downstream->get_stream_id());
+
+  if(flush) {
+    spdylay_session_resume_data(session_, downstream->get_stream_id());
+  }
 
   auto outbuflen = upstream->get_client_handler()->get_outbuf_length() +
     evbuffer_get_length(body);
   if(outbuflen > OUTBUF_MAX_THRES) {
+    if(!flush) {
+      spdylay_session_resume_data(session_, downstream->get_stream_id());
+    }
+
     downstream->pause_read(SHRPX_NO_BUFFER);
   }
 

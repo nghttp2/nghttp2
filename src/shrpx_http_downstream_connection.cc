@@ -468,7 +468,7 @@ int htp_bodycb(http_parser *htp, const char *data, size_t len)
 {
   auto downstream = static_cast<Downstream*>(htp->data);
   return downstream->get_upstream()->on_downstream_body
-    (downstream, reinterpret_cast<const uint8_t*>(data), len);
+    (downstream, reinterpret_cast<const uint8_t*>(data), len, true);
 }
 } // namespace
 
@@ -507,7 +507,7 @@ int HttpDownstreamConnection::on_read()
     // For upgraded connection, just pass data to the upstream.
     int rv;
     rv = downstream_->get_upstream()->on_downstream_body
-      (downstream_, reinterpret_cast<const uint8_t*>(mem), inputlen);
+      (downstream_, reinterpret_cast<const uint8_t*>(mem), inputlen, true);
     if(rv != 0) {
       return rv;
     }

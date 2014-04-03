@@ -734,7 +734,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
 }
 
 int HttpsUpstream::on_downstream_body(Downstream *downstream,
-                                      const uint8_t *data, size_t len)
+                                      const uint8_t *data, size_t len,
+                                      bool flush)
 {
   int rv;
   if(len == 0) {

@@ -960,8 +960,32 @@ namespace {
 int on_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
+  int rv;
   auto http2session = static_cast<Http2Session*>(user_data);
+
   switch(frame->hd.type) {
+  case NGHTTP2_DATA: {
+    auto sd = static_cast<StreamData*>
+      (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+    if(!sd || !sd->dconn) {
+      break;
+    }
+    auto downstream = sd->dconn->get_downstream();
+    if(!downstream ||
+       downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+      break;
+    }
+
+    auto upstream = downstream->get_upstream();
+    rv = upstream->on_downstream_body(downstream, nullptr, 0, true);
+    if(rv != 0) {
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_INTERNAL_ERROR);
+      downstream->set_response_state(Downstream::MSG_RESET);
+    }
+    call_downstream_readcb(http2session, downstream);
+    break;
+  }
   case NGHTTP2_HEADERS:
     return on_response_headers(http2session, session, frame);
   case NGHTTP2_RST_STREAM: {
@@ -1039,7 +1063,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   }
 
   auto upstream = downstream->get_upstream();
-  rv = upstream->on_downstream_body(downstream, data, len);
+  rv = upstream->on_downstream_body(downstream, data, len, false);
   if(rv != 0) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
