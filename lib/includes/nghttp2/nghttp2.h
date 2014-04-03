@@ -404,43 +404,43 @@ typedef enum {
   /**
    * The HEADERS frame.
    */
-  NGHTTP2_HEADERS = 1,
+  NGHTTP2_HEADERS = 0x01,
   /**
    * The PRIORITY frame.
    */
-  NGHTTP2_PRIORITY = 2,
+  NGHTTP2_PRIORITY = 0x02,
   /**
    * The RST_STREAM frame.
    */
-  NGHTTP2_RST_STREAM = 3,
+  NGHTTP2_RST_STREAM = 0x03,
   /**
    * The SETTINGS frame.
    */
-  NGHTTP2_SETTINGS = 4,
+  NGHTTP2_SETTINGS = 0x04,
   /**
    * The PUSH_PROMISE frame.
    */
-  NGHTTP2_PUSH_PROMISE = 5,
+  NGHTTP2_PUSH_PROMISE = 0x05,
   /**
    * The PING frame.
    */
-  NGHTTP2_PING = 6,
+  NGHTTP2_PING = 0x06,
   /**
    * The GOAWAY frame.
    */
-  NGHTTP2_GOAWAY = 7,
+  NGHTTP2_GOAWAY = 0x07,
   /**
    * The WINDOW_UPDATE frame.
    */
-  NGHTTP2_WINDOW_UPDATE = 8,
+  NGHTTP2_WINDOW_UPDATE = 0x08,
   /**
    * The CONTINUATION frame.
    */
-  NGHTTP2_CONTINUATION = 9,
+  NGHTTP2_CONTINUATION = 0x09,
   /**
    * The ALTSVC frame.
    */
-  NGHTTP2_ALTSVC = 10
+  NGHTTP2_ALTSVC = 0x0a
 } nghttp2_frame_type;
 
 /**
@@ -457,19 +457,19 @@ typedef enum {
   /**
    * The END_STREAM flag.
    */
-  NGHTTP2_FLAG_END_STREAM = 0x1,
+  NGHTTP2_FLAG_END_STREAM = 0x01,
   /**
    * The END_HEADERS flag.
    */
-  NGHTTP2_FLAG_END_HEADERS = 0x4,
+  NGHTTP2_FLAG_END_HEADERS = 0x04,
   /**
    * The ACK flag.
    */
-  NGHTTP2_FLAG_ACK = 0x1,
+  NGHTTP2_FLAG_ACK = 0x01,
   /**
    * The END_SEGMENT flag.
    */
-  NGHTTP2_FLAG_END_SEGMENT = 0x2,
+  NGHTTP2_FLAG_END_SEGMENT = 0x02,
   /**
    * The PAD_LOW flag.
    */
