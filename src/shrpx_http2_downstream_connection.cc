@@ -382,7 +382,7 @@ int Http2DownstreamConnection::push_request_headers()
         nva.push_back(http2::make_nv_ll("x-forwarded-proto", "http"));
       }
     } else {
-      nva.push_back(http2::make_nv_ls("x-forwarded-proto", scheme.c_str()));
+      nva.push_back(http2::make_nv_ls("x-forwarded-proto", scheme));
     }
   }
 
