@@ -332,18 +332,13 @@ int nghttp2_stream_attach_data(nghttp2_stream *stream,
                                nghttp2_outbound_item *data_item,
                                nghttp2_pq *pq)
 {
-  /* This function may be called when stream->data_item is not-NULL.
-     In this case, stream->data_item == data_item. */
   assert((stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) == 0);
-
-  if(stream->data_item) {
-    assert(stream->data_item == data_item);
-  } else {
-    stream->data_item = data_item;
-  }
+  assert(stream->data_item == NULL);
 
   DEBUGF(fprintf(stderr, "stream: stream=%d attach data=%p\n",
                  stream->stream_id, data_item));
+
+  stream->data_item = data_item;
 
   return stream_update_dep_on_attach_data(stream, pq);
 }
@@ -377,9 +372,12 @@ int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream,
 {
   assert(stream->data_item);
 
+  DEBUGF(fprintf(stderr, "stream: stream=%d resume data=%p\n",
+                 stream->stream_id, stream->data_item));
+
   stream->flags &= ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL;
 
-  return nghttp2_stream_attach_data(stream, stream->data_item, pq);
+  return stream_update_dep_on_attach_data(stream, pq);
 }
 
 int nghttp2_stream_check_deferred_data(nghttp2_stream *stream)
