@@ -393,6 +393,7 @@ Each request header name/value pair is emitted via
                                   const nghttp2_frame *frame,
                                   const uint8_t *name, size_t namelen,
                                   const uint8_t *value, size_t valuelen,
+                                  uint8_t flags,
                                   void *user_data)
     {
       http2_session_data *session_data = (http2_session_data*)user_data;
