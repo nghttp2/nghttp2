@@ -32,6 +32,7 @@
 #include "nghttp2_helper.h"
 #include "nghttp2_net.h"
 #include "nghttp2_priority_spec.h"
+#include "nghttp2_option.h"
 
 /*
  * Returns non-zero if the number of outgoing opened streams is larger
@@ -251,8 +252,7 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data,
                                int server,
-                               uint32_t opt_set_mask,
-                               const nghttp2_opt_set *opt_set)
+                               const nghttp2_option *option)
 {
   int rv;
 
@@ -294,16 +294,6 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
 
   (*session_ptr)->next_seq = 0;
 
-  if((opt_set_mask & NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE) &&
-     opt_set->no_auto_stream_window_update) {
-    (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE;
-  }
-  if((opt_set_mask & NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE) &&
-     opt_set->no_auto_connection_window_update) {
-    (*session_ptr)->opt_flags |=
-      NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
-  }
-
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
   (*session_ptr)->recv_reduction = 0;
@@ -334,9 +324,31 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
   init_settings((*session_ptr)->remote_settings);
   init_settings((*session_ptr)->local_settings);
 
-  if(opt_set_mask & NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS) {
-    (*session_ptr)->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
-      opt_set->peer_max_concurrent_streams;
+
+  if(option) {
+    if((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE) &&
+       option->no_auto_stream_window_update) {
+
+      (*session_ptr)->opt_flags |=
+        NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE;
+
+    }
+
+    if((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE) &&
+       option->no_auto_connection_window_update) {
+
+      (*session_ptr)->opt_flags |=
+        NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
+
+    }
+
+    if(option->opt_set_mask & NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS) {
+
+      (*session_ptr)->
+        remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+        option->peer_max_concurrent_streams;
+
+    }
   }
 
   (*session_ptr)->callbacks = *callbacks;
@@ -368,20 +380,18 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data)
 {
-  return nghttp2_session_client_new2(session_ptr, callbacks, user_data,
-                                     0, NULL);
+  return nghttp2_session_client_new2(session_ptr, callbacks, user_data, NULL);
 }
 
 int nghttp2_session_client_new2(nghttp2_session **session_ptr,
                                 const nghttp2_session_callbacks *callbacks,
                                 void *user_data,
-                                uint32_t opt_set_mask,
-                                const nghttp2_opt_set *opt_set)
+                                const nghttp2_option *option)
 {
   int rv;
   /* For client side session, header compression is disabled. */
-  rv = nghttp2_session_new(session_ptr, callbacks, user_data, 0,
-                           opt_set_mask, opt_set);
+  rv = nghttp2_session_new(session_ptr, callbacks, user_data, 0, option);
+
   if(rv != 0) {
     return rv;
   }
@@ -394,20 +404,18 @@ int nghttp2_session_server_new(nghttp2_session **session_ptr,
                                const nghttp2_session_callbacks *callbacks,
                                void *user_data)
 {
-  return nghttp2_session_server_new2(session_ptr, callbacks, user_data,
-                                     0, NULL);
+  return nghttp2_session_server_new2(session_ptr, callbacks, user_data, NULL);
 }
 
 int nghttp2_session_server_new2(nghttp2_session **session_ptr,
                                 const nghttp2_session_callbacks *callbacks,
                                 void *user_data,
-                                uint32_t opt_set_mask,
-                                const nghttp2_opt_set *opt_set)
+                                const nghttp2_option *option)
 {
   int rv;
   /* Enable header compression on server side. */
-  rv = nghttp2_session_new(session_ptr, callbacks, user_data, 1,
-                           opt_set_mask, opt_set);
+  rv = nghttp2_session_new(session_ptr, callbacks, user_data, 1, option);
+
   if(rv != 0) {
     return rv;
   }

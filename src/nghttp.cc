@@ -81,6 +81,7 @@ struct Config {
   std::string certfile;
   std::string keyfile;
   std::string datafile;
+  nghttp2_option *http2_option;
   size_t output_upper_thres;
   size_t padding;
   ssize_t peer_max_concurrent_streams;
@@ -115,7 +116,17 @@ struct Config {
       stat(false),
       upgrade(false),
       continuation(false)
-  {}
+  {
+    nghttp2_option_new(&http2_option);
+    nghttp2_option_set_peer_max_concurrent_streams
+      (http2_option,
+       peer_max_concurrent_streams);
+  }
+
+  ~Config()
+  {
+    nghttp2_option_del(http2_option);
+  }
 };
 } // namespace
 
@@ -686,11 +697,10 @@ struct HttpClient {
     if(!need_upgrade()) {
       record_handshake_time();
     }
-    nghttp2_opt_set opt_set;
-    opt_set.peer_max_concurrent_streams = config.peer_max_concurrent_streams;
+
     rv = nghttp2_session_client_new2(&session, callbacks, this,
-                                     NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
-                                     &opt_set);
+                                     config.http2_option);
+
     if(rv != 0) {
       return -1;
     }
@@ -2017,6 +2027,9 @@ int main(int argc, char **argv)
   }
 
   set_color_output(color || isatty(fileno(stdout)));
+
+  nghttp2_option_set_peer_max_concurrent_streams
+    (config.http2_option, config.peer_max_concurrent_streams);
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));

@@ -1,0 +1,95 @@
+/*
+ * nghttp2 - HTTP/2 C Library
+ *
+ * Copyright (c) 2014 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#ifndef NGHTTP2_OPTION_H
+#define NGHTTP2_OPTION_H
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
+
+#include <nghttp2/nghttp2.h>
+
+/**
+ * Configuration options
+ */
+typedef enum {
+  /**
+   * This option prevents the library from sending WINDOW_UPDATE for a
+   * stream automatically. If this option is set to nonzero, the
+   * library won't send WINDOW_UPDATE for a stream and the application
+   * is responsible for sending WINDOW_UPDATE using
+   * `nghttp2_submit_window_update`. By default, this option is set to
+   * zero.
+   */
+  NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE = 1,
+  /**
+   * This option prevents the library from sending WINDOW_UPDATE for a
+   * connection automatically. If this option is set to nonzero, the
+   * library won't send WINDOW_UPDATE for a connection and the
+   * application is responsible for sending WINDOW_UPDATE with stream
+   * ID 0 using `nghttp2_submit_window_update`. By default, this
+   * option is set to zero.
+   */
+  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1,
+  /**
+   * This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of
+   * remote endpoint as if it is received in SETTINGS frame. Without
+   * specifying this option, before the local endpoint receives
+   * SETTINGS_MAX_CONCURRENT_STREAMS in SETTINGS frame from remote
+   * endpoint, SETTINGS_MAX_CONCURRENT_STREAMS is unlimited. This may
+   * cause problem if local endpoint submits lots of requests
+   * initially and sending them at once to the remote peer may lead to
+   * the rejection of some requests. Specifying this option to the
+   * sensible value, say 100, may avoid this kind of issue. This value
+   * will be overwritten if the local endpoint receives
+   * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
+   */
+  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 2
+} nghttp2_option_flag;
+
+/**
+ * Struct to store option values for nghttp2_session.
+ */
+struct nghttp2_option {
+  /**
+   * Bitwise OR of nghttp2_option_flag to determine that which fields
+   * are specified.
+   */
+  uint32_t opt_set_mask;
+  /**
+   * NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS
+   */
+  uint32_t peer_max_concurrent_streams;
+  /**
+   * NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE
+   */
+  uint8_t no_auto_stream_window_update;
+  /**
+   * NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE
+   */
+  uint8_t no_auto_connection_window_update;
+};
+
+#endif /* NGHTTP2_OPTION_H */

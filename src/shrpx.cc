@@ -451,6 +451,13 @@ void fill_default_config()
   mod_config()->altsvc_host_len = 0;
   mod_config()->altsvc_origin = nullptr;
   mod_config()->altsvc_origin_len = 0;
+
+  nghttp2_option_new(&mod_config()->http2_option);
+
+  nghttp2_option_set_no_auto_stream_window_update
+    (mod_config()->http2_option, 1);
+  nghttp2_option_set_no_auto_connection_window_update
+    (mod_config()->http2_option, 1);
 }
 } // namespace
 

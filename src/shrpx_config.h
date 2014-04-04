@@ -38,6 +38,8 @@
 #include <event.h>
 #include <openssl/ssl.h>
 
+#include <nghttp2/nghttp2.h>
+
 namespace shrpx {
 
 namespace ssl {
@@ -177,6 +179,7 @@ struct Config {
   char *altsvc_protocol_id;
   char *altsvc_host;
   char *altsvc_origin;
+  nghttp2_option *http2_option;
   size_t downstream_addrlen;
   size_t num_worker;
   size_t http2_max_concurrent_streams;

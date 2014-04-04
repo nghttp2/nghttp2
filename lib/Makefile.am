@@ -40,7 +40,8 @@ OBJECTS = nghttp2_pq.c nghttp2_map.c nghttp2_queue.c \
 	nghttp2_npn.c nghttp2_gzip.c \
 	nghttp2_hd.c nghttp2_hd_huffman.c nghttp2_hd_huffman_data.c \
 	nghttp2_version.c \
-	nghttp2_priority_spec.c
+	nghttp2_priority_spec.c \
+	nghttp2_option.c
 
 HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
 	nghttp2_frame.h \
@@ -50,7 +51,8 @@ HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
 	nghttp2_submit.h nghttp2_outbound_item.h \
 	nghttp2_net.h \
 	nghttp2_hd.h nghttp2_hd_huffman.h \
-	nghttp2_priority_spec.h
+	nghttp2_priority_spec.h \
+	nghttp2_option.h
 
 libnghttp2_la_SOURCES = $(HFILES) $(OBJECTS)
 libnghttp2_la_LDFLAGS = -no-undefined \
