@@ -5568,9 +5568,6 @@ int nghttp2_session_upgrade(nghttp2_session *session,
   nghttp2_settings_entry *iv;
   size_t niv;
   int rv;
-  int max_conn_val_seen = 0;
-  int ini_win_size_seen = 0;
-  size_t i;
   nghttp2_priority_spec pri_spec;
 
   if((!session->server && session->next_stream_id != 1) ||
@@ -5585,17 +5582,7 @@ int nghttp2_session_upgrade(nghttp2_session *session,
   if(rv != 0) {
     return rv;
   }
-  for(i = 0; i < niv; ++i) {
-    if(iv[i].settings_id == NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
-      max_conn_val_seen = 1;
-    } else if(iv[i].settings_id == NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE) {
-      ini_win_size_seen = 1;
-    }
-  }
-  if(!max_conn_val_seen || !ini_win_size_seen) {
-    free(iv);
-    return NGHTTP2_ERR_PROTO;
-  }
+
   if(session->server) {
     memset(&frame.hd, 0, sizeof(frame.hd));
     frame.settings.iv = iv;

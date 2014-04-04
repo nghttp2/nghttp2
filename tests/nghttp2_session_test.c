@@ -2578,29 +2578,14 @@ void test_nghttp2_session_upgrade(void)
                                                          &callbacks));
   nghttp2_session_del(session);
 
-  /* Check required settings */
-  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[0].value = 1;
+  /* Empty SETTINGS is OK */
   settings_payloadlen = nghttp2_pack_settings_payload(settings_payload,
                                                       sizeof(settings_payload),
-                                                      iv, 1);
+                                                      NULL, 0);
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
-  CU_ASSERT(NGHTTP2_ERR_PROTO ==
-            nghttp2_session_upgrade(session, settings_payload,
-                                    settings_payloadlen, NULL));
-  nghttp2_session_del(session);
-
-  iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  iv[0].value = 4095;
-  settings_payloadlen = nghttp2_pack_settings_payload(settings_payload,
-                                                      sizeof(settings_payload),
-                                                      iv, 1);
-
-  nghttp2_session_client_new(&session, &callbacks, NULL);
-  CU_ASSERT(NGHTTP2_ERR_PROTO ==
-            nghttp2_session_upgrade(session, settings_payload,
-                                    settings_payloadlen, NULL));
+  CU_ASSERT(0 == nghttp2_session_upgrade(session, settings_payload,
+                                         settings_payloadlen, NULL));
   nghttp2_session_del(session);
 }
 

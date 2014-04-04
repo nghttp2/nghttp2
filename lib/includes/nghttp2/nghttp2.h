@@ -2061,10 +2061,7 @@ int nghttp2_session_terminate_session(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |settings_payload| is badly formed.
  * :enum:`NGHTTP2_ERR_PROTO`
- *     The stream ID 1 is already used or closed; or is not available;
- *     or the |settings_payload| does not include both
- *     :enum:`NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS` and
- *     :enum:`NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE`.
+ *     The stream ID 1 is already used or closed; or is not available.
  */
 int nghttp2_session_upgrade(nghttp2_session *session,
                             const uint8_t *settings_payload,
