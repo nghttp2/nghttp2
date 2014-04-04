@@ -3333,6 +3333,10 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
         return nghttp2_session_handle_invalid_connection
           (session, frame, NGHTTP2_PROTOCOL_ERROR);
       }
+      if(session->server && entry->value != 0) {
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      }
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       /* Update the initial window size of the all active streams */
