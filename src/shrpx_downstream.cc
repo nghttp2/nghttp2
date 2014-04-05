@@ -234,7 +234,8 @@ void Downstream::crumble_request_cookie()
     }
   }
   request_headers_.insert(std::end(request_headers_),
-                          std::begin(cookie_hdrs), std::end(cookie_hdrs));
+                          std::make_move_iterator(std::begin(cookie_hdrs)),
+                          std::make_move_iterator(std::end(cookie_hdrs)));
 }
 
 const std::string& Downstream::get_assembled_request_cookie() const
