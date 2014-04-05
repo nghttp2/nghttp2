@@ -86,12 +86,13 @@ static void output_to_json(nghttp2_hd_deflater *deflater,
   auto len = nghttp2_bufs_len(bufs);
   auto hex = std::vector<char>(len * 2);
   auto obj = json_object();
+  auto comp_ratio = inputlen == 0 ? 0.0 : (double)len / inputlen * 100;
 
   json_object_set_new(obj, "seq", json_integer(seq));
   json_object_set_new(obj, "input_length", json_integer(inputlen));
   json_object_set_new(obj, "output_length", json_integer(len));
   json_object_set_new(obj, "percentage_of_original_size",
-                      json_real((double)len / inputlen * 100));
+                      json_real(comp_ratio));
 
   auto hexp = hex.data();
   for(auto ci = bufs->head; ci; ci = ci->next) {
@@ -462,7 +463,10 @@ int main(int argc, char **argv)
   } else {
     perform();
   }
+
+  auto comp_ratio = input_sum == 0 ? 0.0 : (double)output_sum / input_sum;
+
   fprintf(stderr, "Overall: input=%zu output=%zu ratio=%.02f\n",
-          input_sum, output_sum, (double)output_sum / input_sum);
+          input_sum, output_sum, comp_ratio);
   return 0;
 }

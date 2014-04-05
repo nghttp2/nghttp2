@@ -428,8 +428,8 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     }
     int fd = bufferevent_getfd(bev);
     int val = 1;
-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-               reinterpret_cast<char *>(&val), sizeof(val));
+    (void)setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+                     reinterpret_cast<char *>(&val), sizeof(val));
     client->state = CLIENT_CONNECTED;
     client->on_connect();
     return;

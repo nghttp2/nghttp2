@@ -259,8 +259,8 @@ public:
   void accept_connection(int fd)
   {
     int val = 1;
-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-               reinterpret_cast<char *>(&val), sizeof(val));
+    (void)setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+                     reinterpret_cast<char *>(&val), sizeof(val));
     SSL *ssl = nullptr;
     if(ssl_ctx_) {
       ssl = ssl_session_new(fd);
@@ -1309,7 +1309,7 @@ int hd_on_frame_send_callback
     auto promised_stream = hd->get_stream(promised_stream_id);
     auto stream = hd->get_stream(frame->hd.stream_id);
 
-    if(!promised_stream) {
+    if(!stream || !promised_stream) {
       return 0;
     }
 
@@ -1550,7 +1550,9 @@ int start_listen(event_base *evbase, Sessions *sessions, const Config *config)
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
-  auto listen_handler = new ListenEventHandler(sessions, config);
+  auto listen_handler_store =
+    util::make_unique<ListenEventHandler>(sessions, config);
+  auto listen_handler = listen_handler_store.get();
 
   addrinfo *res, *rp;
   r = getaddrinfo(nullptr, service, &hints, &res);
@@ -1584,6 +1586,8 @@ int start_listen(event_base *evbase, Sessions *sessions, const Config *config)
         (evbase, evlistener_acceptcb, listen_handler,
          LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1, fd);
       evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
+
+      listen_handler_store.release();
 
       if(config->verbose) {
         std::cout << (rp->ai_family == AF_INET ? "IPv4" : "IPv6")

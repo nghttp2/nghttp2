@@ -24,6 +24,8 @@
  */
 #include "h2load_http2_session.h"
 
+#include <cassert>
+
 #include "h2load.h"
 #include "util.h"
 
@@ -111,6 +113,8 @@ int on_stream_close_callback
 
 void Http2Session::on_connect()
 {
+  int rv;
+
   nghttp2_session_callbacks callbacks = {0};
   callbacks.before_frame_send_callback = before_frame_send_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
@@ -125,8 +129,11 @@ void Http2Session::on_connect()
   iv[0].value = 0;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = (1 << client_->worker->config->window_bits) - 1;
-  nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv,
-                          sizeof(iv) / sizeof(iv[0]));
+
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv,
+                               sizeof(iv) / sizeof(iv[0]));
+
+  assert(rv == 0);
 
   auto extra_connection_window =
     (1 << client_->worker->config->connection_window_bits) - 1
