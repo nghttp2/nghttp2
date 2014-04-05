@@ -126,6 +126,10 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
   downstream->set_stream_id(1);
   downstream->set_priority(0);
 
+  if(LOG_ENABLED(INFO)) {
+    ULOG(INFO, this) << "Connection upgraded to HTTP/2";
+  }
+
   return 0;
 }
 
