@@ -7,21 +7,19 @@ version 2.
 Development Status
 ------------------
 
-We started to implement h2-10
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-10) and the
+We started to implement h2-11
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-11) and the
 header compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-06).
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07).
 
 The nghttp2 code base was forked from spdylay project.
 
 ========================== =====
-Features                   h2-10
+Features                   h2-11
 ========================== =====
-HPACK-draft-06             Done
-Strict SETTINGS validation Done
-Disallow client to push    Done
-Padding                    Done
-END_SEGMENT
+HPACK-draft-07             Done
+Dependency based priority  Done
+ALTSVC frame               Done
 ========================== =====
 
 Public Test Server
@@ -163,12 +161,12 @@ output from ``nghttp`` client::
 
     $ src/nghttp -nv https://localhost:8443
     [  0.004][NPN] server offers:
-              * h2-10
+              * h2-11
               * spdy/3.1
               * spdy/3
               * spdy/2
               * http/1.1
-    The negotiated protocol: h2-10
+    The negotiated protocol: h2-11
     [  0.006] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
               (niv=2)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
@@ -223,7 +221,7 @@ The HTTP Upgrade is performed like this::
     GET / HTTP/1.1
     Host: localhost:8080
     Connection: Upgrade, HTTP2-Settings
-    Upgrade: h2-10
+    Upgrade: h2c-11
     HTTP2-Settings: AwAAAGQEAAD__w
     Accept: */*
     User-Agent: nghttp2/0.4.0-DEV
@@ -232,7 +230,7 @@ The HTTP Upgrade is performed like this::
     [  0.001] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
-    Upgrade: h2-10
+    Upgrade: h2c-11
 
 
     [  0.001] HTTP Upgrade success
@@ -336,7 +334,7 @@ nghttpx - proxy
 +++++++++++++++
 
 ``nghttpx`` is a multi-threaded reverse proxy for
-h2-10, SPDY and HTTP/1.1. It has several operation modes:
+``h2-11``, SPDY and HTTP/1.1. It has several operation modes:
 
 ================== ============================ ============== =============
 Mode option        Frontend                     Backend        Note
@@ -349,8 +347,8 @@ default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================ ============== =============
 
 The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens for h2-10, SPDY and HTTP/1.1 and
-can be deployed SSL/TLS terminator for existing web server.
+a reverse proxy and listens for ``h2-11``, SPDY and HTTP/1.1 and can
+be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
 SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
