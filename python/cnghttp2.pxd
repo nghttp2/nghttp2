@@ -199,9 +199,13 @@ cdef extern from 'nghttp2/nghttp2.h':
         int fd
         void *ptr
 
+    ctypedef enum nghttp2_data_flag:
+        NGHTTP2_DATA_FLAG_NONE
+        NGHTTP2_DATA_FLAG_EOF
+
     ctypedef ssize_t (*nghttp2_data_source_read_callback)\
         (nghttp2_session *session, int32_t stream_id,
-         uint8_t *buf, size_t length, int *eof,
+         uint8_t *buf, size_t length, uint32_t *data_flags,
          nghttp2_data_source *source, void *user_data)
 
     ctypedef struct nghttp2_data_provider:

@@ -468,7 +468,8 @@ cdef int server_on_stream_close(cnghttp2.nghttp2_session *session,
 
 cdef ssize_t server_data_source_read(cnghttp2.nghttp2_session *session,
                                      int32_t stream_id,
-                                     uint8_t *buf, size_t length, int *eof,
+                                     uint8_t *buf, size_t length,
+                                     uint32_t *data_flags,
                                      cnghttp2.nghttp2_data_source *source,
                                      void *user_data):
     cdef http2 = <_HTTP2SessionCore>user_data
@@ -485,7 +486,7 @@ cdef ssize_t server_data_source_read(cnghttp2.nghttp2_session *session,
         memcpy(buf, <uint8_t*>data, nread)
         return nread
 
-    eof[0] = 1
+    data_flags[0] = cnghttp2.NGHTTP2_DATA_FLAG_EOF
 
     return 0
 
