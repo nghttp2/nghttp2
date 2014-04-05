@@ -143,8 +143,8 @@ void test_nghttp2_frame_pack_headers()
                      1000000007, &oframe.hd);
 
   CU_ASSERT(NGHTTP2_PRIORITY_TYPE_GROUP == oframe.pri_spec.pri_type);
-  CU_ASSERT(1000000009 == oframe.pri_spec.group.pri_group_id);
-  CU_ASSERT(12 == oframe.pri_spec.group.weight);
+  CU_ASSERT(1000000009 == oframe.pri_spec.spec.group.pri_group_id);
+  CU_ASSERT(12 == oframe.pri_spec.spec.group.weight);
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN
     - nghttp2_frame_priority_len(oframe.hd.flags);
@@ -181,8 +181,8 @@ void test_nghttp2_frame_pack_headers()
                      1000000007, &oframe.hd);
 
   CU_ASSERT(NGHTTP2_PRIORITY_TYPE_DEP == oframe.pri_spec.pri_type);
-  CU_ASSERT(123 == oframe.pri_spec.dep.stream_id);
-  CU_ASSERT(1 == oframe.pri_spec.dep.exclusive);
+  CU_ASSERT(123 == oframe.pri_spec.spec.dep.stream_id);
+  CU_ASSERT(1 == oframe.pri_spec.spec.dep.exclusive);
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN
     - nghttp2_frame_priority_len(oframe.hd.flags);
@@ -268,8 +268,8 @@ void test_nghttp2_frame_pack_priority(void)
                      1000000007, &oframe.hd);
 
   CU_ASSERT(NGHTTP2_PRIORITY_TYPE_GROUP == oframe.pri_spec.pri_type);
-  CU_ASSERT(1000000009 == oframe.pri_spec.group.pri_group_id);
-  CU_ASSERT(12 == oframe.pri_spec.group.weight);
+  CU_ASSERT(1000000009 == oframe.pri_spec.spec.group.pri_group_id);
+  CU_ASSERT(12 == oframe.pri_spec.spec.group.weight);
 
   nghttp2_frame_priority_free(&oframe);
   nghttp2_bufs_reset(&bufs);
@@ -290,8 +290,8 @@ void test_nghttp2_frame_pack_priority(void)
                      1000000007, &oframe.hd);
 
   CU_ASSERT(NGHTTP2_PRIORITY_TYPE_DEP == oframe.pri_spec.pri_type);
-  CU_ASSERT(79 == oframe.pri_spec.dep.stream_id);
-  CU_ASSERT(1 == oframe.pri_spec.dep.exclusive);
+  CU_ASSERT(79 == oframe.pri_spec.spec.dep.stream_id);
+  CU_ASSERT(1 == oframe.pri_spec.spec.dep.exclusive);
 
   nghttp2_frame_priority_free(&oframe);
   nghttp2_bufs_reset(&bufs);

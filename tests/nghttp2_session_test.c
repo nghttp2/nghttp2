@@ -1718,7 +1718,7 @@ void test_nghttp2_session_on_priority_received(void)
   /* push and initiated by remote peer: no update */
   stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
 
-  frame.priority.pri_spec.group.weight = 3;
+  frame.priority.pri_spec.spec.group.weight = 3;
 
   CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
 

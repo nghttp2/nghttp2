@@ -28,14 +28,14 @@ void nghttp2_priority_spec_group_init(nghttp2_priority_spec *pri_spec,
                                       int32_t pri_group_id, int32_t weight)
 {
   pri_spec->pri_type = NGHTTP2_PRIORITY_TYPE_GROUP;
-  pri_spec->group.pri_group_id = pri_group_id;
-  pri_spec->group.weight = weight;
+  pri_spec->spec.group.pri_group_id = pri_group_id;
+  pri_spec->spec.group.weight = weight;
 }
 
 void nghttp2_priority_spec_dep_init(nghttp2_priority_spec *pri_spec,
                                     int32_t stream_id, int exclusive)
 {
   pri_spec->pri_type = NGHTTP2_PRIORITY_TYPE_DEP;
-  pri_spec->dep.stream_id = stream_id;
-  pri_spec->dep.exclusive = exclusive != 0;
+  pri_spec->spec.dep.stream_id = stream_id;
+  pri_spec->spec.dep.exclusive = exclusive != 0;
 }

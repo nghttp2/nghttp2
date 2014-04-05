@@ -106,10 +106,10 @@ static void adjust_priority_spec_group_weight(nghttp2_priority_spec *pri_spec)
 {
   assert(pri_spec->pri_type == NGHTTP2_PRIORITY_TYPE_GROUP);
 
-  if(pri_spec->group.weight < NGHTTP2_MIN_WEIGHT) {
-    pri_spec->group.weight = NGHTTP2_MIN_WEIGHT;
-  } else if(pri_spec->group.weight > NGHTTP2_MAX_WEIGHT) {
-    pri_spec->group.weight = NGHTTP2_MAX_WEIGHT;
+  if(pri_spec->spec.group.weight < NGHTTP2_MIN_WEIGHT) {
+    pri_spec->spec.group.weight = NGHTTP2_MIN_WEIGHT;
+  } else if(pri_spec->spec.group.weight > NGHTTP2_MAX_WEIGHT) {
+    pri_spec->spec.group.weight = NGHTTP2_MAX_WEIGHT;
   }
 }
 
@@ -202,7 +202,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
 
     break;
   case NGHTTP2_PRIORITY_TYPE_DEP:
-    if(stream_id == copy_pri_spec.dep.stream_id) {
+    if(stream_id == copy_pri_spec.spec.dep.stream_id) {
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
 

@@ -370,12 +370,12 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     fprintf(outfile, "(padlen=%zu", frame->headers.padlen);
     if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
       fprintf(outfile, ", pri_group_id=%d, weight=%u",
-              frame->headers.pri_spec.group.pri_group_id,
-              frame->headers.pri_spec.group.weight);
+              frame->headers.pri_spec.spec.group.pri_group_id,
+              frame->headers.pri_spec.spec.group.weight);
     } else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
       fprintf(outfile, ", stream_id=%d, exclusive=%d",
-              frame->headers.pri_spec.dep.stream_id,
-              frame->headers.pri_spec.dep.exclusive);
+              frame->headers.pri_spec.spec.dep.stream_id,
+              frame->headers.pri_spec.spec.dep.exclusive);
     }
     fprintf(outfile, ")\n");
     switch(frame->headers.cat) {
@@ -403,12 +403,12 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
 
     if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
       fprintf(outfile, "pri_group_id=%d, weight=%u",
-              frame->priority.pri_spec.group.pri_group_id,
-              frame->priority.pri_spec.group.weight);
+              frame->priority.pri_spec.spec.group.pri_group_id,
+              frame->priority.pri_spec.spec.group.weight);
     } else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
       fprintf(outfile, "stream_id=%d, exclusive=%d",
-              frame->priority.pri_spec.dep.stream_id,
-              frame->priority.pri_spec.dep.exclusive);
+              frame->priority.pri_spec.spec.dep.stream_id,
+              frame->priority.pri_spec.spec.dep.exclusive);
     }
 
     fprintf(outfile, ")\n");

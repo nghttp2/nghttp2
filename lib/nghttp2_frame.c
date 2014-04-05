@@ -389,14 +389,14 @@ void nghttp2_frame_pack_priority_spec(uint8_t *buf,
   switch(pri_spec->pri_type) {
   case NGHTTP2_PRIORITY_TYPE_GROUP:
 
-    nghttp2_put_uint32be(buf, pri_spec->group.pri_group_id);
-    buf[4] = pri_spec->group.weight - 1;
+    nghttp2_put_uint32be(buf, pri_spec->spec.group.pri_group_id);
+    buf[4] = pri_spec->spec.group.weight - 1;
 
     return;
   case NGHTTP2_PRIORITY_TYPE_DEP:
 
-    nghttp2_put_uint32be(buf, pri_spec->dep.stream_id);
-    if(pri_spec->dep.exclusive) {
+    nghttp2_put_uint32be(buf, pri_spec->spec.dep.stream_id);
+    if(pri_spec->spec.dep.exclusive) {
       buf[0] |= 0x80;
     }
 

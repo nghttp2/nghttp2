@@ -814,7 +814,7 @@ typedef struct {
      * :enum:`NGHTTP2_PRIORITY_TYPE_DEP`.
      */
     nghttp2_priority_dep dep;
-  };
+  } spec;
 } nghttp2_priority_spec;
 
 /**

@@ -491,7 +491,7 @@ int nghttp2_session_reprioritize_stream
 
   switch(pri_spec->pri_type) {
   case NGHTTP2_PRIORITY_TYPE_GROUP:
-    group = &pri_spec->group;
+    group = &pri_spec->spec.group;
 
     old_stream_group = stream->stream_group;
 
@@ -523,7 +523,7 @@ int nghttp2_session_reprioritize_stream
     return 0;
 
   case NGHTTP2_PRIORITY_TYPE_DEP:
-    dep = &pri_spec->dep;
+    dep = &pri_spec->spec.dep;
 
     if(dep->stream_id == stream->stream_id || dep->stream_id == 0) {
       return nghttp2_session_terminate_session(session,
@@ -616,10 +616,10 @@ int nghttp2_session_add_frame(nghttp2_session *session,
         /* Initial HEADERS, which will open stream */
 
         if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
-          item->weight = frame->headers.pri_spec.group.weight;
+          item->weight = frame->headers.pri_spec.spec.group.weight;
         } else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
           dep_stream = nghttp2_session_get_stream
-            (session, frame->headers.pri_spec.dep.stream_id);
+            (session, frame->headers.pri_spec.spec.dep.stream_id);
           if(dep_stream) {
             item->weight = dep_stream->stream_group->weight;
           } else {
@@ -768,13 +768,13 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
 
   switch(pri_spec->pri_type) {
   case NGHTTP2_PRIORITY_TYPE_GROUP:
-    pri_group_id = pri_spec->group.pri_group_id;
-    weight = pri_spec->group.weight;
+    pri_group_id = pri_spec->spec.group.pri_group_id;
+    weight = pri_spec->spec.group.weight;
 
     break;
   case NGHTTP2_PRIORITY_TYPE_DEP:
     dep_stream = nghttp2_session_get_stream_raw(session,
-                                                pri_spec->dep.stream_id);
+                                                pri_spec->spec.dep.stream_id);
 
     if(dep_stream) {
       pri_group_id = dep_stream->stream_group->pri_group_id;
@@ -854,7 +854,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   root_stream = nghttp2_stream_get_dep_root(dep_stream);
 
   if(root_stream->num_substreams < NGHTTP2_MAX_DEP_TREE_LENGTH) {
-    if(pri_spec->dep.exclusive) {
+    if(pri_spec->spec.dep.exclusive) {
       nghttp2_stream_dep_insert(dep_stream, stream);
     } else {
       nghttp2_stream_dep_add(dep_stream, stream);
@@ -1499,10 +1499,11 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
         session->next_stream_id += 2;
 
         if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
-          if(frame->headers.pri_spec.group.pri_group_id == -1) {
+          if(frame->headers.pri_spec.spec.group.pri_group_id == -1) {
             /* We now know stream_id. Assign stream_id to
                pri_group_id if it is -1. */
-            frame->headers.pri_spec.group.pri_group_id = frame->hd.stream_id;
+            frame->headers.pri_spec.spec.group.pri_group_id =
+              frame->hd.stream_id;
           }
         }
 
@@ -2811,8 +2812,8 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   }
 
   if(frame->headers.pri_spec.pri_type == NGHTTP2_PRIORITY_TYPE_DEP &&
-     (frame->headers.pri_spec.dep.stream_id == frame->hd.stream_id ||
-      frame->headers.pri_spec.dep.stream_id == 0)) {
+     (frame->headers.pri_spec.spec.dep.stream_id == frame->hd.stream_id ||
+      frame->headers.pri_spec.spec.dep.stream_id == 0)) {
     return nghttp2_session_inflate_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
