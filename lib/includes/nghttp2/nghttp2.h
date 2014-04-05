@@ -1497,6 +1497,84 @@ typedef struct {
   nghttp2_select_padding_callback select_padding_callback;
 } nghttp2_session_callbacks;
 
+struct nghttp2_option;
+
+/**
+ * @struct
+ *
+ * Configuration options for :type:`nghttp2_session`.  The details of
+ * this structure are intentionally hidden from the public API.
+ */
+typedef struct nghttp2_option nghttp2_option;
+
+/**
+ * @function
+ *
+ * Initializes |*option_ptr| with default values.
+ *
+ * When the application finished using this object, it can use
+ * `nghttp2_option_del()` to free its memory.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_option_new(nghttp2_option **option_ptr);
+
+/**
+ * @function
+ *
+ * Frees any resources allocated for |option|.  If |option| is
+ * ``NULL``, this function does nothing.
+ */
+void nghttp2_option_del(nghttp2_option *option);
+
+/**
+ * @function
+ *
+ * This option prevents the library from sending WINDOW_UPDATE for a
+ * stream automatically. If this option is set to nonzero, the
+ * library won't send WINDOW_UPDATE for a stream and the application
+ * is responsible for sending WINDOW_UPDATE using
+ * `nghttp2_submit_window_update`. By default, this option is set to
+ * zero.
+ */
+void nghttp2_option_set_no_auto_stream_window_update(nghttp2_option *option,
+                                                     int val);
+
+/**
+ * @function
+ *
+ * This option prevents the library from sending WINDOW_UPDATE for a
+ * connection automatically. If this option is set to nonzero, the
+ * library won't send WINDOW_UPDATE for a connection and the
+ * application is responsible for sending WINDOW_UPDATE with stream
+ * ID 0 using `nghttp2_submit_window_update`. By default, this
+ * option is set to zero.
+ */
+void nghttp2_option_set_no_auto_connection_window_update
+(nghttp2_option *option, int val);
+
+/**
+ * @function
+ *
+ * This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of
+ * remote endpoint as if it is received in SETTINGS frame. Without
+ * specifying this option, before the local endpoint receives
+ * SETTINGS_MAX_CONCURRENT_STREAMS in SETTINGS frame from remote
+ * endpoint, SETTINGS_MAX_CONCURRENT_STREAMS is unlimited. This may
+ * cause problem if local endpoint submits lots of requests
+ * initially and sending them at once to the remote peer may lead to
+ * the rejection of some requests. Specifying this option to the
+ * sensible value, say 100, may avoid this kind of issue. This value
+ * will be overwritten if the local endpoint receives
+ * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
+ */
+void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
+                                                    uint32_t val);
+
 /**
  * @function
  *
@@ -1602,84 +1680,6 @@ int nghttp2_session_server_new2(nghttp2_session **session_ptr,
  * ``NULL``, this function does nothing.
  */
 void nghttp2_session_del(nghttp2_session *session);
-
-struct nghttp2_option;
-
-/**
- * @struct
- *
- * Configuration options for :type:`nghttp2_session`.  The details of
- * this structure are intentionally hidden from the public API.
- */
-typedef struct nghttp2_option nghttp2_option;
-
-/**
- * @function
- *
- * Initializes |*option_ptr| with default values.
- *
- * When the application finished using this object, it can use
- * `nghttp2_option_del()` to free its memory.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- */
-int nghttp2_option_new(nghttp2_option **option_ptr);
-
-/**
- * @function
- *
- * Frees any resources allocated for |option|.  If |option| is
- * ``NULL``, this function does nothing.
- */
-void nghttp2_option_del(nghttp2_option *option);
-
-/**
- * @function
- *
- * This option prevents the library from sending WINDOW_UPDATE for a
- * stream automatically. If this option is set to nonzero, the
- * library won't send WINDOW_UPDATE for a stream and the application
- * is responsible for sending WINDOW_UPDATE using
- * `nghttp2_submit_window_update`. By default, this option is set to
- * zero.
- */
-void nghttp2_option_set_no_auto_stream_window_update(nghttp2_option *option,
-                                                     int val);
-
-/**
- * @function
- *
- * This option prevents the library from sending WINDOW_UPDATE for a
- * connection automatically. If this option is set to nonzero, the
- * library won't send WINDOW_UPDATE for a connection and the
- * application is responsible for sending WINDOW_UPDATE with stream
- * ID 0 using `nghttp2_submit_window_update`. By default, this
- * option is set to zero.
- */
-void nghttp2_option_set_no_auto_connection_window_update
-(nghttp2_option *option, int val);
-
-/**
- * @function
- *
- * This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of
- * remote endpoint as if it is received in SETTINGS frame. Without
- * specifying this option, before the local endpoint receives
- * SETTINGS_MAX_CONCURRENT_STREAMS in SETTINGS frame from remote
- * endpoint, SETTINGS_MAX_CONCURRENT_STREAMS is unlimited. This may
- * cause problem if local endpoint submits lots of requests
- * initially and sending them at once to the remote peer may lead to
- * the rejection of some requests. Specifying this option to the
- * sensible value, say 100, may avoid this kind of issue. This value
- * will be overwritten if the local endpoint receives
- * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
- */
-void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
-                                                    uint32_t val);
 
 /**
  * @function
