@@ -922,7 +922,7 @@ void Http2Handler::terminate_session(nghttp2_error_code error_code)
 
 ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t length, int *eof,
+ uint8_t *buf, size_t length, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
   auto hd = static_cast<Http2Handler*>(user_data);
@@ -942,7 +942,7 @@ ssize_t file_read_callback
   }
 
   if(r == 0) {
-    *eof = 1;
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
 
   return r;

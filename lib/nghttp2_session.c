@@ -5388,7 +5388,7 @@ int nghttp2_session_pack_data(nghttp2_session *session,
                               nghttp2_private_data *frame)
 {
   ssize_t rv;
-  int eof_flags;
+  uint32_t data_flags;
   uint8_t flags;
   ssize_t payloadlen;
   ssize_t padded_payloadlen;
@@ -5404,10 +5404,10 @@ int nghttp2_session_pack_data(nghttp2_session *session,
   /* Current max DATA length is less then buffer chunk size */
   assert(nghttp2_buf_avail(buf) >= (ssize_t)datamax);
 
-  eof_flags = 0;
+  data_flags = NGHTTP2_DATA_FLAG_NONE;
   payloadlen = frame->data_prd.read_callback
     (session, frame->hd.stream_id, buf->pos, datamax,
-     &eof_flags, &frame->data_prd.source, session->user_data);
+     &data_flags, &frame->data_prd.source, session->user_data);
 
   if(payloadlen == NGHTTP2_ERR_DEFERRED ||
      payloadlen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
@@ -5430,7 +5430,7 @@ int nghttp2_session_pack_data(nghttp2_session *session,
   frame->hd.flags &= (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT);
   flags = NGHTTP2_FLAG_NONE;
 
-  if(eof_flags) {
+  if(data_flags & NGHTTP2_DATA_FLAG_EOF) {
     frame->eof = 1;
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       flags |= NGHTTP2_FLAG_END_STREAM;

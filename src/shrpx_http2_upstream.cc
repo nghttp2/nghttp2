@@ -891,7 +891,7 @@ namespace {
 ssize_t downstream_data_read_callback(nghttp2_session *session,
                                       int32_t stream_id,
                                       uint8_t *buf, size_t length,
-                                      int *eof,
+                                      uint32_t *data_flags,
                                       nghttp2_data_source *source,
                                       void *user_data)
 {
@@ -910,7 +910,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     if(!downstream->get_upgraded()) {
-      *eof = 1;
+      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
       if(LOG_ENABLED(INFO)) {
@@ -923,14 +923,14 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   }
   // Send WINDOW_UPDATE before buffer is empty to avoid delay because
   // of RTT.
-  if(*eof != 1 &&
+  if(((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0 &&
      handler->get_outbuf_length() + evbuffer_get_length(body) <
      OUTBUF_MAX_THRES) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
-  if(nread == 0 && *eof != 1) {
+  if(nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
     return NGHTTP2_ERR_DEFERRED;
   }
   return nread;

@@ -1669,7 +1669,7 @@ int communicate(const std::string& scheme, const std::string& host,
 namespace {
 ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t length, int *eof,
+ uint8_t *buf, size_t length, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
   auto req = (Request*)nghttp2_session_get_stream_user_data
@@ -1683,7 +1683,7 @@ ssize_t file_read_callback
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   } else {
     if(r == 0) {
-      *eof = 1;
+      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
     } else {
       req->data_offset += r;
     }

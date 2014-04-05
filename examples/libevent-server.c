@@ -328,7 +328,7 @@ static char* percent_decode(const uint8_t *value, size_t valuelen)
 
 static ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t length, int *eof,
+ uint8_t *buf, size_t length, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
   int fd = source->fd;
@@ -338,7 +338,7 @@ static ssize_t file_read_callback
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
   if(r == 0) {
-    *eof = 1;
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
   return r;
 }

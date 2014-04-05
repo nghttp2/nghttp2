@@ -622,6 +622,23 @@ typedef union {
 } nghttp2_data_source;
 
 /**
+ * @enum
+ *
+ * The flags used to set in |data_flags| output parameter in
+ * :type:`nghttp2_data_source_read_callback`.
+ */
+typedef enum {
+  /**
+   * No flag set.
+   */
+  NGHTTP2_DATA_FLAG_NONE = 0,
+  /**
+   * Indicates EOF was sensed.
+   */
+  NGHTTP2_DATA_FLAG_EOF = 0x01
+} nghttp2_data_flag;
+
+/**
  * @functypedef
  *
  * Callback function invoked when the library wants to read data from
@@ -629,21 +646,22 @@ typedef union {
  * implementation of this function must read at most |length| bytes of
  * data from |source| (or possibly other places) and store them in
  * |buf| and return number of data stored in |buf|. If EOF is reached,
- * set |*eof| to 1.  If the application wants to postpone DATA frames,
- * (e.g., asynchronous I/O, or reading data blocks for long time), it
- * is achieved by returning :enum:`NGHTTP2_ERR_DEFERRED` without
- * reading any data in this invocation.  The library removes DATA
- * frame from the outgoing queue temporarily.  To move back deferred
- * DATA frame to outgoing queue, call `nghttp2_session_resume_data()`.
- * In case of error, there are 2 choices. Returning
- * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close the stream
- * by issuing RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.
- * Returning :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the
- * entire session failure.
+ * set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_falgs|.  If the
+ * application wants to postpone DATA frames, (e.g., asynchronous I/O,
+ * or reading data blocks for long time), it is achieved by returning
+ * :enum:`NGHTTP2_ERR_DEFERRED` without reading any data in this
+ * invocation.  The library removes DATA frame from the outgoing queue
+ * temporarily.  To move back deferred DATA frame to outgoing queue,
+ * call `nghttp2_session_resume_data()`.  In case of error, there are
+ * 2 choices. Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`
+ * will close the stream by issuing RST_STREAM with
+ * :enum:`NGHTTP2_INTERNAL_ERROR`.  Returning
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the entire session
+ * failure.
  */
 typedef ssize_t (*nghttp2_data_source_read_callback)
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t length, int *eof,
+ uint8_t *buf, size_t length, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data);
 
 /**

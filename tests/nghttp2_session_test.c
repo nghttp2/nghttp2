@@ -232,7 +232,7 @@ static ssize_t select_padding_callback(nghttp2_session *session,
 
 static ssize_t fixed_length_data_source_read_callback
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, int *eof,
+ uint8_t *buf, size_t len, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -244,14 +244,14 @@ static ssize_t fixed_length_data_source_read_callback
   }
   ud->data_source_length -= wlen;
   if(ud->data_source_length == 0) {
-    *eof = 1;
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
   return wlen;
 }
 
 static ssize_t temporal_failure_data_source_read_callback
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, int *eof,
+ uint8_t *buf, size_t len, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
   return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
@@ -259,7 +259,7 @@ static ssize_t temporal_failure_data_source_read_callback
 
 static ssize_t fail_data_source_read_callback
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, int *eof,
+ uint8_t *buf, size_t len, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
   return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -332,7 +332,7 @@ static int on_begin_headers_callback(nghttp2_session *session,
 
 static ssize_t defer_data_source_read_callback
 (nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, int *eof,
+ uint8_t *buf, size_t len, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
   return NGHTTP2_ERR_DEFERRED;

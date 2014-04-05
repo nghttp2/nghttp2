@@ -154,7 +154,7 @@ namespace {
 ssize_t http2_data_read_callback(nghttp2_session *session,
                                  int32_t stream_id,
                                  uint8_t *buf, size_t length,
-                                 int *eof,
+                                 uint32_t *data_flags,
                                  nghttp2_data_source *source,
                                  void *user_data)
 {
@@ -183,7 +183,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
         if(!downstream->get_upgrade_request() ||
            (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
             !downstream->get_upgraded())) {
-          *eof = 1;
+          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
         } else {
           return NGHTTP2_ERR_DEFERRED;
         }
@@ -204,7 +204,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
         if(evbuffer_get_length(body) == 0) {
           // Check get_request_state() == MSG_COMPLETE just in case
           if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-            *eof = 1;
+            *data_flags |= NGHTTP2_DATA_FLAG_EOF;
             break;
           }
           return NGHTTP2_ERR_DEFERRED;
