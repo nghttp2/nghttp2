@@ -545,7 +545,7 @@ function to read content of the file::
 
     static ssize_t file_read_callback
     (nghttp2_session *session, int32_t stream_id,
-     uint8_t *buf, size_t length, int *eof,
+     uint8_t *buf, size_t length, uint32_t *data_flags,
      nghttp2_data_source *source, void *user_data)
     {
       int fd = source->fd;
@@ -555,16 +555,16 @@ function to read content of the file::
         return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
       if(r == 0) {
-        *eof = 1;
+        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
       }
       return r;
     }
 
 If error happens while reading file, we return
-:macro:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`. This tells the library
-to send RST_STREAM to the stream.  When all data is read, set 1 to
-``*eof`` to tell the nghttp2 library that we have finished reading
-file.
+:macro:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  This tells the
+library to send RST_STREAM to the stream.  When all data are read, set
+:macro:`NGHTTP2_DATA_FLAG_EOF` flag to ``*data_flags`` to tell the
+nghttp2 library that we have finished reading file.
 
 The `nghttp2_submit_response()` is used to send response to the remote
 peer.
