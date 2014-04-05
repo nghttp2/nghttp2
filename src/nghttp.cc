@@ -1830,7 +1830,10 @@ Options:
                      -d is used, the HTTP upgrade request is performed
                      with OPTIONS method.
   -p, --weight=<WEIGHT>
-                     Sets priority group weight. Default: )"
+                     Sets  priority  group  weight.  The  valid  value
+                     range is [)"
+      << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT << R"(], inclusive.
+                     Default: )"
       << NGHTTP2_DEFAULT_WEIGHT << R"(
   -M, --peer-max-concurrent-streams=<N>
                      Use <N>  as SETTINGS_MAX_CONCURRENT_STREAMS value
@@ -1904,11 +1907,13 @@ int main(int argc, char **argv)
       config.null_out = true;
       break;
     case 'p': {
+      errno = 0;
       auto n = strtoul(optarg, nullptr, 10);
-      if(n <= NGHTTP2_MAX_WEIGHT) {
+      if(errno == 0 && NGHTTP2_MIN_WEIGHT <= n && n <= NGHTTP2_MAX_WEIGHT) {
         config.weight = n;
       } else {
-        std::cerr << "-p: specify the integer in the range [0, "
+        std::cerr << "-p: specify the integer in the range ["
+                  << NGHTTP2_MIN_WEIGHT << ", "
                   << NGHTTP2_MAX_WEIGHT << "], inclusive"
                   << std::endl;
         exit(EXIT_FAILURE);
