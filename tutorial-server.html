@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tutorial: HTTP/2.0 server &mdash; nghttp2 0.4.0-DEV documentation</title>
+  <title>Tutorial: HTTP/2 server &mdash; nghttp2 0.4.0-DEV documentation</title>
   
 
   
@@ -54,7 +54,7 @@
   
     <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
         <link rel="next" title="API Reference" href="apiref.html"/>
-        <link rel="prev" title="Tutorial: HTTP/2.0 client" href="tutorial-client.html"/> 
+        <link rel="prev" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/> 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -81,7 +81,7 @@
         
         
             <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2.0 C Library</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
@@ -93,11 +93,11 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Tutorial: HTTP/2.0 server</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Tutorial: HTTP/2 server</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
@@ -137,7 +137,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li>Tutorial: HTTP/2.0 server</li>
+    <li>Tutorial: HTTP/2 server</li>
       <li class="wy-breadcrumbs-aside">
         
       </li>
@@ -146,10 +146,10 @@
 </div>
           <div role="main">
             
-  <div class="section" id="tutorial-http-2-0-server">
-<h1>Tutorial: HTTP/2.0 server<a class="headerlink" href="#tutorial-http-2-0-server" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="tutorial-http-2-server">
+<h1>Tutorial: HTTP/2 server<a class="headerlink" href="#tutorial-http-2-server" title="Permalink to this headline">¶</a></h1>
 <p>In this tutorial, we are going to write single-threaded, event-based
-HTTP/2.0 web server, which supports HTTPS only. It can handle
+HTTP/2 web server, which supports HTTPS only. It can handle
 concurrent multiple requests, but only GET method is supported. The
 complete source code, <a class="reference internal" href="#libevent-server-c">libevent-server.c</a>, is attached at the end of
 this page.  It also resides in examples directory in the archive or
@@ -202,7 +202,7 @@ life time:</p>
 </div>
 <p>The wire format of NPN is a sequence of length prefixed string. The
 exactly one byte is used to specify the length of each protocol
-identifier.  In this tutorial, we advertise the HTTP/2.0 protocol the
+identifier.  In this tutorial, we advertise the HTTP/2 protocol the
 nghttp2 library supports. The nghttp2 library exports its identifier
 in <a class="reference internal" href="apiref.html#c.NGHTTP2_PROTO_VERSION_ID" title="NGHTTP2_PROTO_VERSION_ID"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PROTO_VERSION_ID</span></tt></a>. The <tt class="docutils literal"><span class="pre">next_proto_cb()</span></tt> function
 is the server-side NPN callback. In OpenSSL implementation, we just
@@ -217,7 +217,7 @@ callback function is set to <tt class="docutils literal"><span class="pre">SSL_C
 </pre></div>
 </div>
 <p>We use <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> structure to store the session-level
-(which corresponds to 1 HTTP/2.0 connection) data:</p>
+(which corresponds to 1 HTTP/2 connection) data:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="n">http2_session_data</span> <span class="p">{</span>
   <span class="k">struct</span> <span class="n">http2_stream_data</span> <span class="n">root</span><span class="p">;</span>
   <span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">;</span>
@@ -238,19 +238,20 @@ data:</p>
 <span class="p">}</span> <span class="n">http2_stream_data</span><span class="p">;</span>
 </pre></div>
 </div>
-<p>1 HTTP/2.0 session can have multiple streams.  We manage these
-multiple streams by intrusive doubly linked list to add and remove the
-object in O(1). The first element of this list is pointed by the
+<p>1 HTTP/2 session can have multiple streams.  We manage these multiple
+streams by intrusive doubly linked list to add and remove the object
+in O(1). The first element of this list is pointed by the
 <tt class="docutils literal"><span class="pre">root-&gt;next</span></tt> in <tt class="docutils literal"><span class="pre">http2_session_data</span></tt>.  Initially, <tt class="docutils literal"><span class="pre">root-&gt;next</span></tt>
-is <tt class="docutils literal"><span class="pre">NULL</span></tt>. The <tt class="docutils literal"><span class="pre">handshake_leftlen</span></tt> member of
+is <tt class="docutils literal"><span class="pre">NULL</span></tt>.  The <tt class="docutils literal"><span class="pre">handshake_leftlen</span></tt> member of
 <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> is used to track the number of bytes remaining
-when receiving first 24 bytes magic value
-(<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_HEADER" title="NGHTTP2_CLIENT_CONNECTION_HEADER"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER</span></tt></a>) from the client.  We use
-libevent&#8217;s bufferevent structure to perform network I/O. Notice that
-bufferevent object is in <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> and not in
-<tt class="docutils literal"><span class="pre">http2_stream_data</span></tt>. This is because <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt> is just a
-logical stream multiplexed over the single connection managed by
-bufferevent in <tt class="docutils literal"><span class="pre">http2_session_data</span></tt>.</p>
+when receiving first client connection preface
+(<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_PREFACE" title="NGHTTP2_CLIENT_CONNECTION_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE</span></tt></a>), which is 24 bytes magic
+byte string, from the client.  We use libevent&#8217;s bufferevent structure
+to perform network I/O. Notice that bufferevent object is in
+<tt class="docutils literal"><span class="pre">http2_session_data</span></tt> and not in <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt>. This is
+because <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt> is just a logical stream multiplexed
+over the single connection managed by bufferevent in
+<tt class="docutils literal"><span class="pre">http2_session_data</span></tt>.</p>
 <p>We first create listener object to accept incoming connections.
 We use libevent&#8217;s <tt class="docutils literal"><span class="pre">struct</span> <span class="pre">evconnlistener</span></tt> for this purpose:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">start_listen</span><span class="p">(</span><span class="k">struct</span> <span class="n">event_base</span> <span class="o">*</span><span class="n">evbase</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">service</span><span class="p">,</span>
@@ -340,9 +341,9 @@ it:</p>
   <span class="kt">uint8_t</span> <span class="n">data</span><span class="p">[</span><span class="mi">24</span><span class="p">];</span>
   <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">bufferevent_get_input</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
   <span class="kt">int</span> <span class="n">readlen</span> <span class="o">=</span> <span class="n">evbuffer_remove</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">);</span>
-  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">conhead</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER</span><span class="p">;</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">conhead</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE</span><span class="p">;</span>
 
-  <span class="k">if</span><span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">conhead</span> <span class="o">+</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">conhead</span> <span class="o">+</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span>
             <span class="o">-</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">readlen</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
     <span class="k">return</span><span class="p">;</span>
@@ -366,11 +367,11 @@ it:</p>
 </pre></div>
 </div>
 <p>We check that the received byte string matches
-<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_HEADER" title="NGHTTP2_CLIENT_CONNECTION_HEADER"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER</span></tt></a>.  When they match, the
-connection state is ready for starting HTTP/2.0 communication. First
+<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_PREFACE" title="NGHTTP2_CLIENT_CONNECTION_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE</span></tt></a>.  When they match, the
+connection state is ready for starting HTTP/2 communication. First
 we change the callback functions for the bufferevent object. We use
 same <tt class="docutils literal"><span class="pre">eventcb</span></tt> as before. But we specify new <tt class="docutils literal"><span class="pre">readcb</span></tt> and
-<tt class="docutils literal"><span class="pre">writecb</span></tt> function to handle HTTP/2.0 communication. We describe
+<tt class="docutils literal"><span class="pre">writecb</span></tt> function to handle HTTP/2 communication. We describe
 these 2 functions later.</p>
 <p>We initialize nghttp2 session object which is done in
 <tt class="docutils literal"><span class="pre">initialize_nghttp2_session()</span></tt>:</p>
@@ -568,7 +569,7 @@ of header block in HEADERS or PUSH_PROMISE frame is started:</p>
 </pre></div>
 </div>
 <p>We only interested in HEADERS frame in this function. Since HEADERS
-frame has several roles in HTTP/2.0 protocol, we check that it is a
+frame has several roles in HTTP/2 protocol, we check that it is a
 request HEADERS, which opens new stream. If frame is request HEADERS,
 then we create <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt> object to store stream related
 data. We associate created <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt> object to the stream
@@ -673,7 +674,7 @@ file descriptor. We also set <tt class="docutils literal"><span class="pre">file
 function to read content of the file:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">file_read_callback</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
- <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">eof</span><span class="p">,</span>
+ <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">data_flags</span><span class="p">,</span>
  <span class="n">nghttp2_data_source</span> <span class="o">*</span><span class="n">source</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">source</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">;</span>
@@ -683,17 +684,17 @@ function to read content of the file:</p>
     <span class="k">return</span> <span class="n">NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">r</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="o">*</span><span class="n">eof</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">data_flags</span> <span class="o">|=</span> <span class="n">NGHTTP2_DATA_FLAG_EOF</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">return</span> <span class="n">r</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p>If error happens while reading file, we return
-<a class="reference internal" href="apiref.html#c.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE" title="NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE</span></tt></a>. This tells the library
-to send RST_STREAM to the stream.  When all data is read, set 1 to
-<tt class="docutils literal"><span class="pre">*eof</span></tt> to tell the nghttp2 library that we have finished reading
-file.</p>
+<a class="reference internal" href="apiref.html#c.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE" title="NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE</span></tt></a>.  This tells the
+library to send RST_STREAM to the stream.  When all data are read, set
+<a class="reference internal" href="apiref.html#c.NGHTTP2_DATA_FLAG_EOF" title="NGHTTP2_DATA_FLAG_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_EOF</span></tt></a> flag to <tt class="docutils literal"><span class="pre">*data_flags</span></tt> to tell the
+nghttp2 library that we have finished reading file.</p>
 <p>The <a class="reference internal" href="apiref.html#c.nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a> is used to send response to the remote
 peer.</p>
 <p>The <tt class="docutils literal"><span class="pre">on_stream_close_callback()</span></tt> function is invoked when the stream
@@ -721,7 +722,7 @@ stream is about to close and we no longer use that object.</p>
 <div class="section" id="libevent-server-c">
 <h2>libevent-server.c<a class="headerlink" href="#libevent-server-c" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
-<span class="cm"> * nghttp2 - HTTP/2.0 C Library</span>
+<span class="cm"> * nghttp2 - HTTP/2 C Library</span>
 <span class="cm"> *</span>
 <span class="cm"> * Copyright (c) 2013 Tatsuhiro Tsujikawa</span>
 <span class="cm"> *</span>
@@ -771,7 +772,8 @@ stream is about to close and we no longer use that object.</p>
 <span class="cp">#define ARRLEN(x) (sizeof(x)/sizeof(x[0]))</span>
 
 <span class="cp">#define MAKE_NV(NAME, VALUE)                                            \</span>
-<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1 }</span>
+<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1, \</span>
+<span class="cp">      NGHTTP2_NV_FLAG_NONE }</span>
 
 <span class="k">struct</span> <span class="n">app_context</span><span class="p">;</span>
 <span class="k">typedef</span> <span class="k">struct</span> <span class="n">app_context</span> <span class="n">app_context</span><span class="p">;</span>
@@ -912,7 +914,7 @@ stream is about to close and we no longer use that object.</p>
     <span class="p">(</span><span class="n">app_ctx</span><span class="o">-&gt;</span><span class="n">evbase</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">ssl</span><span class="p">,</span>
      <span class="n">BUFFEREVENT_SSL_ACCEPTING</span><span class="p">,</span>
      <span class="n">BEV_OPT_CLOSE_ON_FREE</span> <span class="o">|</span> <span class="n">BEV_OPT_DEFER_CALLBACKS</span><span class="p">);</span>
-  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</span><span class="p">;</span>
+  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span><span class="p">;</span>
   <span class="n">rv</span> <span class="o">=</span> <span class="n">getnameinfo</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">addrlen</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">host</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">NI_NUMERICHOST</span><span class="p">);</span>
   <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span> <span class="o">=</span> <span class="n">strdup</span><span class="p">(</span><span class="s">&quot;(unknown)&quot;</span><span class="p">);</span>
@@ -1049,7 +1051,7 @@ stream is about to close and we no longer use that object.</p>
 
 <span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">file_read_callback</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
- <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">eof</span><span class="p">,</span>
+ <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">data_flags</span><span class="p">,</span>
  <span class="n">nghttp2_data_source</span> <span class="o">*</span><span class="n">source</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">source</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">;</span>
@@ -1059,7 +1061,7 @@ stream is about to close and we no longer use that object.</p>
     <span class="k">return</span> <span class="n">NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">r</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="o">*</span><span class="n">eof</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">data_flags</span> <span class="o">|=</span> <span class="n">NGHTTP2_DATA_FLAG_EOF</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">return</span> <span class="n">r</span><span class="p">;</span>
 <span class="p">}</span>
@@ -1121,6 +1123,7 @@ stream is about to close and we no longer use that object.</p>
                               <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
                               <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
                               <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">,</span>
+                              <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                               <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
@@ -1271,7 +1274,7 @@ stream is about to close and we no longer use that object.</p>
   <span class="n">nghttp2_session_server_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 
-<span class="cm">/* Send HTTP/2.0 client connection header, which includes 24 bytes</span>
+<span class="cm">/* Send HTTP/2 client connection header, which includes 24 bytes</span>
 <span class="cm">   magic octets and SETTINGS frame */</span>
 <span class="k">static</span> <span class="kt">int</span> <span class="nf">send_server_connection_header</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
@@ -1351,9 +1354,9 @@ stream is about to close and we no longer use that object.</p>
   <span class="kt">uint8_t</span> <span class="n">data</span><span class="p">[</span><span class="mi">24</span><span class="p">];</span>
   <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">bufferevent_get_input</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
   <span class="kt">int</span> <span class="n">readlen</span> <span class="o">=</span> <span class="n">evbuffer_remove</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">);</span>
-  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">conhead</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER</span><span class="p">;</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">conhead</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE</span><span class="p">;</span>
 
-  <span class="k">if</span><span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">conhead</span> <span class="o">+</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">conhead</span> <span class="o">+</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span>
             <span class="o">-</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">readlen</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
     <span class="k">return</span><span class="p">;</span>
@@ -1478,7 +1481,7 @@ stream is about to close and we no longer use that object.</p>
         <a href="apiref.html" class="btn btn-neutral float-right" title="API Reference"/>Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="tutorial-client.html" class="btn btn-neutral" title="Tutorial: HTTP/2.0 client"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="tutorial-client.html" class="btn btn-neutral" title="Tutorial: HTTP/2 client"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

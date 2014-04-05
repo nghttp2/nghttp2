@@ -80,7 +80,7 @@
         
         
             <ul>
-<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2.0 C Library</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
@@ -92,11 +92,11 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2.0 server</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2 server</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
@@ -156,6 +156,50 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="apiref.html#c.NGHTTP2_ALTSVC">NGHTTP2_ALTSVC (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc">nghttp2_altsvc (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.hd">nghttp2_altsvc.hd (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.host">nghttp2_altsvc.host (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.host_len">nghttp2_altsvc.host_len (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.max_age">nghttp2_altsvc.max_age (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.origin">nghttp2_altsvc.origin (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.origin_len">nghttp2_altsvc.origin_len (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.port">nghttp2_altsvc.port (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.protocol_id">nghttp2_altsvc.protocol_id (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_altsvc.protocol_id_len">nghttp2_altsvc.protocol_id_len (C member)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.nghttp2_before_frame_send_callback">nghttp2_before_frame_send_callback (C type)</a>
   </dt>
 
@@ -172,11 +216,27 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.NGHTTP2_CLEARTEXT_PROTO_VERSION_ID">NGHTTP2_CLEARTEXT_PROTO_VERSION_ID (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_CLEARTEXT_PROTO_VERSION_ID_LEN">NGHTTP2_CLEARTEXT_PROTO_VERSION_ID_LEN (C macro)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_HEADER">NGHTTP2_CLIENT_CONNECTION_HEADER (C macro)</a>
   </dt>
 
       
   <dt><a href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_HEADER_LEN">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_PREFACE">NGHTTP2_CLIENT_CONNECTION_PREFACE (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN (C macro)</a>
   </dt>
 
       
@@ -201,6 +261,18 @@
 
       
   <dt><a href="apiref.html#c.nghttp2_data.padlen">nghttp2_data.padlen (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_data_flag">nghttp2_data_flag (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_DATA_FLAG_EOF">NGHTTP2_DATA_FLAG_EOF (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_DATA_FLAG_NONE">NGHTTP2_DATA_FLAG_NONE (C macro)</a>
   </dt>
 
       
@@ -232,11 +304,19 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.NGHTTP2_DEFAULT_WEIGHT">NGHTTP2_DEFAULT_WEIGHT (C macro)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.NGHTTP2_ENHANCE_YOUR_CALM">NGHTTP2_ENHANCE_YOUR_CALM (C macro)</a>
   </dt>
 
       
   <dt><a href="apiref.html#c.NGHTTP2_ERR_CALLBACK_FAILURE">NGHTTP2_ERR_CALLBACK_FAILURE (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_ERR_DATA_EXIST">NGHTTP2_ERR_DATA_EXIST (C macro)</a>
   </dt>
 
       
@@ -396,7 +476,11 @@
   </dt>
 
       
-  <dt><a href="apiref.html#c.NGHTTP2_FLAG_PRIORITY">NGHTTP2_FLAG_PRIORITY (C macro)</a>
+  <dt><a href="apiref.html#c.NGHTTP2_FLAG_PRIORITY_DEPENDENCY">NGHTTP2_FLAG_PRIORITY_DEPENDENCY (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_FLAG_PRIORITY_GROUP">NGHTTP2_FLAG_PRIORITY_GROUP (C macro)</a>
   </dt>
 
       
@@ -405,6 +489,10 @@
 
       
   <dt><a href="apiref.html#c.nghttp2_frame">nghttp2_frame (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_frame.altsvc">nghttp2_frame.altsvc (C member)</a>
   </dt>
 
       
@@ -564,7 +652,7 @@
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_headers.pri">nghttp2_headers.pri (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_headers.pri_spec">nghttp2_headers.pri_spec (C member)</a>
   </dt>
 
       
@@ -620,15 +708,29 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.NGHTTP2_MAX_WEIGHT">NGHTTP2_MAX_WEIGHT (C macro)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.NGHTTP2_MAX_WINDOW_SIZE">NGHTTP2_MAX_WINDOW_SIZE (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_MIN_WEIGHT">NGHTTP2_MIN_WEIGHT (C macro)</a>
   </dt>
 
       
   <dt><a href="apiref.html#c.NGHTTP2_NO_ERROR">NGHTTP2_NO_ERROR (C macro)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="apiref.html#c.nghttp2_nv">nghttp2_nv (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_nv.flags">nghttp2_nv.flags (C member)</a>
   </dt>
 
       
@@ -639,8 +741,6 @@
   <dt><a href="apiref.html#c.nghttp2_nv.namelen">nghttp2_nv.namelen (C member)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="apiref.html#c.nghttp2_nv.value">nghttp2_nv.value (C member)</a>
   </dt>
@@ -651,6 +751,18 @@
 
       
   <dt><a href="apiref.html#c.nghttp2_nv_compare_name">nghttp2_nv_compare_name (C function)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_nv_flag">nghttp2_nv_flag (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_NV_FLAG_NO_INDEX">NGHTTP2_NV_FLAG_NO_INDEX (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_NV_FLAG_NONE">NGHTTP2_NV_FLAG_NONE (C macro)</a>
   </dt>
 
       
@@ -690,35 +802,27 @@
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_opt">nghttp2_opt (C type)</a>
+  <dt><a href="apiref.html#c.nghttp2_option">nghttp2_option (C type)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE (C macro)</a>
+  <dt><a href="apiref.html#c.nghttp2_option_del">nghttp2_option_del (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE">NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE (C macro)</a>
+  <dt><a href="apiref.html#c.nghttp2_option_new">nghttp2_option_new (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS">NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS (C macro)</a>
+  <dt><a href="apiref.html#c.nghttp2_option_set_no_auto_connection_window_update">nghttp2_option_set_no_auto_connection_window_update (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_opt_set">nghttp2_opt_set (C type)</a>
+  <dt><a href="apiref.html#c.nghttp2_option_set_no_auto_stream_window_update">nghttp2_option_set_no_auto_stream_window_update (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_opt_set.no_auto_connection_window_update">nghttp2_opt_set.no_auto_connection_window_update (C member)</a>
-  </dt>
-
-      
-  <dt><a href="apiref.html#c.nghttp2_opt_set.no_auto_stream_window_update">nghttp2_opt_set.no_auto_stream_window_update (C member)</a>
-  </dt>
-
-      
-  <dt><a href="apiref.html#c.nghttp2_opt_set.peer_max_concurrent_streams">nghttp2_opt_set.peer_max_concurrent_streams (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_option_set_peer_max_concurrent_streams">nghttp2_option_set_peer_max_concurrent_streams (C function)</a>
   </dt>
 
       
@@ -738,14 +842,6 @@
   </dt>
 
       
-  <dt><a href="apiref.html#c.NGHTTP2_PRI_DEFAULT">NGHTTP2_PRI_DEFAULT (C macro)</a>
-  </dt>
-
-      
-  <dt><a href="apiref.html#c.NGHTTP2_PRI_LOWEST">NGHTTP2_PRI_LOWEST (C macro)</a>
-  </dt>
-
-      
   <dt><a href="apiref.html#c.NGHTTP2_PRIORITY">NGHTTP2_PRIORITY (C macro)</a>
   </dt>
 
@@ -758,7 +854,71 @@
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_priority.pri">nghttp2_priority.pri (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_priority.pri_spec">nghttp2_priority.pri_spec (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_dep">nghttp2_priority_dep (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_dep.exclusive">nghttp2_priority_dep.exclusive (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_dep.stream_id">nghttp2_priority_dep.stream_id (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_group">nghttp2_priority_group (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_group.pri_group_id">nghttp2_priority_group.pri_group_id (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_group.weight">nghttp2_priority_group.weight (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_spec">nghttp2_priority_spec (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_spec.dep">nghttp2_priority_spec.dep (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_spec.group">nghttp2_priority_spec.group (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_spec.pri_type">nghttp2_priority_spec.pri_type (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_spec_dep_init">nghttp2_priority_spec_dep_init (C function)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_spec_group_init">nghttp2_priority_spec_group_init (C function)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_priority_type">nghttp2_priority_type (C type)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_PRIORITY_TYPE_DEP">NGHTTP2_PRIORITY_TYPE_DEP (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_PRIORITY_TYPE_GROUP">NGHTTP2_PRIORITY_TYPE_GROUP (C macro)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.NGHTTP2_PRIORITY_TYPE_NONE">NGHTTP2_PRIORITY_TYPE_NONE (C macro)</a>
   </dt>
 
       
@@ -930,6 +1090,10 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.nghttp2_session_get_stream_remote_window_size">nghttp2_session_get_stream_remote_window_size (C function)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.nghttp2_session_get_stream_user_data">nghttp2_session_get_stream_user_data (C function)</a>
   </dt>
 
@@ -1047,6 +1211,10 @@
 
       
   <dt><a href="apiref.html#c.nghttp2_strerror">nghttp2_strerror (C function)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_submit_altsvc">nghttp2_submit_altsvc (C function)</a>
   </dt>
 
       

@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tutorial: HTTP/2.0 client &mdash; nghttp2 0.4.0-DEV documentation</title>
+  <title>Tutorial: HTTP/2 client &mdash; nghttp2 0.4.0-DEV documentation</title>
   
 
   
@@ -53,8 +53,8 @@
 
   
     <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
-        <link rel="next" title="Tutorial: HTTP/2.0 server" href="tutorial-server.html"/>
-        <link rel="prev" title="nghttp2 - HTTP/2.0 C Library" href="package_README.html"/> 
+        <link rel="next" title="Tutorial: HTTP/2 server" href="tutorial-server.html"/>
+        <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="package_README.html"/> 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -81,7 +81,7 @@
         
         
             <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2.0 C Library</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
@@ -93,11 +93,11 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Tutorial: HTTP/2.0 client</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#libevent-client-c">libevent-client.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2.0 server</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2 server</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
@@ -137,7 +137,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li>Tutorial: HTTP/2.0 client</li>
+    <li>Tutorial: HTTP/2 client</li>
       <li class="wy-breadcrumbs-aside">
         
       </li>
@@ -146,9 +146,9 @@
 </div>
           <div role="main">
             
-  <div class="section" id="tutorial-http-2-0-client">
-<h1>Tutorial: HTTP/2.0 client<a class="headerlink" href="#tutorial-http-2-0-client" title="Permalink to this headline">¶</a></h1>
-<p>In this tutorial, we are going to write very primitive HTTP/2.0
+  <div class="section" id="tutorial-http-2-client">
+<h1>Tutorial: HTTP/2 client<a class="headerlink" href="#tutorial-http-2-client" title="Permalink to this headline">¶</a></h1>
+<p>In this tutorial, we are going to write very primitive HTTP/2
 client. The complete source code, <a class="reference internal" href="#libevent-client-c">libevent-client.c</a>, is attached at
 the end of this page.  It also resides in examples directory in the
 archive or repository.</p>
@@ -164,7 +164,7 @@ function <tt class="docutils literal"><span class="pre">main()</span></tt> and <
 library use. The one thing you should look at is setup NPN callback.
 The NPN callback is used for the client to select the next application
 protocol over the SSL/TLS transport. In this tutorial, we use
-<a class="reference internal" href="apiref.html#c.nghttp2_select_next_protocol" title="nghttp2_select_next_protocol"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_select_next_protocol()</span></tt></a> function to select the HTTP/2.0
+<a class="reference internal" href="apiref.html#c.nghttp2_select_next_protocol" title="nghttp2_select_next_protocol"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_select_next_protocol()</span></tt></a> function to select the HTTP/2
 protocol the library supports:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">select_next_proto_cb</span><span class="p">(</span><span class="n">SSL</span><span class="o">*</span> <span class="n">ssl</span><span class="p">,</span>
                                 <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
@@ -197,7 +197,7 @@ protocol the library supports:</p>
 </pre></div>
 </div>
 <p>We use <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> structure to store the data related to
-the HTTP/2.0 session:</p>
+the HTTP/2 session:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">;</span>
   <span class="k">struct</span> <span class="n">evdns_base</span> <span class="o">*</span><span class="n">dnsbase</span><span class="p">;</span>
@@ -317,10 +317,10 @@ nghttp2 session. We&#8217;ll explain these callbacks later.</p>
 <p>The <tt class="xref c c-func docutils literal"><span class="pre">delete_http2_session_data()</span></tt> destroys <tt class="docutils literal"><span class="pre">session_data</span></tt> and frees
 its bufferevent, so it closes underlying connection as well. It also
 calls <a class="reference internal" href="apiref.html#c.nghttp2_session_del" title="nghttp2_session_del"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_del()</span></tt></a> to delete nghttp2 session object.</p>
-<p>We begin HTTP/2.0 communication by sending client connection header,
+<p>We begin HTTP/2 communication by sending client connection preface,
 which is 24 bytes magic byte sequence
-(<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_HEADER" title="NGHTTP2_CLIENT_CONNECTION_HEADER"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER</span></tt></a>) followed by SETTINGS
-frame.  The transmission of client connection header is done in
+(<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_PREFACE" title="NGHTTP2_CLIENT_CONNECTION_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE</span></tt></a>) and SETTINGS frame.  The
+transmission of client connection header is done in
 <tt class="docutils literal"><span class="pre">send_client_connection_header()</span></tt>:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">send_client_connection_header</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
@@ -330,8 +330,8 @@ frame.  The transmission of client connection header is done in
   <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
 
   <span class="n">bufferevent_write</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span>
-                    <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER</span><span class="p">,</span>
-                    <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</span><span class="p">);</span>
+                    <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE</span><span class="p">,</span>
+                    <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span><span class="p">);</span>
   <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_settings</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_FLAG_NONE</span><span class="p">,</span>
                                <span class="n">iv</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">iv</span><span class="p">));</span>
   <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
@@ -365,7 +365,7 @@ request in <tt class="docutils literal"><span class="pre">submit_request()</span
   <span class="p">};</span>
   <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Request headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
   <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">));</span>
-  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_PRI_DEFAULT</span><span class="p">,</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
                               <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
   <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit HTTP request: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
@@ -507,7 +507,7 @@ request based on priority and stream ID must be monotonically
 increased, the stream ID is not assigned just before transmission.
 The one of the purpose of this callback is get the stream ID assigned
 to the frame. First we check that the frame is HEADERS frame. Since
-HEADERS has several meanings in HTTP/2.0, we check that it is request
+HEADERS has several meanings in HTTP/2, we check that it is request
 HEADERS (which means that the first HEADERS frame to create a stream).
 The assigned stream ID is <tt class="docutils literal"><span class="pre">frame-&gt;hd.stream_id</span></tt>.  Recall that we
 passed <tt class="docutils literal"><span class="pre">stream_data</span></tt> in the <em>stream_user_data</em> parameter of
@@ -527,6 +527,7 @@ how to use it here.</p>
                               <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
                               <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
                               <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">,</span>
+                              <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                               <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
@@ -611,13 +612,13 @@ is about to close:</p>
 stream is going to be closed. Since we have finished to get the
 resource we want (or the stream was reset by RST_STREAM from the
 remote peer), we call <a class="reference internal" href="apiref.html#c.nghttp2_session_terminate_session" title="nghttp2_session_terminate_session"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_terminate_session()</span></tt></a> to
-commencing the closure of the HTTP/2.0 session gracefully. If you have
+commencing the closure of the HTTP/2 session gracefully. If you have
 some data associated for the stream to be closed, you may delete it
 here.</p>
 <div class="section" id="libevent-client-c">
 <h2>libevent-client.c<a class="headerlink" href="#libevent-client-c" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
-<span class="cm"> * nghttp2 - HTTP/2.0 C Library</span>
+<span class="cm"> * nghttp2 - HTTP/2 C Library</span>
 <span class="cm"> *</span>
 <span class="cm"> * Copyright (c) 2013 Tatsuhiro Tsujikawa</span>
 <span class="cm"> *</span>
@@ -808,7 +809,7 @@ here.</p>
 
 <span class="cm">/* nghttp2_before_frame_send_callback: Called when nghttp2 library is</span>
 <span class="cm">   about to send a frame. We use this callback to get stream ID of new</span>
-<span class="cm">   stream. Since HEADERS in HTTP/2.0 has several roles, we check that</span>
+<span class="cm">   stream. Since HEADERS in HTTP/2 has several roles, we check that</span>
 <span class="cm">   it is a HTTP request HEADERS. */</span>
 <span class="k">static</span> <span class="kt">int</span> <span class="nf">before_frame_send_callback</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
@@ -834,6 +835,7 @@ here.</p>
                               <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
                               <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
                               <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">,</span>
+                              <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                               <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
@@ -926,7 +928,7 @@ here.</p>
 <span class="p">}</span>
 
 <span class="cm">/* NPN TLS extension client callback. We check that server advertised</span>
-<span class="cm">   the HTTP/2.0 protocol the nghttp2 library supports. If not, exit</span>
+<span class="cm">   the HTTP/2 protocol the nghttp2 library supports. If not, exit</span>
 <span class="cm">   the program. */</span>
 <span class="k">static</span> <span class="kt">int</span> <span class="nf">select_next_proto_cb</span><span class="p">(</span><span class="n">SSL</span><span class="o">*</span> <span class="n">ssl</span><span class="p">,</span>
                                 <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
@@ -989,8 +991,8 @@ here.</p>
   <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
 
   <span class="n">bufferevent_write</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span>
-                    <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER</span><span class="p">,</span>
-                    <span class="n">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</span><span class="p">);</span>
+                    <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE</span><span class="p">,</span>
+                    <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span><span class="p">);</span>
   <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_settings</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_FLAG_NONE</span><span class="p">,</span>
                                <span class="n">iv</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">iv</span><span class="p">));</span>
   <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
@@ -999,10 +1001,12 @@ here.</p>
 <span class="p">}</span>
 
 <span class="cp">#define MAKE_NV(NAME, VALUE, VALUELEN)                                  \</span>
-<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, VALUELEN }</span>
+<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, VALUELEN,        \</span>
+<span class="cp">      NGHTTP2_NV_FLAG_NONE }</span>
 
 <span class="cp">#define MAKE_NV2(NAME, VALUE)                                           \</span>
-<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1 }</span>
+<span class="cp">  { (uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1, \</span>
+<span class="cp">      NGHTTP2_NV_FLAG_NONE }</span>
 
 <span class="cm">/* Send HTTP request to the remote peer */</span>
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">submit_request</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
@@ -1020,7 +1024,7 @@ here.</p>
   <span class="p">};</span>
   <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Request headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
   <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">));</span>
-  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">NGHTTP2_PRI_DEFAULT</span><span class="p">,</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
                               <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
   <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit HTTP request: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
@@ -1206,10 +1210,10 @@ here.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tutorial-server.html" class="btn btn-neutral float-right" title="Tutorial: HTTP/2.0 server"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tutorial-server.html" class="btn btn-neutral float-right" title="Tutorial: HTTP/2 server"/>Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="package_README.html" class="btn btn-neutral" title="nghttp2 - HTTP/2.0 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="package_README.html" class="btn btn-neutral" title="nghttp2 - HTTP/2 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

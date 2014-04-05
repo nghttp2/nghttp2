@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2.0 C Library &mdash; nghttp2 0.4.0-DEV documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.4.0-DEV documentation</title>
   
 
   
@@ -53,8 +53,8 @@
 
   
     <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
-        <link rel="next" title="Tutorial: HTTP/2.0 client" href="tutorial-client.html"/>
-        <link rel="prev" title="nghttp2 - HTTP/2.0 C Library" href="index.html"/> 
+        <link rel="next" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/>
+        <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -81,7 +81,7 @@
         
         
             <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2 - HTTP/2.0 C Library</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
@@ -93,11 +93,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#python-bindings">Python bindings</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2.0 client</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2.0 server</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2 server</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
@@ -137,7 +137,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li>nghttp2 - HTTP/2.0 C Library</li>
+    <li>nghttp2 - HTTP/2 C Library</li>
       <li class="wy-breadcrumbs-aside">
         
       </li>
@@ -146,16 +146,16 @@
 </div>
           <div role="main">
             
-  <div class="section" id="nghttp2-http-2-0-c-library">
-<h1>nghttp2 - HTTP/2.0 C Library<a class="headerlink" href="#nghttp2-http-2-0-c-library" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="nghttp2-http-2-c-library">
+<h1>nghttp2 - HTTP/2 C Library<a class="headerlink" href="#nghttp2-http-2-c-library" title="Permalink to this headline">¶</a></h1>
 <p>This is an experimental implementation of Hypertext Transfer Protocol
-version 2.0.</p>
+version 2.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
-<p>We started to implement h2-10
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-10">http://tools.ietf.org/html/draft-ietf-httpbis-http2-10</a>) and the
+<p>We started to implement h2-11
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-11">http://tools.ietf.org/html/draft-ietf-httpbis-http2-11</a>) and the
 header compression
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-06">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-06</a>).</p>
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07</a>).</p>
 <p>The nghttp2 code base was forked from spdylay project.</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -164,24 +164,18 @@ header compression
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Features</th>
-<th class="head">h2-10</th>
+<th class="head">h2-11</th>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td>HPACK-draft-06</td>
+<tr class="row-even"><td>HPACK-draft-07</td>
 <td>Done</td>
 </tr>
-<tr class="row-odd"><td>Strict SETTINGS validation</td>
+<tr class="row-odd"><td>Dependency based priority</td>
 <td>Done</td>
 </tr>
-<tr class="row-even"><td>Disallow client to push</td>
+<tr class="row-even"><td>ALTSVC frame</td>
 <td>Done</td>
-</tr>
-<tr class="row-odd"><td>Padding</td>
-<td>Done</td>
-</tr>
-<tr class="row-even"><td>END_SEGMENT</td>
-<td>&nbsp;</td>
 </tr>
 </tbody>
 </table>
@@ -302,21 +296,21 @@ $ make
 </div>
 <div class="section" id="client-server-and-proxy-programs">
 <h2>Client, Server and Proxy programs<a class="headerlink" href="#client-server-and-proxy-programs" title="Permalink to this headline">¶</a></h2>
-<p>The src directory contains HTTP/2.0 client, server and proxy programs.</p>
+<p>The src directory contains HTTP/2 client, server and proxy programs.</p>
 <div class="section" id="nghttp-client">
 <h3>nghttp - client<a class="headerlink" href="#nghttp-client" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">nghttp</span></tt> is a HTTP/2.0 client. It can connect to the HTTP/2.0 server
+<p><tt class="docutils literal"><span class="pre">nghttp</span></tt> is a HTTP/2 client. It can connect to the HTTP/2 server
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 <p>It has verbose output mode for framing information. Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nv https://localhost:8443
 [  0.004][NPN] server offers:
-          * h2-10
+          * h2-11
           * spdy/3.1
           * spdy/3
           * spdy/2
           * http/1.1
-The negotiated protocol: h2-10
+The negotiated protocol: h2-11
 [  0.006] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
           (niv=2)
           [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
@@ -371,7 +365,7 @@ The negotiated protocol: h2-10
 GET / HTTP/1.1
 Host: localhost:8080
 Connection: Upgrade, HTTP2-Settings
-Upgrade: h2-10
+Upgrade: h2c-11
 HTTP2-Settings: AwAAAGQEAAD__w
 Accept: */*
 User-Agent: nghttp2/0.4.0-DEV
@@ -380,7 +374,7 @@ User-Agent: nghttp2/0.4.0-DEV
 [  0.001] HTTP Upgrade response
 HTTP/1.1 101 Switching Protocols
 Connection: Upgrade
-Upgrade: h2-10
+Upgrade: h2c-11
 
 
 [  0.001] HTTP Upgrade success
@@ -426,8 +420,8 @@ Upgrade: h2-10
 <p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> is a multi-threaded static web server.</p>
 <p>By default, it uses SSL/TLS connection. Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
 disable it.</p>
-<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accepts the HTTP/2.0 connection via NPN/ALPN or direct
-HTTP/2.0 connection. No HTTP Upgrade is supported.</p>
+<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accepts the HTTP/2 connection via NPN/ALPN or direct
+HTTP/2 connection. No HTTP Upgrade is supported.</p>
 <p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
 information. Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
@@ -481,13 +475,13 @@ IPv6: listen on port 8080
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
-h2-10, SPDY and HTTP/1.1. It has several operation modes:</p>
+<tt class="docutils literal"><span class="pre">h2-11</span></tt>, SPDY and HTTP/1.1. It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="24%" />
-<col width="40%" />
+<col width="25%" />
+<col width="38%" />
 <col width="19%" />
-<col width="17%" />
+<col width="18%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Mode option</th>
@@ -498,40 +492,40 @@ h2-10, SPDY and HTTP/1.1. It has several operation modes:</p>
 </thead>
 <tbody valign="top">
 <tr class="row-even"><td>default mode</td>
-<td>HTTP/2.0, SPDY, HTTP/1.1 (TLS)</td>
+<td>HTTP/2, SPDY, HTTP/1.1 (TLS)</td>
 <td>HTTP/1.1</td>
 <td>Reverse proxy</td>
 </tr>
 <tr class="row-odd"><td><tt class="docutils literal"><span class="pre">--http2-proxy</span></tt></td>
-<td>HTTP/2.0, SPDY, HTTP/1.1 (TLS)</td>
+<td>HTTP/2, SPDY, HTTP/1.1 (TLS)</td>
 <td>HTTP/1.1</td>
 <td>SPDY proxy</td>
 </tr>
 <tr class="row-even"><td><tt class="docutils literal"><span class="pre">--http2-bridge</span></tt></td>
-<td>HTTP/2.0, SPDY, HTTP/1.1 (TLS)</td>
-<td>HTTP/2.0 (TLS)</td>
+<td>HTTP/2, SPDY, HTTP/1.1 (TLS)</td>
+<td>HTTP/2 (TLS)</td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-odd"><td><tt class="docutils literal"><span class="pre">--client</span></tt></td>
-<td>HTTP/2.0, HTTP/1.1</td>
-<td>HTTP/2.0 (TLS)</td>
+<td>HTTP/2, HTTP/1.1</td>
+<td>HTTP/2 (TLS)</td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-even"><td><tt class="docutils literal"><span class="pre">--client-proxy</span></tt></td>
-<td>HTTP/2.0, HTTP/1.1</td>
-<td>HTTP/2.0 (TLS)</td>
+<td>HTTP/2, HTTP/1.1</td>
+<td>HTTP/2 (TLS)</td>
 <td>Forward proxy</td>
 </tr>
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode. It works like
-a reverse proxy and listens for h2-10, SPDY and HTTP/1.1 and
-can be deployed SSL/TLS terminator for existing web server.</p>
+a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-11</span></tt>, SPDY and HTTP/1.1 and can
+be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
 <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option. If that option is used, SPDY is disabled
 in the frontend and incoming HTTP/1.1 connection can be upgraded to
-HTTP/2.0 through HTTP Upgrade.</p>
+HTTP/2 through HTTP Upgrade.</p>
 <p>The <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client</span></tt> and <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> modes use
 SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
 <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
@@ -541,13 +535,13 @@ sample configuration file <tt class="docutils literal"><span class="pre">nghttpx
 <p>In the default mode, (without any of <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt>,
 <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--client</span></tt> options),
 <tt class="docutils literal"><span class="pre">nghttpx</span></tt> works as reverse proxy to the backend server:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">Server</span>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">Server</span>
                                       <span class="p">[</span><span class="n">reverse</span> <span class="n">proxy</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>With <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> option, it works as so called secure proxy (aka
 SPDY proxy):</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Proxy</span>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Proxy</span>
                                        <span class="p">[</span><span class="n">secure</span> <span class="n">proxy</span><span class="p">]</span>            <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">Squid</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -568,39 +562,39 @@ certificate for secure proxy.</p>
 <div class="highlight-c"><div class="highlight"><pre>$ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 </pre></div>
 </div>
-<p>With <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, it accepts HTTP/2.0, SPDY and HTTP/1.1
-connections and communicates with backend in HTTP/2.0:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">or</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span> <span class="n">Proxy</span> <span class="n">etc</span>
+<p>With <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, it accepts HTTP/2, SPDY and HTTP/1.1
+connections and communicates with backend in HTTP/2:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">or</span> <span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span> <span class="n">Proxy</span> <span class="n">etc</span>
                                                                      <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">nghttpx</span> <span class="o">-</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>With <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> option, it works as forward proxy and expects
-that the backend is HTTP/2.0 proxy:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span> <span class="n">Proxy</span>
+that the backend is HTTP/2 proxy:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span> <span class="n">Proxy</span>
                                  <span class="p">[</span><span class="n">forward</span> <span class="n">proxy</span><span class="p">]</span>               <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">nghttpx</span> <span class="o">-</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <tt class="docutils literal"><span class="pre">Client</span></tt> needs to be configured to use nghttpx as forward
-proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
+proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.  With the above configuration, one can use
-HTTP/1.1 client to access and test their HTTP/2.0 servers.</p>
+HTTP/1.1 client to access and test their HTTP/2 servers.</p>
 <p>With <tt class="docutils literal"><span class="pre">--client</span></tt> option, it works as reverse proxy and expects that
-the backend is HTTP/2.0 Web server:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">Server</span>
+the backend is HTTP/2 Web server:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">Server</span>
                                 <span class="p">[</span><span class="n">reverse</span> <span class="n">proxy</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>The frontend HTTP/1.1 connection can be upgraded to HTTP/2.0
+<p>The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.</p>
-<p>For the operation modes which talk to the backend in HTTP/2.0 over
+<p>For the operation modes which talk to the backend in HTTP/2 over
 SSL/TLS, the backend connections can be tunneled through HTTP
 proxy. The proxy is specified using <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt>
 option. The following figure illustrates the example of
 <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> and <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> options to talk to
-the outside HTTP/2.0 proxy through HTTP proxy:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">--</span>
+the outside HTTP/2 proxy through HTTP proxy:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--</span>
 
-        <span class="o">--===================---&gt;</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">2.0</span> <span class="n">Proxy</span>
+        <span class="o">--===================---&gt;</span> <span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span> <span class="n">Proxy</span>
           <span class="p">(</span><span class="n">HTTP</span> <span class="n">proxy</span> <span class="n">tunnel</span><span class="p">)</span>     <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">nghttpx</span> <span class="o">-</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1150,10 +1144,10 @@ BaseRequestHandler usage:</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tutorial-client.html" class="btn btn-neutral float-right" title="Tutorial: HTTP/2.0 client"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tutorial-client.html" class="btn btn-neutral float-right" title="Tutorial: HTTP/2 client"/>Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="nghttp2 - HTTP/2.0 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral" title="nghttp2 - HTTP/2 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
