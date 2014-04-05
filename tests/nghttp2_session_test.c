@@ -4468,33 +4468,35 @@ void test_nghttp2_session_set_option(void)
 {
   nghttp2_session* session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_opt_set opt_set;
+  nghttp2_option *option;
 
-  opt_set.no_auto_stream_window_update = 1;
+  nghttp2_option_new(&option);
+
+  nghttp2_option_set_no_auto_stream_window_update(option, 1);
+
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  nghttp2_session_client_new2(&session, &callbacks, NULL,
-                              NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE,
-                              &opt_set);
+  nghttp2_session_client_new2(&session, &callbacks, NULL, option);
+
   CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE);
   CU_ASSERT(!(session->opt_flags &
               NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE));
   nghttp2_session_del(session);
 
-  opt_set.no_auto_stream_window_update = 0;
-  opt_set.no_auto_connection_window_update = 1;
-  nghttp2_session_server_new2(&session, &callbacks, NULL,
-                              NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE,
-                              &opt_set);
+  nghttp2_option_set_no_auto_stream_window_update(option, 0);
+  nghttp2_option_set_no_auto_connection_window_update(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
   CU_ASSERT(!(session->opt_flags &
               NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE));
   CU_ASSERT(session->opt_flags &
             NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE);
   nghttp2_session_del(session);
 
-  opt_set.peer_max_concurrent_streams = 100;
-  nghttp2_session_client_new2(&session, &callbacks, NULL,
-                              NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS,
-                              &opt_set);
+  nghttp2_option_set_peer_max_concurrent_streams(option, 100);
+
+  nghttp2_session_client_new2(&session, &callbacks, NULL, option);
+
   CU_ASSERT(100 ==
             session->
             remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
