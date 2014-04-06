@@ -851,6 +851,10 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     return stream;
   }
 
+  /* TODO Client does not have to track dependencies of streams except
+     for those which have upload data.  Currently, we just track
+     everything. */
+
   root_stream = nghttp2_stream_get_dep_root(dep_stream);
 
   if(root_stream->num_substreams < NGHTTP2_MAX_DEP_TREE_LENGTH) {

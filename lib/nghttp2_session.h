@@ -132,10 +132,10 @@ struct nghttp2_session {
   int64_t next_seq;
   void *user_data;
   /* Points to the latest closed stream.  NULL if there is no closed
-     stream. */
+     stream.  Only used when session is initialized as server. */
   nghttp2_stream *closed_stream_head;
   /* Points to the oldest closed stream.  NULL if there is no closed
-     stream. */
+     stream.  Only used when session is initialized as server. */
   nghttp2_stream *closed_stream_tail;
   /* In-flight SETTINGS values. NULL does not necessarily mean there
      is no in-flight SETTINGS. */
