@@ -52,7 +52,7 @@
   (NGHTTP2_FRAME_HDLEN + 2 + NGHTTP2_MAX_PAYLOADLEN)
 
 /* The maximum length of DATA frame payload. */
-#define NGHTTP2_DATA_PAYLOADLEN (4096 - NGHTTP2_FRAME_HDLEN - 2)
+#define NGHTTP2_DATA_PAYLOADLEN 4096
 
 /* The number of bytes for each SETTINGS entry */
 #define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 5
