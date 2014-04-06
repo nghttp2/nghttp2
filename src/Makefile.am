@@ -72,6 +72,7 @@ nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	HttpServer.cc HttpServer.h
 
 h2load_SOURCES = util.cc util.h http2.cc http2.h h2load.cc h2load.h \
+	timegm.c timegm.h \
 	ssl.cc ssl.h \
 	h2load_session.h \
 	h2load_http2_session.cc h2load_http2_session.h
