@@ -28,23 +28,20 @@ Public Test Server
 The following endpoints are available to try out nghttp2
 implementation.
 
-* https://106.186.112.116:8443/ (TLS + NPN / ALPN)
-
-  ALPN and NPN offer ``h2-10``, ``spdy/3.1``, ``spdy/3``, ``spdy/2``
-  and ``http/1.1``.
-
-  Note: certificate is self-signed and a browser will show alert
-
 * https://106.186.112.116/ (TLS + NPN / ALPN)
 
-  ALPN and NPN offer ``HTTP-draft-09/2.0``, ``spdy/3.1``, ``spdy/3``,
-  ``spdy/2`` and ``http/1.1``.
+  ALPN and NPN offer ``h2-11``, ``spdy/3.1`` and ``http/1.1``.
 
-  Note: certificate is self-signed and a browser will show alert
+  .. note::
+
+     certificate is self-signed and a browser will show alert.
 
 * http://106.186.112.116/ (Upgrade / Direct)
 
-  ``HTTP-draft-09/2.0`` and ``http/1.1``
+  ``h2c-11`` and ``http/1.1``.  We configured this server to send
+  ALTSVC frame or Alt-Svc header field to announce that alternative
+  service is available at port 443.
+
 
 Requirements
 ------------
