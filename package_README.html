@@ -185,18 +185,17 @@ header compression
 <p>The following endpoints are available to try out nghttp2
 implementation.</p>
 <ul>
-<li><p class="first"><a class="reference external" href="https://106.186.112.116:8443/">https://106.186.112.116:8443/</a> (TLS + NPN / ALPN)</p>
-<p>ALPN and NPN offer <tt class="docutils literal"><span class="pre">h2-10</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3</span></tt>, <tt class="docutils literal"><span class="pre">spdy/2</span></tt>
-and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
-<p>Note: certificate is self-signed and a browser will show alert</p>
-</li>
 <li><p class="first"><a class="reference external" href="https://106.186.112.116/">https://106.186.112.116/</a> (TLS + NPN / ALPN)</p>
-<p>ALPN and NPN offer <tt class="docutils literal"><span class="pre">HTTP-draft-09/2.0</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3</span></tt>,
-<tt class="docutils literal"><span class="pre">spdy/2</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
-<p>Note: certificate is self-signed and a browser will show alert</p>
+<p>ALPN and NPN offer <tt class="docutils literal"><span class="pre">h2-11</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">certificate is self-signed and a browser will show alert.</p>
+</div>
 </li>
 <li><p class="first"><a class="reference external" href="http://106.186.112.116/">http://106.186.112.116/</a> (Upgrade / Direct)</p>
-<p><tt class="docutils literal"><span class="pre">HTTP-draft-09/2.0</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt></p>
+<p><tt class="docutils literal"><span class="pre">h2c-11</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.  We configured this server to send
+ALTSVC frame or Alt-Svc header field to announce that alternative
+service is available at port 443.</p>
 </li>
 </ul>
 </div>
