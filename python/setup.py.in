@@ -20,8 +20,15 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+import sys
 from distutils.core import setup
 from distutils.extension import Extension
+
+if sys.platform == "win32":
+  LIBS = ['nghttp2_imp', 'ws2_32']
+else:
+  LIBS = ['nghttp2']
 
 setup(
     name = 'python-nghttp2',
@@ -36,6 +43,6 @@ setup(
                                            '@top_srcdir@/lib/includes',
                                            '@top_builddir@/lib/includes'],
                              library_dirs=['@top_builddir@/lib/.libs'],
-                             libraries=['nghttp2'])],
+                             libraries=LIBS)],
     long_description='TBD'
     )
