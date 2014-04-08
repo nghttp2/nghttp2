@@ -129,17 +129,25 @@ static int nghttp2_submit_headers_shared_nva
     NGHTTP2_PRIORITY_TYPE_NONE
   };
 
-  rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
-  if(rv < 0) {
-    return rv;
-  }
-
   if(pri_spec) {
+    switch(pri_spec->pri_type) {
+    case NGHTTP2_PRIORITY_TYPE_GROUP:
+    case NGHTTP2_PRIORITY_TYPE_DEP:
+      break;
+    default:
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+
     copy_pri_spec = *pri_spec;
 
     if(copy_pri_spec.pri_type == NGHTTP2_PRIORITY_TYPE_GROUP) {
       adjust_priority_spec_group_weight(&copy_pri_spec);
     }
+  }
+
+  rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
+  if(rv < 0) {
+    return rv;
   }
 
   return nghttp2_submit_headers_shared(session, flags, stream_id,
@@ -263,6 +271,10 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
   nghttp2_headers_aux_data *aux_data = NULL;
   int rv;
 
+  if(!session->server) {
+    return NGHTTP2_ERR_PROTO;
+  }
+
   frame = malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -347,7 +359,7 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
   uint8_t *copy_protocol_id, *copy_host, *copy_origin;
 
   if(!session->server) {
-    return NGHTTP2_ERR_INVALID_STATE;
+    return NGHTTP2_ERR_PROTO;
   }
 
   varlen = protocol_id_len + host_len + origin_len;

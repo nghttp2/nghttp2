@@ -3484,7 +3484,7 @@ void test_nghttp2_submit_altsvc(void)
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
 
-  CU_ASSERT(NGHTTP2_ERR_INVALID_STATE ==
+  CU_ASSERT(NGHTTP2_ERR_PROTO ==
             nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE,
                                   0, 0, 3000,
                                   (const uint8_t*)protocol_id,
@@ -3548,7 +3548,7 @@ void test_nghttp2_submit_invalid_nv(void)
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
-  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, NULL));
+  CU_ASSERT(0 == nghttp2_session_server_new(&session, &callbacks, NULL));
 
   /* nghttp2_submit_request */
   CU_ASSERT(0 ==
