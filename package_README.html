@@ -298,9 +298,9 @@ $ make
 <p>The src directory contains HTTP/2 client, server and proxy programs.</p>
 <div class="section" id="nghttp-client">
 <h3>nghttp - client<a class="headerlink" href="#nghttp-client" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">nghttp</span></tt> is a HTTP/2 client. It can connect to the HTTP/2 server
+<p><tt class="docutils literal"><span class="pre">nghttp</span></tt> is a HTTP/2 client.  It can connect to the HTTP/2 server
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
-<p>It has verbose output mode for framing information. Here is sample
+<p>It has verbose output mode for framing information.  Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nv https://localhost:8443
 [  0.004][NPN] server offers:
@@ -417,13 +417,13 @@ Upgrade: h2c-11
 <div class="section" id="nghttpd-server">
 <h3>nghttpd - server<a class="headerlink" href="#nghttpd-server" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> is a multi-threaded static web server.</p>
-<p>By default, it uses SSL/TLS connection. Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
+<p>By default, it uses SSL/TLS connection.  Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
 disable it.</p>
 <p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accepts the HTTP/2 connection via NPN/ALPN or direct
-HTTP/2 connection. No HTTP Upgrade is supported.</p>
+HTTP/2 connection.  No HTTP Upgrade is supported.</p>
 <p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
-information. Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
+information.  Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ src/nghttpd --no-tls -v 8080
 IPv4: listen on port 8080
 IPv6: listen on port 8080
@@ -517,18 +517,18 @@ IPv6: listen on port 8080
 </tr>
 </tbody>
 </table>
-<p>The interesting mode at the moment is the default mode. It works like
+<p>The interesting mode at the moment is the default mode.  It works like
 a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-11</span></tt>, SPDY and HTTP/1.1 and can
 be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
-SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
-<tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option. If that option is used, SPDY is disabled
-in the frontend and incoming HTTP/1.1 connection can be upgraded to
-HTTP/2 through HTTP Upgrade.</p>
+SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
+use <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option.  If that option is used, SPDY is
+disabled in the frontend and incoming HTTP/1.1 connection can be
+upgraded to HTTP/2 through HTTP Upgrade.</p>
 <p>The <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client</span></tt> and <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> modes use
-SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
+SSL/TLS in the backend connection by deafult.  To disable SSL/TLS, use
 <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
-<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports configuration file. See <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports configuration file.  See <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
 sample configuration file <tt class="docutils literal"><span class="pre">nghttpx.conf.sample</span></tt>.</p>
 <p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> does not support server push.</p>
 <p>In the default mode, (without any of <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt>,
@@ -547,7 +547,7 @@ SPDY proxy):</p>
 <p>The <tt class="docutils literal"><span class="pre">Client</span></tt> in the above is needs to be configured to use
 <tt class="docutils literal"><span class="pre">nghttpx</span></tt> as secure proxy.</p>
 <p>At the time of this writing, Chrome is the only browser which supports
-secure proxy. The one way to configure Chrome to use secure proxy is
+secure proxy.  The one way to configure Chrome to use secure proxy is
 create proxy.pac script like this:</p>
 <div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span> <span class="nx">FindProxyForURL</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="nx">host</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">return</span> <span class="s2">&quot;HTTPS SERVERADDR:PORT&quot;</span><span class="p">;</span>
@@ -586,11 +586,11 @@ the backend is HTTP/2 Web server:</p>
 <p>The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.</p>
 <p>For the operation modes which talk to the backend in HTTP/2 over
-SSL/TLS, the backend connections can be tunneled through HTTP
-proxy. The proxy is specified using <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt>
-option. The following figure illustrates the example of
-<tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> and <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> options to talk to
-the outside HTTP/2 proxy through HTTP proxy:</p>
+SSL/TLS, the backend connections can be tunneled through HTTP proxy.
+The proxy is specified using <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> option.  The
+following figure illustrates the example of <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> and
+<tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> options to talk to the outside HTTP/2
+proxy through HTTP proxy:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--</span>
 
         <span class="o">--===================---&gt;</span> <span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span> <span class="n">Proxy</span>
@@ -603,9 +603,9 @@ the outside HTTP/2 proxy through HTTP proxy:</p>
 <h2>Benchmarking tool<a class="headerlink" href="#benchmarking-tool" title="Permalink to this headline">¶</a></h2>
 <p>The <tt class="docutils literal"><span class="pre">h2load</span></tt> program is a benchmarking tool for HTTP/2 and SPDY.
 The SPDY support is enabled if the program was built with spdylay
-library. The UI of <tt class="docutils literal"><span class="pre">h2load</span></tt> is heavily inspired by
-<tt class="docutils literal"><span class="pre">weighttp</span></tt> (<a class="reference external" href="https://github.com/lighttpd/weighttp">https://github.com/lighttpd/weighttp</a>). The typical usage
-is as follows:</p>
+library.  The UI of <tt class="docutils literal"><span class="pre">h2load</span></tt> is heavily inspired by <tt class="docutils literal"><span class="pre">weighttp</span></tt>
+(<a class="reference external" href="https://github.com/lighttpd/weighttp">https://github.com/lighttpd/weighttp</a>).  The typical usage is as
+follows:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ src/h2load -n1000 -c10 -m10 https://127.0.0.1:8443/
 starting benchmark...
 progress: 10% done
@@ -631,28 +631,28 @@ With <tt class="docutils literal"><span class="pre">-t</span></tt> option, <tt c
 avoid saturating single core on client side.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last"><strong>Don&#8217;t use this tool against publicly available servers.</strong> That
-is considered a DOS attack. Please only use against your private
+<p class="last"><strong>Don&#8217;t use this tool against publicly available servers.</strong> That is
+considered a DOS attack.  Please only use against your private
 servers.</p>
 </div>
 </div>
 <div class="section" id="hpack-tools">
 <h2>HPACK tools<a class="headerlink" href="#hpack-tools" title="Permalink to this headline">¶</a></h2>
-<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains HPACK tools. The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> is a
-command-line header compression tool. The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> is
+<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains HPACK tools.  The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> is a
+command-line header compression tool.  The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> is
 command-line header decompression tool.  Both tools read input from
-stdin and write output to stdout. The errors are written to
-stderr. They take JSON as input and output. We use the same JSON data
-format used in <a class="reference external" href="https://github.com/Jxck/hpack-test-case">https://github.com/Jxck/hpack-test-case</a></p>
+stdin and write output to stdout.  The errors are written to stderr.
+They take JSON as input and output.  We use (mostly) same JSON data
+format described at <a class="reference external" href="https://github.com/http2jp/hpack-test-case">https://github.com/http2jp/hpack-test-case</a></p>
 <div class="section" id="deflatehd-header-compressor">
 <h3>deflatehd - header compressor<a class="headerlink" href="#deflatehd-header-compressor" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> reads JSON data or HTTP/1-style header fields from
 stdin and outputs compressed header block in JSON.</p>
-<p>For the JSON input, the root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt>
-key. Its value has to include the sequence of input header set. They
-share the same compression context and are processed in the order they
+<p>For the JSON input, the root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt> key.
+Its value has to include the sequence of input header set.  They share
+the same compression context and are processed in the order they
 appear.  Each item in the sequence is a JSON object and it must
-include <tt class="docutils literal"><span class="pre">headers</span></tt> key. Its value is an array of a JSON object ,
+include <tt class="docutils literal"><span class="pre">headers</span></tt> key.  Its value is an array of a JSON object,
 which includes exactly one name/value pair.</p>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
@@ -675,7 +675,7 @@ which includes exactly one name/value pair.</p>
 </pre></div>
 </div>
 <p>With <tt class="docutils literal"><span class="pre">-t</span></tt> option, the program can accept more familiar HTTP/1 style
-header field block. Each header set is delimited by empty line:</p>
+header field block.  Each header set is delimited by empty line:</p>
 <p>Example:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="o">:</span><span class="n">method</span><span class="o">:</span> <span class="n">GET</span>
 <span class="o">:</span><span class="n">scheme</span><span class="o">:</span> <span class="n">https</span>
@@ -685,7 +685,7 @@ header field block. Each header set is delimited by empty line:</p>
 <span class="n">user</span><span class="o">-</span><span class="n">agent</span><span class="o">:</span> <span class="n">nghttp2</span>
 </pre></div>
 </div>
-<p>The output is JSON object. It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
+<p>The output is JSON object.  It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
 value is an array of JSON object, which has at least following keys:</p>
 <dl class="docutils">
 <dt>seq</dt>
@@ -766,18 +766,15 @@ value is an array of JSON object, which has at least following keys:</p>
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 <p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
 associated value includes the state of dynamic header table after the
-corresponding header set was processed. The value includes at least the
-following keys:</p>
+corresponding header set was processed.  The value includes at least
+the following keys:</p>
 <dl class="docutils">
 <dt>entries</dt>
-<dd>The entry in the header table. If <tt class="docutils literal"><span class="pre">referenced</span></tt> is <tt class="docutils literal"><span class="pre">true</span></tt>, it
-is in the reference set. The <tt class="docutils literal"><span class="pre">size</span></tt> includes the overhead (32
-bytes). The <tt class="docutils literal"><span class="pre">index</span></tt> corresponds to the index of header table.
+<dd>The entry in the header table.  If <tt class="docutils literal"><span class="pre">referenced</span></tt> is <tt class="docutils literal"><span class="pre">true</span></tt>, it
+is in the reference set.  The <tt class="docutils literal"><span class="pre">size</span></tt> includes the overhead (32
+bytes).  The <tt class="docutils literal"><span class="pre">index</span></tt> corresponds to the index of header table.
 The <tt class="docutils literal"><span class="pre">name</span></tt> is the header field name and the <tt class="docutils literal"><span class="pre">value</span></tt> is the
-header field value. They may be displayed as <tt class="docutils literal"><span class="pre">**DEALLOCATED**</span></tt>,
-which means that the memory for that string is freed and not
-available. This will happen when the specifying smaller value in
-<tt class="docutils literal"><span class="pre">-S</span></tt> than <tt class="docutils literal"><span class="pre">-s</span></tt>.</dd>
+header field value.</dd>
 <dt>size</dt>
 <dd>The sum of the spaces entries occupied, this includes the
 entry overhead.</dd>
@@ -787,9 +784,9 @@ entry overhead.</dd>
 <dd>The sum of the spaces entries occupied within
 <tt class="docutils literal"><span class="pre">max_deflate_size</span></tt>.</dd>
 <dt>max_deflate_size</dt>
-<dd>The maximum header table size encoder uses. This can be smaller
-than <tt class="docutils literal"><span class="pre">max_size</span></tt>. In this case, encoder only uses up to first
-<tt class="docutils literal"><span class="pre">max_deflate_size</span></tt> buffer. Since the header table size is still
+<dd>The maximum header table size encoder uses.  This can be smaller
+than <tt class="docutils literal"><span class="pre">max_size</span></tt>.  In this case, encoder only uses up to first
+<tt class="docutils literal"><span class="pre">max_deflate_size</span></tt> buffer.  Since the header table size is still
 <tt class="docutils literal"><span class="pre">max_size</span></tt>, the encoder has to keep track of entries ouside the
 <tt class="docutils literal"><span class="pre">max_deflate_size</span></tt> but inside the <tt class="docutils literal"><span class="pre">max_size</span></tt> and make sure
 that they are no longer referenced.</dd>
@@ -951,11 +948,11 @@ that they are no longer referenced.</dd>
 <h3>inflatehd - header decompressor<a class="headerlink" href="#inflatehd-header-decompressor" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> reads JSON data from stdin and outputs decompressed
 name/value pairs in JSON.</p>
-<p>The root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt> key. Its value has to
-include the sequence of compressed header block. They share the same
-compression context and are processed in the order they appear. Each
+<p>The root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt> key.  Its value has to
+include the sequence of compressed header block.  They share the same
+compression context and are processed in the order they appear.  Each
 item in the sequence is a JSON object and it must have at least
-<tt class="docutils literal"><span class="pre">wire</span></tt> key. Its value is a compressed header block in hex string.</p>
+<tt class="docutils literal"><span class="pre">wire</span></tt> key.  Its value is a compressed header block in hex string.</p>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
   <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
@@ -966,7 +963,7 @@ item in the sequence is a JSON object and it must have at least
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The output is JSON object. It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
+<p>The output is JSON object.  It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
 value is an array of JSON object, which has at least following keys:</p>
 <dl class="docutils">
 <dt>seq</dt>
@@ -1036,18 +1033,18 @@ block.</dd>
 <tt class="docutils literal"><span class="pre">inflatehd</span></tt>.</p>
 <p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
 associated value includes the state of dynamic header table after the
-corresponding header set was processed. The format is the same as
+corresponding header set was processed.  The format is the same as
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 </div>
 </div>
 <div class="section" id="python-bindings">
 <h2>Python bindings<a class="headerlink" href="#python-bindings" title="Permalink to this headline">¶</a></h2>
-<p>This <tt class="docutils literal"><span class="pre">python</span></tt> directory contains nghttp2 Python bindings. The
-bindings currently provide HPACK compressor and decompressor
-classes and HTTP/2 server.</p>
+<p>This <tt class="docutils literal"><span class="pre">python</span></tt> directory contains nghttp2 Python bindings.  The
+bindings currently provide HPACK compressor and decompressor classes
+and HTTP/2 server.</p>
 <p>The extension module is called <tt class="docutils literal"><span class="pre">nghttp2</span></tt>.</p>
 <p><tt class="docutils literal"><span class="pre">make</span></tt> will build the bindings and target Python version is
-determined by configure script. If the detected Python version is not
+determined by configure script.  If the detected Python version is not
 what you expect, specify a path to Python executable in <tt class="docutils literal"><span class="pre">PYTHON</span></tt>
 variable as an argument to configure script (e.g., <tt class="docutils literal"><span class="pre">./configure</span>
 <span class="pre">PYTHON=/usr/bin/python3.3</span></tt>).</p>
@@ -1068,21 +1065,21 @@ and decompressor in Python:</p>
 </pre></div>
 </div>
 <p>The <tt class="docutils literal"><span class="pre">nghttp2.HTTP2Server</span></tt> class builds on top of the asyncio event
-loop. On construction, <em>RequestHandlerClass</em> must be given, which must
-be a subclass of <tt class="docutils literal"><span class="pre">nghttp2.BaseRequestHandler</span></tt> class.</p>
-<p>The <tt class="docutils literal"><span class="pre">BaseRequestHandler</span></tt> class is used to handle the HTTP/2
-stream. By default, it does nothing. It must be subclassed to
-handle each event callback method.</p>
-<p>The first callback method invoked is <tt class="docutils literal"><span class="pre">on_headers()</span></tt>. It is called
+loop.  On construction, <em>RequestHandlerClass</em> must be given, which
+must be a subclass of <tt class="docutils literal"><span class="pre">nghttp2.BaseRequestHandler</span></tt> class.</p>
+<p>The <tt class="docutils literal"><span class="pre">BaseRequestHandler</span></tt> class is used to handle the HTTP/2 stream.
+By default, it does nothing.  It must be subclassed to handle each
+event callback method.</p>
+<p>The first callback method invoked is <tt class="docutils literal"><span class="pre">on_headers()</span></tt>.  It is called
 when HEADERS frame, which includes request header fields, has arrived.</p>
 <p>If request has request body, <tt class="docutils literal"><span class="pre">on_data(data)</span></tt> is invoked for each
 chunk of received data.</p>
 <p>When whole request is received, <tt class="docutils literal"><span class="pre">on_request_done()</span></tt> is invoked.</p>
 <p>When stream is closed, <tt class="docutils literal"><span class="pre">on_close(error_code)</span></tt> is called.</p>
-<p>The application can send response using <tt class="docutils literal"><span class="pre">send_response()</span></tt> method. It
-can be used in <tt class="docutils literal"><span class="pre">on_headers()</span></tt>, <tt class="docutils literal"><span class="pre">on_data()</span></tt> or
+<p>The application can send response using <tt class="docutils literal"><span class="pre">send_response()</span></tt> method.
+It can be used in <tt class="docutils literal"><span class="pre">on_headers()</span></tt>, <tt class="docutils literal"><span class="pre">on_data()</span></tt> or
 <tt class="docutils literal"><span class="pre">on_request_done()</span></tt>.</p>
-<p>The application can push resource using <tt class="docutils literal"><span class="pre">push()</span></tt> method. It must be
+<p>The application can push resource using <tt class="docutils literal"><span class="pre">push()</span></tt> method.  It must be
 used before <tt class="docutils literal"><span class="pre">send_response()</span></tt> call.</p>
 <p>The following instance variables are available:</p>
 <dl class="docutils">
@@ -1092,9 +1089,10 @@ client&#8217;s address.</dd>
 <dt>stream_id</dt>
 <dd>Stream ID of this stream.</dd>
 <dt>scheme</dt>
-<dd>Scheme of the request URI. This is a value of :scheme header field.</dd>
+<dd>Scheme of the request URI.  This is a value of :scheme header
+field.</dd>
 <dt>method</dt>
-<dd>Method of this stream. This is a value of :method header field.</dd>
+<dd>Method of this stream.  This is a value of :method header field.</dd>
 <dt>host</dt>
 <dd>This is a value of :authority or host header field.</dd>
 <dt>path</dt>
