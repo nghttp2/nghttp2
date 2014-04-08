@@ -150,10 +150,10 @@ The src directory contains HTTP/2 client, server and proxy programs.
 nghttp - client
 +++++++++++++++
 
-``nghttp`` is a HTTP/2 client. It can connect to the HTTP/2 server
+``nghttp`` is a HTTP/2 client.  It can connect to the HTTP/2 server
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
 
-It has verbose output mode for framing information. Here is sample
+It has verbose output mode for framing information.  Here is sample
 output from ``nghttp`` client::
 
     $ src/nghttp -nv https://localhost:8443
@@ -271,16 +271,16 @@ nghttpd - server
 
 ``nghttpd`` is a multi-threaded static web server.
 
-By default, it uses SSL/TLS connection. Use ``--no-tls`` option to
+By default, it uses SSL/TLS connection.  Use ``--no-tls`` option to
 disable it.
 
 ``nghttpd`` only accepts the HTTP/2 connection via NPN/ALPN or direct
-HTTP/2 connection. No HTTP Upgrade is supported.
+HTTP/2 connection.  No HTTP Upgrade is supported.
 
 ``-p`` option allows users to configure server push.
 
 Just like ``nghttp``, it has verbose output mode for framing
-information. Here is sample output from ``nghttpd`` server::
+information.  Here is sample output from ``nghttpd`` server::
 
     $ src/nghttpd --no-tls -v 8080
     IPv4: listen on port 8080
@@ -343,21 +343,21 @@ default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ``--client-proxy`` HTTP/2, HTTP/1.1             HTTP/2 (TLS)   Forward proxy
 ================== ============================ ============== =============
 
-The interesting mode at the moment is the default mode. It works like
+The interesting mode at the moment is the default mode.  It works like
 a reverse proxy and listens for ``h2-11``, SPDY and HTTP/1.1 and can
 be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
-SSL/TLS in the frontend connection by default. To disable SSL/TLS, use
-``--frontend-no-tls`` option. If that option is used, SPDY is disabled
-in the frontend and incoming HTTP/1.1 connection can be upgraded to
-HTTP/2 through HTTP Upgrade.
+SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
+use ``--frontend-no-tls`` option.  If that option is used, SPDY is
+disabled in the frontend and incoming HTTP/1.1 connection can be
+upgraded to HTTP/2 through HTTP Upgrade.
 
 The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
-SSL/TLS in the backend connection by deafult. To disable SSL/TLS, use
+SSL/TLS in the backend connection by deafult.  To disable SSL/TLS, use
 ``--backend-no-tls`` option.
 
-``nghttpx`` supports configuration file. See ``--conf`` option and
+``nghttpx`` supports configuration file.  See ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
 
 ``nghttpx`` does not support server push.
@@ -379,7 +379,7 @@ The ``Client`` in the above is needs to be configured to use
 ``nghttpx`` as secure proxy.
 
 At the time of this writing, Chrome is the only browser which supports
-secure proxy. The one way to configure Chrome to use secure proxy is
+secure proxy.  The one way to configure Chrome to use secure proxy is
 create proxy.pac script like this:
 
 .. code-block:: javascript
@@ -423,11 +423,11 @@ The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.
 
 For the operation modes which talk to the backend in HTTP/2 over
-SSL/TLS, the backend connections can be tunneled through HTTP
-proxy. The proxy is specified using ``--backend-http-proxy-uri``
-option. The following figure illustrates the example of
-``--http2-bridge`` and ``--backend-http-proxy-uri`` options to talk to
-the outside HTTP/2 proxy through HTTP proxy::
+SSL/TLS, the backend connections can be tunneled through HTTP proxy.
+The proxy is specified using ``--backend-http-proxy-uri`` option.  The
+following figure illustrates the example of ``--http2-bridge`` and
+``--backend-http-proxy-uri`` options to talk to the outside HTTP/2
+proxy through HTTP proxy::
 
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
 
@@ -439,9 +439,9 @@ Benchmarking tool
 
 The ``h2load`` program is a benchmarking tool for HTTP/2 and SPDY.
 The SPDY support is enabled if the program was built with spdylay
-library. The UI of ``h2load`` is heavily inspired by
-``weighttp`` (https://github.com/lighttpd/weighttp). The typical usage
-is as follows::
+library.  The UI of ``h2load`` is heavily inspired by ``weighttp``
+(https://github.com/lighttpd/weighttp).  The typical usage is as
+follows::
 
     $ src/h2load -n1000 -c10 -m10 https://127.0.0.1:8443/
     starting benchmark...
@@ -468,19 +468,19 @@ avoid saturating single core on client side.
 
 .. warning::
 
-   **Don't use this tool against publicly available servers.** That
-   is considered a DOS attack. Please only use against your private
+   **Don't use this tool against publicly available servers.** That is
+   considered a DOS attack.  Please only use against your private
    servers.
 
 HPACK tools
 -----------
 
-The ``src`` directory contains HPACK tools. The ``deflatehd`` is a
-command-line header compression tool. The ``inflatehd`` is
+The ``src`` directory contains HPACK tools.  The ``deflatehd`` is a
+command-line header compression tool.  The ``inflatehd`` is
 command-line header decompression tool.  Both tools read input from
-stdin and write output to stdout. The errors are written to
-stderr. They take JSON as input and output. We use the same JSON data
-format used in https://github.com/Jxck/hpack-test-case
+stdin and write output to stdout.  The errors are written to stderr.
+They take JSON as input and output.  We use (mostly) same JSON data
+format described at https://github.com/http2jp/hpack-test-case
 
 deflatehd - header compressor
 +++++++++++++++++++++++++++++
@@ -488,11 +488,11 @@ deflatehd - header compressor
 The ``deflatehd`` reads JSON data or HTTP/1-style header fields from
 stdin and outputs compressed header block in JSON.
 
-For the JSON input, the root JSON object must include ``cases``
-key. Its value has to include the sequence of input header set. They
-share the same compression context and are processed in the order they
+For the JSON input, the root JSON object must include ``cases`` key.
+Its value has to include the sequence of input header set.  They share
+the same compression context and are processed in the order they
 appear.  Each item in the sequence is a JSON object and it must
-include ``headers`` key. Its value is an array of a JSON object ,
+include ``headers`` key.  Its value is an array of a JSON object,
 which includes exactly one name/value pair.
 
 Example:
@@ -519,7 +519,7 @@ Example:
 
 
 With ``-t`` option, the program can accept more familiar HTTP/1 style
-header field block. Each header set is delimited by empty line:
+header field block.  Each header set is delimited by empty line:
 
 Example::
 
@@ -530,7 +530,7 @@ Example::
     :method: POST
     user-agent: nghttp2
 
-The output is JSON object. It should include ``cases`` key and its
+The output is JSON object.  It should include ``cases`` key and its
 value is an array of JSON object, which has at least following keys:
 
 seq
@@ -621,18 +621,15 @@ The output can be used as the input for ``inflatehd`` and
 
 With ``-d`` option, the extra ``header_table`` key is added and its
 associated value includes the state of dynamic header table after the
-corresponding header set was processed. The value includes at least the
-following keys:
+corresponding header set was processed.  The value includes at least
+the following keys:
 
 entries
-    The entry in the header table. If ``referenced`` is ``true``, it
-    is in the reference set. The ``size`` includes the overhead (32
-    bytes). The ``index`` corresponds to the index of header table.
+    The entry in the header table.  If ``referenced`` is ``true``, it
+    is in the reference set.  The ``size`` includes the overhead (32
+    bytes).  The ``index`` corresponds to the index of header table.
     The ``name`` is the header field name and the ``value`` is the
-    header field value. They may be displayed as ``**DEALLOCATED**``,
-    which means that the memory for that string is freed and not
-    available. This will happen when the specifying smaller value in
-    ``-S`` than ``-s``.
+    header field value.
 
 size
     The sum of the spaces entries occupied, this includes the
@@ -646,9 +643,9 @@ deflate_size
     ``max_deflate_size``.
 
 max_deflate_size
-    The maximum header table size encoder uses. This can be smaller
-    than ``max_size``. In this case, encoder only uses up to first
-    ``max_deflate_size`` buffer. Since the header table size is still
+    The maximum header table size encoder uses.  This can be smaller
+    than ``max_size``.  In this case, encoder only uses up to first
+    ``max_deflate_size`` buffer.  Since the header table size is still
     ``max_size``, the encoder has to keep track of entries ouside the
     ``max_deflate_size`` but inside the ``max_size`` and make sure
     that they are no longer referenced.
@@ -813,11 +810,11 @@ inflatehd - header decompressor
 The ``inflatehd`` reads JSON data from stdin and outputs decompressed
 name/value pairs in JSON.
 
-The root JSON object must include ``cases`` key. Its value has to
-include the sequence of compressed header block. They share the same
-compression context and are processed in the order they appear. Each
+The root JSON object must include ``cases`` key.  Its value has to
+include the sequence of compressed header block.  They share the same
+compression context and are processed in the order they appear.  Each
 item in the sequence is a JSON object and it must have at least
-``wire`` key. Its value is a compressed header block in hex string.
+``wire`` key.  Its value is a compressed header block in hex string.
 
 Example:
 
@@ -831,7 +828,7 @@ Example:
       ]
     }
 
-The output is JSON object. It should include ``cases`` key and its
+The output is JSON object.  It should include ``cases`` key and its
 value is an array of JSON object, which has at least following keys:
 
 seq
@@ -907,20 +904,20 @@ The output can be used as the input for ``deflatehd`` and
 
 With ``-d`` option, the extra ``header_table`` key is added and its
 associated value includes the state of dynamic header table after the
-corresponding header set was processed. The format is the same as
+corresponding header set was processed.  The format is the same as
 ``deflatehd``.
 
 Python bindings
 ---------------
 
-This ``python`` directory contains nghttp2 Python bindings. The
-bindings currently provide HPACK compressor and decompressor
-classes and HTTP/2 server.
+This ``python`` directory contains nghttp2 Python bindings.  The
+bindings currently provide HPACK compressor and decompressor classes
+and HTTP/2 server.
 
 The extension module is called ``nghttp2``.
 
 ``make`` will build the bindings and target Python version is
-determined by configure script. If the detected Python version is not
+determined by configure script.  If the detected Python version is not
 what you expect, specify a path to Python executable in ``PYTHON``
 variable as an argument to configure script (e.g., ``./configure
 PYTHON=/usr/bin/python3.3``).
@@ -944,14 +941,14 @@ and decompressor in Python:
     print(hdrs)
 
 The ``nghttp2.HTTP2Server`` class builds on top of the asyncio event
-loop. On construction, *RequestHandlerClass* must be given, which must
-be a subclass of ``nghttp2.BaseRequestHandler`` class.
+loop.  On construction, *RequestHandlerClass* must be given, which
+must be a subclass of ``nghttp2.BaseRequestHandler`` class.
 
-The ``BaseRequestHandler`` class is used to handle the HTTP/2
-stream. By default, it does nothing. It must be subclassed to
-handle each event callback method.
+The ``BaseRequestHandler`` class is used to handle the HTTP/2 stream.
+By default, it does nothing.  It must be subclassed to handle each
+event callback method.
 
-The first callback method invoked is ``on_headers()``. It is called
+The first callback method invoked is ``on_headers()``.  It is called
 when HEADERS frame, which includes request header fields, has arrived.
 
 If request has request body, ``on_data(data)`` is invoked for each
@@ -961,11 +958,11 @@ When whole request is received, ``on_request_done()`` is invoked.
 
 When stream is closed, ``on_close(error_code)`` is called.
 
-The application can send response using ``send_response()`` method. It
-can be used in ``on_headers()``, ``on_data()`` or
+The application can send response using ``send_response()`` method.
+It can be used in ``on_headers()``, ``on_data()`` or
 ``on_request_done()``.
 
-The application can push resource using ``push()`` method. It must be
+The application can push resource using ``push()`` method.  It must be
 used before ``send_response()`` call.
 
 The following instance variables are available:
@@ -978,10 +975,11 @@ stream_id
     Stream ID of this stream.
 
 scheme
-    Scheme of the request URI. This is a value of :scheme header field.
+    Scheme of the request URI.  This is a value of :scheme header
+    field.
 
 method
-    Method of this stream. This is a value of :method header field.
+    Method of this stream.  This is a value of :method header field.
 
 host
     This is a value of :authority or host header field.
