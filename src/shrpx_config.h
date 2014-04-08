@@ -34,6 +34,7 @@
 #include <arpa/inet.h>
 #include <cstdio>
 #include <vector>
+#include <memory>
 
 #include <event.h>
 #include <openssl/ssl.h>
@@ -274,15 +275,15 @@ int load_config(const char *filename);
 std::string read_passwd_from_file(const char *filename);
 
 // Parses comma delimited strings in |s| and returns the array of
-// pointers, each element points to the each substring in |s|. The
-// number of elements are stored in |*outlen|. The |s| must be comma
-// delimited list of strings. The strings must be delimited by a
+// pointers, each element points to the each substring in |s|.  The
+// number of elements are stored in |*outlen|.  The |s| must be comma
+// delimited list of strings.  The strings must be delimited by a
 // single comma and any white spaces around it are treated as a part
-// of protocol strings. This function may modify |s| and the caller
-// must leave it as is after this call. This function allocates memory
-// to store the parsed strings and it is caller's responsibility to
-// deallocate the memory.
-char** parse_config_str_list(size_t *outlen, const char *s);
+// of protocol strings.  This function may modify |s| and the caller
+// must leave it as is after this call.  This function copies |s| and
+// first element in the return value points to it.  It is caller's
+// responsibility to deallocate its memory.
+std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s);
 
 // Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
 // NULL, it is freed before copying.

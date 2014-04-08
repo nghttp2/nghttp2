@@ -1168,11 +1168,11 @@ int main(int argc, char **argv)
 
   if(!get_config()->npn_list) {
     mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
-                                                   DEFAULT_NPN_LIST);
+                                                   DEFAULT_NPN_LIST).release();
   }
   if(!get_config()->tls_proto_list) {
     mod_config()->tls_proto_list = parse_config_str_list
-      (&mod_config()->tls_proto_list_len, DEFAULT_TLS_PROTO_LIST);
+      (&mod_config()->tls_proto_list_len, DEFAULT_TLS_PROTO_LIST).release();
   }
 
   if(!get_config()->subcerts.empty()) {

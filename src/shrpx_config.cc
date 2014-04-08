@@ -229,12 +229,12 @@ void set_config_str(char **destp, const char *val)
   *destp = strdup(val);
 }
 
-char** parse_config_str_list(size_t *outlen, const char *s)
+std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s)
 {
   size_t len = 1;
   for(const char *first = s, *p = nullptr; (p = strchr(first, ','));
       ++len, first = p + 1);
-  auto list = new char*[len];
+  auto list = util::make_unique<char*[]>(len);
   auto first = strdup(s);
   len = 0;
   for(;;) {
@@ -468,11 +468,11 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_NPN_LIST)) {
     delete [] mod_config()->npn_list;
     mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
-                                                   optarg);
+                                                   optarg).release();
   } else if(util::strieq(opt, SHRPX_OPT_TLS_PROTO_LIST)) {
     delete [] mod_config()->tls_proto_list;
     mod_config()->tls_proto_list = parse_config_str_list
-      (&mod_config()->tls_proto_list_len, optarg);
+      (&mod_config()->tls_proto_list_len, optarg).release();
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT)) {
     mod_config()->verify_client = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT_CACERT)) {
