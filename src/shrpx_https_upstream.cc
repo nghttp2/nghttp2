@@ -681,12 +681,18 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
 
   if(downstream->get_norm_response_header("alt-svc") == end_headers) {
     // We won't change or alter alt-svc from backend at the moment.
-    if(get_config()->altsvc_port != 0 && get_config()->altsvc_protocol_id) {
+    if(!get_config()->altsvcs.empty()) {
       hdrs += "Alt-Svc: ";
-      hdrs += util::percent_encode_token(get_config()->altsvc_protocol_id);
-      hdrs += "=";
-      hdrs += util::utos(get_config()->altsvc_port);
-      hdrs += "\r\n";
+
+      for(auto& altsvc : get_config()->altsvcs) {
+        hdrs += util::percent_encode_token(altsvc.protocol_id);
+        hdrs += "=";
+        hdrs += util::utos(altsvc.port);
+        hdrs += ", ";
+      }
+
+      hdrs[hdrs.size() - 2] = '\r';
+      hdrs[hdrs.size() - 1] = '\n';
     }
   }
 

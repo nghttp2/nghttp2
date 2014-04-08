@@ -121,10 +121,7 @@ const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[] =
 const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[] = "http2-no-cookie-crumbling";
 const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[] = "frontend-frame-debug";
 const char SHRPX_OPT_PADDING[] = "padding";
-const char SHRPX_OPT_ALTSVC_PORT[] = "altsvc-port";
-const char SHRPX_OPT_ALTSVC_PROTOCOL_ID[] = "altsvc-protocol-id";
-const char SHRPX_OPT_ALTSVC_HOST[] = "altsvc-host";
-const char SHRPX_OPT_ALTSVC_ORIGIN[] = "altsvc-origin";
+const char SHRPX_OPT_ALTSVC[] = "altsvc";
 
 namespace {
 Config *config = nullptr;
@@ -502,32 +499,50 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->upstream_frame_debug = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_PADDING)) {
     mod_config()->padding = strtoul(optarg, nullptr, 10);
-  } else if(util::strieq(opt, SHRPX_OPT_ALTSVC_PORT)) {
-    errno = 0;
+  } else if(util::strieq(opt, SHRPX_OPT_ALTSVC)) {
+    size_t len;
 
-    auto port = strtoul(optarg, nullptr, 10);
+    auto tokens = parse_config_str_list(&len, optarg);
 
-    if(errno == 0 &&
-       1 <= port && port <= std::numeric_limits<uint16_t>::max()) {
-
-      mod_config()->altsvc_port = port;
-    } else {
-      LOG(ERROR) << "altsvc-port is invalid: " << optarg;
+    if(len < 2) {
+      // Requires at least protocol_id and port
+      LOG(ERROR) << "altsvc: too few parameters: " << optarg;
       return -1;
     }
-  } else if(util::strieq(opt, SHRPX_OPT_ALTSVC_PROTOCOL_ID)) {
-    set_config_str(&mod_config()->altsvc_protocol_id, optarg);
 
-    mod_config()->altsvc_protocol_id_len =
-      strlen(get_config()->altsvc_protocol_id);
-  } else if(util::strieq(opt, SHRPX_OPT_ALTSVC_HOST)) {
-    set_config_str(&mod_config()->altsvc_host, optarg);
+    if(len > 4) {
+      // We only need protocol_id, port, host and origin
+      LOG(ERROR) << "altsvc: too many parameters: " << optarg;
+      return -1;
+    }
 
-    mod_config()->altsvc_host_len = strlen(get_config()->altsvc_host);
-  } else if(util::strieq(opt, SHRPX_OPT_ALTSVC_ORIGIN)) {
-    set_config_str(&mod_config()->altsvc_origin, optarg);
+    errno = 0;
+    auto port = strtoul(tokens[1], nullptr, 10);
 
-    mod_config()->altsvc_origin_len = strlen(get_config()->altsvc_origin);
+    if(errno != 0 || port < 1 || port > std::numeric_limits<uint16_t>::max()) {
+      LOG(ERROR) << "altsvc: port is invalid: " << tokens[1];
+      return -1;
+    }
+
+    AltSvc altsvc;
+
+    altsvc.port = port;
+
+    altsvc.protocol_id = tokens[0];
+    altsvc.protocol_id_len = strlen(altsvc.protocol_id);
+
+    if(len > 2) {
+      altsvc.host = tokens[2];
+      altsvc.host_len = strlen(altsvc.host);
+
+      if(len > 3) {
+        altsvc.origin = tokens[3];
+        altsvc.origin_len = strlen(altsvc.origin);
+      }
+    }
+
+    mod_config()->altsvcs.push_back(std::move(altsvc));
+
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {

@@ -110,10 +110,7 @@ extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[];
 extern const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[];
 extern const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[];
 extern const char SHRPX_OPT_PADDING[];
-extern const char SHRPX_OPT_ALTSVC_PORT[];
-extern const char SHRPX_OPT_ALTSVC_PROTOCOL_ID[];
-extern const char SHRPX_OPT_ALTSVC_HOST[];
-extern const char SHRPX_OPT_ALTSVC_ORIGIN[];
+extern const char SHRPX_OPT_ALTSVC[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -127,9 +124,32 @@ enum shrpx_proto {
   PROTO_HTTP
 };
 
+struct AltSvc {
+  AltSvc()
+    : protocol_id(nullptr),
+      host(nullptr),
+      origin(nullptr),
+      protocol_id_len(0),
+      host_len(0),
+      origin_len(0),
+      port(0)
+  {}
+
+  char *protocol_id;
+  char *host;
+  char *origin;
+
+  size_t protocol_id_len;
+  size_t host_len;
+  size_t origin_len;
+
+  uint16_t port;
+};
+
 struct Config {
   // The list of (private key file, certificate file) pair
   std::vector<std::pair<std::string, std::string>> subcerts;
+  std::vector<AltSvc> altsvcs;
   sockaddr_union downstream_addr;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
@@ -176,9 +196,6 @@ struct Config {
   char *client_cert_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
-  char *altsvc_protocol_id;
-  char *altsvc_host;
-  char *altsvc_origin;
   nghttp2_option *http2_option;
   size_t downstream_addrlen;
   size_t num_worker;
@@ -202,9 +219,6 @@ struct Config {
   // The number of elements in tls_proto_list
   size_t tls_proto_list_len;
   size_t padding;
-  size_t altsvc_protocol_id_len;
-  size_t altsvc_host_len;
-  size_t altsvc_origin_len;
   // downstream protocol; this will be determined by given options.
   shrpx_proto downstream_proto;
   int syslog_facility;
@@ -215,7 +229,6 @@ struct Config {
   uint16_t downstream_port;
   // port in http proxy URI
   uint16_t downstream_http_proxy_port;
-  uint16_t altsvc_port;
   bool verbose;
   bool daemon;
   bool verify_client;
