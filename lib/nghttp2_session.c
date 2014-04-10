@@ -1329,6 +1329,41 @@ static int nghttp2_session_predicate_window_update_send
 }
 
 /*
+ * This function checks ALTSVC with the stream ID |stream_id| can be
+ * sent at this time.  If |stream_id| is 0, ATLSVC frame is always
+ * allowed to send.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_STREAM_CLOSED
+ *     The stream is already closed or does not exist.
+ * NGHTTP2_ERR_STREAM_CLOSING
+ *     RST_STREAM was queued for this stream.
+ */
+static int nghttp2_session_predicate_altsvc_send
+(nghttp2_session *session, int32_t stream_id)
+{
+  nghttp2_stream *stream;
+
+  if(stream_id == 0) {
+    return 0;
+  }
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+
+  if(stream == NULL) {
+    return NGHTTP2_ERR_STREAM_CLOSED;
+  }
+
+  if(stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
+
+  return 0;
+}
+
+/*
  * This function checks SETTINGS can be sent at this time.
  *
  * Currently this function always returns 0.
@@ -1678,6 +1713,11 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       }
       break;
     case NGHTTP2_ALTSVC:
+      rv = nghttp2_session_predicate_altsvc_send(session, frame->hd.stream_id);
+      if(rv != 0) {
+        return rv;
+      }
+
       framerv = nghttp2_frame_pack_altsvc(&session->aob.framebufs,
                                           &frame->altsvc);
 

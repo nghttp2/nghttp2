@@ -3496,6 +3496,8 @@ void test_nghttp2_submit_altsvc(void)
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
+  open_stream(session, 9);
+
   CU_ASSERT(0 ==
             nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE,
                                   9, 12345, 3000,
