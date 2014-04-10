@@ -131,6 +131,7 @@ static int nghttp2_submit_headers_shared_nva
 
   if(pri_spec) {
     switch(pri_spec->pri_type) {
+    case NGHTTP2_PRIORITY_TYPE_NONE:
     case NGHTTP2_PRIORITY_TYPE_GROUP:
     case NGHTTP2_PRIORITY_TYPE_DEP:
       break;
