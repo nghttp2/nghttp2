@@ -77,8 +77,7 @@ static int nghttp2_submit_headers_shared
   flags_copy =
     (flags & (NGHTTP2_FLAG_END_STREAM |
               NGHTTP2_FLAG_END_SEGMENT |
-              NGHTTP2_FLAG_PRIORITY_GROUP |
-              NGHTTP2_FLAG_PRIORITY_DEPENDENCY)) |
+              NGHTTP2_FLAG_PRIORITY)) |
     NGHTTP2_FLAG_END_HEADERS;
 
   nghttp2_frame_headers_init(&frame->headers, flags_copy, stream_id, pri_spec,
@@ -102,14 +101,16 @@ static int nghttp2_submit_headers_shared
   return rv;
 }
 
-static void adjust_priority_spec_group_weight(nghttp2_priority_spec *pri_spec)
+static void adjust_priority_spec_weight(nghttp2_priority_spec *pri_spec)
 {
-  assert(pri_spec->pri_type == NGHTTP2_PRIORITY_TYPE_GROUP);
+  if(pri_spec->stream_id == 0) {
+    pri_spec->exclusive = 0;
+  }
 
-  if(pri_spec->spec.group.weight < NGHTTP2_MIN_WEIGHT) {
-    pri_spec->spec.group.weight = NGHTTP2_MIN_WEIGHT;
-  } else if(pri_spec->spec.group.weight > NGHTTP2_MAX_WEIGHT) {
-    pri_spec->spec.group.weight = NGHTTP2_MAX_WEIGHT;
+  if(pri_spec->weight < NGHTTP2_MIN_WEIGHT) {
+    pri_spec->weight = NGHTTP2_MIN_WEIGHT;
+  } else if(pri_spec->weight > NGHTTP2_MAX_WEIGHT) {
+    pri_spec->weight = NGHTTP2_MAX_WEIGHT;
   }
 }
 
@@ -125,25 +126,13 @@ static int nghttp2_submit_headers_shared_nva
 {
   ssize_t rv;
   nghttp2_nv *nva_copy;
-  nghttp2_priority_spec copy_pri_spec = {
-    NGHTTP2_PRIORITY_TYPE_NONE
-  };
+  nghttp2_priority_spec copy_pri_spec;
 
   if(pri_spec) {
-    switch(pri_spec->pri_type) {
-    case NGHTTP2_PRIORITY_TYPE_NONE:
-    case NGHTTP2_PRIORITY_TYPE_GROUP:
-    case NGHTTP2_PRIORITY_TYPE_DEP:
-      break;
-    default:
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-
     copy_pri_spec = *pri_spec;
-
-    if(copy_pri_spec.pri_type == NGHTTP2_PRIORITY_TYPE_GROUP) {
-      adjust_priority_spec_group_weight(&copy_pri_spec);
-    }
+    adjust_priority_spec_weight(&copy_pri_spec);
+  } else {
+    nghttp2_priority_spec_default_init(&copy_pri_spec);
   }
 
   rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
@@ -164,20 +153,10 @@ int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
 {
   flags &= NGHTTP2_FLAG_END_STREAM;
 
-  if(pri_spec) {
-    switch(pri_spec->pri_type) {
-    case NGHTTP2_PRIORITY_TYPE_GROUP:
-      flags |= NGHTTP2_FLAG_PRIORITY_GROUP;
-      break;
-    case NGHTTP2_PRIORITY_TYPE_DEP:
-      flags |= NGHTTP2_FLAG_PRIORITY_DEPENDENCY;
-      break;
-    default:
-      /* Default weight */
-      pri_spec = NULL;
-
-      break;
-    }
+  if(pri_spec && !nghttp2_priority_spec_check_default(pri_spec)) {
+    flags |= NGHTTP2_FLAG_PRIORITY;
+  } else {
+    pri_spec = NULL;
   }
 
   return nghttp2_submit_headers_shared_nva(session, flags, stream_id, pri_spec,
@@ -203,22 +182,13 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  copy_pri_spec = *pri_spec;
-
-  switch(copy_pri_spec.pri_type) {
-  case NGHTTP2_PRIORITY_TYPE_GROUP:
-    adjust_priority_spec_group_weight(&copy_pri_spec);
-
-    break;
-  case NGHTTP2_PRIORITY_TYPE_DEP:
-    if(stream_id == copy_pri_spec.spec.dep.stream_id) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-
-    break;
-  default:
+  if(stream_id == pri_spec->stream_id) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
+
+  copy_pri_spec = *pri_spec;
+
+  adjust_priority_spec_weight(&copy_pri_spec);
 
   frame = malloc(sizeof(nghttp2_frame));
 
@@ -433,17 +403,7 @@ static uint8_t set_request_flags(const nghttp2_priority_spec *pri_spec,
   }
 
   if(pri_spec) {
-    switch(pri_spec->pri_type) {
-    case NGHTTP2_PRIORITY_TYPE_GROUP:
-      flags |= NGHTTP2_FLAG_PRIORITY_GROUP;
-      break;
-    case NGHTTP2_PRIORITY_TYPE_DEP:
-      flags |= NGHTTP2_FLAG_PRIORITY_DEPENDENCY;
-      break;
-    default:
-      /* Default weight */
-      break;
-    }
+    flags |= NGHTTP2_FLAG_PRIORITY;
   }
 
   return flags;
@@ -456,6 +416,10 @@ int nghttp2_submit_request(nghttp2_session *session,
                            void *stream_user_data)
 {
   uint8_t flags;
+
+  if(pri_spec && nghttp2_priority_spec_check_default(pri_spec)) {
+    pri_spec = NULL;
+  }
 
   flags = set_request_flags(pri_spec, data_prd);
 

@@ -89,6 +89,11 @@ nghttp2_stream* open_stream_with_dep(nghttp2_session *session,
                                      int32_t stream_id,
                                      nghttp2_stream *dep_stream);
 
+nghttp2_stream* open_stream_with_dep_weight(nghttp2_session *session,
+                                            int32_t stream_id,
+                                            int32_t weight,
+                                            nghttp2_stream *dep_stream);
+
 nghttp2_stream* open_stream_with_dep_excl(nghttp2_session *session,
                                           int32_t stream_id,
                                           nghttp2_stream *dep_stream);

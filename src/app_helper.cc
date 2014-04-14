@@ -261,27 +261,15 @@ void print_flags(const nghttp2_frame_hd& hd)
       }
       s += "PAD_HIGH";
     }
-    if(hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
+    if(hd.flags & NGHTTP2_FLAG_PRIORITY) {
       if(!s.empty()) {
         s += " | ";
       }
-      s += "PRIORITY_GROUP";
-    }
-    if(hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
-      if(!s.empty()) {
-        s += " | ";
-      }
-      s += "PRIORITY_DEPENDENCY";
+      s += "PRIORITY";
     }
 
     break;
   case NGHTTP2_PRIORITY:
-    if(hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
-      s += "PRIORITY_GROUP";
-    } else if(hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
-      s += "PRIORITY_DEPENDENCY";
-    }
-
     break;
   case NGHTTP2_SETTINGS:
     if(hd.flags & NGHTTP2_FLAG_ACK) {
@@ -368,14 +356,11 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   case NGHTTP2_HEADERS:
     print_frame_attr_indent();
     fprintf(outfile, "(padlen=%zu", frame->headers.padlen);
-    if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
-      fprintf(outfile, ", pri_group_id=%d, weight=%u",
-              frame->headers.pri_spec.spec.group.pri_group_id,
-              frame->headers.pri_spec.spec.group.weight);
-    } else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
-      fprintf(outfile, ", stream_id=%d, exclusive=%d",
-              frame->headers.pri_spec.spec.dep.stream_id,
-              frame->headers.pri_spec.spec.dep.exclusive);
+    if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+      fprintf(outfile, ", stream_id=%d, weight=%u, exclusive=%d",
+              frame->headers.pri_spec.stream_id,
+              frame->headers.pri_spec.weight,
+              frame->headers.pri_spec.exclusive);
     }
     fprintf(outfile, ")\n");
     switch(frame->headers.cat) {
@@ -399,19 +384,10 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   case NGHTTP2_PRIORITY:
     print_frame_attr_indent();
 
-    fprintf(outfile, "(");
-
-    if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
-      fprintf(outfile, "pri_group_id=%d, weight=%u",
-              frame->priority.pri_spec.spec.group.pri_group_id,
-              frame->priority.pri_spec.spec.group.weight);
-    } else if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
-      fprintf(outfile, "stream_id=%d, exclusive=%d",
-              frame->priority.pri_spec.spec.dep.stream_id,
-              frame->priority.pri_spec.spec.dep.exclusive);
-    }
-
-    fprintf(outfile, ")\n");
+    fprintf(outfile, "(stream_id=%d, weight=%u, exclusive=%d)\n",
+            frame->priority.pri_spec.stream_id,
+            frame->priority.pri_spec.weight,
+            frame->priority.pri_spec.exclusive);
 
     break;
   case NGHTTP2_RST_STREAM:

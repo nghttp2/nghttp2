@@ -155,7 +155,8 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
 
 /*
  * Unpacks HEADERS frame byte sequence into |frame|. This function
- * only unapcks bytes that come before name/value header block.
+ * only unapcks bytes that come before name/value header block and
+ * after PAD_HIGH and PAD_LOW.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:

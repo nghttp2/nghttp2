@@ -236,8 +236,7 @@ nghttp2_stream* open_stream(nghttp2_session *session, int32_t stream_id)
 {
   nghttp2_priority_spec pri_spec;
 
-  nghttp2_priority_spec_group_init(&pri_spec, stream_id,
-                                   NGHTTP2_DEFAULT_WEIGHT);
+  nghttp2_priority_spec_default_init(&pri_spec);
 
   return nghttp2_session_open_stream(session, stream_id,
                                      NGHTTP2_STREAM_FLAG_NONE,
@@ -250,9 +249,18 @@ nghttp2_stream* open_stream_with_dep(nghttp2_session *session,
                                      int32_t stream_id,
                                      nghttp2_stream *dep_stream)
 {
+  return open_stream_with_dep_weight(session, stream_id,
+                                     NGHTTP2_DEFAULT_WEIGHT, dep_stream);
+}
+
+nghttp2_stream* open_stream_with_dep_weight(nghttp2_session *session,
+                                            int32_t stream_id,
+                                            int32_t weight,
+                                            nghttp2_stream *dep_stream)
+{
   nghttp2_priority_spec pri_spec;
 
-  nghttp2_priority_spec_dep_init(&pri_spec, dep_stream->stream_id, 0);
+  nghttp2_priority_spec_init(&pri_spec, dep_stream->stream_id, weight, 0);
 
   return nghttp2_session_open_stream(session, stream_id,
                                      NGHTTP2_STREAM_FLAG_NONE,
@@ -267,7 +275,8 @@ nghttp2_stream* open_stream_with_dep_excl(nghttp2_session *session,
 {
   nghttp2_priority_spec pri_spec;
 
-  nghttp2_priority_spec_dep_init(&pri_spec, dep_stream->stream_id, 1);
+  nghttp2_priority_spec_init(&pri_spec, dep_stream->stream_id,
+                             NGHTTP2_DEFAULT_WEIGHT, 1);
 
   return nghttp2_session_open_stream(session, stream_id,
                                      NGHTTP2_STREAM_FLAG_NONE,

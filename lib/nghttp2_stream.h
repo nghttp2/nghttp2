@@ -102,10 +102,6 @@ typedef enum {
   NGHTTP2_STREAM_DPRI_REST = 0x04
 } nghttp2_stream_dpri;
 
-struct nghttp2_stream_group;
-
-typedef struct nghttp2_stream_group nghttp2_stream_group;
-
 struct nghttp2_stream;
 
 typedef struct nghttp2_stream nghttp2_stream;
@@ -133,16 +129,11 @@ struct nghttp2_stream {
   nghttp2_outbound_item *data_item;
   /* stream ID */
   int32_t stream_id;
-  /* priority group this stream belongs to */
-  nghttp2_stream_group *stream_group;
   /* categorized priority of this stream.  Only stream bearing
      NGHTTP2_STREAM_DPRI_TOP can send DATA frame. */
   nghttp2_stream_dpri dpri;
   /* the number of streams in subtree */
   size_t num_substreams;
-  /* the number of streams marked as NGHTTP2_STREAM_DPRI_TOP in
-     subtree */
-  ssize_t num_subtop;
   /* Current remote window size. This value is computed against the
      current initial window size of remote endpoint. */
   int32_t remote_window_size;
@@ -157,6 +148,12 @@ struct nghttp2_stream {
      NGHTTP2_INITIAL_WINDOW_SIZE and could be increased/decreased by
      submitting WINDOW_UPDATE. See nghttp2_submit_window_update(). */
   int32_t local_window_size;
+  /* weight of this stream */
+  int32_t weight;
+  /* effective weight of this stream in belonging dependency tree */
+  int32_t effective_weight;
+  /* sum of weight (not effective_weight) of direct descendants */
+  int32_t sum_dep_weight;
   nghttp2_stream_state state;
   /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
   uint8_t flags;
@@ -167,6 +164,7 @@ struct nghttp2_stream {
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          uint8_t flags,
                          nghttp2_stream_state initial_state,
+                         int32_t weight,
                          int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
                          void *stream_user_data);
@@ -260,11 +258,29 @@ int nghttp2_stream_dep_subtree_find(nghttp2_stream *stream,
                                     nghttp2_stream *target);
 
 /*
+ * Computes distributed weight of a stream of the |weight| under the
+ * |stream| if |stream| is removed from a dependency tree.  The result
+ * is computed using stream->weight rather than
+ * stream->effective_weight.
+ */
+int32_t nghttp2_stream_dep_distributed_weight(nghttp2_stream *stream,
+                                              int32_t weight);
+
+/*
+ * Computes effective weight of a stream of the |weight| under the
+ * |stream|.  The result is computed using stream->effective_weight
+ * rather than stream->weight.  This function is used to determine
+ * weight in dependency tree.
+ */
+int32_t nghttp2_stream_dep_distributed_effective_weight
+(nghttp2_stream *stream, int32_t weight);
+
+/*
  * Makes the |stream| depend on the |dep_stream|.  This dependency is
  * exclusive.  All existing direct descendants of |dep_stream| become
  * the descendants of the |stream|.  This function assumes
  * |stream->data| is NULL and no dpri members are changed in this
- * dependency tree.  It also does not change stream->stream_group.
+ * dependency tree.
  */
 void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
                                nghttp2_stream *stream);
@@ -272,8 +288,7 @@ void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
 /*
  * Makes the |stream| depend on the |dep_stream|.  This dependency is
  * not exclusive.  This function assumes |stream->data| is NULL and no
- * dpri members are changed in this dependency tree.  It also does not
- * change stream->stream_group.
+ * dpri members are changed in this dependency tree.
  */
 void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
                             nghttp2_stream *stream);
@@ -342,8 +357,8 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
 
 /*
  * Removes subtree whose root stream is |stream|.  Removing subtree
- * does not change dpri values and removed subtree is still in the
- * same stream_group.
+ * does not change dpri values.  The effective_weight of streams in
+ * removed subtree is not updated.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -354,8 +369,8 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
 void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream);
 
 /*
- * Makes the |stream| as root for |stream_group|.  Updates dpri
- * members in this dependency tree.
+ * Makes the |stream| as root.  Updates dpri members in this
+ * dependency tree.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -363,53 +378,6 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_stream_dep_make_root(nghttp2_stream_group *stream_group,
-                                 nghttp2_stream *stream,
-                                 nghttp2_pq *pq);
-
-/*
- * Priority group of streams.
- */
-struct nghttp2_stream_group {
-  /* Intrusive Map */
-  nghttp2_map_entry map_entry;
-  /* The number of streams this priority group contains */
-  size_t num_streams;
-  /* The number of streams marked as NGHTTP2_STREAM_DPRI_TOP */
-  ssize_t num_top;
-  /* The priority group ID */
-  int32_t pri_group_id;
-  /* The weight of this group */
-  int32_t weight;
-};
-
-void nghttp2_stream_group_init(nghttp2_stream_group *stream_group,
-                               int32_t pri_group_id,
-                               int32_t weight);
-
-void nghttp2_stream_group_free(nghttp2_stream_group *stream_group);
-
-/*
- * Adds |stream| to |stream_group|.
- */
-void nghttp2_stream_group_add_stream(nghttp2_stream_group *stream_group,
-                                     nghttp2_stream *stream);
-
-/*
- * Removes |stream| from |stream_group|.
- */
-void nghttp2_stream_group_remove_stream(nghttp2_stream_group *stream_group,
-                                        nghttp2_stream *stream);
-
-/*
- * Updates |stream_group->num_top| += |delta|
- */
-void nghttp2_stream_group_update_num_top(nghttp2_stream_group *stream_group,
-                                         ssize_t delta);
-
-/*
- * Returns shared weight among the streams belongs to |stream_group|.
- */
-size_t nghttp2_stream_group_shared_wait(nghttp2_stream_group *stream_group);
+int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq);
 
 #endif /* NGHTTP2_STREAM */
