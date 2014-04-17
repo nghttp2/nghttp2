@@ -102,6 +102,10 @@ typedef enum {
   NGHTTP2_STREAM_DPRI_REST = 0x04
 } nghttp2_stream_dpri;
 
+struct nghttp2_stream_roots;
+
+typedef struct nghttp2_stream_roots nghttp2_stream_roots;
+
 struct nghttp2_stream;
 
 typedef struct nghttp2_stream nghttp2_stream;
@@ -118,11 +122,17 @@ struct nghttp2_stream {
      dep_prev and sib_prev are NULL. */
   nghttp2_stream *dep_prev, *dep_next;
   nghttp2_stream *sib_prev, *sib_next;
+  /* pointers to track dependency tree root streams.  This is
+     doubly-linked list and first element is pointed by
+     roots->head. */
+  nghttp2_stream *root_prev, *root_next;
   /* When stream is kept after closure, it may be kept in single
      linked list pointed by nghttp2_session closed_stream_head.
      closed_next points to the next stream object if it is the element
      of the list. */
   nghttp2_stream *closed_next;
+  /* pointer to roots, which tracks dependency tree roots */
+  nghttp2_stream_roots *roots;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
   /* DATA frame item */
@@ -165,6 +175,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          uint8_t flags,
                          nghttp2_stream_state initial_state,
                          int32_t weight,
+                         nghttp2_stream_roots *roots,
                          int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
                          void *stream_user_data);
@@ -379,5 +390,41 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream);
  *     Out of memory
  */
 int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq);
+
+/*
+ * Makes the |stream| as root and all existing root streams become
+ * direct children of |stream|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
+ */
+int nghttp2_stream_dep_all_your_stream_are_belong_to_us
+(nghttp2_stream *stream, nghttp2_pq *pq);
+
+/*
+ * Returns nonzero if |stream| is in any dependency tree.
+ */
+int nghttp2_stream_in_dep_tree(nghttp2_stream *stream);
+
+struct nghttp2_stream_roots {
+  nghttp2_stream *head;
+
+  int32_t num_streams;
+};
+
+void nghttp2_stream_roots_init(nghttp2_stream_roots *roots);
+
+void nghttp2_stream_roots_free(nghttp2_stream_roots *roots);
+
+void nghttp2_stream_roots_add(nghttp2_stream_roots *roots,
+                              nghttp2_stream *stream);
+
+void nghttp2_stream_roots_remove(nghttp2_stream_roots *roots,
+                                 nghttp2_stream *stream);
+
+void nghttp2_stream_roots_remove_all(nghttp2_stream_roots *roots);
 
 #endif /* NGHTTP2_STREAM */

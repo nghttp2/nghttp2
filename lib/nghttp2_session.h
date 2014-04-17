@@ -117,6 +117,7 @@ typedef enum {
 
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
+  nghttp2_stream_roots roots;
   /* Queue for outbound frames other than stream-creating HEADERS */
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
   /* Queue for outbound stream-creating HEADERS frame */

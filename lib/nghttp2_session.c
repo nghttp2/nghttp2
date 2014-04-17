@@ -280,6 +280,8 @@ static int nghttp2_session_new(nghttp2_session **session_ptr,
     goto fail_map;
   }
 
+  nghttp2_stream_roots_init(&(*session_ptr)->roots);
+
   (*session_ptr)->next_seq = 0;
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
@@ -436,6 +438,8 @@ void nghttp2_session_del(nghttp2_session *session)
   }
   free(session->inflight_iv);
 
+  nghttp2_stream_roots_free(&session->roots);
+
   /* Have to free streams first, so that we can check
      stream->data_item->queued */
   nghttp2_map_each_free(&session->streams, nghttp2_free_streams, NULL);
@@ -470,14 +474,21 @@ int nghttp2_session_reprioritize_stream
     /* We have to update weight after removing stream from tree */
     stream->weight = pri_spec->weight;
 
-    rv = nghttp2_stream_dep_make_root(stream, &session->ob_pq);
+    if(pri_spec->exclusive &&
+       session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
+
+      rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us
+        (stream, &session->ob_pq);
+    } else {
+      rv = nghttp2_stream_dep_make_root(stream, &session->ob_pq);
+    }
 
     return rv;
   }
 
   dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
 
-  if(dep_stream == NULL) {
+  if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
     return 0;
   }
 
@@ -711,7 +722,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   }
 
   nghttp2_stream_init(stream, stream_id, flags, initial_state,
-                      pri_spec->weight,
+                      pri_spec->weight, &session->roots,
                       session->remote_settings
                       [NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE],
                       session->local_settings
@@ -747,9 +758,29 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     return stream;
   }
 
+  if(pri_spec->stream_id == 0) {
+
+    ++session->roots.num_streams;
+
+    if(pri_spec->exclusive &&
+       session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
+      rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us
+        (stream, &session->ob_pq);
+
+      /* Since no dpri is changed in dependency tree, the above
+         function call never fail. */
+      assert(rv == 0);
+    } else {
+      nghttp2_stream_roots_add(&session->roots, stream);
+    }
+
+    return stream;
+  }
+
   dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
 
-  if(!dep_stream) {
+  /* If dep_stream is not part of dependency tree, we don't use it. */
+  if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
     return stream;
   }
 
@@ -831,7 +862,9 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
   /* Closes both directions just in case they are not closed yet */
   stream->flags |= NGHTTP2_STREAM_FLAG_CLOSED;
 
-  if(session->server && !nghttp2_session_is_my_stream_id(session, stream_id)) {
+  if(session->server &&
+     nghttp2_stream_in_dep_tree(stream) &&
+     !nghttp2_session_is_my_stream_id(session, stream_id)) {
     /* On server side, retain incoming stream object at most
        MAX_CONCURRENT_STREAMS combined with the current active streams
        to make dependency tree work better. */

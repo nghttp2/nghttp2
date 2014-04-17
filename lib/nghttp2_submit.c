@@ -103,10 +103,6 @@ static int nghttp2_submit_headers_shared
 
 static void adjust_priority_spec_weight(nghttp2_priority_spec *pri_spec)
 {
-  if(pri_spec->stream_id == 0) {
-    pri_spec->exclusive = 0;
-  }
-
   if(pri_spec->weight < NGHTTP2_MIN_WEIGHT) {
     pri_spec->weight = NGHTTP2_MIN_WEIGHT;
   } else if(pri_spec->weight > NGHTTP2_MAX_WEIGHT) {

@@ -33,6 +33,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          uint8_t flags,
                          nghttp2_stream_state initial_state,
                          int32_t weight,
+                         nghttp2_stream_roots *roots,
                          int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
                          void *stream_user_data)
@@ -61,6 +62,10 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->weight = weight;
   stream->effective_weight = stream->weight;
   stream->sum_dep_weight = 0;
+
+  stream->roots = roots;
+  stream->root_prev = NULL;
+  stream->root_next = NULL;
 }
 
 void nghttp2_stream_free(nghttp2_stream *stream)
@@ -474,6 +479,8 @@ void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
 
   stream_update_dep_length(dep_stream, 1);
   stream_update_dep_effective_weight(dep_stream);
+
+  ++stream->roots->num_streams;
 }
 
 void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
@@ -502,6 +509,8 @@ void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
   }
 
   stream_update_dep_effective_weight(dep_stream);
+
+  ++stream->roots->num_streams;
 }
 
 void nghttp2_stream_dep_remove(nghttp2_stream *stream)
@@ -568,6 +577,8 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream)
       dep_next = NULL;
     }
   } else {
+    nghttp2_stream_roots_remove(stream->roots, stream);
+
     dep_next = NULL;
 
     /* stream is a root of tree.  Removing stream makes its
@@ -582,6 +593,8 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream)
 
       /* We already distributed weight of |stream| to this. */
       si->effective_weight = si->weight;
+
+      nghttp2_stream_roots_add(si->roots, si);
 
       si = next;
     }
@@ -606,6 +619,8 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream)
   stream->dep_next = NULL;
   stream->sib_prev = NULL;
   stream->sib_next = NULL;
+
+  --stream->roots->num_streams;
 }
 
 int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
@@ -748,6 +763,8 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream)
     }
 
   } else {
+    nghttp2_stream_roots_remove(stream->roots, stream);
+
     dep_prev = NULL;
   }
 
@@ -771,6 +788,8 @@ int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq)
   DEBUGF(fprintf(stderr, "stream: dep_make_root stream(%p)=%d\n",
                  stream, stream->stream_id));
 
+  nghttp2_stream_roots_add(stream->roots, stream);
+
   stream_update_dep_set_rest(stream);
 
   stream->effective_weight = stream->weight;
@@ -784,4 +803,142 @@ int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq)
   }
 
   return 0;
+}
+
+int nghttp2_stream_dep_all_your_stream_are_belong_to_us
+(nghttp2_stream *stream, nghttp2_pq *pq)
+{
+  nghttp2_stream *first, *si;
+
+  DEBUGF(fprintf(stderr, "stream: ALL YOUR STREAM ARE BELONG TO US "
+                 "stream(%p)=%d\n",
+                 stream, stream->stream_id));
+
+  first = stream->roots->head;
+
+  /* stream must not be include in stream->roots->head list */
+  assert(first != stream);
+
+  if(first) {
+    nghttp2_stream *prev;
+
+    prev = first;
+
+    DEBUGF(fprintf(stderr, "stream: root stream(%p)=%d\n",
+                   first, first->stream_id));
+
+    stream->sum_dep_weight += first->weight;
+    stream->num_substreams += first->num_substreams;
+
+    for(si = first->root_next; si; si = si->root_next) {
+
+      assert(si != stream);
+
+      DEBUGF(fprintf(stderr, "stream: root stream(%p)=%d\n",
+                     si, si->stream_id));
+
+      fprintf(stderr, "w=%d, sum=%d\n",
+              si->weight, stream->sum_dep_weight);
+      stream->sum_dep_weight += si->weight;
+      stream->num_substreams += si->num_substreams;
+
+      si->sib_prev = prev;
+      prev->sib_next = si;
+
+      prev = si;
+    }
+
+    if(stream->dep_next) {
+      nghttp2_stream *last_sib;
+
+      last_sib = stream_last_sib(stream->dep_next);
+
+      last_sib->sib_next = first;
+      first->sib_prev = last_sib;
+    } else {
+      stream->dep_next = first;
+      first->dep_prev = stream;
+    }
+  }
+
+  nghttp2_stream_roots_remove_all(stream->roots);
+
+  return nghttp2_stream_dep_make_root(stream, pq);
+}
+
+int nghttp2_stream_in_dep_tree(nghttp2_stream *stream)
+{
+  return stream->dep_prev || stream->dep_next ||
+    stream->sib_prev || stream->sib_next ||
+    stream->root_next || stream->root_prev ||
+    stream->roots->head == stream;
+}
+
+void nghttp2_stream_roots_init(nghttp2_stream_roots *roots)
+{
+  roots->head = NULL;
+  roots->num_streams = 0;
+}
+
+void nghttp2_stream_roots_free(nghttp2_stream_roots *roots)
+{}
+
+void nghttp2_stream_roots_add(nghttp2_stream_roots *roots,
+                              nghttp2_stream *stream)
+{
+  if(roots->head) {
+    nghttp2_stream *si;
+    for(si = roots->head; si; si = si->root_next) {
+      if(si == stream) {
+        assert(0);
+      }
+    }
+
+    stream->root_next = roots->head;
+    roots->head->root_prev = stream;
+  }
+
+  roots->head = stream;
+}
+
+void nghttp2_stream_roots_remove(nghttp2_stream_roots *roots,
+                                 nghttp2_stream *stream)
+{
+  nghttp2_stream *root_prev, *root_next;
+
+  root_prev = stream->root_prev;
+  root_next = stream->root_next;
+
+  if(root_prev) {
+    root_prev->root_next = root_next;
+
+    if(root_next) {
+      root_next->root_prev = root_prev;
+    }
+  } else {
+    if(root_next) {
+      root_next->root_prev = NULL;
+    }
+
+    roots->head = root_next;
+  }
+
+  stream->root_prev = NULL;
+  stream->root_next = NULL;
+}
+
+void nghttp2_stream_roots_remove_all(nghttp2_stream_roots *roots)
+{
+  nghttp2_stream *si, *next;
+
+  for(si = roots->head; si;) {
+    next = si->root_next;
+
+    si->root_prev = NULL;
+    si->root_next = NULL;
+
+    si = next;
+  }
+
+  roots->head = NULL;
 }

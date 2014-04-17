@@ -2105,8 +2105,6 @@ void nghttp2_priority_spec_default_init(nghttp2_priority_spec *pri_spec);
  * @function
  *
  * Returns nonzero if the |pri_spec| is filled with default values.
- * `pri_spec->exclusive` is ignored since it is irrelevant when
- * `pri_spec->stream_id == 0`.
  */
 int nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
 

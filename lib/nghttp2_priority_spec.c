@@ -42,7 +42,7 @@ void nghttp2_priority_spec_default_init(nghttp2_priority_spec *pri_spec)
 
 int nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec)
 {
-  /* Ignore exclusive flag */
   return pri_spec->stream_id == 0 &&
-    pri_spec->weight == NGHTTP2_DEFAULT_WEIGHT;
+    pri_spec->weight == NGHTTP2_DEFAULT_WEIGHT &&
+    pri_spec->exclusive == 0;
 }

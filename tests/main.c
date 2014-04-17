@@ -222,6 +222,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_stream_dep_add_subtree) ||
       !CU_add_test(pSuite, "session_stream_dep_remove_subtree",
                    test_nghttp2_session_stream_dep_remove_subtree) ||
+      !CU_add_test(pSuite, "session_stream_dep_all_your_stream_are_belong_to_us",
+                   test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us) ||
       !CU_add_test(pSuite, "session_stream_attach_data",
                    test_nghttp2_session_stream_attach_data) ||
       !CU_add_test(pSuite, "session_stream_attach_data_subtree",
