@@ -2551,6 +2551,7 @@ void test_nghttp2_session_reprioritize_stream(void)
   nghttp2_session_callbacks callbacks;
   my_user_data ud;
   nghttp2_stream *stream;
+  nghttp2_stream *dep_stream;
   nghttp2_priority_spec pri_spec;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
@@ -2568,6 +2569,30 @@ void test_nghttp2_session_reprioritize_stream(void)
 
   CU_ASSERT(10 == stream->weight);
   CU_ASSERT(NULL == stream->dep_prev);
+
+  /* dep_stream does not exist */
+
+  nghttp2_priority_spec_init(&pri_spec, 3, 99, 0);
+
+  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  CU_ASSERT(10 == stream->weight);
+  CU_ASSERT(NULL == stream->dep_prev);
+
+  dep_stream = open_stream(session, 3);
+
+  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  CU_ASSERT(99 == stream->weight);
+  CU_ASSERT(dep_stream == stream->dep_prev);
+
+  /* Test circular dependency; must be ignored */
+  nghttp2_priority_spec_init(&pri_spec, 1, 1, 0);
+
+  nghttp2_session_reprioritize_stream(session, dep_stream, &pri_spec);
+
+  CU_ASSERT(16 == dep_stream->weight);
+  CU_ASSERT(NULL == dep_stream->dep_prev);
 
   nghttp2_session_del(session);
 }
@@ -3570,6 +3595,14 @@ void test_nghttp2_session_open_stream(void)
   CU_ASSERT(NULL == stream->dep_prev);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
   CU_ASSERT(NGHTTP2_SHUT_RD == stream->shut_flags);
+
+  nghttp2_priority_spec_init(&pri_spec, 1, 17, 1);
+
+  stream = nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec, NGHTTP2_STREAM_OPENED,
+                                       NULL);
+  CU_ASSERT(17 == stream->weight);
+  CU_ASSERT(1 == stream->dep_prev->stream_id);
 
   nghttp2_session_del(session);
 
