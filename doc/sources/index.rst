@@ -19,6 +19,7 @@ Contents:
    package_README
    tutorial-client
    tutorial-server
+   nghttpx-howto
    apiref
    nghttp2.h
    nghttp2ver.h
