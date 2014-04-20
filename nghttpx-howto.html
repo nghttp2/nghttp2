@@ -1,0 +1,394 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>nghttpx - HOW-TO &mdash; nghttp2 0.4.0-DEV documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'./',
+        VERSION:'0.4.0-DEV',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
+    <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
+        <link rel="next" title="API Reference" href="apiref.html"/>
+        <link rel="prev" title="Tutorial: HTTP/2 server" href="tutorial-server.html"/> 
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2 server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">nghttpx - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#default-mode">Default mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#client-mode">Client mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#client-proxy-mode">Client proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#http-2-bridge-mode">HTTP/2 bridge mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#disable-ssl-tls">Disable SSL/TLS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#read-write-rate-limit">Read/write rate limit</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">nghttp2</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>nghttpx - HOW-TO</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="nghttpx-how-to">
+<h1>nghttpx - HOW-TO<a class="headerlink" href="#nghttpx-how-to" title="Permalink to this headline">¶</a></h1>
+<p>nghttpx is a proxy translating protocols between HTTP/2 and other
+protocols (e.g., HTTP/1, SPDY).  It operates in several modes and each
+mode may require additional programs to work with.  This article
+describes each operation mode and explains the intended use-cases.  It
+also covers some useful options later.</p>
+<div class="section" id="default-mode">
+<h2>Default mode<a class="headerlink" href="#default-mode" title="Permalink to this headline">¶</a></h2>
+<p>If nghttpx is invoked without any <tt class="docutils literal"><span class="pre">-s</span></tt>, <tt class="docutils literal"><span class="pre">-p</span></tt> and <tt class="docutils literal"><span class="pre">--client</span></tt>, it
+operates in default mode.  In this mode, nghttpx frontend listens for
+HTTP/2 requests and translates them to HTTP/1 requests.  Thus it works
+as reverse proxy (gateway) for HTTP/2 clients to HTTP/1 web server.
+HTTP/1 requests are also supported in frontend as a fallback.  If
+nghttpx is linked with spdylay library and frontend connection is
+SSL/TLS, the frontend also supports SPDY protocol.</p>
+<p>By default, this mode&#8217;s frontend connection is encrypted using
+SSL/TLS.  So server&#8217;s private key and certificate must be supplied to
+the command line (or through configuration file).  In this case, the
+fontend protocol selection will is done via ALPN or NPN.</p>
+<p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, user can turn off SSL/TLS in
+frontend connection.  In this case, SPDY protocol is not available
+even if spdylay library is liked to nghttpx.  HTTP/2 and HTTP/1 are
+available on the frontend and a HTTP/1 connection can be upgraded to
+HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by sending
+HTTP/2 connection preface is also supported.</p>
+<p>The backend is supposed to be HTTP/1 Web server.  For example, to make
+nghttpx listen to encrypted HTTP/2 requests at port 8443, and a
+backend HTTP/1 web server is configured to listen to HTTP/1 request at
+port 8080 in the same host, run nghttpx command-line like this:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ nghttpx -f0.0.0.0,8443 -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
+</pre></div>
+</div>
+<p>Then HTTP/2 enabled client can access to the nghttpx in HTTP/2.  For
+example, you can send GET request to the server using nghttp:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ nghttp -nv https://localhost:8443/
+</pre></div>
+</div>
+</div>
+<div class="section" id="http-2-proxy-mode">
+<h2>HTTP/2 proxy mode<a class="headerlink" href="#http-2-proxy-mode" title="Permalink to this headline">¶</a></h2>
+<p>If nghttpx is invoked with <tt class="docutils literal"><span class="pre">-s</span></tt> option, it operates in HTTP/2 proxy
+mode.  The supported protocols in frontend and backend connections are
+the same in <a class="reference internal" href="#default-mode">default mode</a>.  The difference is that this mode acts like
+forward proxy and assumes the backend is HTTP/1 proxy server (e.g.,
+squid).  So HTTP/1 request must include absolute URI in request line.</p>
+<p>By default, frontend connection is encrypted, this mode is also called
+secure proxy.  If nghttpx is linked with spdylay, it supports SPDY
+protocols and it works as so called SPDY proxy.</p>
+<p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, SSL/TLS is turned off in frontend
+connection, so the connection gets insecure.</p>
+<p>The backend must be HTTP/1 proxy server.  nghttpx only supports 1
+backend server address.  It translates incoming requests to HTTP/1
+request to backend server.  The backend server performs real proxy
+work for each request, for example, dispatching requests to the origin
+server and caching contents.</p>
+<p>For example, to make nghttpx listen to encrypted HTTP/2 requests at
+port 8443, and a backend HTTP/1 proxy server is configured to listen
+to HTTP/1 request at port 3128 in the same host, run nghttpx
+command-line like this:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ nghttpx -s -f0.0.0.0,8443 -b127.0.0.1,3128 /path/to/server.key /path/to/server.crt
+</pre></div>
+</div>
+<p>At the time of this writing, there is no known HTTP/2 client which
+supports HTTP/2 proxy in this fashion.  You can use Google Chrome to
+use this as secure (SPDY) proxy to test it out, though it does not use
+HTTP/2 at all.</p>
+<p>The one way to configure Google Chrome to use secure proxy is create
+proxy.pac script like this:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span> <span class="nx">FindProxyForURL</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="nx">host</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="s2">&quot;HTTPS SERVERADDR:PORT&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">SERVERADDR</span></tt> and <tt class="docutils literal"><span class="pre">PORT</span></tt> is the hostname/address and port of the
+machine nghttpx is running.  Please note that Google Chrome requires
+valid certificate for secure proxy.</p>
+<p>Then run Google Chrome with the following arguments:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
+</pre></div>
+</div>
+</div>
+<div class="section" id="client-mode">
+<h2>Client mode<a class="headerlink" href="#client-mode" title="Permalink to this headline">¶</a></h2>
+<p>If nghttpx is invoked with <tt class="docutils literal"><span class="pre">--client</span></tt> option, it operates in client
+mode.  In this mode, nghttpx listens for plain, unencrypted HTTP/2 and
+HTTP/1 requests and translates them to encrypted HTTP/2 requests to
+the backend.  User cannot enable SSL/TLS in frontend connection.</p>
+<p>HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
+Upgrade.  To disable SSL/TLS in backend connection, use
+<tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
+<p>The backend connection is created one per worker (thread).</p>
+<p>The backend server is supporsed to be a HTTP/2 web server (e.g.,
+nghttpd).  The one use-case of this mode is utilize existing HTTP/1
+clients to test HTTP/2 deployment.  Suppose that HTTP/2 web server
+listens to port 80 without encryption.  Then run nghttpx as client
+mode to access to that web server:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ nghttpx --client -f127.0.0.1,8080 -b127.0.0.1,80 --backend-no-tls
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You may need <tt class="docutils literal"><span class="pre">-k</span></tt> option if HTTP/2 server enables SSL/TLS and
+its certificate is self-signed. But please note that it is
+insecure.</p>
+</div>
+<p>Then you can use curl to access HTTP/2 server via nghttpx:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ curl http://localhost:8080/
+</pre></div>
+</div>
+</div>
+<div class="section" id="client-proxy-mode">
+<h2>Client proxy mode<a class="headerlink" href="#client-proxy-mode" title="Permalink to this headline">¶</a></h2>
+<p>If nghttpx is invoked with <tt class="docutils literal"><span class="pre">-p</span></tt> option, it operates in client proxy
+mode.  This mode behaves like <a class="reference internal" href="#client-mode">client mode</a>, but it works like
+forward proxy.  So HTTP/1 request must include absolute URI in request
+line.</p>
+<p>HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
+Upgrade.  To disable SSL/TLS in backend connection, use
+<tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
+<p>The backend connection is created one per worker (thread).</p>
+<p>The backend server must be a HTTP/2 proxy.  You can use nghttpx in
+<a class="reference internal" href="#http-2-proxy-mode">HTTP/2 proxy mode</a> as backend server.  The one use-case of this mode
+is utilize existing HTTP/1 clients to test HTTP/2 connections between
+2 proxies. The another use-case is use this mode to aggregate local
+HTTP/1 connections to one HTTP/2 backend encrypted connection.  This
+makes HTTP/1 clients which does not support secure proxy can use
+secure HTTP/2 proxy via nghttpx client mode.</p>
+<p>Suppose that HTTP/2 proxy listens to port 8443, just like we saw in
+<a class="reference internal" href="#http-2-proxy-mode">HTTP/2 proxy mode</a>.  To run nghttpx in client proxy mode to access
+that server, invoke nghttpx like this:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ nghttpx -p -f127.0.0.1,8080 -b127.0.0.1,8443
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You may need <tt class="docutils literal"><span class="pre">-k</span></tt> option if HTTP/2 server&#8217;ss certificate is
+self-signed. But please note that it is insecure.</p>
+</div>
+<p>Then you can use curl to issue HTTP request via HTTP/2 proxy:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ curl --http-proxy=http://localhost:8080 http://www.google.com/
+</pre></div>
+</div>
+<p>You can configure web browser to use localhost:8080 as forward
+proxy.</p>
+</div>
+<div class="section" id="http-2-bridge-mode">
+<h2>HTTP/2 bridge mode<a class="headerlink" href="#http-2-bridge-mode" title="Permalink to this headline">¶</a></h2>
+<p>If nghttpx is invoked with <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> option, it operates in
+HTTP/2 bridge mode.  The supported protocols in frontend and backend
+connections are the same in <a class="reference internal" href="#default-mode">default mode</a>.</p>
+<p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, SSL/TLS is turned off in frontend
+connection, so the connection gets insecure.</p>
+<p>The backend server is supporsed to be a HTTP/2 web server or HTTP/2
+proxy.  Since HTTP/2 requests opaque between proxied and non-proxied
+request, the backend server may be proxy or just web server depending
+on the context of incoming requests.</p>
+<p>The use-case of this mode is aggregate the incoming connections to one
+HTTP/2 connection.  One backend HTTP/2 connection is created per
+worker (thread).</p>
+</div>
+<div class="section" id="disable-ssl-tls">
+<h2>Disable SSL/TLS<a class="headerlink" href="#disable-ssl-tls" title="Permalink to this headline">¶</a></h2>
+<p>In <a class="reference internal" href="#default-mode">default mode</a>, <a class="reference internal" href="#http-2-proxy-mode">HTTP/2 proxy mode</a> and <a class="reference internal" href="#http-2-bridge-mode">HTTP/2 bridge mode</a>,
+frontend connections are encrypted with SSL/TLS by default.  To turn
+off SSL/TLS, use <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option.  If this option is
+used, the private key and certificate are not required to run nghttpx.</p>
+<p>In <a class="reference internal" href="#client-mode">client mode</a>, <a class="reference internal" href="#client-proxy-mode">client proxy mode</a> and <a class="reference internal" href="#http-2-bridge-mode">HTTP/2 bridge mode</a>,
+backend connections are encrypted with SSL/TLS by default.  To turn
+off SSL/TLS, use <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
+</div>
+<div class="section" id="specifying-additional-ca-certificate">
+<h2>Specifying additional CA certificate<a class="headerlink" href="#specifying-additional-ca-certificate" title="Permalink to this headline">¶</a></h2>
+<p>By default, nghttpx tries to read CA certificate from system.  But
+depending on the system you use, this may fail or is not supported.
+To specify CA certificate manually, use <tt class="docutils literal"><span class="pre">--cacert</span></tt> option.  The
+specified file must be PEM format and can contain multiple
+certificates.</p>
+<p>By default, nghttpx validates server&#8217;s certificate.  If you want to
+turn off this validation, knowing this is really insecure and what you
+are doing, you can use <tt class="docutils literal"><span class="pre">-k</span></tt> option to disable certificate
+validation.</p>
+</div>
+<div class="section" id="read-write-rate-limit">
+<h2>Read/write rate limit<a class="headerlink" href="#read-write-rate-limit" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx supports transfer rate limiting on frontend connections.  You
+can do rate limit per connection or per worker (thread) for reading
+and writeing individually.</p>
+<p>To rate limit per connection for reading, use <tt class="docutils literal"><span class="pre">--read-rate</span></tt> and
+<tt class="docutils literal"><span class="pre">--read-burst</span></tt> options.  For writing, use <tt class="docutils literal"><span class="pre">--write-rate</span></tt> and
+<tt class="docutils literal"><span class="pre">--write-burst</span></tt> options.</p>
+<p>To rate limit per worker (thread), use <tt class="docutils literal"><span class="pre">--worker-read-rate</span></tt> and
+<tt class="docutils literal"><span class="pre">--worker-read-burst</span></tt> options.  For writing, use
+<tt class="docutils literal"><span class="pre">--worker-write-rate</span></tt> and <tt class="docutils literal"><span class="pre">--worker-write-burst</span></tt>.</p>
+<p>If both per connection and per worker rate limit configurations are
+specified, the lower rate is used.</p>
+<p>Please note that rate limit is performed on top of TCP and nothing to
+do with HTTP/2 flow control.</p>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="apiref.html" class="btn btn-neutral float-right" title="API Reference"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="tutorial-server.html" class="btn btn-neutral" title="Tutorial: HTTP/2 server"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+</body>
+</html>
