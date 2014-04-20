@@ -21,19 +21,16 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-EXTRA_DIST = cnghttp2.pxd nghttp2.pyx setup.py
+# This will avoid that setup.py gets deleted before it is executed in
+# clean-local in parallel build.
+.NOTPARALLEL:
 
-# Generate nghttp2.c only if we have cython installed
-if HAVE_CYTHON
-
-EXTRA_DIST += nghttp2.c
-
-endif # HAVE_CYTHON
+EXTRA_DIST = cnghttp2.pxd nghttp2.pyx
 
 if ENABLE_PYTHON_BINDINGS
 
 all-local: nghttp2.c
-	$(PYTHON) setup.py  build
+	$(PYTHON) setup.py build
 
 install-exec-local:
 	$(PYTHON) setup.py install --prefix=$(DESTDIR)$(prefix)
@@ -43,6 +40,7 @@ uninstall-local:
 
 clean-local:
 	$(PYTHON) setup.py clean --all
+	-rm -f $(builddir)/nghttp2.c
 
 .pyx.c:
 	$(CYTHON) -o $@ $<
