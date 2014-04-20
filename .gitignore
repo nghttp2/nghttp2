@@ -35,3 +35,4 @@ doc/nghttp2ver.h.rst
 doc/package_README.rst
 doc/tutorial-client.rst
 doc/tutorial-server.rst
+doc/nghttpx-howto.rst
