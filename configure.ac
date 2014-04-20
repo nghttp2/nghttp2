@@ -453,6 +453,7 @@ AC_CONFIG_FILES([
   doc/package_README.rst
   doc/tutorial-client.rst
   doc/tutorial-server.rst
+  doc/nghttpx-howto.rst
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
 ])
