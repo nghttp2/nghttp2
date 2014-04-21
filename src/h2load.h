@@ -60,6 +60,12 @@ struct Config {
   ssize_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
+  enum {
+    PROTO_HTTP2,
+    PROTO_SPDY2,
+    PROTO_SPDY3,
+    PROTO_SPDY3_1
+  } no_tls_proto;
   uint16_t port;
   bool verbose;
 

@@ -66,6 +66,7 @@ Config::Config()
     max_concurrent_streams(-1),
     window_bits(16),
     connection_window_bits(16),
+    no_tls_proto(PROTO_HTTP2),
     port(0),
     verbose(false)
 {}
@@ -424,7 +425,28 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 #endif // !HAVE_SPDYLAY
       }
     } else {
-      client->session = util::make_unique<Http2Session>(client);
+      switch(config.no_tls_proto) {
+      case Config::PROTO_HTTP2:
+        client->session = util::make_unique<Http2Session>(client);
+        break;
+#ifdef HAVE_SPDYLAY
+      case Config::PROTO_SPDY2:
+        client->session = util::make_unique<SpdySession>
+          (client, SPDYLAY_PROTO_SPDY2);
+        break;
+      case Config::PROTO_SPDY3:
+        client->session = util::make_unique<SpdySession>
+          (client, SPDYLAY_PROTO_SPDY3);
+        break;
+      case Config::PROTO_SPDY3_1:
+        client->session = util::make_unique<SpdySession>
+          (client, SPDYLAY_PROTO_SPDY3_1);
+        break;
+#endif // HAVE_SPDYLAY
+      default:
+        // unreachable
+        assert(0);
+      }
     }
     int fd = bufferevent_getfd(bev);
     int val = 1;
@@ -592,6 +614,20 @@ Options:
                      (2**<N>)-1.  For  SPDY, if  <N> is  strictly less
                      than  16,  this  option  is  ignored.   Otherwise
                      2**<N> is used for SPDY.
+  -p, --no-tls-proto=<PROTOID>
+                     Specify  ALPN identifier  of the  protocol to  be
+                     used  when accessing  http  URI without  SSL/TLS.)";
+#ifdef HAVE_SPDYLAY
+  out << R"(
+                     Available protocols: spdy/2, spdy/3, spdy/3.1 and
+                     )";
+#else // !HAVE_SPDYLAY
+  out << R"(
+                     Available protocol: )";
+#endif // !HAVE_SPDYLAY
+  out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+                     Default: )"
+      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -v, --verbose      Output debug information.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)"
@@ -610,13 +646,14 @@ int main(int argc, char **argv)
       {"max-concurrent-streams", required_argument, nullptr, 'm'},
       {"window-bits", required_argument, nullptr, 'w'},
       {"connection-window-bits", required_argument, nullptr, 'W'},
+      {"no-tls-proto", required_argument, nullptr, 'p'},
       {"verbose", no_argument, nullptr, 'v'},
       {"help", no_argument, nullptr, 'h'},
       {"version", no_argument, &flag, 1},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:m:n:t:w:", long_options,
+    auto c = getopt_long(argc, argv, "hvW:c:m:n:p:t:w:", long_options,
                          &option_index);
     if(c == -1) {
       break;
@@ -657,6 +694,22 @@ int main(int argc, char **argv)
       }
       break;
     }
+    case 'p':
+      if(util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, optarg)) {
+        config.no_tls_proto = Config::PROTO_HTTP2;
+#ifdef HAVE_SPDYLAY
+      } else if(util::strieq("spdy/2", optarg)) {
+        config.no_tls_proto = Config::PROTO_SPDY2;
+      } else if(util::strieq("spdy/3", optarg)) {
+        config.no_tls_proto = Config::PROTO_SPDY3;
+      } else if(util::strieq("spdy/3.1", optarg)) {
+        config.no_tls_proto = Config::PROTO_SPDY3_1;
+#endif // HAVE_SPDYLAY
+      } else {
+        std::cerr << "-p: unsupported protocol " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      break;
     case 'v':
       config.verbose = true;
       break;
