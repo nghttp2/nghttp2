@@ -28,6 +28,7 @@ result in less bits on the wire.'''
     deflater.change_table_size(table_size)
     for casenum, item  in enumerate(testdata['cases']):
         outitem = {
+            'seqno': casenum,
             'headers': item['headers']
         }
         casenum += 1

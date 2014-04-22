@@ -30,7 +30,12 @@ def testsuite(testdata):
         hdrs.sort()
         expected_hdrs.sort()
         if hdrs != expected_hdrs:
-            sys.stderr.write('FAIL case#{}\n'.format(casenum + 1))
+            if 'seqno' in item:
+                seqno = item['seqno']
+            else:
+                seqno = casenum
+
+            sys.stderr.write('FAIL seqno#{}\n'.format(seqno))
             sys.stderr.write('expected:\n')
             for k, v in expected_hdrs:
                 sys.stderr.write('{}: {}\n'.format(k, v))
