@@ -599,9 +599,13 @@ Options:
   -n, --requests=<N> Number of requests. Default: )"
       << config.nreqs << R"(
   -c, --clients=<N>  Number of concurrent clients. Default: )"
-      << config.nclients << R"(
+      << config.nclients <<
+#ifndef NOTHREADS
+R"(
   -t, --threads=<N>  Number of native threads. Default: )"
-      << config.nthreads << R"(
+      << config.nthreads <<
+#endif /* NOTHREADS */
+R"(
   -m, --max-concurrent-streams=(auto|<N>)
                      Max concurrent streams to  issue per session.  If
                      "auto"  is given,  the  number of  given URIs  is
@@ -642,7 +646,9 @@ int main(int argc, char **argv)
     static option long_options[] = {
       {"requests", required_argument, nullptr, 'n'},
       {"clients", required_argument, nullptr, 'c'},
+#ifndef NOTHREADS
       {"threads", required_argument, nullptr, 't'},
+#endif /* NOTHREADS */
       {"max-concurrent-streams", required_argument, nullptr, 'm'},
       {"window-bits", required_argument, nullptr, 'w'},
       {"connection-window-bits", required_argument, nullptr, 'W'},
@@ -665,9 +671,11 @@ int main(int argc, char **argv)
     case 'c':
       config.nclients = strtoul(optarg, nullptr, 10);
       break;
+#ifndef NOTHREADS
     case 't':
       config.nthreads = strtoul(optarg, nullptr, 10);
       break;
+#endif /* NOTHREADS */
     case 'm':
       if(util::strieq("auto", optarg)) {
         config.max_concurrent_streams = -1;
@@ -750,11 +758,13 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
+#ifndef NOTHREADS
   if(config.nthreads == 0) {
     std::cerr << "-t: the number of threads must be strictly greater than 0."
               << std::endl;
     exit(EXIT_FAILURE);
   }
+#endif /* NOTHREADS */
 
   if(config.nreqs < config.nclients) {
     std::cerr << "-n, -c: the number of requests must be greater than or "
@@ -763,11 +773,13 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
+#ifndef NOTHREADS
   if(config.nthreads > std::thread::hardware_concurrency()) {
     std::cerr << "-t: warning: the number of threads is greater than hardware "
               << "cores."
               << std::endl;
   }
+#endif /* NOTHREADS */
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
@@ -776,7 +788,9 @@ int main(int argc, char **argv)
   SSL_load_error_strings();
   SSL_library_init();
 
+#ifndef NOTHREADS
   ssl::LibsslGlobalLock();
+#endif /* NOTHREADS */
 
   auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
   if(!ssl_ctx) {

@@ -58,6 +58,11 @@ AC_ARG_ENABLE([debug],
                     [Turn on debug output])],
     [debug=$enableval], [debug=no])
 
+AC_ARG_ENABLE([threads],
+    [AS_HELP_STRING([--disable-threads],
+                    [Turn off threading in apps])],
+    [threads=$enableval], [threads=yes])
+
 AC_ARG_ENABLE([app],
     [AS_HELP_STRING([--enable-app],
                     [Build applications (nghttp, nghttpd and nghttpx) [default=check]])],
@@ -429,6 +434,11 @@ fi
 
 if test "x$debug" != "xno"; then
     CFLAGS="$CFLAGS -DDEBUGBUILD"
+fi
+
+if test "x$threads" != "xyes"; then
+    CFLAGS="$CFLAGS -DNOTHREADS"
+    CXXFLAGS="$CXXFLAGS -DNOTHREADS"
 fi
 
 AC_SUBST([TESTS_LIBS])

@@ -510,11 +510,15 @@ Connections:
   --backend-ipv4     Resolve backend hostname to IPv4 address only.
   --backend-ipv6     Resolve backend hostname to IPv6 address only.
 
-Performance:
+Performance:)" <<
+#ifndef NOTHREADS
+R"(
   -n, --workers=<CORES>
                      Set the number of worker threads.
                      Default: )"
-      << get_config()->num_worker << R"(
+      << get_config()->num_worker <<
+#endif /* NOTHREADS */
+R"(
   --read-rate=<RATE>
                      Set  maximum   average  read  rate   on  frontend
                      connection.  Setting 0 to  this option means read
@@ -820,7 +824,9 @@ int main(int argc, char **argv)
       {"frontend", required_argument, nullptr, 'f'},
       {"help", no_argument, nullptr, 'h'},
       {"insecure", no_argument, nullptr, 'k'},
+#ifndef NOTHREADS
       {"workers", required_argument, nullptr, 'n'},
+#endif /* NOTHREADS */
       {"client-proxy", no_argument, nullptr, 'p'},
       {"http2-proxy", no_argument, nullptr, 's'},
       {"version", no_argument, nullptr, 'v'},
@@ -909,9 +915,11 @@ int main(int argc, char **argv)
     case 'k':
       cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, "yes");
       break;
+#ifndef NOTHREADS
     case 'n':
       cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
       break;
+#endif /* NOTHREADS */
     case 'o':
       cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes");
       break;
@@ -1156,7 +1164,9 @@ int main(int argc, char **argv)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+#ifndef NOTHREADS
   nghttp2::ssl::LibsslGlobalLock();
+#endif /* NOTHREADS */
 
   if(conf_exists(get_config()->conf_path)) {
     if(load_config(get_config()->conf_path) == -1) {

@@ -128,10 +128,14 @@ Options:
                      --htdocs    option.      Example:    -p/=/foo.png
                      -p/doc=/bar.css
   -b, --padding=<N>  Add  at most  <N>  bytes to  a  frame payload  as
-                     padding.  Specify 0 to disable padding.
+                     padding.  Specify 0 to disable padding.)" <<
+#ifndef NOTHREADS
+R"(
   -n, --workers=<CORE>
                      Set the number of worker threads.
-                     Default: 1
+                     Default: 1)" <<
+#endif /* NOTHREADS */
+R"(
   -e, --error-gzip   Make error response gzipped.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)"
@@ -154,7 +158,9 @@ int main(int argc, char **argv)
       {"header-table-size", required_argument, nullptr, 'c'},
       {"push", required_argument, nullptr, 'p'},
       {"padding", required_argument, nullptr, 'b'},
+#ifndef NOTHREADS
       {"workers", required_argument, nullptr, 'n'},
+#endif /* NOTHREADS */
       {"error-gzip", no_argument, nullptr, 'e'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
@@ -184,6 +190,7 @@ int main(int argc, char **argv)
     case 'e':
       config.error_gzip = true;
       break;
+#ifndef NOTHREADS
     case 'n':
       errno = 0;
       config.num_worker = strtoul(optarg, &end, 10);
@@ -192,6 +199,7 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
       }
       break;
+#endif /* NOTHREADS */
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
@@ -271,7 +279,9 @@ int main(int argc, char **argv)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+#ifndef NOTHREADS
   ssl::LibsslGlobalLock();
+#endif /* NOTHREADS */
 
   reset_timer();
 
