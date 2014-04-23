@@ -32,10 +32,6 @@ implementation.
 
   ALPN and NPN offer ``h2-11``, ``spdy/3.1`` and ``http/1.1``.
 
-  .. note::
-
-     certificate is self-signed and a browser will show alert.
-
 * http://nghttp2.org/ (Upgrade / Direct)
 
   ``h2c-11`` and ``http/1.1``.  We configured this server to send
