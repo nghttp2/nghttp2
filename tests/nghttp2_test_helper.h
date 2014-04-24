@@ -98,4 +98,6 @@ nghttp2_stream* open_stream_with_dep_excl(nghttp2_session *session,
                                           int32_t stream_id,
                                           nghttp2_stream *dep_stream);
 
+nghttp2_outbound_item* create_data_ob_item(void);
+
 #endif /* NGHTTP2_TEST_HELPER_H */

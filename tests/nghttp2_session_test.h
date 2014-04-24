@@ -106,7 +106,6 @@ void test_nghttp2_session_stream_dep_remove_subtree(void);
 void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void);
 void test_nghttp2_session_stream_attach_data(void);
 void test_nghttp2_session_stream_attach_data_subtree(void);
-void test_nghttp2_session_stream_dep_effective_weight(void);
 void test_nghttp2_session_keep_closed_stream(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

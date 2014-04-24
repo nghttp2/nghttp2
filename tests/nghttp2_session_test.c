@@ -5523,17 +5523,6 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void)
   nghttp2_session_del(session);
 }
 
-static nghttp2_outbound_item* create_data_ob_item(void)
-{
-  nghttp2_outbound_item *item;
-
-  item = malloc(sizeof(nghttp2_outbound_item));
-  memset(item, 0, sizeof(nghttp2_outbound_item));
-  item->frame_cat = NGHTTP2_CAT_DATA;
-
-  return item;
-}
-
 void test_nghttp2_session_stream_attach_data(void)
 {
   nghttp2_session *session;
@@ -5566,6 +5555,10 @@ void test_nghttp2_session_stream_attach_data(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
 
+  CU_ASSERT(16 == b->effective_weight);
+
+  CU_ASSERT(16 == a->sum_norest_weight);
+
   CU_ASSERT(1 == db->queued);
 
   dc = create_data_ob_item();
@@ -5576,6 +5569,11 @@ void test_nghttp2_session_stream_attach_data(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+
+  CU_ASSERT(16 * 16 / 32 == b->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == c->effective_weight);
+
+  CU_ASSERT(32 == a->sum_norest_weight);
 
   CU_ASSERT(1 == dc->queued);
 
@@ -5588,6 +5586,8 @@ void test_nghttp2_session_stream_attach_data(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
 
+  CU_ASSERT(16 == a->effective_weight);
+
   CU_ASSERT(1 == da->queued);
 
   nghttp2_stream_detach_data(a, &session->ob_pq);
@@ -5596,6 +5596,9 @@ void test_nghttp2_session_stream_attach_data(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+
+  CU_ASSERT(16 * 16 / 32 == b->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == c->effective_weight);
 
   dd = create_data_ob_item();
 
@@ -5606,6 +5609,9 @@ void test_nghttp2_session_stream_attach_data(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
 
+  CU_ASSERT(16 * 16 / 32 == b->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == c->effective_weight);
+
   CU_ASSERT(0 == dd->queued);
 
   nghttp2_stream_detach_data(c, &session->ob_pq);
@@ -5614,6 +5620,9 @@ void test_nghttp2_session_stream_attach_data(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == d->dpri);
+
+  CU_ASSERT(16 * 16 / 32 == b->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == d->effective_weight);
 
   CU_ASSERT(1 == dd->queued);
 
@@ -5661,6 +5670,9 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
 
+  CU_ASSERT(16 == b->effective_weight);
+  CU_ASSERT(16 == e->effective_weight);
+
   /* Insert subtree e under a */
 
   nghttp2_stream_dep_remove_subtree(e);
@@ -5682,6 +5694,8 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+
+  CU_ASSERT(16 == e->effective_weight);
 
   /* Remove subtree b */
 
@@ -5705,6 +5719,9 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+
+  CU_ASSERT(16 == b->effective_weight);
+  CU_ASSERT(16 == e->effective_weight);
 
   /* Remove subtree a */
 
@@ -5764,6 +5781,13 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
 
+  CU_ASSERT(16 == b->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == e->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == d->effective_weight);
+
+  CU_ASSERT(32 == a->sum_norest_weight);
+  CU_ASSERT(16 == c->sum_norest_weight);
+
   /* Insert b under a */
 
   nghttp2_stream_dep_remove_subtree(b);
@@ -5786,6 +5810,11 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
 
+  CU_ASSERT(16 == b->effective_weight);
+
+  CU_ASSERT(16 == a->sum_norest_weight);
+  CU_ASSERT(0 == b->sum_norest_weight);
+
   /* Remove subtree b */
 
   nghttp2_stream_dep_remove_subtree(b);
@@ -5806,287 +5835,8 @@ void test_nghttp2_session_stream_attach_data_subtree(void)
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
 
-  nghttp2_session_del(session);
-}
-
-void test_nghttp2_session_stream_dep_effective_weight(void)
-{
-  nghttp2_session *session;
-  nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b, *c, *d, *e, *f, *g;
-
-  memset(&callbacks, 0, sizeof(callbacks));
-
-  nghttp2_session_server_new(&session, &callbacks, NULL);
-
-  a = open_stream(session, 1);
-  b = open_stream_with_dep_weight(session, 3, 8, a);
-  c = open_stream_with_dep_weight(session, 5, 4, a);
-  d = open_stream_with_dep_weight(session, 7, 1, c);
-  e = open_stream_with_dep_weight(session, 9, 2, c);
-
-  /* a
-   * |
-   * b--c
-   *    |
-   *    d--e
-   */
-
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->effective_weight);
-  CU_ASSERT(16 * 8 / 12 == b->effective_weight);
-  CU_ASSERT(16 * 4 / 12 == c->effective_weight);
-  CU_ASSERT((16 * 4 / 12) * 1 / 3 == d->effective_weight);
-  CU_ASSERT((16 * 4 / 12) * 2 / 3 == e->effective_weight);
-
-  /* Remove a */
-
-  nghttp2_stream_dep_remove(a);
-
-  /*
-   * b  c
-   *    |
-   *    d--e
-   */
-
-  CU_ASSERT(16 * 8 / 12 == b->effective_weight);
-  CU_ASSERT(16 * 4 / 12 == c->effective_weight);
-  CU_ASSERT((16 * 4 / 12) * 1 / 3 == d->effective_weight);
-  CU_ASSERT((16 * 4 / 12) * 2 / 3 == e->effective_weight);
-
-  /* weight is updated for b and c */
-  CU_ASSERT(16 * 8 / 12 == b->weight);
-  CU_ASSERT(16 * 4 / 12 == c->weight);
-  /* weight remains same for d and e */
-  CU_ASSERT(1 == d->weight);
-  CU_ASSERT(2 == e->weight);
-
-  /* Remove d */
-
-  nghttp2_stream_dep_remove(d);
-
-  /*
-   * c  d
-   * |
-   * e
-   */
-
-  CU_ASSERT(16 * 4 / 12 == c->effective_weight);
-  CU_ASSERT(16 * 4 / 12 == e->effective_weight);
-
-  nghttp2_session_del(session);
-
-  nghttp2_session_server_new(&session, &callbacks, NULL);
-
-  a = open_stream(session, 1);
-  b = open_stream_with_dep_weight(session, 3, 8, a);
-  c = open_stream_with_dep_weight(session, 5, 4, a);
-  d = open_stream_with_dep_weight(session, 7, 1, c);
-  e = open_stream_with_dep_weight(session, 9, 2, c);
-
-  /* a
-   * |
-   * b--c
-   *    |
-   *    d--e
-   */
-
-  /* Remove c */
-
-  nghttp2_stream_dep_remove(c);
-
-  /* a
-   * |
-   * b--d--e
-   */
-
-  /* weight for d and e is updated */
-  CU_ASSERT(1/*4 * 1 / 3*/ == d->weight);
-  CU_ASSERT(4 * 2 / 3 == e->weight);
-
-  CU_ASSERT(16 * 8 / 11 == b->effective_weight);
-  CU_ASSERT(16 * 1 / 11 == d->effective_weight);
-  CU_ASSERT(16 * 2 / 11 == e->effective_weight);
-
-  nghttp2_session_del(session);
-
-  nghttp2_session_server_new(&session, &callbacks, NULL);
-
-  a = open_stream(session, 1);
-  b = open_stream_with_dep_weight(session, 3, 8, a);
-  c = open_stream_with_dep_weight(session, 5, 4, a);
-  d = open_stream_with_dep_weight(session, 7, 1, c);
-  e = open_stream_with_dep_weight(session, 9, 2, c);
-
-  /* a
-   * |
-   * b--c
-   *    |
-   *    d--e
-   */
-
-  /* Insert f under a */
-  f = open_stream_with_dep_excl(session, 11, a);
-
-  /* a
-   * |
-   * f
-   * |
-   * b--c
-   *    |
-   *    d--e
-   */
-
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->effective_weight);
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == f->effective_weight);
-  CU_ASSERT(16 * 8 / 12 == b->effective_weight);
-  CU_ASSERT(16 * 4 / 12 == c->effective_weight);
-  CU_ASSERT((16 * 4 / 12) * 1 / 3 == d->effective_weight);
-  CU_ASSERT((16 * 4 / 12) * 2 / 3 == e->effective_weight);
-
-  /* Add g under f */
-  g = open_stream_with_dep_weight(session, 13, 2, f);
-
-  /* a
-   * |
-   * f
-   * |
-   * b--c--g
-   *    |
-   *    d--e
-   */
-
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->effective_weight);
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == f->effective_weight);
-  CU_ASSERT(16 * 8 / 14 == b->effective_weight);
-  CU_ASSERT(16 * 4 / 14 == c->effective_weight);
-  CU_ASSERT(16 * 2 / 14 == g->effective_weight);
-  CU_ASSERT((16 * 4 / 14) * 1 / 3 == d->effective_weight);
-  CU_ASSERT((16 * 4 / 14) * 2 / 3 == e->effective_weight);
-
-  nghttp2_session_del(session);
-
-  nghttp2_session_server_new(&session, &callbacks, NULL);
-
-  a = open_stream(session, 1);
-  b = open_stream_with_dep_weight(session, 3, 8, a);
-  c = open_stream_with_dep_weight(session, 5, 4, a);
-  d = open_stream_with_dep_weight(session, 7, 1, c);
-
-  e = open_stream(session, 9);
-  f = open_stream_with_dep_weight(session, 11, 12, e);
-
-  /* a      e
-   * |      |
-   * b--c   f
-   *    |
-   *    d
-   */
-
-  /* Insert e under a */
-  nghttp2_stream_dep_insert_subtree(a, e, &session->ob_pq);
-
-  /* a
-   * |
-   * e
-   * |
-   * b--c--f
-   *    |
-   *    d
-   */
-
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == e->effective_weight);
-  CU_ASSERT(16 * 8 / 24 == b->effective_weight);
-  CU_ASSERT(16 * 4 / 24 == c->effective_weight);
-  CU_ASSERT(16 * 12 / 24 == f->effective_weight);
-  CU_ASSERT(16 * 4 / 24 == d->effective_weight);
-
-  /* Remove subtree c */
-  nghttp2_stream_dep_remove_subtree(c);
-  nghttp2_stream_dep_make_root(c, &session->ob_pq);
-
-  /* a        c
-   * |        |
-   * e        d
-   * |
-   * b--f
-   */
-
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == e->effective_weight);
-  CU_ASSERT(16 * 8 / 20 == b->effective_weight);
-  CU_ASSERT(16 * 12 / 20 == f->effective_weight);
-
-  CU_ASSERT(4 == c->effective_weight);
-  CU_ASSERT(4 == d->effective_weight);
-
-  /* Add subtree c under a */
-  nghttp2_stream_dep_add_subtree(a, c, &session->ob_pq);
-
-  /* a
-   * |
-   * e-----c
-   * |     |
-   * b--f  d
-   */
-
-  CU_ASSERT(16 * 16 / 20  == e->effective_weight);
-  CU_ASSERT(16 * 4 / 20 == c->effective_weight);
-
-  CU_ASSERT((16 * 16 / 20) * 8 / 20 == b->effective_weight);
-  CU_ASSERT((16 * 16 / 20) * 12 / 20 == f->effective_weight);
-
-  CU_ASSERT(16 * 4 / 20 == d->effective_weight);
-
-  nghttp2_session_del(session);
-
-  nghttp2_session_server_new(&session, &callbacks, NULL);
-
-  a = open_stream(session, 1);
-  b = open_stream_with_dep_weight(session, 3, 8, a);
-  c = open_stream_with_dep_weight(session, 5, 4, a);
-  d = open_stream_with_dep_weight(session, 7, 1, c);
-
-  e = open_stream(session, 9);
-  f = open_stream_with_dep_weight(session, 11, 12, e);
-
-  /* a      e
-   * |      |
-   * b--c   f
-   *    |
-   *    d
-   */
-
-  CU_ASSERT(e->roots->head == e);
-  CU_ASSERT(a == e->root_next);
-
-  /* Insert e under stream 0 */
-  nghttp2_stream_dep_remove_subtree(e);
-
-  CU_ASSERT(a == e->roots->head);
-
-  CU_ASSERT(0 == nghttp2_stream_dep_all_your_stream_are_belong_to_us
-            (e, &session->ob_pq));
-
-  /* e
-   * |
-   * f--a
-   *    |
-   *    b--c
-   *       |
-   *       d
-   */
-
-  CU_ASSERT(6 == e->num_substreams);
-  CU_ASSERT(28 == e->sum_dep_weight);
-
-  CU_ASSERT(16 == e->effective_weight);
-
-  CU_ASSERT(16 * 16 / 28 == a->effective_weight);
-  CU_ASSERT(16 * 12 / 28 == f->effective_weight);
-
-  CU_ASSERT((16 * 16 / 28) * 8 / 12 == b->effective_weight);
-  CU_ASSERT((16 * 16 / 28) * 4 / 12 == c->effective_weight);
-
-  CU_ASSERT((16 * 16 / 28) * 4 / 12 == d->effective_weight);
+  CU_ASSERT(0 == a->sum_norest_weight);
+  CU_ASSERT(0 == b->sum_norest_weight);
 
   nghttp2_session_del(session);
 }
