@@ -648,7 +648,7 @@ typedef enum {
    */
   NGHTTP2_DATA_FLAG_EOF = 0x01,
   /**
-   * Indicates data was compressed.
+   * Indicates data was compressed by application.
    */
   NGHTTP2_DATA_FLAG_COMPRESSED = 0x02
 } nghttp2_data_flag;
@@ -665,6 +665,8 @@ typedef enum {
  *
  * To send compressed data payload without affecting content-length,
  * set :enum:`NGHTTP2_DATA_FLAG_COMPRESSED` flag in |*data_flags|.
+ * Compression must be done by application prior to fill data in
+ * |buf|.
  *
  * If the application wants to postpone DATA frames (e.g.,
  * asynchronous I/O, or reading data blocks for long time), it is
