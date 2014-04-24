@@ -492,14 +492,15 @@ int nghttp2_session_reprioritize_stream
     return 0;
   }
 
-  /* Ignore priority request if resultant tree has cycle */
   if(nghttp2_stream_dep_subtree_find(stream, dep_stream)) {
     DEBUGF(fprintf(stderr,
-                   "stream: future cycle detected, dep_stream(%p)=%d "
+                   "stream: cycle detected, dep_stream(%p)=%d "
                    "stream(%p)=%d\n",
                    dep_stream, dep_stream->stream_id,
                    stream, stream->stream_id));
-    return 0;
+
+    nghttp2_stream_dep_remove_subtree(dep_stream);
+    nghttp2_stream_dep_make_root(dep_stream, &session->ob_pq);
   }
 
   nghttp2_stream_dep_remove_subtree(stream);

@@ -2586,13 +2586,14 @@ void test_nghttp2_session_reprioritize_stream(void)
   CU_ASSERT(99 == stream->weight);
   CU_ASSERT(dep_stream == stream->dep_prev);
 
-  /* Test circular dependency; must be ignored */
+  /* Test circular dependency; stream 1 is first removed and becomes
+     root.  Then stream 3 depends on it. */
   nghttp2_priority_spec_init(&pri_spec, 1, 1, 0);
 
   nghttp2_session_reprioritize_stream(session, dep_stream, &pri_spec);
 
-  CU_ASSERT(16 == dep_stream->weight);
-  CU_ASSERT(NULL == dep_stream->dep_prev);
+  CU_ASSERT(1 == dep_stream->weight);
+  CU_ASSERT(stream == dep_stream->dep_prev);
 
   nghttp2_session_del(session);
 }
