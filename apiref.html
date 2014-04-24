@@ -228,19 +228,19 @@ TCP.</p>
 <dl class="macro">
 <dt id="c.NGHTTP2_DEFAULT_WEIGHT">
 <tt class="descname">NGHTTP2_DEFAULT_WEIGHT</tt><a class="headerlink" href="#c.NGHTTP2_DEFAULT_WEIGHT" title="Permalink to this definition">¶</a></dt>
-<dd><p>The default weight of priority group.</p>
+<dd><p>The default weight of stream dependency.</p>
 </dd></dl>
 
 <dl class="macro">
 <dt id="c.NGHTTP2_MAX_WEIGHT">
 <tt class="descname">NGHTTP2_MAX_WEIGHT</tt><a class="headerlink" href="#c.NGHTTP2_MAX_WEIGHT" title="Permalink to this definition">¶</a></dt>
-<dd><p>The maximum weight of priority group.</p>
+<dd><p>The maximum weight of stream dependency.</p>
 </dd></dl>
 
 <dl class="macro">
 <dt id="c.NGHTTP2_MIN_WEIGHT">
 <tt class="descname">NGHTTP2_MIN_WEIGHT</tt><a class="headerlink" href="#c.NGHTTP2_MIN_WEIGHT" title="Permalink to this definition">¶</a></dt>
-<dd><p>The minimum weight of priority group.</p>
+<dd><p>The minimum weight of stream dependency.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -648,6 +648,13 @@ The CONTINUATION frame.</p>
 The ALTSVC frame.</p>
 </dd></dl>
 
+<dl class="macro">
+<dt id="c.NGHTTP2_BLOCKED">
+<tt class="descname">NGHTTP2_BLOCKED</tt><a class="headerlink" href="#c.NGHTTP2_BLOCKED" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x0b</span></tt>)
+The BLOCKED frame.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -705,17 +712,17 @@ The PAD_HIGH flag.</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="c.NGHTTP2_FLAG_PRIORITY_GROUP">
-<tt class="descname">NGHTTP2_FLAG_PRIORITY_GROUP</tt><a class="headerlink" href="#c.NGHTTP2_FLAG_PRIORITY_GROUP" title="Permalink to this definition">¶</a></dt>
+<dt id="c.NGHTTP2_FLAG_PRIORITY">
+<tt class="descname">NGHTTP2_FLAG_PRIORITY</tt><a class="headerlink" href="#c.NGHTTP2_FLAG_PRIORITY" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x20</span></tt>)
-The PRIORITY_GROUP flag.</p>
+The PRIORITY flag.</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="c.NGHTTP2_FLAG_PRIORITY_DEPENDENCY">
-<tt class="descname">NGHTTP2_FLAG_PRIORITY_DEPENDENCY</tt><a class="headerlink" href="#c.NGHTTP2_FLAG_PRIORITY_DEPENDENCY" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">0x40</span></tt>)
-The PRIORITY_DEPENDENCY flag.</p>
+<dt id="c.NGHTTP2_FLAG_COMPRESSED">
+<tt class="descname">NGHTTP2_FLAG_COMPRESSED</tt><a class="headerlink" href="#c.NGHTTP2_FLAG_COMPRESSED" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x20</span></tt>)
+THE COMPRESSED flag.</p>
 </dd></dl>
 
 </dd></dl>
@@ -753,9 +760,16 @@ SETTINGS_INITIAL_WINDOW_SIZE</p>
 </dd></dl>
 
 <dl class="macro">
+<dt id="c.NGHTTP2_SETTINGS_COMPRESS_DATA">
+<tt class="descname">NGHTTP2_SETTINGS_COMPRESS_DATA</tt><a class="headerlink" href="#c.NGHTTP2_SETTINGS_COMPRESS_DATA" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">5</span></tt>)
+SETTINGS_COMPRESS_DATA</p>
+</dd></dl>
+
+<dl class="macro">
 <dt id="c.NGHTTP2_SETTINGS_MAX">
 <tt class="descname">NGHTTP2_SETTINGS_MAX</tt><a class="headerlink" href="#c.NGHTTP2_SETTINGS_MAX" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">4</span></tt>)
+<dd><p>(<tt class="docutils literal"><span class="pre">5</span></tt>)
 Maximum ID of <a class="reference internal" href="#c.nghttp2_settings_id" title="nghttp2_settings_id"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_settings_id</span></tt></a>.</p>
 </dd></dl>
 
@@ -877,6 +891,13 @@ No flag set.</p>
 Indicates EOF was sensed.</p>
 </dd></dl>
 
+<dl class="macro">
+<dt id="c.NGHTTP2_DATA_FLAG_COMPRESSED">
+<tt class="descname">NGHTTP2_DATA_FLAG_COMPRESSED</tt><a class="headerlink" href="#c.NGHTTP2_DATA_FLAG_COMPRESSED" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x02</span></tt>)
+Indicates data was compressed by application.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -917,34 +938,6 @@ stream.</p>
 <dd><p>(<tt class="docutils literal"><span class="pre">3</span></tt>)
 The HEADERS frame which does not apply for the above categories,
 which is analogous to HEADERS in SPDY.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="type">
-<dt id="c.nghttp2_priority_type">
-<tt class="descname">nghttp2_priority_type</tt><a class="headerlink" href="#c.nghttp2_priority_type" title="Permalink to this definition">¶</a></dt>
-<dd><p>The type of priority specified in <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_priority_spec</span></tt></a>.</p>
-<dl class="macro">
-<dt id="c.NGHTTP2_PRIORITY_TYPE_NONE">
-<tt class="descname">NGHTTP2_PRIORITY_TYPE_NONE</tt><a class="headerlink" href="#c.NGHTTP2_PRIORITY_TYPE_NONE" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">0</span></tt>)
-No priority is given.  The default priority will be used.</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="c.NGHTTP2_PRIORITY_TYPE_GROUP">
-<tt class="descname">NGHTTP2_PRIORITY_TYPE_GROUP</tt><a class="headerlink" href="#c.NGHTTP2_PRIORITY_TYPE_GROUP" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">1</span></tt>)
-Priority group ID and its weight are specified.</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="c.NGHTTP2_PRIORITY_TYPE_DEP">
-<tt class="descname">NGHTTP2_PRIORITY_TYPE_DEP</tt><a class="headerlink" href="#c.NGHTTP2_PRIORITY_TYPE_DEP" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">2</span></tt>)
-The stream ID of a stream to depend on and its exclusive flag is
-specified.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1089,8 +1082,12 @@ the <em>source</em>.  The read data is sent in the stream <em>stream_id</em>.
 The implementation of this function must read at most <em>length</em>
 bytes of data from <em>source</em> (or possibly other places) and store
 them in <em>buf</em> and return number of data stored in <em>buf</em>.  If EOF is
-reached, set <a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_EOF" title="NGHTTP2_DATA_FLAG_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_EOF</span></tt></a> flag in <em>*data_falgs</em>.
-If the application wants to postpone DATA frames (e.g.,
+reached, set <a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_EOF" title="NGHTTP2_DATA_FLAG_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_EOF</span></tt></a> flag in <em>*data_flags</em>.</p>
+<p>To send compressed data payload without affecting content-length,
+set <a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_COMPRESSED" title="NGHTTP2_DATA_FLAG_COMPRESSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_COMPRESSED</span></tt></a> flag in <em>*data_flags</em>.
+Compression must be done by application prior to fill data in
+<em>buf</em>.</p>
+<p>If the application wants to postpone DATA frames (e.g.,
 asynchronous I/O, or reading data blocks for long time), it is
 achieved by returning <a class="reference internal" href="#c.NGHTTP2_ERR_DEFERRED" title="NGHTTP2_ERR_DEFERRED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_DEFERRED</span></tt></a> without reading
 any data in this invocation.  The library removes DATA frame from
@@ -1137,74 +1134,26 @@ and PAD_LOW.</p>
 </dd></dl>
 
 <dl class="type">
-<dt id="c.nghttp2_priority_group">
-<tt class="descname">nghttp2_priority_group</tt><a class="headerlink" href="#c.nghttp2_priority_group" title="Permalink to this definition">¶</a></dt>
-<dd><p>This structure stores priority group ID and its weight.</p>
-<dl class="member">
-<dt id="c.nghttp2_priority_group.pri_group_id">
-int32_t <tt class="descname">pri_group_id</tt><a class="headerlink" href="#c.nghttp2_priority_group.pri_group_id" title="Permalink to this definition">¶</a></dt>
-<dd><p>The priority group ID</p>
-</dd></dl>
-
-<dl class="member">
-<dt id="c.nghttp2_priority_group.weight">
-int32_t <tt class="descname">weight</tt><a class="headerlink" href="#c.nghttp2_priority_group.weight" title="Permalink to this definition">¶</a></dt>
-<dd><p>The weight of the priority group</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="type">
-<dt id="c.nghttp2_priority_dep">
-<tt class="descname">nghttp2_priority_dep</tt><a class="headerlink" href="#c.nghttp2_priority_dep" title="Permalink to this definition">¶</a></dt>
-<dd><p>This structure stores stream ID of the stream to depend on and its
-dependency is exclusive or not.</p>
-<dl class="member">
-<dt id="c.nghttp2_priority_dep.stream_id">
-int32_t <tt class="descname">stream_id</tt><a class="headerlink" href="#c.nghttp2_priority_dep.stream_id" title="Permalink to this definition">¶</a></dt>
-<dd><p>The stream ID of the stream to depend on.</p>
-</dd></dl>
-
-<dl class="member">
-<dt id="c.nghttp2_priority_dep.exclusive">
-uint8_t <tt class="descname">exclusive</tt><a class="headerlink" href="#c.nghttp2_priority_dep.exclusive" title="Permalink to this definition">¶</a></dt>
-<dd><p>nonzero means exclusive dependency</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="type">
 <dt id="c.nghttp2_priority_spec">
 <tt class="descname">nghttp2_priority_spec</tt><a class="headerlink" href="#c.nghttp2_priority_spec" title="Permalink to this definition">¶</a></dt>
-<dd><p>The structure to specify stream dependency.  To specify stream
-dependency, specify <em>pri_type</em> and fill the <em>group</em> or <em>dep</em> member
-according to <em>pri_type</em>.</p>
+<dd><p>The structure to specify stream dependency.</p>
 <dl class="member">
-<dt id="c.nghttp2_priority_spec.pri_type">
-<a class="reference internal" href="#c.nghttp2_priority_type" title="nghttp2_priority_type">nghttp2_priority_type</a> <tt class="descname">pri_type</tt><a class="headerlink" href="#c.nghttp2_priority_spec.pri_type" title="Permalink to this definition">¶</a></dt>
-<dd><p>Type of priority specification.  If <em>pri_type</em> is
-<a class="reference internal" href="#c.NGHTTP2_PRIORITY_TYPE_GROUP" title="NGHTTP2_PRIORITY_TYPE_GROUP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRIORITY_TYPE_GROUP</span></tt></a>, fill <em>group</em>.  If <em>pri_type</em>
-is <a class="reference internal" href="#c.NGHTTP2_PRIORITY_TYPE_DEP" title="NGHTTP2_PRIORITY_TYPE_DEP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRIORITY_TYPE_DEP</span></tt></a>, fill <em>dep</em>.  If <em>pri_type</em>
-is <a class="reference internal" href="#c.NGHTTP2_PRIORITY_TYPE_NONE" title="NGHTTP2_PRIORITY_TYPE_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRIORITY_TYPE_NONE</span></tt></a>, the other data members are
-ignored and it means that default priority group ID (which is
-same as the stream ID) and default weight
-<a class="reference internal" href="#c.NGHTTP2_DEFAULT_WEIGHT" title="NGHTTP2_DEFAULT_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DEFAULT_WEIGHT</span></tt></a> are specified.</p>
+<dt id="c.nghttp2_priority_spec.stream_id">
+int32_t <tt class="descname">stream_id</tt><a class="headerlink" href="#c.nghttp2_priority_spec.stream_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>The stream ID of the stream to depend on.  Specifying 0 makes
+stream not depend any other stream.</p>
 </dd></dl>
 
 <dl class="member">
-<dt id="c.nghttp2_priority_spec.group">
-<a class="reference internal" href="#c.nghttp2_priority_group" title="nghttp2_priority_group">nghttp2_priority_group</a> <tt class="descname">group</tt><a class="headerlink" href="#c.nghttp2_priority_spec.group" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify priority group ID and its weight.  This field is
-interpreted only when <em>pri_type</em> member is
-<a class="reference internal" href="#c.NGHTTP2_PRIORITY_TYPE_GROUP" title="NGHTTP2_PRIORITY_TYPE_GROUP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRIORITY_TYPE_GROUP</span></tt></a>.</p>
+<dt id="c.nghttp2_priority_spec.weight">
+int32_t <tt class="descname">weight</tt><a class="headerlink" href="#c.nghttp2_priority_spec.weight" title="Permalink to this definition">¶</a></dt>
+<dd><p>The weight of this dependency.</p>
 </dd></dl>
 
 <dl class="member">
-<dt id="c.nghttp2_priority_spec.dep">
-<a class="reference internal" href="#c.nghttp2_priority_dep" title="nghttp2_priority_dep">nghttp2_priority_dep</a> <tt class="descname">dep</tt><a class="headerlink" href="#c.nghttp2_priority_spec.dep" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify stream ID of a stream to depend on and exclusive flag.
-This field is interpreted only when <em>pri_type</em> member is
-<a class="reference internal" href="#c.NGHTTP2_PRIORITY_TYPE_DEP" title="NGHTTP2_PRIORITY_TYPE_DEP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PRIORITY_TYPE_DEP</span></tt></a>.</p>
+<dt id="c.nghttp2_priority_spec.exclusive">
+uint8_t <tt class="descname">exclusive</tt><a class="headerlink" href="#c.nghttp2_priority_spec.exclusive" title="Permalink to this definition">¶</a></dt>
+<dd><p>nonzero means exclusive dependency</p>
 </dd></dl>
 
 </dd></dl>
@@ -1500,6 +1449,18 @@ uint16_t <tt class="descname">port</tt><a class="headerlink" href="#c.nghttp2_al
 </dd></dl>
 
 <dl class="type">
+<dt id="c.nghttp2_blocked">
+<tt class="descname">nghttp2_blocked</tt><a class="headerlink" href="#c.nghttp2_blocked" title="Permalink to this definition">¶</a></dt>
+<dd><p>The BLOCKED frame.  It has following members:</p>
+<dl class="member">
+<dt id="c.nghttp2_blocked.hd">
+<a class="reference internal" href="#c.nghttp2_frame_hd" title="nghttp2_frame_hd">nghttp2_frame_hd</a> <tt class="descname">hd</tt><a class="headerlink" href="#c.nghttp2_blocked.hd" title="Permalink to this definition">¶</a></dt>
+<dd><p>The frame header.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
 <dt id="c.nghttp2_frame">
 <tt class="descname">nghttp2_frame</tt><a class="headerlink" href="#c.nghttp2_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>This union includes all frames to pass them to various function
@@ -1569,6 +1530,12 @@ from here because the library deals with it internally.</p>
 <dt id="c.nghttp2_frame.altsvc">
 <a class="reference internal" href="#c.nghttp2_altsvc" title="nghttp2_altsvc">nghttp2_altsvc</a> <tt class="descname">altsvc</tt><a class="headerlink" href="#c.nghttp2_frame.altsvc" title="Permalink to this definition">¶</a></dt>
 <dd><p>The ALTSVC frame.</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="c.nghttp2_frame.blocked">
+<a class="reference internal" href="#c.nghttp2_blocked" title="nghttp2_blocked">nghttp2_blocked</a> <tt class="descname">blocked</tt><a class="headerlink" href="#c.nghttp2_frame.blocked" title="Permalink to this definition">¶</a></dt>
+<dd><p>The BLOCKED frame.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2490,27 +2457,27 @@ const char* <tt class="descname">nghttp2_strerror</tt><big>(</big>int<em>&nbsp;l
 </dd></dl>
 
 <dl class="function">
-<dt id="c.nghttp2_priority_spec_group_init">
-void <tt class="descname">nghttp2_priority_spec_group_init</tt><big>(</big><a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, int32_t<em>&nbsp;pri_group_id</em>, int32_t<em>&nbsp;weight</em><big>)</big><a class="headerlink" href="#c.nghttp2_priority_spec_group_init" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initializes <em>pri_spec</em> with priority group ID <em>pri_group_id</em> and
-its weight <em>weight</em>.</p>
+<dt id="c.nghttp2_priority_spec_init">
+void <tt class="descname">nghttp2_priority_spec_init</tt><big>(</big><a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, int32_t<em>&nbsp;stream_id</em>, int32_t<em>&nbsp;weight</em>, int<em>&nbsp;exclusive</em><big>)</big><a class="headerlink" href="#c.nghttp2_priority_spec_init" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes <em>pri_spec</em> with the <em>stream_id</em> of the stream to depend
+on with <em>weight</em> and its exclusive flag.  If <em>exclusive</em> is
+nonzero, exclusive flag is set.</p>
 <p>The <em>weight</em> must be in [<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>,
-<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>], inclusive.  If <em>weight</em> is strictly
-less than <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>, it becomes
-<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>.  If it is strictly greater than
-<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>, it becomes <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>.</p>
-<p>To specify weight for the default priority group (which is the same
-as the stream ID of the stream) in <a class="reference internal" href="#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> and
-<a class="reference internal" href="#c.nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a> and its stream ID is not known in
-advance, specify -1 to <em>pri_group_id</em>.</p>
+<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>], inclusive.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="c.nghttp2_priority_spec_dep_init">
-void <tt class="descname">nghttp2_priority_spec_dep_init</tt><big>(</big><a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, int32_t<em>&nbsp;stream_id</em>, int<em>&nbsp;exclusive</em><big>)</big><a class="headerlink" href="#c.nghttp2_priority_spec_dep_init" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initializes <em>pri_spec</em> with the <em>stream_id</em> of the stream to depend
-on and its exclusive flag.  If <em>exclusive</em> is nonzero, exclusive
-flag is set.</p>
+<dt id="c.nghttp2_priority_spec_default_init">
+void <tt class="descname">nghttp2_priority_spec_default_init</tt><big>(</big><a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em><big>)</big><a class="headerlink" href="#c.nghttp2_priority_spec_default_init" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes <em>pri_spec</em> with the default values.  The default values
+are: stream_id = 0, weight = <a class="reference internal" href="#c.NGHTTP2_DEFAULT_WEIGHT" title="NGHTTP2_DEFAULT_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DEFAULT_WEIGHT</span></tt></a> and
+exclusive = 0.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_priority_spec_check_default">
+int <tt class="descname">nghttp2_priority_spec_check_default</tt><big>(</big>const <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em><big>)</big><a class="headerlink" href="#c.nghttp2_priority_spec_check_default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns nonzero if the <em>pri_spec</em> is filled with default values.</p>
 </dd></dl>
 
 <dl class="function">
@@ -2518,11 +2485,15 @@ flag is set.</p>
 int <tt class="descname">nghttp2_submit_request</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#c.nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_request" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame and optionally one or more DATA frames.</p>
 <p>The <em>pri_spec</em> is priority specification of this request.  <tt class="docutils literal"><span class="pre">NULL</span></tt>
-means the default priority (priority group ID becomes its stream ID
-and weight is <a class="reference internal" href="#c.NGHTTP2_DEFAULT_WEIGHT" title="NGHTTP2_DEFAULT_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DEFAULT_WEIGHT</span></tt></a>).  To specify the
-priority, use either <a class="reference internal" href="#c.nghttp2_priority_spec_group_init" title="nghttp2_priority_spec_group_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_group_init()</span></tt></a> or
-<a class="reference internal" href="#c.nghttp2_priority_spec_dep_init" title="nghttp2_priority_spec_dep_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_dep_init()</span></tt></a>.  If <em>pri_spec</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>,
+means the default priority (see
+<a class="reference internal" href="#c.nghttp2_priority_spec_default_init" title="nghttp2_priority_spec_default_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_default_init()</span></tt></a>).  To specify the priority,
+use <a class="reference internal" href="#c.nghttp2_priority_spec_init" title="nghttp2_priority_spec_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_init()</span></tt></a>.  If <em>pri_spec</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>,
 this function will copy its data members.</p>
+<p>The <tt class="xref c c-func docutils literal"><span class="pre">pri_spec-&gt;weight()</span></tt> must be in [<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>,
+<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>], inclusive.  If <tt class="xref c c-func docutils literal"><span class="pre">pri_spec-&gt;weight()</span></tt> is
+strictly less than <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>, it becomes
+<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>.  If it is strictly greater than
+<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>, it becomes <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
 <em>nvlen</em> elements.  The value is opaque sequence of bytes and
 therefore can contain NULL byte (0x0).  If the application requires
@@ -2560,8 +2531,6 @@ negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
-<dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri_spec-&gt;pri_type</em> is invalid.</dd>
 </dl>
 </dd></dl>
 
@@ -2616,11 +2585,15 @@ request HEADERS frame which opens new stream).  In this case, the
 actual stream ID is assigned just before the frame is sent.  For
 response, specify stream ID in <em>stream_id</em>.</p>
 <p>The <em>pri_spec</em> is priority specification of this request.  <tt class="docutils literal"><span class="pre">NULL</span></tt>
-means the default priority (priority group ID becomes its stream ID
-and weight is <a class="reference internal" href="#c.NGHTTP2_DEFAULT_WEIGHT" title="NGHTTP2_DEFAULT_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DEFAULT_WEIGHT</span></tt></a>).  To specify the
-priority, use either <a class="reference internal" href="#c.nghttp2_priority_spec_group_init" title="nghttp2_priority_spec_group_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_group_init()</span></tt></a> or
-<a class="reference internal" href="#c.nghttp2_priority_spec_dep_init" title="nghttp2_priority_spec_dep_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_dep_init()</span></tt></a>.  If <em>pri_spec</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>,
+means the default priority (see
+<a class="reference internal" href="#c.nghttp2_priority_spec_default_init" title="nghttp2_priority_spec_default_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_default_init()</span></tt></a>).  To specify the priority,
+use <a class="reference internal" href="#c.nghttp2_priority_spec_init" title="nghttp2_priority_spec_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_init()</span></tt></a>.  If <em>pri_spec</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>,
 this function will copy its data members.</p>
+<p>The <tt class="xref c c-func docutils literal"><span class="pre">pri_spec-&gt;weight()</span></tt> must be in [<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>,
+<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>], inclusive.  If <tt class="xref c c-func docutils literal"><span class="pre">pri_spec-&gt;weight()</span></tt> is
+strictly less than <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>, it becomes
+<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>.  If it is strictly greater than
+<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>, it becomes <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
 <em>nvlen</em> elements.  The value is opaque sequence of bytes and
 therefore can contain NULL byte (0x0).  If the application requires
@@ -2641,8 +2614,6 @@ negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
-<dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri_spec-&gt;pri_type</em> is invalid.</dd>
 </dl>
 </dd></dl>
 
@@ -2674,18 +2645,21 @@ to the priority specification <em>pri_spec</em>.</p>
 <p>The <em>flags</em> is currently ignored and should be
 <a class="reference internal" href="#c.NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>The <em>pri_spec</em> is priority specification of this request.  <tt class="docutils literal"><span class="pre">NULL</span></tt>
-is not allowed for this function.  To specify the priority, use
-either <a class="reference internal" href="#c.nghttp2_priority_spec_group_init" title="nghttp2_priority_spec_group_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_group_init()</span></tt></a> or
-<a class="reference internal" href="#c.nghttp2_priority_spec_dep_init" title="nghttp2_priority_spec_dep_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_dep_init()</span></tt></a>.  This function will copy its
-data members.</p>
+is not allowed for this function. To specify the priority, use
+<a class="reference internal" href="#c.nghttp2_priority_spec_init" title="nghttp2_priority_spec_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_init()</span></tt></a>.  This function will copy its data
+members.</p>
+<p>The <tt class="xref c c-func docutils literal"><span class="pre">pri_spec-&gt;weight()</span></tt> must be in [<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>,
+<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>], inclusive.  If <tt class="xref c c-func docutils literal"><span class="pre">pri_spec-&gt;weight()</span></tt> is
+strictly less than <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>, it becomes
+<a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>.  If it is strictly greater than
+<a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>, it becomes <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
-<dd>The <em>pri_spec</em> is NULL; or the <em>pri_spec-&gt;pri_type</em> is invalid;
-or trying to depend on itself.</dd>
+<dd>The <em>pri_spec</em> is NULL; or trying to depend on itself.</dd>
 </dl>
 </dd></dl>
 

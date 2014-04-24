@@ -163,8 +163,8 @@
 version 2.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
-<p>We started to implement h2-11
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-11">http://tools.ietf.org/html/draft-ietf-httpbis-http2-11</a>) and the
+<p>We started to implement h2-12
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-12">http://tools.ietf.org/html/draft-ietf-httpbis-http2-12</a>) and the
 header compression
 (<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07</a>).</p>
 <p>The nghttp2 code base was forked from spdylay project.</p>
@@ -175,17 +175,17 @@ header compression
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Features</th>
-<th class="head">h2-11</th>
+<th class="head">h2-12</th>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td>HPACK-draft-07</td>
+<tr class="row-even"><td>Dependency based priority</td>
 <td>Done</td>
 </tr>
-<tr class="row-odd"><td>Dependency based priority</td>
+<tr class="row-odd"><td>BLOCKED frame</td>
 <td>Done</td>
 </tr>
-<tr class="row-even"><td>ALTSVC frame</td>
+<tr class="row-even"><td>COMPRESSED DATA</td>
 <td>Done</td>
 </tr>
 </tbody>
@@ -311,12 +311,12 @@ with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nv https://localhost:8443
 [  0.004][NPN] server offers:
-          * h2-11
+          * h2-12
           * spdy/3.1
           * spdy/3
           * spdy/2
           * http/1.1
-The negotiated protocol: h2-11
+The negotiated protocol: h2-12
 [  0.006] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
           (niv=2)
           [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
@@ -481,7 +481,7 @@ IPv6: listen on port 8080
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
-<tt class="docutils literal"><span class="pre">h2-11</span></tt>, SPDY and HTTP/1.1. It has several operation modes:</p>
+<tt class="docutils literal"><span class="pre">h2-12</span></tt>, SPDY and HTTP/1.1. It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="25%" />
@@ -525,7 +525,7 @@ IPv6: listen on port 8080
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-11</span></tt>, SPDY and HTTP/1.1 and can
+a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-12</span></tt>, SPDY and HTTP/1.1 and can
 be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,

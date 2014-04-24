@@ -202,7 +202,7 @@
 <span class="cm"> * The protocol version identification string of this library</span>
 <span class="cm"> * supports.  This identifier is used if HTTP/2 is used over TLS.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;h2-11&quot;</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;h2-12&quot;</span>
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
@@ -217,7 +217,7 @@
 <span class="cm"> * supports.  This identifier is used if HTTP/2 is used over cleartext</span>
 <span class="cm"> * TCP.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID &quot;h2c-11&quot;</span>
+<span class="cp">#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID &quot;h2c-12&quot;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -275,21 +275,21 @@
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
-<span class="cm"> * The default weight of priority group.</span>
+<span class="cm"> * The default weight of stream dependency.</span>
 <span class="cm"> */</span>
 <span class="cp">#define NGHTTP2_DEFAULT_WEIGHT 16</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
-<span class="cm"> * The maximum weight of priority group.</span>
+<span class="cm"> * The maximum weight of stream dependency.</span>
 <span class="cm"> */</span>
 <span class="cp">#define NGHTTP2_MAX_WEIGHT 256</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
-<span class="cm"> * The minimum weight of priority group.</span>
+<span class="cm"> * The minimum weight of stream dependency.</span>
 <span class="cm"> */</span>
 <span class="cp">#define NGHTTP2_MIN_WEIGHT 1</span>
 
@@ -604,7 +604,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * The ALTSVC frame.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_ALTSVC</span> <span class="o">=</span> <span class="mh">0x0a</span>
+  <span class="n">NGHTTP2_ALTSVC</span> <span class="o">=</span> <span class="mh">0x0a</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The BLOCKED frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_BLOCKED</span> <span class="o">=</span> <span class="mh">0x0b</span>
 <span class="p">}</span> <span class="n">nghttp2_frame_type</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -643,13 +647,13 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLAG_PAD_HIGH</span> <span class="o">=</span> <span class="mh">0x10</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The PRIORITY_GROUP flag.</span>
+<span class="cm">   * The PRIORITY flag.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_PRIORITY_GROUP</span> <span class="o">=</span> <span class="mh">0x20</span><span class="p">,</span>
+  <span class="n">NGHTTP2_FLAG_PRIORITY</span> <span class="o">=</span> <span class="mh">0x20</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The PRIORITY_DEPENDENCY flag.</span>
+<span class="cm">   * THE COMPRESSED flag.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_PRIORITY_DEPENDENCY</span> <span class="o">=</span> <span class="mh">0x40</span>
+  <span class="n">NGHTTP2_FLAG_COMPRESSED</span> <span class="o">=</span> <span class="mh">0x20</span>
 <span class="p">}</span> <span class="n">nghttp2_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -674,9 +678,13 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
   <span class="cm">/**</span>
+<span class="cm">   * SETTINGS_COMPRESS_DATA</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS_COMPRESS_DATA</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+  <span class="cm">/**</span>
 <span class="cm">   * Maximum ID of :type:`nghttp2_settings_id`.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_MAX</span> <span class="o">=</span> <span class="mi">4</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX</span> <span class="o">=</span> <span class="mi">5</span>
 <span class="p">}</span> <span class="n">nghttp2_settings_id</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -799,7 +807,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * Indicates EOF was sensed.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_DATA_FLAG_EOF</span> <span class="o">=</span> <span class="mh">0x01</span>
+  <span class="n">NGHTTP2_DATA_FLAG_EOF</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Indicates data was compressed by application.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_DATA_FLAG_COMPRESSED</span> <span class="o">=</span> <span class="mh">0x02</span>
 <span class="p">}</span> <span class="n">nghttp2_data_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -810,7 +822,13 @@
 <span class="cm"> * The implementation of this function must read at most |length|</span>
 <span class="cm"> * bytes of data from |source| (or possibly other places) and store</span>
 <span class="cm"> * them in |buf| and return number of data stored in |buf|.  If EOF is</span>
-<span class="cm"> * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_falgs|.</span>
+<span class="cm"> * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_flags|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * To send compressed data payload without affecting content-length,</span>
+<span class="cm"> * set :enum:`NGHTTP2_DATA_FLAG_COMPRESSED` flag in |*data_flags|.</span>
+<span class="cm"> * Compression must be done by application prior to fill data in</span>
+<span class="cm"> * |buf|.</span>
+<span class="cm"> *</span>
 <span class="cm"> * If the application wants to postpone DATA frames (e.g.,</span>
 <span class="cm"> * asynchronous I/O, or reading data blocks for long time), it is</span>
 <span class="cm"> * achieved by returning :enum:`NGHTTP2_ERR_DEFERRED` without reading</span>
@@ -893,92 +911,24 @@
 <span class="p">}</span> <span class="n">nghttp2_headers_category</span><span class="p">;</span>
 
 <span class="cm">/**</span>
-<span class="cm"> * @enum</span>
-<span class="cm"> *</span>
-<span class="cm"> * The type of priority specified in :type:`nghttp2_priority_spec`.</span>
-<span class="cm"> */</span>
-<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
-  <span class="cm">/**</span>
-<span class="cm">   * No priority is given.  The default priority will be used.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_PRIORITY_TYPE_NONE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * Priority group ID and its weight are specified.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_PRIORITY_TYPE_GROUP</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The stream ID of a stream to depend on and its exclusive flag is</span>
-<span class="cm">   * specified.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_PRIORITY_TYPE_DEP</span> <span class="o">=</span> <span class="mi">2</span>
-<span class="p">}</span> <span class="n">nghttp2_priority_type</span><span class="p">;</span>
-
-<span class="cm">/**</span>
 <span class="cm"> * @struct</span>
 <span class="cm"> *</span>
-<span class="cm"> * This structure stores priority group ID and its weight.</span>
+<span class="cm"> * The structure to specify stream dependency.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="cm">/**</span>
-<span class="cm">   * The priority group ID</span>
-<span class="cm">   */</span>
-  <span class="kt">int32_t</span> <span class="n">pri_group_id</span><span class="p">;</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The weight of the priority group</span>
-<span class="cm">   */</span>
-  <span class="kt">int32_t</span> <span class="n">weight</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">nghttp2_priority_group</span><span class="p">;</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @struct</span>
-<span class="cm"> *</span>
-<span class="cm"> * This structure stores stream ID of the stream to depend on and its</span>
-<span class="cm"> * dependency is exclusive or not.</span>
-<span class="cm"> */</span>
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The stream ID of the stream to depend on.</span>
+<span class="cm">   * The stream ID of the stream to depend on.  Specifying 0 makes</span>
+<span class="cm">   * stream not depend any other stream.</span>
 <span class="cm">   */</span>
   <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The weight of this dependency.</span>
+<span class="cm">   */</span>
+  <span class="kt">int32_t</span> <span class="n">weight</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * nonzero means exclusive dependency</span>
 <span class="cm">   */</span>
   <span class="kt">uint8_t</span> <span class="n">exclusive</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">nghttp2_priority_dep</span><span class="p">;</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @struct</span>
-<span class="cm"> *</span>
-<span class="cm"> * The structure to specify stream dependency.  To specify stream</span>
-<span class="cm"> * dependency, specify |pri_type| and fill the |group| or |dep| member</span>
-<span class="cm"> * according to |pri_type|.</span>
-<span class="cm"> */</span>
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-  <span class="cm">/**</span>
-<span class="cm">   * Type of priority specification.  If |pri_type| is</span>
-<span class="cm">   * :enum:`NGHTTP2_PRIORITY_TYPE_GROUP`, fill |group|.  If |pri_type|</span>
-<span class="cm">   * is :enum:`NGHTTP2_PRIORITY_TYPE_DEP`, fill |dep|.  If |pri_type|</span>
-<span class="cm">   * is :enum:`NGHTTP2_PRIORITY_TYPE_NONE`, the other data members are</span>
-<span class="cm">   * ignored and it means that default priority group ID (which is</span>
-<span class="cm">   * same as the stream ID) and default weight</span>
-<span class="cm">   * :macro:`NGHTTP2_DEFAULT_WEIGHT` are specified.</span>
-<span class="cm">   */</span>
-  <span class="n">nghttp2_priority_type</span> <span class="n">pri_type</span><span class="p">;</span>
-
-  <span class="k">union</span> <span class="p">{</span>
-    <span class="cm">/**</span>
-<span class="cm">     * Specify priority group ID and its weight.  This field is</span>
-<span class="cm">     * interpreted only when |pri_type| member is</span>
-<span class="cm">     * :enum:`NGHTTP2_PRIORITY_TYPE_GROUP`.</span>
-<span class="cm">     */</span>
-    <span class="n">nghttp2_priority_group</span> <span class="n">group</span><span class="p">;</span>
-    <span class="cm">/**</span>
-<span class="cm">     * Specify stream ID of a stream to depend on and exclusive flag.</span>
-<span class="cm">     * This field is interpreted only when |pri_type| member is</span>
-<span class="cm">     * :enum:`NGHTTP2_PRIORITY_TYPE_DEP`.</span>
-<span class="cm">     */</span>
-    <span class="n">nghttp2_priority_dep</span> <span class="n">dep</span><span class="p">;</span>
-  <span class="p">}</span> <span class="n">spec</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_priority_spec</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -1216,6 +1166,18 @@
 <span class="p">}</span> <span class="n">nghttp2_altsvc</span><span class="p">;</span>
 
 <span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * The BLOCKED frame.  It has following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The frame header.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_blocked</span><span class="p">;</span>
+
+<span class="cm">/**</span>
 <span class="cm"> * @union</span>
 <span class="cm"> *</span>
 <span class="cm"> * This union includes all frames to pass them to various function</span>
@@ -1267,6 +1229,10 @@
 <span class="cm">   * The ALTSVC frame.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_altsvc</span> <span class="n">altsvc</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The BLOCKED frame.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_blocked</span> <span class="n">blocked</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_frame</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -2314,32 +2280,32 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Initializes |pri_spec| with priority group ID |pri_group_id| and</span>
-<span class="cm"> * its weight |weight|.</span>
+<span class="cm"> * Initializes |pri_spec| with the |stream_id| of the stream to depend</span>
+<span class="cm"> * on with |weight| and its exclusive flag.  If |exclusive| is</span>
+<span class="cm"> * nonzero, exclusive flag is set.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |weight| must be in [:enum:`NGHTTP2_MIN_WEIGHT`,</span>
-<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If |weight| is strictly</span>
-<span class="cm"> * less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes</span>
-<span class="cm"> * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than</span>
-<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.</span>
-<span class="cm"> *</span>
-<span class="cm"> * To specify weight for the default priority group (which is the same</span>
-<span class="cm"> * as the stream ID of the stream) in `nghttp2_submit_request()` and</span>
-<span class="cm"> * `nghttp2_submit_headers()` and its stream ID is not known in</span>
-<span class="cm"> * advance, specify -1 to |pri_group_id|.</span>
+<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_priority_spec_group_init</span><span class="p">(</span><span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
-                                      <span class="kt">int32_t</span> <span class="n">pri_group_id</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">weight</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_priority_spec_init</span><span class="p">(</span><span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
+                                <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">weight</span><span class="p">,</span>
+                                <span class="kt">int</span> <span class="n">exclusive</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Initializes |pri_spec| with the |stream_id| of the stream to depend</span>
-<span class="cm"> * on and its exclusive flag.  If |exclusive| is nonzero, exclusive</span>
-<span class="cm"> * flag is set.</span>
+<span class="cm"> * Initializes |pri_spec| with the default values.  The default values</span>
+<span class="cm"> * are: stream_id = 0, weight = :macro:`NGHTTP2_DEFAULT_WEIGHT` and</span>
+<span class="cm"> * exclusive = 0.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_priority_spec_dep_init</span><span class="p">(</span><span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
-                                    <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">int</span> <span class="n">exclusive</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_priority_spec_default_init</span><span class="p">(</span><span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns nonzero if the |pri_spec| is filled with default values.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_priority_spec_check_default</span><span class="p">(</span><span class="k">const</span> <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2347,11 +2313,16 @@
 <span class="cm"> * Submits HEADERS frame and optionally one or more DATA frames.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |pri_spec| is priority specification of this request.  ``NULL``</span>
-<span class="cm"> * means the default priority (priority group ID becomes its stream ID</span>
-<span class="cm"> * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT`).  To specify the</span>
-<span class="cm"> * priority, use either `nghttp2_priority_spec_group_init()` or</span>
-<span class="cm"> * `nghttp2_priority_spec_dep_init()`.  If |pri_spec| is not ``NULL``,</span>
+<span class="cm"> * means the default priority (see</span>
+<span class="cm"> * `nghttp2_priority_spec_default_init()`).  To specify the priority,</span>
+<span class="cm"> * use `nghttp2_priority_spec_init()`.  If |pri_spec| is not ``NULL``,</span>
 <span class="cm"> * this function will copy its data members.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The `pri_spec-&gt;weight` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,</span>
+<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If `pri_spec-&gt;weight` is</span>
+<span class="cm"> * strictly less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes</span>
+<span class="cm"> * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than</span>
+<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |nva| is an array of name/value pair :type:`nghttp2_nv` with</span>
 <span class="cm"> * |nvlen| elements.  The value is opaque sequence of bytes and</span>
@@ -2395,8 +2366,6 @@
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri_spec-&gt;pri_type| is invalid.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                            <span class="k">const</span> <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
@@ -2467,11 +2436,16 @@
 <span class="cm"> * response, specify stream ID in |stream_id|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |pri_spec| is priority specification of this request.  ``NULL``</span>
-<span class="cm"> * means the default priority (priority group ID becomes its stream ID</span>
-<span class="cm"> * and weight is :macro:`NGHTTP2_DEFAULT_WEIGHT`).  To specify the</span>
-<span class="cm"> * priority, use either `nghttp2_priority_spec_group_init()` or</span>
-<span class="cm"> * `nghttp2_priority_spec_dep_init()`.  If |pri_spec| is not ``NULL``,</span>
+<span class="cm"> * means the default priority (see</span>
+<span class="cm"> * `nghttp2_priority_spec_default_init()`).  To specify the priority,</span>
+<span class="cm"> * use `nghttp2_priority_spec_init()`.  If |pri_spec| is not ``NULL``,</span>
 <span class="cm"> * this function will copy its data members.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The `pri_spec-&gt;weight` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,</span>
+<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If `pri_spec-&gt;weight` is</span>
+<span class="cm"> * strictly less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes</span>
+<span class="cm"> * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than</span>
+<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |nva| is an array of name/value pair :type:`nghttp2_nv` with</span>
 <span class="cm"> * |nvlen| elements.  The value is opaque sequence of bytes and</span>
@@ -2497,8 +2471,6 @@
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri_spec-&gt;pri_type| is invalid.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -2540,10 +2512,15 @@
 <span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |pri_spec| is priority specification of this request.  ``NULL``</span>
-<span class="cm"> * is not allowed for this function.  To specify the priority, use</span>
-<span class="cm"> * either `nghttp2_priority_spec_group_init()` or</span>
-<span class="cm"> * `nghttp2_priority_spec_dep_init()`.  This function will copy its</span>
-<span class="cm"> * data members.</span>
+<span class="cm"> * is not allowed for this function. To specify the priority, use</span>
+<span class="cm"> * `nghttp2_priority_spec_init()`.  This function will copy its data</span>
+<span class="cm"> * members.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The `pri_spec-&gt;weight` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,</span>
+<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If `pri_spec-&gt;weight` is</span>
+<span class="cm"> * strictly less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes</span>
+<span class="cm"> * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than</span>
+<span class="cm"> * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
@@ -2551,8 +2528,7 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri_spec| is NULL; or the |pri_spec-&gt;pri_type| is invalid;</span>
-<span class="cm"> *     or trying to depend on itself.</span>
+<span class="cm"> *     The |pri_spec| is NULL; or trying to depend on itself.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_priority</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                             <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
