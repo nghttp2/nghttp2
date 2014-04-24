@@ -173,6 +173,9 @@ struct nghttp2_stream {
   uint8_t flags;
   /* Bitwise OR of zero or more nghttp2_shut_flag values */
   uint8_t shut_flags;
+  /* nonzero if blocked was sent and remote_window_size is still 0 or
+     negative */
+  uint8_t blocked_sent;
 };
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,

@@ -443,7 +443,11 @@ typedef enum {
   /**
    * The ALTSVC frame.
    */
-  NGHTTP2_ALTSVC = 0x0a
+  NGHTTP2_ALTSVC = 0x0a,
+  /**
+   * The BLOCKED frame.
+   */
+  NGHTTP2_BLOCKED = 0x0b
 } nghttp2_frame_type;
 
 /**
@@ -983,6 +987,18 @@ typedef struct {
 } nghttp2_altsvc;
 
 /**
+ * @struct
+ *
+ * The BLOCKED frame.  It has following members:
+ */
+typedef struct {
+  /**
+   * The frame header.
+   */
+  nghttp2_frame_hd hd;
+} nghttp2_blocked;
+
+/**
  * @union
  *
  * This union includes all frames to pass them to various function
@@ -1034,6 +1050,10 @@ typedef union {
    * The ALTSVC frame.
    */
   nghttp2_altsvc altsvc;
+  /**
+   * The BLOCKED frame.
+   */
+  nghttp2_blocked blocked;
 } nghttp2_frame;
 
 /**
