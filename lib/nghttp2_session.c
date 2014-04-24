@@ -225,6 +225,7 @@ static void init_settings(uint32_t *settings)
     NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
   settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
     NGHTTP2_INITIAL_WINDOW_SIZE;
+  settings[NGHTTP2_SETTINGS_COMPRESS_DATA] = 0;
 }
 
 static void nghttp2_active_outbound_item_reset
@@ -3464,6 +3465,12 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
           (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
       }
       break;
+    case NGHTTP2_SETTINGS_COMPRESS_DATA:
+      if(entry->value != 0 && entry->value != 1) {
+        return nghttp2_session_handle_invalid_connection
+          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      }
+      break;
     }
     session->remote_settings[entry->settings_id] = entry->value;
   }
@@ -4024,7 +4031,12 @@ static int nghttp2_session_on_data_received_fail_fast(nghttp2_session *session)
 {
   int rv;
   nghttp2_stream *stream;
-  int32_t stream_id = session->iframe.frame.hd.stream_id;
+  nghttp2_inbound_frame *iframe;
+  int32_t stream_id;
+
+  iframe = &session->iframe;
+  stream_id = iframe->frame.hd.stream_id;
+
   if(stream_id == 0) {
     /* The spec says that if a DATA frame is received whose stream ID
        is 0, the recipient MUST respond with a connection error of
@@ -4041,6 +4053,12 @@ static int nghttp2_session_on_data_received_fail_fast(nghttp2_session *session)
   if(stream->shut_flags & NGHTTP2_SHUT_RD) {
     goto fail;
   }
+
+  if((iframe->frame.hd.flags & NGHTTP2_FLAG_COMPRESSED) &&
+     session->local_settings[NGHTTP2_SETTINGS_COMPRESS_DATA] == 0) {
+    goto fail;
+  }
+
   if(nghttp2_session_is_my_stream_id(session, stream_id)) {
     if(stream->state == NGHTTP2_STREAM_CLOSING) {
       return NGHTTP2_ERR_IGN_PAYLOAD;
@@ -4111,6 +4129,7 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   case NGHTTP2_SETTINGS_ENABLE_PUSH:
   case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+  case NGHTTP2_SETTINGS_COMPRESS_DATA:
     break;
   default:
     return -1;
@@ -4260,7 +4279,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_STREAM |
                                    NGHTTP2_FLAG_END_SEGMENT |
                                    NGHTTP2_FLAG_PAD_LOW |
-                                   NGHTTP2_FLAG_PAD_HIGH);
+                                   NGHTTP2_FLAG_PAD_HIGH |
+                                   NGHTTP2_FLAG_COMPRESSED);
         /* Check stream is open. If it is not open or closing,
            ignore payload. */
         busy = 1;
@@ -5557,6 +5577,10 @@ int nghttp2_session_pack_data(nghttp2_session *session,
     if(frame->hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
       flags |= NGHTTP2_FLAG_END_SEGMENT;
     }
+  }
+
+  if(data_flags & NGHTTP2_DATA_FLAG_COMPRESSED) {
+    flags |= NGHTTP2_FLAG_COMPRESSED;
   }
 
   /* The primary reason of data_frame is pass to the user callback */

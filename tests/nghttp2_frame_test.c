@@ -632,6 +632,15 @@ void test_nghttp2_iv_check(void)
   iv[1].value = 3;
   CU_ASSERT(!nghttp2_iv_check(iv, 2));
 
+  /* COMPRESSED_DATA only allows 0 or 1 */
+  iv[1].settings_id = NGHTTP2_SETTINGS_COMPRESS_DATA;
+  iv[1].value = 0;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
+  iv[1].value = 1;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
+  iv[1].value = 3;
+  CU_ASSERT(!nghttp2_iv_check(iv, 2));
+
   /* Undefined SETTINGS ID */
   iv[1].settings_id = 1000000009;
   iv[1].value = 0;

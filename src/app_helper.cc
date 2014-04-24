@@ -234,6 +234,12 @@ void print_flags(const nghttp2_frame_hd& hd)
       }
       s += "PAD_HIGH";
     }
+    if(hd.flags & NGHTTP2_FLAG_COMPRESSED) {
+      if(!s.empty()) {
+        s += " | ";
+      }
+      s += "COMPRESSED";
+    }
     break;
   case NGHTTP2_HEADERS:
     if(hd.flags & NGHTTP2_FLAG_END_STREAM) {

@@ -938,6 +938,7 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
     case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
       break;
     case NGHTTP2_SETTINGS_ENABLE_PUSH:
+    case NGHTTP2_SETTINGS_COMPRESS_DATA:
       if(iv[i].value != 0 && iv[i].value != 1) {
         return 0;
       }

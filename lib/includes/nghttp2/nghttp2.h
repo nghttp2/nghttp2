@@ -488,7 +488,11 @@ typedef enum {
   /**
    * The PRIORITY flag.
    */
-  NGHTTP2_FLAG_PRIORITY = 0x20
+  NGHTTP2_FLAG_PRIORITY = 0x20,
+  /**
+   * THE COMPRESSED flag.
+   */
+  NGHTTP2_FLAG_COMPRESSED = 0x20
 } nghttp2_flag;
 
 /**
@@ -513,9 +517,13 @@ typedef enum {
    */
   NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 4,
   /**
+   * SETTINGS_COMPRESS_DATA
+   */
+  NGHTTP2_SETTINGS_COMPRESS_DATA = 5,
+  /**
    * Maximum ID of :type:`nghttp2_settings_id`.
    */
-  NGHTTP2_SETTINGS_MAX = 4
+  NGHTTP2_SETTINGS_MAX = 5
 } nghttp2_settings_id;
 
 /**
@@ -638,7 +646,11 @@ typedef enum {
   /**
    * Indicates EOF was sensed.
    */
-  NGHTTP2_DATA_FLAG_EOF = 0x01
+  NGHTTP2_DATA_FLAG_EOF = 0x01,
+  /**
+   * Indicates data was compressed.
+   */
+  NGHTTP2_DATA_FLAG_COMPRESSED = 0x02
 } nghttp2_data_flag;
 
 /**
@@ -649,7 +661,11 @@ typedef enum {
  * The implementation of this function must read at most |length|
  * bytes of data from |source| (or possibly other places) and store
  * them in |buf| and return number of data stored in |buf|.  If EOF is
- * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_falgs|.
+ * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_flags|.
+ *
+ * To send compressed data payload without affecting content-length,
+ * set :enum:`NGHTTP2_DATA_FLAG_COMPRESSED` flag in |*data_flags|.
+ *
  * If the application wants to postpone DATA frames (e.g.,
  * asynchronous I/O, or reading data blocks for long time), it is
  * achieved by returning :enum:`NGHTTP2_ERR_DEFERRED` without reading
