@@ -24,18 +24,25 @@
  */
 #include "nghttp2_priority_spec.h"
 
-void nghttp2_priority_spec_group_init(nghttp2_priority_spec *pri_spec,
-                                      int32_t pri_group_id, int32_t weight)
+void nghttp2_priority_spec_init(nghttp2_priority_spec *pri_spec,
+                                int32_t stream_id, int32_t weight,
+                                int exclusive)
 {
-  pri_spec->pri_type = NGHTTP2_PRIORITY_TYPE_GROUP;
-  pri_spec->spec.group.pri_group_id = pri_group_id;
-  pri_spec->spec.group.weight = weight;
+  pri_spec->stream_id = stream_id;
+  pri_spec->weight = weight;
+  pri_spec->exclusive = exclusive != 0;
 }
 
-void nghttp2_priority_spec_dep_init(nghttp2_priority_spec *pri_spec,
-                                    int32_t stream_id, int exclusive)
+void nghttp2_priority_spec_default_init(nghttp2_priority_spec *pri_spec)
 {
-  pri_spec->pri_type = NGHTTP2_PRIORITY_TYPE_DEP;
-  pri_spec->spec.dep.stream_id = stream_id;
-  pri_spec->spec.dep.exclusive = exclusive != 0;
+  pri_spec->stream_id = 0;
+  pri_spec->weight = NGHTTP2_DEFAULT_WEIGHT;
+  pri_spec->exclusive = 0;
+}
+
+int nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec)
+{
+  return pri_spec->stream_id == 0 &&
+    pri_spec->weight == NGHTTP2_DEFAULT_WEIGHT &&
+    pri_spec->exclusive == 0;
 }

@@ -232,46 +232,69 @@ void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size)
   nghttp2_bufs_init2(bufs, chunk_size, 16, NGHTTP2_FRAME_HDLEN + 2);
 }
 
-nghttp2_stream* open_stream(nghttp2_session *session, int32_t stream_id)
+static nghttp2_stream* open_stream_with_all(nghttp2_session *session,
+                                            int32_t stream_id,
+                                            int32_t weight,
+                                            uint8_t exclusive,
+                                            nghttp2_stream *dep_stream)
 {
   nghttp2_priority_spec pri_spec;
+  int32_t dep_stream_id;
 
-  nghttp2_priority_spec_group_init(&pri_spec, stream_id,
-                                   NGHTTP2_DEFAULT_WEIGHT);
+  if(dep_stream) {
+    dep_stream_id = dep_stream->stream_id;
+  } else {
+    dep_stream_id = 0;
+  }
+
+  nghttp2_priority_spec_init(&pri_spec, dep_stream_id, weight, exclusive);
 
   return nghttp2_session_open_stream(session, stream_id,
                                      NGHTTP2_STREAM_FLAG_NONE,
                                      &pri_spec,
                                      NGHTTP2_STREAM_OPENED,
                                      NULL);
+}
+
+
+nghttp2_stream* open_stream(nghttp2_session *session, int32_t stream_id)
+{
+  return open_stream_with_all(session, stream_id, NGHTTP2_DEFAULT_WEIGHT, 0,
+                              NULL);
 }
 
 nghttp2_stream* open_stream_with_dep(nghttp2_session *session,
                                      int32_t stream_id,
                                      nghttp2_stream *dep_stream)
 {
-  nghttp2_priority_spec pri_spec;
+  return open_stream_with_all(session, stream_id, NGHTTP2_DEFAULT_WEIGHT, 0,
+                              dep_stream);
+}
 
-  nghttp2_priority_spec_dep_init(&pri_spec, dep_stream->stream_id, 0);
-
-  return nghttp2_session_open_stream(session, stream_id,
-                                     NGHTTP2_STREAM_FLAG_NONE,
-                                     &pri_spec,
-                                     NGHTTP2_STREAM_OPENED,
-                                     NULL);
+nghttp2_stream* open_stream_with_dep_weight(nghttp2_session *session,
+                                            int32_t stream_id,
+                                            int32_t weight,
+                                            nghttp2_stream *dep_stream)
+{
+  return open_stream_with_all(session, stream_id, weight, 0, dep_stream);
 }
 
 nghttp2_stream* open_stream_with_dep_excl(nghttp2_session *session,
                                           int32_t stream_id,
                                           nghttp2_stream *dep_stream)
 {
-  nghttp2_priority_spec pri_spec;
-
-  nghttp2_priority_spec_dep_init(&pri_spec, dep_stream->stream_id, 1);
-
-  return nghttp2_session_open_stream(session, stream_id,
-                                     NGHTTP2_STREAM_FLAG_NONE,
-                                     &pri_spec,
-                                     NGHTTP2_STREAM_OPENED,
-                                     NULL);
+  return open_stream_with_all(session, stream_id, NGHTTP2_DEFAULT_WEIGHT, 1,
+                              dep_stream);
 }
+
+nghttp2_outbound_item* create_data_ob_item(void)
+{
+  nghttp2_outbound_item *item;
+
+  item = malloc(sizeof(nghttp2_outbound_item));
+  memset(item, 0, sizeof(nghttp2_outbound_item));
+  item->frame_cat = NGHTTP2_CAT_DATA;
+
+  return item;
+}
+

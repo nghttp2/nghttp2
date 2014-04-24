@@ -263,13 +263,15 @@ struct Request {
 
   nghttp2_priority_spec resolve_dep(int32_t pri)
   {
-    nghttp2_priority_spec pri_spec = { NGHTTP2_PRIORITY_TYPE_NONE };
+    nghttp2_priority_spec pri_spec;
     int exclusive = 0;
     int32_t stream_id = -1;
 
     if(pri == 0) {
       return pri_spec;
     }
+
+    nghttp2_priority_spec_default_init(&pri_spec);
 
     auto start = std::min(pri, (int)dep->deps.size() - 1);
 
@@ -293,7 +295,8 @@ struct Request {
       return pri_spec;
     }
 
-    nghttp2_priority_spec_dep_init(&pri_spec, stream_id, exclusive);
+    nghttp2_priority_spec_init(&pri_spec, stream_id, NGHTTP2_DEFAULT_WEIGHT,
+                               exclusive);
 
     return pri_spec;
   }
@@ -1014,12 +1017,9 @@ void update_html_parser(HttpClient *client, Request *req,
 
       nghttp2_priority_spec pri_spec;
 
-      // We always specify priority group of parent stream, so that
-      // even if the parent stream is closed, the dependent stream is
-      // in the same priority group.  We adjust the priority using
-      // separate PRIORITY frame after stream ID becomes known.
-      nghttp2_priority_spec_group_init(&pri_spec, req->stream_id,
-                                       config.weight);
+      // We adjust the priority using separate PRIORITY frame after
+      // stream ID becomes known.
+      nghttp2_priority_spec_default_init(&pri_spec);
 
       if ( client->add_request(uri, nullptr, 0, pri_spec, req->dep,
                                req->level+1) ) {
@@ -1108,9 +1108,8 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
 
   auto pri_spec = req->resolve_dep(req->pri);
 
-  if(pri_spec.pri_type == NGHTTP2_PRIORITY_TYPE_DEP) {
-    nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, stream_id,
-                            &pri_spec);
+  if(!nghttp2_priority_spec_check_default(&pri_spec)) {
+    nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, stream_id, &pri_spec);
   }
 
   auto itr = std::begin(req->dep->deps);
@@ -1208,7 +1207,9 @@ int on_begin_headers_callback(nghttp2_session *session,
     http_parser_url u;
     memset(&u, 0, sizeof(u));
     // TODO Set pri and level
-    nghttp2_priority_spec pri_spec = { NGHTTP2_PRIORITY_TYPE_NONE };
+    nghttp2_priority_spec pri_spec;
+
+    nghttp2_priority_spec_default_init(&pri_spec);
 
     auto req = util::make_unique<Request>("", u, nullptr, 0, pri_spec,
                                           nullptr);
@@ -1624,10 +1625,12 @@ int communicate(const std::string& scheme, const std::string& host,
   {
     HttpClient client{callbacks, evbase, ssl_ctx};
 
-    nghttp2_priority_spec pri_spec = { NGHTTP2_PRIORITY_TYPE_NONE };
+    nghttp2_priority_spec pri_spec;
 
     if(config.weight != NGHTTP2_DEFAULT_WEIGHT) {
-      nghttp2_priority_spec_group_init(&pri_spec, -1, config.weight);
+      nghttp2_priority_spec_init(&pri_spec, 0, config.weight, 0);
+    } else {
+      nghttp2_priority_spec_default_init(&pri_spec);
     }
 
     for(auto req : requests) {

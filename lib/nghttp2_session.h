@@ -117,7 +117,7 @@ typedef enum {
 
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
-  nghttp2_map /* <nghttp2_stream_group*> */ stream_groups;
+  nghttp2_stream_roots roots;
   /* Queue for outbound frames other than stream-creating HEADERS */
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
   /* Queue for outbound stream-creating HEADERS frame */
@@ -604,14 +604,6 @@ nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
                                                int32_t stream_id);
 
 /*
- * Returns nghttp2_stream_group* object whose priority group ID is
- * |pri_group_id|.  It could be NULL if such priority group does not
- * exist.
- */
-nghttp2_stream_group* nghttp2_session_get_stream_group
-(nghttp2_session *session, int32_t pri_group_id);
-
-/*
  * Packs DATA frame |frame| in wire frame format and stores it in
  * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
  * length. This function expands |*buf_ptr| as necessary to store
@@ -697,20 +689,5 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
 int nghttp2_session_reprioritize_stream
 (nghttp2_session *session, nghttp2_stream *stream,
  const nghttp2_priority_spec *pri_spec);
-
-/*
- * Creates new priority group using given values.
- *
- * This function returns created priority group if it succeeds, or
- * NULL.
- */
-nghttp2_stream_group* nghttp2_session_open_stream_group
-(nghttp2_session *session, int32_t pri_group_id, int32_t weight);
-
-/*
- * Closes priority group if it does not include any streams.
- */
-void nghttp2_session_close_stream_group_if_empty
-(nghttp2_session *session, nghttp2_stream_group *stream_group);
 
 #endif /* NGHTTP2_SESSION_H */

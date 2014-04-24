@@ -74,7 +74,12 @@ void nghttp2_frame_headers_init(nghttp2_headers *frame,
   frame->nva = nva;
   frame->nvlen = nvlen;
   frame->cat = NGHTTP2_HCAT_REQUEST;
-  frame->pri_spec = *pri_spec;
+
+  if(pri_spec) {
+    frame->pri_spec = *pri_spec;
+  } else {
+    nghttp2_priority_spec_default_init(&frame->pri_spec);
+  }
 }
 
 void nghttp2_frame_headers_free(nghttp2_headers *frame)
@@ -85,22 +90,8 @@ void nghttp2_frame_headers_free(nghttp2_headers *frame)
 void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
                                  const nghttp2_priority_spec *pri_spec)
 {
-  uint8_t flags;
-
-  switch(pri_spec->pri_type) {
-  case NGHTTP2_PRIORITY_TYPE_GROUP:
-    flags = NGHTTP2_FLAG_PRIORITY_GROUP;
-
-    break;
-  case NGHTTP2_PRIORITY_TYPE_DEP:
-    flags = NGHTTP2_FLAG_PRIORITY_DEPENDENCY;
-
-    break;
-  default:
-    assert(0);
-  }
-
-  nghttp2_frame_set_hd(&frame->hd, 4, NGHTTP2_PRIORITY, flags, stream_id);
+  nghttp2_frame_set_hd(&frame->hd, 5, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE,
+                       stream_id);
   frame->pri_spec = *pri_spec;
 }
 
@@ -261,12 +252,8 @@ void nghttp2_frame_private_data_free(nghttp2_private_data *frame)
 
 size_t nghttp2_frame_priority_len(uint8_t flags)
 {
-  if(flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
+  if(flags & NGHTTP2_FLAG_PRIORITY) {
     return 5;
-  }
-
-  if(flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
-    return 4;
   }
 
   return 0;
@@ -375,7 +362,9 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
     return rv;
   }
 
-  nghttp2_frame_pack_priority_spec(buf->pos, &frame->pri_spec);
+  if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+    nghttp2_frame_pack_priority_spec(buf->pos, &frame->pri_spec);
+  }
 
   frame->padlen = 0;
   frame->hd.length = nghttp2_bufs_len(bufs);
@@ -386,24 +375,11 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
 void nghttp2_frame_pack_priority_spec(uint8_t *buf,
                                       const nghttp2_priority_spec *pri_spec)
 {
-  switch(pri_spec->pri_type) {
-  case NGHTTP2_PRIORITY_TYPE_GROUP:
-
-    nghttp2_put_uint32be(buf, pri_spec->spec.group.pri_group_id);
-    buf[4] = pri_spec->spec.group.weight - 1;
-
-    return;
-  case NGHTTP2_PRIORITY_TYPE_DEP:
-
-    nghttp2_put_uint32be(buf, pri_spec->spec.dep.stream_id);
-    if(pri_spec->spec.dep.exclusive) {
-      buf[0] |= 0x80;
-    }
-
-    return;
-  default:
-    return;
+  nghttp2_put_uint32be(buf, pri_spec->stream_id);
+  if(pri_spec->exclusive) {
+    buf[0] |= 0x80;
   }
+  buf[4] = pri_spec->weight - 1;
 }
 
 void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
@@ -411,33 +387,28 @@ void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
                                         const uint8_t *payload,
                                         size_t payloadlen)
 {
-  if(flags & NGHTTP2_FLAG_PRIORITY_GROUP) {
-    int32_t pri_group_id;
-    int32_t weight;
+  int32_t dep_stream_id;
+  uint8_t exclusive;
+  int32_t weight;
 
-    pri_group_id = nghttp2_get_uint32(payload) & NGHTTP2_PRI_GROUP_ID_MASK;
-    weight = payload[4] + 1;
+  dep_stream_id = nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
+  exclusive = (payload[0] & 0x80) > 0;
+  weight = payload[4] + 1;
 
-    nghttp2_priority_spec_group_init(pri_spec, pri_group_id, weight);
-  } else if(flags & NGHTTP2_FLAG_PRIORITY_DEPENDENCY) {
-    int32_t dep_stream_id;
-    uint8_t exclusive;
-
-    dep_stream_id = nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
-    exclusive = (payload[0] & 0x80) > 0;
-
-    nghttp2_priority_spec_dep_init(pri_spec, dep_stream_id, exclusive);
-  } else {
-    pri_spec->pri_type = NGHTTP2_PRIORITY_TYPE_NONE;
-  }
+  nghttp2_priority_spec_init(pri_spec, dep_stream_id, weight, exclusive);
 }
 
 int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
                                          const uint8_t *payload,
                                          size_t payloadlen)
 {
-  nghttp2_frame_unpack_priority_spec(&frame->pri_spec, frame->hd.flags,
-                                     payload, payloadlen);
+  if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+    nghttp2_frame_unpack_priority_spec(&frame->pri_spec, frame->hd.flags,
+                                       payload, payloadlen);
+  } else {
+    nghttp2_priority_spec_default_init(&frame->pri_spec);
+  }
+
   frame->nva = NULL;
   frame->nvlen = 0;
 
@@ -457,7 +428,7 @@ int nghttp2_frame_pack_priority(nghttp2_bufs *bufs, nghttp2_priority *frame)
 
   nghttp2_frame_pack_priority_spec(buf->last, &frame->pri_spec);
 
-  buf->last += nghttp2_frame_priority_len(frame->hd.flags);
+  buf->last += 5;
 
   return 0;
 }
