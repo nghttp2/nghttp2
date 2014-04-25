@@ -30,11 +30,11 @@ implementation.
 
 * https://nghttp2.org/ (TLS + NPN / ALPN)
 
-  ALPN and NPN offer ``h2-11``, ``spdy/3.1`` and ``http/1.1``.
+  ALPN and NPN offer ``h2-12``, ``spdy/3.1`` and ``http/1.1``.
 
 * http://nghttp2.org/ (Upgrade / Direct)
 
-  ``h2c-11`` and ``http/1.1``.  We configured this server to send
+  ``h2c-12`` and ``http/1.1``.  We configured this server to send
   ALTSVC frame or Alt-Svc header field to announce that alternative
   service is available at port 443.
 
