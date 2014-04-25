@@ -149,6 +149,7 @@ void Http2Session::on_connect()
 
 void Http2Session::submit_request()
 {
+  int rv;
   auto config = client_->worker->config;
   auto& nva = config->nva[client_->reqidx++];
 
@@ -156,8 +157,9 @@ void Http2Session::submit_request()
     client_->reqidx = 0;
   }
 
-  nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
-                         nullptr, nullptr);
+  rv = nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
+                              nullptr, nullptr);
+  assert(rv == 0);
 }
 
 ssize_t Http2Session::on_read()
