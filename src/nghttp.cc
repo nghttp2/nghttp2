@@ -267,6 +267,8 @@ struct Request {
     int exclusive = 0;
     int32_t stream_id = -1;
 
+    nghttp2_priority_spec_default_init(&pri_spec);
+
     if(pri == 0) {
       return pri_spec;
     }
