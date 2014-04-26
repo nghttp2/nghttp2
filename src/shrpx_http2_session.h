@@ -106,6 +106,8 @@ public:
 
   size_t get_outbuf_length() const;
 
+  SSL* get_ssl() const;
+
   enum {
     // Disconnected
     DISCONNECTED,

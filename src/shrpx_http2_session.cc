@@ -257,12 +257,21 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       SSLOG(INFO, http2session) << "Connection established";
     }
     http2session->set_state(Http2Session::CONNECTED);
-    if((!get_config()->downstream_no_tls &&
-        !get_config()->insecure && http2session->check_cert() != 0) ||
-       http2session->on_connect() != 0) {
+    if(!get_config()->downstream_no_tls) {
+      if(!ssl::check_http2_requirement(http2session->get_ssl()) ||
+         (!get_config()->insecure && http2session->check_cert() != 0)) {
+
+        http2session->disconnect();
+
+        return;
+      }
+    }
+
+    if(http2session->on_connect() != 0) {
       http2session->disconnect();
       return;
     }
+
     int fd = bufferevent_getfd(bev);
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
@@ -1382,6 +1391,11 @@ size_t Http2Session::get_outbuf_length() const
   } else {
     return OUTBUF_MAX_THRES;
   }
+}
+
+SSL* Http2Session::get_ssl() const
+{
+  return ssl_;
 }
 
 } // namespace shrpx
