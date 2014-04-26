@@ -715,6 +715,14 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
       (downstream->get_response_major(), downstream->get_response_minor());
     hdrs += "\r\n";
   }
+
+  for(auto& p : get_config()->add_response_headers) {
+    hdrs += p.first;
+    hdrs += ": ";
+    hdrs += p.second;
+    hdrs += "\r\n";
+  }
+
   hdrs += "\r\n";
   if(LOG_ENABLED(INFO)) {
     const char *hdrp;

@@ -112,6 +112,7 @@ extern const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[];
 extern const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[];
 extern const char SHRPX_OPT_PADDING[];
 extern const char SHRPX_OPT_ALTSVC[];
+extern const char SHRPX_OPT_ADD_RESPONSE_HEADER[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -151,6 +152,7 @@ struct Config {
   // The list of (private key file, certificate file) pair
   std::vector<std::pair<std::string, std::string>> subcerts;
   std::vector<AltSvc> altsvcs;
+  std::vector<std::pair<std::string, std::string>> add_response_headers;
   sockaddr_union downstream_addr;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
@@ -284,6 +286,12 @@ std::string read_passwd_from_file(const char *filename);
 // first element in the return value points to it.  It is caller's
 // responsibility to deallocate its memory.
 std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s);
+
+// Parses header field in |optarg|.  We expect header field is formed
+// like "NAME: VALUE".  We require that NAME is non empty string.  ":"
+// is allowed at the start of the NAME, but NAME == ":" is not
+// allowed.  This function returns pair of NAME and VALUE.
+std::pair<std::string, std::string> parse_header(const char *optarg);
 
 // Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
 // NULL, it is freed before copying.

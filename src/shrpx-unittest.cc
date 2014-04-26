@@ -107,6 +107,8 @@ int main(int argc, char* argv[])
                    shrpx::test_downstream_rewrite_norm_location_response_header) ||
       !CU_add_test(pSuite, "config_parse_config_str_list",
                    shrpx::test_shrpx_config_parse_config_str_list) ||
+      !CU_add_test(pSuite, "config_parse_header",
+                   shrpx::test_shrpx_config_parse_header) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",

@@ -763,6 +763,13 @@ Misc:
                      field or HTTP/2 ALTSVC frame.  This option can be
                      used   multiple   times   to   specify   multiple
                      alternative services.  Example: --altsvc=h2,443
+  --add-response-header=<HEADER>
+                     Specify  additional   header  field  to   add  to
+                     response  header set.   This option  just appends
+                     header field  and won't replace  anything already
+                     set.  This  option can  be used several  times to
+                     specify multiple header fields.
+                     Example: --add-response-header="foo: bar"
   --frontend-http2-dump-request-header=<PATH>
                      Dumps request headers received by HTTP/2 frontend
                      to  the file  denoted in  <PATH>.  The  output is
@@ -870,6 +877,7 @@ int main(int argc, char **argv)
       {"worker-write-rate", required_argument, &flag, 52},
       {"worker-write-burst", required_argument, &flag, 53},
       {"altsvc", required_argument, &flag, 54},
+      {"add-response-header", required_argument, &flag, 55},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1129,6 +1137,10 @@ int main(int argc, char **argv)
       case 54:
         // --altsvc
         cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC, optarg);
+        break;
+      case 55:
+        // --add-response-header
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_RESPONSE_HEADER, optarg);
         break;
       default:
         break;

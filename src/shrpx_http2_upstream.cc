@@ -1036,7 +1036,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();
   // 2 means :status and possible via header field.
-  nva.reserve(nheader + 2);
+  nva.reserve(nheader + 2 + get_config()->add_response_headers.size());
   std::string via_value;
   auto response_status = util::utos(downstream->get_response_http_status());
   nva.push_back(http2::make_nv_ls(":status", response_status));
@@ -1056,6 +1056,11 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
       (downstream->get_response_major(), downstream->get_response_minor());
     nva.push_back(http2::make_nv_ls("via", via_value));
   }
+
+  for(auto& p : get_config()->add_response_headers) {
+    nva.push_back(http2::make_nv(p.first, p.second));
+  }
+
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for(auto& nv : nva) {

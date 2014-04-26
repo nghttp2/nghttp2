@@ -122,6 +122,7 @@ const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[] = "http2-no-cookie-crumbling";
 const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[] = "frontend-frame-debug";
 const char SHRPX_OPT_PADDING[] = "padding";
 const char SHRPX_OPT_ALTSVC[] = "altsvc";
+const char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
 
 namespace {
 Config *config = nullptr;
@@ -249,6 +250,22 @@ std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s)
   list[len++] = first;
   *outlen = len;
   return list;
+}
+
+std::pair<std::string, std::string> parse_header(const char *optarg)
+{
+  // We skip possible ":" at the start of optarg.
+  const auto *colon = strchr(optarg + 1, ':');
+
+  // name = ":" is not allowed
+  if(colon == nullptr || (optarg[0] == ':' && colon == optarg + 1)) {
+    return {"", ""};
+  }
+
+  auto value = colon + 1;
+  for(; *value == '\t' || *value == ' '; ++value);
+
+  return {std::string(optarg, colon), std::string(value, strlen(value))};
 }
 
 int parse_config(const char *opt, const char *optarg)
@@ -543,6 +560,14 @@ int parse_config(const char *opt, const char *optarg)
 
     mod_config()->altsvcs.push_back(std::move(altsvc));
 
+  } else if(util::strieq(opt, SHRPX_OPT_ADD_RESPONSE_HEADER)) {
+    auto p = parse_header(optarg);
+    if(p.first.empty()) {
+      LOG(ERROR) << "add-response-header: header field name is empty: "
+                 << optarg;
+      return -1;
+    }
+    mod_config()->add_response_headers.push_back(std::move(p));
   } else if(util::strieq(opt, "conf")) {
     LOG(WARNING) << "conf is ignored";
   } else {

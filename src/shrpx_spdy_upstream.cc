@@ -854,7 +854,9 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   }
   size_t nheader = downstream->get_response_headers().size();
   // 6 means :status, :version and possible via header field.
-  auto nv = util::make_unique<const char*[]>(nheader * 2 + 6 + 1);
+  auto nv = util::make_unique<const char*[]>
+    (nheader * 2 + 6 + get_config()->add_response_headers.size() * 2 + 1);
+
   size_t hdidx = 0;
   std::string via_value;
   std::string status_string = http2::get_status_string
@@ -887,6 +889,12 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     nv[hdidx++] = "via";
     nv[hdidx++] = via_value.c_str();
   }
+
+  for(auto& p : get_config()->add_response_headers) {
+    nv[hdidx++] = p.first.c_str();
+    nv[hdidx++] = p.second.c_str();
+  }
+
   nv[hdidx++] = 0;
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;

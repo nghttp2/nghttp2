@@ -154,7 +154,7 @@ Headers concat_norm_headers(Headers headers);
 // value.c_str().  If |no_index| is true, nghttp2_nv flags member has
 // NGHTTP2_NV_FLAG_NO_INDEX flag set.
 nghttp2_nv make_nv(const std::string& name, const std::string& value,
-                   bool no_index);
+                   bool no_index = false);
 
 // Create nghttp2_nv from string literal |name| and |value|.
 template<size_t N, size_t M>
