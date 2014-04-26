@@ -1957,7 +1957,7 @@ int main(int argc, char **argv)
       char *header = optarg;
       // Skip first possible ':' in the header name
       char *value = strchr( optarg + 1, ':' );
-      if ( ! value || header + 1 == value) {
+      if ( ! value || (header[0] == ':' && header + 1 == value)) {
         std::cerr << "-H: invalid header: " << optarg
                   << std::endl;
         exit(EXIT_FAILURE);
