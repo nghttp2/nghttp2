@@ -41,6 +41,10 @@
 
 #include <nghttp2/nghttp2.h>
 
+#ifdef HAVE_SPDYLAY
+#include <spdylay/spdylay.h>
+#endif // HAVE_SPDYLAY
+
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
@@ -158,11 +162,33 @@ int alpn_select_proto_cb(SSL* ssl,
                          const unsigned char *in, unsigned int inlen,
                          void *arg)
 {
-  if(nghttp2_select_next_protocol
-     (const_cast<unsigned char**>(out), outlen, in, inlen) == -1) {
-    return SSL_TLSEXT_ERR_NOACK;
+  int rv;
+
+  rv = nghttp2_select_next_protocol
+    (const_cast<unsigned char**>(out), outlen, in, inlen);
+
+  if(rv == 1) {
+    // HTTP/2 was selected
+    return SSL_TLSEXT_ERR_OK;
   }
-  return SSL_TLSEXT_ERR_OK;
+
+#ifdef HAVE_SPDYLAY
+  rv = spdylay_select_next_protocol
+    (const_cast<unsigned char**>(out), outlen, in, inlen);
+
+  if(rv > 0) {
+    // SPDY was selected
+    return SSL_TLSEXT_ERR_OK;
+  }
+#endif // HAVE_SPDYLAY
+
+  if(rv == -1) {
+    // No selection was made
+    return SSL_TLSEXT_ERR_OK;
+  }
+
+  // We selected http/1.1
+  return SSL_TLSEXT_ERR_NOACK;
 }
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
