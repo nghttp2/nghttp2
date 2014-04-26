@@ -156,6 +156,24 @@ void info_callback(const SSL *ssl, int where, int ret)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
+// Returns true if ALPN identifier list |in| of length |inlen|
+// contains http/1.1.
+bool check_http1_available_in_alpn_list(const unsigned char *in,
+                                        unsigned int inlen)
+{
+  for(unsigned int i = 0; i < inlen; i += 1 + in[i]) {
+    if(in[i] == 8 && i + 1 + in[i] <= inlen &&
+       memcmp("http/1.1", &in[i + 1], in[i]) == 0) {
+
+      return true;
+    }
+  }
+
+  return false;
+}
+} // namespace
+
+namespace {
 int alpn_select_proto_cb(SSL* ssl,
                          const unsigned char **out,
                          unsigned char *outlen,
@@ -164,31 +182,36 @@ int alpn_select_proto_cb(SSL* ssl,
 {
   int rv;
 
-  rv = nghttp2_select_next_protocol
-    (const_cast<unsigned char**>(out), outlen, in, inlen);
+  if(check_http2_requirement(ssl)) {
 
-  if(rv == 1) {
-    // HTTP/2 was selected
-    return SSL_TLSEXT_ERR_OK;
+    rv = nghttp2_select_next_protocol
+      (const_cast<unsigned char**>(out), outlen, in, inlen);
+
+    if(rv == 1) {
+      // HTTP/2 was selected
+      return SSL_TLSEXT_ERR_OK;
+    }
+  } else if(check_http1_available_in_alpn_list(in, inlen)) {
+    *out = reinterpret_cast<const unsigned char*>("http/1.1");
+    *outlen = strlen("http/1.1");
+
+    rv = 0;
+  } else {
+    rv = -1;
   }
 
 #ifdef HAVE_SPDYLAY
   rv = spdylay_select_next_protocol
     (const_cast<unsigned char**>(out), outlen, in, inlen);
-
-  if(rv > 0) {
-    // SPDY was selected
-    return SSL_TLSEXT_ERR_OK;
-  }
 #endif // HAVE_SPDYLAY
 
   if(rv == -1) {
     // No selection was made
-    return SSL_TLSEXT_ERR_OK;
+    return SSL_TLSEXT_ERR_NOACK;
   }
 
   // We selected http/1.1
-  return SSL_TLSEXT_ERR_NOACK;
+  return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
@@ -893,6 +916,26 @@ bool in_proto_list(char **protos, size_t len,
     }
   }
   return false;
+}
+
+bool check_http2_requirement(SSL *ssl)
+{
+  auto tls_ver = SSL_version(ssl);
+
+  switch(tls_ver) {
+  case TLS1_1_VERSION:
+  case TLS1_2_VERSION:
+    break;
+  default:
+    LOG(INFO) << "TLSv1.2 or TLSv1.1 was not negotiated. "
+              << "HTTP/2 must not be negotiated.";
+    return false;
+  }
+
+  // TODO Figure out that ECDHE or DHE was negotiated and their key
+  // size.  SSL_get_server_tmp_key() cannot be used on server side.
+
+  return true;
 }
 
 } // namespace ssl

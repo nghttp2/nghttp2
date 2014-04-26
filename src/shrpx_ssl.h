@@ -129,6 +129,9 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
 bool in_proto_list(char **protos, size_t len,
                    const unsigned char *proto, size_t protolen);
 
+// Returns true if security requirement for HTTP/2 is fulfilled.
+bool check_http2_requirement(SSL *ssl);
+
 } // namespace ssl
 
 } // namespace shrpx
