@@ -385,6 +385,12 @@ int ClientHandler::validate_next_proto()
       if(next_proto_len == NGHTTP2_PROTO_VERSION_ID_LEN &&
          memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
                 NGHTTP2_PROTO_VERSION_ID_LEN) == 0) {
+
+        // For NPN, we must check security requirement here.
+        if(!ssl::check_http2_requirement(ssl_)) {
+          return -1;
+        }
+
         set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
                    upstream_eventcb);
         upstream_ = util::make_unique<Http2Upstream>(this);
