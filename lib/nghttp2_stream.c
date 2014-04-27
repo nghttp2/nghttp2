@@ -146,6 +146,10 @@ int32_t nghttp2_stream_dep_distributed_weight(nghttp2_stream *stream,
 int32_t nghttp2_stream_dep_distributed_effective_weight
 (nghttp2_stream *stream, int32_t weight)
 {
+  if(stream->sum_norest_weight == 0) {
+    return stream->effective_weight;
+  }
+
   weight = stream->effective_weight * weight / stream->sum_norest_weight;
 
   return nghttp2_max(1, weight);
