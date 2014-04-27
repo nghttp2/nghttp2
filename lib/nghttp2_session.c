@@ -1540,6 +1540,43 @@ static int session_consider_blocked(nghttp2_session *session,
   return 0;
 }
 
+static int session_call_adjust_priority(nghttp2_session *session,
+                                        nghttp2_frame *frame,
+                                        nghttp2_stream *stream)
+{
+  int rv;
+
+  if(session->callbacks.adjust_priority_callback) {
+    nghttp2_priority_spec pri_spec;
+
+    pri_spec = frame->headers.pri_spec;
+
+    rv = session->callbacks.adjust_priority_callback(session, frame,
+                                                     &pri_spec,
+                                                     session->user_data);
+
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+
+    frame->headers.pri_spec = pri_spec;
+
+    if(nghttp2_priority_spec_check_default(&pri_spec)) {
+      rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
+      frame->hd.flags &= ~NGHTTP2_FLAG_PRIORITY;
+    } else {
+      frame->hd.flags |= NGHTTP2_FLAG_PRIORITY;
+    }
+  }
+
+  return 0;
+}
+
 /*
  * This function serializes frame for transmission.
  *
@@ -1558,8 +1595,13 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS: {
       nghttp2_headers_aux_data *aux_data;
+
       aux_data = (nghttp2_headers_aux_data*)item->aux_data;
+
       if(frame->hd.stream_id == -1) {
+        nghttp2_priority_spec pri_spec_default;
+        nghttp2_stream *stream;
+
         /* initial HEADERS, which opens stream */
         frame->headers.cat = NGHTTP2_HCAT_REQUEST;
         rv = nghttp2_session_predicate_request_headers_send(session,
@@ -1569,6 +1611,29 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
         }
         frame->hd.stream_id = session->next_stream_id;
         session->next_stream_id += 2;
+
+        // We first open strea with default priority.  This is because
+        // priority may be adjusted in callback.
+        nghttp2_priority_spec_default_init(&pri_spec_default);
+
+        stream = nghttp2_session_open_stream
+          (session, frame->hd.stream_id,
+           NGHTTP2_STREAM_FLAG_NONE,
+           &pri_spec_default,
+           NGHTTP2_STREAM_INITIAL,
+           aux_data ? aux_data->stream_user_data : NULL);
+
+        if(stream == NULL) {
+          return NGHTTP2_ERR_NOMEM;
+        }
+
+        /* We need to call this after stream was opened so that we can
+           use nghttp2_session_get_stream_user_data() */
+        rv = session_call_adjust_priority(session, frame, stream);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
 
       } else if(nghttp2_session_predicate_push_response_headers_send
                 (session, frame->hd.stream_id) == 0) {
@@ -1584,10 +1649,21 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
           return rv;
         }
       }
+
       framerv = nghttp2_frame_pack_headers(&session->aob.framebufs,
                                            &frame->headers,
                                            &session->hd_deflater);
+
       if(framerv < 0) {
+        if(!nghttp2_is_fatal(framerv)) {
+          rv = nghttp2_session_close_stream(session, frame->hd.stream_id,
+                                            NGHTTP2_NO_ERROR);
+
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
+
         return framerv;
       }
 
@@ -1600,26 +1676,12 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
         return framerv;
       }
 
-      switch(frame->headers.cat) {
-      case NGHTTP2_HCAT_REQUEST:
-        if(!nghttp2_session_open_stream(session, frame->hd.stream_id,
-                                        NGHTTP2_STREAM_FLAG_NONE,
-                                        &frame->headers.pri_spec,
-                                        NGHTTP2_STREAM_INITIAL,
-                                        aux_data ?
-                                        aux_data->stream_user_data : NULL)) {
-          return NGHTTP2_ERR_NOMEM;
-        }
-        break;
-      case NGHTTP2_HCAT_PUSH_RESPONSE:
+      if(frame->headers.cat == NGHTTP2_HCAT_PUSH_RESPONSE) {
         if(aux_data && aux_data->stream_user_data) {
           nghttp2_stream *stream;
           stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
           stream->stream_user_data = aux_data->stream_user_data;
         }
-        break;
-      default:
-        break;
       }
 
       DEBUGF(fprintf(stderr, "send: HEADERS finally serialized in %zd bytes\n",

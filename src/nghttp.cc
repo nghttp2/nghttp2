@@ -253,9 +253,7 @@ struct Request {
   {
     for(auto i = start; i >= 0; --i) {
       for(auto req : dep->deps[i]) {
-        if(req->stat.stage != STAT_ON_COMPLETE) {
-          return req->stream_id;
-        }
+        return req->stream_id;
       }
     }
     return -1;
@@ -1108,12 +1106,6 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
     return;
   }
 
-  auto pri_spec = req->resolve_dep(req->pri);
-
-  if(!nghttp2_priority_spec_check_default(&pri_spec)) {
-    nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, stream_id, &pri_spec);
-  }
-
   auto itr = std::begin(req->dep->deps);
   for(; itr != std::end(req->dep->deps); ++itr) {
     if((*itr)[0]->pri == req->pri) {
@@ -1146,6 +1138,23 @@ void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
   if(rv != 0) {
     client->disconnect();
   }
+}
+} // namespace
+
+namespace {
+int adjust_priority_callback
+(nghttp2_session *session, const nghttp2_frame *frame,
+ nghttp2_priority_spec *pri_spec, void *user_data)
+{
+  auto req = (Request*)nghttp2_session_get_stream_user_data
+    (session, frame->hd.stream_id);
+  auto pri_spec_adjusted = req->resolve_dep(req->pri);
+
+  if(!nghttp2_priority_spec_check_default(&pri_spec_adjusted)) {
+    *pri_spec = pri_spec_adjusted;
+  }
+
+  return 0;
 }
 } // namespace
 
@@ -1718,6 +1727,7 @@ int run(char **uris, int n)
   if(config.padding) {
     callbacks.select_padding_callback = select_padding_callback;
   }
+  callbacks.adjust_priority_callback = adjust_priority_callback;
 
   std::string prev_scheme;
   std::string prev_host;
