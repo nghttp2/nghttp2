@@ -131,7 +131,8 @@ int servername_callback(SSL *ssl, int *al, void *arg)
       }
     }
   }
-  return SSL_TLSEXT_ERR_NOACK;
+
+  return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
 
