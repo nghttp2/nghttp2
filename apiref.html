@@ -1817,6 +1817,30 @@ inclusive.  Choosing number not in this range will be treated as
 </dd></dl>
 
 <dl class="type">
+<dt id="c.nghttp2_adjust_priority_callback">
+typedef int <tt class="descname">(*nghttp2_adjust_priority_callback)</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#c.nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_adjust_priority_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback function invoked to adjust priority value for request
+HEADERS.  This callback is called only for request HEADERS (which
+means, <tt class="xref c c-func docutils literal"><span class="pre">frame-&gt;hd.type</span> <span class="pre">==</span> <span class="pre">NGHTTP2_HEADERS</span> <span class="pre">&amp;&amp;</span> <span class="pre">frame-&gt;headers.cat</span> <span class="pre">==</span>
+<span class="pre">NGHTTP2_HCAT_REQUEST()</span></tt> hold) and before
+<tt class="xref c c-type docutils literal"><span class="pre">nghttp2_before_frame_send_callback()</span></tt>.  The application can
+adjust priority value <em>pri_spec</em>.  Initially, <em>pri_spec</em> is filled
+with the current priority value, which is equal to
+<tt class="xref c c-func docutils literal"><span class="pre">frame-&gt;headers.pri_spec()</span></tt>.  If the application doesn&#8217;t alter
+priority value, just return 0 without updating <em>pri_spec</em>.</p>
+<p>Since the application doesn&#8217;t know stream ID when it submits
+requests, it may not be able to add correct priority value to
+HEADERS frame and forced to use follwing PRIORITY frame.  The
+purpose of this callback is give the chance to the application to
+adjust priority value with the latest information it has just
+before transmission so that correct priority is included in HEADERS
+frame and it doesn&#8217;t have to send additional PRIORITY frame.</p>
+<p>Returning <a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a> will make
+<a class="reference internal" href="#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> function immediately return
+<a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="type">
 <dt id="c.nghttp2_session_callbacks">
 <tt class="descname">nghttp2_session_callbacks</tt><a class="headerlink" href="#c.nghttp2_session_callbacks" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback functions.</p>
@@ -1911,6 +1935,13 @@ received.</p>
 <dd><p>Callback function invoked when the library asks application how
 many padding bytes are required for the transmission of the given
 frame.</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="c.nghttp2_session_callbacks.adjust_priority_callback">
+<a class="reference internal" href="#c.nghttp2_adjust_priority_callback" title="nghttp2_adjust_priority_callback">nghttp2_adjust_priority_callback</a> <tt class="descname">adjust_priority_callback</tt><a class="headerlink" href="#c.nghttp2_session_callbacks.adjust_priority_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback function invoked to adjust priority value just before
+request HEADERS is serialized to the wire format.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2093,6 +2124,9 @@ which tells when each callback is invoked:</p>
 are not met (e.g., request HEADERS cannot be sent after GOAWAY),
 <a class="reference internal" href="#c.nghttp2_session_callbacks.on_frame_not_send_callback" title="nghttp2_session_callbacks.on_frame_not_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_not_send_callback</span></tt></a>
 is invoked.  Abort the following steps.</li>
+<li>If the frame is request HEADERS,
+<a class="reference internal" href="#c.nghttp2_session_callbacks.adjust_priority_callback" title="nghttp2_session_callbacks.adjust_priority_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.adjust_priority_callback</span></tt></a> is
+invoked.</li>
 <li>If the frame is HEADERS, PUSH_PROMISE or DATA,
 <a class="reference internal" href="#c.nghttp2_session_callbacks.select_padding_callback" title="nghttp2_session_callbacks.select_padding_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.select_padding_callback</span></tt></a> is
 invoked.</li>

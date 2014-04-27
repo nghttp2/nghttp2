@@ -1581,6 +1581,37 @@
  <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Callback function invoked to adjust priority value for request</span>
+<span class="cm"> * HEADERS.  This callback is called only for request HEADERS (which</span>
+<span class="cm"> * means, `frame-&gt;hd.type == NGHTTP2_HEADERS &amp;&amp; frame-&gt;headers.cat ==</span>
+<span class="cm"> * NGHTTP2_HCAT_REQUEST` hold) and before</span>
+<span class="cm"> * :type:`nghttp2_before_frame_send_callback()`.  The application can</span>
+<span class="cm"> * adjust priority value |pri_spec|.  Initially, |pri_spec| is filled</span>
+<span class="cm"> * with the current priority value, which is equal to</span>
+<span class="cm"> * `frame-&gt;headers.pri_spec`.  If the application doesn&#39;t alter</span>
+<span class="cm"> * priority value, just return 0 without updating |pri_spec|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Since the application doesn&#39;t know stream ID when it submits</span>
+<span class="cm"> * requests, it may not be able to add correct priority value to</span>
+<span class="cm"> * HEADERS frame and forced to use follwing PRIORITY frame.  The</span>
+<span class="cm"> * purpose of this callback is give the chance to the application to</span>
+<span class="cm"> * adjust priority value with the latest information it has just</span>
+<span class="cm"> * before transmission so that correct priority is included in HEADERS</span>
+<span class="cm"> * frame and it doesn&#39;t have to send additional PRIORITY frame.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returning :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will make</span>
+<span class="cm"> * `nghttp2_session_send()` function immediately return</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_adjust_priority_callback</span><span class="p">)</span>
+<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+ <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+ <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
+ <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
 <span class="cm"> * @struct</span>
 <span class="cm"> *</span>
 <span class="cm"> * Callback functions.</span>
@@ -1653,6 +1684,11 @@
 <span class="cm">   * frame.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_select_padding_callback</span> <span class="n">select_padding_callback</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Callback function invoked to adjust priority value just before</span>
+<span class="cm">   * request HEADERS is serialized to the wire format.</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_adjust_priority_callback</span> <span class="n">adjust_priority_callback</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_session_callbacks</span><span class="p">;</span>
 
 <span class="k">struct</span> <span class="n">nghttp2_option</span><span class="p">;</span>
@@ -1859,20 +1895,23 @@
 <span class="cm"> *    are not met (e.g., request HEADERS cannot be sent after GOAWAY),</span>
 <span class="cm"> *    :member:`nghttp2_session_callbacks.on_frame_not_send_callback`</span>
 <span class="cm"> *    is invoked.  Abort the following steps.</span>
-<span class="cm"> * 4. If the frame is HEADERS, PUSH_PROMISE or DATA,</span>
+<span class="cm"> * 4. If the frame is request HEADERS,</span>
+<span class="cm"> *    :member:`nghttp2_session_callbacks.adjust_priority_callback` is</span>
+<span class="cm"> *    invoked.</span>
+<span class="cm"> * 5. If the frame is HEADERS, PUSH_PROMISE or DATA,</span>
 <span class="cm"> *    :member:`nghttp2_session_callbacks.select_padding_callback` is</span>
 <span class="cm"> *    invoked.</span>
-<span class="cm"> * 5. If the frame is request HEADERS, the stream is opened here.</span>
-<span class="cm"> * 6. :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
+<span class="cm"> * 6. If the frame is request HEADERS, the stream is opened here.</span>
+<span class="cm"> * 7. :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
 <span class="cm"> *    invoked.</span>
-<span class="cm"> * 7. :member:`nghttp2_session_callbacks.send_callback` is invoked one</span>
+<span class="cm"> * 8. :member:`nghttp2_session_callbacks.send_callback` is invoked one</span>
 <span class="cm"> *    or more times to send the frame.</span>
-<span class="cm"> * 8. :member:`nghttp2_session_callbacks.on_frame_send_callback` is</span>
+<span class="cm"> * 9. :member:`nghttp2_session_callbacks.on_frame_send_callback` is</span>
 <span class="cm"> *    invoked.</span>
-<span class="cm"> * 9. If the transmission of the frame triggers closure of the stream,</span>
-<span class="cm"> *    the stream is closed and</span>
-<span class="cm"> *    :member:`nghttp2_session_callbacks.on_stream_close_callback` is</span>
-<span class="cm"> *    invoked.</span>
+<span class="cm"> * 10. If the transmission of the frame triggers closure of the stream,</span>
+<span class="cm"> *     the stream is closed and</span>
+<span class="cm"> *     :member:`nghttp2_session_callbacks.on_stream_close_callback` is</span>
+<span class="cm"> *     invoked.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
