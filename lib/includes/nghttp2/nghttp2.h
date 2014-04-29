@@ -2842,6 +2842,122 @@ int nghttp2_check_header_name(const uint8_t *name, size_t len);
  */
 int nghttp2_check_header_value(const uint8_t *value, size_t len);
 
+/* HPACK API */
+
+struct nghttp2_hd_inflater;
+
+/**
+ * @struct
+ *
+ * HPACK inflater object.
+ */
+typedef struct nghttp2_hd_inflater nghttp2_hd_inflater;
+
+/**
+ * @function
+ *
+ * Initializes |*inflater_ptr| for inflating name/values pairs.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr);
+
+/**
+ * @function
+ *
+ * Deallocates any resources allocated for |inflater|.
+ */
+void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater);
+
+/**
+ * @function
+ *
+ * Changes header table size in the |inflater|. This may trigger
+ * eviction in the dynamic table.
+ *
+ * The |settings_hd_table_bufsize_max| should be the value transmitted
+ * in SETTINGS_HEADER_TABLE_SIZE.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
+                                         size_t settings_hd_table_bufsize_max);
+
+/**
+ * @enum
+ *
+ * The flags for header inflation.
+ */
+typedef enum {
+  /**
+   * No flag set.
+   */
+  NGHTTP2_HD_INFLATE_NONE = 0,
+  /**
+   * Indicates all headers were inflated.
+   */
+  NGHTTP2_HD_INFLATE_FINAL = 1,
+  /**
+   * Indicates a header was emitted.
+   */
+  NGHTTP2_HD_INFLATE_EMIT = (1 << 1)
+} nghttp2_hd_inflate_flag;
+
+/**
+ * @function
+ *
+ * Inflates name/value block stored in |in| with length |inlen|. This
+ * function performs decompression. For each successful emission of
+ * header name/value pair, :enum:`NGHTTP2_HD_INFLATE_EMIT` is set in
+ * |*inflate_flags| and name/value pair is assigned to the |nv_out|
+ * and the function returns. The caller must not free the members of
+ * |nv_out|.
+ *
+ * The |nv_out| may include pointers to the memory region in the
+ * |in|. The caller must retain the |in| while the |nv_out| is used.
+ *
+ * The application should call this function repeatedly until the
+ * `(*inflate_flags) & NGHTTP2_HD_INFLATE_FINAL` is nonzero and return
+ * value is non-negative. This means the all input values are
+ * processed successfully. Then the application must call
+ * `nghttp2_hd_inflate_end_headers()` to prepare for the next header
+ * block input.
+ *
+ * The caller can feed complete compressed header block. It also can
+ * feed it in several chunks. The caller must set |in_final| to
+ * nonzero if the given input is the last block of the compressed
+ * header.
+ *
+ * This function returns the number of bytes processed if it succeeds,
+ * or one of the following negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_HEADER_COMP`
+ *     Inflation process has failed.
+ */
+ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
+                              nghttp2_nv *nv_out, int *inflate_flags,
+                              uint8_t *in, size_t inlen, int in_final);
+
+/**
+ * @function
+ *
+ * Signals the end of decompression for one header block.
+ *
+ * This function returns 0 if it succeeds. Currently this function
+ * always succeeds.
+ */
+int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
+
 #ifdef __cplusplus
 }
 #endif

@@ -142,7 +142,7 @@ typedef struct {
   uint8_t no_refset;
 } nghttp2_hd_deflater;
 
-typedef struct {
+struct nghttp2_hd_inflater {
   nghttp2_hd_context ctx;
   /* header name buffer */
   nghttp2_bufs namebufs;
@@ -180,7 +180,7 @@ typedef struct {
   /* nonzero if deflater requires that current entry must not be
      indexed */
   uint8_t no_index;
-} nghttp2_hd_inflater;
+};
 
 /*
  * Initializes the |ent| members. If NGHTTP2_HD_FLAG_NAME_ALLOC bit
@@ -234,25 +234,9 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
                              size_t deflate_hd_table_bufsize_max);
 
 /*
- * Initializes |inflater| for inflating name/values pairs.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater);
-
-/*
  * Deallocates any resources allocated for |deflater|.
  */
 void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater);
-
-/*
- * Deallocates any resources allocated for |inflater|.
- */
-void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater);
 
 /*
  * Sets the availability of reference set in the |deflater|. If
@@ -280,23 +264,6 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
                                          size_t settings_hd_table_bufsize_max);
 
 /*
- * Changes header table size in the |inflater|. This may trigger
- * eviction in the dynamic table.
- *
- * The |settings_hd_table_bufsize_max| should be the value transmitted
- * in SETTINGS_HEADER_TABLE_SIZE.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
-                                         size_t settings_hd_table_bufsize_max);
-
-
-/*
  * Deflates the |nva|, which has the |nvlen| name/value pairs, into
  * the |bufs|.
  *
@@ -322,54 +289,21 @@ int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                           nghttp2_bufs *bufs,
                           nghttp2_nv *nva, size_t nvlen);
 
-typedef enum {
-  NGHTTP2_HD_INFLATE_NONE = 0,
-  NGHTTP2_HD_INFLATE_FINAL = 1,
-  NGHTTP2_HD_INFLATE_EMIT = (1 << 1)
-} nghttp2_hd_inflate_flag;
-
 /*
- * Inflates name/value block stored in |in| with length |inlen|. This
- * function performs decompression. For each successful emission of
- * header name/value pair, NGHTTP2_HD_INFLATE_EMIT is set in
- * |*inflate_flags| and name/value pair is assigned to the |nv_out|
- * and the function returns. The caller must not free the members of
- * |nv_out|.
+ * Initializes |inflater| for inflating name/values pairs.
  *
- * The |nv_out| may include pointers to the memory region in the
- * |in|. The caller must retain the |in| while the |nv_out| is used.
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
  *
- * The application should call this function repeatedly until the
- * |(*inflate_flags) & NGHTTP2_HD_INFLATE_FINAL| is nonzero and return
- * value is non-negative. This means the all input values are
- * processed successfully. Then the application must call
- * `nghttp2_hd_inflate_end_headers()` to prepare for the next header
- * block input.
- *
- * The caller can feed complete compressed header block. It also can
- * feed it in several chunks. The caller must set |in_final| to
- * nonzero if the given input is the last block of the compressed
- * header.
- *
- * This function returns the number of bytes processed if it succeeds,
- * or one of the following negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
+ * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
- * NGHTTP2_ERR_HEADER_COMP
- *     Inflation process has failed.
  */
-ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
-                              nghttp2_nv *nv_out, int *inflate_flags,
-                              uint8_t *in, size_t inlen, int in_final);
+int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater);
 
 /*
- * Signals the end of decompression for one header block.
- *
- * This function returns 0 if it succeeds. Currently this function
- * always succeeds.
+ * Deallocates any resources allocated for |inflater|.
  */
-int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
+void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t index,

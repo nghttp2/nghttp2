@@ -1920,6 +1920,24 @@ int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
   return 0;
 }
 
+int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr)
+{
+  *inflater_ptr = malloc(sizeof(nghttp2_hd_inflater));
+
+  if(*inflater_ptr == NULL) {
+    return NULL;
+  }
+
+  return nghttp2_hd_inflate_init(*inflater_ptr);
+}
+
+void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater)
+{
+  nghttp2_hd_inflate_free(inflater);
+
+  free(inflater);
+}
+
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t index,
                                   nghttp2_nv *nv, int inc_indexing)
 {
