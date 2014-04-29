@@ -428,7 +428,7 @@ if test "x$werror" != "xno"; then
 fi
 
 if test "x$debug" != "xno"; then
-    CFLAGS="$CFLAGS -DDEBUGBUILD"
+    AC_DEFINE([DEBUGBUILD], [1], [Define to 1 to enable debug output.])
 fi
 
 AC_SUBST([TESTS_LIBS])
