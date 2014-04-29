@@ -1094,7 +1094,7 @@ void check_stream_id(nghttp2_session *session, int32_t stream_id,
   client->streams[stream_id] = req;
   req->record_request_time();
 
-  if(req->pri == 0) {
+  if(req->pri == 0 && req->dep) {
     assert(req->dep->deps.empty());
 
     req->dep->deps.push_back(std::vector<Request*>{req});
