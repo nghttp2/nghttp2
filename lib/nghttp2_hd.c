@@ -309,6 +309,11 @@ static int nghttp2_hd_context_init(nghttp2_hd_context *context,
   return 0;
 }
 
+static void nghttp2_hd_context_free(nghttp2_hd_context *context)
+{
+  nghttp2_hd_ringbuf_free(&context->hd_table);
+}
+
 int nghttp2_hd_deflate_init(nghttp2_hd_deflater *deflater)
 {
   return nghttp2_hd_deflate_init2(deflater,
@@ -334,7 +339,7 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
 
   rv = nghttp2_hd_context_init(&inflater->ctx, NGHTTP2_HD_ROLE_INFLATE);
   if(rv != 0) {
-    return rv;
+    goto fail;
   }
 
   inflater->settings_hd_table_bufsize_max =
@@ -347,15 +352,34 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
 
   inflater->opcode = NGHTTP2_HD_OPCODE_NONE;
   inflater->state = NGHTTP2_HD_STATE_OPCODE;
-  nghttp2_bufs_init(&inflater->namebufs, NGHTTP2_HD_MAX_NAME, 1);
-  nghttp2_bufs_init(&inflater->valuebufs, NGHTTP2_HD_MAX_VALUE / 2, 2);
+
+  rv = nghttp2_bufs_init(&inflater->namebufs, NGHTTP2_HD_MAX_NAME, 1);
+
+  if(rv != 0) {
+    goto namebuf_fail;
+  }
+
+  rv = nghttp2_bufs_init(&inflater->valuebufs, NGHTTP2_HD_MAX_VALUE / 2, 2);
+
+  if(rv != 0) {
+    goto valuebuf_fail;
+  }
+
   inflater->huffman_encoded = 0;
   inflater->index = 0;
   inflater->left = 0;
   inflater->index_required = 0;
   inflater->no_index = 0;
   inflater->ent_name = NULL;
+
   return 0;
+
+ valuebuf_fail:
+  nghttp2_bufs_free(&inflater->namebufs);
+ namebuf_fail:
+  nghttp2_hd_context_free(&inflater->ctx);
+ fail:
+  return rv;
 }
 
 static void hd_inflate_keep_free(nghttp2_hd_inflater *inflater)
@@ -371,11 +395,6 @@ static void hd_inflate_keep_free(nghttp2_hd_inflater *inflater)
   free(inflater->value_keep);
   inflater->name_keep = NULL;
   inflater->value_keep = NULL;
-}
-
-static void nghttp2_hd_context_free(nghttp2_hd_context *context)
-{
-  nghttp2_hd_ringbuf_free(&context->hd_table);
 }
 
 void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater)
