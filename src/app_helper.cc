@@ -483,7 +483,7 @@ int verbose_on_header_callback(nghttp2_session *session,
 {
   nghttp2_nv nva = {
     const_cast<uint8_t*>(name), const_cast<uint8_t*>(value),
-    static_cast<uint16_t>(namelen), static_cast<uint16_t>(valuelen)
+    namelen, valuelen
   };
 
   for(auto& nv : http2::sort_nva(&nva, 1)) {

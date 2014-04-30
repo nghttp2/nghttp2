@@ -140,8 +140,8 @@ typedef struct {
 } nghttp2_nva_out;
 
 int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
-                          uint8_t *name, uint16_t namelen,
-                          uint8_t *value, uint16_t valuelen)
+                          uint8_t *name, size_t namelen,
+                          uint8_t *value, size_t valuelen)
 {
   int rv = 0;
 
@@ -706,7 +706,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t index,
   }
 
   DEBUGF(fprintf(stderr,
-                 "deflatehd: emit indname index=%zu, valuelen=%u, "
+                 "deflatehd: emit indname index=%zu, valuelen=%zu, "
                  "indexing=%d, no_index=%d\n",
                  index, nv->valuelen, inc_indexing, no_index));
 
@@ -754,7 +754,7 @@ static int emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
   no_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0;
 
   DEBUGF(fprintf(stderr,
-                 "deflatehd: emit newname namelen=%u, valuelen=%u, "
+                 "deflatehd: emit newname namelen=%zu, valuelen=%zu, "
                  "indexing=%d, no_index=%d\n",
                  nv->namelen, nv->valuelen, inc_indexing, no_index));
 
