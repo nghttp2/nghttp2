@@ -3144,6 +3144,47 @@ or one of the following negative error codes:</p>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_HEADER_COMP" title="NGHTTP2_ERR_HEADER_COMP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_HEADER_COMP</span></tt></a></dt>
 <dd>Inflation process has failed.</dd>
 </dl>
+<p>Example follows:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="nf">inflate_header_block</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">hd_inflater</span><span class="p">,</span>
+                         <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">,</span> <span class="kt">int</span> <span class="n">final</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+
+    <span class="k">for</span><span class="p">(;;)</span> <span class="p">{</span>
+        <span class="n">nghttp2_nv</span> <span class="n">nv</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">inflate_flags</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+        <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_hd_inflate_hd</span><span class="p">(</span><span class="n">hd_inflater</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">nv</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">inflate_flags</span><span class="p">,</span>
+                                   <span class="n">in</span><span class="p">,</span> <span class="n">inlen</span><span class="p">,</span> <span class="n">final</span><span class="p">);</span>
+
+        <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;inflate failed with error code %d&quot;</span><span class="p">,</span> <span class="n">rv</span><span class="p">);</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">in</span> <span class="o">+=</span> <span class="n">rv</span><span class="p">;</span>
+        <span class="n">inlen</span> <span class="o">-=</span> <span class="n">rv</span><span class="p">;</span>
+
+        <span class="k">if</span><span class="p">(</span><span class="n">inflate_flags</span> <span class="o">&amp;</span> <span class="n">NGHTTP2_HD_INFLATE_EMIT</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fwrite</span><span class="p">(</span><span class="n">nv</span><span class="p">.</span><span class="n">name</span><span class="p">,</span> <span class="n">nv</span><span class="p">.</span><span class="n">namelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stderr</span><span class="p">);</span>
+            <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;: &quot;</span><span class="p">);</span>
+            <span class="n">fwrite</span><span class="p">(</span><span class="n">nv</span><span class="p">.</span><span class="n">value</span><span class="p">,</span> <span class="n">nv</span><span class="p">.</span><span class="n">valuelen</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stderr</span><span class="p">);</span>
+            <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">inflate_flags</span> <span class="o">&amp;</span> <span class="n">NGHTTP2_HD_INFLATE_FINAL</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">nghttp2_hd_inflate_end_headers</span><span class="p">(</span><span class="n">hd_inflater</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">if</span><span class="p">((</span><span class="n">inflate_flags</span> <span class="o">&amp;</span> <span class="n">NGHTTP2_HD_INFLATE_EMIT</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span>
+           <span class="n">inlen</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+           <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="function">

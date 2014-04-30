@@ -3104,6 +3104,48 @@
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_HEADER_COMP`</span>
 <span class="cm"> *     Inflation process has failed.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Example follows::</span>
+<span class="cm"> *</span>
+<span class="cm"> *     int inflate_header_block(nghttp2_hd_inflater *hd_inflater,</span>
+<span class="cm"> *                              uint8_t *in, size_t inlen, int final)</span>
+<span class="cm"> *     {</span>
+<span class="cm"> *         int rv;</span>
+<span class="cm"> *</span>
+<span class="cm"> *         for(;;) {</span>
+<span class="cm"> *             nghttp2_nv nv;</span>
+<span class="cm"> *             int inflate_flags = 0;</span>
+<span class="cm"> *</span>
+<span class="cm"> *             rv = nghttp2_hd_inflate_hd(hd_inflater, &amp;nv, &amp;inflate_flags,</span>
+<span class="cm"> *                                        in, inlen, final);</span>
+<span class="cm"> *</span>
+<span class="cm"> *             if(rv &lt; 0) {</span>
+<span class="cm"> *                 fprintf(stderr, &quot;inflate failed with error code %d&quot;, rv);</span>
+<span class="cm"> *                 return -1;</span>
+<span class="cm"> *             }</span>
+<span class="cm"> *</span>
+<span class="cm"> *             in += rv;</span>
+<span class="cm"> *             inlen -= rv;</span>
+<span class="cm"> *</span>
+<span class="cm"> *             if(inflate_flags &amp; NGHTTP2_HD_INFLATE_EMIT) {</span>
+<span class="cm"> *                 fwrite(nv.name, nv.namelen, 1, stderr);</span>
+<span class="cm"> *                 fprintf(stderr, &quot;: &quot;);</span>
+<span class="cm"> *                 fwrite(nv.value, nv.valuelen, 1, stderr);</span>
+<span class="cm"> *                 fprintf(stderr, &quot;\n&quot;);</span>
+<span class="cm"> *             }</span>
+<span class="cm"> *             if(inflate_flags &amp; NGHTTP2_HD_INFLATE_FINAL) {</span>
+<span class="cm"> *                 nghttp2_hd_inflate_end_headers(hd_inflater);</span>
+<span class="cm"> *                 break;</span>
+<span class="cm"> *             }</span>
+<span class="cm"> *             if((inflate_flags &amp; NGHTTP2_HD_INFLATE_EMIT) == 0 &amp;&amp;</span>
+<span class="cm"> *                inlen == 0) {</span>
+<span class="cm"> *                break;</span>
+<span class="cm"> *             }</span>
+<span class="cm"> *         }</span>
+<span class="cm"> *</span>
+<span class="cm"> *         return 0;</span>
+<span class="cm"> *     }</span>
+<span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_inflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">inflater</span><span class="p">,</span>
                               <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nv_out</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">inflate_flags</span><span class="p">,</span>
