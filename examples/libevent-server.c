@@ -549,7 +549,7 @@ static int on_stream_close_callback(nghttp2_session *session,
 
 static void initialize_nghttp2_session(http2_session_data *session_data)
 {
-  nghttp2_session_callbacks callbacks = {0};
+  nghttp2_session_callbacks callbacks;
 
   callbacks.send_callback = send_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
