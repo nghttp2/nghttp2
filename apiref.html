@@ -942,6 +942,33 @@ which is analogous to HEADERS in SPDY.</p>
 
 </dd></dl>
 
+<dl class="type">
+<dt id="c.nghttp2_hd_inflate_flag">
+<tt class="descname">nghttp2_hd_inflate_flag</tt><a class="headerlink" href="#c.nghttp2_hd_inflate_flag" title="Permalink to this definition">¶</a></dt>
+<dd><p>The flags for header inflation.</p>
+<dl class="macro">
+<dt id="c.NGHTTP2_HD_INFLATE_NONE">
+<tt class="descname">NGHTTP2_HD_INFLATE_NONE</tt><a class="headerlink" href="#c.NGHTTP2_HD_INFLATE_NONE" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0</span></tt>)
+No flag set.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_HD_INFLATE_FINAL">
+<tt class="descname">NGHTTP2_HD_INFLATE_FINAL</tt><a class="headerlink" href="#c.NGHTTP2_HD_INFLATE_FINAL" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">1</span></tt>)
+Indicates all headers were inflated.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_HD_INFLATE_EMIT">
+<tt class="descname">NGHTTP2_HD_INFLATE_EMIT</tt><a class="headerlink" href="#c.NGHTTP2_HD_INFLATE_EMIT" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">(1</span> <span class="pre">&lt;&lt;</span> <span class="pre">1)</span></tt>)
+Indicates a header was emitted.</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 <div class="section" id="types-structs-unions-and-typedefs">
 <h2>Types (structs, unions and typedefs)<a class="headerlink" href="#types-structs-unions-and-typedefs" title="Permalink to this headline">¶</a></h2>
@@ -1958,6 +1985,12 @@ this structure are intentionally hidden from the public API.</p>
 <tt class="descname">nghttp2_gzip</tt><a class="headerlink" href="#c.nghttp2_gzip" title="Permalink to this definition">¶</a></dt>
 <dd><p>The gzip stream to inflate data.  The details of this structure are
 intentionally hidden from the public API.</p>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.nghttp2_hd_inflater">
+<tt class="descname">nghttp2_hd_inflater</tt><a class="headerlink" href="#c.nghttp2_hd_inflater" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPACK inflater object.</p>
 </dd></dl>
 
 </div>
@@ -3047,6 +3080,78 @@ is valid according to
 <a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2">http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</a></p>
 <p>Because this is HTTP2 header field value, it can contain NULL
 character (0x00).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_inflate_new">
+int <tt class="descname">nghttp2_hd_inflate_new</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_inflater" title="nghttp2_hd_inflater">nghttp2_hd_inflater</a><em>&nbsp;**inflater_ptr</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_inflate_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes <em>*inflater_ptr</em> for inflating name/values pairs.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_inflate_del">
+void <tt class="descname">nghttp2_hd_inflate_del</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_inflater" title="nghttp2_hd_inflater">nghttp2_hd_inflater</a><em>&nbsp;*inflater</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_inflate_del" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deallocates any resources allocated for <em>inflater</em>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_inflate_change_table_size">
+int <tt class="descname">nghttp2_hd_inflate_change_table_size</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_inflater" title="nghttp2_hd_inflater">nghttp2_hd_inflater</a><em>&nbsp;*inflater</em>, size_t<em>&nbsp;settings_hd_table_bufsize_max</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_inflate_change_table_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes header table size in the <em>inflater</em>. This may trigger
+eviction in the dynamic table.</p>
+<p>The <em>settings_hd_table_bufsize_max</em> should be the value transmitted
+in SETTINGS_HEADER_TABLE_SIZE.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_inflate_hd">
+ssize_t <tt class="descname">nghttp2_hd_inflate_hd</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_inflater" title="nghttp2_hd_inflater">nghttp2_hd_inflater</a><em>&nbsp;*inflater</em>, <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nv_out</em>, int<em>&nbsp;*inflate_flags</em>, uint8_t<em>&nbsp;*in</em>, size_t<em>&nbsp;inlen</em>, int<em>&nbsp;in_final</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_inflate_hd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inflates name/value block stored in <em>in</em> with length <em>inlen</em>. This
+function performs decompression. For each successful emission of
+header name/value pair, <a class="reference internal" href="#c.NGHTTP2_HD_INFLATE_EMIT" title="NGHTTP2_HD_INFLATE_EMIT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_HD_INFLATE_EMIT</span></tt></a> is set in
+<em>*inflate_flags</em> and name/value pair is assigned to the <em>nv_out</em>
+and the function returns. The caller must not free the members of
+<em>nv_out</em>.</p>
+<p>The <em>nv_out</em> may include pointers to the memory region in the
+<em>in</em>. The caller must retain the <em>in</em> while the <em>nv_out</em> is used.</p>
+<p>The application should call this function repeatedly until the
+<tt class="xref c c-func docutils literal"><span class="pre">(*inflate_flags)</span> <span class="pre">&amp;</span> <span class="pre">NGHTTP2_HD_INFLATE_FINAL()</span></tt> is nonzero and return
+value is non-negative. This means the all input values are
+processed successfully. Then the application must call
+<a class="reference internal" href="#c.nghttp2_hd_inflate_end_headers" title="nghttp2_hd_inflate_end_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_hd_inflate_end_headers()</span></tt></a> to prepare for the next header
+block input.</p>
+<p>The caller can feed complete compressed header block. It also can
+feed it in several chunks. The caller must set <em>in_final</em> to
+nonzero if the given input is the last block of the compressed
+header.</p>
+<p>This function returns the number of bytes processed if it succeeds,
+or one of the following negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_HEADER_COMP" title="NGHTTP2_ERR_HEADER_COMP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_HEADER_COMP</span></tt></a></dt>
+<dd>Inflation process has failed.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_inflate_end_headers">
+int <tt class="descname">nghttp2_hd_inflate_end_headers</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_inflater" title="nghttp2_hd_inflater">nghttp2_hd_inflater</a><em>&nbsp;*inflater</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_inflate_end_headers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Signals the end of decompression for one header block.</p>
+<p>This function returns 0 if it succeeds. Currently this function
+always succeeds.</p>
 </dd></dl>
 
 </div>

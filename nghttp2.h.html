@@ -318,7 +318,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * The maximum header table size.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 &lt;&lt; 16)</span>
+<span class="cp">#define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 &lt;&lt; 28)</span>
 
 
 <span class="cm">/**</span>
@@ -3002,6 +3002,122 @@
 <span class="cm"> * character (0x00).</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_check_header_value</span><span class="p">(</span><span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">);</span>
+
+<span class="cm">/* HPACK API */</span>
+
+<span class="k">struct</span> <span class="n">nghttp2_hd_inflater</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * HPACK inflater object.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">nghttp2_hd_inflater</span> <span class="n">nghttp2_hd_inflater</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Initializes |*inflater_ptr| for inflating name/values pairs.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_hd_inflate_new</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">**</span><span class="n">inflater_ptr</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Deallocates any resources allocated for |inflater|.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">nghttp2_hd_inflate_del</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">inflater</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Changes header table size in the |inflater|. This may trigger</span>
+<span class="cm"> * eviction in the dynamic table.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |settings_hd_table_bufsize_max| should be the value transmitted</span>
+<span class="cm"> * in SETTINGS_HEADER_TABLE_SIZE.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_hd_inflate_change_table_size</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">inflater</span><span class="p">,</span>
+                                         <span class="kt">size_t</span> <span class="n">settings_hd_table_bufsize_max</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> *</span>
+<span class="cm"> * The flags for header inflation.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * No flag set.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HD_INFLATE_NONE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Indicates all headers were inflated.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HD_INFLATE_FINAL</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Indicates a header was emitted.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HD_INFLATE_EMIT</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">}</span> <span class="n">nghttp2_hd_inflate_flag</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Inflates name/value block stored in |in| with length |inlen|. This</span>
+<span class="cm"> * function performs decompression. For each successful emission of</span>
+<span class="cm"> * header name/value pair, :enum:`NGHTTP2_HD_INFLATE_EMIT` is set in</span>
+<span class="cm"> * |*inflate_flags| and name/value pair is assigned to the |nv_out|</span>
+<span class="cm"> * and the function returns. The caller must not free the members of</span>
+<span class="cm"> * |nv_out|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nv_out| may include pointers to the memory region in the</span>
+<span class="cm"> * |in|. The caller must retain the |in| while the |nv_out| is used.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The application should call this function repeatedly until the</span>
+<span class="cm"> * `(*inflate_flags) &amp; NGHTTP2_HD_INFLATE_FINAL` is nonzero and return</span>
+<span class="cm"> * value is non-negative. This means the all input values are</span>
+<span class="cm"> * processed successfully. Then the application must call</span>
+<span class="cm"> * `nghttp2_hd_inflate_end_headers()` to prepare for the next header</span>
+<span class="cm"> * block input.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The caller can feed complete compressed header block. It also can</span>
+<span class="cm"> * feed it in several chunks. The caller must set |in_final| to</span>
+<span class="cm"> * nonzero if the given input is the last block of the compressed</span>
+<span class="cm"> * header.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns the number of bytes processed if it succeeds,</span>
+<span class="cm"> * or one of the following negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_HEADER_COMP`</span>
+<span class="cm"> *     Inflation process has failed.</span>
+<span class="cm"> */</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_inflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">inflater</span><span class="p">,</span>
+                              <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nv_out</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">inflate_flags</span><span class="p">,</span>
+                              <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">,</span> <span class="kt">int</span> <span class="n">in_final</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Signals the end of decompression for one header block.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds. Currently this function</span>
+<span class="cm"> * always succeeds.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_hd_inflate_end_headers</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">inflater</span><span class="p">);</span>
 
 <span class="cp">#ifdef __cplusplus</span>
 <span class="p">}</span>
