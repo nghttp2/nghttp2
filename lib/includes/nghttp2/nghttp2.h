@@ -67,7 +67,7 @@ extern "C" {
 
 struct nghttp2_session;
 /**
- * @struct
+ * @typedef
  *
  * The primary structure to hold the resources needed for a HTTP/2
  * session.  The details of this structure are intentionally hidden
@@ -1533,7 +1533,7 @@ typedef struct {
 struct nghttp2_option;
 
 /**
- * @struct
+ * @typedef
  *
  * Configuration options for :type:`nghttp2_session`.  The details of
  * this structure are intentionally hidden from the public API.
@@ -2721,7 +2721,7 @@ int nghttp2_select_next_protocol(unsigned char **out, unsigned char *outlen,
 struct nghttp2_gzip;
 
 /**
- * @struct
+ * @typedef
  *
  * The gzip stream to inflate data.  The details of this structure are
  * intentionally hidden from the public API.
@@ -2847,7 +2847,7 @@ int nghttp2_check_header_value(const uint8_t *value, size_t len);
 struct nghttp2_hd_inflater;
 
 /**
- * @struct
+ * @typedef
  *
  * HPACK inflater object.
  */
