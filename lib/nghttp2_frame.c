@@ -671,13 +671,17 @@ int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
 
   payloadlen -= var_gift_payloadlen;
 
-  var_gift_payload = malloc(var_gift_payloadlen);
+  if(!var_gift_payloadlen) {
+    var_gift_payload = NULL;
+  } else {
+    var_gift_payload = malloc(var_gift_payloadlen);
 
-  if(var_gift_payload == NULL) {
-    return NGHTTP2_ERR_NOMEM;
+    if(var_gift_payload == NULL) {
+      return NGHTTP2_ERR_NOMEM;
+    }
+
+    memcpy(var_gift_payload, payload + 8, var_gift_payloadlen);
   }
-
-  memcpy(var_gift_payload, payload + 8, var_gift_payloadlen);
 
   nghttp2_frame_unpack_goaway_payload(frame, payload, payloadlen,
                                       var_gift_payload, var_gift_payloadlen);

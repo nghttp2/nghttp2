@@ -366,9 +366,14 @@ ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out)
     len += nghttp2_buf_len(&chain->buf);
   }
 
-  res = malloc(len);
-  if(res == NULL) {
-    return NGHTTP2_ERR_NOMEM;
+  if(!len) {
+    res = NULL;
+  } else {
+    res = malloc(len);
+
+    if(res == NULL) {
+      return NGHTTP2_ERR_NOMEM;
+    }
   }
 
   nghttp2_buf_wrap_init(&resbuf, res, len);
