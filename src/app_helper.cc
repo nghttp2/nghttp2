@@ -469,7 +469,6 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
 
     break;
   default:
-    fprintf(outfile, "\n");
     break;
   }
 }
