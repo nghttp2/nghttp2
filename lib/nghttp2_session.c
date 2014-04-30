@@ -4814,13 +4814,15 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         varlen = iframe->frame.hd.length - 8;
 
-        iframe->raw_lbuf = malloc(varlen);
+        if(varlen > 0) {
+          iframe->raw_lbuf = malloc(varlen);
 
-        if(iframe->raw_lbuf == NULL) {
-          return NGHTTP2_ERR_NOMEM;
+          if(iframe->raw_lbuf == NULL) {
+            return NGHTTP2_ERR_NOMEM;
+          }
+
+          nghttp2_buf_wrap_init(&iframe->lbuf, iframe->raw_lbuf, varlen);
         }
-
-        nghttp2_buf_wrap_init(&iframe->lbuf, iframe->raw_lbuf, varlen);
 
         busy = 1;
 
@@ -5528,10 +5530,15 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
-  iv_copy = nghttp2_frame_iv_copy(iv, niv);
-  if(iv_copy == NULL) {
-    free(frame);
-    return NGHTTP2_ERR_NOMEM;
+
+  if(niv > 0) {
+    iv_copy = nghttp2_frame_iv_copy(iv, niv);
+    if(iv_copy == NULL) {
+      free(frame);
+      return NGHTTP2_ERR_NOMEM;
+    }
+  } else {
+    iv_copy = NULL;
   }
 
   if((flags & NGHTTP2_FLAG_ACK) == 0) {

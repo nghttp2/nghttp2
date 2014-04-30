@@ -74,7 +74,13 @@ int nghttp2_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
 
 void* nghttp2_memdup(const void* src, size_t n)
 {
-  void* dest = malloc(n);
+  void* dest;
+
+  if(n == 0) {
+    return NULL;
+  }
+
+  dest = malloc(n);
   if(dest == NULL) {
     return NULL;
   }

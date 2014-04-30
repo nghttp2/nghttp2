@@ -515,11 +515,18 @@ int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
 {
   size_t payloadlen = niv * sizeof(nghttp2_settings_entry);
 
-  frame->iv = malloc(payloadlen);
-  if(frame->iv == NULL) {
-    return NGHTTP2_ERR_NOMEM;
+  if(niv == 0) {
+    frame->iv = NULL;
+  } else {
+    frame->iv = malloc(payloadlen);
+
+    if(frame->iv == NULL) {
+      return NGHTTP2_ERR_NOMEM;
+    }
+
+    memcpy(frame->iv, iv, payloadlen);
   }
-  memcpy(frame->iv, iv, payloadlen);
+
   frame->niv = niv;
   return 0;
 }
@@ -537,15 +544,27 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
                                            size_t payloadlen)
 {
   size_t i;
+
   *niv_ptr = payloadlen / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
+
+  if(*niv_ptr == 0) {
+    *iv_ptr = NULL;
+
+    return 0;
+  }
+
+
   *iv_ptr = malloc((*niv_ptr)*sizeof(nghttp2_settings_entry));
+
   if(*iv_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
+
   for(i = 0; i < *niv_ptr; ++i) {
     size_t off = i * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
     nghttp2_frame_unpack_settings_entry(&(*iv_ptr)[i], &payload[off]);
   }
+
   return 0;
 }
 
@@ -829,11 +848,19 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
 {
   nghttp2_settings_entry *iv_copy;
   size_t len = niv*sizeof(nghttp2_settings_entry);
+
+  if(len == 0) {
+    return NULL;
+  }
+
   iv_copy = malloc(len);
+
   if(iv_copy == NULL) {
     return NULL;
   }
+
   memcpy(iv_copy, iv, len);
+
   return iv_copy;
 }
 
