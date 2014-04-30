@@ -3503,7 +3503,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
         return nghttp2_session_handle_invalid_connection
           (session, frame, NGHTTP2_PROTOCOL_ERROR);
       }
-      if(session->server && entry->value != 0) {
+      if(!session->server && entry->value != 0) {
         return nghttp2_session_handle_invalid_connection
           (session, frame, NGHTTP2_PROTOCOL_ERROR);
       }
