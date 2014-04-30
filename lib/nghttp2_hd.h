@@ -41,7 +41,6 @@
    by the spec. We just chose the arbitrary size */
 #define NGHTTP2_HD_MAX_NAME 256
 #define NGHTTP2_HD_MAX_VALUE 8192
-#define NGHTTP2_HD_MAX_BUFFER_LENGTH (1 << 15)
 
 /* Default size of maximum table buffer size for encoder. Even if
    remote decoder notifies larger buffer size for its decoding,
