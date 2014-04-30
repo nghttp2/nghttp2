@@ -28,9 +28,8 @@
 #include <assert.h>
 #include <stdio.h>
 
-//#include "nghttp2_frame.h"
 #include "nghttp2_helper.h"
-//#include "nghttp2_int.h"
+#include "nghttp2_int.h"
 
 /* Make scalar initialization form of nghttp2_nv */
 #define MAKE_STATIC_ENT(I, N, V, NH, VH)                                \
