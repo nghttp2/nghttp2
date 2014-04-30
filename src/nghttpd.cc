@@ -128,14 +128,10 @@ Options:
                      --htdocs    option.      Example:    -p/=/foo.png
                      -p/doc=/bar.css
   -b, --padding=<N>  Add  at most  <N>  bytes to  a  frame payload  as
-                     padding.  Specify 0 to disable padding.)" <<
-#ifndef NOTHREADS
-R"(
+                     padding.  Specify 0 to disable padding.
   -n, --workers=<CORE>
                      Set the number of worker threads.
-                     Default: 1)" <<
-#endif /* NOTHREADS */
-R"(
+                     Default: 1
   -e, --error-gzip   Make error response gzipped.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)"
@@ -158,9 +154,7 @@ int main(int argc, char **argv)
       {"header-table-size", required_argument, nullptr, 'c'},
       {"push", required_argument, nullptr, 'p'},
       {"padding", required_argument, nullptr, 'b'},
-#ifndef NOTHREADS
       {"workers", required_argument, nullptr, 'n'},
-#endif /* NOTHREADS */
       {"error-gzip", no_argument, nullptr, 'e'},
       {"no-tls", no_argument, &flag, 1},
       {"color", no_argument, &flag, 2},
@@ -190,16 +184,19 @@ int main(int argc, char **argv)
     case 'e':
       config.error_gzip = true;
       break;
-#ifndef NOTHREADS
     case 'n':
+#ifdef NOTHREADS
+	  std::cerr << "-n: WARNING: Threading disabled at build time, " <<
+		  "no threads created." << std::endl;
+#else
       errno = 0;
       config.num_worker = strtoul(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0' || config.num_worker == 0) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      break;
 #endif /* NOTHREADS */
+      break;
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
