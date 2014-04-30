@@ -437,8 +437,7 @@ if test "x$debug" != "xno"; then
 fi
 
 if test "x$threads" != "xyes"; then
-    CFLAGS="$CFLAGS -DNOTHREADS"
-    CXXFLAGS="$CXXFLAGS -DNOTHREADS"
+    AC_DEFINE([NOTHREADS], [1], [Define to 1 if you want to disable threads.])
 fi
 
 AC_SUBST([TESTS_LIBS])
