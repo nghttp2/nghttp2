@@ -28,9 +28,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "nghttp2_frame.h"
+//#include "nghttp2_frame.h"
 #include "nghttp2_helper.h"
-#include "nghttp2_int.h"
+//#include "nghttp2_int.h"
 
 /* Make scalar initialization form of nghttp2_nv */
 #define MAKE_STATIC_ENT(I, N, V, NH, VH)                                \
@@ -655,7 +655,7 @@ static int emit_string(nghttp2_bufs *bufs,
 
   bufp = sb;
   *bufp = huffman ? 1 << 7 : 0;
-  rv = encode_length(bufp, enclen, 7);
+  encode_length(bufp, enclen, 7);
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
@@ -727,7 +727,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t index,
 
   *bufp = pack_first_byte(inc_indexing, no_index);
 
-  bufp += encode_length(bufp, index + 1, prefixlen);
+  encode_length(bufp, index + 1, prefixlen);
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
@@ -1723,8 +1723,6 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
         goto almost_ok;
       }
-
-      rv = 0;
 
       if(inflater->huffman_encoded) {
         nghttp2_hd_huff_decode_context_init(&inflater->huff_decode_ctx);

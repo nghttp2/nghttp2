@@ -2409,7 +2409,6 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
       rv = nghttp2_session_prep_frame(session, item);
       if(rv == NGHTTP2_ERR_DEFERRED) {
         DEBUGF(fprintf(stderr, "send: frame transmission deferred\n"));
-        rv = 0;
         break;
       }
       if(rv < 0) {
@@ -2448,7 +2447,6 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
-        rv = 0;
         break;
       }
 
@@ -4380,7 +4378,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       }
       case NGHTTP2_HEADERS:
-        pri_fieldlen = 0;
 
         DEBUGF(fprintf(stderr, "recv: HEADERS\n"));
 

@@ -671,6 +671,10 @@ int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
 
   payloadlen -= var_gift_payloadlen;
 
+  if(!var_gift_payloadlen) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
   var_gift_payload = malloc(var_gift_payloadlen);
 
   if(var_gift_payload == NULL) {

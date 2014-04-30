@@ -363,7 +363,6 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
     memcpy(varp, origin, origin_len);
 
     copy_origin = varp;
-    varp += origin_len;
   }
 
   frame = malloc(sizeof(nghttp2_frame));

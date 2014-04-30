@@ -638,7 +638,7 @@ Options:
 int main(int argc, char **argv)
 {
   while(1) {
-    int flag = 0;
+    static int flag = 0;
     static option long_options[] = {
       {"requests", required_argument, nullptr, 'n'},
       {"clients", required_argument, nullptr, 'c'},
