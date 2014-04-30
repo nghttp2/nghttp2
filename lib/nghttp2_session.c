@@ -1612,8 +1612,8 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
         frame->hd.stream_id = session->next_stream_id;
         session->next_stream_id += 2;
 
-        // We first open strea with default priority.  This is because
-        // priority may be adjusted in callback.
+        /* We first open strea with default priority.  This is because
+        priority may be adjusted in callback. */
         nghttp2_priority_spec_default_init(&pri_spec_default);
 
         stream = nghttp2_session_open_stream
