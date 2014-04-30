@@ -2943,6 +2943,48 @@ typedef enum {
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_HEADER_COMP`
  *     Inflation process has failed.
+ *
+ * Example follows::
+ *
+ *     int inflate_header_block(nghttp2_hd_inflater *hd_inflater,
+ *                              uint8_t *in, size_t inlen, int final)
+ *     {
+ *         int rv;
+ *
+ *         for(;;) {
+ *             nghttp2_nv nv;
+ *             int inflate_flags = 0;
+ *
+ *             rv = nghttp2_hd_inflate_hd(hd_inflater, &nv, &inflate_flags,
+ *                                        in, inlen, final);
+ *
+ *             if(rv < 0) {
+ *                 fprintf(stderr, "inflate failed with error code %d", rv);
+ *                 return -1;
+ *             }
+ *
+ *             in += rv;
+ *             inlen -= rv;
+ *
+ *             if(inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
+ *                 fwrite(nv.name, nv.namelen, 1, stderr);
+ *                 fprintf(stderr, ": ");
+ *                 fwrite(nv.value, nv.valuelen, 1, stderr);
+ *                 fprintf(stderr, "\n");
+ *             }
+ *             if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
+ *                 nghttp2_hd_inflate_end_headers(hd_inflater);
+ *                 break;
+ *             }
+ *             if((inflate_flags & NGHTTP2_HD_INFLATE_EMIT) == 0 &&
+ *                inlen == 0) {
+ *                break;
+ *             }
+ *         }
+ *
+ *         return 0;
+ *     }
+ *
  */
 ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
                               nghttp2_nv *nv_out, int *inflate_flags,
