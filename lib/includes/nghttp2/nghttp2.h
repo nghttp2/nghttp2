@@ -2925,8 +2925,8 @@ typedef enum {
  * |in|. The caller must retain the |in| while the |nv_out| is used.
  *
  * The application should call this function repeatedly until the
- * `(*inflate_flags) & NGHTTP2_HD_INFLATE_FINAL` is nonzero and return
- * value is non-negative. This means the all input values are
+ * ``(*inflate_flags) & NGHTTP2_HD_INFLATE_FINAL`` is nonzero and
+ * return value is non-negative. This means the all input values are
  * processed successfully. Then the application must call
  * `nghttp2_hd_inflate_end_headers()` to prepare for the next header
  * block input.
