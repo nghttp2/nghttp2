@@ -688,7 +688,7 @@ static void start_listen(struct event_base *evbase, const char *service,
   hints.ai_flags = AI_PASSIVE;
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
-#endif // AI_ADDRCONFIG
+#endif /* AI_ADDRCONFIG */
 
   rv = getaddrinfo(NULL, service, &hints, &res);
   if(rv != 0) {
