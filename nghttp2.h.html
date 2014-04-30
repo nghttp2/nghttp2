@@ -3086,8 +3086,8 @@
 <span class="cm"> * |in|. The caller must retain the |in| while the |nv_out| is used.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The application should call this function repeatedly until the</span>
-<span class="cm"> * `(*inflate_flags) &amp; NGHTTP2_HD_INFLATE_FINAL` is nonzero and return</span>
-<span class="cm"> * value is non-negative. This means the all input values are</span>
+<span class="cm"> * ``(*inflate_flags) &amp; NGHTTP2_HD_INFLATE_FINAL`` is nonzero and</span>
+<span class="cm"> * return value is non-negative. This means the all input values are</span>
 <span class="cm"> * processed successfully. Then the application must call</span>
 <span class="cm"> * `nghttp2_hd_inflate_end_headers()` to prepare for the next header</span>
 <span class="cm"> * block input.</span>

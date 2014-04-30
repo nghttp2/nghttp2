@@ -3127,8 +3127,8 @@ and the function returns. The caller must not free the members of
 <p>The <em>nv_out</em> may include pointers to the memory region in the
 <em>in</em>. The caller must retain the <em>in</em> while the <em>nv_out</em> is used.</p>
 <p>The application should call this function repeatedly until the
-<tt class="xref c c-func docutils literal"><span class="pre">(*inflate_flags)</span> <span class="pre">&amp;</span> <span class="pre">NGHTTP2_HD_INFLATE_FINAL()</span></tt> is nonzero and return
-value is non-negative. This means the all input values are
+<tt class="docutils literal"><span class="pre">(*inflate_flags)</span> <span class="pre">&amp;</span> <span class="pre">NGHTTP2_HD_INFLATE_FINAL</span></tt> is nonzero and
+return value is non-negative. This means the all input values are
 processed successfully. Then the application must call
 <a class="reference internal" href="#c.nghttp2_hd_inflate_end_headers" title="nghttp2_hd_inflate_end_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_hd_inflate_end_headers()</span></tt></a> to prepare for the next header
 block input.</p>
