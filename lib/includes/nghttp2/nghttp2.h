@@ -384,11 +384,11 @@ typedef struct {
   /**
    * The length of the |name|.
    */
-  uint16_t namelen;
+  size_t namelen;
   /**
    * The length of the |value|.
    */
-  uint16_t valuelen;
+  size_t valuelen;
   /**
    * Bitwise OR of one or more of :type:`nghttp2_nv_flag`.
    */

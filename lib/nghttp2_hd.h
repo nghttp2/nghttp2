@@ -195,8 +195,8 @@ struct nghttp2_hd_inflater {
  *     Out of memory.
  */
 int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
-                          uint8_t *name, uint16_t namelen,
-                          uint8_t *value, uint16_t valuelen);
+                          uint8_t *name, size_t namelen,
+                          uint8_t *value, size_t valuelen);
 
 void nghttp2_hd_entry_free(nghttp2_hd_entry *ent);
 

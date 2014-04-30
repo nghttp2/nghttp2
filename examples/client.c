@@ -52,14 +52,12 @@ enum {
 };
 
 #define MAKE_NV(NAME, VALUE)                                            \
-  {(uint8_t*)NAME, (uint8_t*)VALUE,                                     \
-      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(sizeof(VALUE) - 1),      \
-      NGHTTP2_NV_FLAG_NONE }
+  {(uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1, \
+      NGHTTP2_NV_FLAG_NONE}
 
 #define MAKE_NV_CS(NAME, VALUE)                                         \
-  {(uint8_t*)NAME, (uint8_t*)VALUE,                                     \
-      (uint16_t)(sizeof(NAME) - 1), (uint16_t)(strlen(VALUE)),          \
-      NGHTTP2_NV_FLAG_NONE }
+  {(uint8_t*)NAME, (uint8_t*)VALUE, sizeof(NAME) - 1, strlen(VALUE),    \
+      NGHTTP2_NV_FLAG_NONE}
 
 struct Connection {
   SSL *ssl;

@@ -252,7 +252,7 @@ std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen)
         break;
       }
       auto l = std::find(j, end, '\0');
-      res.push_back({v[i].name, j, v[i].namelen, static_cast<uint16_t>(l-j)});
+      res.push_back({v[i].name, j, v[i].namelen, static_cast<size_t>(l - j)});
       j = l;
     }
   }
@@ -346,12 +346,8 @@ nghttp2_nv make_nv(const std::string& name, const std::string& value,
 
   flags = no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE;
 
-  return {
-    (uint8_t*)name.c_str(),
-      (uint8_t*)value.c_str(),
-      (uint16_t)name.size(), (uint16_t)value.size(),
-      flags
-      };
+  return {(uint8_t*)name.c_str(), (uint8_t*)value.c_str(),
+      name.size(), value.size(), flags};
 }
 
 Headers concat_norm_headers(Headers headers)
