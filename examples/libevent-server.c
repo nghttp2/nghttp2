@@ -383,9 +383,17 @@ static int error_reply(nghttp2_session *session,
     }
     return 0;
   }
-  write(pipefd[1], ERROR_HTML, sizeof(ERROR_HTML) - 1);
+
+  rv = write(pipefd[1], ERROR_HTML, sizeof(ERROR_HTML) - 1);
   close(pipefd[1]);
+
+  if(rv != sizeof(ERROR_HTML)) {
+    close(pipefd[0]);
+    return -1;
+  }
+
   stream_data->fd = pipefd[0];
+
   if(send_response(session, stream_data->stream_id, hdrs, ARRLEN(hdrs),
                    pipefd[0]) != 0) {
     close(pipefd[0]);

@@ -1941,7 +1941,7 @@ int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr)
   *inflater_ptr = malloc(sizeof(nghttp2_hd_inflater));
 
   if(*inflater_ptr == NULL) {
-    return NULL;
+    return NGHTTP2_ERR_NOMEM;
   }
 
   return nghttp2_hd_inflate_init(*inflater_ptr);
