@@ -175,17 +175,22 @@ const char* ansi_escend()
 } // namespace
 
 namespace {
-void print_nv(nghttp2_nv *nva, size_t nvlen, bool indent = true)
+void print_nv(nghttp2_nv *nv)
+{
+  fprintf(outfile, "%s", ansi_esc("\033[1;34m"));
+  fwrite(nv->name, nv->namelen, 1, outfile);
+  fprintf(outfile, "%s: ", ansi_escend());
+  fwrite(nv->value, nv->valuelen, 1, outfile);
+  fprintf(outfile, "\n");
+}
+} // namespace
+namespace {
+void print_nv(nghttp2_nv *nva, size_t nvlen)
 {
   for(auto& nv : http2::sort_nva(nva, nvlen)) {
-    if(indent) {
-      print_frame_attr_indent();
-    }
-    fprintf(outfile, "%s", ansi_esc("\033[1;34m"));
-    fwrite(nv.name, nv.namelen, 1, outfile);
-    fprintf(outfile, "%s: ", ansi_escend());
-    fwrite(nv.value, nv.valuelen, 1, outfile);
-    fprintf(outfile, "\n");
+    print_frame_attr_indent();
+
+    print_nv(&nv);
   }
 }
 } // namelen
@@ -477,14 +482,19 @@ int verbose_on_header_callback(nghttp2_session *session,
                                uint8_t flags,
                                void *user_data)
 {
-  nghttp2_nv nv = {
+  nghttp2_nv nva = {
     const_cast<uint8_t*>(name), const_cast<uint8_t*>(value),
     static_cast<uint16_t>(namelen), static_cast<uint16_t>(valuelen)
   };
-  print_timer();
-  fprintf(outfile, " (stream_id=%d, noind=%d) ", frame->hd.stream_id,
-          (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0);
-  print_nv(&nv, 1, false /* no indent */);
+
+  for(auto& nv : http2::sort_nva(&nva, 1)) {
+    print_timer();
+    fprintf(outfile, " (stream_id=%d, noind=%d) ", frame->hd.stream_id,
+            (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0);
+
+    print_nv(&nv);
+  }
+
   return 0;
 }
 
