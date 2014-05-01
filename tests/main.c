@@ -258,6 +258,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_deflate_common_header_eviction) ||
       !CU_add_test(pSuite, "hd_deflate_clear_refset",
                    test_nghttp2_hd_deflate_clear_refset) ||
+      !CU_add_test(pSuite, "hd_inflate_indexed",
+                   test_nghttp2_hd_inflate_indexed) ||
       !CU_add_test(pSuite, "hd_inflate_indname_noinc",
                    test_nghttp2_hd_inflate_indname_noinc) ||
       !CU_add_test(pSuite, "hd_inflate_indname_inc",
