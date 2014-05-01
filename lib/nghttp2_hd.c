@@ -1671,7 +1671,14 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(rv < 0) {
         goto fail;
       }
+
       in += rv;
+
+      if(inflater->left == 0) {
+        rv = NGHTTP2_ERR_HEADER_COMP;
+        goto fail;
+      }
+
       if(!rfin) {
         goto almost_ok;
       }

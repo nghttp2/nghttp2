@@ -309,6 +309,45 @@ void test_nghttp2_hd_deflate_clear_refset(void)
   nghttp2_hd_deflate_free(&deflater);
 }
 
+void test_nghttp2_hd_inflate_indexed(void)
+{
+  nghttp2_hd_inflater inflater;
+  nghttp2_bufs bufs;
+  ssize_t blocklen;
+  nghttp2_nv nv = MAKE_NV(":path", "/");
+  nva_out out;
+
+  frame_pack_bufs_init(&bufs);
+
+  nva_out_init(&out);
+  nghttp2_hd_inflate_init(&inflater);
+
+  nghttp2_bufs_addb(&bufs, (1 << 7) | 4);
+
+  blocklen = nghttp2_bufs_len(&bufs);
+
+  CU_ASSERT(1 == blocklen);
+  CU_ASSERT(blocklen == inflate_hd(&inflater, &out, &bufs, 0));
+
+  CU_ASSERT(1 == out.nvlen);
+
+  assert_nv_equal(&nv, out.nva, 1);
+
+  nva_out_reset(&out);
+  nghttp2_bufs_reset(&bufs);
+
+  /* index = 0 is error */
+  nghttp2_bufs_addb(&bufs, 1 << 7);
+
+  blocklen = nghttp2_bufs_len(&bufs);
+
+  CU_ASSERT(1 == blocklen);
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == inflate_hd(&inflater, &out, &bufs, 0));
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_inflate_free(&inflater);
+}
+
 void test_nghttp2_hd_inflate_indname_noinc(void)
 {
   nghttp2_hd_inflater inflater;
