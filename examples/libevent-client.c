@@ -354,6 +354,8 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
 {
   nghttp2_session_callbacks callbacks;
 
+  memset(&callbacks, 0, sizeof(callbacks));
+
   callbacks.send_callback = send_callback;
   callbacks.before_frame_send_callback = before_frame_send_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
