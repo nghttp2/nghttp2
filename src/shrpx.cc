@@ -510,7 +510,7 @@ Connections:
   --backend-ipv4     Resolve backend hostname to IPv4 address only.
   --backend-ipv6     Resolve backend hostname to IPv6 address only.
 
-Performance:)" << R"(
+Performance:
   -n, --workers=<CORES>
                      Set the number of worker threads.
                      Default: )"
