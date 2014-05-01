@@ -352,7 +352,7 @@ static SSL* create_ssl(SSL_CTX *ssl_ctx)
 
 static void initialize_nghttp2_session(http2_session_data *session_data)
 {
-  nghttp2_session_callbacks callbacks = {0};
+  nghttp2_session_callbacks callbacks;
 
   callbacks.send_callback = send_callback;
   callbacks.before_frame_send_callback = before_frame_send_callback;
