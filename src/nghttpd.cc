@@ -185,12 +185,17 @@ int main(int argc, char **argv)
       config.error_gzip = true;
       break;
     case 'n':
+#ifdef NOTHREADS
+	  std::cerr << "-n: WARNING: Threading disabled at build time, " <<
+		  "no threads created." << std::endl;
+#else
       errno = 0;
       config.num_worker = strtoul(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0' || config.num_worker == 0) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+#endif /* NOTHREADS */
       break;
     case 'h':
       print_help(std::cout);
@@ -271,7 +276,9 @@ int main(int argc, char **argv)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+#ifndef NOTHREADS
   ssl::LibsslGlobalLock();
+#endif /* NOTHREADS */
 
   reset_timer();
 
