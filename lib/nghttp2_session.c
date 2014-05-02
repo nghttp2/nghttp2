@@ -5779,6 +5779,16 @@ int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session* session,
   return nghttp2_session_next_data_read(session, stream);
 }
 
+uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
+                                             nghttp2_settings_id id)
+{
+  if(id > NGHTTP2_SETTINGS_MAX) {
+    return 0;
+  }
+
+  return session->remote_settings[id];
+}
+
 int nghttp2_session_upgrade(nghttp2_session *session,
                             const uint8_t *settings_payload,
                             size_t settings_payloadlen,

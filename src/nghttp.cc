@@ -99,6 +99,7 @@ struct Config {
   bool stat;
   bool upgrade;
   bool continuation;
+  bool compress_data;
   Config()
     : output_upper_thres(1024*1024),
       padding(0),
@@ -115,7 +116,8 @@ struct Config {
       get_assets(false),
       stat(false),
       upgrade(false),
-      continuation(false)
+      continuation(false),
+      compress_data(false)
   {
     nghttp2_option_new(&http2_option);
     nghttp2_option_set_peer_max_concurrent_streams
@@ -344,15 +346,21 @@ Config config;
 namespace {
 size_t populate_settings(nghttp2_settings_entry *iv)
 {
-  size_t niv = 2;
+  size_t niv = 3;
+
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[0].value = 100;
+
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   if(config.window_bits != -1) {
     iv[1].value = (1 << config.window_bits) - 1;
   } else {
     iv[1].value = NGHTTP2_INITIAL_WINDOW_SIZE;
   }
+
+  iv[2].settings_id = NGHTTP2_SETTINGS_COMPRESS_DATA;
+  iv[2].value = 1;
+
   if(config.header_table_size >= 0) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
     iv[niv].value = config.header_table_size;
@@ -430,11 +438,13 @@ struct HttpClient {
   event *settings_timerev;
   addrinfo *addrs;
   addrinfo *next_addr;
+  nghttp2_gzip *inflater;
   // The number of completed requests, including failed ones.
   size_t complete;
   // The length of settings_payload
   size_t settings_payloadlen;
   client_state state;
+  int32_t last_inflate_error_stream_id;
   // The HTTP status code of the response message of HTTP Upgrade.
   unsigned int upgrade_response_status_code;
   // true if the response message of HTTP Upgrade request is fully
@@ -454,9 +464,11 @@ struct HttpClient {
       settings_timerev(nullptr),
       addrs(nullptr),
       next_addr(nullptr),
+      inflater(nullptr),
       complete(0),
       settings_payloadlen(0),
       state(STATE_IDLE),
+      last_inflate_error_stream_id(0),
       upgrade_response_status_code(0),
       upgrade_response_complete(false)
   {}
@@ -600,7 +612,7 @@ struct HttpClient {
     ssize_t rv;
     record_handshake_time();
     assert(!reqvec.empty());
-    nghttp2_settings_entry iv[16];
+    nghttp2_settings_entry iv[32];
     size_t niv = populate_settings(iv);
     assert(sizeof(settings_payload) >= 8*niv);
     rv = nghttp2_pack_settings_payload(settings_payload,
@@ -881,6 +893,38 @@ struct HttpClient {
   {
     stat.on_handshake_time = get_time();
   }
+
+  bool check_inflater(int32_t stream_id)
+  {
+    if(inflater == nullptr || last_inflate_error_stream_id == stream_id) {
+      return false;
+    }
+
+    last_inflate_error_stream_id = 0;
+
+    return true;
+  }
+
+  bool reset_inflater()
+  {
+    int rv;
+    nghttp2_gzip *gzip;
+
+    if(inflater) {
+      nghttp2_gzip_inflate_del(inflater);
+      inflater = nullptr;
+    }
+
+    rv = nghttp2_gzip_inflate_new(&gzip);
+
+    if(rv != 0) {
+      return false;
+    }
+
+    inflater = gzip;
+
+    return true;
+  }
 };
 } // namespace
 
@@ -1071,6 +1115,45 @@ int on_data_chunk_recv_callback
         data += tlen;
         len -= tlen;
       }
+    } else if(flags & NGHTTP2_FLAG_COMPRESSED) {
+      if(len == 0 || !client->check_inflater(stream_id)) {
+        return 0;
+      }
+
+      const size_t MAX_OUTLEN = 4096;
+      uint8_t out[MAX_OUTLEN];
+      size_t outlen;
+
+      do {
+        outlen = MAX_OUTLEN;
+        auto tlen = len;
+
+        int rv = nghttp2_gzip_inflate(client->inflater, out, &outlen,
+                                      data, &tlen);
+        if(rv != 0) {
+          goto per_frame_decomp_error;
+        }
+
+        if(!config.null_out) {
+          std::cout.write(reinterpret_cast<const char*>(out), outlen);
+        }
+
+        update_html_parser(client, req, out, outlen, 0);
+
+        data += tlen;
+        len -= tlen;
+
+        if(nghttp2_gzip_inflate_finished(client->inflater)) {
+          // When Z_STREAM_END was reached, remaining input length
+          // must be 0.
+          if(len > 0) {
+            goto per_frame_decomp_error;
+          }
+
+          break;
+        }
+      } while(len > 0 || outlen > 0);
+
     } else {
       if(!config.null_out) {
         std::cout.write(reinterpret_cast<const char*>(data), len);
@@ -1078,6 +1161,21 @@ int on_data_chunk_recv_callback
       update_html_parser(client, req, data, len, 0);
     }
   }
+
+  return 0;
+
+ per_frame_decomp_error:
+  // If per-frame decompression failed, we remember the stream ID so
+  // that subsequent chunk of DATA is ignored.
+  client->last_inflate_error_stream_id = stream_id;
+
+  if(!client->reset_inflater()) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
+  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                            NGHTTP2_INTERNAL_ERROR);
+
   return 0;
 }
 } // namespace
@@ -1280,8 +1378,32 @@ namespace {
 int on_frame_recv_callback2
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {
+  int rv = 0;
+
   auto client = get_session(user_data);
   switch(frame->hd.type) {
+  case NGHTTP2_DATA:
+    if(frame->hd.flags & NGHTTP2_FLAG_COMPRESSED) {
+
+      auto inflate_finished = nghttp2_gzip_inflate_finished(client->inflater);
+
+      if(!client->reset_inflater()) {
+        rv = nghttp2_session_terminate_session(session,
+                                               NGHTTP2_INTERNAL_ERROR);
+
+        if(nghttp2_is_fatal(rv)) {
+          rv = NGHTTP2_ERR_CALLBACK_FAILURE;
+        } else {
+          rv = 0;
+        }
+      }
+      // Error if compressed block does not end in frame.
+      if(!inflate_finished) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+      }
+    }
+    break;
   case NGHTTP2_HEADERS: {
     if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
        frame->headers.cat != NGHTTP2_HCAT_PUSH_RESPONSE) {
@@ -1359,7 +1481,7 @@ int on_frame_recv_callback2
   if(config.verbose) {
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
-  return 0;
+  return rv;
 }
 } // namespace
 
@@ -1636,6 +1758,10 @@ int communicate(const std::string& scheme, const std::string& host,
   {
     HttpClient client{callbacks, evbase, ssl_ctx};
 
+    if(!client.reset_inflater()) {
+      goto fin;
+    }
+
     nghttp2_priority_spec pri_spec;
 
     if(config.weight != NGHTTP2_DEFAULT_WEIGHT) {
@@ -1690,19 +1816,47 @@ ssize_t file_read_callback
     (session, stream_id);
   assert(req);
   int fd = source->fd;
-  ssize_t r;
-  while((r = pread(fd, buf, length, req->data_offset)) == -1 &&
-        errno == EINTR);
-  if(r == -1) {
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  } else {
-    if(r == 0) {
-      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-    } else {
-      req->data_offset += r;
+  ssize_t nread;
+  ssize_t rv;
+
+  // Compressing too small data is not efficient?
+  if(length >= 1024 && config.compress_data &&
+     nghttp2_session_get_remote_settings
+     (session, NGHTTP2_SETTINGS_COMPRESS_DATA) == 1) {
+    uint8_t srcbuf[4096];
+    auto maxread = std::min(length, sizeof(srcbuf));
+
+    while((nread = read(fd, srcbuf, maxread)) == -1 && errno == EINTR);
+    if(nread == -1) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
-    return r;
+
+    if(nread > 0) {
+      rv = deflate_data(buf, length, srcbuf, nread);
+
+      if(rv < 0) {
+        memcpy(buf, srcbuf, nread);
+      } else {
+        nread = rv;
+
+        *data_flags |= NGHTTP2_DATA_FLAG_COMPRESSED;
+      }
+    }
+  } else {
+    while((nread = pread(fd, buf, length, req->data_offset)) == -1 &&
+          errno == EINTR);
+    if(nread == -1) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
   }
+
+  if(nread == 0) {
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+  } else {
+    req->data_offset += nread;
+  }
+
+  return nread;
 }
 } // namespace
 
@@ -1837,6 +1991,9 @@ Options:
                      be in PEM format.
   -d, --data=<FILE>  Post FILE to  server. If '-' is  given, data will
                      be read from stdin.
+  -g, --compress-data
+                     When used  with -d option, compress  request body
+                     on the fly using per-frame compression.
   -m, --multiply=<N> Request each URI <N> times.  By default, same URI
                      is not requested twice.   This option disables it
                      too.
@@ -1884,6 +2041,7 @@ int main(int argc, char **argv)
       {"help", no_argument, nullptr, 'h'},
       {"header", required_argument, nullptr, 'H'},
       {"data", required_argument, nullptr, 'd'},
+      {"compress-data", no_argument, nullptr, 'g'},
       {"multiply", required_argument, nullptr, 'm'},
       {"upgrade", no_argument, nullptr, 'u'},
       {"weight", required_argument, nullptr, 'p'},
@@ -1898,8 +2056,8 @@ int main(int argc, char **argv)
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oab:c:d:m:np:hH:vst:uw:W:", long_options,
-                        &option_index);
+    int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:hH:vst:uw:W:",
+                        long_options, &option_index);
     char *end;
     if(c == -1) {
       break;
@@ -2002,6 +2160,9 @@ int main(int argc, char **argv)
       break;
     case 'd':
       config.datafile = strcmp("-", optarg) == 0 ? "/dev/stdin" : optarg;
+      break;
+    case 'g':
+      config.compress_data = true;
       break;
     case 'm':
       config.multiply = strtoul(optarg, nullptr, 10);

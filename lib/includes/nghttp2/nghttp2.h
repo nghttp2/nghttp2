@@ -2083,6 +2083,14 @@ int nghttp2_session_terminate_session(nghttp2_session *session,
 /**
  * @function
  *
+ * Returns the value of SETTINGS |id| notified by a remote endpoint.
+ */
+uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
+                                             nghttp2_settings_id id);
+
+/**
+ * @function
+ *
  * Performs post-process of HTTP Upgrade request.  This function can
  * be called from both client and server, but the behavior is very
  * different in each other.
@@ -2798,6 +2806,15 @@ void nghttp2_gzip_inflate_del(nghttp2_gzip *inflater);
 int nghttp2_gzip_inflate(nghttp2_gzip *inflater,
                          uint8_t *out, size_t *outlen_ptr,
                          const uint8_t *in, size_t *inlen_ptr);
+
+/**
+ * @function
+ *
+ * Returns nonzero if |inflater| sees the end of deflate stream.
+ * After this function returns nonzero, `nghttp2_gzip_inflate()` with
+ * |inflater| gets to return error.
+ */
+int nghttp2_gzip_inflate_finished(nghttp2_gzip *inflater);
 
 /**
  * @function

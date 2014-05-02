@@ -88,6 +88,7 @@ struct Stream {
   event *wtimer;
   int32_t stream_id;
   int file;
+  bool enable_compression;
   Stream(Http2Handler *handler, int32_t stream_id);
   ~Stream();
 };
@@ -109,7 +110,7 @@ public:
   int recvcb(uint8_t *buf, size_t len);
 
   int submit_file_response(const std::string& status,
-                           int32_t stream_id,
+                           Stream *stream,
                            time_t last_modified,
                            off_t file_length,
                            nghttp2_data_provider *data_prd);
@@ -139,6 +140,7 @@ public:
   void remove_settings_timer();
   void terminate_session(nghttp2_error_code error_code);
   int tls_handshake();
+  void decide_compression(const std::string& path, Stream *stream);
 private:
   int handle_ssl_temporal_error(int err);
   int tls_write(const uint8_t *data, size_t datalen);

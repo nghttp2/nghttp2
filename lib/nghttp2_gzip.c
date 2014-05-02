@@ -89,3 +89,8 @@ int nghttp2_gzip_inflate(nghttp2_gzip *inflater,
     return 0;
   }
 }
+
+int nghttp2_gzip_inflate_finished(nghttp2_gzip *inflater)
+{
+  return inflater->finished;
+}

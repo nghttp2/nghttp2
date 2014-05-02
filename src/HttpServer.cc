@@ -109,7 +109,8 @@ Stream::Stream(Http2Handler *handler, int32_t stream_id)
     rtimer(nullptr),
     wtimer(nullptr),
     stream_id(stream_id),
-    file(-1)
+    file(-1),
+    enable_compression(false)
 {}
 
 Stream::~Stream()
@@ -714,9 +715,13 @@ int Http2Handler::on_connect()
     return r;
   }
   nghttp2_settings_entry entry[4];
-  size_t niv = 1;
+  size_t niv = 2;
+
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = 100;
+  entry[1].settings_id = NGHTTP2_SETTINGS_COMPRESS_DATA;
+  entry[1].value = 1;
+
   if(sessions_->get_config()->header_table_size >= 0) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
     entry[niv].value = sessions_->get_config()->header_table_size;
@@ -769,7 +774,7 @@ int Http2Handler::verify_npn_result()
 }
 
 int Http2Handler::submit_file_response(const std::string& status,
-                                       int32_t stream_id,
+                                       Stream *stream,
                                        time_t last_modified,
                                        off_t file_length,
                                        nghttp2_data_provider *data_prd)
@@ -788,8 +793,8 @@ int Http2Handler::submit_file_response(const std::string& status,
     last_modified_str = util::http_date(last_modified);
     nva.push_back(http2::make_nv_ls("last-modified", last_modified_str));
   }
-  return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
-                                 data_prd);
+  return nghttp2_submit_response(session_, stream->stream_id,
+                                 nva.data(), nva.size(), data_prd);
 }
 
 int Http2Handler::submit_response
@@ -920,6 +925,19 @@ void Http2Handler::terminate_session(nghttp2_error_code error_code)
   nghttp2_session_terminate_session(session_, error_code);
 }
 
+void Http2Handler::decide_compression(const std::string& path, Stream *stream)
+{
+  if(nghttp2_session_get_remote_settings
+     (session_, NGHTTP2_SETTINGS_COMPRESS_DATA) == 1 &&
+     (util::endsWith(path, ".html") ||
+      util::endsWith(path, ".js") ||
+      util::endsWith(path, ".css") ||
+      util::endsWith(path, ".txt"))) {
+
+    stream->enable_compression = true;
+  }
+}
+
 ssize_t file_read_callback
 (nghttp2_session *session, int32_t stream_id,
  uint8_t *buf, size_t length, uint32_t *data_flags,
@@ -929,23 +947,52 @@ ssize_t file_read_callback
   auto stream = hd->get_stream(stream_id);
 
   int fd = source->fd;
-  ssize_t r;
+  ssize_t nread;
+  ssize_t rv;
 
-  while((r = read(fd, buf, length)) == -1 && errno == EINTR);
-  if(r == -1) {
-    if(stream) {
-      remove_stream_read_timeout(stream);
-      remove_stream_write_timeout(stream);
+  // Compressing too small data is not efficient?
+  if(length >= 1024 && stream && stream->enable_compression) {
+    uint8_t srcbuf[4096];
+    auto maxread = std::min(length, sizeof(srcbuf));
+
+    while((nread = read(fd, srcbuf, maxread)) == -1 && errno == EINTR);
+    if(nread == -1) {
+      if(stream) {
+        remove_stream_read_timeout(stream);
+        remove_stream_write_timeout(stream);
+      }
+
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    if(nread > 0) {
+      rv = deflate_data(buf, length, srcbuf, nread);
+
+      if(rv < 0) {
+        memcpy(buf, srcbuf, nread);
+      } else {
+        nread = rv;
+
+        *data_flags |= NGHTTP2_DATA_FLAG_COMPRESSED;
+      }
+    }
+  } else {
+    while((nread = read(fd, buf, length)) == -1 && errno == EINTR);
+    if(nread == -1) {
+      if(stream) {
+        remove_stream_read_timeout(stream);
+        remove_stream_write_timeout(stream);
+      }
+
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
   }
 
-  if(r == 0) {
+  if(nread == 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
 
-  return r;
+  return nread;
 }
 
 namespace {
@@ -1064,7 +1111,9 @@ void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
       if(last_mod_found && buf.st_mtime <= last_mod) {
         prepare_status_response(stream, hd, STATUS_304);
       } else {
-        hd->submit_file_response(STATUS_200, stream->stream_id, buf.st_mtime,
+        hd->decide_compression(path, stream);
+
+        hd->submit_file_response(STATUS_200, stream, buf.st_mtime,
                                  buf.st_size, &data_prd);
       }
     }

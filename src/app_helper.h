@@ -91,6 +91,9 @@ void set_color_output(bool f);
 // used.
 void set_output(FILE *file);
 
+ssize_t deflate_data(uint8_t *out, size_t outlen,
+                     const uint8_t *in, size_t inlen);
+
 } // namespace nghttp2
 
 #endif // APP_HELPER_H
