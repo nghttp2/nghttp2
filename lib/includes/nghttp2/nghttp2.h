@@ -2893,7 +2893,7 @@ void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater);
 /**
  * @function
  *
- * Changes header table size in the |inflater|. This may trigger
+ * Changes header table size in the |inflater|.  This may trigger
  * eviction in the dynamic table.
  *
  * The |settings_hd_table_bufsize_max| should be the value transmitted
@@ -2931,25 +2931,25 @@ typedef enum {
 /**
  * @function
  *
- * Inflates name/value block stored in |in| with length |inlen|. This
- * function performs decompression. For each successful emission of
+ * Inflates name/value block stored in |in| with length |inlen|.  This
+ * function performs decompression.  For each successful emission of
  * header name/value pair, :enum:`NGHTTP2_HD_INFLATE_EMIT` is set in
  * |*inflate_flags| and name/value pair is assigned to the |nv_out|
- * and the function returns. The caller must not free the members of
+ * and the function returns.  The caller must not free the members of
  * |nv_out|.
  *
- * The |nv_out| may include pointers to the memory region in the
- * |in|. The caller must retain the |in| while the |nv_out| is used.
+ * The |nv_out| may include pointers to the memory region in the |in|.
+ * The caller must retain the |in| while the |nv_out| is used.
  *
  * The application should call this function repeatedly until the
  * ``(*inflate_flags) & NGHTTP2_HD_INFLATE_FINAL`` is nonzero and
- * return value is non-negative. This means the all input values are
- * processed successfully. Then the application must call
+ * return value is non-negative.  This means the all input values are
+ * processed successfully.  Then the application must call
  * `nghttp2_hd_inflate_end_headers()` to prepare for the next header
  * block input.
  *
- * The caller can feed complete compressed header block. It also can
- * feed it in several chunks. The caller must set |in_final| to
+ * The caller can feed complete compressed header block.  It also can
+ * feed it in several chunks.  The caller must set |in_final| to
  * nonzero if the given input is the last block of the compressed
  * header.
  *
