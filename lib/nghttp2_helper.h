@@ -78,7 +78,7 @@ int nghttp2_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
                            size_t min_length);
 
 /*
- * Allocates |n| bytes of memory and copy the meory region pointed by
+ * Allocates |n| bytes of memory and copy the memory region pointed by
  * |src| with the length |n| bytes into it. Returns the allocated memory.
  *
  * This function returns pointer to allocated memory, or one of the
