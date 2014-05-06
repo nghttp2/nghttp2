@@ -136,7 +136,7 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * before calling this function.
  *
  * frame->hd.length is assigned after length is determined during
- * packing process. CONTINUATION frames are also serialized in this
+ * packing process.  CONTINUATION frames are also serialized in this
  * function. This function does not handle padding.
  *
  * This function returns 0 if it succeeds, or returns one of the
@@ -144,8 +144,6 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  *
  * NGHTTP2_ERR_HEADER_COMP
  *     The deflate operation failed.
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The length of the frame is too large.
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
@@ -154,15 +152,11 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
                                nghttp2_hd_deflater *deflater);
 
 /*
- * Unpacks HEADERS frame byte sequence into |frame|. This function
+ * Unpacks HEADERS frame byte sequence into |frame|.  This function
  * only unapcks bytes that come before name/value header block and
  * after PAD_HIGH and PAD_LOW.
  *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_PROTO
- *     TODO END_HEADERS flag is not set
+ * This function always succeeds and returns 0.
  */
 int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
                                          const uint8_t *payload,
@@ -175,11 +169,7 @@ int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
  * The caller must make sure that nghttp2_bufs_reset(bufs) is called
  * before calling this function.
  *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * This function always succeeds and returns 0.
  */
 int nghttp2_frame_pack_priority(nghttp2_bufs *bufs,
                                 nghttp2_priority *frame);
@@ -198,11 +188,7 @@ void nghttp2_frame_unpack_priority_payload(nghttp2_priority *frame,
  * The caller must make sure that nghttp2_bufs_reset(bufs) is called
  * before calling this function.
  *
- * This function returns 0 if it succeeds, or returns one of the
- * following negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * This function always succeeds and returns 0.
  */
 int nghttp2_frame_pack_rst_stream(nghttp2_bufs *bufs,
                                   nghttp2_rst_stream *frame);
@@ -224,8 +210,6 @@ void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
  * This function returns 0 if it succeeds, or returns one of the
  * following negative error codes:
  *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
  * NGHTTP2_ERR_FRAME_SIZE_ERROR
  *     The length of the frame is too large.
  */
@@ -284,7 +268,7 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  * before calling this function.
  *
  * frame->hd.length is assigned after length is determined during
- * packing process. CONTINUATION frames are also serialized in this
+ * packing process.  CONTINUATION frames are also serialized in this
  * function. This function does not handle padding.
  *
  * This function returns 0 if it succeeds, or returns one of the
@@ -292,8 +276,6 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
  *
  * NGHTTP2_ERR_HEADER_COMP
  *     The deflate operation failed.
- * NGHTTP2_ERR_FRAME_SIZE_ERROR
- *     The length of the frame is too large.
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
@@ -302,8 +284,9 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
                                     nghttp2_hd_deflater *deflater);
 
 /*
- * Unpacks PUSH_PROMISE frame byte sequence into |frame|. This function
- * only unapcks bytes that come before name/value header block.
+ * Unpacks PUSH_PROMISE frame byte sequence into |frame|.  This
+ * function only unapcks bytes that come before name/value header
+ * block and after PAD_HIGH and PAD_LOW.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
@@ -322,11 +305,7 @@ int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
  * The caller must make sure that nghttp2_bufs_reset(bufs) is called
  * before calling this function.
  *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * This function always succeeds and returns 0.
  */
 int nghttp2_frame_pack_ping(nghttp2_bufs *bufs, nghttp2_ping *frame);
 
@@ -390,11 +369,7 @@ int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
  * The caller must make sure that nghttp2_bufs_reset(bufs) is called
  * before calling this function.
  *
- * This function returns 0 if it succeeds, or returns one of the
- * following negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * This function always succeeds and returns 0.
  */
 int nghttp2_frame_pack_window_update(nghttp2_bufs *bufs,
                                      nghttp2_window_update *frame);
@@ -418,8 +393,8 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
- * NGHTTP2_ERR_BUFFER_ERROR
- *     Out of buffer space.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The length of the frame is too large.
  */
 int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame);
 
@@ -626,8 +601,8 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
- * NGHTTP2_ERR_BUFFER_ERROR
- *     Out of buffer space. This is not a fatal.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The length of the resulting frame is too large.
  */
 int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
                           size_t padlen, nghttp2_frame_type type);

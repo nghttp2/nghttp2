@@ -655,6 +655,11 @@ int nghttp2_frame_pack_goaway(nghttp2_bufs *bufs, nghttp2_goaway *frame)
   buf->last += 4;
 
   rv = nghttp2_bufs_add(bufs, frame->opaque_data, frame->opaque_data_len);
+
+  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
+  }
+
   if(rv != 0) {
     return rv;
   }
@@ -762,25 +767,33 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame)
 
   rv = nghttp2_bufs_add(bufs, frame->protocol_id, frame->protocol_id_len);
   if(rv != 0) {
-    return rv;
+    goto fail;
   }
 
   rv = nghttp2_bufs_addb(bufs, frame->host_len);
   if(rv != 0) {
-    return rv;
+    goto fail;
   }
 
   rv = nghttp2_bufs_add(bufs, frame->host, frame->host_len);
   if(rv != 0) {
-    return rv;
+    goto fail;
   }
 
   rv = nghttp2_bufs_add(bufs, frame->origin, frame->origin_len);
   if(rv != 0) {
-    return rv;
+    goto fail;
   }
 
   return 0;
+
+ fail:
+
+  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+    return NGHTTP2_ERR_FRAME_SIZE_ERROR;
+  }
+
+  return rv;
 }
 
 int nghttp2_frame_unpack_altsvc_payload(nghttp2_altsvc *frame,
