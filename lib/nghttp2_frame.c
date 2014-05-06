@@ -904,23 +904,29 @@ void nghttp2_nv_array_del(nghttp2_nv *nva)
 static int bytes_compar(const uint8_t *a, size_t alen,
                         const uint8_t *b, size_t blen)
 {
+  int rv;
+
   if(alen == blen) {
     return memcmp(a, b, alen);
-  } else if(alen < blen) {
-    int rv = memcmp(a, b, alen);
+  }
+
+  if(alen < blen) {
+    rv = memcmp(a, b, alen);
+
     if(rv == 0) {
       return -1;
-    } else {
-      return rv;
     }
-  } else {
-    int rv = memcmp(a, b, blen);
-    if(rv == 0) {
-      return 1;
-    } else {
-      return rv;
-    }
+
+    return rv;
   }
+
+  rv = memcmp(a, b, blen);
+
+  if(rv == 0) {
+    return 1;
+  }
+
+  return rv;
 }
 
 int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs)
@@ -933,10 +939,13 @@ static int nv_compar(const void *lhs, const void *rhs)
   const nghttp2_nv *a = (const nghttp2_nv*)lhs;
   const nghttp2_nv *b = (const nghttp2_nv*)rhs;
   int rv;
+
   rv = bytes_compar(a->name, a->namelen, b->name, b->namelen);
+
   if(rv == 0) {
     return bytes_compar(a->value, a->valuelen, b->value, b->valuelen);
   }
+
   return rv;
 }
 
@@ -952,21 +961,28 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
   uint8_t *data;
   size_t buflen = 0;
   nghttp2_nv *p;
+
   for(i = 0; i < nvlen; ++i) {
     buflen += nva[i].namelen + nva[i].valuelen;
   }
+
   /* If all name/value pair is 0-length, remove them */
   if(nvlen == 0 || buflen == 0) {
     *nva_ptr = NULL;
+
     return 0;
   }
+
   buflen += sizeof(nghttp2_nv)*nvlen;
+
   *nva_ptr = malloc(buflen);
+
   if(*nva_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
+
   p = *nva_ptr;
-  data = (uint8_t*)(*nva_ptr) + sizeof(nghttp2_nv)*nvlen;
+  data = (uint8_t*)(*nva_ptr) + sizeof(nghttp2_nv) * nvlen;
 
   for(i = 0; i < nvlen; ++i) {
     p->flags = nva[i].flags;
