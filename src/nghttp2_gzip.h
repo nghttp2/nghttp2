@@ -51,13 +51,7 @@ typedef struct {
  * A helper function to set up a per request gzip stream to inflate
  * data.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_GZIP`
- *     The initialization of gzip stream failed.
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
+ * This function returns 0 if it succeeds, or -1.
  */
 int nghttp2_gzip_inflate_new(nghttp2_gzip **inflater_ptr);
 
@@ -77,11 +71,7 @@ void nghttp2_gzip_inflate_del(nghttp2_gzip *inflater);
  * the number of data written in |out|.  Similarly, |*inlen_ptr| is
  * updated to represent the number of input bytes processed.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_GZIP`
- *     The inflation of gzip stream failed.
+ * This function returns 0 if it succeeds, or -1.
  *
  * The example follows::
  *

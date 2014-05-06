@@ -201,8 +201,6 @@ const char* nghttp2_strerror(int error_code)
     return "Invalid header block";
   case NGHTTP2_ERR_INVALID_STATE:
     return "Invalid state";
-  case NGHTTP2_ERR_GZIP:
-    return "Gzip error";
   case NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE:
     return "The user callback function failed due to the temporal error";
   case NGHTTP2_ERR_FRAME_SIZE_ERROR:

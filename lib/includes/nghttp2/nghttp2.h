@@ -285,10 +285,6 @@ typedef enum {
    */
   NGHTTP2_ERR_INVALID_STATE = -519,
   /**
-   * The gzip error.
-   */
-  NGHTTP2_ERR_GZIP = -520,
-  /**
    * The user callback function failed due to the temporal error.
    */
   NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE = -521,
