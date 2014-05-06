@@ -362,7 +362,7 @@ typedef enum {
   /**
    * Indicates that this name/value pair must not be indexed.
    */
-  NGHTTP2_NV_FLAG_NO_INDEX = 0x1
+  NGHTTP2_NV_FLAG_NO_INDEX = 0x01
 } nghttp2_nv_flag;
 
 /**
@@ -2921,11 +2921,11 @@ typedef enum {
   /**
    * Indicates all headers were inflated.
    */
-  NGHTTP2_HD_INFLATE_FINAL = 1,
+  NGHTTP2_HD_INFLATE_FINAL = 0x01,
   /**
    * Indicates a header was emitted.
    */
-  NGHTTP2_HD_INFLATE_EMIT = (1 << 1)
+  NGHTTP2_HD_INFLATE_EMIT = 0x02
 } nghttp2_hd_inflate_flag;
 
 /**
