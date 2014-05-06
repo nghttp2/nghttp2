@@ -36,6 +36,7 @@ AM_CPPFLAGS = \
 	@LIBEVENT_OPENSSL_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@JANSSON_CFLAGS@ \
+	@ZLIB_CFLAGS@ \
 	@DEFS@
 AM_LDFLAGS = \
 	@LIBSPDYLAY_LIBS@ \
@@ -43,6 +44,7 @@ AM_LDFLAGS = \
 	@LIBEVENT_OPENSSL_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@JANSSON_LIBS@ \
+	@ZLIB_LIBS@ \
 	@JEMALLOC_LIBS@ \
 	@SRC_LIBS@
 
@@ -54,8 +56,9 @@ if ENABLE_APP
 
 bin_PROGRAMS += nghttp nghttpd nghttpx h2load
 
-HELPER_OBJECTS = util.cc http2.cc timegm.c app_helper.cc
-HELPER_HFILES = util.h http2.h timegm.h app_helper.h nghttp2_config.h
+HELPER_OBJECTS = util.cc http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+HELPER_HFILES = util.h http2.h timegm.h app_helper.h nghttp2_config.h \
+	nghttp2_gzip.h
 
 HTML_PARSER_OBJECTS =
 HTML_PARSER_HFILES = HtmlParser.h
@@ -124,7 +127,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
 	shrpx_config_test.cc shrpx_config_test.h \
 	http2_test.cc http2_test.h \
-	util_test.cc util_test.h
+	util_test.cc util_test.h \
+	nghttp2_gzip_test.c nghttp2_gzip_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 nghttpx_unittest_LDFLAGS = -static

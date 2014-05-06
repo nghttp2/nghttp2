@@ -193,11 +193,13 @@ esac
 # zlib
 if test "x$android_build" = "xyes"; then
   # Use zlib provided by NDK
-  LIBS="-lz $LIBS"
+  SRC_LIBS="-lz $SRC_LIBS"
 else
-  PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3])
-  LIBS="$ZLIB_LIBS $LIBS"
-  CFLAGS="$CFLAGS $ZLIB_CFLAGS"
+  PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3], [have_zlib=yes], [have_zlib=no])
+
+  if test "x${have_zlib}" = "xno"; then
+    AC_MSG_NOTICE($ZLIB_PKG_ERRORS)
+  fi
 fi
 
 # cunit
@@ -304,10 +306,11 @@ fi
 
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
-# The nghttp, nghttpd and nghttpx under src depend on OpenSSL and
-# libevent_openssl
+# The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL
+# and libevent_openssl
 enable_app=no
 if test "x${request_app}" != "xno" &&
+   test "x${have_zlib}" = "xyes" &&
    test "x${have_openssl}" = "xyes" &&
    test "x${have_libevent_openssl}" = "xyes"; then
   enable_app=yes

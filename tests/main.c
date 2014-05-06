@@ -34,7 +34,6 @@
 #include "nghttp2_stream_test.h"
 #include "nghttp2_hd_test.h"
 #include "nghttp2_npn_test.h"
-#include "nghttp2_gzip_test.h"
 #include "nghttp2_helper_test.h"
 #include "nghttp2_buf_test.h"
 
@@ -279,7 +278,6 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "hd_deflate_inflate",
                    test_nghttp2_hd_deflate_inflate) ||
       !CU_add_test(pSuite, "hd_no_index", test_nghttp2_hd_no_index) ||
-      !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "adjust_local_window_size",
                    test_nghttp2_adjust_local_window_size) ||
       !CU_add_test(pSuite, "check_header_name",

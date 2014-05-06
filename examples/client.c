@@ -72,8 +72,6 @@ struct Connection {
 };
 
 struct Request {
-  /* The gzip stream inflater for the compressed response. */
-  nghttp2_gzip *inflater;
   char *host;
   /* In this program, path contains query component as well. */
   char *path;
@@ -137,36 +135,6 @@ static void diec(const char *func, int error_code)
   fprintf(stderr, "FATAL: %s: error_code=%d, msg=%s\n", func, error_code,
           nghttp2_strerror(error_code));
   exit(EXIT_FAILURE);
-}
-
-static char CONTENT_LENGTH[] = "content-encoding";
-static size_t CONTENT_LENGTH_LEN = sizeof(CONTENT_LENGTH) - 1;
-static char GZIP[] = "gzip";
-static size_t GZIP_LEN = sizeof(GZIP) - 1;
-
-/*
- * Check response is content-encoding: gzip. We need this because
- * HTTP/2 client is required to support gzip.
- */
-static void check_gzip(struct Request *req, nghttp2_nv *nva, size_t nvlen)
-{
-  size_t i;
-  if(req->inflater) {
-    return;
-  }
-  for(i = 0; i < nvlen; ++i) {
-    if(CONTENT_LENGTH_LEN == nva[i].namelen &&
-       memcmp(CONTENT_LENGTH, nva[i].name, nva[i].namelen) == 0 &&
-       GZIP_LEN == nva[i].valuelen &&
-       memcmp(GZIP, nva[i].value, nva[i].valuelen) == 0) {
-      int rv;
-      rv = nghttp2_gzip_inflate_new(&req->inflater);
-      if(rv != 0) {
-        die("Can't allocate inflate stream.");
-      }
-      break;
-    }
-  }
 }
 
 /*
@@ -290,7 +258,6 @@ static int on_frame_recv_callback(nghttp2_session *session,
       struct Request *req;
       req = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
       if(req) {
-        check_gzip(req, frame->headers.nva, frame->headers.nvlen);
         printf("[INFO] C <---------------------------- S (HEADERS)\n");
         for(i = 0; i < frame->headers.nvlen; ++i) {
           fwrite(nva[i].name, nva[i].namelen, 1, stdout);
@@ -351,25 +318,7 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   if(req) {
     printf("[INFO] C <---------------------------- S (DATA chunk)\n"
            "%lu bytes\n", (unsigned long int)len);
-    if(req->inflater) {
-      while(len > 0) {
-        uint8_t out[MAX_OUTLEN];
-        size_t outlen = MAX_OUTLEN;
-        size_t tlen = len;
-        int rv;
-        rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
-        if(rv == -1) {
-          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
-                                    NGHTTP2_INTERNAL_ERROR);
-          break;
-        }
-        fwrite(out, 1, outlen, stdout);
-        data += tlen;
-        len -= tlen;
-      }
-    } else {
-      fwrite(data, 1, len, stdout);
-    }
+    fwrite(data, 1, len, stdout);
     printf("\n");
   }
   return 0;
@@ -561,7 +510,6 @@ static void request_init(struct Request *req, const struct URI *uri)
   req->path = strcopy(uri->path, uri->pathlen);
   req->hostport = strcopy(uri->hostport, uri->hostportlen);
   req->stream_id = -1;
-  req->inflater = NULL;
 }
 
 static void request_free(struct Request *req)
@@ -569,7 +517,6 @@ static void request_free(struct Request *req)
   free(req->host);
   free(req->path);
   free(req->hostport);
-  nghttp2_gzip_inflate_del(req->inflater);
 }
 
 /*

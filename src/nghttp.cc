@@ -68,6 +68,7 @@
 #include "util.h"
 #include "base64.h"
 #include "http2.h"
+#include "nghttp2_gzip.h"
 
 #ifndef O_BINARY
 # define O_BINARY (0)
