@@ -431,6 +431,9 @@ int nghttp2_frame_pack_priority(nghttp2_bufs *bufs, nghttp2_priority *frame)
   assert(bufs->head == bufs->cur);
 
   buf = &bufs->head->buf;
+
+  assert(nghttp2_buf_avail(buf) >= 5);
+
   buf->pos -= NGHTTP2_FRAME_HDLEN;
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
@@ -458,6 +461,9 @@ int nghttp2_frame_pack_rst_stream(nghttp2_bufs *bufs,
   assert(bufs->head == bufs->cur);
 
   buf = &bufs->head->buf;
+
+  assert(nghttp2_buf_avail(buf) >= 4);
+
   buf->pos -= NGHTTP2_FRAME_HDLEN;
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
@@ -618,6 +624,9 @@ int nghttp2_frame_pack_ping(nghttp2_bufs *bufs, nghttp2_ping *frame)
   assert(bufs->head == bufs->cur);
 
   buf = &bufs->head->buf;
+
+  assert(nghttp2_buf_avail(buf) >= 8);
+
   buf->pos -= NGHTTP2_FRAME_HDLEN;
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
@@ -721,6 +730,9 @@ int nghttp2_frame_pack_window_update(nghttp2_bufs *bufs,
   assert(bufs->head == bufs->cur);
 
   buf = &bufs->head->buf;
+
+  assert(nghttp2_buf_avail(buf) >= 4);
+
   buf->pos -= NGHTTP2_FRAME_HDLEN;
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
