@@ -1117,9 +1117,17 @@ stream is about to close and we no longer use that object.</p>
     <span class="p">}</span>
     <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
   <span class="p">}</span>
-  <span class="n">write</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ERROR_HTML</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ERROR_HTML</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+
+  <span class="n">rv</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ERROR_HTML</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ERROR_HTML</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
   <span class="n">close</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ERROR_HTML</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+
   <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">fd</span> <span class="o">=</span> <span class="n">pipefd</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+
   <span class="k">if</span><span class="p">(</span><span class="n">send_response</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span>
                    <span class="n">pipefd</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">close</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
@@ -1275,7 +1283,9 @@ stream is about to close and we no longer use that object.</p>
 
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">initialize_nghttp2_session</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="n">nghttp2_session_callbacks</span> <span class="n">callbacks</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+  <span class="n">nghttp2_session_callbacks</span> <span class="n">callbacks</span><span class="p">;</span>
+
+  <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">callbacks</span><span class="p">));</span>
 
   <span class="n">callbacks</span><span class="p">.</span><span class="n">send_callback</span> <span class="o">=</span> <span class="n">send_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
@@ -1414,7 +1424,7 @@ stream is about to close and we no longer use that object.</p>
   <span class="n">hints</span><span class="p">.</span><span class="n">ai_flags</span> <span class="o">=</span> <span class="n">AI_PASSIVE</span><span class="p">;</span>
 <span class="cp">#ifdef AI_ADDRCONFIG</span>
   <span class="n">hints</span><span class="p">.</span><span class="n">ai_flags</span> <span class="o">|=</span> <span class="n">AI_ADDRCONFIG</span><span class="p">;</span>
-<span class="cp">#endif </span><span class="c1">// AI_ADDRCONFIG</span>
+<span class="cp">#endif </span><span class="cm">/* AI_ADDRCONFIG */</span><span class="cp"></span>
 
   <span class="n">rv</span> <span class="o">=</span> <span class="n">getaddrinfo</span><span class="p">(</span><span class="nb">NULL</span><span class="p">,</span> <span class="n">service</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">hints</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">);</span>
   <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>

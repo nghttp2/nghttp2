@@ -523,7 +523,7 @@
   <span class="cm">/**</span>
 <span class="cm">   * Indicates that this name/value pair must not be indexed.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_NV_FLAG_NO_INDEX</span> <span class="o">=</span> <span class="mh">0x1</span>
+  <span class="n">NGHTTP2_NV_FLAG_NO_INDEX</span> <span class="o">=</span> <span class="mh">0x01</span>
 <span class="p">}</span> <span class="n">nghttp2_nv_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -545,11 +545,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * The length of the |name|.</span>
 <span class="cm">   */</span>
-  <span class="kt">uint16_t</span> <span class="n">namelen</span><span class="p">;</span>
+  <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * The length of the |value|.</span>
 <span class="cm">   */</span>
-  <span class="kt">uint16_t</span> <span class="n">valuelen</span><span class="p">;</span>
+  <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">;</span>
   <span class="cm">/**</span>
 <span class="cm">   * Bitwise OR of one or more of :type:`nghttp2_nv_flag`.</span>
 <span class="cm">   */</span>
@@ -2244,6 +2244,14 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
+<span class="cm"> * Returns the value of SETTINGS |id| notified by a remote endpoint.</span>
+<span class="cm"> */</span>
+<span class="kt">uint32_t</span> <span class="nf">nghttp2_session_get_remote_settings</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                             <span class="n">nghttp2_settings_id</span> <span class="n">id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
 <span class="cm"> * Performs post-process of HTTP Upgrade request.  This function can</span>
 <span class="cm"> * be called from both client and server, but the behavior is very</span>
 <span class="cm"> * different in each other.</span>
@@ -2879,87 +2887,6 @@
 <span class="kt">int</span> <span class="nf">nghttp2_select_next_protocol</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span>
                                  <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">inlen</span><span class="p">);</span>
 
-<span class="k">struct</span> <span class="n">nghttp2_gzip</span><span class="p">;</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @struct</span>
-<span class="cm"> *</span>
-<span class="cm"> * The gzip stream to inflate data.  The details of this structure are</span>
-<span class="cm"> * intentionally hidden from the public API.</span>
-<span class="cm"> */</span>
-<span class="k">typedef</span> <span class="k">struct</span> <span class="n">nghttp2_gzip</span> <span class="n">nghttp2_gzip</span><span class="p">;</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * A helper function to set up a per request gzip stream to inflate</span>
-<span class="cm"> * data.</span>
-<span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_GZIP`</span>
-<span class="cm"> *     The initialization of gzip stream failed.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
-<span class="cm"> *     Out of memory.</span>
-<span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_gzip_inflate_new</span><span class="p">(</span><span class="n">nghttp2_gzip</span> <span class="o">**</span><span class="n">inflater_ptr</span><span class="p">);</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * Frees the inflate stream.  The |inflater| may be ``NULL``.</span>
-<span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_gzip_inflate_del</span><span class="p">(</span><span class="n">nghttp2_gzip</span> <span class="o">*</span><span class="n">inflater</span><span class="p">);</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * Inflates data in |in| with the length |*inlen_ptr| and stores the</span>
-<span class="cm"> * inflated data to |out| which has allocated size at least</span>
-<span class="cm"> * |*outlen_ptr|.  On return, |*outlen_ptr| is updated to represent</span>
-<span class="cm"> * the number of data written in |out|.  Similarly, |*inlen_ptr| is</span>
-<span class="cm"> * updated to represent the number of input bytes processed.</span>
-<span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_GZIP`</span>
-<span class="cm"> *     The inflation of gzip stream failed.</span>
-<span class="cm"> *</span>
-<span class="cm"> * The example follows::</span>
-<span class="cm"> *</span>
-<span class="cm"> *     void on_data_chunk_recv_callback(nghttp2_session *session,</span>
-<span class="cm"> *                                      uint8_t flags,</span>
-<span class="cm"> *                                      int32_t stream_id,</span>
-<span class="cm"> *                                      const uint8_t *data, size_t len,</span>
-<span class="cm"> *                                      void *user_data)</span>
-<span class="cm"> *     {</span>
-<span class="cm"> *         ...</span>
-<span class="cm"> *         req = nghttp2_session_get_stream_user_data(session, stream_id);</span>
-<span class="cm"> *         nghttp2_gzip *inflater = req-&gt;inflater;</span>
-<span class="cm"> *         while(len &gt; 0) {</span>
-<span class="cm"> *             uint8_t out[MAX_OUTLEN];</span>
-<span class="cm"> *             size_t outlen = MAX_OUTLEN;</span>
-<span class="cm"> *             size_t tlen = len;</span>
-<span class="cm"> *             int rv;</span>
-<span class="cm"> *             rv = nghttp2_gzip_inflate(inflater, out, &amp;outlen, data, &amp;tlen);</span>
-<span class="cm"> *             if(rv != 0) {</span>
-<span class="cm"> *                 nghttp2_submit_rst_stream(session, stream_id,</span>
-<span class="cm"> *                                           NGHTTP2_INTERNAL_ERROR);</span>
-<span class="cm"> *                 break;</span>
-<span class="cm"> *             }</span>
-<span class="cm"> *             ... Do stuff ...</span>
-<span class="cm"> *             data += tlen;</span>
-<span class="cm"> *             len -= tlen;</span>
-<span class="cm"> *         }</span>
-<span class="cm"> *         ....</span>
-<span class="cm"> *     }</span>
-<span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_gzip_inflate</span><span class="p">(</span><span class="n">nghttp2_gzip</span> <span class="o">*</span><span class="n">inflater</span><span class="p">,</span>
-                         <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">out</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">outlen_ptr</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">inlen_ptr</span><span class="p">);</span>
-
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
@@ -3037,7 +2964,7 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Changes header table size in the |inflater|. This may trigger</span>
+<span class="cm"> * Changes header table size in the |inflater|.  This may trigger</span>
 <span class="cm"> * eviction in the dynamic table.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |settings_hd_table_bufsize_max| should be the value transmitted</span>
@@ -3065,35 +2992,35 @@
   <span class="cm">/**</span>
 <span class="cm">   * Indicates all headers were inflated.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_HD_INFLATE_FINAL</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="n">NGHTTP2_HD_INFLATE_FINAL</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * Indicates a header was emitted.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_HD_INFLATE_EMIT</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">NGHTTP2_HD_INFLATE_EMIT</span> <span class="o">=</span> <span class="mh">0x02</span>
 <span class="p">}</span> <span class="n">nghttp2_hd_inflate_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Inflates name/value block stored in |in| with length |inlen|. This</span>
-<span class="cm"> * function performs decompression. For each successful emission of</span>
+<span class="cm"> * Inflates name/value block stored in |in| with length |inlen|.  This</span>
+<span class="cm"> * function performs decompression.  For each successful emission of</span>
 <span class="cm"> * header name/value pair, :enum:`NGHTTP2_HD_INFLATE_EMIT` is set in</span>
 <span class="cm"> * |*inflate_flags| and name/value pair is assigned to the |nv_out|</span>
-<span class="cm"> * and the function returns. The caller must not free the members of</span>
+<span class="cm"> * and the function returns.  The caller must not free the members of</span>
 <span class="cm"> * |nv_out|.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |nv_out| may include pointers to the memory region in the</span>
-<span class="cm"> * |in|. The caller must retain the |in| while the |nv_out| is used.</span>
+<span class="cm"> * The |nv_out| may include pointers to the memory region in the |in|.</span>
+<span class="cm"> * The caller must retain the |in| while the |nv_out| is used.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The application should call this function repeatedly until the</span>
 <span class="cm"> * ``(*inflate_flags) &amp; NGHTTP2_HD_INFLATE_FINAL`` is nonzero and</span>
-<span class="cm"> * return value is non-negative. This means the all input values are</span>
-<span class="cm"> * processed successfully. Then the application must call</span>
+<span class="cm"> * return value is non-negative.  This means the all input values are</span>
+<span class="cm"> * processed successfully.  Then the application must call</span>
 <span class="cm"> * `nghttp2_hd_inflate_end_headers()` to prepare for the next header</span>
 <span class="cm"> * block input.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The caller can feed complete compressed header block. It also can</span>
-<span class="cm"> * feed it in several chunks. The caller must set |in_final| to</span>
+<span class="cm"> * The caller can feed complete compressed header block.  It also can</span>
+<span class="cm"> * feed it in several chunks.  The caller must set |in_final| to</span>
 <span class="cm"> * nonzero if the given input is the last block of the compressed</span>
 <span class="cm"> * header.</span>
 <span class="cm"> *</span>
