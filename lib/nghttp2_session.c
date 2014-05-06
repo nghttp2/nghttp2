@@ -2144,8 +2144,8 @@ static int nghttp2_session_after_frame_sent(nghttp2_session *session)
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
-          /* If rv is not fatal, the only possible error is closed
-             stream, so we have nothing to do here. */
+          /* TODO nghttp2_submit_data() may fail if stream has already
+             DATA frame item.  We might have to handle it here. */
         }
         break;
       case NGHTTP2_HCAT_HEADERS:
