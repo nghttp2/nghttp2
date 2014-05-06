@@ -25,6 +25,14 @@
 #ifndef NGHTTP2_GZIP_TEST_H
 #define NGHTTP2_GZIP_TEST_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 void test_nghttp2_gzip_inflate(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NGHTTP2_GZIP_TEST_H */

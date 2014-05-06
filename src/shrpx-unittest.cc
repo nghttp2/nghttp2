@@ -33,6 +33,7 @@
 #include "shrpx_config_test.h"
 #include "http2_test.h"
 #include "util_test.h"
+#include "nghttp2_gzip_test.h"
 
 static int init_suite1(void)
 {
