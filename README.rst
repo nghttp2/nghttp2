@@ -42,12 +42,11 @@ implementation.
 Requirements
 ------------
 
-The following packages are needed to build the library:
+The following package is required to build the libnghttp2 library:
 
 * pkg-config >= 0.20
-* zlib >= 1.2.3
 
-To build and run the unit test programs, the following packages are
+To build and run the unit test programs, the following package is
 required:
 
 * cunit >= 2.1
@@ -62,16 +61,17 @@ required:
 
 * OpenSSL >= 1.0.1
 * libevent-openssl >= 2.0.8
+* zlib >= 1.2.3
 
 ALPN support requires unreleased version OpenSSL >= 1.0.2.
 
 To enable SPDY protocol in the application program ``nghttpx`` and
-``h2load``, the following packages are required:
+``h2load``, the following package is required:
 
 * spdylay >= 1.2.3
 
 To enable ``-a`` option (getting linked assets from the downloaded
-resource) in ``nghttp``, the following packages are needed:
+resource) in ``nghttp``, the following package is required:
 
 * libxml2 >= 2.7.7
 
