@@ -414,8 +414,6 @@ enum client_state {
 namespace {
 struct HttpClient {
   std::vector<std::unique_ptr<Request>> reqvec;
-  // Map from stream ID to Request object.
-  std::map<int32_t, Request*> streams;
   // Insert path already added in reqvec to prevent multiple request
   // for 1 resource.
   std::set<std::string> path_cache;
@@ -925,7 +923,6 @@ struct HttpClient {
 
   void on_request(Request *req)
   {
-    streams[req->stream_id] = req;
     req->record_request_time();
 
     if(req->pri == 0 && req->dep) {
@@ -1127,73 +1124,76 @@ int on_data_chunk_recv_callback
  const uint8_t *data, size_t len, void *user_data)
 {
   auto client = get_session(user_data);
-  auto itr = client->streams.find(stream_id);
-  if(itr != client->streams.end()) {
-    auto req = (*itr).second;
-    if(req->inflater) {
-      while(len > 0) {
-        const size_t MAX_OUTLEN = 4096;
-        uint8_t out[MAX_OUTLEN];
-        size_t outlen = MAX_OUTLEN;
-        size_t tlen = len;
-        int rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
-        if(rv != 0) {
-          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
-                                    NGHTTP2_INTERNAL_ERROR);
-          break;
-        }
-        if(!config.null_out) {
-          std::cout.write(reinterpret_cast<const char*>(out), outlen);
-        }
-        update_html_parser(client, req, out, outlen, 0);
-        data += tlen;
-        len -= tlen;
-      }
-    } else if(flags & NGHTTP2_FLAG_COMPRESSED) {
-      if(len == 0 || !client->check_inflater(stream_id)) {
-        return 0;
-      }
+  auto req =
+    (Request*)nghttp2_session_get_stream_user_data(session, stream_id);
 
+  if(!req) {
+    return 0;
+  }
+
+  if(req->inflater) {
+    while(len > 0) {
       const size_t MAX_OUTLEN = 4096;
       uint8_t out[MAX_OUTLEN];
-      size_t outlen;
+      size_t outlen = MAX_OUTLEN;
+      size_t tlen = len;
+      int rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
+      if(rv != 0) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                                  NGHTTP2_INTERNAL_ERROR);
+        break;
+      }
+      if(!config.null_out) {
+        std::cout.write(reinterpret_cast<const char*>(out), outlen);
+      }
+      update_html_parser(client, req, out, outlen, 0);
+      data += tlen;
+      len -= tlen;
+    }
+  } else if(flags & NGHTTP2_FLAG_COMPRESSED) {
+    if(len == 0 || !client->check_inflater(stream_id)) {
+      return 0;
+    }
 
-      do {
-        outlen = MAX_OUTLEN;
-        auto tlen = len;
+    const size_t MAX_OUTLEN = 4096;
+    uint8_t out[MAX_OUTLEN];
+    size_t outlen;
 
-        int rv = nghttp2_gzip_inflate(client->inflater, out, &outlen,
-                                      data, &tlen);
-        if(rv != 0) {
+    do {
+      outlen = MAX_OUTLEN;
+      auto tlen = len;
+
+      int rv = nghttp2_gzip_inflate(client->inflater, out, &outlen,
+                                    data, &tlen);
+      if(rv != 0) {
+        goto per_frame_decomp_error;
+      }
+
+      if(!config.null_out) {
+        std::cout.write(reinterpret_cast<const char*>(out), outlen);
+      }
+
+      update_html_parser(client, req, out, outlen, 0);
+
+      data += tlen;
+      len -= tlen;
+
+      if(nghttp2_gzip_inflate_finished(client->inflater)) {
+        // When Z_STREAM_END was reached, remaining input length
+        // must be 0.
+        if(len > 0) {
           goto per_frame_decomp_error;
         }
 
-        if(!config.null_out) {
-          std::cout.write(reinterpret_cast<const char*>(out), outlen);
-        }
-
-        update_html_parser(client, req, out, outlen, 0);
-
-        data += tlen;
-        len -= tlen;
-
-        if(nghttp2_gzip_inflate_finished(client->inflater)) {
-          // When Z_STREAM_END was reached, remaining input length
-          // must be 0.
-          if(len > 0) {
-            goto per_frame_decomp_error;
-          }
-
-          break;
-        }
-      } while(len > 0 || outlen > 0);
-
-    } else {
-      if(!config.null_out) {
-        std::cout.write(reinterpret_cast<const char*>(data), len);
+        break;
       }
-      update_html_parser(client, req, data, len, 0);
+    } while(len > 0 || outlen > 0);
+
+  } else {
+    if(!config.null_out) {
+      std::cout.write(reinterpret_cast<const char*>(data), len);
     }
+    update_html_parser(client, req, data, len, 0);
   }
 
   return 0;
@@ -1454,15 +1454,21 @@ int on_stream_close_callback
  void *user_data)
 {
   auto client = get_session(user_data);
-  auto itr = client->streams.find(stream_id);
-  if(itr != client->streams.end()) {
-    update_html_parser(client, (*itr).second, nullptr, 0, 1);
-    (*itr).second->record_complete_time();
-    ++client->complete;
+  auto req =
+    (Request*)nghttp2_session_get_stream_user_data(session, stream_id);
+
+  if(!req) {
+    return 0;
   }
+
+  update_html_parser(client, req, nullptr, 0, 1);
+  req->record_complete_time();
+  ++client->complete;
+
   if(client->all_requests_processed()) {
     nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
   }
+
   return 0;
 }
 } // namespace
