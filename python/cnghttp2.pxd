@@ -246,6 +246,16 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     const char* nghttp2_strerror(int lib_error_code)
 
+
+    int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
+                                             size_t hd_table_bufsize_max)
+
+    ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
+                                  nghttp2_nv *nv_out, int *inflate_flags,
+                                  uint8_t *input, size_t inlen, int in_final)
+
+    int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
+
 cdef extern from 'nghttp2_helper.h':
 
     void nghttp2_free(void *ptr)
@@ -297,18 +307,9 @@ cdef extern from 'nghttp2_hd.h':
     int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
                                              size_t hd_table_bufsize_max)
 
-    int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
-                                             size_t hd_table_bufsize_max)
-
     int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                               nghttp2_bufs *bufs,
                               nghttp2_nv *nva, size_t nvlen)
-
-    ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
-                                  nghttp2_nv *nv_out, int *inflate_flags,
-                                  uint8_t *input, size_t inlen, int in_final)
-
-    int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 
     nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                            size_t index)
