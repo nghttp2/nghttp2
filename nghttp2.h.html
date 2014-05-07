@@ -1577,37 +1577,6 @@
  <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
-<span class="cm"> * @functypedef</span>
-<span class="cm"> *</span>
-<span class="cm"> * Callback function invoked to adjust priority value for request</span>
-<span class="cm"> * HEADERS.  This callback is called only for request HEADERS (which</span>
-<span class="cm"> * means, `frame-&gt;hd.type == NGHTTP2_HEADERS &amp;&amp; frame-&gt;headers.cat ==</span>
-<span class="cm"> * NGHTTP2_HCAT_REQUEST` hold) and before</span>
-<span class="cm"> * :type:`nghttp2_before_frame_send_callback()`.  The application can</span>
-<span class="cm"> * adjust priority value |pri_spec|.  Initially, |pri_spec| is filled</span>
-<span class="cm"> * with the current priority value, which is equal to</span>
-<span class="cm"> * `frame-&gt;headers.pri_spec`.  If the application doesn&#39;t alter</span>
-<span class="cm"> * priority value, just return 0 without updating |pri_spec|.</span>
-<span class="cm"> *</span>
-<span class="cm"> * Since the application doesn&#39;t know stream ID when it submits</span>
-<span class="cm"> * requests, it may not be able to add correct priority value to</span>
-<span class="cm"> * HEADERS frame and forced to use follwing PRIORITY frame.  The</span>
-<span class="cm"> * purpose of this callback is give the chance to the application to</span>
-<span class="cm"> * adjust priority value with the latest information it has just</span>
-<span class="cm"> * before transmission so that correct priority is included in HEADERS</span>
-<span class="cm"> * frame and it doesn&#39;t have to send additional PRIORITY frame.</span>
-<span class="cm"> *</span>
-<span class="cm"> * Returning :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will make</span>
-<span class="cm"> * `nghttp2_session_send()` function immediately return</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
-<span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_adjust_priority_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
- <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
- <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
- <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
-
-<span class="cm">/**</span>
 <span class="cm"> * @struct</span>
 <span class="cm"> *</span>
 <span class="cm"> * Callback functions.</span>
@@ -1680,11 +1649,6 @@
 <span class="cm">   * frame.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_select_padding_callback</span> <span class="n">select_padding_callback</span><span class="p">;</span>
-  <span class="cm">/**</span>
-<span class="cm">   * Callback function invoked to adjust priority value just before</span>
-<span class="cm">   * request HEADERS is serialized to the wire format.</span>
-<span class="cm">   */</span>
-  <span class="n">nghttp2_adjust_priority_callback</span> <span class="n">adjust_priority_callback</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_session_callbacks</span><span class="p">;</span>
 
 <span class="k">struct</span> <span class="n">nghttp2_option</span><span class="p">;</span>
@@ -1891,23 +1855,20 @@
 <span class="cm"> *    are not met (e.g., request HEADERS cannot be sent after GOAWAY),</span>
 <span class="cm"> *    :member:`nghttp2_session_callbacks.on_frame_not_send_callback`</span>
 <span class="cm"> *    is invoked.  Abort the following steps.</span>
-<span class="cm"> * 4. If the frame is request HEADERS,</span>
-<span class="cm"> *    :member:`nghttp2_session_callbacks.adjust_priority_callback` is</span>
-<span class="cm"> *    invoked.</span>
-<span class="cm"> * 5. If the frame is HEADERS, PUSH_PROMISE or DATA,</span>
+<span class="cm"> * 4. If the frame is HEADERS, PUSH_PROMISE or DATA,</span>
 <span class="cm"> *    :member:`nghttp2_session_callbacks.select_padding_callback` is</span>
 <span class="cm"> *    invoked.</span>
-<span class="cm"> * 6. If the frame is request HEADERS, the stream is opened here.</span>
-<span class="cm"> * 7. :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
+<span class="cm"> * 5. If the frame is request HEADERS, the stream is opened here.</span>
+<span class="cm"> * 6. :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
 <span class="cm"> *    invoked.</span>
-<span class="cm"> * 8. :member:`nghttp2_session_callbacks.send_callback` is invoked one</span>
+<span class="cm"> * 7. :member:`nghttp2_session_callbacks.send_callback` is invoked one</span>
 <span class="cm"> *    or more times to send the frame.</span>
-<span class="cm"> * 9. :member:`nghttp2_session_callbacks.on_frame_send_callback` is</span>
+<span class="cm"> * 8. :member:`nghttp2_session_callbacks.on_frame_send_callback` is</span>
 <span class="cm"> *    invoked.</span>
-<span class="cm"> * 10. If the transmission of the frame triggers closure of the stream,</span>
-<span class="cm"> *     the stream is closed and</span>
-<span class="cm"> *     :member:`nghttp2_session_callbacks.on_stream_close_callback` is</span>
-<span class="cm"> *     invoked.</span>
+<span class="cm"> * 9. If the transmission of the frame triggers closure of the stream,</span>
+<span class="cm"> *    the stream is closed and</span>
+<span class="cm"> *    :member:`nghttp2_session_callbacks.on_stream_close_callback` is</span>
+<span class="cm"> *    invoked.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
@@ -2392,29 +2353,20 @@
 <span class="cm"> * arbitrary pointer, which can be retrieved later by</span>
 <span class="cm"> * `nghttp2_session_get_stream_user_data()`.</span>
 <span class="cm"> *</span>
-<span class="cm"> * Since the library reorders the frames and tries to send the highest</span>
-<span class="cm"> * prioritized one first and the HTTP/2 specification requires the</span>
-<span class="cm"> * stream ID must be strictly increasing, the stream ID of this</span>
-<span class="cm"> * request cannot be known until it is about to sent.  To know the</span>
-<span class="cm"> * stream ID of the request, the application can use</span>
-<span class="cm"> * :member:`nghttp2_session_callbacks.before_frame_send_callback`.</span>
-<span class="cm"> * This callback is called just before the frame is sent.  For HEADERS</span>
-<span class="cm"> * frame, the argument frame has the stream ID assigned.  Also since</span>
-<span class="cm"> * the stream is already opened,</span>
-<span class="cm"> * `nghttp2_session_get_stream_user_data()` can be used to get</span>
-<span class="cm"> * |stream_user_data| to identify which HEADERS we are processing.</span>
-<span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
+<span class="cm"> * This function returns assigned stream ID if it succeeds, or one of</span>
+<span class="cm"> * the following negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
+<span class="cm"> *     No stream ID is available because maximum stream ID was</span>
+<span class="cm"> *     reached.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">,</span>
-                           <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">,</span>
+                               <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2475,8 +2427,8 @@
 <span class="cm"> *</span>
 <span class="cm"> * If the |stream_id| is -1, this frame is assumed as request (i.e.,</span>
 <span class="cm"> * request HEADERS frame which opens new stream).  In this case, the</span>
-<span class="cm"> * actual stream ID is assigned just before the frame is sent.  For</span>
-<span class="cm"> * response, specify stream ID in |stream_id|.</span>
+<span class="cm"> * assigned stream ID will be returned.  Otherwise, specify stream ID</span>
+<span class="cm"> * in |stream_id|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |pri_spec| is priority specification of this request.  ``NULL``</span>
 <span class="cm"> * means the default priority (see</span>
@@ -2509,17 +2461,21 @@
 <span class="cm"> * specify flags directly.  For usual HTTP request,</span>
 <span class="cm"> * `nghttp2_submit_request()` is useful.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
+<span class="cm"> * This function returns newly assigned stream ID if it succeeds and</span>
+<span class="cm"> * |stream_id| is -1.  Otherwise, this function returns 0 if it</span>
+<span class="cm"> * succeeds, or one of the following negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
+<span class="cm"> *     No stream ID is available because maximum stream ID was</span>
+<span class="cm"> *     reached.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                           <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
-                           <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                               <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
+                               <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2661,31 +2617,24 @@
 <span class="cm"> * access it in :type:`nghttp2_before_frame_send_callback` and</span>
 <span class="cm"> * :type:`nghttp2_on_frame_send_callback` of this frame.</span>
 <span class="cm"> *</span>
-<span class="cm"> * Since the library reorders the frames and tries to send the highest</span>
-<span class="cm"> * prioritized one first and the HTTP/2 specification requires the</span>
-<span class="cm"> * stream ID must be strictly increasing, the promised stream ID</span>
-<span class="cm"> * cannot be known until it is about to sent.  To know the promised</span>
-<span class="cm"> * stream ID, the application can use</span>
-<span class="cm"> * :member:`nghttp2_session_callbacks.before_frame_send_callback`.</span>
-<span class="cm"> * This callback is called just before the frame is sent.  For</span>
-<span class="cm"> * PUSH_PROMISE frame, the argument frame has the promised stream ID</span>
-<span class="cm"> * assigned.</span>
-<span class="cm"> *</span>
 <span class="cm"> * The client side is not allowed to use this function.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
+<span class="cm"> * This function returns assigned promised stream ID if it succeeds,</span>
+<span class="cm"> * or one of the following negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_PROTO`</span>
 <span class="cm"> *     This function was invoked when |session| is initialized as</span>
 <span class="cm"> *     client.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
+<span class="cm"> *     No stream ID is available because maximum stream ID was</span>
+<span class="cm"> *     reached.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                                <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                                <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
-                                <span class="kt">void</span> <span class="o">*</span><span class="n">promised_stream_user_data</span><span class="p">);</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                                    <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                                    <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
+                                    <span class="kt">void</span> <span class="o">*</span><span class="n">promised_stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>

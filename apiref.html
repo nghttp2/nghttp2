@@ -1837,30 +1837,6 @@ inclusive.  Choosing number not in this range will be treated as
 </dd></dl>
 
 <dl class="type">
-<dt id="c.nghttp2_adjust_priority_callback">
-typedef int <tt class="descname">(*nghttp2_adjust_priority_callback)</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#c.nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_adjust_priority_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback function invoked to adjust priority value for request
-HEADERS.  This callback is called only for request HEADERS (which
-means, <tt class="xref c c-func docutils literal"><span class="pre">frame-&gt;hd.type</span> <span class="pre">==</span> <span class="pre">NGHTTP2_HEADERS</span> <span class="pre">&amp;&amp;</span> <span class="pre">frame-&gt;headers.cat</span> <span class="pre">==</span>
-<span class="pre">NGHTTP2_HCAT_REQUEST()</span></tt> hold) and before
-<tt class="xref c c-type docutils literal"><span class="pre">nghttp2_before_frame_send_callback()</span></tt>.  The application can
-adjust priority value <em>pri_spec</em>.  Initially, <em>pri_spec</em> is filled
-with the current priority value, which is equal to
-<tt class="xref c c-func docutils literal"><span class="pre">frame-&gt;headers.pri_spec()</span></tt>.  If the application doesn&#8217;t alter
-priority value, just return 0 without updating <em>pri_spec</em>.</p>
-<p>Since the application doesn&#8217;t know stream ID when it submits
-requests, it may not be able to add correct priority value to
-HEADERS frame and forced to use follwing PRIORITY frame.  The
-purpose of this callback is give the chance to the application to
-adjust priority value with the latest information it has just
-before transmission so that correct priority is included in HEADERS
-frame and it doesn&#8217;t have to send additional PRIORITY frame.</p>
-<p>Returning <a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a> will make
-<a class="reference internal" href="#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> function immediately return
-<a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
-</dd></dl>
-
-<dl class="type">
 <dt id="c.nghttp2_session_callbacks">
 <tt class="descname">nghttp2_session_callbacks</tt><a class="headerlink" href="#c.nghttp2_session_callbacks" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback functions.</p>
@@ -1955,13 +1931,6 @@ received.</p>
 <dd><p>Callback function invoked when the library asks application how
 many padding bytes are required for the transmission of the given
 frame.</p>
-</dd></dl>
-
-<dl class="member">
-<dt id="c.nghttp2_session_callbacks.adjust_priority_callback">
-<a class="reference internal" href="#c.nghttp2_adjust_priority_callback" title="nghttp2_adjust_priority_callback">nghttp2_adjust_priority_callback</a> <tt class="descname">adjust_priority_callback</tt><a class="headerlink" href="#c.nghttp2_session_callbacks.adjust_priority_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback function invoked to adjust priority value just before
-request HEADERS is serialized to the wire format.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2143,9 +2112,6 @@ which tells when each callback is invoked:</p>
 are not met (e.g., request HEADERS cannot be sent after GOAWAY),
 <a class="reference internal" href="#c.nghttp2_session_callbacks.on_frame_not_send_callback" title="nghttp2_session_callbacks.on_frame_not_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.on_frame_not_send_callback</span></tt></a>
 is invoked.  Abort the following steps.</li>
-<li>If the frame is request HEADERS,
-<a class="reference internal" href="#c.nghttp2_session_callbacks.adjust_priority_callback" title="nghttp2_session_callbacks.adjust_priority_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.adjust_priority_callback</span></tt></a> is
-invoked.</li>
 <li>If the frame is HEADERS, PUSH_PROMISE or DATA,
 <a class="reference internal" href="#c.nghttp2_session_callbacks.select_padding_callback" title="nghttp2_session_callbacks.select_padding_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.select_padding_callback</span></tt></a> is
 invoked.</li>
@@ -2541,7 +2507,7 @@ int <tt class="descname">nghttp2_priority_spec_check_default</tt><big>(</big>con
 
 <dl class="function">
 <dt id="c.nghttp2_submit_request">
-int <tt class="descname">nghttp2_submit_request</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#c.nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_request" title="Permalink to this definition">¶</a></dt>
+int32_t <tt class="descname">nghttp2_submit_request</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, const <a class="reference internal" href="#c.nghttp2_data_provider" title="nghttp2_data_provider">nghttp2_data_provider</a><em>&nbsp;*data_prd</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_request" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame and optionally one or more DATA frames.</p>
 <p>The <em>pri_spec</em> is priority specification of this request.  <tt class="docutils literal"><span class="pre">NULL</span></tt>
 means the default priority (see
@@ -2574,22 +2540,14 @@ HEADERS have END_STREAM set.  The <em>stream_user_data</em> is data
 associated to the stream opened by this request and can be an
 arbitrary pointer, which can be retrieved later by
 <a class="reference internal" href="#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a>.</p>
-<p>Since the library reorders the frames and tries to send the highest
-prioritized one first and the HTTP/2 specification requires the
-stream ID must be strictly increasing, the stream ID of this
-request cannot be known until it is about to sent.  To know the
-stream ID of the request, the application can use
-<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a>.
-This callback is called just before the frame is sent.  For HEADERS
-frame, the argument frame has the stream ID assigned.  Also since
-the stream is already opened,
-<a class="reference internal" href="#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> can be used to get
-<em>stream_user_data</em> to identify which HEADERS we are processing.</p>
-<p>This function returns 0 if it succeeds, or one of the following
-negative error codes:</p>
+<p>This function returns assigned stream ID if it succeeds, or one of
+the following negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE" title="NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE</span></tt></a></dt>
+<dd>No stream ID is available because maximum stream ID was
+reached.</dd>
 </dl>
 </dd></dl>
 
@@ -2628,7 +2586,7 @@ negative error codes:</p>
 
 <dl class="function">
 <dt id="c.nghttp2_submit_headers">
-int <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_headers" title="Permalink to this definition">¶</a></dt>
+int32_t <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_headers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame. The <em>flags</em> is bitwise OR of the
 following values:</p>
 <ul class="simple">
@@ -2641,8 +2599,8 @@ correctly sets END_HEADERS to the last sequence of the PUSH_PROMISE
 or CONTINUATION frame.</p>
 <p>If the <em>stream_id</em> is -1, this frame is assumed as request (i.e.,
 request HEADERS frame which opens new stream).  In this case, the
-actual stream ID is assigned just before the frame is sent.  For
-response, specify stream ID in <em>stream_id</em>.</p>
+assigned stream ID will be returned.  Otherwise, specify stream ID
+in <em>stream_id</em>.</p>
 <p>The <em>pri_spec</em> is priority specification of this request.  <tt class="docutils literal"><span class="pre">NULL</span></tt>
 means the default priority (see
 <a class="reference internal" href="#c.nghttp2_priority_spec_default_init" title="nghttp2_priority_spec_default_init"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_priority_spec_default_init()</span></tt></a>).  To specify the priority,
@@ -2668,11 +2626,15 @@ stream state from idle or reserved to open.</p>
 <p>This function is low-level in a sense that the application code can
 specify flags directly.  For usual HTTP request,
 <a class="reference internal" href="#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> is useful.</p>
-<p>This function returns 0 if it succeeds, or one of the following
-negative error codes:</p>
+<p>This function returns newly assigned stream ID if it succeeds and
+<em>stream_id</em> is -1.  Otherwise, this function returns 0 if it
+succeeds, or one of the following negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE" title="NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE</span></tt></a></dt>
+<dd>No stream ID is available because maximum stream ID was
+reached.</dd>
 </dl>
 </dd></dl>
 
@@ -2769,7 +2731,7 @@ without ACK flag set.</dd>
 
 <dl class="function">
 <dt id="c.nghttp2_submit_push_promise">
-int <tt class="descname">nghttp2_submit_push_promise</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, void<em>&nbsp;*promised_stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_push_promise" title="Permalink to this definition">¶</a></dt>
+int32_t <tt class="descname">nghttp2_submit_push_promise</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, void<em>&nbsp;*promised_stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_push_promise" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits PUSH_PROMISE frame.</p>
 <p>The <em>flags</em> is currently ignored.  The library handles the
 CONTINUATION frame internally and it correctly sets END_HEADERS to
@@ -2789,24 +2751,18 @@ make it in reserved state.  It is available using
 <a class="reference internal" href="#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a>.  The application can
 access it in <a class="reference internal" href="#c.nghttp2_before_frame_send_callback" title="nghttp2_before_frame_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_before_frame_send_callback</span></tt></a> and
 <a class="reference internal" href="#c.nghttp2_on_frame_send_callback" title="nghttp2_on_frame_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_send_callback</span></tt></a> of this frame.</p>
-<p>Since the library reorders the frames and tries to send the highest
-prioritized one first and the HTTP/2 specification requires the
-stream ID must be strictly increasing, the promised stream ID
-cannot be known until it is about to sent.  To know the promised
-stream ID, the application can use
-<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a>.
-This callback is called just before the frame is sent.  For
-PUSH_PROMISE frame, the argument frame has the promised stream ID
-assigned.</p>
 <p>The client side is not allowed to use this function.</p>
-<p>This function returns 0 if it succeeds, or one of the following
-negative error codes:</p>
+<p>This function returns assigned promised stream ID if it succeeds,
+or one of the following negative error codes:</p>
 <dl class="docutils">
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_PROTO" title="NGHTTP2_ERR_PROTO"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PROTO</span></tt></a></dt>
 <dd>This function was invoked when <em>session</em> is initialized as
 client.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE" title="NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE</span></tt></a></dt>
+<dd>No stream ID is available because maximum stream ID was
+reached.</dd>
 </dl>
 </dd></dl>
 

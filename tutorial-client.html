@@ -312,7 +312,6 @@ finished successfully. We first initialize nghttp2 session object in
   <span class="n">nghttp2_session_callbacks</span> <span class="n">callbacks</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
 
   <span class="n">callbacks</span><span class="p">.</span><span class="n">send_callback</span> <span class="o">=</span> <span class="n">send_callback</span><span class="p">;</span>
-  <span class="n">callbacks</span><span class="p">.</span><span class="n">before_frame_send_callback</span> <span class="o">=</span> <span class="n">before_frame_send_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_data_chunk_recv_callback</span> <span class="o">=</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_stream_close_callback</span> <span class="o">=</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
@@ -363,7 +362,7 @@ used, which is described about later.</p>
 request in <tt class="docutils literal"><span class="pre">submit_request()</span></tt> function:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">submit_request</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">;</span>
   <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span> <span class="o">=</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">;</span>
   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri</span> <span class="o">=</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">uri</span><span class="p">;</span>
   <span class="k">const</span> <span class="k">struct</span> <span class="n">http_parser_url</span> <span class="o">*</span><span class="n">u</span> <span class="o">=</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">u</span><span class="p">;</span>
@@ -376,11 +375,13 @@ request in <tt class="docutils literal"><span class="pre">submit_request()</span
   <span class="p">};</span>
   <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Request headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
   <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">));</span>
-  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
-                              <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
-  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit HTTP request: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+  <span class="n">stream_id</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
+                                     <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">stream_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit HTTP request: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">stream_id</span><span class="p">));</span>
   <span class="p">}</span>
+
+  <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">=</span> <span class="n">stream_id</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -389,7 +390,9 @@ request in <tt class="docutils literal"><span class="pre">submit_request()</span
 <tt class="docutils literal"><span class="pre">:scheme</span></tt>, <tt class="docutils literal"><span class="pre">:authority</span></tt> and <tt class="docutils literal"><span class="pre">:path</span></tt>. To queue this HTTP request,
 we use <a class="reference internal" href="apiref.html#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> function. The <tt class="xref c c-func docutils literal"><span class="pre">stream_data()</span></tt> is
 passed in <em>stream_user_data</em> parameter. It is used in nghttp2
-callbacks which we&#8217;ll describe about later.</p>
+callbacks which we&#8217;ll describe about later.
+<a class="reference internal" href="apiref.html#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> returns the newly assigned stream ID for
+this request.</p>
 <p>The next bufferevent callback is <tt class="docutils literal"><span class="pre">readcb()</span></tt>, which is invoked when
 data is available to read in the bufferevent input buffer:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">readcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
@@ -491,47 +494,6 @@ conditions are met, we drop connection.</p>
 <p>We have already described about nghttp2 callback <tt class="docutils literal"><span class="pre">send_callback()</span></tt>.
 Let&#8217;s describe remaining nghttp2 callbacks we setup in
 <tt class="docutils literal"><span class="pre">initialize_nghttp2_setup()</span></tt> function.</p>
-<p>The <tt class="xref c c-func docutils literal"><span class="pre">before_frame_send_callback()</span></tt> function is invoked when a frame is
-about to be sent:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">before_frame_send_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
-<span class="p">{</span>
-  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
-  <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
-
-  <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">NGHTTP2_HEADERS</span> <span class="o">&amp;&amp;</span>
-     <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_REQUEST</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">stream_data</span> <span class="o">=</span>
-      <span class="p">(</span><span class="n">http2_stream_data</span><span class="o">*</span><span class="p">)</span><span class="n">nghttp2_session_get_stream_user_data</span>
-      <span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">);</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">stream_data</span> <span class="o">==</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">=</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">;</span>
-    <span class="p">}</span>
-  <span class="p">}</span>
-  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Remember that we have not get stream ID when we submit HTTP request
-using <a class="reference internal" href="apiref.html#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>. Since nghttp2 library reorders the
-request based on priority and stream ID must be monotonically
-increased, the stream ID is not assigned just before transmission.
-The one of the purpose of this callback is get the stream ID assigned
-to the frame. First we check that the frame is HEADERS frame. Since
-HEADERS has several meanings in HTTP/2, we check that it is request
-HEADERS (which means that the first HEADERS frame to create a stream).
-The assigned stream ID is <tt class="docutils literal"><span class="pre">frame-&gt;hd.stream_id</span></tt>.  Recall that we
-passed <tt class="docutils literal"><span class="pre">stream_data</span></tt> in the <em>stream_user_data</em> parameter of
-<a class="reference internal" href="apiref.html#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> function. We can get it using
-<a class="reference internal" href="apiref.html#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> function. To really sure that
-this HEADERS frame is the request HEADERS we have queued, we check
-that <tt class="docutils literal"><span class="pre">session_data-&gt;stream_data</span></tt> and <tt class="docutils literal"><span class="pre">stream_data</span></tt> returned from
-<a class="reference internal" href="apiref.html#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> are pointing the same
-location. In this example program, we just only uses 1 stream, it is
-unnecessary to compare them, but real applications surely deal with
-multiple streams, and <em>stream_user_data</em> is very handy to identify
-which HEADERS we are seeing in the callback. Therefore we just show
-how to use it here.</p>
 <p>Each request header name/value pair is emitted via
 <tt class="docutils literal"><span class="pre">on_header_callback</span></tt> function:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">on_header_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -818,28 +780,6 @@ here.</p>
   <span class="k">return</span> <span class="n">length</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="cm">/* nghttp2_before_frame_send_callback: Called when nghttp2 library is</span>
-<span class="cm">   about to send a frame. We use this callback to get stream ID of new</span>
-<span class="cm">   stream. Since HEADERS in HTTP/2 has several roles, we check that</span>
-<span class="cm">   it is a HTTP request HEADERS. */</span>
-<span class="k">static</span> <span class="kt">int</span> <span class="nf">before_frame_send_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
-<span class="p">{</span>
-  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
-  <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">;</span>
-
-  <span class="k">if</span><span class="p">(</span><span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">NGHTTP2_HEADERS</span> <span class="o">&amp;&amp;</span>
-     <span class="n">frame</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">.</span><span class="n">cat</span> <span class="o">==</span> <span class="n">NGHTTP2_HCAT_REQUEST</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">stream_data</span> <span class="o">=</span>
-      <span class="p">(</span><span class="n">http2_stream_data</span><span class="o">*</span><span class="p">)</span><span class="n">nghttp2_session_get_stream_user_data</span>
-      <span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">);</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">stream_data</span> <span class="o">==</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">=</span> <span class="n">frame</span><span class="o">-&gt;</span><span class="n">hd</span><span class="p">.</span><span class="n">stream_id</span><span class="p">;</span>
-    <span class="p">}</span>
-  <span class="p">}</span>
-  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-
 <span class="cm">/* nghttp2_on_header_callback: Called when nghttp2 library emits</span>
 <span class="cm">   single header name/value pair. */</span>
 <span class="k">static</span> <span class="kt">int</span> <span class="nf">on_header_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -987,7 +927,6 @@ here.</p>
   <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">callbacks</span><span class="p">));</span>
 
   <span class="n">callbacks</span><span class="p">.</span><span class="n">send_callback</span> <span class="o">=</span> <span class="n">send_callback</span><span class="p">;</span>
-  <span class="n">callbacks</span><span class="p">.</span><span class="n">before_frame_send_callback</span> <span class="o">=</span> <span class="n">before_frame_send_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_data_chunk_recv_callback</span> <span class="o">=</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">;</span>
   <span class="n">callbacks</span><span class="p">.</span><span class="n">on_stream_close_callback</span> <span class="o">=</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
@@ -1024,7 +963,7 @@ here.</p>
 <span class="cm">/* Send HTTP request to the remote peer */</span>
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">submit_request</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">;</span>
   <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span> <span class="o">=</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">stream_data</span><span class="p">;</span>
   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri</span> <span class="o">=</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">uri</span><span class="p">;</span>
   <span class="k">const</span> <span class="k">struct</span> <span class="n">http_parser_url</span> <span class="o">*</span><span class="n">u</span> <span class="o">=</span> <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">u</span><span class="p">;</span>
@@ -1037,11 +976,13 @@ here.</p>
   <span class="p">};</span>
   <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Request headers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
   <span class="n">print_headers</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">));</span>
-  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
-                              <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
-  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit HTTP request: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+  <span class="n">stream_id</span> <span class="o">=</span> <span class="n">nghttp2_submit_request</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span>
+                                     <span class="n">hdrs</span><span class="p">,</span> <span class="n">ARRLEN</span><span class="p">(</span><span class="n">hdrs</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">stream_data</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">stream_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">errx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Could not submit HTTP request: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">stream_id</span><span class="p">));</span>
   <span class="p">}</span>
+
+  <span class="n">stream_data</span><span class="o">-&gt;</span><span class="n">stream_id</span> <span class="o">=</span> <span class="n">stream_id</span><span class="p">;</span>
 <span class="p">}</span>
 
 <span class="cm">/* Serialize the frame and send (or buffer) the data to</span>
