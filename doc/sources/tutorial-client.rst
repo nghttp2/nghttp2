@@ -159,7 +159,6 @@ finished successfully. We first initialize nghttp2 session object in
       nghttp2_session_callbacks callbacks = {0};
 
       callbacks.send_callback = send_callback;
-      callbacks.before_frame_send_callback = before_frame_send_callback;
       callbacks.on_frame_recv_callback = on_frame_recv_callback;
       callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
       callbacks.on_stream_close_callback = on_stream_close_callback;
@@ -213,7 +212,7 @@ request in ``submit_request()`` function::
 
     static void submit_request(http2_session_data *session_data)
     {
-      int rv;
+      int32_t stream_id;
       http2_stream_data *stream_data = session_data->stream_data;
       const char *uri = stream_data->uri;
       const struct http_parser_url *u = stream_data->u;
@@ -226,11 +225,13 @@ request in ``submit_request()`` function::
       };
       fprintf(stderr, "Request headers:\n");
       print_headers(stderr, hdrs, ARRLEN(hdrs));
-      rv = nghttp2_submit_request(session_data->session, NULL,
-                                  hdrs, ARRLEN(hdrs), NULL, stream_data);
-      if(rv != 0) {
-        errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(rv));
+      stream_id = nghttp2_submit_request(session_data->session, NULL,
+                                         hdrs, ARRLEN(hdrs), NULL, stream_data);
+      if(stream_id < 0) {
+        errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(stream_id));
       }
+
+      stream_data->stream_id = stream_id;
     }
 
 We build HTTP request header fields in ``hdrs`` which is an array of
@@ -239,6 +240,8 @@ We build HTTP request header fields in ``hdrs`` which is an array of
 we use `nghttp2_submit_request()` function. The `stream_data` is
 passed in *stream_user_data* parameter. It is used in nghttp2
 callbacks which we'll describe about later.
+`nghttp2_submit_request()` returns the newly assigned stream ID for
+this request.
 
 The next bufferevent callback is ``readcb()``, which is invoked when
 data is available to read in the bufferevent input buffer::
@@ -343,48 +346,6 @@ conditions are met, we drop connection.
 We have already described about nghttp2 callback ``send_callback()``.
 Let's describe remaining nghttp2 callbacks we setup in
 ``initialize_nghttp2_setup()`` function.
-
-The `before_frame_send_callback()` function is invoked when a frame is
-about to be sent::
-
-    static int before_frame_send_callback
-    (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-    {
-      http2_session_data *session_data = (http2_session_data*)user_data;
-      http2_stream_data *stream_data;
-
-      if(frame->hd.type == NGHTTP2_HEADERS &&
-         frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-        stream_data =
-          (http2_stream_data*)nghttp2_session_get_stream_user_data
-          (session, frame->hd.stream_id);
-        if(stream_data == session_data->stream_data) {
-          stream_data->stream_id = frame->hd.stream_id;
-        }
-      }
-      return 0;
-    }
-
-Remember that we have not get stream ID when we submit HTTP request
-using `nghttp2_submit_request()`. Since nghttp2 library reorders the
-request based on priority and stream ID must be monotonically
-increased, the stream ID is not assigned just before transmission.
-The one of the purpose of this callback is get the stream ID assigned
-to the frame. First we check that the frame is HEADERS frame. Since
-HEADERS has several meanings in HTTP/2, we check that it is request
-HEADERS (which means that the first HEADERS frame to create a stream).
-The assigned stream ID is ``frame->hd.stream_id``.  Recall that we
-passed ``stream_data`` in the *stream_user_data* parameter of
-`nghttp2_submit_request()` function. We can get it using
-`nghttp2_session_get_stream_user_data()` function. To really sure that
-this HEADERS frame is the request HEADERS we have queued, we check
-that ``session_data->stream_data`` and ``stream_data`` returned from
-`nghttp2_session_get_stream_user_data()` are pointing the same
-location. In this example program, we just only uses 1 stream, it is
-unnecessary to compare them, but real applications surely deal with
-multiple streams, and *stream_user_data* is very handy to identify
-which HEADERS we are seeing in the callback. Therefore we just show
-how to use it here.
 
 Each request header name/value pair is emitted via
 ``on_header_callback`` function::
