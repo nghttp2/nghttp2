@@ -560,40 +560,13 @@ int nghttp2_session_add_frame(nghttp2_session *session,
   if(frame_cat == NGHTTP2_CAT_CTRL) {
     nghttp2_frame *frame = (nghttp2_frame*)abs_frame;
     nghttp2_stream *stream;
-    nghttp2_stream *dep_stream;
 
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS:
-      if(frame->hd.stream_id == -1) {
-        /* Initial HEADERS, which will open stream */
+      item->weight = NGHTTP2_MAX_WEIGHT;
 
-        /* TODO If we always frame.headers.pri_spec filled in, we
-           don't have to check flags */
-        if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
-          if(frame->headers.pri_spec.stream_id == 0) {
-            item->weight = frame->headers.pri_spec.weight;
-          } else {
-            dep_stream = nghttp2_session_get_stream
-              (session, frame->headers.pri_spec.stream_id);
-
-            if(dep_stream) {
-              item->weight = nghttp2_stream_dep_distributed_effective_weight
-                (dep_stream, frame->headers.pri_spec.weight);
-            } else {
-              item->weight = frame->headers.pri_spec.weight;
-            }
-          }
-        } else {
-          item->weight = NGHTTP2_DEFAULT_WEIGHT;
-        }
-
-      } else if(stream) {
-        /* Otherwise, the frame must have stream ID.  We use its
-           effective_weight. */
-        item->weight = stream->effective_weight;
-      }
       break;
     case NGHTTP2_PRIORITY:
       break;
@@ -607,18 +580,13 @@ int nghttp2_session_add_frame(nghttp2_session *session,
           stream->state = NGHTTP2_STREAM_CLOSING;
         }
       }
-
       break;
     case NGHTTP2_SETTINGS:
       item->weight = NGHTTP2_OB_SETTINGS_WEIGHT;
 
       break;
     case NGHTTP2_PUSH_PROMISE:
-      /* Use priority of associated stream */
-      if(stream) {
-        item->weight = stream->effective_weight;
-      }
-
+      item->weight = NGHTTP2_MAX_WEIGHT;
       break;
     case NGHTTP2_PING:
       /* Ping has highest priority. */
@@ -637,7 +605,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
     }
 
     if(frame->hd.type == NGHTTP2_HEADERS &&
-       (frame->hd.stream_id == -1 ||
+       (frame->headers.cat == NGHTTP2_HCAT_REQUEST ||
         (stream && stream->state == NGHTTP2_STREAM_RESERVED))) {
       /* We push request HEADERS and push response HEADERS to
          dedicated queue because their transmission is affected by
@@ -996,9 +964,6 @@ static int nghttp2_predicate_stream_for_send(nghttp2_stream *stream)
  * NGHTTP2_ERR_START_STREAM_NOT_ALLOWED
  *     New stream cannot be created because GOAWAY is already sent or
  *     received.
- * NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE
- *     Stream ID has reached the maximum value. Therefore no stream ID
- *     is available.
  */
 static int nghttp2_session_predicate_request_headers_send
 (nghttp2_session *session, nghttp2_headers *frame)
@@ -1007,10 +972,6 @@ static int nghttp2_session_predicate_request_headers_send
     /* When GOAWAY is sent or received, peer must not send new request
        HEADERS. */
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
-  }
-  /* All 32bit signed stream IDs are spent. */
-  if(session->next_stream_id > INT32_MAX) {
-    return NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE;
   }
   return 0;
 }
@@ -1176,9 +1137,6 @@ static int nghttp2_session_predicate_priority_send
  * NGHTTP2_ERR_START_STREAM_NOT_ALLOWED
  *     New stream cannot be created because GOAWAY is already sent or
  *     received.
- * NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE
- *     Stream ID has reached the maximum value. Therefore no stream ID
- *     is available.
  * NGHTTP2_ERR_PROTO
  *     The client side attempts to send PUSH_PROMISE, or the server
  *     sends PUSH_PROMISE for the stream not initiated by the client.
@@ -1219,10 +1177,6 @@ static int nghttp2_session_predicate_push_promise_send
     /* When GOAWAY is sent or received, peer must not promise new
        stream ID */
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
-  }
-  /* All 32bit signed stream IDs are spent. */
-  if(session->next_stream_id > INT32_MAX) {
-    return NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE;
   }
   return 0;
 }
@@ -1598,19 +1552,16 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
 
       aux_data = (nghttp2_headers_aux_data*)item->aux_data;
 
-      if(frame->hd.stream_id == -1) {
+      if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
         nghttp2_priority_spec pri_spec_default;
         nghttp2_stream *stream;
 
         /* initial HEADERS, which opens stream */
-        frame->headers.cat = NGHTTP2_HCAT_REQUEST;
         rv = nghttp2_session_predicate_request_headers_send(session,
                                                             &frame->headers);
         if(rv != 0) {
           return rv;
         }
-        frame->hd.stream_id = session->next_stream_id;
-        session->next_stream_id += 2;
 
         /* We first open strea with default priority.  This is because
         priority may be adjusted in callback. */
@@ -1733,8 +1684,7 @@ static int nghttp2_session_prep_frame(nghttp2_session *session,
       if(rv != 0) {
         return rv;
       }
-      frame->push_promise.promised_stream_id = session->next_stream_id;
-      session->next_stream_id += 2;
+
       framerv = nghttp2_frame_pack_push_promise(&session->aob.framebufs,
                                                 &frame->push_promise,
                                                 &session->hd_deflater);

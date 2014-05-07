@@ -196,7 +196,7 @@ struct Request {
   Request(const std::string& uri, const http_parser_url &u,
           const nghttp2_data_provider *data_prd, int64_t data_length,
           const nghttp2_priority_spec& pri_spec,
-          std::shared_ptr<Dependency> dep, int level = 0)
+          std::shared_ptr<Dependency> dep, int pri = 0, int level = 0)
     : uri(uri),
       u(u),
       dep(std::move(dep)),
@@ -208,7 +208,7 @@ struct Request {
       data_prd(data_prd),
       stream_id(-1),
       level(level),
-      pri(0)
+      pri(pri)
   {}
 
   ~Request()
@@ -400,11 +400,6 @@ int submit_request
 (HttpClient *client,
  const std::vector<std::pair<std::string, std::string>>& headers,
  Request *req);
-} // namespace
-
-namespace {
-void check_stream_id(nghttp2_session *session, int32_t stream_id,
-                     void *user_data);
 } // namespace
 
 namespace {
@@ -735,7 +730,8 @@ struct HttpClient {
         return -1;
       }
       if(stream_user_data) {
-        check_stream_id(session, 1, this);
+        stream_user_data->stream_id = 1;
+        on_request(stream_user_data);
       }
     }
     // Send connection header here
@@ -869,7 +865,7 @@ struct HttpClient {
                    int64_t data_length,
                    const nghttp2_priority_spec& pri_spec,
                    std::shared_ptr<Dependency> dep,
-                   int level = 0)
+                   int pri = 0, int level = 0)
   {
     http_parser_url u;
     memset(&u, 0, sizeof(u));
@@ -886,7 +882,7 @@ struct HttpClient {
       reqvec.push_back(util::make_unique<Request>(uri, u, data_prd,
                                                   data_length,
                                                   pri_spec, std::move(dep),
-                                                  level));
+                                                  pri, level));
       return true;
     }
   }
@@ -925,6 +921,44 @@ struct HttpClient {
     inflater = gzip;
 
     return true;
+  }
+
+  void on_request(Request *req)
+  {
+    streams[req->stream_id] = req;
+    req->record_request_time();
+
+    if(req->pri == 0 && req->dep) {
+      assert(req->dep->deps.empty());
+
+      req->dep->deps.push_back(std::vector<Request*>{req});
+
+      return;
+    }
+
+    if(req->stream_id % 2 == 0) {
+      return;
+    }
+
+    auto itr = std::begin(req->dep->deps);
+    for(; itr != std::end(req->dep->deps); ++itr) {
+      if((*itr)[0]->pri == req->pri) {
+        (*itr).push_back(req);
+
+        break;
+      }
+
+      if((*itr)[0]->pri > req->pri) {
+        auto v = std::vector<Request*>{req};
+        req->dep->deps.insert(itr, std::move(v));
+
+        break;
+      }
+    }
+
+    if(itr == std::end(req->dep->deps)) {
+      req->dep->deps.push_back(std::vector<Request*>{req});
+    }
   }
 };
 } // namespace
@@ -1030,13 +1064,18 @@ int submit_request
     nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
-  auto rv = nghttp2_submit_request(client->session, &req->pri_spec,
-                                   nva.data(), nva.size(), req->data_prd, req);
-  if(rv != 0) {
+  auto stream_id = nghttp2_submit_request(client->session, &req->pri_spec,
+                                          nva.data(), nva.size(),
+                                          req->data_prd, req);
+  if(stream_id < 0) {
     std::cerr << "nghttp2_submit_request() returned error: "
-              << nghttp2_strerror(rv) << std::endl;
+              << nghttp2_strerror(stream_id) << std::endl;
     return -1;
   }
+
+  req->stream_id = stream_id;
+  client->on_request(req);
+
   return 0;
 }
 } // namespace
@@ -1052,6 +1091,8 @@ void update_html_parser(HttpClient *client, Request *req,
 
   for(auto& p : req->html_parser->get_links()) {
     auto uri = strip_fragment(p.first.c_str());
+    auto pri = p.second;
+
     http_parser_url u;
     memset(&u, 0, sizeof(u));
     if(http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
@@ -1059,18 +1100,10 @@ void update_html_parser(HttpClient *client, Request *req,
        util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
        util::porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
       // No POST data for assets
-
-      nghttp2_priority_spec pri_spec;
-
-      // We adjust the priority using separate PRIORITY frame after
-      // stream ID becomes known.
-      nghttp2_priority_spec_default_init(&pri_spec);
+      auto pri_spec = req->resolve_dep(pri);
 
       if ( client->add_request(uri, nullptr, 0, pri_spec, req->dep,
-                               req->level+1) ) {
-        auto& req = client->reqvec.back();
-
-        req->pri = p.second;
+                               pri, req->level+1) ) {
 
         submit_request(client, config.headers,
                        client->reqvec.back().get());
@@ -1182,52 +1215,6 @@ int on_data_chunk_recv_callback
 } // namespace
 
 namespace {
-void check_stream_id(nghttp2_session *session, int32_t stream_id,
-                     void *user_data)
-{
-  auto client = get_session(user_data);
-  auto req = (Request*)nghttp2_session_get_stream_user_data(session,
-                                                            stream_id);
-  assert(req);
-  req->stream_id = stream_id;
-  client->streams[stream_id] = req;
-  req->record_request_time();
-
-  if(req->pri == 0 && req->dep) {
-    assert(req->dep->deps.empty());
-
-    req->dep->deps.push_back(std::vector<Request*>{req});
-
-    return;
-  }
-
-  if(stream_id % 2 == 0) {
-    return;
-  }
-
-  auto itr = std::begin(req->dep->deps);
-  for(; itr != std::end(req->dep->deps); ++itr) {
-    if((*itr)[0]->pri == req->pri) {
-      (*itr).push_back(req);
-
-      break;
-    }
-
-    if((*itr)[0]->pri > req->pri) {
-      auto v = std::vector<Request*>{req};
-      req->dep->deps.insert(itr, std::move(v));
-
-      break;
-    }
-  }
-
-  if(itr == std::end(req->dep->deps)) {
-    req->dep->deps.push_back(std::vector<Request*>{req});
-  }
-}
-} // namespace
-
-namespace {
 void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 {
   int rv;
@@ -1237,35 +1224,6 @@ void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
   if(rv != 0) {
     client->disconnect();
   }
-}
-} // namespace
-
-namespace {
-int adjust_priority_callback
-(nghttp2_session *session, const nghttp2_frame *frame,
- nghttp2_priority_spec *pri_spec, void *user_data)
-{
-  auto req = (Request*)nghttp2_session_get_stream_user_data
-    (session, frame->hd.stream_id);
-  auto pri_spec_adjusted = req->resolve_dep(req->pri);
-
-  if(!nghttp2_priority_spec_check_default(&pri_spec_adjusted)) {
-    *pri_spec = pri_spec_adjusted;
-  }
-
-  return 0;
-}
-} // namespace
-
-namespace {
-int before_frame_send_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
-  if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    check_stream_id(session, frame->hd.stream_id, user_data);
-  }
-  return 0;
 }
 } // namespace
 
@@ -1323,9 +1281,13 @@ int on_begin_headers_callback(nghttp2_session *session,
 
     auto req = util::make_unique<Request>("", u, nullptr, 0, pri_spec,
                                           nullptr);
+    req->stream_id = stream_id;
+
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());
+
+    client->on_request(req.get());
     client->reqvec.push_back(std::move(req));
-    check_stream_id(session, stream_id, user_data);
+
     break;
   }
   }
@@ -1868,7 +1830,6 @@ int run(char **uris, int n)
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback2;
-  callbacks.before_frame_send_callback = before_frame_send_callback;
   if(config.verbose) {
     callbacks.on_frame_send_callback = verbose_on_frame_send_callback;
     callbacks.on_invalid_frame_recv_callback =
@@ -1882,7 +1843,6 @@ int run(char **uris, int n)
   if(config.padding) {
     callbacks.select_padding_callback = select_padding_callback;
   }
-  callbacks.adjust_priority_callback = adjust_priority_callback;
 
   std::string prev_scheme;
   std::string prev_host;

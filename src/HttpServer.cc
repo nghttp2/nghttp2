@@ -89,6 +89,17 @@ void print_session_id(int64_t id)
 }
 } // namespace
 
+namespace {
+void append_nv(Stream *stream, const std::vector<nghttp2_nv>& nva)
+{
+  for(auto& nv : nva) {
+    http2::split_add_header(stream->headers,
+                            nv.name, nv.namelen, nv.value, nv.valuelen,
+                            nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+  }
+}
+} // namespace
+
 Config::Config()
   : stream_read_timeout{60, 0},
     stream_write_timeout{60, 0},
@@ -851,9 +862,22 @@ int Http2Handler::submit_push_promise(Stream *stream,
     http2::make_nv_ll(":scheme", "https"),
     http2::make_nv_ls(":authority", (*itr).value)
   };
-  return nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_HEADERS,
-                                     stream->stream_id, nva.data(), nva.size(),
-                                     nullptr);
+
+  auto promised_stream_id =
+    nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_END_HEADERS,
+                                stream->stream_id, nva.data(), nva.size(),
+                                nullptr);
+
+  if(promised_stream_id < 0) {
+    return promised_stream_id;
+  }
+
+  auto promised_stream = util::make_unique<Stream>(this, promised_stream_id);
+
+  append_nv(promised_stream.get(), http2::sort_nva(nva.data(), nva.size()));
+  add_stream(promised_stream_id, std::move(promised_stream));
+
+  return 0;
 }
 
 int Http2Handler::submit_rst_stream(Stream *stream,
@@ -1122,17 +1146,6 @@ void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
 } // namespace
 
 namespace {
-void append_nv(Stream *stream, const std::vector<nghttp2_nv>& nva)
-{
-  for(auto& nv : nva) {
-    http2::split_add_header(stream->headers,
-                            nv.name, nv.namelen, nv.value, nv.valuelen,
-                            nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
-  }
-}
-} // namespace
-
-namespace {
 const char *REQUIRED_HEADERS[] = {
   ":method", ":path", ":scheme", nullptr
 };
@@ -1300,25 +1313,6 @@ int hd_on_frame_recv_callback
 } // namespace
 
 namespace {
-int hd_before_frame_send_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
-  auto hd = static_cast<Http2Handler*>(user_data);
-
-  if(frame->hd.type == NGHTTP2_PUSH_PROMISE) {
-    auto stream_id = frame->push_promise.promised_stream_id;
-    auto stream = util::make_unique<Stream>(hd, stream_id);
-    auto nva = http2::sort_nva(frame->push_promise.nva,
-                               frame->push_promise.nvlen);
-
-    append_nv(stream.get(), nva);
-    hd->add_stream(stream_id, std::move(stream));
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
 int hd_on_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame,
  void *user_data)
@@ -1432,7 +1426,6 @@ void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = hd_on_frame_recv_callback;
-  callbacks.before_frame_send_callback = hd_before_frame_send_callback;
   callbacks.on_frame_send_callback = hd_on_frame_send_callback;
   if(config->verbose) {
     callbacks.on_invalid_frame_recv_callback =

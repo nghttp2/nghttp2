@@ -66,6 +66,7 @@ static void nghttp2_frame_set_hd(nghttp2_frame_hd *hd, uint16_t length,
 
 void nghttp2_frame_headers_init(nghttp2_headers *frame,
                                 uint8_t flags, int32_t stream_id,
+                                nghttp2_headers_category cat,
                                 const nghttp2_priority_spec *pri_spec,
                                 nghttp2_nv *nva, size_t nvlen)
 {
@@ -73,7 +74,7 @@ void nghttp2_frame_headers_init(nghttp2_headers *frame,
   frame->padlen = 0;
   frame->nva = nva;
   frame->nvlen = nvlen;
-  frame->cat = NGHTTP2_HCAT_REQUEST;
+  frame->cat = cat;
 
   if(pri_spec) {
     frame->pri_spec = *pri_spec;

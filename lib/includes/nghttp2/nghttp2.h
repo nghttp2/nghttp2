@@ -2231,29 +2231,20 @@ int nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  * arbitrary pointer, which can be retrieved later by
  * `nghttp2_session_get_stream_user_data()`.
  *
- * Since the library reorders the frames and tries to send the highest
- * prioritized one first and the HTTP/2 specification requires the
- * stream ID must be strictly increasing, the stream ID of this
- * request cannot be known until it is about to sent.  To know the
- * stream ID of the request, the application can use
- * :member:`nghttp2_session_callbacks.before_frame_send_callback`.
- * This callback is called just before the frame is sent.  For HEADERS
- * frame, the argument frame has the stream ID assigned.  Also since
- * the stream is already opened,
- * `nghttp2_session_get_stream_user_data()` can be used to get
- * |stream_user_data| to identify which HEADERS we are processing.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
+ * This function returns assigned stream ID if it succeeds, or one of
+ * the following negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`
+ *     No stream ID is available because maximum stream ID was
+ *     reached.
  */
-int nghttp2_submit_request(nghttp2_session *session,
-                           const nghttp2_priority_spec *pri_spec,
-                           const nghttp2_nv *nva, size_t nvlen,
-                           const nghttp2_data_provider *data_prd,
-                           void *stream_user_data);
+int32_t nghttp2_submit_request(nghttp2_session *session,
+                               const nghttp2_priority_spec *pri_spec,
+                               const nghttp2_nv *nva, size_t nvlen,
+                               const nghttp2_data_provider *data_prd,
+                               void *stream_user_data);
 
 /**
  * @function
@@ -2314,8 +2305,8 @@ int nghttp2_submit_response(nghttp2_session *session,
  *
  * If the |stream_id| is -1, this frame is assumed as request (i.e.,
  * request HEADERS frame which opens new stream).  In this case, the
- * actual stream ID is assigned just before the frame is sent.  For
- * response, specify stream ID in |stream_id|.
+ * assigned stream ID will be returned.  Otherwise, specify stream ID
+ * in |stream_id|.
  *
  * The |pri_spec| is priority specification of this request.  ``NULL``
  * means the default priority (see
@@ -2348,17 +2339,21 @@ int nghttp2_submit_response(nghttp2_session *session,
  * specify flags directly.  For usual HTTP request,
  * `nghttp2_submit_request()` is useful.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
+ * This function returns newly assigned stream ID if it succeeds and
+ * |stream_id| is -1.  Otherwise, this function returns 0 if it
+ * succeeds, or one of the following negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`
+ *     No stream ID is available because maximum stream ID was
+ *     reached.
  */
-int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
-                           int32_t stream_id,
-                           const nghttp2_priority_spec *pri_spec,
-                           const nghttp2_nv *nva, size_t nvlen,
-                           void *stream_user_data);
+int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
+                               int32_t stream_id,
+                               const nghttp2_priority_spec *pri_spec,
+                               const nghttp2_nv *nva, size_t nvlen,
+                               void *stream_user_data);
 
 /**
  * @function
@@ -2500,31 +2495,24 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * access it in :type:`nghttp2_before_frame_send_callback` and
  * :type:`nghttp2_on_frame_send_callback` of this frame.
  *
- * Since the library reorders the frames and tries to send the highest
- * prioritized one first and the HTTP/2 specification requires the
- * stream ID must be strictly increasing, the promised stream ID
- * cannot be known until it is about to sent.  To know the promised
- * stream ID, the application can use
- * :member:`nghttp2_session_callbacks.before_frame_send_callback`.
- * This callback is called just before the frame is sent.  For
- * PUSH_PROMISE frame, the argument frame has the promised stream ID
- * assigned.
- *
  * The client side is not allowed to use this function.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
+ * This function returns assigned promised stream ID if it succeeds,
+ * or one of the following negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_PROTO`
  *     This function was invoked when |session| is initialized as
  *     client.
+ * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`
+ *     No stream ID is available because maximum stream ID was
+ *     reached.
  */
-int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
-                                int32_t stream_id,
-                                const nghttp2_nv *nva, size_t nvlen,
-                                void *promised_stream_user_data);
+int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
+                                    int32_t stream_id,
+                                    const nghttp2_nv *nva, size_t nvlen,
+                                    void *promised_stream_user_data);
 
 /**
  * @function

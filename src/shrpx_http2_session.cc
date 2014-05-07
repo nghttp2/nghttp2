@@ -588,16 +588,18 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
   assert(state_ == CONNECTED);
   auto sd = util::make_unique<StreamData>();
   // TODO Specify nullptr to pri_spec for now
-  int rv = nghttp2_submit_request(session_, nullptr, nva, nvlen,
-                                  data_prd, sd.get());
-  if(rv == 0) {
-    dconn->attach_stream_data(sd.get());
-    streams_.insert(sd.release());
-  } else {
+  auto stream_id = nghttp2_submit_request(session_, nullptr, nva, nvlen,
+                                          data_prd, sd.get());
+  if(stream_id < 0) {
     SSLOG(FATAL, this) << "nghttp2_submit_request() failed: "
-                       << nghttp2_strerror(rv);
+                       << nghttp2_strerror(stream_id);
     return -1;
   }
+
+  dconn->attach_stream_data(sd.get());
+  dconn->get_downstream()->set_downstream_stream_id(stream_id);
+  streams_.insert(sd.release());
+
   return 0;
 }
 
@@ -1083,31 +1085,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int before_frame_send_callback(nghttp2_session *session,
-                               const nghttp2_frame *frame,
-                               void *user_data)
-{
-  auto http2session = static_cast<Http2Session*>(user_data);
-  if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    auto sd = static_cast<StreamData*>
-      (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
-    if(!sd || !sd->dconn) {
-      http2session->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
-      return 0;
-    }
-    auto downstream = sd->dconn->get_downstream();
-    if(downstream) {
-      downstream->set_downstream_stream_id(frame->hd.stream_id);
-    } else {
-      http2session->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
-    }
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
 int on_frame_send_callback(nghttp2_session* session,
                            const nghttp2_frame *frame, void *user_data)
 {
@@ -1205,7 +1182,6 @@ int Http2Session::on_connect()
   callbacks.on_stream_close_callback = on_stream_close_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.before_frame_send_callback = before_frame_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
   callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
   callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;

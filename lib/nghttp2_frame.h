@@ -436,6 +436,7 @@ int nghttp2_frame_pack_blocked(nghttp2_bufs *bufs, nghttp2_blocked *frame);
  */
 void nghttp2_frame_headers_init(nghttp2_headers *frame,
                                 uint8_t flags, int32_t stream_id,
+                                nghttp2_headers_category cat,
                                 const nghttp2_priority_spec *pri_spec,
                                 nghttp2_nv *nva, size_t nvlen);
 

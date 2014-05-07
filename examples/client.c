@@ -197,29 +197,6 @@ static ssize_t recv_callback(nghttp2_session *session,
   return rv;
 }
 
-/*
- * The implementation of nghttp2_before_frame_send_callback type.  We
- * use this function to get stream ID of the request. This is because
- * stream ID is not known when we submit the request
- * (nghttp2_submit_request).
- */
-static int before_frame_send_callback(nghttp2_session *session,
-                                      const nghttp2_frame *frame,
-                                      void *user_data)
-{
-  if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    struct Request *req;
-    int32_t stream_id = frame->hd.stream_id;
-    req = nghttp2_session_get_stream_user_data(session, stream_id);
-    if(req && req->stream_id == -1) {
-      req->stream_id = stream_id;
-      printf("[INFO] Stream ID = %d\n", stream_id);
-    }
-  }
-  return 0;
-}
-
 static int on_frame_send_callback(nghttp2_session *session,
                                   const nghttp2_frame *frame, void *user_data)
 {
@@ -335,7 +312,6 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks)
   memset(callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks->send_callback = send_callback;
   callbacks->recv_callback = recv_callback;
-  callbacks->before_frame_send_callback = before_frame_send_callback;
   callbacks->on_frame_send_callback = on_frame_send_callback;
   callbacks->on_frame_recv_callback = on_frame_recv_callback;
   callbacks->on_stream_close_callback = on_stream_close_callback;
@@ -470,7 +446,7 @@ static void ctl_poll(struct pollfd *pollfd, struct Connection *connection)
  */
 static void submit_request(struct Connection *connection, struct Request *req)
 {
-  int rv;
+  int32_t stream_id;
   const nghttp2_nv nva[] = {
     /* Make sure that the last item is NULL */
     MAKE_NV(":method", "GET"),
@@ -480,11 +456,17 @@ static void submit_request(struct Connection *connection, struct Request *req)
     MAKE_NV("accept", "*/*"),
     MAKE_NV("user-agent", "nghttp2/"NGHTTP2_VERSION)
   };
-  rv = nghttp2_submit_request(connection->session, NULL,
-                              nva, sizeof(nva)/sizeof(nva[0]), NULL, req);
-  if(rv != 0) {
-    diec("nghttp2_submit_request", rv);
+
+  stream_id = nghttp2_submit_request(connection->session, NULL,
+                                     nva, sizeof(nva)/sizeof(nva[0]),
+                                     NULL, req);
+
+  if(stream_id < 0) {
+    diec("nghttp2_submit_request", stream_id);
   }
+
+  req->stream_id = stream_id;
+  printf("[INFO] Stream ID = %d\n", stream_id);
 }
 
 /*

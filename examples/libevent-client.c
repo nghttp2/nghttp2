@@ -188,28 +188,6 @@ static ssize_t send_callback(nghttp2_session *session,
   return length;
 }
 
-/* nghttp2_before_frame_send_callback: Called when nghttp2 library is
-   about to send a frame. We use this callback to get stream ID of new
-   stream. Since HEADERS in HTTP/2 has several roles, we check that
-   it is a HTTP request HEADERS. */
-static int before_frame_send_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
-  http2_session_data *session_data = (http2_session_data*)user_data;
-  http2_stream_data *stream_data;
-
-  if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    stream_data =
-      (http2_stream_data*)nghttp2_session_get_stream_user_data
-      (session, frame->hd.stream_id);
-    if(stream_data == session_data->stream_data) {
-      stream_data->stream_id = frame->hd.stream_id;
-    }
-  }
-  return 0;
-}
-
 /* nghttp2_on_header_callback: Called when nghttp2 library emits
    single header name/value pair. */
 static int on_header_callback(nghttp2_session *session,
@@ -357,7 +335,6 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
   memset(&callbacks, 0, sizeof(callbacks));
 
   callbacks.send_callback = send_callback;
-  callbacks.before_frame_send_callback = before_frame_send_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
@@ -394,7 +371,7 @@ static void send_client_connection_header(http2_session_data *session_data)
 /* Send HTTP request to the remote peer */
 static void submit_request(http2_session_data *session_data)
 {
-  int rv;
+  int32_t stream_id;
   http2_stream_data *stream_data = session_data->stream_data;
   const char *uri = stream_data->uri;
   const struct http_parser_url *u = stream_data->u;
@@ -407,11 +384,13 @@ static void submit_request(http2_session_data *session_data)
   };
   fprintf(stderr, "Request headers:\n");
   print_headers(stderr, hdrs, ARRLEN(hdrs));
-  rv = nghttp2_submit_request(session_data->session, NULL,
-                              hdrs, ARRLEN(hdrs), NULL, stream_data);
-  if(rv != 0) {
-    errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(rv));
+  stream_id = nghttp2_submit_request(session_data->session, NULL,
+                                     hdrs, ARRLEN(hdrs), NULL, stream_data);
+  if(stream_id < 0) {
+    errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(stream_id));
   }
+
+  stream_data->stream_id = stream_id;
 }
 
 /* Serialize the frame and send (or buffer) the data to

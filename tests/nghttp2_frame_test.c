@@ -97,7 +97,8 @@ void test_nghttp2_frame_pack_headers()
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM |
                              NGHTTP2_FLAG_END_HEADERS,
-                             1000000007, &pri_spec, nva, nvlen);
+                             1000000007, NGHTTP2_HCAT_REQUEST,
+                             &pri_spec, nva, nvlen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
 
   nghttp2_bufs_rewind(&bufs);
@@ -194,7 +195,8 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   nghttp2_hd_deflate_init(&deflater);
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
-                             1000000007, NULL, nva, nvlen);
+                             1000000007, NGHTTP2_HCAT_REQUEST,
+                             NULL, nva, nvlen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
   CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == rv);
 

@@ -44,19 +44,6 @@ Http2Session::~Http2Session()
 }
 
 namespace {
-int before_frame_send_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
-  auto client = static_cast<Client*>(user_data);
-  if(frame->hd.type == NGHTTP2_HEADERS &&
-     frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    client->on_request(frame->hd.stream_id);
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
 int on_header_callback(nghttp2_session *session,
                        const nghttp2_frame *frame,
                        const uint8_t *name, size_t namelen,
@@ -116,7 +103,6 @@ void Http2Session::on_connect()
   int rv;
 
   nghttp2_session_callbacks callbacks = {0};
-  callbacks.before_frame_send_callback = before_frame_send_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
@@ -149,7 +135,6 @@ void Http2Session::on_connect()
 
 void Http2Session::submit_request()
 {
-  int rv;
   auto config = client_->worker->config;
   auto& nva = config->nva[client_->reqidx++];
 
@@ -157,9 +142,12 @@ void Http2Session::submit_request()
     client_->reqidx = 0;
   }
 
-  rv = nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
-                              nullptr, nullptr);
-  assert(rv == 0);
+  auto stream_id = nghttp2_submit_request(session_, nullptr,
+                                          nva.data(), nva.size(),
+                                          nullptr, nullptr);
+  assert(stream_id > 0);
+
+  client_->on_request(stream_id);
 }
 
 ssize_t Http2Session::on_read()

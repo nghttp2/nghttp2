@@ -35,7 +35,7 @@
 /* This function takes ownership of |nva_copy|. Regardless of the
    return value, the caller must not free |nva_copy| after this
    function returns. */
-static int nghttp2_submit_headers_shared
+static int32_t nghttp2_submit_headers_shared
 (nghttp2_session *session,
  uint8_t flags,
  int32_t stream_id,
@@ -50,6 +50,7 @@ static int nghttp2_submit_headers_shared
   nghttp2_frame *frame = NULL;
   nghttp2_data_provider *data_prd_copy = NULL;
   nghttp2_headers_aux_data *aux_data = NULL;
+  nghttp2_headers_category hcat;
 
   if(data_prd != NULL && data_prd->read_callback != NULL) {
     data_prd_copy = malloc(sizeof(nghttp2_data_provider));
@@ -80,8 +81,24 @@ static int nghttp2_submit_headers_shared
               NGHTTP2_FLAG_PRIORITY)) |
     NGHTTP2_FLAG_END_HEADERS;
 
-  nghttp2_frame_headers_init(&frame->headers, flags_copy, stream_id, pri_spec,
-                             nva_copy, nvlen);
+  if(stream_id == -1) {
+    if(session->next_stream_id > INT32_MAX) {
+      rv = NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE;
+      goto fail;
+    }
+
+    stream_id = session->next_stream_id;
+    session->next_stream_id += 2;
+
+    hcat = NGHTTP2_HCAT_REQUEST;
+  } else {
+    /* More specific categorization will be done later. */
+    hcat = NGHTTP2_HCAT_HEADERS;
+  }
+
+  nghttp2_frame_headers_init(&frame->headers, flags_copy, stream_id,
+                             hcat, pri_spec, nva_copy, nvlen);
+
 
   rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame,
                                  aux_data);
@@ -90,7 +107,13 @@ static int nghttp2_submit_headers_shared
     nghttp2_frame_headers_free(&frame->headers);
     goto fail2;
   }
+
+  if(hcat == NGHTTP2_HCAT_REQUEST) {
+    return stream_id;
+  }
+
   return 0;
+
  fail:
   /* nghttp2_frame_headers_init() takes ownership of nva_copy. */
   nghttp2_nv_array_del(nva_copy);
@@ -110,7 +133,7 @@ static void adjust_priority_spec_weight(nghttp2_priority_spec *pri_spec)
   }
 }
 
-static int nghttp2_submit_headers_shared_nva
+static int32_t nghttp2_submit_headers_shared_nva
 (nghttp2_session *session,
  uint8_t flags,
  int32_t stream_id,
@@ -141,11 +164,11 @@ static int nghttp2_submit_headers_shared_nva
                                        stream_user_data);
 }
 
-int nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
-                           int32_t stream_id,
-                           const nghttp2_priority_spec *pri_spec,
-                           const nghttp2_nv *nva, size_t nvlen,
-                           void *stream_user_data)
+int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
+                               int32_t stream_id,
+                               const nghttp2_priority_spec *pri_spec,
+                               const nghttp2_nv *nva, size_t nvlen,
+                               void *stream_user_data)
 {
   flags &= NGHTTP2_FLAG_END_STREAM;
 
@@ -227,15 +250,16 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
   return nghttp2_session_add_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
 }
 
-int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
-                                int32_t stream_id,
-                                const nghttp2_nv *nva, size_t nvlen,
-                                void *promised_stream_user_data)
+int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
+                                    int32_t stream_id,
+                                    const nghttp2_nv *nva, size_t nvlen,
+                                    void *promised_stream_user_data)
 {
   nghttp2_frame *frame;
   nghttp2_nv *nva_copy;
   uint8_t flags_copy;
   nghttp2_headers_aux_data *aux_data = NULL;
+  int32_t promised_stream_id;
   int rv;
 
   if(!session->server) {
@@ -261,16 +285,35 @@ int nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
     free(frame);
     return rv;
   }
+
   flags_copy = NGHTTP2_FLAG_END_HEADERS;
+
+  /* All 32bit signed stream IDs are spent. */
+  if(session->next_stream_id > INT32_MAX) {
+    free(aux_data);
+    free(frame);
+
+    return NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE;
+  }
+
+  promised_stream_id = session->next_stream_id;
+  session->next_stream_id += 2;
+
   nghttp2_frame_push_promise_init(&frame->push_promise, flags_copy,
-                                  stream_id, -1, nva_copy, nvlen);
+                                  stream_id, promised_stream_id,
+                                  nva_copy, nvlen);
+
   rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, aux_data);
+
   if(rv != 0) {
     nghttp2_frame_push_promise_free(&frame->push_promise);
     free(aux_data);
     free(frame);
+
+    return rv;
   }
-  return 0;
+
+  return promised_stream_id;
 }
 
 int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
@@ -404,11 +447,11 @@ static uint8_t set_request_flags(const nghttp2_priority_spec *pri_spec,
   return flags;
 }
 
-int nghttp2_submit_request(nghttp2_session *session,
-                           const nghttp2_priority_spec *pri_spec,
-                           const nghttp2_nv *nva, size_t nvlen,
-                           const nghttp2_data_provider *data_prd,
-                           void *stream_user_data)
+int32_t nghttp2_submit_request(nghttp2_session *session,
+                               const nghttp2_priority_spec *pri_spec,
+                               const nghttp2_nv *nva, size_t nvlen,
+                               const nghttp2_data_provider *data_prd,
+                               void *stream_user_data)
 {
   uint8_t flags;
 
