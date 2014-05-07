@@ -881,8 +881,6 @@ int nghttp2_stream_dep_all_your_stream_are_belong_to_us
       DEBUGF(fprintf(stderr, "stream: root stream(%p)=%d\n",
                      si, si->stream_id));
 
-      fprintf(stderr, "w=%d, sum=%d\n",
-              si->weight, stream->sum_dep_weight);
       stream->sum_dep_weight += si->weight;
       stream->num_substreams += si->num_substreams;
 
