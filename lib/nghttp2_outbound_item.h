@@ -46,6 +46,9 @@ typedef struct {
 
 typedef struct {
   int64_t seq;
+  /* Reset count of weight. See comment for last_cycle in
+     nghttp2_session.h */
+  uint64_t cycle;
   void *frame;
   void *aux_data;
   /* Type of |frame|. NGHTTP2_CTRL: nghttp2_frame*, NGHTTP2_DATA:

@@ -130,6 +130,20 @@ struct nghttp2_session {
   /* Sequence number of outbound frame to maintain the order of
      enqueue if priority is equal. */
   int64_t next_seq;
+  /* Reset count of nghttp2_outbound_item's weight.  We decrements
+     weight each time DATA is sent to simulate resource sharing.  We
+     use priority queue and larger weight has the precedence.  If
+     weight is reached to lowest weight, it resets to its initial
+     weight.  If this happens, other items which have the lower weight
+     currently but same initial weight cannot send DATA until item
+     having large weight is decreased.  To avoid this, we use this
+     cycle variable.  Initally, this is set to 1.  If weight gets
+     lowest weight, and if item's cycle == last_cycle, we increments
+     last_cycle and assigns it to item's cycle.  Otherwise, just
+     assign last_cycle.  In priority queue comparator, we first
+     compare items' cycle value.  Lower cycle value has the
+     precedence. */
+  uint64_t last_cycle;
   void *user_data;
   /* Points to the latest closed stream.  NULL if there is no closed
      stream.  Only used when session is initialized as server. */
