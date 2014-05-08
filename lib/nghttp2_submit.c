@@ -35,7 +35,7 @@
 /* This function takes ownership of |nva_copy|. Regardless of the
    return value, the caller must not free |nva_copy| after this
    function returns. */
-static int32_t nghttp2_submit_headers_shared
+static int32_t submit_headers_shared
 (nghttp2_session *session,
  uint8_t flags,
  int32_t stream_id,
@@ -133,7 +133,7 @@ static void adjust_priority_spec_weight(nghttp2_priority_spec *pri_spec)
   }
 }
 
-static int32_t nghttp2_submit_headers_shared_nva
+static int32_t submit_headers_shared_nva
 (nghttp2_session *session,
  uint8_t flags,
  int32_t stream_id,
@@ -159,9 +159,9 @@ static int32_t nghttp2_submit_headers_shared_nva
     return rv;
   }
 
-  return nghttp2_submit_headers_shared(session, flags, stream_id,
-                                       &copy_pri_spec, nva_copy, rv, data_prd,
-                                       stream_user_data);
+  return submit_headers_shared(session, flags, stream_id,
+                               &copy_pri_spec, nva_copy, rv, data_prd,
+                               stream_user_data);
 }
 
 int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
@@ -178,8 +178,8 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
     pri_spec = NULL;
   }
 
-  return nghttp2_submit_headers_shared_nva(session, flags, stream_id, pri_spec,
-                                           nva, nvlen, NULL, stream_user_data);
+  return submit_headers_shared_nva(session, flags, stream_id, pri_spec,
+                                   nva, nvlen, NULL, stream_user_data);
 }
 
 
@@ -461,9 +461,9 @@ int32_t nghttp2_submit_request(nghttp2_session *session,
 
   flags = set_request_flags(pri_spec, data_prd);
 
-  return nghttp2_submit_headers_shared_nva(session, flags, -1, pri_spec,
-                                           nva, nvlen,
-                                           data_prd, stream_user_data);
+  return submit_headers_shared_nva(session, flags, -1, pri_spec,
+                                   nva, nvlen,
+                                   data_prd, stream_user_data);
 }
 
 static uint8_t set_response_flags(const nghttp2_data_provider *data_prd)
@@ -481,9 +481,9 @@ int nghttp2_submit_response(nghttp2_session *session,
                             const nghttp2_data_provider *data_prd)
 {
   uint8_t flags = set_response_flags(data_prd);
-  return nghttp2_submit_headers_shared_nva(session, flags, stream_id,
-                                           NULL, nva, nvlen,
-                                           data_prd, NULL);
+  return submit_headers_shared_nva(session, flags, stream_id,
+                                   NULL, nva, nvlen,
+                                   data_prd, NULL);
 }
 
 int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,

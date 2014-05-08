@@ -96,8 +96,7 @@ void nghttp2_buf_wrap_init(nghttp2_buf *buf, uint8_t *begin, size_t len)
   buf->end = begin + len;
 }
 
-static int nghttp2_buf_chain_new(nghttp2_buf_chain **chain,
-                                 size_t chunk_length)
+static int buf_chain_new(nghttp2_buf_chain **chain, size_t chunk_length)
 {
   int rv;
 
@@ -117,7 +116,7 @@ static int nghttp2_buf_chain_new(nghttp2_buf_chain **chain,
   return 0;
 }
 
-static void nghttp2_buf_chain_del(nghttp2_buf_chain *chain)
+static void buf_chain_del(nghttp2_buf_chain *chain)
 {
   nghttp2_buf_free(&chain->buf);
   free(chain);
@@ -145,7 +144,7 @@ int nghttp2_bufs_init3(nghttp2_bufs *bufs, size_t chunk_length,
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  rv = nghttp2_buf_chain_new(&chain, chunk_length);
+  rv = buf_chain_new(&chain, chunk_length);
   if(rv != 0) {
     return rv;
   }
@@ -172,7 +171,7 @@ void nghttp2_bufs_free(nghttp2_bufs *bufs)
   for(chain = bufs->head; chain;) {
     next_chain = chain->next;
 
-    nghttp2_buf_chain_del(chain);
+    buf_chain_del(chain);
 
     chain = next_chain;
   }
@@ -204,13 +203,13 @@ ssize_t nghttp2_bufs_len(nghttp2_bufs *bufs)
   return len;
 }
 
-static int nghttp2_bufs_avail(nghttp2_bufs *bufs)
+static int bufs_avail(nghttp2_bufs *bufs)
 {
   return nghttp2_buf_avail(&bufs->cur->buf) +
     (bufs->chunk_length - bufs->offset) * (bufs->max_chunk - bufs->chunk_used);
 }
 
-static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
+static int bufs_alloc_chain(nghttp2_bufs *bufs)
 {
   int rv;
   nghttp2_buf_chain *chain;
@@ -225,7 +224,7 @@ static int nghttp2_bufs_alloc_chain(nghttp2_bufs *bufs)
     return NGHTTP2_ERR_BUFFER_ERROR;
   }
 
-  rv = nghttp2_buf_chain_new(&chain, bufs->chunk_length);
+  rv = buf_chain_new(&chain, bufs->chunk_length);
   if(rv != 0) {
     return rv;
   }
@@ -251,7 +250,7 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len)
   nghttp2_buf *buf;
   const uint8_t *p;
 
-  if(nghttp2_bufs_avail(bufs) < (ssize_t)len) {
+  if(bufs_avail(bufs) < (ssize_t)len) {
     return NGHTTP2_ERR_BUFFER_ERROR;
   }
 
@@ -262,7 +261,7 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len)
 
     nwrite = nghttp2_min((size_t)nghttp2_buf_avail(buf), len);
     if(nwrite == 0) {
-      rv = nghttp2_bufs_alloc_chain(bufs);
+      rv = bufs_alloc_chain(bufs);
       if(rv != 0) {
         return rv;
       }
@@ -277,7 +276,7 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len)
   return 0;
 }
 
-static int nghttp2_bufs_ensure_addb(nghttp2_bufs *bufs)
+static int bufs_ensure_addb(nghttp2_bufs *bufs)
 {
   int rv;
   nghttp2_buf *buf;
@@ -288,7 +287,7 @@ static int nghttp2_bufs_ensure_addb(nghttp2_bufs *bufs)
     return 0;
   }
 
-  rv = nghttp2_bufs_alloc_chain(bufs);
+  rv = bufs_alloc_chain(bufs);
   if(rv != 0) {
     return rv;
   }
@@ -300,7 +299,7 @@ int nghttp2_bufs_addb(nghttp2_bufs *bufs, uint8_t b)
 {
   int rv;
 
-  rv = nghttp2_bufs_ensure_addb(bufs);
+  rv = bufs_ensure_addb(bufs);
   if(rv != 0) {
     return rv;
   }
@@ -314,7 +313,7 @@ int nghttp2_bufs_addb_hold(nghttp2_bufs *bufs, uint8_t b)
 {
   int rv;
 
-  rv = nghttp2_bufs_ensure_addb(bufs);
+  rv = bufs_ensure_addb(bufs);
   if(rv != 0) {
     return rv;
   }
@@ -328,7 +327,7 @@ int nghttp2_bufs_orb(nghttp2_bufs *bufs, uint8_t b)
 {
   int rv;
 
-  rv = nghttp2_bufs_ensure_addb(bufs);
+  rv = bufs_ensure_addb(bufs);
   if(rv != 0) {
     return rv;
   }
@@ -342,7 +341,7 @@ int nghttp2_bufs_orb_hold(nghttp2_bufs *bufs, uint8_t b)
 {
   int rv;
 
-  rv = nghttp2_bufs_ensure_addb(bufs);
+  rv = bufs_ensure_addb(bufs);
   if(rv != 0) {
     return rv;
   }
@@ -416,7 +415,7 @@ void nghttp2_bufs_reset(nghttp2_bufs *bufs)
     for(ci = chain; ci;) {
       chain = ci->next;
 
-      nghttp2_buf_chain_del(ci);
+      buf_chain_del(ci);
 
       ci = chain;
     }
@@ -429,7 +428,7 @@ void nghttp2_bufs_reset(nghttp2_bufs *bufs)
 
 int nghttp2_bufs_advance(nghttp2_bufs *bufs)
 {
-  return nghttp2_bufs_alloc_chain(bufs);
+  return bufs_alloc_chain(bufs);
 }
 
 int nghttp2_bufs_next_present(nghttp2_bufs *bufs)
