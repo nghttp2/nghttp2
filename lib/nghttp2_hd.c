@@ -155,7 +155,7 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
       /* We should not allow empty header field name */
       ent->nv.name = NULL;
     } else {
-      ent->nv.name = nghttp2_memdup(name, namelen);
+      ent->nv.name = (uint8_t *)nghttp2_memdup(name, namelen);
       if(ent->nv.name == NULL) {
         rv = NGHTTP2_ERR_NOMEM;
         goto fail;
@@ -169,7 +169,7 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
     if(valuelen == 0) {
       ent->nv.value = NULL;
     } else {
-      ent->nv.value = nghttp2_memdup(value, valuelen);
+      ent->nv.value = (uint8_t *)nghttp2_memdup(value, valuelen);
       if(ent->nv.value == NULL) {
         rv = NGHTTP2_ERR_NOMEM;
         goto fail2;
@@ -217,7 +217,7 @@ static int hd_ringbuf_init(nghttp2_hd_ringbuf *ringbuf, size_t bufsize)
 {
   size_t size;
   for(size = 1; size < bufsize; size <<= 1);
-  ringbuf->buffer = malloc(sizeof(nghttp2_hd_entry*)*size);
+  ringbuf->buffer = (nghttp2_hd_entry**)malloc(sizeof(nghttp2_hd_entry*) * size);
   if(ringbuf->buffer == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -244,7 +244,7 @@ static int hd_ringbuf_reserve(nghttp2_hd_ringbuf *ringbuf, size_t bufsize)
     return 0;
   }
   for(size = 1; size < bufsize; size <<= 1);
-  buffer = malloc(sizeof(nghttp2_hd_entry*) * size);
+  buffer = ( nghttp2_hd_entry **)malloc(sizeof(nghttp2_hd_entry*) * size);
   if(buffer == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -835,7 +835,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     }
   }
 
-  new_ent = malloc(sizeof(nghttp2_hd_entry));
+  new_ent = (nghttp2_hd_entry *)malloc(sizeof(nghttp2_hd_entry));
   if(new_ent == NULL) {
     return NULL;
   }
@@ -1314,7 +1314,7 @@ size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
 int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
                            size_t deflate_hd_table_bufsize_max)
 {
-  *deflater_ptr = malloc(sizeof(nghttp2_hd_deflater));
+  *deflater_ptr = (nghttp2_hd_deflater *)malloc(sizeof(nghttp2_hd_deflater));
 
   if(*deflater_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -2014,7 +2014,7 @@ int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 
 int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr)
 {
-  *inflater_ptr = malloc(sizeof(nghttp2_hd_inflater));
+  *inflater_ptr = (nghttp2_hd_inflater *)malloc(sizeof(nghttp2_hd_inflater));
 
   if(*inflater_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;

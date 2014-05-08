@@ -101,7 +101,7 @@ struct URI {
 static char* strcopy(const char *s, size_t len)
 {
   char *dst;
-  dst = malloc(len+1);
+  dst = (char *)malloc(len+1);
   memcpy(dst, s, len);
   dst[len] = '\0';
   return dst;
@@ -233,7 +233,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
     if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
       const nghttp2_nv *nva = frame->headers.nva;
       struct Request *req;
-      req = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
+      req = (struct Request *)nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
       if(req) {
         printf("[INFO] C <---------------------------- S (HEADERS)\n");
         for(i = 0; i < frame->headers.nvlen; ++i) {
@@ -267,7 +267,7 @@ static int on_stream_close_callback(nghttp2_session *session,
                                     void *user_data)
 {
   struct Request *req;
-  req = nghttp2_session_get_stream_user_data(session, stream_id);
+  req = (struct Request *)nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     int rv;
     rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
@@ -291,7 +291,7 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
                                        void *user_data)
 {
   struct Request *req;
-  req = nghttp2_session_get_stream_user_data(session, stream_id);
+  req = (struct Request *)nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     printf("[INFO] C <---------------------------- S (DATA chunk)\n"
            "%lu bytes\n", (unsigned long int)len);

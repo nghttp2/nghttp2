@@ -26,7 +26,7 @@
 
 int nghttp2_option_new(nghttp2_option **option_ptr)
 {
-  *option_ptr = calloc(1, sizeof(nghttp2_option));
+  *option_ptr = (nghttp2_option *)calloc(1, sizeof(nghttp2_option));
 
   if(*option_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;

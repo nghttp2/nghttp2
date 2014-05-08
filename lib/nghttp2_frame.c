@@ -482,7 +482,7 @@ void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
                                              const uint8_t *payload,
                                              size_t payloadlen)
 {
-  frame->error_code = nghttp2_get_uint32(payload);
+  frame->error_code = (nghttp2_error_code)nghttp2_get_uint32(payload);
 }
 
 int nghttp2_frame_pack_settings(nghttp2_bufs *bufs, nghttp2_settings *frame)
@@ -528,7 +528,7 @@ int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
   if(niv == 0) {
     frame->iv = NULL;
   } else {
-    frame->iv = malloc(payloadlen);
+    frame->iv = (nghttp2_settings_entry *)malloc(payloadlen);
 
     if(frame->iv == NULL) {
       return NGHTTP2_ERR_NOMEM;
@@ -564,7 +564,7 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
   }
 
 
-  *iv_ptr = malloc((*niv_ptr)*sizeof(nghttp2_settings_entry));
+  *iv_ptr = (nghttp2_settings_entry *)malloc((*niv_ptr)*sizeof(nghttp2_settings_entry));
 
   if(*iv_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -691,7 +691,7 @@ void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
                                          size_t var_gift_payloadlen)
 {
   frame->last_stream_id = nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
-  frame->error_code = nghttp2_get_uint32(payload+4);
+  frame->error_code = (nghttp2_error_code)nghttp2_get_uint32(payload+4);
 
   frame->opaque_data = var_gift_payload;
   frame->opaque_data_len = var_gift_payloadlen;
@@ -715,7 +715,7 @@ int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
   if(!var_gift_payloadlen) {
     var_gift_payload = NULL;
   } else {
-    var_gift_payload = malloc(var_gift_payloadlen);
+    var_gift_payload = (uint8_t *)malloc(var_gift_payloadlen);
 
     if(var_gift_payload == NULL) {
       return NGHTTP2_ERR_NOMEM;
@@ -886,7 +886,7 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
     return NULL;
   }
 
-  iv_copy = malloc(len);
+  iv_copy = (nghttp2_settings_entry *)malloc(len);
 
   if(iv_copy == NULL) {
     return NULL;
@@ -983,7 +983,7 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
 
   buflen += sizeof(nghttp2_nv)*nvlen;
 
-  *nva_ptr = malloc(buflen);
+  *nva_ptr = (nghttp2_nv *)malloc(buflen);
 
   if(*nva_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;

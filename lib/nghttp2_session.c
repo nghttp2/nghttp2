@@ -256,7 +256,7 @@ static int session_new(nghttp2_session **session_ptr,
 {
   int rv;
 
-  *session_ptr = calloc(1, sizeof(nghttp2_session));
+  *session_ptr = (nghttp2_session *)calloc(1, sizeof(nghttp2_session));
   if(*session_ptr == NULL) {
     rv = NGHTTP2_ERR_NOMEM;
     goto fail_session;
@@ -553,7 +553,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
   int rv = 0;
   nghttp2_outbound_item *item;
 
-  item = malloc(sizeof(nghttp2_outbound_item));
+  item = (nghttp2_outbound_item *)malloc(sizeof(nghttp2_outbound_item));
   if(item == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -664,7 +664,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session,
     return 0;
   }
 
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -694,7 +694,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     nghttp2_session_adjust_closed_stream(session, 1);
   }
 
-  stream = malloc(sizeof(nghttp2_stream));
+  stream = (nghttp2_stream *)malloc(sizeof(nghttp2_stream));
   if(stream == NULL) {
     return NULL;
   }
@@ -1457,7 +1457,7 @@ static int session_add_blocked(nghttp2_session *session, int32_t stream_id)
   int rv;
   nghttp2_frame *frame;
 
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
 
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -1851,16 +1851,16 @@ nghttp2_outbound_item* nghttp2_session_get_next_ob_item
       if(session_is_outgoing_concurrent_streams_max(session)) {
         return NULL;
       } else {
-        return nghttp2_pq_top(&session->ob_ss_pq);
+        return (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_ss_pq);
       }
     }
   } else {
     if(nghttp2_pq_empty(&session->ob_ss_pq)) {
-      return nghttp2_pq_top(&session->ob_pq);
+      return (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_pq);
     } else {
       nghttp2_outbound_item *item, *headers_item;
-      item = nghttp2_pq_top(&session->ob_pq);
-      headers_item = nghttp2_pq_top(&session->ob_ss_pq);
+      item = (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_pq);
+      headers_item = (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_ss_pq);
       if(session_is_outgoing_concurrent_streams_max(session) ||
          item->weight > headers_item->weight ||
          (item->weight == headers_item->weight &&
@@ -1886,7 +1886,7 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
         return NULL;
       } else {
         nghttp2_outbound_item *item;
-        item = nghttp2_pq_top(&session->ob_ss_pq);
+        item = (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_ss_pq);
         nghttp2_pq_pop(&session->ob_ss_pq);
 
         item->queued = 0;
@@ -1897,7 +1897,7 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
   } else {
     if(nghttp2_pq_empty(&session->ob_ss_pq)) {
       nghttp2_outbound_item *item;
-      item = nghttp2_pq_top(&session->ob_pq);
+      item = (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_pq);
       nghttp2_pq_pop(&session->ob_pq);
 
       item->queued = 0;
@@ -1905,8 +1905,8 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
       return item;
     } else {
       nghttp2_outbound_item *item, *headers_item;
-      item = nghttp2_pq_top(&session->ob_pq);
-      headers_item = nghttp2_pq_top(&session->ob_ss_pq);
+      item = (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_pq);
+      headers_item = (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_ss_pq);
       if(session_is_outgoing_concurrent_streams_max(session) ||
          item->weight > headers_item->weight ||
          (item->weight == headers_item->weight &&
@@ -4684,7 +4684,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         debuglen = iframe->frame.hd.length - 8;
 
         if(debuglen > 0) {
-          iframe->raw_lbuf = malloc(debuglen);
+          iframe->raw_lbuf = (uint8_t *)malloc(debuglen);
 
           if(iframe->raw_lbuf == NULL) {
             return NGHTTP2_ERR_NOMEM;
@@ -4714,7 +4714,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         varlen = iframe->frame.hd.length - NGHTTP2_ALTSVC_FIXED_PARTLEN;
 
         if(varlen > 0) {
-          iframe->raw_lbuf = malloc(varlen);
+          iframe->raw_lbuf = (uint8_t *)malloc(varlen);
 
           if(iframe->raw_lbuf == NULL) {
             return NGHTTP2_ERR_NOMEM;
@@ -5352,7 +5352,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
 {
   int rv;
   nghttp2_frame *frame;
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -5379,13 +5379,13 @@ int nghttp2_session_add_goaway(nghttp2_session *session,
     if(opaque_data_len + 8 > NGHTTP2_MAX_PAYLOADLEN) {
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
-    opaque_data_copy = malloc(opaque_data_len);
+    opaque_data_copy = (uint8_t *)malloc(opaque_data_len);
     if(opaque_data_copy == NULL) {
       return NGHTTP2_ERR_NOMEM;
     }
     memcpy(opaque_data_copy, opaque_data, opaque_data_len);
   }
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     free(opaque_data_copy);
     return NGHTTP2_ERR_NOMEM;
@@ -5407,7 +5407,7 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
 {
   int rv;
   nghttp2_frame *frame;
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -5441,7 +5441,7 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   if(!nghttp2_iv_check(iv, niv)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }

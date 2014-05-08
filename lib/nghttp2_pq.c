@@ -27,7 +27,7 @@
 int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar compar)
 {
   pq->capacity = 128;
-  pq->q = malloc(pq->capacity * sizeof(void*));
+  pq->q = (void **)malloc(pq->capacity * sizeof(void*));
   if(pq->q == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -71,7 +71,7 @@ int nghttp2_pq_push(nghttp2_pq *pq, void *item)
       return NGHTTP2_ERR_NOMEM;
     }
     pq->capacity *= 2;
-    pq->q = nq;
+    pq->q = (void **)nq;
   }
   pq->q[pq->length] = item;
   ++pq->length;

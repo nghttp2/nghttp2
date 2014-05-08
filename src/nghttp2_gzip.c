@@ -29,7 +29,7 @@
 int nghttp2_gzip_inflate_new(nghttp2_gzip **inflater_ptr)
 {
   int rv;
-  *inflater_ptr = malloc(sizeof(nghttp2_gzip));
+  *inflater_ptr = (nghttp2_gzip *)malloc(sizeof(nghttp2_gzip));
   if(*inflater_ptr == NULL) {
     return -1;
   }

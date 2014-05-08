@@ -74,14 +74,14 @@ static http2_stream_data* create_http2_stream_data(const char *uri,
 {
   /* MAX 5 digits (max 65535) + 1 ':' + 1 NULL (because of snprintf) */
   size_t extra = 7;
-  http2_stream_data *stream_data = malloc(sizeof(http2_stream_data));
+  http2_stream_data *stream_data = (http2_stream_data *)malloc(sizeof(http2_stream_data));
 
   stream_data->uri = uri;
   stream_data->u = u;
   stream_data->stream_id = -1;
 
   stream_data->authoritylen = u->field_data[UF_HOST].len;
-  stream_data->authority = malloc(stream_data->authoritylen + extra);
+  stream_data->authority = (char *)malloc(stream_data->authoritylen + extra);
   memcpy(stream_data->authority,
          &uri[u->field_data[UF_HOST].off], u->field_data[UF_HOST].len);
   if(u->field_set & (1 << UF_PORT)) {
@@ -99,7 +99,7 @@ static http2_stream_data* create_http2_stream_data(const char *uri,
     stream_data->pathlen += u->field_data[UF_QUERY].len + 1;
   }
   if(stream_data->pathlen > 0) {
-    stream_data->path = malloc(stream_data->pathlen);
+    stream_data->path = (char *)malloc(stream_data->pathlen);
     if(u->field_set & (1 << UF_PATH)) {
       memcpy(stream_data->path,
              &uri[u->field_data[UF_PATH].off], u->field_data[UF_PATH].len);
@@ -124,7 +124,7 @@ static void delete_http2_stream_data(http2_stream_data *stream_data)
 /* Initializes |session_data| */
 static http2_session_data *create_http2_session_data(struct event_base *evbase)
 {
-  http2_session_data *session_data = malloc(sizeof(http2_session_data));
+  http2_session_data *session_data = (http2_session_data *)malloc(sizeof(http2_session_data));
 
   memset(session_data, 0, sizeof(http2_session_data));
   session_data->dnsbase = evdns_base_new(evbase, 1);

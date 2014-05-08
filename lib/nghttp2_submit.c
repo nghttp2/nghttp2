@@ -53,7 +53,7 @@ static int32_t submit_headers_shared
   nghttp2_headers_category hcat;
 
   if(data_prd != NULL && data_prd->read_callback != NULL) {
-    data_prd_copy = malloc(sizeof(nghttp2_data_provider));
+    data_prd_copy = (nghttp2_data_provider *)malloc(sizeof(nghttp2_data_provider));
     if(data_prd_copy == NULL) {
       rv = NGHTTP2_ERR_NOMEM;
       goto fail;
@@ -61,7 +61,7 @@ static int32_t submit_headers_shared
     *data_prd_copy = *data_prd;
   }
   if(data_prd || stream_user_data) {
-    aux_data = malloc(sizeof(nghttp2_headers_aux_data));
+    aux_data = (nghttp2_headers_aux_data *)malloc(sizeof(nghttp2_headers_aux_data));
     if(aux_data == NULL) {
       rv = NGHTTP2_ERR_NOMEM;
       goto fail;
@@ -69,7 +69,7 @@ static int32_t submit_headers_shared
     aux_data->data_prd = data_prd_copy;
     aux_data->stream_user_data = stream_user_data;
   }
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     rv = NGHTTP2_ERR_NOMEM;
     goto fail;
@@ -209,7 +209,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
 
   adjust_priority_spec_weight(&copy_pri_spec);
 
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
 
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -266,12 +266,12 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_PROTO;
   }
 
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
   if(promised_stream_user_data) {
-    aux_data = malloc(sizeof(nghttp2_headers_aux_data));
+    aux_data = (nghttp2_headers_aux_data *)malloc(sizeof(nghttp2_headers_aux_data));
     if(aux_data == NULL) {
       free(frame);
       return NGHTTP2_ERR_NOMEM;
@@ -385,7 +385,7 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
     copy_host = NULL;
     copy_origin = NULL;
   } else {
-    var = malloc(varlen);
+    var = (uint8_t *)malloc(varlen);
 
     if(var == NULL) {
       return NGHTTP2_ERR_NOMEM;
@@ -408,7 +408,7 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
     copy_origin = varp;
   }
 
-  frame = malloc(sizeof(nghttp2_frame));
+  frame = (nghttp2_frame *)malloc(sizeof(nghttp2_frame));
 
   if(frame == NULL) {
     free(var);
@@ -495,7 +495,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
   uint8_t nflags = flags & (NGHTTP2_FLAG_END_STREAM |
                             NGHTTP2_FLAG_END_SEGMENT);
 
-  data_frame = malloc(sizeof(nghttp2_private_data));
+  data_frame = (nghttp2_private_data *)malloc(sizeof(nghttp2_private_data));
   if(data_frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }

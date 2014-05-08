@@ -153,7 +153,7 @@ static http2_stream_data* create_http2_stream_data
 (http2_session_data *session_data, int32_t stream_id)
 {
   http2_stream_data *stream_data;
-  stream_data = malloc(sizeof(http2_stream_data));
+  stream_data = (http2_stream_data *)malloc(sizeof(http2_stream_data));
   memset(stream_data, 0, sizeof(http2_stream_data));
   stream_data->stream_id = stream_id;
   stream_data->fd = -1;
@@ -183,7 +183,7 @@ static http2_session_data* create_http2_session_data(app_context *app_ctx,
   int val = 1;
 
   ssl = create_ssl(app_ctx->ssl_ctx);
-  session_data = malloc(sizeof(http2_session_data));
+  session_data = (http2_session_data *)malloc(sizeof(http2_session_data));
   memset(session_data, 0, sizeof(http2_session_data));
   session_data->app_ctx = app_ctx;
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&val, sizeof(val));
@@ -305,7 +305,7 @@ static char* percent_decode(const uint8_t *value, size_t valuelen)
 {
   char *res;
 
-  res = malloc(valuelen + 1);
+  res = (char *)malloc(valuelen + 1);
   if(valuelen > 3) {
     size_t i, j;
     for(i = 0, j = 0; i < valuelen - 2;) {
@@ -418,7 +418,7 @@ static int on_header_callback(nghttp2_session *session,
     if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
       break;
     }
-    stream_data = nghttp2_session_get_stream_user_data(session,
+    stream_data = (http2_stream_data *)nghttp2_session_get_stream_user_data(session,
                                                        frame->hd.stream_id);
     if(!stream_data || stream_data->request_path) {
       break;
@@ -514,7 +514,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
   case NGHTTP2_HEADERS:
     /* Check that the client request has finished */
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      stream_data = nghttp2_session_get_stream_user_data(session,
+      stream_data = (http2_stream_data *)nghttp2_session_get_stream_user_data(session,
                                                          frame->hd.stream_id);
       /* For DATA and HEADERS frame, this callback may be called after
          on_stream_close_callback. Check that stream still alive. */
@@ -538,7 +538,7 @@ static int on_stream_close_callback(nghttp2_session *session,
   http2_session_data *session_data = (http2_session_data*)user_data;
   http2_stream_data *stream_data;
 
-  stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
+  stream_data = (http2_stream_data *)nghttp2_session_get_stream_user_data(session, stream_id);
   if(!stream_data) {
     return 0;
   }
