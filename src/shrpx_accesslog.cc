@@ -88,6 +88,14 @@ void upstream_response(const std::string& client_ip, unsigned int status_code,
   char datestr[64];
   get_datestr(datestr);
   if(downstream) {
+    const char *path;
+
+    if(downstream->get_request_path().empty()) {
+      path = downstream->get_request_http2_authority().c_str();
+    } else {
+      path = downstream->get_request_path().c_str();
+    }
+
     fprintf(stderr, "%s%s [%s] %u%s %d \"%s %s HTTP/%u.%u\"\n",
             get_config()->tty ? status_code_color(status_code) : "",
             client_ip.c_str(), datestr,
@@ -95,7 +103,7 @@ void upstream_response(const std::string& client_ip, unsigned int status_code,
             get_config()->tty ? "\033[0m" : "",
             downstream->get_stream_id(),
             downstream->get_request_method().c_str(),
-            downstream->get_request_path().c_str(),
+            path,
             downstream->get_request_major(),
             downstream->get_request_minor());
     fflush(stderr);
@@ -105,7 +113,7 @@ void upstream_response(const std::string& client_ip, unsigned int status_code,
             status_code,
             downstream->get_stream_id(),
             downstream->get_request_method().c_str(),
-            downstream->get_request_path().c_str(),
+            path,
             downstream->get_request_major(),
             downstream->get_request_minor());
     }
