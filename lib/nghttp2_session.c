@@ -576,10 +576,9 @@ int nghttp2_session_add_frame(nghttp2_session *session,
 
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS:
+    case NGHTTP2_PUSH_PROMISE:
       item->weight = NGHTTP2_MAX_WEIGHT;
 
-      break;
-    case NGHTTP2_PRIORITY:
       break;
     case NGHTTP2_RST_STREAM:
       if(stream) {
@@ -591,27 +590,18 @@ int nghttp2_session_add_frame(nghttp2_session *session,
           stream->state = NGHTTP2_STREAM_CLOSING;
         }
       }
+
       break;
     case NGHTTP2_SETTINGS:
       item->weight = NGHTTP2_OB_SETTINGS_WEIGHT;
 
-      break;
-    case NGHTTP2_PUSH_PROMISE:
-      item->weight = NGHTTP2_MAX_WEIGHT;
       break;
     case NGHTTP2_PING:
       /* Ping has highest priority. */
       item->weight = NGHTTP2_OB_PING_WEIGHT;
 
       break;
-    case NGHTTP2_GOAWAY:
-      /* Should GOAWAY have higher priority? */
-      break;
-    case NGHTTP2_WINDOW_UPDATE:
-      break;
-    case NGHTTP2_ALTSVC:
-      break;
-    case NGHTTP2_BLOCKED:
+    default:
       break;
     }
 
@@ -2113,26 +2103,10 @@ static int session_after_frame_sent(nghttp2_session *session)
         return rv;
       }
       break;
-    case NGHTTP2_SETTINGS:
-      /* nothing to do */
-      break;
-    case NGHTTP2_PUSH_PROMISE:
-      /* nothing to do */
-      break;
-    case NGHTTP2_PING:
-      /* nothing to do */
-      break;
     case NGHTTP2_GOAWAY:
       session->goaway_flags |= NGHTTP2_GOAWAY_SEND;
       break;
-    case NGHTTP2_WINDOW_UPDATE:
-      /* nothing to do */
-      break;
-    case NGHTTP2_ALTSVC:
-      /* nothing to do */
-      break;
-    case NGHTTP2_BLOCKED:
-      /* nothing to do */
+    default:
       break;
     }
     active_outbound_item_reset(&session->aob);
