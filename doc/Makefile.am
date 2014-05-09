@@ -21,7 +21,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-man_MANS = nghttp.1 nghttpd.1 nghttpx.1
+man_MANS = nghttp.1 nghttpd.1 nghttpx.1 h2load.1
 
 EXTRA_DIST = \
 	mkapiref.py \
