@@ -1206,12 +1206,9 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)
 /**
  * @functypedef
  *
- * Callback function invoked before the non-DATA frame |frame| is
- * sent.  This may be useful, for example, to know the stream ID of
- * HEADERS and PUSH_PROMISE frame (see also
- * `nghttp2_session_get_stream_user_data()`), which is not assigned
- * when it was queued.  The |user_data| pointer is the third argument
- * passed in to the call to `nghttp2_session_client_new()` or
+ * Callback function invoked just before the non-DATA frame |frame| is
+ * sent.  The |user_data| pointer is the third argument passed in to
+ * the call to `nghttp2_session_client_new()` or
  * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it succeeds.
