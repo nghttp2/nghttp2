@@ -220,10 +220,10 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
   return processed;
 }
 
-void frame_pack_bufs_init(nghttp2_bufs *bufs)
+int frame_pack_bufs_init(nghttp2_bufs *bufs)
 {
   /* 2 for PAD_HIGH and PAD_LOW */
-  nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 2);
+  return nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 2);
 }
 
 void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size)

@@ -79,7 +79,7 @@ void add_out(nva_out *out, nghttp2_nv *nv);
 ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
                    nghttp2_bufs *bufs, size_t offset);
 
-void frame_pack_bufs_init(nghttp2_bufs *bufs);
+int frame_pack_bufs_init(nghttp2_bufs *bufs);
 
 void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size);
 
