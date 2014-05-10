@@ -445,3 +445,89 @@ void test_nghttp2_frame(void)
   TEST_FAILMALLOC_RUN(run_nghttp2_frame_pack_headers);
   TEST_FAILMALLOC_RUN(run_nghttp2_frame_pack_settings);
 }
+
+static int deflate_inflate(nghttp2_hd_deflater *deflater,
+                           nghttp2_hd_inflater *inflater,
+                           nghttp2_bufs *bufs,
+                           nghttp2_nv *nva, size_t nvlen)
+{
+  int rv;
+
+  rv = nghttp2_hd_deflate_hd(deflater, bufs, nva, nvlen);
+
+  if(rv != 0) {
+    return rv;
+  }
+
+  rv = inflate_hd(inflater, NULL, bufs, 0);
+
+  if(rv < 0) {
+    return rv;
+  }
+
+  nghttp2_bufs_reset(bufs);
+
+  return 0;
+}
+
+static void run_nghttp2_hd(void)
+{
+  nghttp2_hd_deflater deflater;
+  nghttp2_hd_inflater inflater;
+  nghttp2_bufs bufs;
+  int rv;
+  nghttp2_nv nva1[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "example.org"),
+    MAKE_NV(":path", "/slashdot"),
+    MAKE_NV("accept-encoding", "gzip, deflate")
+  };
+  nghttp2_nv nva2[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "example.org"),
+    MAKE_NV(":path", "/style.css"),
+    MAKE_NV("cookie", "nghttp2=FTW")
+  };
+
+  rv = frame_pack_bufs_init(&bufs);
+
+  if(rv != 0) {
+    return;
+  }
+
+  rv = nghttp2_hd_deflate_init(&deflater);
+
+  if(rv != 0) {
+    goto deflate_init_fail;
+  }
+
+  rv = nghttp2_hd_inflate_init(&inflater);
+
+  if(rv != 0) {
+    goto inflate_init_fail;
+  }
+
+  rv = deflate_inflate(&deflater, &inflater, &bufs, nva1, ARRLEN(nva1));
+
+  if(rv != 0) {
+    goto deflate_hd_fail;
+  }
+
+  rv = deflate_inflate(&deflater, &inflater, &bufs, nva2, ARRLEN(nva2));
+
+  if(rv != 0) {
+    goto deflate_hd_fail;
+  }
+
+ deflate_hd_fail:
+  nghttp2_hd_inflate_free(&inflater);
+ inflate_init_fail:
+  nghttp2_hd_deflate_free(&deflater);
+ deflate_init_fail:
+  nghttp2_bufs_free(&bufs);
+}
+
+void test_nghttp2_hd(void)
+{
+  TEST_FAILMALLOC_RUN(run_nghttp2_hd);
+}

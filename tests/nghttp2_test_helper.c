@@ -207,7 +207,9 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
       processed += rv;
 
       if(inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
-        add_out(out, &nv);
+        if(out) {
+          add_out(out, &nv);
+        }
       }
       if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
         break;

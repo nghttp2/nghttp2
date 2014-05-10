@@ -59,7 +59,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_send) ||
       !CU_add_test(pSuite, "failmalloc_session_recv",
                    test_nghttp2_session_recv) ||
-      !CU_add_test(pSuite, "failmalloc_frame", test_nghttp2_frame)) {
+      !CU_add_test(pSuite, "failmalloc_frame", test_nghttp2_frame) ||
+      !CU_add_test(pSuite, "failmalloc_hd", test_nghttp2_hd)) {
      CU_cleanup_registry();
      return CU_get_error();
    }
