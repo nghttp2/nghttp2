@@ -425,7 +425,6 @@ cdef int server_on_frame_send(cnghttp2.nghttp2_session *session,
         if not handler:
             return 0
 
-        handler.stream_id = frame.push_promise.promised_stream_id
         http2.send_response(handler)
     elif frame.hd.type == cnghttp2.NGHTTP2_SETTINGS:
         if (frame.hd.flags & cnghttp2.NGHTTP2_FLAG_ACK) == 0:
@@ -613,20 +612,24 @@ cdef class _HTTP2SessionCore:
     def push(self, handler, promised_handler):
         cdef cnghttp2.nghttp2_nv *nva
         cdef size_t nvlen
+        cdef int32_t promised_stream_id
 
         self.handlers.add(promised_handler)
 
         nva = NULL
         nvlen = _make_nva(&nva, promised_handler.headers)
 
-        rv = cnghttp2.nghttp2_submit_push_promise(self.session,
-                                                  cnghttp2.NGHTTP2_FLAG_NONE,
-                                                  handler.stream_id,
-                                                  nva, nvlen,
-                                                  <void*>promised_handler)
-        if rv != 0:
+        promised_stream_id = cnghttp2.nghttp2_submit_push_promise\
+                             (self.session,
+                              cnghttp2.NGHTTP2_FLAG_NONE,
+                              handler.stream_id,
+                              nva, nvlen,
+                              <void*>promised_handler)
+        if promised_stream_id < 0:
             raise Exception('nghttp2_submit_push_promise failed: {}'.format\
-                            (_strerror(rv)))
+                            (_strerror(promised_stream_id)))
+
+        promised_handler.stream_id = promised_stream_id
 
     def _rst_stream(self, stream_id,
                    error_code=cnghttp2.NGHTTP2_INTERNAL_ERROR):
