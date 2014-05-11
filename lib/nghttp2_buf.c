@@ -379,7 +379,11 @@ ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out)
 
   for(chain = bufs->head; chain; chain = chain->next) {
     buf = &chain->buf;
-    resbuf.last = nghttp2_cpymem(resbuf.last, buf->pos, nghttp2_buf_len(buf));
+
+    if(resbuf.last) {
+      resbuf.last = nghttp2_cpymem(resbuf.last,
+                                   buf->pos, nghttp2_buf_len(buf));
+    }
 
     nghttp2_buf_reset(buf);
     nghttp2_buf_shift_right(&chain->buf, bufs->offset);
