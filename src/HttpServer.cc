@@ -1060,7 +1060,10 @@ void prepare_status_response(Stream *stream, Http2Handler *hd,
     gzclose(write_fd);
     headers.emplace_back("content-encoding", "gzip");
   } else {
-    write(pipefd[1], body.c_str(), body.size());
+    auto rv = write(pipefd[1], body.c_str(), body.size());
+    if(rv != static_cast<ssize_t>(body.size())) {
+      std::cerr << "Could not write all response body: " << rv << std::endl;
+    }
   }
   close(pipefd[1]);
 
