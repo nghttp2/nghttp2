@@ -34,7 +34,7 @@
 #include "nghttp2_hd_huffman.h"
 #include "nghttp2_buf.h"
 
-#define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE (1 << 12)
+#define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE NGHTTP2_DEFAULT_HEADER_TABLE_SIZE
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
 
 /* The maximum value length of name/value pair. This is not specified

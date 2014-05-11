@@ -27,6 +27,7 @@ cdef extern from 'nghttp2/nghttp2.h':
     const char NGHTTP2_PROTO_VERSION_ID[]
     const char NGHTTP2_CLIENT_CONNECTION_PREFACE[]
     const size_t NGHTTP2_INITIAL_WINDOW_SIZE
+    const size_t NGHTTP2_DEFAULT_HEADER_TABLE_SIZE
 
     ctypedef struct nghttp2_session:
         pass

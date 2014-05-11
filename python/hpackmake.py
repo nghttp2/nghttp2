@@ -26,7 +26,7 @@ result in less bits on the wire.'''
     cases = []
     deflater = nghttp2.HDDeflater(deflate_table_size)
 
-    if table_size != 4096:
+    if table_size != nghttp2.DEFAULT_HEADER_TABLE_SIZE:
         deflater.change_table_size(table_size)
 
     for casenum, item  in enumerate(testdata['cases']):
@@ -41,7 +41,7 @@ result in less bits on the wire.'''
         outitem['wire'] = b2a_hex(deflater.deflate(hdrs)).decode('utf-8')
         cases.append(outitem)
 
-    if cases and table_size != 4096:
+    if cases and table_size != nghttp2.DEFAULT_HEADER_TABLE_SIZE:
         cases[0]['header_table_size'] = table_size
 
     res['cases'] = cases
@@ -53,10 +53,10 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='HPACK test case generator')
     ap.add_argument('-d', '--dir', help='output directory', default='out')
     ap.add_argument('-s', '--table-size', help='max header table size',
-                    type=int, default=4096)
+                    type=int, default=nghttp2.DEFAULT_HEADER_TABLE_SIZE)
     ap.add_argument('-S', '--deflate-table-size',
                     help='max header table size for deflater',
-                    type=int, default=4096)
+                    type=int, default=nghttp2.DEFLATE_MAX_HEADER_TABLE_SIZE)
     ap.add_argument('file', nargs='*', help='input file')
     args = ap.parse_args()
     try:

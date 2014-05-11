@@ -26,7 +26,8 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy, memset
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, int32_t
 
-HD_DEFLATE_HD_TABLE_BUFSIZE_MAX = 4096
+DEFAULT_HEADER_TABLE_SIZE = cnghttp2.NGHTTP2_DEFAULT_HEADER_TABLE_SIZE
+DEFLATE_MAX_HEADER_TABLE_SIZE = 4096
 
 HD_ENTRY_OVERHEAD = cnghttp2.NGHTTP2_HD_ENTRY_OVERHEAD
 
@@ -83,8 +84,7 @@ cdef class HDDeflater:
 
     cdef cnghttp2.nghttp2_hd_deflater _deflater
 
-    def __cinit__(self,
-                  hd_table_bufsize_max = HD_DEFLATE_HD_TABLE_BUFSIZE_MAX):
+    def __cinit__(self, hd_table_bufsize_max = DEFLATE_MAX_HEADER_TABLE_SIZE):
         rv = cnghttp2.nghttp2_hd_deflate_init2(&self._deflater,
                                                hd_table_bufsize_max)
         if rv != 0:
