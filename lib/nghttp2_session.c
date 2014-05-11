@@ -1542,6 +1542,13 @@ static int session_prep_frame(nghttp2_session *session,
       } else if(session_predicate_push_response_headers_send
                 (session, frame->hd.stream_id) == 0) {
         frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
+
+        if(aux_data && aux_data->stream_user_data) {
+          nghttp2_stream *stream;
+
+          stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+          stream->stream_user_data = aux_data->stream_user_data;
+        }
       } else if(session_predicate_response_headers_send
                 (session, frame->hd.stream_id) == 0) {
         frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
@@ -1569,14 +1576,6 @@ static int session_prep_frame(nghttp2_session *session,
 
       if(framerv < 0) {
         goto close_stream_return;
-      }
-
-      if(frame->headers.cat == NGHTTP2_HCAT_PUSH_RESPONSE) {
-        if(aux_data && aux_data->stream_user_data) {
-          nghttp2_stream *stream;
-          stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-          stream->stream_user_data = aux_data->stream_user_data;
-        }
       }
 
       DEBUGF(fprintf(stderr, "send: HEADERS finally serialized in %zd bytes\n",
