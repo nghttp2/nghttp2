@@ -25,7 +25,10 @@ result in less bits on the wire.'''
     }
     cases = []
     deflater = nghttp2.HDDeflater(deflate_table_size)
-    deflater.change_table_size(table_size)
+
+    if table_size != 4096:
+        deflater.change_table_size(table_size)
+
     for casenum, item  in enumerate(testdata['cases']):
         outitem = {
             'seqno': casenum,
@@ -38,7 +41,7 @@ result in less bits on the wire.'''
         outitem['wire'] = b2a_hex(deflater.deflate(hdrs)).decode('utf-8')
         cases.append(outitem)
 
-    if cases:
+    if cases and table_size != 4096:
         cases[0]['header_table_size'] = table_size
 
     res['cases'] = cases

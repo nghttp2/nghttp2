@@ -326,7 +326,16 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
     return rv;
   }
   deflater->no_refset = 0;
+
+  if(deflate_hd_table_bufsize_max < NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE) {
+    deflater->notify_table_size_change = 1;
+    deflater->ctx.hd_table_bufsize_max = deflate_hd_table_bufsize_max;
+  } else {
+    deflater->notify_table_size_change = 0;
+  }
+
   deflater->deflate_hd_table_bufsize_max = deflate_hd_table_bufsize_max;
+
   return 0;
 }
 
@@ -968,14 +977,10 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
     return rv;
   }
 
-  deflater->ctx.hd_table_bufsize_max = settings_hd_table_bufsize_max;
+  deflater->ctx.hd_table_bufsize_max = next_bufsize;
 
-  if(settings_hd_table_bufsize_max >= deflater->deflate_hd_table_bufsize_max) {
-    /* On the next encoding, we sends encoding context update with
-       deflater->deflate_hd_table_bufsize_max if it is strictly
-       smaller than settings_hd_table_bufsize_max. */
-    return 0;
-  }
+  deflater->notify_table_size_change = 1;
+
   hd_context_shrink_table_size(&deflater->ctx);
   return 0;
 }
@@ -1217,14 +1222,15 @@ int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
     return NGHTTP2_ERR_HEADER_COMP;
   }
 
-  if(deflater->ctx.hd_table_bufsize_max >
-     deflater->deflate_hd_table_bufsize_max) {
-    rv = emit_table_size(bufs, deflater->deflate_hd_table_bufsize_max);
+  if(deflater->notify_table_size_change) {
+
+    deflater->notify_table_size_change = 0;
+
+    rv = emit_table_size(bufs, deflater->ctx.hd_table_bufsize_max);
+
     if(rv != 0) {
       goto fail;
     }
-    deflater->ctx.hd_table_bufsize_max =
-      deflater->deflate_hd_table_bufsize_max;
   }
 
   if(deflater->no_refset) {

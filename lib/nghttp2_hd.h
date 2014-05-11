@@ -139,6 +139,9 @@ typedef struct {
   /* Set to this nonzero to clear reference set on each deflation each
      time. */
   uint8_t no_refset;
+  /* If nonzero, send header table size using encoding context update
+     in the next deflate process */
+  uint8_t notify_table_size_change;
 } nghttp2_hd_deflater;
 
 struct nghttp2_hd_inflater {
