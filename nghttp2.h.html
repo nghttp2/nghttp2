@@ -320,6 +320,12 @@
 <span class="cm"> */</span>
 <span class="cp">#define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 &lt;&lt; 28)</span>
 
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The default header table size.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_DEFAULT_HEADER_TABLE_SIZE (1 &lt;&lt; 12)</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -1367,12 +1373,9 @@
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
 <span class="cm"> *</span>
-<span class="cm"> * Callback function invoked before the non-DATA frame |frame| is</span>
-<span class="cm"> * sent.  This may be useful, for example, to know the stream ID of</span>
-<span class="cm"> * HEADERS and PUSH_PROMISE frame (see also</span>
-<span class="cm"> * `nghttp2_session_get_stream_user_data()`), which is not assigned</span>
-<span class="cm"> * when it was queued.  The |user_data| pointer is the third argument</span>
-<span class="cm"> * passed in to the call to `nghttp2_session_client_new()` or</span>
+<span class="cm"> * Callback function invoked just before the non-DATA frame |frame| is</span>
+<span class="cm"> * sent.  The |user_data| pointer is the third argument passed in to</span>
+<span class="cm"> * the call to `nghttp2_session_client_new()` or</span>
 <span class="cm"> * `nghttp2_session_server_new()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it succeeds.</span>

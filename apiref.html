@@ -171,10 +171,19 @@
 <div class="section" id="remarks">
 <h2>Remarks<a class="headerlink" href="#remarks" title="Permalink to this headline">¶</a></h2>
 <p>Do not call <a class="reference internal" href="#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>, <a class="reference internal" href="#c.nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a>,
-<a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> or <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> from the nghttp2
-callback functions directly or indirectly. It will lead to the
-crash. You can submit requests or frames in the callbacks then call
+<a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> or <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> from the
+nghttp2 callback functions directly or indirectly. It will lead to the
+crash.  You can submit requests or frames in the callbacks then call
 these functions outside the callbacks.</p>
+<p>Currently, <a class="reference internal" href="#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> and <a class="reference internal" href="#c.nghttp2_session_mem_send" title="nghttp2_session_mem_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt></a>
+do not send client connection preface
+(<a class="reference internal" href="#c.NGHTTP2_CLIENT_CONNECTION_PREFACE" title="NGHTTP2_CLIENT_CONNECTION_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE</span></tt></a>).  The applications are
+responsible to send it before sending any HTTP/2 frames using these
+functions if <a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_session</span></tt></a> is configured as client.
+Similarly, <a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>
+do not consume client connection preface.  The applications are
+responsible to receive it before calling these functions if
+<a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_session</span></tt></a> is configured as server.</p>
 </div>
 <div class="section" id="macros">
 <h2>Macros<a class="headerlink" href="#macros" title="Permalink to this headline">¶</a></h2>
@@ -265,6 +274,12 @@ TCP.</p>
 <dt id="c.NGHTTP2_MAX_HEADER_TABLE_SIZE">
 <tt class="descname">NGHTTP2_MAX_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#c.NGHTTP2_MAX_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
 <dd><p>The maximum header table size.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_DEFAULT_HEADER_TABLE_SIZE">
+<tt class="descname">NGHTTP2_DEFAULT_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#c.NGHTTP2_DEFAULT_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd><p>The default header table size.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -1672,12 +1687,9 @@ immediately return <a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_F
 <dl class="type">
 <dt id="c.nghttp2_before_frame_send_callback">
 typedef int <tt class="descname">(*nghttp2_before_frame_send_callback)</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const <a class="reference internal" href="#c.nghttp2_frame" title="nghttp2_frame">nghttp2_frame</a><em>&nbsp;*frame</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_before_frame_send_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback function invoked before the non-DATA frame <em>frame</em> is
-sent.  This may be useful, for example, to know the stream ID of
-HEADERS and PUSH_PROMISE frame (see also
-<a class="reference internal" href="#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a>), which is not assigned
-when it was queued.  The <em>user_data</em> pointer is the third argument
-passed in to the call to <a class="reference internal" href="#c.nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
+<dd><p>Callback function invoked just before the non-DATA frame <em>frame</em> is
+sent.  The <em>user_data</em> pointer is the third argument passed in to
+the call to <a class="reference internal" href="#c.nghttp2_session_client_new" title="nghttp2_session_client_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_client_new()</span></tt></a> or
 <a class="reference internal" href="#c.nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a>.</p>
 <p>The implementation of this function must return 0 if it succeeds.
 If nonzero is returned, it is treated as fatal error and
