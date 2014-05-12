@@ -209,6 +209,18 @@ const char* nghttp2_strerror(int error_code)
     return "The length of the frame is invalid";
   case NGHTTP2_ERR_HEADER_COMP:
     return "Header compression/decompression error";
+  case NGHTTP2_ERR_FLOW_CONTROL:
+    return "Flow control error";
+  case NGHTTP2_ERR_INSUFF_BUFSIZE:
+    return "Insufficient buffer size given to function";
+  case NGHTTP2_ERR_PAUSE:
+    return "Callback was paused by the application";
+  case NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS:
+    return "Too many inflight SETTINGS";
+  case NGHTTP2_ERR_PUSH_DISABLED:
+    return "Server push is disabled by peer";
+  case NGHTTP2_ERR_DATA_EXIST:
+    return "DATA frame already exists";
   case NGHTTP2_ERR_NOMEM:
     return "Out of memory";
   case NGHTTP2_ERR_CALLBACK_FAILURE:
