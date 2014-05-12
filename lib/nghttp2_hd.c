@@ -559,14 +559,6 @@ static  uint8_t* decode_length(ssize_t *res, int *final, ssize_t initial,
   return in + 1;
 }
 
-static int hd_handle_buffer_error(int rv)
-{
-  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
-    return NGHTTP2_ERR_HEADER_COMP;
-  }
-  return rv;
-}
-
 static int emit_clear_refset(nghttp2_bufs *bufs)
 {
   int rv;
@@ -575,7 +567,7 @@ static int emit_clear_refset(nghttp2_bufs *bufs)
 
   rv = nghttp2_bufs_addb(bufs, 0x30u);
   if(rv != 0) {
-    return hd_handle_buffer_error(rv);
+    return rv;
   }
 
   return 0;
@@ -604,7 +596,7 @@ static int emit_table_size(nghttp2_bufs *bufs, size_t table_size)
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
-    return hd_handle_buffer_error(rv);
+    return rv;
   }
 
   return 0;
@@ -632,7 +624,7 @@ static int emit_indexed_block(nghttp2_bufs *bufs, size_t index)
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
-    return hd_handle_buffer_error(rv);
+    return rv;
   }
 
   return 0;
@@ -665,7 +657,7 @@ static int emit_string(nghttp2_bufs *bufs,
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
-    return hd_handle_buffer_error(rv);
+    return rv;
   }
 
   if(huffman) {
@@ -675,7 +667,7 @@ static int emit_string(nghttp2_bufs *bufs,
     rv = nghttp2_bufs_add(bufs, str, len);
   }
 
-  return hd_handle_buffer_error(rv);
+  return rv;
 }
 
 static uint8_t pack_first_byte(int inc_indexing, int no_index)
@@ -737,7 +729,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t index,
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
-    return hd_handle_buffer_error(rv);
+    return rv;
   }
 
   rv = emit_string(bufs, encvallen, huffman, nv->value, nv->valuelen);
@@ -779,7 +771,7 @@ static int emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
 
   rv = nghttp2_bufs_addb(bufs, pack_first_byte(inc_indexing, no_index));
   if(rv != 0) {
-    return hd_handle_buffer_error(rv);
+    return rv;
   }
 
   rv = emit_string(bufs, encnamelen, name_huffman, nv->name, nv->namelen);
@@ -1319,6 +1311,8 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater,
  *   Out of memory
  * NGHTTP2_ERR_HEADER_COMP
  *   Huffman decoding failed
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
  */
 static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
                                     nghttp2_bufs *bufs,
@@ -1332,9 +1326,7 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
   }
   rv = nghttp2_hd_huff_decode(&inflater->huff_decode_ctx, bufs,
                               in, last - in, final);
-  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
-    return NGHTTP2_ERR_HEADER_COMP;
-  }
+
   if(rv < 0) {
     DEBUGF(fprintf(stderr, "inflatehd: huffman decoding failed\n"));
     return rv;
@@ -1354,6 +1346,8 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
  *   Out of memory
  * NGHTTP2_ERR_HEADER_COMP
  *   Header decompression failed
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
  */
 static ssize_t hd_inflate_read(nghttp2_hd_inflater *inflater,
                                nghttp2_bufs *bufs,
@@ -1362,9 +1356,6 @@ static ssize_t hd_inflate_read(nghttp2_hd_inflater *inflater,
   int rv;
   size_t len = nghttp2_min(last - in, inflater->left);
   rv = nghttp2_bufs_add(bufs, in, len);
-  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
-    return NGHTTP2_ERR_HEADER_COMP;
-  }
   if(rv != 0) {
     return rv;
   }

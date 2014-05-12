@@ -366,6 +366,10 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
   /* This call will adjust buf->last to the correct position */
   rv = nghttp2_hd_deflate_hd(deflater, bufs, frame->nva, frame->nvlen);
 
+  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+    rv = NGHTTP2_ERR_HEADER_COMP;
+  }
+
   buf->pos -= nv_offset;
 
   if(rv != 0) {
@@ -592,6 +596,10 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
 
   /* This call will adjust buf->last to the correct position */
   rv = nghttp2_hd_deflate_hd(deflater, bufs, frame->nva, frame->nvlen);
+
+  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+    rv = NGHTTP2_ERR_HEADER_COMP;
+  }
 
   buf->pos -= nv_offset;
 

@@ -286,6 +286,8 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
  *     Out of memory.
  * NGHTTP2_ERR_HEADER_COMP
  *     Deflation process has failed.
+ * NGHTTP2_ERR_BUFFER_ERROR
+ *     Out of buffer space.
  */
 int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                           nghttp2_bufs *bufs,

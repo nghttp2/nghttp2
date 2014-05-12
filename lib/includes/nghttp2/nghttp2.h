@@ -201,6 +201,10 @@ typedef enum {
    */
   NGHTTP2_ERR_INVALID_ARGUMENT = -501,
   /**
+   * Ouf of buffer space.
+   */
+  NGHTTP2_ERR_BUFFER_ERROR = -502,
+  /**
    * The specified protocol version is not supported.
    */
   NGHTTP2_ERR_UNSUPPORTED_VERSION = -503,
@@ -2811,6 +2815,8 @@ typedef enum {
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_HEADER_COMP`
  *     Inflation process has failed.
+ * :enum:`NGHTTP2_ERR_BUFFER_ERROR`
+ *     The heder field name or value is too large.
  *
  * Example follows::
  *
