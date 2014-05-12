@@ -1008,6 +1008,10 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
   for(i = 0; i < niv; ++i) {
     switch(iv[i].settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+      if(iv[i].value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
+        return 0;
+      }
+      break;
     case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
       break;
     case NGHTTP2_SETTINGS_ENABLE_PUSH:

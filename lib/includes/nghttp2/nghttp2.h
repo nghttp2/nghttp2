@@ -155,13 +155,6 @@ typedef struct {
 /**
  * @macro
  *
- * The maximum header table size.
- */
-#define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 << 28)
-
-/**
- * @macro
- *
  * The default header table size.
  */
 #define NGHTTP2_DEFAULT_HEADER_TABLE_SIZE (1 << 12)

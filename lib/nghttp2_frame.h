@@ -57,6 +57,9 @@
 /* The number of bytes for each SETTINGS entry */
 #define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 5
 
+/* The maximum header table size in SETTINGS_HEADER_TABLE_SIZE */
+#define NGHTTP2_MAX_HEADER_TABLE_SIZE ((1u << 31) - 1)
+
 /* Category of frames. */
 typedef enum {
   /* non-DATA frame */

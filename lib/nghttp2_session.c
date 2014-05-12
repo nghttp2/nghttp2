@@ -3265,7 +3265,8 @@ static int session_update_local_initial_window_size
 
 /*
  * Apply SETTINGS values |iv| having |niv| elements to the local
- * settings.
+ * settings.  We assumes that all values in |iv| is correct, since we
+ * validated them in nghttp2_session_add_settings() already.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -3297,10 +3298,6 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     }
   }
   if(header_table_size_seen) {
-    if(header_table_size < 0 ||
-       header_table_size > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
-      return NGHTTP2_ERR_HEADER_COMP;
-    }
     rv = nghttp2_hd_inflate_change_table_size(&session->hd_inflater,
                                               header_table_size);
     if(rv != 0) {
