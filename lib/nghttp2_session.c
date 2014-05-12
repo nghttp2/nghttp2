@@ -2441,8 +2441,6 @@ int nghttp2_session_send(nghttp2_session *session)
     /* Rewind the offset to the amount of unsent bytes */
     framebufs->cur->buf.pos -= datalen - sentlen;
   }
-
-  return 0;
 }
 
 static ssize_t session_recv(nghttp2_session *session, uint8_t *buf, size_t len)
