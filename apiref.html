@@ -271,12 +271,6 @@ TCP.</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="c.NGHTTP2_MAX_HEADER_TABLE_SIZE">
-<tt class="descname">NGHTTP2_MAX_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#c.NGHTTP2_MAX_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
-<dd><p>The maximum header table size.</p>
-</dd></dl>
-
-<dl class="macro">
 <dt id="c.NGHTTP2_DEFAULT_HEADER_TABLE_SIZE">
 <tt class="descname">NGHTTP2_DEFAULT_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#c.NGHTTP2_DEFAULT_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
 <dd><p>The default header table size.</p>
@@ -326,6 +320,13 @@ inclusive. The following values are defined:</p>
 <tt class="descname">NGHTTP2_ERR_INVALID_ARGUMENT</tt><a class="headerlink" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">-501</span></tt>)
 Invalid argument passed.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_ERR_BUFFER_ERROR">
+<tt class="descname">NGHTTP2_ERR_BUFFER_ERROR</tt><a class="headerlink" href="#c.NGHTTP2_ERR_BUFFER_ERROR" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">-502</span></tt>)
+Ouf of buffer space.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -3037,6 +3038,8 @@ or one of the following negative error codes:</p>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_HEADER_COMP" title="NGHTTP2_ERR_HEADER_COMP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_HEADER_COMP</span></tt></a></dt>
 <dd>Inflation process has failed.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_BUFFER_ERROR" title="NGHTTP2_ERR_BUFFER_ERROR"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_BUFFER_ERROR</span></tt></a></dt>
+<dd>The heder field name or value is too large.</dd>
 </dl>
 <p>Example follows:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="nf">inflate_header_block</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">hd_inflater</span><span class="p">,</span>

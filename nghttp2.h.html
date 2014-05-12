@@ -316,13 +316,6 @@
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
-<span class="cm"> * The maximum header table size.</span>
-<span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_MAX_HEADER_TABLE_SIZE (1 &lt;&lt; 28)</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @macro</span>
-<span class="cm"> *</span>
 <span class="cm"> * The default header table size.</span>
 <span class="cm"> */</span>
 <span class="cp">#define NGHTTP2_DEFAULT_HEADER_TABLE_SIZE (1 &lt;&lt; 12)</span>
@@ -368,6 +361,10 @@
 <span class="cm">   * Invalid argument passed.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_INVALID_ARGUMENT</span> <span class="o">=</span> <span class="o">-</span><span class="mi">501</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Ouf of buffer space.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_BUFFER_ERROR</span> <span class="o">=</span> <span class="o">-</span><span class="mi">502</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * The specified protocol version is not supported.</span>
 <span class="cm">   */</span>
@@ -2979,6 +2976,8 @@
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_HEADER_COMP`</span>
 <span class="cm"> *     Inflation process has failed.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_BUFFER_ERROR`</span>
+<span class="cm"> *     The heder field name or value is too large.</span>
 <span class="cm"> *</span>
 <span class="cm"> * Example follows::</span>
 <span class="cm"> *</span>
