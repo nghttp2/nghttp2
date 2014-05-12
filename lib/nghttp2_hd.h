@@ -275,10 +275,6 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
  *
  * After this function returns, it is safe to delete the |nva|.
  *
- * TODO: The rest of the code call nghttp2_hd_end_headers() after this
- * call, but it is just a regacy of the first implementation. Now it
- * is not required to be called as of now.
- *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
