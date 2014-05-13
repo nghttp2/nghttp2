@@ -2716,6 +2716,117 @@ int nghttp2_check_header_value(const uint8_t *value, size_t len);
 
 /* HPACK API */
 
+struct nghttp2_hd_deflater;
+
+/**
+ * @struct
+ *
+ * HPACK deflater object.
+ */
+typedef struct nghttp2_hd_deflater nghttp2_hd_deflater;
+
+/**
+ * @function
+ *
+ * Initializes |*deflater_ptr| for deflating name/values pairs.
+ *
+ * The |deflate_hd_table_bufsize_max| is the upper bound of header
+ * table size the deflater will use.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
+                           size_t deflate_hd_table_bufsize_max);
+
+/**
+ * @function
+ *
+ * Deallocates any resources allocated for |deflater|.
+ */
+void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater);
+
+/**
+ * @function
+ *
+ * Sets the availability of reference set in the |deflater|.  If
+ * |no_refset| is nonzero, the deflater will first emit "Reference Set
+ * Emptying" in the each subsequent invocation of
+ * `nghttp2_hd_deflate_hd()` to clear up reference set.  By default,
+ * the deflater uses reference set.
+ */
+void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
+                                      uint8_t no_refset);
+
+/**
+ * @function
+ *
+ * Changes header table size of the |deflater| to
+ * |settings_hd_table_bufsize_max| bytes.  This may trigger eviction
+ * in the dynamic table.
+ *
+ * The |settings_hd_table_bufsize_max| should be the value received in
+ * SETTINGS_HEADER_TABLE_SIZE.
+ *
+ * The deflater never uses more memory than
+ * ``deflate_hd_table_bufsize_max`` bytes specified in
+ * `nghttp2_hd_deflate_new()`.  Therefore, if
+ * |settings_hd_table_bufsize_max| > ``deflate_hd_table_bufsize_max``,
+ * resulting maximum table size becomes
+ * ``deflate_hd_table_bufsize_max``.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
+                                         size_t settings_hd_table_bufsize_max);
+
+/**
+ * @function
+ *
+ * Deflates the |nva|, which has the |nvlen| name/value pairs, into
+ * the |buf| of length |buflen|.
+ *
+ * If |buf| is not large enough to store the deflated header block,
+ * this function fails with :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`.  The
+ * caller should use `nghttp2_hd_deflate_bound()` to know the upper
+ * bound of buffer size required to deflate given header name/value
+ * pairs.
+ *
+ * Once this function fails, subsequent call of this function always
+ * returns :enum:`NGHTTP2_ERR_HEADER_COMP`.
+ *
+ * After this function returns, it is safe to delete the |nva|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_HEADER_COMP`
+ *     Deflation process has failed.
+ * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`
+ *     The provided |buflen| size is too small to hold the output.
+ */
+ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
+                              uint8_t *buf, size_t buflen,
+                              nghttp2_nv *nva, size_t nvlen);
+
+/**
+ * @function
+ *
+ * Returns an upper bound on the compressed size after deflation of
+ * |nva| of length |nvlen|.
+ */
+size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
+                                const nghttp2_nv *nva, size_t nvlen);
+
 struct nghttp2_hd_inflater;
 
 /**

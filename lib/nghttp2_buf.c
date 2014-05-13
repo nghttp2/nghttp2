@@ -177,6 +177,37 @@ void nghttp2_bufs_free(nghttp2_bufs *bufs)
   }
 }
 
+int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len)
+{
+  nghttp2_buf_chain *chain;
+
+  chain = malloc(sizeof(nghttp2_buf_chain));
+  if(chain == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  chain->next = NULL;
+
+  nghttp2_buf_wrap_init(&chain->buf, begin, len);
+
+  bufs->offset = 0;
+
+  bufs->head = chain;
+  bufs->cur = bufs->head;
+
+  bufs->chunk_length = len;
+  bufs->chunk_used = 1;
+  bufs->max_chunk = 1;
+  bufs->chunk_keep = 1;
+
+  return 0;
+}
+
+void nghttp2_bufs_wrap_free(nghttp2_bufs *bufs)
+{
+  free(bufs->head);
+}
+
 void nghttp2_bufs_seek_last_present(nghttp2_bufs *bufs)
 {
   nghttp2_buf_chain *ci;

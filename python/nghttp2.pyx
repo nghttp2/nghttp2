@@ -122,8 +122,8 @@ cdef class HDDeflater:
 
         cnghttp2.nghttp2_bufs_init(&bufs, 4096, 16)
 
-        rv = cnghttp2.nghttp2_hd_deflate_hd(&self._deflater, &bufs,
-                                            nva, len(headers))
+        rv = cnghttp2.nghttp2_hd_deflate_hd_bufs(&self._deflater, &bufs,
+                                                 nva, len(headers))
         free(nva)
 
         if rv < 0:

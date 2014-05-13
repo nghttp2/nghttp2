@@ -208,6 +208,27 @@ int nghttp2_bufs_init3(nghttp2_bufs *bufs, size_t chunk_length,
 void nghttp2_bufs_free(nghttp2_bufs *bufs);
 
 /*
+ * Initializes |bufs| using supplied buffer |begin| of length |len|.
+ * The first buffer bufs->head uses buffer |begin|.  The buffer size
+ * is fixed and no allocate extra chunk buffer is allocated.  In other
+ * words, max_chunk = chunk_keep = 1.  To free the resource allocated
+ * for |bufs|, use nghttp2_bufs_wrap_free().
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len);
+
+/*
+ * Frees any related resource to the |bufs|.  This function does not
+ * free supplied buffer provided in nghttp2_bufs_wrap_init().
+ */
+void nghttp2_bufs_wrap_free(nghttp2_bufs *bufs);
+
+/*
  * Appends the |data| of length |len| to the |bufs|. The write starts
  * at bufs->cur->buf.last. A new buffers will be allocated to store
  * all data.

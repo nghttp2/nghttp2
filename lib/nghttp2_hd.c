@@ -1203,9 +1203,9 @@ static int deflate_post_process_hd_entry(nghttp2_hd_entry *ent,
   return 0;
 }
 
-int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
-                          nghttp2_bufs *bufs,
-                          nghttp2_nv *nv, size_t nvlen)
+int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
+                               nghttp2_bufs *bufs,
+                               nghttp2_nv *nv, size_t nvlen)
 {
   size_t i;
   int rv = 0;
@@ -1257,6 +1257,87 @@ int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
 
   deflater->ctx.bad = 1;
   return rv;
+}
+
+ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
+                              uint8_t *buf, size_t buflen,
+                              nghttp2_nv *nv, size_t nvlen)
+{
+  nghttp2_bufs bufs;
+  int rv;
+
+  rv = nghttp2_bufs_wrap_init(&bufs, buf, buflen);
+
+  if(rv != 0) {
+    return rv;
+  }
+
+  rv = nghttp2_hd_deflate_hd_bufs(deflater, &bufs, nv, nvlen);
+
+  buflen = nghttp2_bufs_len(&bufs);
+
+  nghttp2_bufs_wrap_free(&bufs);
+
+  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+    return NGHTTP2_ERR_INSUFF_BUFSIZE;
+  }
+
+  if(rv != 0) {
+    return rv;
+  }
+
+  return buflen;
+}
+
+size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
+                                const nghttp2_nv *nva, size_t nvlen)
+{
+  size_t n;
+  size_t i;
+
+  /* Possible Reference Set Emptying */
+  n = 1;
+
+  /* Possible Maximum Header Table Size Change.  Encoding (1u << 31) -
+     1 using 4 bit prefix requires 6 bytes. */
+  n += 6;
+
+  /* Use Literal Header Field without indexing - New Name, since it is
+     most space consuming format.  Also we choose the less one between
+     non-huffman and huffman, so using literal byte count is
+     sufficient for upper bound.
+
+     Encoding (1u << 31) - 1 using 7 bit prefix requires 6 bytes.  We
+     need 2 of this for |nvlen| header fields. */
+  n += 6 * 2 * nvlen;
+
+  for(i = 0; i < nvlen; ++i) {
+    n += nva[i].namelen + nva[i].valuelen;
+  }
+
+  /* Add possible reference set toggle off */
+  n += deflater->ctx.hd_table.len;
+
+  return n;
+}
+
+int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
+                           size_t deflate_hd_table_bufsize_max)
+{
+  *deflater_ptr = malloc(sizeof(nghttp2_hd_deflater));
+
+  if(*deflater_ptr == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  return nghttp2_hd_deflate_init2(*deflater_ptr, deflate_hd_table_bufsize_max);
+}
+
+void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater)
+{
+  nghttp2_hd_deflate_free(deflater);
+
+  free(deflater);
 }
 
 static void hd_inflate_set_huffman_encoded(nghttp2_hd_inflater *inflater,

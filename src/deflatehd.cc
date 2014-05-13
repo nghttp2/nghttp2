@@ -130,8 +130,8 @@ static void deflate_hd(nghttp2_hd_deflater *deflater,
 
   nghttp2_bufs_init2(&bufs, 4096, 16, 0);
 
-  rv = nghttp2_hd_deflate_hd(deflater, &bufs,
-                             (nghttp2_nv*)nva.data(), nva.size());
+  rv = nghttp2_hd_deflate_hd_bufs(deflater, &bufs,
+                                  (nghttp2_nv*)nva.data(), nva.size());
   if(rv < 0) {
     fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
     exit(EXIT_FAILURE);

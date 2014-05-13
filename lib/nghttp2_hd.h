@@ -132,7 +132,7 @@ typedef struct {
   uint8_t bad;
 } nghttp2_hd_context;
 
-typedef struct {
+struct nghttp2_hd_deflater {
   nghttp2_hd_context ctx;
   /* The upper limit of the header table size the deflater accepts. */
   size_t deflate_hd_table_bufsize_max;
@@ -142,7 +142,7 @@ typedef struct {
   /* If nonzero, send header table size using encoding context update
      in the next deflate process */
   uint8_t notify_table_size_change;
-} nghttp2_hd_deflater;
+};
 
 struct nghttp2_hd_inflater {
   nghttp2_hd_context ctx;
@@ -241,31 +241,6 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
 void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater);
 
 /*
- * Sets the availability of reference set in the |deflater|. If
- * |no_refset| is nonzero, the deflater will first emit index=0 in the
- * each invocation of nghttp2_hd_deflate_hd() to clear up reference
- * set. By default, the deflater uses reference set.
- */
-void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
-                                      uint8_t no_refset);
-
-/*
- * Changes header table size of the |deflater|. This may trigger
- * eviction in the dynamic table.
- *
- * The |settings_hd_table_bufsize_max| should be the value received in
- * SETTINGS_HEADER_TABLE_SIZE.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
-                                         size_t settings_hd_table_bufsize_max);
-
-/*
  * Deflates the |nva|, which has the |nvlen| name/value pairs, into
  * the |bufs|.
  *
@@ -285,9 +260,9 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
  * NGHTTP2_ERR_BUFFER_ERROR
  *     Out of buffer space.
  */
-int nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
-                          nghttp2_bufs *bufs,
-                          nghttp2_nv *nva, size_t nvlen);
+int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
+                               nghttp2_bufs *bufs,
+                               nghttp2_nv *nva, size_t nvlen);
 
 /*
  * Initializes |inflater| for inflating name/values pairs.

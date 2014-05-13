@@ -453,7 +453,7 @@ static int deflate_inflate(nghttp2_hd_deflater *deflater,
 {
   int rv;
 
-  rv = nghttp2_hd_deflate_hd(deflater, bufs, nva, nvlen);
+  rv = nghttp2_hd_deflate_hd_bufs(deflater, bufs, nva, nvlen);
 
   if(rv != 0) {
     return rv;
