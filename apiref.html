@@ -53,7 +53,7 @@
 
   
     <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
-        <link rel="next" title="nghttp2.h" href="nghttp2.h.html"/>
+        <link rel="next" title="Python API Reference" href="python-apiref.html"/>
         <link rel="prev" title="nghttpx - HOW-TO" href="nghttpx-howto.html"/> 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -119,6 +119,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#hpack-api">HPACK API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#http-2-servers">HTTP/2 servers</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
@@ -1956,6 +1961,12 @@ this structure are intentionally hidden from the public API.</p>
 </dd></dl>
 
 <dl class="type">
+<dt id="c.nghttp2_hd_deflater">
+<tt class="descname">nghttp2_hd_deflater</tt><a class="headerlink" href="#c.nghttp2_hd_deflater" title="Permalink to this definition">¶</a></dt>
+<dd><p>HPACK deflater object.</p>
+</dd></dl>
+
+<dl class="type">
 <dt id="c.nghttp2_hd_inflater">
 <tt class="descname">nghttp2_hd_inflater</tt><a class="headerlink" href="#c.nghttp2_hd_inflater" title="Permalink to this definition">¶</a></dt>
 <dd><p>HPACK inflater object.</p>
@@ -2978,6 +2989,90 @@ character (0x00).</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="c.nghttp2_hd_deflate_new">
+int <tt class="descname">nghttp2_hd_deflate_new</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;**deflater_ptr</em>, size_t<em>&nbsp;deflate_hd_table_bufsize_max</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes <em>*deflater_ptr</em> for deflating name/values pairs.</p>
+<p>The <em>deflate_hd_table_bufsize_max</em> is the upper bound of header
+table size the deflater will use.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_deflate_del">
+void <tt class="descname">nghttp2_hd_deflate_del</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_del" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deallocates any resources allocated for <em>deflater</em>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_deflate_set_no_refset">
+void <tt class="descname">nghttp2_hd_deflate_set_no_refset</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em>, uint8_t<em>&nbsp;no_refset</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_set_no_refset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the availability of reference set in the <em>deflater</em>.  If
+<em>no_refset</em> is nonzero, the deflater will first emit &#8220;Reference Set
+Emptying&#8221; in the each subsequent invocation of
+<a class="reference internal" href="#c.nghttp2_hd_deflate_hd" title="nghttp2_hd_deflate_hd"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_hd_deflate_hd()</span></tt></a> to clear up reference set.  By default,
+the deflater uses reference set.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_deflate_change_table_size">
+int <tt class="descname">nghttp2_hd_deflate_change_table_size</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em>, size_t<em>&nbsp;settings_hd_table_bufsize_max</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_change_table_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes header table size of the <em>deflater</em> to
+<em>settings_hd_table_bufsize_max</em> bytes.  This may trigger eviction
+in the dynamic table.</p>
+<p>The <em>settings_hd_table_bufsize_max</em> should be the value received in
+SETTINGS_HEADER_TABLE_SIZE.</p>
+<p>The deflater never uses more memory than
+<tt class="docutils literal"><span class="pre">deflate_hd_table_bufsize_max</span></tt> bytes specified in
+<a class="reference internal" href="#c.nghttp2_hd_deflate_new" title="nghttp2_hd_deflate_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_hd_deflate_new()</span></tt></a>.  Therefore, if
+<em>settings_hd_table_bufsize_max</em> &gt; <tt class="docutils literal"><span class="pre">deflate_hd_table_bufsize_max</span></tt>,
+resulting maximum table size becomes
+<tt class="docutils literal"><span class="pre">deflate_hd_table_bufsize_max</span></tt>.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_deflate_hd">
+ssize_t <tt class="descname">nghttp2_hd_deflate_hd</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em>, uint8_t<em>&nbsp;*buf</em>, size_t<em>&nbsp;buflen</em>, <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_hd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deflates the <em>nva</em>, which has the <em>nvlen</em> name/value pairs, into
+the <em>buf</em> of length <em>buflen</em>.</p>
+<p>If <em>buf</em> is not large enough to store the deflated header block,
+this function fails with <a class="reference internal" href="#c.NGHTTP2_ERR_INSUFF_BUFSIZE" title="NGHTTP2_ERR_INSUFF_BUFSIZE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INSUFF_BUFSIZE</span></tt></a>.  The
+caller should use <a class="reference internal" href="#c.nghttp2_hd_deflate_bound" title="nghttp2_hd_deflate_bound"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_hd_deflate_bound()</span></tt></a> to know the upper
+bound of buffer size required to deflate given header name/value
+pairs.</p>
+<p>Once this function fails, subsequent call of this function always
+returns <a class="reference internal" href="#c.NGHTTP2_ERR_HEADER_COMP" title="NGHTTP2_ERR_HEADER_COMP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_HEADER_COMP</span></tt></a>.</p>
+<p>After this function returns, it is safe to delete the <em>nva</em>.</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_HEADER_COMP" title="NGHTTP2_ERR_HEADER_COMP"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_HEADER_COMP</span></tt></a></dt>
+<dd>Deflation process has failed.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_INSUFF_BUFSIZE" title="NGHTTP2_ERR_INSUFF_BUFSIZE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INSUFF_BUFSIZE</span></tt></a></dt>
+<dd>The provided <em>buflen</em> size is too small to hold the output.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_hd_deflate_bound">
+size_t <tt class="descname">nghttp2_hd_deflate_bound</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_bound" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an upper bound on the compressed size after deflation of
+<em>nva</em> of length <em>nvlen</em>.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="c.nghttp2_hd_inflate_new">
 int <tt class="descname">nghttp2_hd_inflate_new</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_inflater" title="nghttp2_hd_inflater">nghttp2_hd_inflater</a><em>&nbsp;**inflater_ptr</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_inflate_new" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initializes <em>*inflater_ptr</em> for inflating name/values pairs.</p>
@@ -3101,7 +3196,7 @@ always succeeds.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="nghttp2.h.html" class="btn btn-neutral float-right" title="nghttp2.h"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="python-apiref.html" class="btn btn-neutral float-right" title="Python API Reference"/>Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="nghttpx-howto.html" class="btn btn-neutral" title="nghttpx - HOW-TO"><span class="fa fa-arrow-circle-left"></span> Previous</a>

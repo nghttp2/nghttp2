@@ -54,7 +54,7 @@
   
     <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
-        <link rel="prev" title="API Reference" href="apiref.html"/> 
+        <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -119,6 +119,11 @@
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#hpack-api">HPACK API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#http-2-servers">HTTP/2 servers</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2.h</a></li>
@@ -2877,6 +2882,117 @@
 
 <span class="cm">/* HPACK API */</span>
 
+<span class="k">struct</span> <span class="n">nghttp2_hd_deflater</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * HPACK deflater object.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">nghttp2_hd_deflater</span> <span class="n">nghttp2_hd_deflater</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Initializes |*deflater_ptr| for deflating name/values pairs.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |deflate_hd_table_bufsize_max| is the upper bound of header</span>
+<span class="cm"> * table size the deflater will use.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_hd_deflate_new</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">**</span><span class="n">deflater_ptr</span><span class="p">,</span>
+                           <span class="kt">size_t</span> <span class="n">deflate_hd_table_bufsize_max</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Deallocates any resources allocated for |deflater|.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">nghttp2_hd_deflate_del</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Sets the availability of reference set in the |deflater|.  If</span>
+<span class="cm"> * |no_refset| is nonzero, the deflater will first emit &quot;Reference Set</span>
+<span class="cm"> * Emptying&quot; in the each subsequent invocation of</span>
+<span class="cm"> * `nghttp2_hd_deflate_hd()` to clear up reference set.  By default,</span>
+<span class="cm"> * the deflater uses reference set.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">nghttp2_hd_deflate_set_no_refset</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span>
+                                      <span class="kt">uint8_t</span> <span class="n">no_refset</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Changes header table size of the |deflater| to</span>
+<span class="cm"> * |settings_hd_table_bufsize_max| bytes.  This may trigger eviction</span>
+<span class="cm"> * in the dynamic table.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |settings_hd_table_bufsize_max| should be the value received in</span>
+<span class="cm"> * SETTINGS_HEADER_TABLE_SIZE.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The deflater never uses more memory than</span>
+<span class="cm"> * ``deflate_hd_table_bufsize_max`` bytes specified in</span>
+<span class="cm"> * `nghttp2_hd_deflate_new()`.  Therefore, if</span>
+<span class="cm"> * |settings_hd_table_bufsize_max| &gt; ``deflate_hd_table_bufsize_max``,</span>
+<span class="cm"> * resulting maximum table size becomes</span>
+<span class="cm"> * ``deflate_hd_table_bufsize_max``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_hd_deflate_change_table_size</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span>
+                                         <span class="kt">size_t</span> <span class="n">settings_hd_table_bufsize_max</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Deflates the |nva|, which has the |nvlen| name/value pairs, into</span>
+<span class="cm"> * the |buf| of length |buflen|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If |buf| is not large enough to store the deflated header block,</span>
+<span class="cm"> * this function fails with :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`.  The</span>
+<span class="cm"> * caller should use `nghttp2_hd_deflate_bound()` to know the upper</span>
+<span class="cm"> * bound of buffer size required to deflate given header name/value</span>
+<span class="cm"> * pairs.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Once this function fails, subsequent call of this function always</span>
+<span class="cm"> * returns :enum:`NGHTTP2_ERR_HEADER_COMP`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * After this function returns, it is safe to delete the |nva|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_HEADER_COMP`</span>
+<span class="cm"> *     Deflation process has failed.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`</span>
+<span class="cm"> *     The provided |buflen| size is too small to hold the output.</span>
+<span class="cm"> */</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_deflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span>
+                              <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span>
+                              <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns an upper bound on the compressed size after deflation of</span>
+<span class="cm"> * |nva| of length |nvlen|.</span>
+<span class="cm"> */</span>
+<span class="kt">size_t</span> <span class="nf">nghttp2_hd_deflate_bound</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
+
 <span class="k">struct</span> <span class="n">nghttp2_hd_inflater</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -3053,7 +3169,7 @@
         <a href="nghttp2ver.h.html" class="btn btn-neutral float-right" title="nghttp2ver.h"/>Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="apiref.html" class="btn btn-neutral" title="API Reference"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="python-apiref.html" class="btn btn-neutral" title="Python API Reference"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

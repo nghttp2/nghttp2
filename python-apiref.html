@@ -1,0 +1,539 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Python API Reference &mdash; nghttp2 0.4.0-DEV documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'./',
+        VERSION:'0.4.0-DEV',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
+    <link rel="top" title="nghttp2 0.4.0-DEV documentation" href="index.html"/>
+        <link rel="next" title="nghttp2.h" href="nghttp2.h.html"/>
+        <link rel="prev" title="API Reference" href="apiref.html"/> 
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2 server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-mode">Client mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-proxy-mode">Client proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-bridge-mode">HTTP/2 bridge mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#hpack-api">HPACK API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#http-2-servers">HTTP/2 servers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">nghttp2</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Python API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="module-nghttp2">
+<span id="python-api-reference"></span><h1>Python API Reference<a class="headerlink" href="#module-nghttp2" title="Permalink to this headline">¶</a></h1>
+<p>nghttp2 offers some high level Python API to C library.  The bindings
+currently provide HPACK compressor and decompressor classes and HTTP/2
+server class.</p>
+<p>The extension module is called <tt class="docutils literal"><span class="pre">nghttp2</span></tt>.</p>
+<p><tt class="docutils literal"><span class="pre">make</span></tt> will build the bindings.  The target Python version is
+determined by configure script.  If the detected Python version is not
+what you expect, specify a path to Python executable in <tt class="docutils literal"><span class="pre">PYTHON</span></tt>
+variable as an argument to configure script (e.g., <tt class="docutils literal"><span class="pre">./configure</span>
+<span class="pre">PYTHON=/usr/bin/python3.4</span></tt>).</p>
+<div class="section" id="hpack-api">
+<h2>HPACK API<a class="headerlink" href="#hpack-api" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nghttp2.HDDeflater">
+<em class="property">class </em><tt class="descclassname">nghttp2.</tt><tt class="descname">HDDeflater</tt><big>(</big><em>hd_table_bufsize_max=DEFLATE_MAX_HEADER_TABLE_SIZE</em><big>)</big><a class="headerlink" href="#nghttp2.HDDeflater" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is used to perform header compression.  The
+<em>hd_table_bufsize_max</em> limits the usage of header table in the
+given amount of bytes.  The default value is
+<a class="reference internal" href="#nghttp2.DEFLATE_MAX_HEADER_TABLE_SIZE" title="nghttp2.DEFLATE_MAX_HEADER_TABLE_SIZE"><tt class="xref py py-data docutils literal"><span class="pre">DEFLATE_MAX_HEADER_TABLE_SIZE</span></tt></a>.  This is necessary
+because the deflater and inflater share the same amount of header
+table and the inflater decides that number.  The deflater may not
+want to use all header table size because of limited memory
+availability.  In that case, <em>hd_table_bufsize_max</em> can be used to
+cap the upper limit of table size whatever the header table size is
+chosen by the inflater.</p>
+<dl class="method">
+<dt id="nghttp2.HDDeflater.deflate">
+<tt class="descname">deflate</tt><big>(</big><em>headers</em><big>)</big><a class="headerlink" href="#nghttp2.HDDeflater.deflate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deflates the <em>headers</em>. The <em>headers</em> must be sequence of tuple
+of name/value pair, which are byte strings (not unicode string).</p>
+<p>This method returns the deflated header block in byte string.
+Raises the exception if any error occurs.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.HDDeflater.set_no_refset">
+<tt class="descname">set_no_refset</tt><big>(</big><em>no_refset</em><big>)</big><a class="headerlink" href="#nghttp2.HDDeflater.set_no_refset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tells the deflater not to use reference set if <em>no_refset</em> is
+evaluated to <tt class="docutils literal"><span class="pre">True</span></tt>.  If that happens, on each subsequent
+invocation of <a class="reference internal" href="#nghttp2.HDDeflater.deflate" title="nghttp2.HDDeflater.deflate"><tt class="xref py py-meth docutils literal"><span class="pre">deflate()</span></tt></a>, deflater will clear up
+refersent set.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.HDDeflater.change_table_size">
+<tt class="descname">change_table_size</tt><big>(</big><em>hd_table_bufsize_max</em><big>)</big><a class="headerlink" href="#nghttp2.HDDeflater.change_table_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes header table size to <em>hd_table_bufsize_max</em> byte.  if
+<em>hd_table_bufsize_max</em> is strictly larger than
+<tt class="docutils literal"><span class="pre">hd_table_bufsize_max</span></tt> given in constructor,
+<tt class="docutils literal"><span class="pre">hd_table_bufsize_max</span></tt> is used as header table size instead.</p>
+<p>Raises the exception if any error occurs.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.HDDeflater.get_hd_table">
+<tt class="descname">get_hd_table</tt><big>(</big><big>)</big><a class="headerlink" href="#nghttp2.HDDeflater.get_hd_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns copy of current dynamic header table.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>The following example shows how to deflate header name/value pairs:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">binascii</span><span class="o">,</span> <span class="nn">nghttp2</span>
+
+<span class="n">deflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDDeflater</span><span class="p">()</span>
+
+<span class="n">res</span> <span class="o">=</span> <span class="n">deflater</span><span class="o">.</span><span class="n">deflate</span><span class="p">([(</span><span class="n">b</span><span class="s">&#39;foo&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;bar&#39;</span><span class="p">),</span>
+                        <span class="p">(</span><span class="n">b</span><span class="s">&#39;baz&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;buz&#39;</span><span class="p">)])</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">b2a_hex</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
+</pre></div>
+</div>
+<dl class="class">
+<dt id="nghttp2.HDInflater">
+<em class="property">class </em><tt class="descclassname">nghttp2.</tt><tt class="descname">HDInflater</tt><a class="headerlink" href="#nghttp2.HDInflater" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is used to perform header decompression.</p>
+<dl class="method">
+<dt id="nghttp2.HDInflater.inflate">
+<tt class="descname">inflate</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#nghttp2.HDInflater.inflate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inflates the deflated header block <em>data</em>. The <em>data</em> must be
+byte string.</p>
+<p>Raises the exception if any error occurs.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.HDInflater.change_table_size">
+<tt class="descname">change_table_size</tt><big>(</big><em>hd_table_bufsize_max</em><big>)</big><a class="headerlink" href="#nghttp2.HDInflater.change_table_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes header table size to <em>hd_table_bufsize_max</em> byte.</p>
+<p>Raises the exception if any error occurs.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.HDInflater.get_hd_table">
+<tt class="descname">get_hd_table</tt><big>(</big><big>)</big><a class="headerlink" href="#nghttp2.HDInflater.get_hd_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns copy of current dynamic header table.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>The following example shows how to inflate deflated header block:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">deflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDDeflater</span><span class="p">()</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">deflater</span><span class="o">.</span><span class="n">deflate</span><span class="p">([(</span><span class="n">b</span><span class="s">&#39;foo&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;bar&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="n">b</span><span class="s">&#39;baz&#39;</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;buz&#39;</span><span class="p">)])</span>
+
+<span class="n">inflater</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HDInflater</span><span class="p">()</span>
+
+<span class="n">hdrs</span> <span class="o">=</span> <span class="n">inflater</span><span class="o">.</span><span class="n">inflate</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">hdrs</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="function">
+<dt id="nghttp2.print_hd_table">
+<tt class="descclassname">nghttp2.</tt><tt class="descname">print_hd_table</tt><big>(</big><em>hdtable</em><big>)</big><a class="headerlink" href="#nghttp2.print_hd_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenient function to print <em>hdtable</em> to the standard output.  The
+<em>hdtable</em> is the one retrieved by
+<a class="reference internal" href="#nghttp2.HDDeflater.get_hd_table" title="nghttp2.HDDeflater.get_hd_table"><tt class="xref py py-meth docutils literal"><span class="pre">HDDeflater.get_hd_table()</span></tt></a> or
+<a class="reference internal" href="#nghttp2.HDInflater.get_hd_table" title="nghttp2.HDInflater.get_hd_table"><tt class="xref py py-meth docutils literal"><span class="pre">HDInflater.get_hd_table()</span></tt></a>.  This function does not work
+if header name/value cannot be decoded using UTF-8 encoding.</p>
+<p>In output, <tt class="docutils literal"><span class="pre">s=N</span></tt> means the entry occupies <tt class="docutils literal"><span class="pre">N</span></tt> bytes in header
+table.  If <tt class="docutils literal"><span class="pre">r=y</span></tt>, then the entry is in the reference set.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="nghttp2.DEFAULT_HEADER_TABLE_SIZE">
+<tt class="descclassname">nghttp2.</tt><tt class="descname">DEFAULT_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#nghttp2.DEFAULT_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd><p>The default header table size, which is 4096 as per HTTP/2
+specification.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="nghttp2.DEFLATE_MAX_HEADER_TABLE_SIZE">
+<tt class="descclassname">nghttp2.</tt><tt class="descname">DEFLATE_MAX_HEADER_TABLE_SIZE</tt><a class="headerlink" href="#nghttp2.DEFLATE_MAX_HEADER_TABLE_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd><p>The default header table size for deflater.  The initial value
+is 4096.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="http-2-servers">
+<h2>HTTP/2 servers<a class="headerlink" href="#http-2-servers" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>We use <tt class="xref py py-mod docutils literal"><span class="pre">asyncio</span></tt> for HTTP/2 server classes.  Therefore,
+Python 3.4 or later is required to use these objects.  To
+explicitly configure nghttp2 build to use Python 3.4, specify the
+<tt class="docutils literal"><span class="pre">PYTHON</span></tt> variable to the path to Python 3.4 executable when
+invoking configure script like this:</p>
+<div class="last highlight-c"><div class="highlight"><pre>$ ./configure PYTHON=/usr/bin/python3.4
+</pre></div>
+</div>
+</div>
+<dl class="class">
+<dt id="nghttp2.HTTP2Server">
+<em class="property">class </em><tt class="descclassname">nghttp2.</tt><tt class="descname">HTTP2Server</tt><big>(</big><em>address</em>, <em>RequestHandlerClass</em>, <em>ssl=None</em><big>)</big><a class="headerlink" href="#nghttp2.HTTP2Server" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class builds on top of the <tt class="xref py py-mod docutils literal"><span class="pre">asyncio</span></tt> event loop.  On
+construction, <em>RequestHandlerClass</em> must be given, which must be a
+subclass of <a class="reference internal" href="#nghttp2.BaseRequestHandler" title="nghttp2.BaseRequestHandler"><tt class="xref py py-class docutils literal"><span class="pre">BaseRequestHandler</span></tt></a> class.</p>
+<p>The <em>address</em> must be a tuple of hostname/IP address and port to
+bind.  If hostname/IP address is <tt class="docutils literal"><span class="pre">None</span></tt>, all interfaces are
+assumed.</p>
+<p>To enable SSL/TLS, specify instance of <tt class="xref py py-class docutils literal"><span class="pre">ssl.SSLContext</span></tt>
+in <em>ssl</em>.  Before passing <em>ssl</em> to
+<tt class="xref py py-func docutils literal"><span class="pre">BaseEventLoop.create_server()</span></tt>, ALPN protocol identifiers
+are set using <tt class="xref py py-meth docutils literal"><span class="pre">ssl.SSLContext.set_npn_protocols()</span></tt>.</p>
+<p>To disable SSL/TLS, omit <em>ssl</em> or specify <tt class="docutils literal"><span class="pre">None</span></tt>.</p>
+<dl class="method">
+<dt id="nghttp2.HTTP2Server.serve_forever">
+<tt class="descname">serve_forever</tt><big>(</big><big>)</big><a class="headerlink" href="#nghttp2.HTTP2Server.serve_forever" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs server and processes incoming requests forever.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nghttp2.BaseRequestHandler">
+<em class="property">class </em><tt class="descclassname">nghttp2.</tt><tt class="descname">BaseRequestHandler</tt><big>(</big><em>http2</em>, <em>stream_id</em><big>)</big><a class="headerlink" href="#nghttp2.BaseRequestHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>The class is used to handle the single HTTP/2 stream.  By default,
+it does not nothing.  It must be subclassed to handle each event
+callback method.</p>
+<p>The first callback method invoked is <a class="reference internal" href="#nghttp2.BaseRequestHandler.on_headers" title="nghttp2.BaseRequestHandler.on_headers"><tt class="xref py py-meth docutils literal"><span class="pre">on_headers()</span></tt></a>. It is
+called when HEADERS frame, which includes request header fields, is
+arrived.</p>
+<p>If request has request body, <a class="reference internal" href="#nghttp2.BaseRequestHandler.on_data" title="nghttp2.BaseRequestHandler.on_data"><tt class="xref py py-meth docutils literal"><span class="pre">on_data()</span></tt></a> is invoked for
+each chunk of received data chunk.</p>
+<p>When whole request is received, <a class="reference internal" href="#nghttp2.BaseRequestHandler.on_request_done" title="nghttp2.BaseRequestHandler.on_request_done"><tt class="xref py py-meth docutils literal"><span class="pre">on_request_done()</span></tt></a> is
+invoked.</p>
+<p>When stream is closed, <a class="reference internal" href="#nghttp2.BaseRequestHandler.on_close" title="nghttp2.BaseRequestHandler.on_close"><tt class="xref py py-meth docutils literal"><span class="pre">on_close()</span></tt></a> is called.</p>
+<p>The application can send response using <a class="reference internal" href="#nghttp2.BaseRequestHandler.send_response" title="nghttp2.BaseRequestHandler.send_response"><tt class="xref py py-meth docutils literal"><span class="pre">send_response()</span></tt></a>
+method.  It can be used in <a class="reference internal" href="#nghttp2.BaseRequestHandler.on_headers" title="nghttp2.BaseRequestHandler.on_headers"><tt class="xref py py-meth docutils literal"><span class="pre">on_headers()</span></tt></a>,
+<a class="reference internal" href="#nghttp2.BaseRequestHandler.on_data" title="nghttp2.BaseRequestHandler.on_data"><tt class="xref py py-meth docutils literal"><span class="pre">on_data()</span></tt></a> or <a class="reference internal" href="#nghttp2.BaseRequestHandler.on_request_done" title="nghttp2.BaseRequestHandler.on_request_done"><tt class="xref py py-meth docutils literal"><span class="pre">on_request_done()</span></tt></a>.</p>
+<p>The application can push resource using <a class="reference internal" href="#nghttp2.BaseRequestHandler.push" title="nghttp2.BaseRequestHandler.push"><tt class="xref py py-meth docutils literal"><span class="pre">push()</span></tt></a> method.
+It must be used before <a class="reference internal" href="#nghttp2.BaseRequestHandler.send_response" title="nghttp2.BaseRequestHandler.send_response"><tt class="xref py py-meth docutils literal"><span class="pre">send_response()</span></tt></a> call.</p>
+<p>A <a class="reference internal" href="#nghttp2.BaseRequestHandler" title="nghttp2.BaseRequestHandler"><tt class="xref py py-class docutils literal"><span class="pre">BaseRequestHandler</span></tt></a> has the following instance
+variables:</p>
+<dl class="attribute">
+<dt id="nghttp2.BaseRequestHandler.client_address">
+<tt class="descname">client_address</tt><a class="headerlink" href="#nghttp2.BaseRequestHandler.client_address" title="Permalink to this definition">¶</a></dt>
+<dd><p>Contains a tuple of the form <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">port)</span></tt> referring to the
+client&#8217;s address.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nghttp2.BaseRequestHandler.stream_id">
+<tt class="descname">stream_id</tt><a class="headerlink" href="#nghttp2.BaseRequestHandler.stream_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stream ID of this stream</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nghttp2.BaseRequestHandler.scheme">
+<tt class="descname">scheme</tt><a class="headerlink" href="#nghttp2.BaseRequestHandler.scheme" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scheme of the request URI.  This is a value of <tt class="docutils literal"><span class="pre">:scheme</span></tt>
+header field.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nghttp2.BaseRequestHandler.method">
+<tt class="descname">method</tt><a class="headerlink" href="#nghttp2.BaseRequestHandler.method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method of this stream.  This is a value of <tt class="docutils literal"><span class="pre">:method</span></tt> header
+field.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nghttp2.BaseRequestHandler.host">
+<tt class="descname">host</tt><a class="headerlink" href="#nghttp2.BaseRequestHandler.host" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a value of <tt class="docutils literal"><span class="pre">:authority</span></tt> or <tt class="docutils literal"><span class="pre">host</span></tt> header field.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nghttp2.BaseRequestHandler.path">
+<tt class="descname">path</tt><a class="headerlink" href="#nghttp2.BaseRequestHandler.path" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a value of <tt class="docutils literal"><span class="pre">:path</span></tt> header field.</p>
+</dd></dl>
+
+<p>A <a class="reference internal" href="#nghttp2.BaseRequestHandler" title="nghttp2.BaseRequestHandler"><tt class="xref py py-class docutils literal"><span class="pre">BaseRequestHandler</span></tt></a> has the following methods:</p>
+<dl class="method">
+<dt id="nghttp2.BaseRequestHandler.on_headers">
+<tt class="descname">on_headers</tt><big>(</big><big>)</big><a class="headerlink" href="#nghttp2.BaseRequestHandler.on_headers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when request HEADERS is arrived.  By default, this method
+does nothing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.BaseRequestHandler.on_data">
+<tt class="descname">on_data</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#nghttp2.BaseRequestHandler.on_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a chunk of request body <em>data</em> is arrived.  This
+method will be called multiple times until all data are
+received.  By default, this method does nothing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.BaseRequestHandler.on_request_done">
+<tt class="descname">on_request_done</tt><big>(</big><big>)</big><a class="headerlink" href="#nghttp2.BaseRequestHandler.on_request_done" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when whole request was received.  By default, this method
+does nothing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.BaseRequestHandler.on_close">
+<tt class="descname">on_close</tt><big>(</big><em>error_code</em><big>)</big><a class="headerlink" href="#nghttp2.BaseRequestHandler.on_close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when stream is about to close.  The <em>error_code</em>
+indicates the reason of closure.  If it is <tt class="docutils literal"><span class="pre">0</span></tt>, the stream is
+going to close without error.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.BaseRequestHandler.send_response">
+<tt class="descname">send_response</tt><big>(</big><em>status=200</em>, <em>headers=None</em>, <em>body=None</em><big>)</big><a class="headerlink" href="#nghttp2.BaseRequestHandler.send_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send response.  The <em>status</em> is HTTP status code.  The <em>headers</em>
+is additional response headers.  The <em>:status</em> header field will
+be appended by the library.  The <em>body</em> is the response body.
+It could be <tt class="docutils literal"><span class="pre">None</span></tt> if response body is empty. Or it must be
+instance of either <tt class="docutils literal"><span class="pre">str</span></tt>, <tt class="docutils literal"><span class="pre">bytes</span></tt> or <tt class="xref py py-class docutils literal"><span class="pre">io.IOBase</span></tt>.
+If instance of <tt class="docutils literal"><span class="pre">str</span></tt> is specified, it will be encoded using
+UTF-8.</p>
+<p>The <em>headers</em> is a list of tuple of the form <tt class="docutils literal"><span class="pre">(name,</span>
+<span class="pre">value)</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> and <tt class="docutils literal"><span class="pre">value</span></tt> can be either byte string
+or unicode string.  In the latter case, they will be encoded
+using UTF-8.</p>
+<p>Raises the exception if any error occurs.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nghttp2.BaseRequestHandler.push">
+<tt class="descname">push</tt><big>(</big><em>path</em>, <em>method='GET'</em>, <em>request_headers=None</em>, <em>status=200</em>, <em>headers=None</em>, <em>body=None</em><big>)</big><a class="headerlink" href="#nghttp2.BaseRequestHandler.push" title="Permalink to this definition">¶</a></dt>
+<dd><p>Push a specified resource.  The <em>path</em> is a path portion of
+request URI for this resource.  The <em>method</em> is a method to
+access this resource.  The <em>request_headers</em> is additional
+request headers to access this resource.  The <tt class="docutils literal"><span class="pre">:scheme</span></tt>,
+<tt class="docutils literal"><span class="pre">:method</span></tt>, <tt class="docutils literal"><span class="pre">:authority</span></tt> and <tt class="docutils literal"><span class="pre">:path</span></tt> are appended by the
+library.  The <tt class="docutils literal"><span class="pre">:scheme</span></tt> and <tt class="docutils literal"><span class="pre">:authority</span></tt> are inherited from
+request header fields of the associated stream.</p>
+<p>The <em>status</em> is HTTP status code.  The <em>headers</em> is additional
+response headers.  The <tt class="docutils literal"><span class="pre">:status</span></tt> header field is appended by
+the library.  The <em>body</em> is the response body.  It could be
+<tt class="docutils literal"><span class="pre">None</span></tt> if response body is empty.  Or it must be instance of
+either <tt class="docutils literal"><span class="pre">str</span></tt>, <tt class="docutils literal"><span class="pre">bytes</span></tt> or <tt class="docutils literal"><span class="pre">io.IOBase</span></tt>.  If instance of
+<tt class="docutils literal"><span class="pre">str</span></tt> is specified, it is encoded using UTF-8.</p>
+<p>The headers and request_headers are a list of tuple of the form
+<tt class="docutils literal"><span class="pre">(name,</span> <span class="pre">value)</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> and <tt class="docutils literal"><span class="pre">value</span></tt> can be either byte
+string or unicode string.  In the latter case, they will be
+encoded using UTF-8.</p>
+<p>Returns an instance of <tt class="docutils literal"><span class="pre">RequestHandlerClass</span></tt> specified in
+<a class="reference internal" href="#nghttp2.HTTP2Server" title="nghttp2.HTTP2Server"><tt class="xref py py-class docutils literal"><span class="pre">HTTP2Server</span></tt></a> constructor for the pushed resource.</p>
+<p>Raises the exception if any error occurs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>The following example illustrates <a class="reference internal" href="#nghttp2.HTTP2Server" title="nghttp2.HTTP2Server"><tt class="xref py py-class docutils literal"><span class="pre">HTTP2Server</span></tt></a> and
+<a class="reference internal" href="#nghttp2.BaseRequestHandler" title="nghttp2.BaseRequestHandler"><tt class="xref py py-class docutils literal"><span class="pre">BaseRequestHandler</span></tt></a> usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c">#!/usr/bin/env python</span>
+
+<span class="kn">import</span> <span class="nn">io</span><span class="o">,</span> <span class="nn">ssl</span>
+<span class="kn">import</span> <span class="nn">nghttp2</span>
+
+<span class="k">class</span> <span class="nc">Handler</span><span class="p">(</span><span class="n">nghttp2</span><span class="o">.</span><span class="n">BaseRequestHandler</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">on_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s">&#39;/css/style.css&#39;</span><span class="p">,</span>
+                  <span class="n">request_headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;content-type&#39;</span><span class="p">,</span> <span class="s">&#39;text/css&#39;</span><span class="p">)],</span>
+                  <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                  <span class="n">body</span><span class="o">=</span><span class="s">&#39;body{margin:0;}&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                           <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;content-type&#39;</span><span class="p">,</span> <span class="s">&#39;text/plain&#39;</span><span class="p">)],</span>
+                           <span class="n">body</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;nghttp2-python FTW&#39;</span><span class="p">))</span>
+
+<span class="n">ctx</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">SSLContext</span><span class="p">(</span><span class="n">ssl</span><span class="o">.</span><span class="n">PROTOCOL_SSLv23</span><span class="p">)</span>
+<span class="n">ctx</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">OP_ALL</span> <span class="o">|</span> <span class="n">ssl</span><span class="o">.</span><span class="n">OP_NO_SSLv2</span>
+<span class="n">ctx</span><span class="o">.</span><span class="n">load_cert_chain</span><span class="p">(</span><span class="s">&#39;server.crt&#39;</span><span class="p">,</span> <span class="s">&#39;server.key&#39;</span><span class="p">)</span>
+
+<span class="c"># give None to ssl to make the server non-SSL/TLS</span>
+<span class="n">server</span> <span class="o">=</span> <span class="n">nghttp2</span><span class="o">.</span><span class="n">HTTP2Server</span><span class="p">((</span><span class="s">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="mi">8443</span><span class="p">),</span> <span class="n">Handler</span><span class="p">,</span> <span class="n">ssl</span><span class="o">=</span><span class="n">ctx</span><span class="p">)</span>
+<span class="n">server</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="nghttp2.h.html" class="btn btn-neutral float-right" title="nghttp2.h"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="apiref.html" class="btn btn-neutral" title="API Reference"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+</body>
+</html>
