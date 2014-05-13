@@ -63,7 +63,7 @@ cdef class HDDeflater:
     '''Performs header compression. The constructor takes
     |hd_table_bufsize_max| parameter, which limits the usage of header
     table in the given amount of bytes. This is necessary because the
-    header compressor and decompressor has to share the same amount of
+    header compressor and decompressor share the same amount of
     header table and the decompressor decides that number. The
     compressor may not want to use all header table size because of
     limited memory availability. In that case, the
@@ -169,7 +169,7 @@ cdef class HDDeflater:
         if rv != 0:
             raise Exception(_strerror(rv))
 
-    def get_hd_table(self,):
+    def get_hd_table(self):
         '''Returns copy of current dynamic header table.'''
         return _get_hd_table(&self._deflater.ctx)
 
@@ -631,6 +631,8 @@ cdef class _HTTP2SessionCore:
 
         promised_handler.stream_id = promised_stream_id
 
+        return promised_handler
+
     def _rst_stream(self, stream_id,
                    error_code=cnghttp2.NGHTTP2_INTERNAL_ERROR):
         cdef int rv
@@ -795,10 +797,11 @@ if asyncio:
             instance of either str, bytes or io.IOBase. If instance of str
             is specified, it is encoded using UTF-8.
 
-            The headers is a list of tuple of the form (name, value). The
-            name and value are byte string.
+            The headers is a list of tuple of the form (name,
+            value). The name and value can be either unicode string or
+            byte string.
 
-            On error, exception was thrown.
+            On error, exception will be thrown.
 
             '''
             if self.status is not None:
@@ -832,9 +835,10 @@ if asyncio:
             encoded using UTF-8.
 
             The headers and request_headers are a list of tuple of the
-            form (name, value). The name and value are byte string.
+            form (name, value). The name and value can be either
+            unicode string or byte string.
 
-            On error, exception was thrown.
+            On error, exception will be thrown.
 
             '''
             if not status:
@@ -867,7 +871,7 @@ if asyncio:
 
             promised_handler.headers = request_headers
 
-            self.http2.push(self, promised_handler)
+            return self.http2.push(self, promised_handler)
 
         def _set_response_prop(self, status, headers, body):
             self.status = status
