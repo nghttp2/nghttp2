@@ -21,6 +21,7 @@ Contents:
    tutorial-server
    nghttpx-howto
    apiref
+   python-apiref
    nghttp2.h
    nghttp2ver.h
    Source <https://github.com/tatsuhiro-t/nghttp2>
