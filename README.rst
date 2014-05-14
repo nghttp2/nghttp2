@@ -138,7 +138,7 @@ The documents will be generated under ``doc/manual/html/``.
 The generated documents will not be installed with ``make install``.
 
 The online documentation is available at
-http://tatsuhiro-t.github.io/nghttp2/
+https://nghttp2.org/documentation/
 
 Client, Server and Proxy programs
 ---------------------------------
