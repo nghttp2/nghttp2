@@ -138,9 +138,14 @@ std::string percentDecode
 std::string http_date(time_t t)
 {
   char buf[32];
-  tm* tms = gmtime(&t); // returned struct is statically allocated.
-  size_t r = strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", tms);
-  return std::string(&buf[0], &buf[r]);
+  tm tms;
+
+  if(gmtime_r(&t, &tms) == nullptr) {
+    return "";
+  }
+
+  auto rv = strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tms);
+  return std::string(&buf[0], &buf[rv]);
 }
 
 time_t parse_http_date(const std::string& s)
