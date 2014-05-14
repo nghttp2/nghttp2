@@ -32,4 +32,4 @@ void test_shrpx_config_parse_header(void);
 
 } // namespace shrpx
 
-#endif /* SHRPX_CONFIG_TEST_H */
+#endif // SHRPX_CONFIG_TEST_H

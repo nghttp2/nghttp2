@@ -32,4 +32,4 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void);
 
 } // namespace shrpx
 
-#endif /* SHRPX_SSL_TEST_H */
+#endif // SHRPX_SSL_TEST_H

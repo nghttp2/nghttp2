@@ -24,7 +24,7 @@
  */
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif // HAVE_CONFIG_H
 
 #include <unistd.h>
 #include <getopt.h>
@@ -108,7 +108,7 @@ static void output_to_json(nghttp2_hd_deflater *deflater,
   }
   json_object_set_new(obj, "headers", dump_headers(nva.data(), nva.size()));
   if(seq == 0) {
-    /* We only change the header table size only once at the beginning */
+    // We only change the header table size only once at the beginning
     json_object_set_new(obj, "header_table_size",
                         json_integer(config.table_size));
   }
@@ -293,7 +293,7 @@ static int perform_from_http1text(void)
       for(val_end = val; *val_end && (*val_end != '\r' && *val_end != '\n');
           ++val_end);
       *val_end = '\0';
-      /* printf("[%s] : [%s]\n", line, val); */
+
       nv->namelen = strlen(line);
       nv->valuelen = strlen(val);
       nv->name = (uint8_t*)strdup(line);
@@ -423,11 +423,11 @@ int main(int argc, char **argv)
       print_help();
       exit(EXIT_SUCCESS);
     case 't':
-      /* --http1text */
+      // --http1text
       config.http1text = 1;
       break;
     case 's':
-      /* --table-size */
+      // --table-size
       errno = 0;
       config.table_size = strtoul(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0') {
@@ -436,7 +436,7 @@ int main(int argc, char **argv)
       }
       break;
     case 'S':
-      /* --deflate-table-size */
+      // --deflate-table-size
       errno = 0;
       config.deflate_table_size = strtoul(optarg, &end, 10);
       if(errno == ERANGE || *end != '\0') {
@@ -445,11 +445,11 @@ int main(int argc, char **argv)
       }
       break;
     case 'd':
-      /* --dump-header-table */
+      // --dump-header-table
       config.dump_header_table = 1;
       break;
     case 'c':
-      /* --no-refset */
+      // --no-refset
       config.no_refset = 1;
       break;
     case '?':

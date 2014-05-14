@@ -913,7 +913,7 @@ int main(int argc, char **argv)
 	  LOG(WARNING) << "Threading disabled at build time, no threads created.";
 #else
       cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
-#endif /* NOTHREADS */
+#endif // NOTHREADS
       break;
     case 'o':
       cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes");
@@ -1161,7 +1161,7 @@ int main(int argc, char **argv)
   SSL_library_init();
 #ifndef NOTHREADS
   nghttp2::ssl::LibsslGlobalLock();
-#endif /* NOTHREADS */
+#endif // NOTHREADS
 
   if(conf_exists(get_config()->conf_path)) {
     if(load_config(get_config()->conf_path) == -1) {

@@ -671,7 +671,7 @@ int main(int argc, char **argv)
 		  "no threads created." << std::endl;
 #else
       config.nthreads = strtoul(optarg, nullptr, 10);
-#endif /* NOTHREADS */
+#endif // NOTHREADS
       break;
     case 'm':
       if(util::strieq("auto", optarg)) {
@@ -783,7 +783,7 @@ int main(int argc, char **argv)
 
 #ifndef NOTHREADS
   ssl::LibsslGlobalLock();
-#endif /* NOTHREADS */
+#endif // NOTHREADS
 
   auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
   if(!ssl_ctx) {

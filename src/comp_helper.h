@@ -27,7 +27,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif // HAVE_CONFIG_H
 
 #include <jansson.h>
 
@@ -44,4 +44,4 @@ void output_json_header(void);
 
 void output_json_footer(void);
 
-#endif /* NGHTTP2_COMP_HELPER_H */
+#endif // NGHTTP2_COMP_HELPER_H

@@ -246,14 +246,14 @@ int htp_msg_completecb(http_parser *htp)
 
 namespace {
 http_parser_settings htp_hooks = {
-  htp_msg_begin, /*http_cb      on_message_begin;*/
-  htp_uricb, /*http_data_cb on_url;*/
-  nullptr, /*http_cb on_status_complete */
-  htp_hdr_keycb, /*http_data_cb on_header_field;*/
-  htp_hdr_valcb, /*http_data_cb on_header_value;*/
-  htp_hdrs_completecb, /*http_cb      on_headers_complete;*/
-  htp_bodycb, /*http_data_cb on_body;*/
-  htp_msg_completecb /*http_cb      on_message_complete;*/
+  htp_msg_begin, // http_cb      on_message_begin;
+  htp_uricb, // http_data_cb on_url;
+  nullptr, // http_cb on_status_complete;
+  htp_hdr_keycb, // http_data_cb on_header_field;
+  htp_hdr_valcb, // http_data_cb on_header_value;
+  htp_hdrs_completecb, // http_cb      on_headers_complete;
+  htp_bodycb, // http_data_cb on_body;
+  htp_msg_completecb // http_cb      on_message_complete;
 };
 } // namespace
 

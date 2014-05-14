@@ -1725,7 +1725,7 @@ int HttpServer::run()
     EC_KEY_free(ecdh);
 #endif // OPENSSL_VERSION_NUBMER < 0x10002000L
 
-#endif /* OPENSSL_NO_EC */
+#endif // OPENSSL_NO_EC
 
     if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
                                    config_->private_key_file.c_str(),

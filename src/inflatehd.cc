@@ -24,7 +24,7 @@
  */
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif // HAVE_CONFIG_H
 
 #include <unistd.h>
 #include <getopt.h>
@@ -271,7 +271,7 @@ int main(int argc, char **argv)
       print_help();
       exit(EXIT_SUCCESS);
     case 'd':
-      /* --dump-header-table */
+      // --dump-header-table
       config.dump_header_table = 1;
       break;
     case '?':

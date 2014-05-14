@@ -296,7 +296,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   EC_KEY_free(ecdh);
 #endif // OPENSSL_VERSION_NUBMER < 0x10002000L
 
-#endif /* OPENSSL_NO_EC */
+#endif // OPENSSL_NO_EC
 
   if(get_config()->dh_param_file) {
     // Read DH parameters from file

@@ -991,14 +991,14 @@ int htp_msg_completecb(http_parser *htp)
 
 namespace {
 http_parser_settings htp_hooks = {
-  htp_msg_begincb, /*http_cb      on_message_begin;*/
-  nullptr, /*http_data_cb on_url;*/
-  htp_status_completecb, /*http_cb on_status_complete */
-  nullptr, /*http_data_cb on_header_field;*/
-  nullptr, /*http_data_cb on_header_value;*/
-  nullptr, /*http_cb      on_headers_complete;*/
-  nullptr, /*http_data_cb on_body;*/
-  htp_msg_completecb /*http_cb      on_message_complete;*/
+  htp_msg_begincb, // http_cb      on_message_begin;
+  nullptr, // http_data_cb on_url;
+  htp_status_completecb, // http_cb on_status_complete;
+  nullptr, // http_data_cb on_header_field;
+  nullptr, // http_data_cb on_header_value;
+  nullptr, // http_cb      on_headers_complete;
+  nullptr, // http_data_cb on_body;
+  htp_msg_completecb // http_cb      on_message_complete;
 };
 } // namespace
 

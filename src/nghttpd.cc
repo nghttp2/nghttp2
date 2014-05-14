@@ -195,7 +195,7 @@ int main(int argc, char **argv)
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-#endif /* NOTHREADS */
+#endif // NOTHREADS
       break;
     case 'h':
       print_help(std::cout);
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
   SSL_library_init();
 #ifndef NOTHREADS
   ssl::LibsslGlobalLock();
-#endif /* NOTHREADS */
+#endif // NOTHREADS
 
   reset_timer();
 
