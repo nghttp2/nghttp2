@@ -89,7 +89,7 @@ The Python bindings require the following packages:
 * cython >= 0.19
 * python >= 2.7
 
-If you are using Ubuntu 12.04, you need the following packages
+If you are using Ubuntu 14.04 LTS, you need the following packages
 installed:
 
 * autoconf
@@ -104,6 +104,8 @@ installed:
 * libevent-dev
 * libjansson-dev
 * libjemalloc-dev
+* cython
+* python3.4-dev
 
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://tatsuhiro-t.github.io/spdylay/
