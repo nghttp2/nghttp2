@@ -154,115 +154,143 @@ with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
 It has verbose output mode for framing information.  Here is sample
 output from ``nghttp`` client::
 
-    $ src/nghttp -nv https://localhost:8443
-    [  0.004][NPN] server offers:
+    $ src/nghttp -nv https://nghttp2.org
+    [  0.033][NPN] server offers:
               * h2-12
               * spdy/3.1
-              * spdy/3
-              * spdy/2
               * http/1.1
     The negotiated protocol: h2-12
-    [  0.006] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
-              (niv=2)
+    [  0.068] send SETTINGS frame <length=15, flags=0x00, stream_id=0>
+              (niv=3)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
               [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-    [  0.007] send HEADERS frame <length=48, flags=0x05, stream_id=1>
+              [SETTINGS_COMPRESS_DATA(5):1]
+    [  0.068] send HEADERS frame <length=46, flags=0x05, stream_id=1>
               ; END_STREAM | END_HEADERS
               (padlen=0)
               ; Open new stream
-              :authority: localhost:8443
+              :authority: nghttp2.org
               :method: GET
               :path: /
               :scheme: https
               accept: */*
               accept-encoding: gzip, deflate
               user-agent: nghttp2/0.4.0-DEV
-    [  0.007] recv SETTINGS frame <length=15, flags=0x00, stream_id=0>
-              (niv=3)
+    [  0.068] recv SETTINGS frame <length=10, flags=0x00, stream_id=0>
+              (niv=2)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
               [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-              [SETTINGS_ENABLE_PUSH(2):0]
-    [  0.007] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [  0.068] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [  0.007] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [  0.079] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [  0.008] (stream_id=1) :status: 200
-    [  0.008] (stream_id=1) accept-ranges: bytes
-    [  0.008] (stream_id=1) content-encoding: gzip
-    [  0.008] (stream_id=1) content-length: 146
-    [  0.008] (stream_id=1) content-type: text/html
-    [  0.008] (stream_id=1) date: Sat, 15 Feb 2014 08:14:12 GMT
-    [  0.008] (stream_id=1) etag: "b1-4e5535a027780-gzip"
-    [  0.008] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-    [  0.008] (stream_id=1) server: Apache/2.4.6 (Debian)
-    [  0.008] (stream_id=1) vary: Accept-Encoding
-    [  0.008] (stream_id=1) via: 1.1 nghttpx
-    [  0.008] recv HEADERS frame <length=141, flags=0x04, stream_id=1>
+    [  0.080] (stream_id=1, noind=0) :status: 200
+    [  0.080] (stream_id=1, noind=0) accept-ranges: bytes
+    [  0.080] (stream_id=1, noind=0) age: 15
+    [  0.080] (stream_id=1, noind=0) content-length: 40243
+    [  0.080] (stream_id=1, noind=0) content-type: text/html
+    [  0.080] (stream_id=1, noind=0) date: Wed, 14 May 2014 15:14:30 GMT
+    [  0.080] (stream_id=1, noind=0) etag: "535d0eea-9d33"
+    [  0.080] (stream_id=1, noind=0) last-modified: Sun, 27 Apr 2014 14:06:34 GMT
+    [  0.080] (stream_id=1, noind=0) server: nginx/1.4.6 (Ubuntu)
+    [  0.080] (stream_id=1, noind=0) x-varnish: 2114900538 2114900537
+    [  0.080] (stream_id=1, noind=0) via: 1.1 varnish, 1.1 nghttpx
+    [  0.080] (stream_id=1, noind=0) strict-transport-security: max-age=31536000
+    [  0.080] recv HEADERS frame <length=162, flags=0x04, stream_id=1>
               ; END_HEADERS
               (padlen=0)
               ; First response header
-    [  0.008] recv DATA frame <length=146, flags=0x00, stream_id=1>
-    [  0.008] recv DATA frame <length=0, flags=0x01, stream_id=1>
+    [  0.080] recv DATA frame <length=3786, flags=0x00, stream_id=1>
+    [  0.080] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.081] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.093] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.093] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.094] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.094] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.094] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.096] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.096] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
+              (window_size_increment=36554)
+    [  0.096] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=1>
+              (window_size_increment=36554)
+    [  0.108] recv DATA frame <length=3689, flags=0x00, stream_id=1>
+    [  0.108] recv DATA frame <length=0, flags=0x01, stream_id=1>
               ; END_STREAM
-    [  0.008] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+    [  0.108] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
 The HTTP Upgrade is performed like this::
 
-    $ src/nghttp -nvu http://localhost:8080
-    [  0.000] HTTP Upgrade request
+    $ src/nghttp -nvu http://nghttp2.org
+    [  0.013] HTTP Upgrade request
     GET / HTTP/1.1
-    Host: localhost:8080
+    Host: nghttp2.org
     Connection: Upgrade, HTTP2-Settings
-    Upgrade: h2c-11
-    HTTP2-Settings: AwAAAGQEAAD__w
+    Upgrade: h2c-12
+    HTTP2-Settings: AwAAAGQEAAD__wUAAAAB
     Accept: */*
     User-Agent: nghttp2/0.4.0-DEV
 
 
-    [  0.001] HTTP Upgrade response
+    [  0.024] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
-    Upgrade: h2c-11
+    Upgrade: h2c-12
 
 
-    [  0.001] HTTP Upgrade success
-    [  0.001] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
-              (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-    [  0.001] recv SETTINGS frame <length=15, flags=0x00, stream_id=0>
+    [  0.024] HTTP Upgrade success
+    [  0.024] send SETTINGS frame <length=15, flags=0x00, stream_id=0>
               (niv=3)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
               [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-              [SETTINGS_ENABLE_PUSH(2):0]
-    [  0.001] (stream_id=1) :status: 200
-    [  0.001] (stream_id=1) accept-ranges: bytes
-    [  0.001] (stream_id=1) content-length: 177
-    [  0.001] (stream_id=1) content-type: text/html
-    [  0.001] (stream_id=1) date: Sat, 15 Feb 2014 08:16:23 GMT
-    [  0.001] (stream_id=1) etag: "b1-4e5535a027780"
-    [  0.001] (stream_id=1) last-modified: Sun, 01 Sep 2013 14:34:22 GMT
-    [  0.001] (stream_id=1) server: Apache/2.4.6 (Debian)
-    [  0.001] (stream_id=1) vary: Accept-Encoding
-    [  0.001] (stream_id=1) via: 1.1 nghttpx
-    [  0.001] recv HEADERS frame <length=132, flags=0x04, stream_id=1>
+              [SETTINGS_COMPRESS_DATA(5):1]
+    [  0.024] recv SETTINGS frame <length=10, flags=0x00, stream_id=0>
+              (niv=2)
+              [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
+              [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
+    [  0.024] recv ALTSVC frame <length=43, flags=0x00, stream_id=0>
+              (max-age=86400, port=443, protocol_id=h2-12, host=nghttp2.org, origin=http://nghttp2.org)
+    [  0.024] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+              ; ACK
+              (niv=0)
+    [  0.024] (stream_id=1, noind=0) :status: 200
+    [  0.024] (stream_id=1, noind=0) accept-ranges: bytes
+    [  0.024] (stream_id=1, noind=0) age: 10
+    [  0.024] (stream_id=1, noind=0) content-length: 40243
+    [  0.024] (stream_id=1, noind=0) content-type: text/html
+    [  0.024] (stream_id=1, noind=0) date: Wed, 14 May 2014 15:16:34 GMT
+    [  0.024] (stream_id=1, noind=0) etag: "535d0eea-9d33"
+    [  0.024] (stream_id=1, noind=0) last-modified: Sun, 27 Apr 2014 14:06:34 GMT
+    [  0.024] (stream_id=1, noind=0) server: nginx/1.4.6 (Ubuntu)
+    [  0.024] (stream_id=1, noind=0) x-varnish: 2114900541 2114900540
+    [  0.024] (stream_id=1, noind=0) via: 1.1 varnish, 1.1 nghttpx
+    [  0.024] recv HEADERS frame <length=148, flags=0x04, stream_id=1>
               ; END_HEADERS
               (padlen=0)
               ; First response header
-    [  0.001] recv DATA frame <length=177, flags=0x00, stream_id=1>
-    [  0.001] recv DATA frame <length=0, flags=0x01, stream_id=1>
+    [  0.024] recv DATA frame <length=3786, flags=0x00, stream_id=1>
+    [  0.025] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.031] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.031] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.032] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.032] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.033] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.033] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.033] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
+              (window_size_increment=33164)
+    [  0.033] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=1>
+              (window_size_increment=33164)
+    [  0.038] recv DATA frame <length=4096, flags=0x00, stream_id=1>
+    [  0.038] recv DATA frame <length=3689, flags=0x00, stream_id=1>
+    [  0.038] recv DATA frame <length=0, flags=0x01, stream_id=1>
               ; END_STREAM
-    [  0.002] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [  0.038] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [  0.002] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+    [  0.038] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-    [  0.002] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
-              ; ACK
-              (niv=0)
 
 nghttpd - server
 ++++++++++++++++
@@ -283,47 +311,50 @@ information.  Here is sample output from ``nghttpd`` server::
     $ src/nghttpd --no-tls -v 8080
     IPv4: listen on port 8080
     IPv6: listen on port 8080
-    [id=1] [  1.027] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
+    [id=1] [ 15.921] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
               (niv=2)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-              [SETTINGS_ENABLE_PUSH(2):0]
-    [id=1] [  1.027] recv SETTINGS frame <length=10, flags=0x00, stream_id=0>
-              (niv=2)
+              [SETTINGS_COMPRESS_DATA(5):1]
+    [id=1] [ 15.921] recv SETTINGS frame <length=15, flags=0x00, stream_id=0>
+              (niv=3)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
               [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-    [id=1] [  1.027] (stream_id=1) :authority: localhost:8080
-    [id=1] [  1.027] (stream_id=1) :method: GET
-    [id=1] [  1.027] (stream_id=1) :path: /
-    [id=1] [  1.027] (stream_id=1) :scheme: http
-    [id=1] [  1.027] (stream_id=1) accept: */*
-    [id=1] [  1.027] (stream_id=1) accept-encoding: gzip, deflate
-    [id=1] [  1.027] (stream_id=1) user-agent: nghttp2/0.4.0-DEV
-    [id=1] [  1.027] recv HEADERS frame <length=48, flags=0x05, stream_id=1>
+              [SETTINGS_COMPRESS_DATA(5):1]
+    [id=1] [ 15.921] (stream_id=1, noind=0) :authority: localhost:8080
+    [id=1] [ 15.921] (stream_id=1, noind=0) :method: GET
+    [id=1] [ 15.921] (stream_id=1, noind=0) :path: /
+    [id=1] [ 15.921] (stream_id=1, noind=0) :scheme: http
+    [id=1] [ 15.921] (stream_id=1, noind=0) accept: */*
+    [id=1] [ 15.921] (stream_id=1, noind=0) accept-encoding: gzip, deflate
+    [id=1] [ 15.921] (stream_id=1, noind=0) user-agent: nghttp2/0.4.0-DEV
+    [id=1] [ 15.921] recv HEADERS frame <length=48, flags=0x05, stream_id=1>
               ; END_STREAM | END_HEADERS
               (padlen=0)
               ; Open new stream
-    [id=1] [  1.027] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+    [id=1] [ 15.921] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
-    [id=1] [  1.027] send HEADERS frame <length=72, flags=0x04, stream_id=1>
+    [id=1] [ 15.921] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+              ; ACK
+              (niv=0)
+    [id=1] [ 15.921] send HEADERS frame <length=82, flags=0x04, stream_id=1>
               ; END_HEADERS
               (padlen=0)
               ; First response header
-              :status: 404
-              content-encoding: gzip
-              content-type: text/html; charset=UTF-8
-              date: Sat, 15 Feb 2014 08:18:53 GMT
+              :status: 200
+              cache-control: max-age=3600
+              content-length: 612
+              date: Wed, 14 May 2014 15:19:03 GMT
+              last-modified: Sat, 08 Mar 2014 16:04:06 GMT
               server: nghttpd nghttp2/0.4.0-DEV
-    [id=1] [  1.028] send DATA frame <length=118, flags=0x00, stream_id=1>
-    [id=1] [  1.028] send DATA frame <length=0, flags=0x01, stream_id=1>
+    [id=1] [ 15.922] send DATA frame <length=381, flags=0x20, stream_id=1>
+              ; COMPRESSED
+    [id=1] [ 15.922] send DATA frame <length=0, flags=0x01, stream_id=1>
               ; END_STREAM
-    [id=1] [  1.028] stream_id=1 closed
-    [id=1] [  1.028] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
-              ; ACK
-              (niv=0)
-    [id=1] [  1.028] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
+    [id=1] [ 15.922] stream_id=1 closed
+    [id=1] [ 15.922] recv GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-    [id=1] [  1.028] closed
+    [id=1] [ 15.922] closed
 
 nghttpx - proxy
 +++++++++++++++
@@ -918,7 +949,7 @@ The extension module is called ``nghttp2``.
 determined by configure script.  If the detected Python version is not
 what you expect, specify a path to Python executable in ``PYTHON``
 variable as an argument to configure script (e.g., ``./configure
-PYTHON=/usr/bin/python3.3``).
+PYTHON=/usr/bin/python3.4``).
 
 The following example code illustrates basic usage of HPACK compressor
 and decompressor in Python:
