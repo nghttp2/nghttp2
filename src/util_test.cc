@@ -101,4 +101,14 @@ void test_util_percent_encode_token(void)
   CU_ASSERT("http%202" == util::percent_encode_token("http 2"));
 }
 
+void test_util_utox(void)
+{
+  CU_ASSERT("0" == util::utox(0));
+  CU_ASSERT("1" == util::utox(1));
+  CU_ASSERT("F" == util::utox(15));
+  CU_ASSERT("10" == util::utox(16));
+  CU_ASSERT("3B9ACA07" == util::utox(1000000007));
+  CU_ASSERT("100000000" == util::utox(1LL << 32));
+}
+
 } // namespace shrpx

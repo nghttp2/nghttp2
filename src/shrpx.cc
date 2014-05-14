@@ -83,9 +83,8 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
 {
   addrinfo hints;
   int rv;
-  char service[10];
 
-  snprintf(service, sizeof(service), "%u", port);
+  auto service = util::utos(port);
   memset(&hints, 0, sizeof(addrinfo));
 
   hints.ai_family = family;
@@ -95,7 +94,7 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
 #endif // AI_ADDRCONFIG
   addrinfo *res;
 
-  rv = getaddrinfo(hostname, service, &hints, &res);
+  rv = getaddrinfo(hostname, service.c_str(), &hints, &res);
   if(rv != 0) {
     LOG(FATAL) << "Unable to resolve address for " << hostname
                << ": " << gai_strerror(rv);
@@ -136,8 +135,8 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   addrinfo hints;
   int fd = -1;
   int r;
-  char service[10];
-  snprintf(service, sizeof(service), "%u", get_config()->port);
+
+  auto service = util::utos(get_config()->port);
   memset(&hints, 0, sizeof(addrinfo));
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
@@ -147,7 +146,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
 #endif // AI_ADDRCONFIG
 
   addrinfo *res, *rp;
-  r = getaddrinfo(get_config()->host, service, &hints, &res);
+  r = getaddrinfo(get_config()->host, service.c_str(), &hints, &res);
   if(r != 0) {
     if(LOG_ENABLED(INFO)) {
       LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
@@ -1253,15 +1252,25 @@ int main(int argc, char **argv)
     }
   }
 
-  char hostport[NI_MAXHOST+16];
   bool downstream_ipv6_addr =
     is_ipv6_numeric_addr(get_config()->downstream_host);
-  snprintf(hostport, sizeof(hostport), "%s%s%s:%u",
-           downstream_ipv6_addr ? "[" : "",
-           get_config()->downstream_host,
-           downstream_ipv6_addr ? "]" : "",
-           get_config()->downstream_port);
-  set_config_str(&mod_config()->downstream_hostport, hostport);
+
+  std::string hostport;
+
+  if(downstream_ipv6_addr) {
+    hostport += "[";
+  }
+
+  hostport += get_config()->downstream_host;
+
+  if(downstream_ipv6_addr) {
+    hostport += "]";
+  }
+
+  hostport += ":";
+  hostport += util::utos(get_config()->downstream_port);
+
+  set_config_str(&mod_config()->downstream_hostport, hostport.c_str());
 
   if(LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";

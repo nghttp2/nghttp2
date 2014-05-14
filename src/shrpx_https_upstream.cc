@@ -650,11 +650,12 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
-  char temp[16];
-  snprintf(temp, sizeof(temp), "HTTP/%d.%d ",
-           downstream->get_request_major(),
-           downstream->get_request_minor());
-  std::string hdrs = temp;
+
+  std::string hdrs = "HTTP/";
+  hdrs += util::utos(downstream->get_request_major());
+  hdrs += ".";
+  hdrs += util::utos(downstream->get_request_minor());
+  hdrs += " ";
   hdrs += http2::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
   downstream->normalize_response_headers();
@@ -757,10 +758,12 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
   }
   auto output = bufferevent_get_output(handler_->get_bev());
   if(downstream->get_chunked_response()) {
-    char chunk_size_hex[16];
-    rv = snprintf(chunk_size_hex, sizeof(chunk_size_hex), "%X\r\n",
-                  static_cast<unsigned int>(len));
-    if(evbuffer_add(output, chunk_size_hex, rv) != 0) {
+    auto chunk_size_hex = util::utox(len);
+    chunk_size_hex += "\r\n";
+
+    rv = evbuffer_add(output, chunk_size_hex.c_str(), chunk_size_hex.size());
+
+    if(rv != 0) {
       ULOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }

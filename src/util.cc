@@ -42,6 +42,8 @@ namespace util {
 
 const char DEFAULT_STRIP_CHARSET[] = "\r\n\t ";
 
+const char UPPER_XDIGITS[] = "0123456789ABCDEF";
+
 bool isAlpha(const char c)
 {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
@@ -68,13 +70,14 @@ std::string percentEncode(const unsigned char* target, size_t len)
 {
   std::string dest;
   for(size_t i = 0; i < len; ++i) {
-    if(inRFC3986UnreservedChars(target[i])) {
-      dest += target[i];
+    unsigned char c = target[i];
+
+    if(inRFC3986UnreservedChars(c)) {
+      dest += c;
     } else {
-      char temp[4];
-      snprintf(temp, sizeof(temp), "%%%02X", target[i]);
-      dest.append(temp);
-      //dest.append(fmt("%%%02X", target[i]));
+      dest += "%";
+      dest += UPPER_XDIGITS[c >> 4];
+      dest += UPPER_XDIGITS[(c & 0x0f)];
     }
   }
   return dest;
@@ -102,13 +105,14 @@ std::string percent_encode_token(const std::string& target)
   std::string dest;
 
   for(size_t i = 0; i < len; ++i) {
-    char c = target[i];
+    unsigned char c = target[i];
+
     if(c != '%' && in_token(c)) {
       dest += c;
     } else {
-      char temp[4];
-      snprintf(temp, sizeof(temp), "%%%02X", c);
-      dest += temp;
+      dest += "%";
+      dest += UPPER_XDIGITS[c >> 4];
+      dest += UPPER_XDIGITS[(c & 0x0f)];
     }
   }
   return dest;

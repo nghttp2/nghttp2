@@ -1585,8 +1585,9 @@ int start_listen(event_base *evbase, Sessions *sessions, const Config *config)
 {
   addrinfo hints;
   int r;
-  char service[10];
-  snprintf(service, sizeof(service), "%u", config->port);
+
+  auto service = util::utos(config->port);
+
   memset(&hints, 0, sizeof(addrinfo));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -1600,7 +1601,7 @@ int start_listen(event_base *evbase, Sessions *sessions, const Config *config)
   auto listen_handler = listen_handler_store.get();
 
   addrinfo *res, *rp;
-  r = getaddrinfo(nullptr, service, &hints, &res);
+  r = getaddrinfo(nullptr, service.c_str(), &hints, &res);
   if(r != 0) {
     std::cerr << "getaddrinfo() failed: " << gai_strerror(r) << std::endl;
     return -1;

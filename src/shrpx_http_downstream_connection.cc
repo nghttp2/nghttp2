@@ -258,36 +258,37 @@ int HttpDownstreamConnection::push_request_headers()
 int HttpDownstreamConnection::push_upload_data_chunk
 (const uint8_t *data, size_t datalen)
 {
-  ssize_t res = 0;
   int rv;
   int chunked = downstream_->get_chunked_request();
   auto output = bufferevent_get_output(bev_);
+
   if(chunked) {
-    char chunk_size_hex[16];
-    rv = snprintf(chunk_size_hex, sizeof(chunk_size_hex), "%X\r\n",
-                  static_cast<unsigned int>(datalen));
-    res += rv;
-    rv = evbuffer_add(output, chunk_size_hex, rv);
+    auto chunk_size_hex = util::utox(datalen);
+    chunk_size_hex += "\r\n";
+
+    rv = evbuffer_add(output, chunk_size_hex.c_str(), chunk_size_hex.size());
     if(rv == -1) {
       DCLOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }
   }
+
   rv = evbuffer_add(output, data, datalen);
+
   if(rv == -1) {
     DCLOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
-  res += rv;
+
   if(chunked) {
     rv = evbuffer_add(output, "\r\n", 2);
     if(rv == -1) {
       DCLOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }
-    res += 2;
   }
-  return res;
+
+  return 0;
 }
 
 int HttpDownstreamConnection::end_upload_data()

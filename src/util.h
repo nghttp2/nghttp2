@@ -399,6 +399,27 @@ std::string utos(T n)
   return res;
 }
 
+extern const char UPPER_XDIGITS[];
+
+template<typename T>
+std::string utox(T n)
+{
+  std::string res;
+  if(n == 0) {
+    res = "0";
+    return res;
+  }
+  int i = 0;
+  T t = n;
+  for(; t; t /= 16, ++i);
+  res.resize(i);
+  --i;
+  for(; n; --i, n /= 16) {
+    res[i] = UPPER_XDIGITS[(n & 0x0f)];
+  }
+  return res;
+}
+
 template<typename T, typename... U>
 typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
 make_unique(U&&... u)
