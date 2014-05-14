@@ -270,22 +270,20 @@ char upcase(char c)
   }
 }
 
+namespace {
+const char LOWER_XDIGITS[] = "0123456789abcdef";
+} // namespace
+
 std::string format_hex(const unsigned char *s, size_t len)
 {
   std::string res;
+  res.resize(len * 2);
+
   for(size_t i = 0; i < len; ++i) {
-    unsigned char c = s[i] >> 4;
-    if(c > 9) {
-      res += c - 10 + 'a';
-    } else {
-      res += c + '0';
-    }
-    c = s[i] & 0xf;
-    if(c > 9) {
-      res += c - 10 + 'a';
-    } else {
-      res += c + '0';
-    }
+    unsigned char c = s[i];
+
+    res[i * 2] = LOWER_XDIGITS[c >> 4];
+    res[i * 2 + 1] = LOWER_XDIGITS[c & 0x0f];
   }
   return res;
 }
