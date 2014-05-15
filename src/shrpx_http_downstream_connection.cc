@@ -490,7 +490,7 @@ namespace {
 http_parser_settings htp_hooks = {
   nullptr, // http_cb      on_message_begin;
   nullptr, // http_data_cb on_url;
-  nullptr, // http_cb on_status_complete;
+  nullptr, // http_data_cb on_status;
   htp_hdr_keycb, // http_data_cb on_header_field;
   htp_hdr_valcb, // http_data_cb on_header_value;
   htp_hdrs_completecb, // http_cb      on_headers_complete;

@@ -26,6 +26,12 @@
 #include <string.h>
 #include <stdarg.h>
 
+#if defined(__APPLE__)
+# undef strlcat
+# undef strlncpy
+# undef strlcpy
+#endif  /* defined(__APPLE__) */
+
 #undef TRUE
 #define TRUE 1
 #undef FALSE
@@ -44,6 +50,7 @@ struct message {
   enum http_parser_type type;
   enum http_method method;
   int status_code;
+  char response_status[MAX_ELEMENT_SIZE];
   char request_path[MAX_ELEMENT_SIZE];
   char request_url[MAX_ELEMENT_SIZE];
   char fragment[MAX_ELEMENT_SIZE];
@@ -601,8 +608,14 @@ const struct message requests[] =
          "  mno \r\n"
          "\t \tqrs\r\n"
          "Line2: \t line2\t\r\n"
+         "Line3:\r\n"
+         " line3\r\n"
+         "Line4: \r\n"
+         " \r\n"
+         "Connection:\r\n"
+         " close\r\n"
          "\r\n"
-  ,.should_keep_alive= TRUE
+  ,.should_keep_alive= FALSE
   ,.message_complete_on_eof= FALSE
   ,.http_major= 1
   ,.http_minor= 1
@@ -611,9 +624,12 @@ const struct message requests[] =
   ,.fragment= ""
   ,.request_path= "/"
   ,.request_url= "/"
-  ,.num_headers= 2
-  ,.headers= { { "Line1", "abcdefghijklmno qrs" }
+  ,.num_headers= 5
+  ,.headers= { { "Line1", "abc\tdef ghi\t\tjkl  mno \t \tqrs" }
              , { "Line2", "line2\t" }
+             , { "Line3", "line3" }
+             , { "Line4", "" }
+             , { "Connection", "close" },
              }
   ,.body= ""
   }
@@ -897,6 +913,43 @@ const struct message requests[] =
   ,.body= ""
   }
 
+#define LINE_FOLDING_IN_HEADER_WITH_LF 34
+, {.name= "line folding in header value"
+  ,.type= HTTP_REQUEST
+  ,.raw= "GET / HTTP/1.1\n"
+         "Line1:   abc\n"
+         "\tdef\n"
+         " ghi\n"
+         "\t\tjkl\n"
+         "  mno \n"
+         "\t \tqrs\n"
+         "Line2: \t line2\t\n"
+         "Line3:\n"
+         " line3\n"
+         "Line4: \n"
+         " \n"
+         "Connection:\n"
+         " close\n"
+         "\n"
+  ,.should_keep_alive= FALSE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.method= HTTP_GET
+  ,.query_string= ""
+  ,.fragment= ""
+  ,.request_path= "/"
+  ,.request_url= "/"
+  ,.num_headers= 5
+  ,.headers= { { "Line1", "abc\tdef ghi\t\tjkl  mno \t \tqrs" }
+             , { "Line2", "line2\t" }
+             , { "Line3", "line3" }
+             , { "Line4", "" }
+             , { "Connection", "close" },
+             }
+  ,.body= ""
+  }
+
 
 , {.name= NULL } /* sentinel */
 };
@@ -927,6 +980,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 301
+  ,.response_status= "Moved Permanently"
   ,.num_headers= 8
   ,.headers=
     { { "Location", "http://www.google.com/" }
@@ -975,6 +1029,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 5
   ,.headers=
     { { "Date", "Tue, 04 Aug 2009 07:59:32 GMT" }
@@ -1003,6 +1058,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 404
+  ,.response_status= "Not Found"
   ,.num_headers= 0
   ,.headers= {}
   ,.body_size= 0
@@ -1018,6 +1074,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 301
+  ,.response_status= ""
   ,.num_headers= 0
   ,.headers= {}
   ,.body= ""
@@ -1043,6 +1100,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 2
   ,.headers=
     { {"Content-Type", "text/plain" }
@@ -1068,6 +1126,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 2
   ,.headers=
     { {"Content-Type", "text/html; charset=utf-8" }
@@ -1091,6 +1150,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 4
   ,.headers=
     { {"Content-Type", "text/html; charset=UTF-8" }
@@ -1116,6 +1176,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 4
   ,.headers=
     { {"Server", "DCLK-AdSvr" }
@@ -1148,6 +1209,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 0
   ,.status_code= 301
+  ,.response_status= "Moved Permanently"
   ,.num_headers= 9
   ,.headers=
     { { "Date", "Thu, 03 Jun 2010 09:56:32 GMT" }
@@ -1186,6 +1248,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 11
   ,.headers=
     { { "Date", "Tue, 28 Sep 2010 01:14:13 GMT" }
@@ -1217,6 +1280,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 500
+  ,.response_status= "Oriëntatieprobleem"
   ,.num_headers= 3
   ,.headers=
     { { "Date", "Fri, 5 Nov 2010 23:07:12 GMT+2" }
@@ -1237,6 +1301,7 @@ const struct message responses[] =
   ,.http_major= 0
   ,.http_minor= 9
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 0
   ,.headers=
     {}
@@ -1259,6 +1324,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 1
   ,.headers=
     { { "Content-Type", "text/plain" }
@@ -1277,6 +1343,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 0
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 1
   ,.headers=
     { { "Connection", "keep-alive" }
@@ -1296,6 +1363,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 0
   ,.status_code= 204
+  ,.response_status= "No content"
   ,.num_headers= 1
   ,.headers=
     { { "Connection", "keep-alive" }
@@ -1314,6 +1382,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 0
   ,.headers={}
   ,.body_size= 0
@@ -1330,6 +1399,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 204
+  ,.response_status= "No content"
   ,.num_headers= 0
   ,.headers={}
   ,.body_size= 0
@@ -1347,6 +1417,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 204
+  ,.response_status= "No content"
   ,.num_headers= 1
   ,.headers=
     { { "Connection", "close" }
@@ -1368,6 +1439,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 1
   ,.headers=
     { { "Transfer-Encoding", "chunked" }
@@ -1396,6 +1468,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 200
+  ,.response_status= "OK"
   ,.num_headers= 7
   ,.headers=
     { { "Server",  "Microsoft-IIS/6.0" }
@@ -1433,6 +1506,7 @@ const struct message responses[] =
   ,.http_major= 1
   ,.http_minor= 1
   ,.status_code= 301
+  ,.response_status= "MovedPermanently"
   ,.num_headers= 9
   ,.headers= { { "Date", "Wed, 15 May 2013 17:06:33 GMT" }
              , { "Server", "Server" }
@@ -1445,6 +1519,22 @@ const struct message responses[] =
              , { "Transfer-Encoding", "chunked" }
              }
   ,.body= "\n"
+  }
+
+#define EMPTY_REASON_PHRASE_AFTER_SPACE 20
+, {.name= "empty reason phrase after space"
+  ,.type= HTTP_RESPONSE
+  ,.raw= "HTTP/1.1 200 \r\n"
+         "\r\n"
+  ,.should_keep_alive= FALSE
+  ,.message_complete_on_eof= TRUE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.status_code= 200
+  ,.response_status= ""
+  ,.num_headers= 0
+  ,.headers= {}
+  ,.body= ""
   }
 
 , {.name= NULL } /* sentinel */
@@ -1525,13 +1615,6 @@ request_url_cb (http_parser *p, const char *buf, size_t len)
            sizeof(messages[num_messages].request_url),
            buf,
            len);
-  return 0;
-}
-
-int
-status_complete_cb (http_parser *p) {
-  assert(p == parser);
-  p->data++;
   return 0;
 }
 
@@ -1660,6 +1743,17 @@ message_complete_cb (http_parser *p)
   return 0;
 }
 
+int
+response_status_cb (http_parser *p, const char *buf, size_t len)
+{
+  assert(p == parser);
+  strlncat(messages[num_messages].response_status,
+           sizeof(messages[num_messages].response_status),
+           buf,
+           len);
+  return 0;
+}
+
 /* These dontcall_* callbacks exist so that we can verify that when we're
  * paused, no additional callbacks are invoked */
 int
@@ -1720,11 +1814,20 @@ dontcall_message_complete_cb (http_parser *p)
   abort();
 }
 
+int
+dontcall_response_status_cb (http_parser *p, const char *buf, size_t len)
+{
+  if (p || buf || len) { } // gcc
+  fprintf(stderr, "\n\n*** on_status() called on paused parser ***\n\n");
+  abort();
+}
+
 static http_parser_settings settings_dontcall =
   {.on_message_begin = dontcall_message_begin_cb
   ,.on_header_field = dontcall_header_field_cb
   ,.on_header_value = dontcall_header_value_cb
   ,.on_url = dontcall_request_url_cb
+  ,.on_status = dontcall_response_status_cb
   ,.on_body = dontcall_body_cb
   ,.on_headers_complete = dontcall_headers_complete_cb
   ,.on_message_complete = dontcall_message_complete_cb
@@ -1790,11 +1893,20 @@ pause_message_complete_cb (http_parser *p)
   return message_complete_cb(p);
 }
 
+int
+pause_response_status_cb (http_parser *p, const char *buf, size_t len)
+{
+  http_parser_pause(p, 1);
+  *current_pause_parser = settings_dontcall;
+  return response_status_cb(p, buf, len);
+}
+
 static http_parser_settings settings_pause =
   {.on_message_begin = pause_message_begin_cb
   ,.on_header_field = pause_header_field_cb
   ,.on_header_value = pause_header_value_cb
   ,.on_url = pause_request_url_cb
+  ,.on_status = pause_response_status_cb
   ,.on_body = pause_body_cb
   ,.on_headers_complete = pause_headers_complete_cb
   ,.on_message_complete = pause_message_complete_cb
@@ -1805,6 +1917,7 @@ static http_parser_settings settings =
   ,.on_header_field = header_field_cb
   ,.on_header_value = header_value_cb
   ,.on_url = request_url_cb
+  ,.on_status = response_status_cb
   ,.on_body = body_cb
   ,.on_headers_complete = headers_complete_cb
   ,.on_message_complete = message_complete_cb
@@ -1815,6 +1928,7 @@ static http_parser_settings settings_count_body =
   ,.on_header_field = header_field_cb
   ,.on_header_value = header_value_cb
   ,.on_url = request_url_cb
+  ,.on_status = response_status_cb
   ,.on_body = count_body_cb
   ,.on_headers_complete = headers_complete_cb
   ,.on_message_complete = message_complete_cb
@@ -1825,6 +1939,7 @@ static http_parser_settings settings_null =
   ,.on_header_field = 0
   ,.on_header_value = 0
   ,.on_url = 0
+  ,.on_status = 0
   ,.on_body = 0
   ,.on_headers_complete = 0
   ,.on_message_complete = 0
@@ -1948,6 +2063,7 @@ message_eq (int index, const struct message *expected)
     MESSAGE_CHECK_NUM_EQ(expected, m, method);
   } else {
     MESSAGE_CHECK_NUM_EQ(expected, m, status_code);
+    MESSAGE_CHECK_STR_EQ(expected, m, response_status);
   }
 
   MESSAGE_CHECK_NUM_EQ(expected, m, should_keep_alive);
@@ -2868,7 +2984,7 @@ test_header_content_length_overflow_error (void)
   "HTTP/1.1 200 OK\r\n"                                                       \
   "Content-Length: " #size "\r\n"                                             \
   "\r\n"
-  const char a[] = X(18446744073709551614); /* 2^64-2 */
+  const char a[] = X(1844674407370955160);  /* 2^64 / 10 - 1 */
   const char b[] = X(18446744073709551615); /* 2^64-1 */
   const char c[] = X(18446744073709551616); /* 2^64   */
 #undef X
@@ -2886,7 +3002,7 @@ test_chunk_content_length_overflow_error (void)
     "\r\n"                                                                    \
     #size "\r\n"                                                              \
     "..."
-  const char a[] = X(FFFFFFFFFFFFFFFE);  /* 2^64-2 */
+  const char a[] = X(FFFFFFFFFFFFFFE);   /* 2^64 / 16 - 1 */
   const char b[] = X(FFFFFFFFFFFFFFFF);  /* 2^64-1 */
   const char c[] = X(10000000000000000); /* 2^64   */
 #undef X
@@ -3133,20 +3249,6 @@ create_large_chunked_message (int body_size_in_kb, const char* headers)
   return buf;
 }
 
-void
-test_status_complete (void)
-{
-  parser_init(HTTP_RESPONSE);
-  parser->data = 0;
-  http_parser_settings settings = settings_null;
-  settings.on_status_complete = status_complete_cb;
-
-  char *response = "don't mind me, just a simple response";
-  http_parser_execute(parser, &settings, response, strlen(response));
-  assert(parser->data == (void*)0); // the status_complete callback was never called
-  assert(parser->http_errno == HPE_INVALID_CONSTANT); // the errno for an invalid status line
-}
-
 /* Verify that we can pause parsing at any of the bytes in the
  * message and still get the result that we're expecting. */
 void
@@ -3280,6 +3382,7 @@ main (void)
       ,.http_major= 1
       ,.http_minor= 0
       ,.status_code= 200
+      ,.response_status= "OK"
       ,.num_headers= 2
       ,.headers=
         { { "Transfer-Encoding", "chunked" }
@@ -3467,8 +3570,6 @@ main (void)
            , &requests[PREFIX_NEWLINE_GET ]
            , &requests[CONNECT_REQUEST]
            );
-
-  test_status_complete();
 
   puts("requests okay");
 
