@@ -676,7 +676,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
       // We add this header for HTTP/1.0 or HTTP/0.9 clients
       hdrs += "Connection: Keep-Alive\r\n";
     }
-  } else {
+  } else if(!downstream->get_upgraded() ||
+            downstream->get_request_method() != "CONNECT") {
     hdrs += "Connection: close\r\n";
   }
 
