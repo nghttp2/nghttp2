@@ -46,6 +46,7 @@ namespace shrpx {
 
 namespace {
 const size_t OUTBUF_MAX_THRES = 64*1024;
+const size_t INBUF_MAX_THRES = 64*1024;
 } // namespace
 
 namespace {
@@ -58,7 +59,7 @@ ssize_t send_callback(spdylay_session *session,
   auto handler = upstream->get_client_handler();
 
   // Check buffer length and return WOULDBLOCK if it is large enough.
-  if(handler->get_outbuf_length() + upstream->sendbuf.get_buflen() >
+  if(handler->get_outbuf_length() + upstream->sendbuf.get_buflen() >=
      OUTBUF_MAX_THRES) {
     return SPDYLAY_ERR_WOULDBLOCK;
   }
@@ -725,7 +726,6 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
 {
   auto downstream = static_cast<Downstream*>(source->ptr);
   auto upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
-  auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   assert(body);
   int nread = evbuffer_remove(body, buf, length);
@@ -747,18 +747,15 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
                            (downstream->get_response_rst_stream_error_code()));
     }
   }
-  // Send WINDOW_UPDATE before buffer is empty to avoid delay because
-  // of RTT.
-  if(*eof != 1 &&
-     handler->get_outbuf_length() + evbuffer_get_length(body) <
-     OUTBUF_MAX_THRES) {
+
+  if(nread == 0 && *eof != 1) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return SPDYLAY_ERR_CALLBACK_FAILURE;
     }
-  }
-  if(nread == 0 && *eof != 1) {
+
     return SPDYLAY_ERR_DEFERRED;
   }
+
   return nread;
 }
 } // namespace
@@ -930,7 +927,6 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
                                      const uint8_t *data, size_t len,
                                      bool flush)
 {
-  auto upstream = downstream->get_upstream();
   auto body = downstream->get_response_body_buf();
   int rv = evbuffer_add(body, data, len);
   if(rv != 0) {
@@ -942,9 +938,7 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
     spdylay_session_resume_data(session_, downstream->get_stream_id());
   }
 
-  auto outbuflen = upstream->get_client_handler()->get_outbuf_length() +
-    evbuffer_get_length(body);
-  if(outbuflen > OUTBUF_MAX_THRES) {
+  if(evbuffer_get_length(body) >= INBUF_MAX_THRES) {
     if(!flush) {
       spdylay_session_resume_data(session_, downstream->get_stream_id());
     }

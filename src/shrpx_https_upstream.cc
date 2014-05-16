@@ -405,6 +405,8 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
   if(downstream->get_response_state() == Downstream::MSG_RESET) {
     delete upstream->get_client_handler();
   } else if(rv == 0) {
+    auto handler = upstream->get_client_handler();
+
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       if(downstream->get_response_connection_close()) {
         // Connection close
@@ -415,7 +417,6 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
         // Keep-alive
         dconn->detach_downstream(downstream);
       }
-      auto handler = upstream->get_client_handler();
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         if(handler->get_should_close_after_write() &&
            handler->get_outbuf_length() == 0) {
@@ -450,8 +451,7 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
         }
       }
     } else {
-      if(upstream->get_client_handler()->get_outbuf_length() >
-         OUTBUF_MAX_THRES) {
+      if(handler->get_outbuf_length() >= OUTBUF_MAX_THRES) {
         downstream->pause_read(SHRPX_NO_BUFFER);
       }
     }

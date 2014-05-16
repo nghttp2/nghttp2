@@ -47,6 +47,7 @@ namespace shrpx {
 
 namespace {
 const size_t OUTBUF_MAX_THRES = 64*1024;
+const size_t INBUF_MAX_THRES = 64*1024;
 } // namespace
 
 namespace {
@@ -610,8 +611,8 @@ int Http2Upstream::send()
   auto output = bufferevent_get_output(bev);
   util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
   for(;;) {
-    // Check buffer length and return WOULDBLOCK if it is large enough.
-    if(handler_->get_outbuf_length() + evbbuf.get_buflen() >
+    // Check buffer length and break if it is large enough.
+    if(handler_->get_outbuf_length() + evbbuf.get_buflen() >=
        OUTBUF_MAX_THRES) {
       break;
     }
@@ -903,7 +904,6 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 {
   auto downstream = static_cast<Downstream*>(source->ptr);
   auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
-  auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   assert(body);
 
@@ -927,16 +927,12 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
                            (downstream->get_response_rst_stream_error_code()));
     }
   }
-  // Send WINDOW_UPDATE before buffer is empty to avoid delay because
-  // of RTT.
-  if(((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0 &&
-     handler->get_outbuf_length() + evbuffer_get_length(body) <
-     OUTBUF_MAX_THRES) {
+
+  if(nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
-  }
-  if(nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
+
     return NGHTTP2_ERR_DEFERRED;
   }
   return nread;
@@ -1105,8 +1101,6 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
                                       const uint8_t *data, size_t len,
                                       bool flush)
 {
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_body_buf();
   int rv = evbuffer_add(body, data, len);
   if(rv != 0) {
@@ -1118,9 +1112,7 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
     nghttp2_session_resume_data(session_, downstream->get_stream_id());
   }
 
-  auto outbuflen = handler->get_outbuf_length() +
-    evbuffer_get_length(body);
-  if(outbuflen > OUTBUF_MAX_THRES) {
+  if(evbuffer_get_length(body) >= INBUF_MAX_THRES) {
     if(!flush) {
       nghttp2_session_resume_data(session_, downstream->get_stream_id());
     }
