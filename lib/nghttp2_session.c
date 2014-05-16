@@ -889,15 +889,22 @@ void nghttp2_session_keep_closed_stream(nghttp2_session *session,
 void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
                                           ssize_t offset)
 {
+  size_t num_stream_max;
+
+  num_stream_max =
+    nghttp2_min
+    (session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS],
+     session->pending_local_max_concurrent_stream);
+
   DEBUGF(fprintf(stderr, "stream: adjusting kept closed streams "
                  "num_closed_streams=%zu, num_incoming_streams=%zu, "
                  "max_concurrent_streams=%u\n",
                  session->num_closed_streams, session->num_incoming_streams,
-                 session->pending_local_max_concurrent_stream));
+                 num_stream_max));
 
   while(session->num_closed_streams > 0 &&
         session->num_closed_streams + session->num_incoming_streams + offset
-        > session->pending_local_max_concurrent_stream) {
+        > num_stream_max) {
     nghttp2_stream *head_stream;
 
     head_stream = session->closed_stream_head;
