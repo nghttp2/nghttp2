@@ -938,13 +938,6 @@ void nghttp2_stream_roots_add(nghttp2_stream_roots *roots,
                               nghttp2_stream *stream)
 {
   if(roots->head) {
-    nghttp2_stream *si;
-    for(si = roots->head; si; si = si->root_next) {
-      if(si == stream) {
-        assert(0);
-      }
-    }
-
     stream->root_next = roots->head;
     roots->head->root_prev = stream;
   }
