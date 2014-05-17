@@ -122,6 +122,11 @@ used::
     $ ./configure
     $ make
 
+Mac OS X users may need ``--disable-threads`` configure option to
+disable multi threading in nghttpd, nghttpx and h2load to prevent them
+from crashing.  Patch is welcome to make multi threading work on Mac
+OS X platform.
+
 Building documentation
 ----------------------
 
