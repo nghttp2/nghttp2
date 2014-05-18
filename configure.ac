@@ -275,8 +275,9 @@ if test "x${request_jemalloc}" != "xno"; then
   LIBS_OLD=$LIBS
   AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes])
   LIBS=$LIBS_OLD
-  if test "x${have_jemalloc}" = "xyes"; then
-    JEMALLOC_LIBS="-ljemalloc"
+  if test "x${have_jemalloc}" = "xyes" &&
+     test "x${ac_cv_search_malloc_stats_print}" != "xnone required"; then
+    JEMALLOC_LIBS=${ac_cv_search_malloc_stats_print}
     AC_SUBST([JEMALLOC_LIBS])
   fi
 fi
