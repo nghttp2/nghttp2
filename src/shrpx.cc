@@ -646,12 +646,12 @@ SSL/TLS:
                      Path to  file that contains DH  parameters in PEM
                      format.  Without  this option, DHE  cipher suites
                      are not available.
-  --npn-list=<LIST>  Comma delimited list  of NPN/ALPN protocol sorted
-                     in  the order  of  preference.   That means  most
-                     desirable  protocol comes  first.  The  parameter
-                     must be delimited by a  single comma only and any
-                     white spaces  are treated  as a part  of protocol
-                     string.
+  --npn-list=<LIST>  Comma delimited list  of ALPN protocol identifier
+                     sorted in  the order  of preference.   That means
+                     most  desirable protocol  comes  first.  This  is
+                     used in both ALPN and NPN.  The parameter must be
+                     delimited by  a single  comma only and  any white
+                     spaces are treated as a part of protocol string.
                      Default: )" << DEFAULT_NPN_LIST << R"(
   --verify-client    Require and verify client certificate.
   --verify-client-cacert=<PATH>
