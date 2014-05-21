@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.4.0 documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.5.0-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.4.0 documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.5.0-DEV documentation" href="index.html"/>
         <link rel="next" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
@@ -268,6 +268,10 @@ $ ./configure
 $ make
 </pre></div>
 </div>
+<p>Mac OS X users may need <tt class="docutils literal"><span class="pre">--disable-threads</span></tt> configure option to
+disable multi threading in nghttpd, nghttpx and h2load to prevent them
+from crashing.  Patch is welcome to make multi threading work on Mac
+OS X platform.</p>
 </div>
 <div class="section" id="building-documentation">
 <h2>Building documentation<a class="headerlink" href="#building-documentation" title="Permalink to this headline">¶</a></h2>
@@ -1195,7 +1199,7 @@ BaseRequestHandler usage:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.4.0',
+            VERSION:'0.5.0-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
