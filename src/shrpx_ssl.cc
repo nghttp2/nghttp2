@@ -157,62 +157,50 @@ void info_callback(const SSL *ssl, int where, int ret)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
-// Returns true if ALPN identifier list |in| of length |inlen|
-// contains http/1.1.
-bool check_http1_available_in_alpn_list(const unsigned char *in,
-                                        unsigned int inlen)
-{
-  for(unsigned int i = 0; i < inlen; i += 1 + in[i]) {
-    if(in[i] == 8 && i + 1 + in[i] <= inlen &&
-       memcmp("http/1.1", &in[i + 1], in[i]) == 0) {
-
-      return true;
-    }
-  }
-
-  return false;
-}
-} // namespace
-
-namespace {
 int alpn_select_proto_cb(SSL* ssl,
                          const unsigned char **out,
                          unsigned char *outlen,
                          const unsigned char *in, unsigned int inlen,
                          void *arg)
 {
-  int rv;
+  // We assume that get_config()->npn_list contains ALPN protocol
+  // identifier sorted by preference order.  So we just break when we
+  // found the first overlap.
+  for(auto needle_ptr = get_config()->npn_list,
+        end_needle_ptr = needle_ptr + get_config()->npn_list_len;
+      needle_ptr < end_needle_ptr; ++needle_ptr) {
 
-  if(check_http2_requirement(ssl)) {
+    auto target_proto_id = *needle_ptr;
+    auto target_proto_len =
+      strlen(reinterpret_cast<const char*>(target_proto_id));
 
-    rv = nghttp2_select_next_protocol
-      (const_cast<unsigned char**>(out), outlen, in, inlen);
+    if(target_proto_len == NGHTTP2_PROTO_VERSION_ID_LEN &&
+       memcmp(target_proto_id, NGHTTP2_PROTO_VERSION_ID,
+              NGHTTP2_PROTO_VERSION_ID_LEN) == 0) {
 
-    if(rv == 1) {
-      // HTTP/2 was selected
-      return SSL_TLSEXT_ERR_OK;
+      if(!check_http2_requirement(ssl)) {
+        continue;
+      }
     }
-  } else if(check_http1_available_in_alpn_list(in, inlen)) {
-    *out = reinterpret_cast<const unsigned char*>("http/1.1");
-    *outlen = strlen("http/1.1");
 
-    rv = 0;
-  } else {
-    rv = -1;
+    for(auto p = in, end = in + inlen; p < end;) {
+      auto proto_id = p + 1;
+      auto proto_len = *p;
+
+      if(proto_id + proto_len <= end &&
+         util::streq(target_proto_id, target_proto_len, proto_id, proto_len)) {
+
+        *out = reinterpret_cast<const unsigned char*>(proto_id);
+        *outlen = proto_len;
+
+        return SSL_TLSEXT_ERR_OK;
+      }
+
+      p += 1 + proto_len;
+    }
   }
 
-#ifdef HAVE_SPDYLAY
-  rv = spdylay_select_next_protocol
-    (const_cast<unsigned char**>(out), outlen, in, inlen);
-#endif // HAVE_SPDYLAY
-
-  if(rv == -1) {
-    // No selection was made
-    return SSL_TLSEXT_ERR_NOACK;
-  }
-
-  // We selected http/1.1
-  return SSL_TLSEXT_ERR_OK;
+  return SSL_TLSEXT_ERR_NOACK;
 }
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
