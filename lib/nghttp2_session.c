@@ -4490,7 +4490,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           break;
         }
 
-        if(iframe->payloadleft < 9) {
+        if(iframe->payloadleft < NGHTTP2_ALTSVC_MINLEN) {
           busy = 1;
 
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -4499,7 +4499,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         }
 
         iframe->state = NGHTTP2_IB_READ_NBYTE;
-        inbound_frame_set_mark(iframe, 8);
+        inbound_frame_set_mark(iframe, NGHTTP2_ALTSVC_FIXED_PARTLEN);
 
         break;
       case NGHTTP2_BLOCKED:
@@ -4711,7 +4711,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       case NGHTTP2_ALTSVC: {
         size_t varlen;
 
-        varlen = iframe->frame.hd.length - 8;
+        varlen = iframe->frame.hd.length - NGHTTP2_ALTSVC_FIXED_PARTLEN;
 
         if(varlen > 0) {
           iframe->raw_lbuf = malloc(varlen);

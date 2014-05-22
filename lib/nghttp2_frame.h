@@ -60,6 +60,16 @@
 /* The maximum header table size in SETTINGS_HEADER_TABLE_SIZE */
 #define NGHTTP2_MAX_HEADER_TABLE_SIZE ((1u << 31) - 1)
 
+
+/* Length of fixed part in ALTSVC frame, that is the sum of fields of
+   Max-Age, Port, Reserved and PID_LEN. */
+#define NGHTTP2_ALTSVC_FIXED_PARTLEN 8
+
+/* Minimum length of ALTSVC frame.  NGHTTP2_ALTSVC_FIXED_PARTLEN +
+   HOST_LEN. */
+#define NGHTTP2_ALTSVC_MINLEN 9
+
+
 /* Category of frames. */
 typedef enum {
   /* non-DATA frame */

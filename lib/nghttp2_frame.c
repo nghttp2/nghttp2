@@ -196,8 +196,7 @@ void nghttp2_frame_altsvc_init(nghttp2_altsvc *frame, int32_t stream_id,
 {
   size_t payloadlen;
 
-  /* 8 for Max-Age, Port, Reserved and PID_LEN.  1 for HOST_LEN. */
-  payloadlen = 8 + protocol_id_len + 1 + host_len + origin_len;
+  payloadlen = NGHTTP2_ALTSVC_MINLEN + protocol_id_len + host_len + origin_len;
 
   frame_set_hd(&frame->hd, payloadlen, NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE,
                stream_id);
