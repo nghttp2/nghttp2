@@ -4342,7 +4342,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
 
-        if(iframe->payloadleft != 5) {
+        if(iframe->payloadleft != NGHTTP2_PRIORITY_SPECLEN) {
           busy = 1;
 
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
@@ -4352,7 +4352,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         iframe->state = NGHTTP2_IB_READ_NBYTE;
 
-        inbound_frame_set_mark(iframe, 5);
+        inbound_frame_set_mark(iframe, NGHTTP2_PRIORITY_SPECLEN);
 
         break;
       case NGHTTP2_RST_STREAM:
