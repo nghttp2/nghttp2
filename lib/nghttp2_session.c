@@ -5293,28 +5293,47 @@ int nghttp2_session_recv(nghttp2_session *session)
   }
 }
 
+/*
+ * Returns the number of active streams, which includes streams in
+ * reserved state.
+ */
+static size_t session_get_num_active_streams(nghttp2_session *session)
+{
+  return nghttp2_map_size(&session->streams) - session->num_closed_streams;
+}
+
 int nghttp2_session_want_read(nghttp2_session *session)
 {
+  size_t num_active_streams;
+
   /* If these flags are set, we don't want to read. The application
      should drop the connection. */
   if((session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) &&
      (session->goaway_flags & NGHTTP2_GOAWAY_SEND)) {
     return 0;
   }
+
+  num_active_streams = session_get_num_active_streams(session);
+
   /* Unless GOAWAY is sent or received, we always want to read
      incoming frames. After GOAWAY is sent or received, we are only
      interested in active streams. */
-  return !session->goaway_flags || nghttp2_map_size(&session->streams) > 0;
+  return !session->goaway_flags || num_active_streams > 0;
 }
 
 int nghttp2_session_want_write(nghttp2_session *session)
 {
+  size_t num_active_streams;
+
   /* If these flags are set, we don't want to write any data. The
      application should drop the connection. */
   if((session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) &&
      (session->goaway_flags & NGHTTP2_GOAWAY_SEND)) {
     return 0;
   }
+
+  num_active_streams = session_get_num_active_streams(session);
+
   /*
    * Unless GOAWAY is sent or received, we want to write frames if
    * there is pending ones. If pending frame is request/push response
@@ -5325,7 +5344,7 @@ int nghttp2_session_want_write(nghttp2_session *session)
   return (session->aob.item != NULL || !nghttp2_pq_empty(&session->ob_pq) ||
           (!nghttp2_pq_empty(&session->ob_ss_pq) &&
            !session_is_outgoing_concurrent_streams_max(session))) &&
-    (!session->goaway_flags || nghttp2_map_size(&session->streams) > 0);
+    (!session->goaway_flags || num_active_streams > 0);
 }
 
 int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
