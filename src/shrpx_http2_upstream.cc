@@ -250,14 +250,11 @@ int on_begin_headers_callback(nghttp2_session *session,
 
 namespace {
 int on_request_headers(Http2Upstream *upstream,
+                       Downstream *downstream,
                        nghttp2_session *session,
                        const nghttp2_frame *frame)
 {
   int rv;
-  auto downstream = upstream->find_downstream(frame->hd.stream_id);
-  if(!downstream) {
-    return 0;
-  }
 
   downstream->normalize_request_headers();
   auto& nva = downstream->get_request_headers();
@@ -358,12 +355,13 @@ int on_frame_recv_callback
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream*>(user_data);
+  auto downstream = upstream->find_downstream(frame->hd.stream_id);
+  if(!downstream) {
+    return 0;
+  }
+
   switch(frame->hd.type) {
   case NGHTTP2_DATA: {
-    auto downstream = upstream->find_downstream(frame->hd.stream_id);
-    if(!downstream) {
-      break;
-    }
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
@@ -371,12 +369,17 @@ int on_frame_recv_callback
     break;
   }
   case NGHTTP2_HEADERS:
-    return on_request_headers(upstream, session, frame);
-  case NGHTTP2_PRIORITY: {
-    auto downstream = upstream->find_downstream(frame->hd.stream_id);
-    if(!downstream) {
-      break;
+    if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+      return on_request_headers(upstream, downstream, session, frame);
     }
+
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      downstream->end_upload_data();
+      downstream->set_request_state(Downstream::MSG_COMPLETE);
+    }
+
+    break;
+  case NGHTTP2_PRIORITY: {
     // TODO comment out for now
     // rv = downstream->change_priority(frame->priority.pri);
     // if(rv != 0) {

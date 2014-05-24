@@ -1258,13 +1258,13 @@ int hd_on_frame_recv_callback
 
     break;
   }
-  case NGHTTP2_HEADERS:
-    switch(frame->headers.cat) {
-    case NGHTTP2_HCAT_REQUEST: {
-      auto stream = hd->get_stream(frame->hd.stream_id);
-      if(!stream) {
-        return 0;
-      }
+  case NGHTTP2_HEADERS: {
+    auto stream = hd->get_stream(frame->hd.stream_id);
+    if(!stream) {
+      return 0;
+    }
+
+    if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
 
       http2::normalize_headers(stream->headers);
       if(!http2::check_http2_headers(stream->headers)) {
@@ -1285,19 +1285,18 @@ int hd_on_frame_recv_callback
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
-      if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-        remove_stream_read_timeout(stream);
+    }
 
-        prepare_response(stream, hd);
-      } else {
-        add_stream_read_timeout(stream);
-      }
-      break;
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      remove_stream_read_timeout(stream);
+
+      prepare_response(stream, hd);
+    } else {
+      add_stream_read_timeout(stream);
     }
-    default:
-      break;
-    }
+
     break;
+  }
   case NGHTTP2_SETTINGS:
     if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
       hd->remove_settings_timer();
