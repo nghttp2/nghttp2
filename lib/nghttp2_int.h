@@ -29,8 +29,6 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include <stdint.h>
-
 /* Macros, types and constants for internal use */
 
 #ifdef DEBUGBUILD
