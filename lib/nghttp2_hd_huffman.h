@@ -54,7 +54,7 @@ typedef nghttp2_huff_decode huff_decode_table_type[16];
 typedef struct {
   /* Current huffman decoding state. We stripped leaf nodes, so the
      value range is [0..255], inclusive. */
-  uint8_t state;
+  int16_t state;
   /* nonzero if we can say that the decoding process succeeds at this
      state */
   uint8_t accept;
