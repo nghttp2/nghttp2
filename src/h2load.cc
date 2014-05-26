@@ -35,6 +35,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <future>
 
 #ifdef HAVE_SPDYLAY
 #include <spdylay/spdylay.h>
@@ -550,6 +551,15 @@ std::string get_reqline(const char *uri, const http_parser_url& u)
 } // namespace
 
 namespace {
+std::unique_ptr<Worker> run(std::unique_ptr<Worker> worker)
+{
+  worker->run();
+
+  return worker;
+}
+} // namespace
+
+namespace {
 int client_select_next_proto_cb(SSL* ssl,
                                 unsigned char **out, unsigned char *outlen,
                                 const unsigned char *in, unsigned int inlen,
@@ -888,7 +898,7 @@ int main(int argc, char **argv)
 
   std::cout << "starting benchmark..." << std::endl;
 
-  std::vector<std::thread> threads;
+  std::vector<std::future<std::unique_ptr<Worker>>> futures;
   auto start = std::chrono::steady_clock::now();
 
   std::vector<std::unique_ptr<Worker>> workers;
@@ -899,9 +909,9 @@ int main(int argc, char **argv)
               << nclients << " concurrent clients, "
               << nreqs << " total requests"
               << std::endl;
-    workers.push_back(util::make_unique<Worker>(i, ssl_ctx, nreqs, nclients,
-                                                &config));
-    threads.emplace_back(&Worker::run, workers.back().get());
+    auto worker = util::make_unique<Worker>(i, ssl_ctx, nreqs, nclients,
+                                            &config);
+    futures.push_back(std::async(std::launch::async, run, std::move(worker)));
   }
   auto nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
   auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
@@ -913,19 +923,23 @@ int main(int argc, char **argv)
                 &config);
   worker.run();
 
-  for(size_t i = 0; i < config.nthreads - 1; ++i) {
-    threads[i].join();
-    worker.stats.req_todo += workers[i]->stats.req_todo;
-    worker.stats.req_started += workers[i]->stats.req_started;
-    worker.stats.req_done += workers[i]->stats.req_done;
-    worker.stats.req_success += workers[i]->stats.req_success;
-    worker.stats.req_failed += workers[i]->stats.req_failed;
-    worker.stats.req_error += workers[i]->stats.req_error;
-    worker.stats.bytes_total += workers[i]->stats.bytes_total;
-    worker.stats.bytes_head += workers[i]->stats.bytes_head;
-    worker.stats.bytes_body += workers[i]->stats.bytes_body;
-    for(size_t j = 0; j < 6; ++j) {
-      worker.stats.status[j] += workers[i]->stats.status[j];
+  for(auto& fut : futures) {
+    auto subworker = fut.get();
+    auto& stats = subworker->stats;
+
+    worker.stats.req_todo += stats.req_todo;
+    worker.stats.req_started += stats.req_started;
+    worker.stats.req_done += stats.req_done;
+    worker.stats.req_success += stats.req_success;
+    worker.stats.req_failed += stats.req_failed;
+    worker.stats.req_error += stats.req_error;
+    worker.stats.bytes_total += stats.bytes_total;
+    worker.stats.bytes_head += stats.bytes_head;
+    worker.stats.bytes_body += stats.bytes_body;
+
+    for(size_t i = 0; i < sizeof(stats.status) / sizeof(stats.status[0]);
+        ++i) {
+      worker.stats.status[i] += stats.status[i];
     }
   }
 
