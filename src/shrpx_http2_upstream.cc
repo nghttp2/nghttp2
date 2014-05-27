@@ -355,20 +355,26 @@ int on_frame_recv_callback
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream*>(user_data);
-  auto downstream = upstream->find_downstream(frame->hd.stream_id);
-  if(!downstream) {
-    return 0;
-  }
 
   switch(frame->hd.type) {
   case NGHTTP2_DATA: {
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      auto downstream = upstream->find_downstream(frame->hd.stream_id);
+      if(!downstream) {
+        return 0;
+      }
+
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
     break;
   }
-  case NGHTTP2_HEADERS:
+  case NGHTTP2_HEADERS: {
+    auto downstream = upstream->find_downstream(frame->hd.stream_id);
+    if(!downstream) {
+      return 0;
+    }
+
     if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
       return on_request_headers(upstream, downstream, session, frame);
     }
@@ -379,6 +385,7 @@ int on_frame_recv_callback
     }
 
     break;
+  }
   case NGHTTP2_PRIORITY: {
     // TODO comment out for now
     // rv = downstream->change_priority(frame->priority.pri);
