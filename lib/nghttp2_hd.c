@@ -352,37 +352,29 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
     NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
 
   inflater->ent_keep = NULL;
-  inflater->name_keep = NULL;
-  inflater->value_keep = NULL;
+  inflater->nv_keep = NULL;
   inflater->end_headers_index = 0;
 
   inflater->opcode = NGHTTP2_HD_OPCODE_NONE;
   inflater->state = NGHTTP2_HD_STATE_OPCODE;
 
-  rv = nghttp2_bufs_init(&inflater->namebufs, NGHTTP2_HD_MAX_NAME, 1);
+  rv = nghttp2_bufs_init(&inflater->nvbufs, NGHTTP2_HD_MAX_NV / 2, 2);
 
   if(rv != 0) {
-    goto namebuf_fail;
-  }
-
-  rv = nghttp2_bufs_init(&inflater->valuebufs, NGHTTP2_HD_MAX_VALUE / 2, 2);
-
-  if(rv != 0) {
-    goto valuebuf_fail;
+    goto nvbufs_fail;
   }
 
   inflater->huffman_encoded = 0;
   inflater->index = 0;
   inflater->left = 0;
+  inflater->newnamelen = 0;
   inflater->index_required = 0;
   inflater->no_index = 0;
   inflater->ent_name = NULL;
 
   return 0;
 
- valuebuf_fail:
-  nghttp2_bufs_free(&inflater->namebufs);
- namebuf_fail:
+ nvbufs_fail:
   hd_context_free(&inflater->ctx);
  fail:
   return rv;
@@ -397,10 +389,9 @@ static void hd_inflate_keep_free(nghttp2_hd_inflater *inflater)
     }
     inflater->ent_keep = NULL;
   }
-  free(inflater->name_keep);
-  free(inflater->value_keep);
-  inflater->name_keep = NULL;
-  inflater->value_keep = NULL;
+
+  free(inflater->nv_keep);
+  inflater->nv_keep = NULL;
 }
 
 void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater)
@@ -411,8 +402,7 @@ void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater)
 void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater)
 {
   hd_inflate_keep_free(inflater);
-  nghttp2_bufs_free(&inflater->namebufs);
-  nghttp2_bufs_free(&inflater->valuebufs);
+  nghttp2_bufs_free(&inflater->nvbufs);
   hd_context_free(&inflater->ctx);
 }
 
@@ -1488,27 +1478,27 @@ static int hd_inflate_remove_bufs(nghttp2_hd_inflater *inflater,
                                   nghttp2_nv *nv, int value_only)
 {
   ssize_t rv;
+  size_t buflen;
+  uint8_t *buf;
 
-  if(value_only) {
-    nv->name = NULL;
-  } else {
-    rv = nghttp2_bufs_remove(&inflater->namebufs, &nv->name);
+  rv = nghttp2_bufs_remove(&inflater->nvbufs, &buf);
 
-    if(rv < 0) {
-      return NGHTTP2_ERR_NOMEM;
-    }
-
-    nv->namelen = rv;
-  }
-
-  rv = nghttp2_bufs_remove(&inflater->valuebufs, &nv->value);
   if(rv < 0) {
-    free(nv->name);
-
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nv->valuelen = rv;
+  buflen = rv;
+
+  if(value_only) {
+    nv->name = NULL;
+    nv->namelen = 0;
+  } else {
+    nv->name = buf;
+    nv->namelen = inflater->newnamelen;
+  }
+
+  nv->value = buf + nv->namelen;
+  nv->valuelen = buflen - nv->namelen;
 
   return 0;
 }
@@ -1545,9 +1535,10 @@ static int hd_inflate_commit_newname(nghttp2_hd_inflater *inflater,
     nghttp2_hd_entry *new_ent;
     uint8_t ent_flags;
 
-    ent_flags =
-      NGHTTP2_HD_FLAG_NAME_ALLOC | NGHTTP2_HD_FLAG_VALUE_ALLOC |
-      NGHTTP2_HD_FLAG_NAME_GIFT | NGHTTP2_HD_FLAG_VALUE_GIFT;
+    /* nv->value points to the middle of the buffer pointed by
+       nv->name.  So we just need to keep track of nv->name for memory
+       management. */
+    ent_flags = NGHTTP2_HD_FLAG_NAME_ALLOC | NGHTTP2_HD_FLAG_NAME_GIFT;
 
     new_ent = add_hd_table_incremental(&inflater->ctx, NULL, &nv, ent_flags);
 
@@ -1559,15 +1550,13 @@ static int hd_inflate_commit_newname(nghttp2_hd_inflater *inflater,
     }
 
     free(nv.name);
-    free(nv.value);
 
     return NGHTTP2_ERR_NOMEM;
   }
 
   emit_literal_header(nv_out, &nv);
 
-  inflater->name_keep = nv.name;
-  inflater->value_keep = nv.value;
+  inflater->nv_keep = nv.name;
 
   return 0;
 }
@@ -1642,7 +1631,7 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
 
   emit_literal_header(nv_out, &nv);
 
-  inflater->value_keep = nv.value;
+  inflater->nv_keep = nv.value;
 
   return 0;
 }
@@ -1793,7 +1782,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
     case NGHTTP2_HD_STATE_NEWNAME_READ_NAMELEN:
       rfin = 0;
       rv = hd_inflate_read_len(inflater, &rfin, in, last, 7,
-                               NGHTTP2_HD_MAX_NAME);
+                               NGHTTP2_HD_MAX_NV);
       if(rv < 0) {
         goto fail;
       }
@@ -1815,7 +1804,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       }
       break;
     case NGHTTP2_HD_STATE_NEWNAME_READ_NAMEHUFF:
-      rv = hd_inflate_read_huff(inflater, &inflater->namebufs, in, last);
+      rv = hd_inflate_read_huff(inflater, &inflater->nvbufs, in, last);
       if(rv < 0) {
         goto fail;
       }
@@ -1830,12 +1819,14 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
         goto almost_ok;
       }
+
+      inflater->newnamelen = nghttp2_bufs_len(&inflater->nvbufs);
 
       inflater->state = NGHTTP2_HD_STATE_CHECK_VALUELEN;
 
       break;
     case NGHTTP2_HD_STATE_NEWNAME_READ_NAME:
-      rv = hd_inflate_read(inflater, &inflater->namebufs, in, last);
+      rv = hd_inflate_read(inflater, &inflater->nvbufs, in, last);
       if(rv < 0) {
         goto fail;
       }
@@ -1849,6 +1840,8 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
         goto almost_ok;
       }
+
+      inflater->newnamelen = nghttp2_bufs_len(&inflater->nvbufs);
 
       inflater->state = NGHTTP2_HD_STATE_CHECK_VALUELEN;
 
@@ -1863,7 +1856,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
     case NGHTTP2_HD_STATE_READ_VALUELEN:
       rfin = 0;
       rv = hd_inflate_read_len(inflater, &rfin, in, last, 7,
-                               NGHTTP2_HD_MAX_VALUE);
+                               NGHTTP2_HD_MAX_NV);
       if(rv < 0) {
         goto fail;
       }
@@ -1898,7 +1891,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       }
       break;
     case NGHTTP2_HD_STATE_READ_VALUEHUFF:
-      rv = hd_inflate_read_huff(inflater, &inflater->valuebufs, in, last);
+      rv = hd_inflate_read_huff(inflater, &inflater->nvbufs, in, last);
       if(rv < 0) {
         goto fail;
       }
@@ -1929,7 +1922,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       return in - first;
     case NGHTTP2_HD_STATE_READ_VALUE:
-      rv = hd_inflate_read(inflater, &inflater->valuebufs, in, last);
+      rv = hd_inflate_read(inflater, &inflater->nvbufs, in, last);
       if(rv < 0) {
         DEBUGF(fprintf(stderr, "inflatehd: value read failure %zd: %s\n",
                        rv, nghttp2_strerror(rv)));

@@ -2374,7 +2374,7 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
   nghttp2_frame *frame = malloc(sizeof(nghttp2_frame));
   nghttp2_nv *nva;
   ssize_t nvlen;
-  size_t vallen = NGHTTP2_HD_MAX_VALUE;
+  size_t vallen = NGHTTP2_HD_MAX_NV;
   nghttp2_nv nv[28];
   size_t nnv = ARRLEN(nv);
   size_t i;
