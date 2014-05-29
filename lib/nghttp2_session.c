@@ -5195,7 +5195,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         DEBUGF(fprintf(stderr, "recv: data_readlen=%zu\n", data_readlen));
 
-        if(data_readlen > 0 &&
+        if(stream && data_readlen > 0 &&
            session->callbacks.on_data_chunk_recv_callback) {
           rv = session->callbacks.on_data_chunk_recv_callback
             (session,
