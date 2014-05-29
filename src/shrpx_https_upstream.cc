@@ -44,7 +44,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const size_t OUTBUF_MAX_THRES = 64*1024;
+const size_t OUTBUF_MAX_THRES = 16*1024;
 } // namespace
 
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
