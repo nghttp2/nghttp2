@@ -84,6 +84,7 @@ def dfs(node, root):
 
 NGHTTP2_HUFF_ACCEPTED = 1
 NGHTTP2_HUFF_SYM = 1 << 1
+NGHTTP2_HUFF_FAIL = 1 << 2
 
 def dfs_print(node):
     if node.term is not None:
@@ -100,7 +101,8 @@ def dfs_print(node):
             out = syms[0]
             flags |= NGHTTP2_HUFF_SYM
         if nd is None:
-            id = -1
+            id = 0
+            flags |= NGHTTP2_HUFF_FAIL
         else:
             id = nd.id
             if id is None:
@@ -159,13 +161,14 @@ print ''
 print '''\
 enum {{
   NGHTTP2_HUFF_ACCEPTED = {},
-  NGHTTP2_HUFF_SYM = {}
+  NGHTTP2_HUFF_SYM = {},
+  NGHTTP2_HUFF_FAIL = {},
 }} nghttp2_huff_decode_flag;
-'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM)
+'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM, NGHTTP2_HUFF_FAIL)
 
 print '''\
 typedef struct {
-  int16_t state;
+  uint8_t state;
   uint8_t flags;
   uint8_t sym;
 } nghttp2_huff_decode;
