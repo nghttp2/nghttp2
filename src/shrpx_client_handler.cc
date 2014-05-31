@@ -361,7 +361,13 @@ void ClientHandler::set_bev_cb
 void ClientHandler::set_upstream_timeouts(const timeval *read_timeout,
                                           const timeval *write_timeout)
 {
-  bufferevent_set_timeouts(bev_, read_timeout, write_timeout);
+  auto bev = bufferevent_get_underlying(bev_);
+
+  if(!bev) {
+    bev = bev_;
+  }
+
+  bufferevent_set_timeouts(bev, read_timeout, write_timeout);
 }
 
 int ClientHandler::validate_next_proto()
