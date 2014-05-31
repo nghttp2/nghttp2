@@ -178,8 +178,9 @@ header compression
 <p>The following endpoints are available to try out nghttp2
 implementation.</p>
 <ul>
-<li><p class="first"><a class="reference external" href="https://nghttp2.org/">https://nghttp2.org/</a> (TLS + NPN / ALPN)</p>
-<p>ALPN and NPN offer <tt class="docutils literal"><span class="pre">h2-12</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
+<li><p class="first"><a class="reference external" href="https://nghttp2.org/">https://nghttp2.org/</a> (TLS + NPN)</p>
+<p>NPN offer <tt class="docutils literal"><span class="pre">h2-12</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.
+ALPN is currently disabled.</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://nghttp2.org/">http://nghttp2.org/</a> (Upgrade / Direct)</p>
 <p><tt class="docutils literal"><span class="pre">h2c-12</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.  We configured this server to send
@@ -268,10 +269,13 @@ $ ./configure
 $ make
 </pre></div>
 </div>
-<p>Mac OS X users may need <tt class="docutils literal"><span class="pre">--disable-threads</span></tt> configure option to
-disable multi threading in nghttpd, nghttpx and h2load to prevent them
-from crashing.  Patch is welcome to make multi threading work on Mac
-OS X platform.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Mac OS X users may need <tt class="docutils literal"><span class="pre">--disable-threads</span></tt> configure option to
+disable multi threading in nghttpd, nghttpx and h2load to prevent
+them from crashing.  Patch is welcome to make multi threading work
+on Mac OS X platform.</p>
+</div>
 </div>
 <div class="section" id="building-documentation">
 <h2>Building documentation<a class="headerlink" href="#building-documentation" title="Permalink to this headline">¶</a></h2>
