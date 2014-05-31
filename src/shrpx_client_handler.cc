@@ -59,7 +59,7 @@ namespace {
 void upstream_writecb(bufferevent *bev, void *arg)
 {
   auto handler = static_cast<ClientHandler*>(arg);
-  // We actually depend on write low-warter mark == 0.
+  // We actually depend on write low-water mark == 0.
   if(handler->get_outbuf_length() > 0) {
     // Possibly because of deferred callback, we may get this callback
     // when the output buffer is not empty.
@@ -279,7 +279,7 @@ ClientHandler::ClientHandler(bufferevent *bev,
   }
 
   bufferevent_enable(bev_, EV_READ | EV_WRITE);
-  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
+  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WATERMARK);
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
                         &get_config()->upstream_write_timeout);
   if(ssl_) {

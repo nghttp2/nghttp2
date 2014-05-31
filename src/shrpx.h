@@ -36,6 +36,6 @@
 #define DIE()                                   \
   assert(0);
 
-#define SHRPX_READ_WARTER_MARK (64*1024)
+#define SHRPX_READ_WATERMARK (64*1024)
 
 #endif // SHRPX_H

@@ -481,7 +481,7 @@ int Http2Session::initiate_connection()
       return SHRPX_ERR_NETWORK;
     }
 
-    bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
+    bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WATERMARK);
     bufferevent_enable(bev_, EV_READ);
     bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
     // Set timeout for HTTP2 session

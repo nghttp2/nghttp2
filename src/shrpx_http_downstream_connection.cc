@@ -105,7 +105,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
   http_parser_init(&response_htp_, HTTP_RESPONSE);
   response_htp_.data = downstream_;
 
-  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WARTER_MARK);
+  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WATERMARK);
   bufferevent_enable(bev_, EV_READ);
   bufferevent_setcb(bev_,
                     upstream->get_downstream_readcb(),
