@@ -272,19 +272,25 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       return;
     }
 
-    int fd = bufferevent_getfd(bev);
+    auto fd = bufferevent_getfd(bev);
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-                  reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
+                  reinterpret_cast<char*>(&val), sizeof(val)) == -1) {
       SSLOG(WARNING, http2session)
         << "Setting option TCP_NODELAY failed: errno=" << errno;
     }
-  } else if(events & BEV_EVENT_EOF) {
+    return;
+  }
+
+  if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "EOF";
     }
     http2session->disconnect();
-  } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
+    return;
+  }
+
+  if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
         SSLOG(INFO, http2session) << "Network error";
@@ -293,6 +299,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       }
     }
     http2session->disconnect();
+    return;
   }
 }
 } // namespace
@@ -350,12 +357,18 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr)
       SSLOG(ERROR, http2session) << "bufferevent_write() failed";
       http2session->disconnect();
     }
-  } else if(events & BEV_EVENT_EOF) {
+    return;
+  }
+
+  if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "Proxy EOF";
     }
     http2session->disconnect();
-  } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
+    return;
+  }
+
+  if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
         SSLOG(INFO, http2session) << "Network error";
@@ -364,6 +377,7 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr)
       }
     }
     http2session->disconnect();
+    return;
   }
 }
 } // namespace
@@ -409,7 +423,11 @@ int Http2Session::initiate_connection()
     proxy_htp_->data = this;
 
     state_ = PROXY_CONNECTING;
-  } else if(state_ == DISCONNECTED || state_ == PROXY_CONNECTED) {
+
+    return 0;
+  }
+
+  if(state_ == DISCONNECTED || state_ == PROXY_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Connecting to downstream server";
     }
@@ -492,11 +510,12 @@ int Http2Session::initiate_connection()
     if(state_ != CONNECTED) {
       state_ = CONNECTING;
     }
-  } else {
-    // Unreachable
-    DIE();
+
+    return 0;
   }
-  return 0;
+
+  // Unreachable
+  DIE();
 }
 
 void Http2Session::unwrap_free_bev()
@@ -517,10 +536,13 @@ int htp_hdrs_completecb(http_parser *htp)
       SSLOG(INFO, http2session) << "Tunneling success";
     }
     http2session->set_state(Http2Session::PROXY_CONNECTED);
-  } else {
-    SSLOG(WARNING, http2session) << "Tunneling failed";
-    http2session->set_state(Http2Session::PROXY_FAILED);
+
+    return 0;
   }
+
+  SSLOG(WARNING, http2session) << "Tunneling failed";
+  http2session->set_state(Http2Session::PROXY_FAILED);
+
   return 0;
 }
 } // namespace

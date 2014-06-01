@@ -103,37 +103,41 @@ void on_stream_close_callback
                          << " is being closed";
   }
   auto downstream = upstream->find_downstream(stream_id);
-  if(downstream) {
-    if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      upstream->remove_downstream(downstream);
-      delete downstream;
-    } else {
-      downstream->set_request_state(Downstream::STREAM_CLOSED);
-      if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-        // At this point, downstream response was read
-        if(!downstream->get_upgraded() &&
-           !downstream->get_response_connection_close()) {
-          // Keep-alive
-          auto dconn = downstream->get_downstream_connection();
-          if(dconn) {
-            dconn->detach_downstream(downstream);
-          }
-        }
-        upstream->remove_downstream(downstream);
-        delete downstream;
-      } else {
-        // At this point, downstream read may be paused.
+  if(!downstream) {
+    return;
+  }
 
-        // If shrpx_downstream::push_request_headers() failed, the
-        // error is handled here.
-        upstream->remove_downstream(downstream);
-        delete downstream;
-        // How to test this case? Request sufficient large download
-        // and make client send RST_STREAM after it gets first DATA
-        // frame chunk.
+  if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+    upstream->remove_downstream(downstream);
+    delete downstream;
+    return;
+  }
+
+  downstream->set_request_state(Downstream::STREAM_CLOSED);
+  if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    // At this point, downstream response was read
+    if(!downstream->get_upgraded() &&
+       !downstream->get_response_connection_close()) {
+      // Keep-alive
+      auto dconn = downstream->get_downstream_connection();
+      if(dconn) {
+        dconn->detach_downstream(downstream);
       }
     }
+    upstream->remove_downstream(downstream);
+    delete downstream;
+    return;
   }
+
+  // At this point, downstream read may be paused.
+
+  // If shrpx_downstream::push_request_headers() failed, the
+  // error is handled here.
+  upstream->remove_downstream(downstream);
+  delete downstream;
+  // How to test this case? Request sufficient large download
+  // and make client send RST_STREAM after it gets first DATA
+  // frame chunk.
 }
 } // namespace
 
@@ -245,43 +249,49 @@ void on_data_chunk_recv_callback(spdylay_session *session,
 {
   auto upstream = static_cast<SpdyUpstream*>(user_data);
   auto downstream = upstream->find_downstream(stream_id);
-  if(downstream) {
-    if(downstream->push_upload_data_chunk(data, len) != 0) {
-      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-      return;
+
+  if(!downstream) {
+    return;
+  }
+
+  if(downstream->push_upload_data_chunk(data, len) != 0) {
+    upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    return;
+  }
+
+  if(!upstream->get_flow_control()) {
+    return;
+  }
+
+  // If connection-level window control is not enabled (e.g,
+  // spdy/3), spdylay_session_get_recv_data_length() is always
+  // returns 0.
+  if(spdylay_session_get_recv_data_length(session) >
+     std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
+              1 << get_config()->http2_upstream_connection_window_bits)) {
+    if(LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream)
+        << "Flow control error on connection: "
+        << "recv_window_size="
+        << spdylay_session_get_recv_data_length(session)
+        << ", window_size="
+        << (1 << get_config()->http2_upstream_connection_window_bits);
     }
-    if(upstream->get_flow_control()) {
-      // If connection-level window control is not enabled (e.g,
-      // spdy/3), spdylay_session_get_recv_data_length() is always
-      // returns 0.
-      if(spdylay_session_get_recv_data_length(session) >
-         std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
-                  1 << get_config()->http2_upstream_connection_window_bits)) {
-        if(LOG_ENABLED(INFO)) {
-          ULOG(INFO, upstream)
-            << "Flow control error on connection: "
-            << "recv_window_size="
-            << spdylay_session_get_recv_data_length(session)
-            << ", window_size="
-            << (1 << get_config()->http2_upstream_connection_window_bits);
-        }
-        spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
-        return;
-      }
-      if(spdylay_session_get_stream_recv_data_length(session, stream_id) >
-         std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
-                  1 << get_config()->http2_upstream_window_bits)) {
-        if(LOG_ENABLED(INFO)) {
-          ULOG(INFO, upstream)
-            << "Flow control error: recv_window_size="
-            << spdylay_session_get_stream_recv_data_length(session, stream_id)
-            << ", initial_window_size="
-            << (1 << get_config()->http2_upstream_window_bits);
-        }
-        upstream->rst_stream(downstream, SPDYLAY_FLOW_CONTROL_ERROR);
-        return;
-      }
+    spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
+    return;
+  }
+  if(spdylay_session_get_stream_recv_data_length(session, stream_id) >
+     std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
+              1 << get_config()->http2_upstream_window_bits)) {
+    if(LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream)
+        << "Flow control error: recv_window_size="
+        << spdylay_session_get_stream_recv_data_length(session, stream_id)
+        << ", initial_window_size="
+        << (1 << get_config()->http2_upstream_window_bits);
     }
+    upstream->rst_stream(downstream, SPDYLAY_FLOW_CONTROL_ERROR);
+    return;
   }
 }
 } // namespace
@@ -520,11 +530,11 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     // on_stream_close_callback.
     upstream->rst_stream(downstream, infer_upstream_rst_stream_status_code
                          (downstream->get_response_rst_stream_error_code()));
-    downstream->set_downstream_connection(0);
+    downstream->set_downstream_connection(nullptr);
     delete dconn;
-    dconn = 0;
+    dconn = nullptr;
   } else {
-    int rv = downstream->on_read();
+    auto rv = downstream->on_read();
     if(rv != 0) {
       if(LOG_ENABLED(INFO)) {
         DCLOG(INFO, dconn) << "HTTP parser failure";
@@ -541,9 +551,9 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
       downstream->set_response_state(Downstream::MSG_COMPLETE);
       // Clearly, we have to close downstream connection on http parser
       // failure.
-      downstream->set_downstream_connection(0);
+      downstream->set_downstream_connection(nullptr);
       delete dconn;
-      dconn = 0;
+      dconn = nullptr;
     }
   }
   if(upstream->send() != 0) {
@@ -573,6 +583,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
   auto dconn = static_cast<DownstreamConnection*>(ptr);
   auto downstream = dconn->get_downstream();
   auto upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
+
   if(events & BEV_EVENT_CONNECTED) {
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Connection established. stream_id="
@@ -585,7 +596,10 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       DCLOG(WARNING, dconn) << "Setting option TCP_NODELAY failed: errno="
                             << errno;
     }
-  } else if(events & BEV_EVENT_EOF) {
+    return;
+  }
+
+  if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
     }
@@ -594,41 +608,46 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       // the first place. We can delete downstream.
       upstream->remove_downstream(downstream);
       delete downstream;
-    } else {
-      // Delete downstream connection. If we don't delete it here, it
-      // will be pooled in on_stream_close_callback.
-      downstream->set_downstream_connection(0);
-      delete dconn;
-      dconn = 0;
-      // downstream wil be deleted in on_stream_close_callback.
-      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-        // Server may indicate the end of the request by EOF
-        if(LOG_ENABLED(INFO)) {
-          ULOG(INFO, upstream) << "Downstream body was ended by EOF";
-        }
-        downstream->set_response_state(Downstream::MSG_COMPLETE);
+      return;
+    }
 
-        // For tunneled connection, MSG_COMPLETE signals
-        // spdy_data_read_callback to send RST_STREAM after pending
-        // response body is sent. This is needed to ensure that
-        // RST_STREAM is sent after all pending data are sent.
-        upstream->on_downstream_body_complete(downstream);
-      } else if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-        // If stream was not closed, then we set MSG_COMPLETE and let
-        // on_stream_close_callback delete downstream.
-        if(upstream->error_reply(downstream, 502) != 0) {
-          delete upstream->get_client_handler();
-          return;
-        }
-        downstream->set_response_state(Downstream::MSG_COMPLETE);
+    // Delete downstream connection. If we don't delete it here, it
+    // will be pooled in on_stream_close_callback.
+    downstream->set_downstream_connection(nullptr);
+    delete dconn;
+    dconn = nullptr;
+    // downstream wil be deleted in on_stream_close_callback.
+    if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+      // Server may indicate the end of the request by EOF
+      if(LOG_ENABLED(INFO)) {
+        ULOG(INFO, upstream) << "Downstream body was ended by EOF";
       }
-      if(upstream->send() != 0) {
+      downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+      // For tunneled connection, MSG_COMPLETE signals
+      // spdy_data_read_callback to send RST_STREAM after pending
+      // response body is sent. This is needed to ensure that
+      // RST_STREAM is sent after all pending data are sent.
+      upstream->on_downstream_body_complete(downstream);
+    } else if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+      // If stream was not closed, then we set MSG_COMPLETE and let
+      // on_stream_close_callback delete downstream.
+      if(upstream->error_reply(downstream, 502) != 0) {
         delete upstream->get_client_handler();
         return;
       }
-      // At this point, downstream may be deleted.
+      downstream->set_response_state(Downstream::MSG_COMPLETE);
     }
-  } else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
+    if(upstream->send() != 0) {
+      delete upstream->get_client_handler();
+      return;
+    }
+    // At this point, downstream may be deleted.
+
+    return;
+  }
+
+  if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(LOG_ENABLED(INFO)) {
       if(events & BEV_EVENT_ERROR) {
         DCLOG(INFO, dconn) << "Downstream network error: "
@@ -644,42 +663,45 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
       upstream->remove_downstream(downstream);
       delete downstream;
-    } else {
-      // Delete downstream connection. If we don't delete it here, it
-      // will be pooled in on_stream_close_callback.
-      downstream->set_downstream_connection(0);
-      delete dconn;
-      dconn = 0;
-      if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-        // For SSL tunneling, we issue RST_STREAM. For other types of
-        // stream, we don't have to do anything since response was
-        // complete.
-        if(downstream->get_upgraded()) {
-          upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-        }
-      } else {
-        if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-          upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-        } else {
-          unsigned int status;
-          if(events & BEV_EVENT_TIMEOUT) {
-            status = 504;
-          } else {
-            status = 502;
-          }
-          if(upstream->error_reply(downstream, status) != 0) {
-            delete upstream->get_client_handler();
-            return;
-          }
-        }
-        downstream->set_response_state(Downstream::MSG_COMPLETE);
-      }
-      if(upstream->send() != 0) {
-        delete upstream->get_client_handler();
-        return;
-      }
-      // At this point, downstream may be deleted.
+      return;
     }
+
+    // Delete downstream connection. If we don't delete it here, it
+    // will be pooled in on_stream_close_callback.
+    downstream->set_downstream_connection(nullptr);
+    delete dconn;
+    dconn = nullptr;
+
+    if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      // For SSL tunneling, we issue RST_STREAM. For other types of
+      // stream, we don't have to do anything since response was
+      // complete.
+      if(downstream->get_upgraded()) {
+        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      }
+    } else {
+      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+        upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      } else {
+        unsigned int status;
+        if(events & BEV_EVENT_TIMEOUT) {
+          status = 504;
+        } else {
+          status = 502;
+        }
+        if(upstream->error_reply(downstream, status) != 0) {
+          delete upstream->get_client_handler();
+          return;
+        }
+      }
+      downstream->set_response_state(Downstream::MSG_COMPLETE);
+    }
+    if(upstream->send() != 0) {
+      delete upstream->get_client_handler();
+      return;
+    }
+    // At this point, downstream may be deleted.
+    return;
   }
 }
 } // namespace
