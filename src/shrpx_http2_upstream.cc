@@ -594,17 +594,30 @@ int Http2Upstream::on_read()
   ssize_t rv = 0;
   auto bev = handler_->get_bev();
   auto input = bufferevent_get_input(bev);
-  auto inputlen = evbuffer_get_length(input);
-  auto mem = evbuffer_pullup(input, -1);
 
-  rv = nghttp2_session_mem_recv(session_, mem, inputlen);
-  if(rv < 0) {
-    ULOG(ERROR, this) << "nghttp2_session_recv() returned error: "
-                      << nghttp2_strerror(rv);
-    return -1;
+  for(;;) {
+    auto inputlen = evbuffer_get_contiguous_space(input);
+
+    if(inputlen == 0) {
+      assert(evbuffer_get_length(input) == 0);
+
+      return send();
+    }
+
+    auto mem = evbuffer_pullup(input, inputlen);
+
+    rv = nghttp2_session_mem_recv(session_, mem, inputlen);
+    if(rv < 0) {
+      ULOG(ERROR, this) << "nghttp2_session_recv() returned error: "
+                        << nghttp2_strerror(rv);
+      return -1;
+    }
+
+    if(evbuffer_drain(input, rv) != 0) {
+      DCLOG(FATAL, this) << "evbuffer_drain() failed";
+      return -1;
+    }
   }
-  evbuffer_drain(input, rv);
-  return send();
 }
 
 int Http2Upstream::on_write()

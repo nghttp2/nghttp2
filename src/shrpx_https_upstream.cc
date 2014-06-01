@@ -264,97 +264,139 @@ int HttpsUpstream::on_read()
 {
   auto bev = handler_->get_bev();
   auto input = bufferevent_get_input(bev);
-  size_t inputlen = evbuffer_get_length(input);
-  auto mem = evbuffer_pullup(input, -1);
-
-  if(inputlen == 0) {
-    return 0;
-  }
   auto downstream = get_downstream();
+
   // downstream can be nullptr here, because it is initialized in the
   // callback chain called by http_parser_execute()
   if(downstream && downstream->get_upgraded()) {
-    int rv = downstream->push_upload_data_chunk
-      (reinterpret_cast<const uint8_t*>(mem), inputlen);
-    if(rv != 0) {
-      return -1;
-    }
-    if(evbuffer_drain(input, inputlen) != 0) {
-      ULOG(FATAL, this) << "evbuffer_drain() failed";
-      return -1;
-    }
-    if(downstream->get_output_buffer_full()) {
-      if(LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "Downstream output buffer is full";
-      }
-      pause_read(SHRPX_NO_BUFFER);
-    }
-    return 0;
-  }
+    for(;;) {
+      auto inputlen = evbuffer_get_contiguous_space(input);
 
-  size_t nread = http_parser_execute(&htp_, &htp_hooks,
-                                     reinterpret_cast<const char*>(mem),
-                                     inputlen);
-  if(evbuffer_drain(input, nread) != 0) {
-    ULOG(FATAL, this) << "evbuffer_drain() failed";
-    return -1;
-  }
-  // Well, actually header length + some body bytes
-  current_header_length_ += nread;
-  // Get downstream again because it may be initialized in http parser
-  // execution
-  downstream = get_downstream();
-  auto handler = get_client_handler();
-  auto htperr = HTTP_PARSER_ERRNO(&htp_);
-  if(htperr == HPE_PAUSED) {
-    if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      handler->set_should_close_after_write(true);
-      // Following paues_read is needed to avoid reading next data.
-      pause_read(SHRPX_MSG_BLOCK);
-      if(error_reply(503) != 0) {
+      if(inputlen == 0) {
+        return 0;
+      }
+
+      auto mem = evbuffer_pullup(input, inputlen);
+
+      auto rv = downstream->push_upload_data_chunk
+        (reinterpret_cast<const uint8_t*>(mem), inputlen);
+
+      if(rv != 0) {
         return -1;
       }
-      // Downstream gets deleted after response body is read.
-    } else {
-      assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
-      if(downstream->get_downstream_connection() == 0) {
-        // Error response has already be sent
-        assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
-        delete_downstream();
-      } else {
-        if(handler->get_http2_upgrade_allowed() &&
-           downstream->http2_upgrade_request()) {
-          if(handler->perform_http2_upgrade(this) != 0) {
-            return -1;
-          }
-          return 0;
-        }
-        pause_read(SHRPX_MSG_BLOCK);
+
+      if(evbuffer_drain(input, inputlen) != 0) {
+        ULOG(FATAL, this) << "evbuffer_drain() failed";
+        return -1;
       }
-    }
-  } else if(htperr == HPE_OK) {
-    // downstream can be NULL here.
-    if(downstream) {
+
       if(downstream->get_output_buffer_full()) {
         if(LOG_ENABLED(INFO)) {
           ULOG(INFO, this) << "Downstream output buffer is full";
         }
         pause_read(SHRPX_NO_BUFFER);
+
+        return 0;
       }
     }
-  } else {
-    if(LOG_ENABLED(INFO)) {
-      ULOG(INFO, this) << "HTTP parse failure: "
-                       << "(" << http_errno_name(htperr) << ") "
-                       << http_errno_description(htperr);
+  }
+
+  for(;;) {
+    auto inputlen = evbuffer_get_contiguous_space(input);
+
+    if(inputlen == 0) {
+      return 0;
     }
-    handler->set_should_close_after_write(true);
-    pause_read(SHRPX_MSG_BLOCK);
-    if(error_reply(400) != 0) {
+
+    auto mem = evbuffer_pullup(input, inputlen);
+
+    auto nread = http_parser_execute(&htp_, &htp_hooks,
+                                     reinterpret_cast<const char*>(mem),
+                                     inputlen);
+
+    if(evbuffer_drain(input, nread) != 0) {
+      ULOG(FATAL, this) << "evbuffer_drain() failed";
       return -1;
     }
+
+    // Well, actually header length + some body bytes
+    current_header_length_ += nread;
+
+    // Get downstream again because it may be initialized in http parser
+    // execution
+    downstream = get_downstream();
+
+    auto handler = get_client_handler();
+    auto htperr = HTTP_PARSER_ERRNO(&htp_);
+
+    if(htperr == HPE_PAUSED) {
+
+      assert(downstream);
+
+      if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+        handler->set_should_close_after_write(true);
+        // Following paues_read is needed to avoid reading next data.
+        pause_read(SHRPX_MSG_BLOCK);
+        if(error_reply(503) != 0) {
+          return -1;
+        }
+        // Downstream gets deleted after response body is read.
+        return 0;
+      }
+
+      assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
+
+      if(downstream->get_downstream_connection() == nullptr) {
+        // Error response has already be sent
+        assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
+        delete_downstream();
+
+        return 0;
+      }
+
+      if(handler->get_http2_upgrade_allowed() &&
+         downstream->http2_upgrade_request()) {
+
+        if(handler->perform_http2_upgrade(this) != 0) {
+          return -1;
+        }
+
+        return 0;
+      }
+
+      pause_read(SHRPX_MSG_BLOCK);
+
+      return 0;
+    }
+
+    if(htperr != HPE_OK) {
+      if(LOG_ENABLED(INFO)) {
+        ULOG(INFO, this) << "HTTP parse failure: "
+                         << "(" << http_errno_name(htperr) << ") "
+                         << http_errno_description(htperr);
+      }
+
+      handler->set_should_close_after_write(true);
+      pause_read(SHRPX_MSG_BLOCK);
+
+      if(error_reply(400) != 0) {
+        return -1;
+      }
+
+      return 0;
+    }
+
+    // downstream can be NULL here.
+    if(downstream && downstream->get_output_buffer_full()) {
+      if(LOG_ENABLED(INFO)) {
+        ULOG(INFO, this) << "Downstream output buffer is full";
+      }
+
+      pause_read(SHRPX_NO_BUFFER);
+
+      return 0;
+    }
   }
-  return 0;
 }
 
 int HttpsUpstream::on_write()

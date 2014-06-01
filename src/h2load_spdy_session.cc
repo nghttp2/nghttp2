@@ -24,6 +24,8 @@
  */
 #include "h2load_spdy_session.h"
 
+#include <cassert>
+
 #include "h2load.h"
 
 namespace h2load {
@@ -163,16 +165,32 @@ void SpdySession::submit_request()
 ssize_t SpdySession::on_read()
 {
   int rv;
+  size_t nread = 0;
   auto input = bufferevent_get_input(client_->bev);
-  auto inputlen = evbuffer_get_length(input);
-  auto mem = evbuffer_pullup(input, -1);
 
-  rv = spdylay_session_mem_recv(session_, mem, inputlen);
-  if(rv < 0) {
-    return -1;
+  for(;;) {
+    auto inputlen = evbuffer_get_contiguous_space(input);
+
+    if(inputlen == 0) {
+      assert(evbuffer_get_length(input) == 0);
+
+      return nread;
+    }
+
+    auto mem = evbuffer_pullup(input, inputlen);
+
+    rv = spdylay_session_mem_recv(session_, mem, inputlen);
+
+    if(rv < 0) {
+      return -1;
+    }
+
+    nread += rv;
+
+    if(evbuffer_drain(input, rv) != 0) {
+      return -1;
+    }
   }
-  evbuffer_drain(input, rv);
-  return rv;
 }
 
 int SpdySession::on_write()

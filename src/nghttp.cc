@@ -651,53 +651,75 @@ struct HttpClient {
   {
     int rv;
     auto input = bufferevent_get_input(bev);
-    auto inputlen = evbuffer_get_length(input);
-    if(inputlen == 0) {
-      return 0;
-    }
-    auto mem = evbuffer_pullup(input, -1);
-    auto nread = http_parser_execute(htp.get(), &htp_hooks,
-                                     reinterpret_cast<const char*>(mem),
-                                     inputlen);
-    if(config.verbose) {
-      std::cout.write(reinterpret_cast<const char*>(mem), nread);
-    }
-    evbuffer_drain(input, nread);
 
-    auto htperr = HTTP_PARSER_ERRNO(htp.get());
-    if(htperr == HPE_OK) {
+    for(;;) {
+      auto inputlen = evbuffer_get_contiguous_space(input);
+
+      if(inputlen == 0) {
+        assert(evbuffer_get_length(input) == 0);
+
+        return 0;
+      }
+
+      auto mem = evbuffer_pullup(input, inputlen);
+
+      auto nread = http_parser_execute(htp.get(), &htp_hooks,
+                                       reinterpret_cast<const char*>(mem),
+                                       inputlen);
+
+      if(config.verbose) {
+        std::cout.write(reinterpret_cast<const char*>(mem), nread);
+      }
+
+      if(evbuffer_drain(input, nread) != 0) {
+        return -1;
+      }
+
+      auto htperr = HTTP_PARSER_ERRNO(htp.get());
+
+      if(htperr != HPE_OK) {
+        std::cerr << "Failed to parse HTTP Upgrade response header: "
+                  << "(" << http_errno_name(htperr) << ") "
+                  << http_errno_description(htperr) << std::endl;
+        return -1;
+      }
+
       if(upgrade_response_complete) {
+
         if(config.verbose) {
           std::cout << std::endl;
         }
+
         if(upgrade_response_status_code == 101) {
           if(config.verbose) {
             print_timer();
             std::cout << " HTTP Upgrade success" << std::endl;
           }
+
           bufferevent_setcb(bev, readcb, writecb, eventcb, this);
+
           rv = on_connect();
+
           if(rv != 0) {
             return rv;
           }
+
           // Read remaining data in the buffer because it is not
           // notified callback anymore.
           rv = on_read();
+
           if(rv != 0) {
             return rv;
           }
-        } else {
-          std::cerr << "HTTP Upgrade failed" << std::endl;
-          return -1;
+
+          return 0;
         }
+
+        std::cerr << "HTTP Upgrade failed" << std::endl;
+
+        return -1;
       }
-    } else {
-      std::cerr << "Failed to parse HTTP Upgrade response header: "
-                << "(" << http_errno_name(htperr) << ") "
-                << http_errno_description(htperr) << std::endl;
-      return -1;
     }
-    return 0;
   }
 
   int on_connect()
@@ -776,18 +798,30 @@ struct HttpClient {
   {
     int rv;
     auto input = bufferevent_get_input(bev);
-    auto inputlen = evbuffer_get_length(input);
-    auto mem = evbuffer_pullup(input, -1);
 
-    rv = nghttp2_session_mem_recv(session, mem, inputlen);
-    if(rv < 0) {
-      std::cerr << "nghttp2_session_mem_recv() returned error: "
-                << nghttp2_strerror(rv) << std::endl;
-      return -1;
+    for(;;) {
+      auto inputlen = evbuffer_get_contiguous_space(input);
+
+      if(inputlen == 0) {
+        assert(evbuffer_get_length(input) == 0);
+
+        return on_write();
+      }
+
+      auto mem = evbuffer_pullup(input, inputlen);
+
+      rv = nghttp2_session_mem_recv(session, mem, inputlen);
+
+      if(rv < 0) {
+        std::cerr << "nghttp2_session_mem_recv() returned error: "
+                  << nghttp2_strerror(rv) << std::endl;
+        return -1;
+      }
+
+      if(evbuffer_drain(input, rv) != 0) {
+        return -1;
+      }
     }
-    evbuffer_drain(input, rv);
-
-    return on_write();
   }
 
   int on_write()

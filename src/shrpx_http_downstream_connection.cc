@@ -502,40 +502,64 @@ http_parser_settings htp_hooks = {
 int HttpDownstreamConnection::on_read()
 {
   auto input = bufferevent_get_input(bev_);
-  size_t inputlen = evbuffer_get_length(input);
-  auto mem = evbuffer_pullup(input, -1);
+
   if(downstream_->get_upgraded()) {
     // For upgraded connection, just pass data to the upstream.
-    int rv;
-    rv = downstream_->get_upstream()->on_downstream_body
-      (downstream_, reinterpret_cast<const uint8_t*>(mem), inputlen, true);
-    if(rv != 0) {
-      return rv;
+    for(;;) {
+      auto inputlen = evbuffer_get_contiguous_space(input);
+
+      if(inputlen == 0) {
+        assert(evbuffer_get_length(input) == 0);
+
+        return 0;
+      }
+
+      auto mem = evbuffer_pullup(input, inputlen);
+
+      int rv;
+      rv = downstream_->get_upstream()->on_downstream_body
+        (downstream_, reinterpret_cast<const uint8_t*>(mem), inputlen, true);
+      if(rv != 0) {
+        return rv;
+      }
+      if(evbuffer_drain(input, inputlen) != 0) {
+        DCLOG(FATAL, this) << "evbuffer_drain() failed";
+        return -1;
+      }
     }
-    if(evbuffer_drain(input, inputlen) != 0) {
-      DCLOG(FATAL, this) << "evbuffer_drain() failed";
-      return -1;
-    }
-    return 0;
   }
-  size_t nread = http_parser_execute(&response_htp_, &htp_hooks,
+
+
+  for(;;) {
+    auto inputlen = evbuffer_get_contiguous_space(input);
+
+    if(inputlen == 0) {
+      assert(evbuffer_get_length(input) == 0);
+      return 0;
+    }
+
+    auto mem = evbuffer_pullup(input, inputlen);
+
+    auto nread = http_parser_execute(&response_htp_, &htp_hooks,
                                      reinterpret_cast<const char*>(mem),
                                      inputlen);
 
-  if(evbuffer_drain(input, nread) != 0) {
-    DCLOG(FATAL, this) << "evbuffer_drain() failed";
-    return -1;
-  }
-  auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
-  if(htperr == HPE_OK) {
-    return 0;
-  } else {
-    if(LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this) << "HTTP parser failure: "
-                        << "(" << http_errno_name(htperr) << ") "
-                        << http_errno_description(htperr);
+    if(evbuffer_drain(input, nread) != 0) {
+      DCLOG(FATAL, this) << "evbuffer_drain() failed";
+      return -1;
     }
-    return SHRPX_ERR_HTTP_PARSE;
+
+    auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
+
+    if(htperr != HPE_OK) {
+      if(LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this) << "HTTP parser failure: "
+                          << "(" << http_errno_name(htperr) << ") "
+                          << http_errno_description(htperr);
+      }
+
+      return SHRPX_ERR_HTTP_PARSE;
+    }
   }
 }
 

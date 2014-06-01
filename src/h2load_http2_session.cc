@@ -153,16 +153,33 @@ void Http2Session::submit_request()
 ssize_t Http2Session::on_read()
 {
   int rv;
-  auto input = bufferevent_get_input(client_->bev);
-  auto inputlen = evbuffer_get_length(input);
-  auto mem = evbuffer_pullup(input, -1);
+  size_t nread = 0;
 
-  rv = nghttp2_session_mem_recv(session_, mem, inputlen);
-  if(rv < 0) {
-    return -1;
+  auto input = bufferevent_get_input(client_->bev);
+
+  for(;;) {
+    auto inputlen = evbuffer_get_contiguous_space(input);
+
+    if(inputlen == 0) {
+      assert(evbuffer_get_length(input) == 0);
+
+      return nread;
+    }
+
+    auto mem = evbuffer_pullup(input, inputlen);
+
+    rv = nghttp2_session_mem_recv(session_, mem, inputlen);
+
+    if(rv < 0) {
+      return -1;
+    }
+
+    nread += rv;
+
+    if(evbuffer_drain(input, rv) != 0) {
+      return -1;
+    }
   }
-  evbuffer_drain(input, rv);
-  return rv;
 }
 
 int Http2Session::on_write()

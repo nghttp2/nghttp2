@@ -541,21 +541,32 @@ http_parser_settings htp_hooks = {
 int Http2Session::on_read_proxy()
 {
   auto input = bufferevent_get_input(bev_);
-  auto mem = evbuffer_pullup(input, -1);
 
-  size_t nread = http_parser_execute(proxy_htp_.get(), &htp_hooks,
-                                     reinterpret_cast<const char*>(mem),
-                                     evbuffer_get_length(input));
+  for(;;) {
+    auto inputlen = evbuffer_get_contiguous_space(input);
 
-  if(evbuffer_drain(input, nread) != 0) {
-    SSLOG(FATAL, this) << "evbuffer_drain() failed";
-    return -1;
-  }
-  auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
-  if(htperr == HPE_OK) {
-    return 0;
-  } else {
-    return -1;
+    if(inputlen == 0) {
+      assert(evbuffer_get_length(input) == 0);
+
+      return 0;
+    }
+
+    auto mem = evbuffer_pullup(input, inputlen);
+
+    size_t nread = http_parser_execute(proxy_htp_.get(), &htp_hooks,
+                                       reinterpret_cast<const char*>(mem),
+                                       inputlen);
+
+    if(evbuffer_drain(input, nread) != 0) {
+      SSLOG(FATAL, this) << "evbuffer_drain() failed";
+      return -1;
+    }
+
+    auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
+
+    if(htperr != HPE_OK) {
+      return -1;
+    }
   }
 }
 
@@ -1250,17 +1261,31 @@ int Http2Session::on_read()
 {
   ssize_t rv = 0;
   auto input = bufferevent_get_input(bev_);
-  auto inputlen = evbuffer_get_length(input);
-  auto mem = evbuffer_pullup(input, -1);
 
-  rv = nghttp2_session_mem_recv(session_, mem, inputlen);
-  if(rv < 0) {
-    SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
-                       << nghttp2_strerror(rv);
-    return -1;
+  for(;;) {
+    auto inputlen = evbuffer_get_contiguous_space(input);
+
+    if(inputlen == 0) {
+      assert(evbuffer_get_length(input) == 0);
+
+      return send();
+    }
+
+    auto mem = evbuffer_pullup(input, inputlen);
+
+    rv = nghttp2_session_mem_recv(session_, mem, inputlen);
+
+    if(rv < 0) {
+      SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
+                         << nghttp2_strerror(rv);
+      return -1;
+    }
+
+    if(evbuffer_drain(input, rv) != 0) {
+      SSLOG(FATAL, this) << "evbuffer_drain() faild";
+      return -1;
+    }
   }
-  evbuffer_drain(input, rv);
-  return send();
 }
 
 int Http2Session::on_write()
