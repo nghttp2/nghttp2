@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Reference &mdash; nghttp2 0.5.0-DEV documentation</title>
+  <title>API Reference &mdash; nghttp2 0.4.1 documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.0-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.4.1 documentation" href="index.html"/>
         <link rel="next" title="Python API Reference" href="python-apiref.html"/>
         <link rel="prev" title="nghttpx - HOW-TO" href="nghttpx-howto.html"/> 
 
@@ -2541,11 +2541,6 @@ HEADERS have END_STREAM set.  The <em>stream_user_data</em> is data
 associated to the stream opened by this request and can be an
 arbitrary pointer, which can be retrieved later by
 <a class="reference internal" href="#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a>.</p>
-<p>This function returns assigned stream ID if it succeeds.  But that
-stream is not opened yet.  The application must not submit frame to
-that stream ID before
-<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
-called for this frame.</p>
 <p>This function returns assigned stream ID if it succeeds, or one of
 the following negative error codes:</p>
 <dl class="docutils">
@@ -2555,6 +2550,14 @@ the following negative error codes:</p>
 <dd>No stream ID is available because maximum stream ID was
 reached.</dd>
 </dl>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This function returns assigned stream ID if it succeeds.  But
+that stream is not opened yet.  The application must not submit
+frame to that stream ID before
+<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
+called for this frame.</p>
+</div>
 </dd></dl>
 
 <dl class="function">
@@ -2632,11 +2635,6 @@ stream state from idle or reserved to open.</p>
 <p>This function is low-level in a sense that the application code can
 specify flags directly.  For usual HTTP request,
 <a class="reference internal" href="#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> is useful.</p>
-<p>This function returns assigned stream ID if it succeeds and
-<em>stream_id</em> is -1.  But that stream is not opened yet.  The
-application must not submit frame to that stream ID before
-<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
-called for this frame.</p>
 <p>This function returns newly assigned stream ID if it succeeds and
 <em>stream_id</em> is -1.  Otherwise, this function returns 0 if it
 succeeds, or one of the following negative error codes:</p>
@@ -2647,6 +2645,14 @@ succeeds, or one of the following negative error codes:</p>
 <dd>No stream ID is available because maximum stream ID was
 reached.</dd>
 </dl>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This function returns assigned stream ID if it succeeds and
+<em>stream_id</em> is -1.  But that stream is not opened yet.  The
+application must not submit frame to that stream ID before
+<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
+called for this frame.</p>
+</div>
 </dd></dl>
 
 <dl class="function">
@@ -2762,11 +2768,6 @@ make it in reserved state.  It is available using
 <a class="reference internal" href="#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a>.  The application can
 access it in <a class="reference internal" href="#c.nghttp2_before_frame_send_callback" title="nghttp2_before_frame_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_before_frame_send_callback</span></tt></a> and
 <a class="reference internal" href="#c.nghttp2_on_frame_send_callback" title="nghttp2_on_frame_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_send_callback</span></tt></a> of this frame.</p>
-<p>This function returns assigned promised stream ID if it succeeds.
-But that stream is not opened yet.  The application must not submit
-frame to that stream ID before
-<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
-called for this frame.</p>
 <p>The client side is not allowed to use this function.</p>
 <p>This function returns assigned promised stream ID if it succeeds,
 or one of the following negative error codes:</p>
@@ -2780,6 +2781,14 @@ client.</dd>
 <dd>No stream ID is available because maximum stream ID was
 reached.</dd>
 </dl>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This function returns assigned promised stream ID if it succeeds.
+But that stream is not opened yet.  The application must not
+submit frame to that stream ID before
+<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
+called for this frame.</p>
+</div>
 </dd></dl>
 
 <dl class="function">
@@ -3220,7 +3229,7 @@ always succeeds.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.0-DEV',
+            VERSION:'0.4.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

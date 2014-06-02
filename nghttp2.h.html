@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.5.0-DEV documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.4.1 documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.0-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.4.1 documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -2335,12 +2335,6 @@
 <span class="cm"> * arbitrary pointer, which can be retrieved later by</span>
 <span class="cm"> * `nghttp2_session_get_stream_user_data()`.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function returns assigned stream ID if it succeeds.  But that</span>
-<span class="cm"> * stream is not opened yet.  The application must not submit frame to</span>
-<span class="cm"> * that stream ID before</span>
-<span class="cm"> * :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> * called for this frame.</span>
-<span class="cm"> *</span>
 <span class="cm"> * This function returns assigned stream ID if it succeeds, or one of</span>
 <span class="cm"> * the following negative error codes:</span>
 <span class="cm"> *</span>
@@ -2349,6 +2343,15 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
 <span class="cm"> *     No stream ID is available because maximum stream ID was</span>
 <span class="cm"> *     reached.</span>
+<span class="cm"> *</span>
+<span class="cm"> * .. warning::</span>
+<span class="cm"> *</span>
+<span class="cm"> *   This function returns assigned stream ID if it succeeds.  But</span>
+<span class="cm"> *   that stream is not opened yet.  The application must not submit</span>
+<span class="cm"> *   frame to that stream ID before</span>
+<span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
+<span class="cm"> *   called for this frame.</span>
+<span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                <span class="k">const</span> <span class="n">nghttp2_priority_spec</span> <span class="o">*</span><span class="n">pri_spec</span><span class="p">,</span>
@@ -2449,12 +2452,6 @@
 <span class="cm"> * specify flags directly.  For usual HTTP request,</span>
 <span class="cm"> * `nghttp2_submit_request()` is useful.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function returns assigned stream ID if it succeeds and</span>
-<span class="cm"> * |stream_id| is -1.  But that stream is not opened yet.  The</span>
-<span class="cm"> * application must not submit frame to that stream ID before</span>
-<span class="cm"> * :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> * called for this frame.</span>
-<span class="cm"> *</span>
 <span class="cm"> * This function returns newly assigned stream ID if it succeeds and</span>
 <span class="cm"> * |stream_id| is -1.  Otherwise, this function returns 0 if it</span>
 <span class="cm"> * succeeds, or one of the following negative error codes:</span>
@@ -2464,6 +2461,15 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
 <span class="cm"> *     No stream ID is available because maximum stream ID was</span>
 <span class="cm"> *     reached.</span>
+<span class="cm"> *</span>
+<span class="cm"> * .. warning::</span>
+<span class="cm"> *</span>
+<span class="cm"> *   This function returns assigned stream ID if it succeeds and</span>
+<span class="cm"> *   |stream_id| is -1.  But that stream is not opened yet.  The</span>
+<span class="cm"> *   application must not submit frame to that stream ID before</span>
+<span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
+<span class="cm"> *   called for this frame.</span>
+<span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                                <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -2611,12 +2617,6 @@
 <span class="cm"> * access it in :type:`nghttp2_before_frame_send_callback` and</span>
 <span class="cm"> * :type:`nghttp2_on_frame_send_callback` of this frame.</span>
 <span class="cm"> *</span>
-<span class="cm"> * This function returns assigned promised stream ID if it succeeds.</span>
-<span class="cm"> * But that stream is not opened yet.  The application must not submit</span>
-<span class="cm"> * frame to that stream ID before</span>
-<span class="cm"> * :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> * called for this frame.</span>
-<span class="cm"> *</span>
 <span class="cm"> * The client side is not allowed to use this function.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns assigned promised stream ID if it succeeds,</span>
@@ -2630,6 +2630,15 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
 <span class="cm"> *     No stream ID is available because maximum stream ID was</span>
 <span class="cm"> *     reached.</span>
+<span class="cm"> *</span>
+<span class="cm"> * .. warning::</span>
+<span class="cm"> *</span>
+<span class="cm"> *   This function returns assigned promised stream ID if it succeeds.</span>
+<span class="cm"> *   But that stream is not opened yet.  The application must not</span>
+<span class="cm"> *   submit frame to that stream ID before</span>
+<span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
+<span class="cm"> *   called for this frame.</span>
+<span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                                     <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -3193,7 +3202,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.0-DEV',
+            VERSION:'0.4.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
