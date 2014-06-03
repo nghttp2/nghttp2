@@ -156,7 +156,7 @@ static int32_t submit_headers_shared_nva
 
   rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
   if(rv < 0) {
-    return rv;
+    return (int)rv;
   }
 
   return submit_headers_shared(session, flags, stream_id,
@@ -279,7 +279,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
     aux_data->data_prd = NULL;
     aux_data->stream_user_data = promised_stream_user_data;
   }
-  rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
+  rv = (int)nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
   if(rv < 0) {
     free(aux_data);
     free(frame);

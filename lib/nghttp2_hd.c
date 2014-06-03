@@ -647,7 +647,7 @@ static int emit_string(nghttp2_bufs *bufs,
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
-    return rv;
+    return (int)rv;
   }
 
   if(huffman) {
@@ -657,7 +657,7 @@ static int emit_string(nghttp2_bufs *bufs,
     rv = nghttp2_bufs_add(bufs, str, len);
   }
 
-  return rv;
+  return (int)rv;
 }
 
 static uint8_t pack_first_byte(int inc_indexing, int no_index)
@@ -700,7 +700,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
                  idx, nv->valuelen, inc_indexing, no_index));
 
   encvallen = nghttp2_hd_huff_encode_count(nv->value, nv->valuelen);
-  blocklen = count_encoded_length(idx + 1, prefixlen);
+  blocklen = count_encoded_length(idx + 1, (int)prefixlen);
   huffman = encvallen < nv->valuelen;
 
   if(!huffman) {
@@ -715,7 +715,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
 
   *bufp = pack_first_byte(inc_indexing, no_index);
 
-  encode_length(bufp, idx + 1, prefixlen);
+  encode_length(bufp, idx + 1, (int)prefixlen);
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
@@ -1000,7 +1000,7 @@ static int check_index_range(nghttp2_hd_context *context, size_t idx)
 
 static int get_max_index(nghttp2_hd_context *context)
 {
-  return context->hd_table.len + STATIC_TABLE_LENGTH - 1;
+  return (int)(context->hd_table.len + STATIC_TABLE_LENGTH - 1);
 }
 
 nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
@@ -1389,7 +1389,7 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
                                     nghttp2_bufs *bufs,
                                     uint8_t *in, uint8_t *last)
 {
-  int rv;
+  ssize_t rv;
   int final = 0;
   if(last - in >= inflater->left) {
     last = in + inflater->left;
@@ -1731,7 +1731,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       }
 
       rfin = 0;
-      rv = hd_inflate_read_len(inflater, &rfin, in, last, prefixlen,
+      rv = hd_inflate_read_len(inflater, &rfin, in, last, (int)prefixlen,
                                get_max_index(&inflater->ctx) + 1);
       if(rv < 0) {
         goto fail;

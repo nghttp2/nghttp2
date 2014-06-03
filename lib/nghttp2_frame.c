@@ -372,7 +372,7 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
   buf->pos -= nv_offset;
 
   if(rv != 0) {
-    return rv;
+    return (int)rv;
   }
 
   if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
@@ -603,7 +603,7 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
   buf->pos -= nv_offset;
 
   if(rv != 0) {
-    return rv;
+    return (int)rv;
   }
 
   nghttp2_put_uint32be(buf->pos, frame->promised_stream_id);
