@@ -258,18 +258,16 @@ static int perform(void)
 static int perform_from_http1text(void)
 {
   char line[1 << 14];
-  std::vector<nghttp2_nv> nva;
   int seq = 0;
   nghttp2_hd_deflater deflater;
   init_deflater(&deflater);
   output_json_header();
   for(;;) {
-    size_t nvlen = 0;
+    std::vector<nghttp2_nv> nva;
     int end = 0;
     size_t inputlen = 0;
-    size_t i;
+
     for(;;) {
-      nghttp2_nv *nv;
       char *rv = fgets(line, sizeof(line), stdin);
       char *val, *val_end;
       if(rv == nullptr) {
@@ -279,9 +277,9 @@ static int perform_from_http1text(void)
         break;
       }
 
-      nva.resize(nvlen);
+      nva.emplace_back();
+      auto& nv = nva.back();
 
-      nv = &nva[nvlen];
       val = strchr(line+1, ':');
       if(val == nullptr) {
         fprintf(stderr, "Bad HTTP/1 header field format at %d.\n", seq);
@@ -294,14 +292,13 @@ static int perform_from_http1text(void)
           ++val_end);
       *val_end = '\0';
 
-      nv->namelen = strlen(line);
-      nv->valuelen = strlen(val);
-      nv->name = (uint8_t*)strdup(line);
-      nv->value = (uint8_t*)strdup(val);
-      nv->flags = NGHTTP2_NV_FLAG_NONE;
+      nv.namelen = strlen(line);
+      nv.valuelen = strlen(val);
+      nv.name = (uint8_t*)strdup(line);
+      nv.value = (uint8_t*)strdup(val);
+      nv.flags = NGHTTP2_NV_FLAG_NONE;
 
-      ++nvlen;
-      inputlen += nv->namelen + nv->valuelen;
+      inputlen += nv.namelen + nv.valuelen;
     }
 
     if(!end) {
@@ -311,10 +308,11 @@ static int perform_from_http1text(void)
       deflate_hd(&deflater, nva, inputlen, seq);
     }
 
-    for(i = 0; i < nvlen; ++i) {
-      free(nva[i].name);
-      free(nva[i].value);
+    for(auto& nv : nva) {
+      free(nv.name);
+      free(nv.value);
     }
+
     if(end) break;
     ++seq;
   }
