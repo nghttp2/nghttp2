@@ -551,11 +551,11 @@ std::string get_reqline(const char *uri, const http_parser_url& u)
 } // namespace
 
 namespace {
-std::unique_ptr<Worker> run(std::unique_ptr<Worker> worker)
+Stats run(std::unique_ptr<Worker> worker)
 {
   worker->run();
 
-  return worker;
+  return worker->stats;
 }
 } // namespace
 
@@ -898,7 +898,7 @@ int main(int argc, char **argv)
 
   std::cout << "starting benchmark..." << std::endl;
 
-  std::vector<std::future<std::unique_ptr<Worker>>> futures;
+  std::vector<std::future<Stats>> futures;
   auto start = std::chrono::steady_clock::now();
 
   std::vector<std::unique_ptr<Worker>> workers;
@@ -924,8 +924,7 @@ int main(int argc, char **argv)
   worker.run();
 
   for(auto& fut : futures) {
-    auto subworker = fut.get();
-    auto& stats = subworker->stats;
+    auto stats = fut.get();
 
     worker.stats.req_todo += stats.req_todo;
     worker.stats.req_started += stats.req_started;
