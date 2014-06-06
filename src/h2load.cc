@@ -890,6 +890,10 @@ int main(int argc, char **argv)
 
   resolve_host();
 
+  if(config.nclients == 1) {
+    config.nthreads = 1;
+  }
+
   size_t nreqs_per_thread = config.nreqs / config.nthreads;
   ssize_t nreqs_rem = config.nreqs % config.nthreads;
 
