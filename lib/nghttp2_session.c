@@ -4158,7 +4158,7 @@ static ssize_t inbound_frame_compute_pad(nghttp2_inbound_frame *iframe)
   DEBUGF(fprintf(stderr, "recv: padlen=%zu\n", padlen));
 
   /* We cannot use iframe->frame.hd.length because of CONTINUATION */
-  if(padlen - (padlen > 255) - 1 > iframe->payloadleft) {
+  if(padlen - (padlen > 256) - 1 > iframe->payloadleft) {
     return -1;
   }
 
