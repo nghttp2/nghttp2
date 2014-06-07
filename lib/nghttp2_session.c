@@ -4078,6 +4078,7 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
     break;
   default:
+    DEBUGF(fprintf(stderr, "recv: ignore unknown settings id=0x%02x\n"));
     return -1;
   }
 
@@ -4898,25 +4899,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       }
 
       if(readlen > 0) {
-        rv = inbound_frame_set_settings_entry(iframe);
-        if(rv != 0) {
-          DEBUGF(fprintf(stderr, "recv: bad settings received\n"));
-
-          rv = nghttp2_session_terminate_session(session,
-                                                 NGHTTP2_PROTOCOL_ERROR);
-          if(nghttp2_is_fatal(rv)) {
-            return rv;
-          }
-
-          if(iframe->payloadleft == 0) {
-            session_inbound_frame_reset(session);
-            break;
-          }
-
-          iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
-
-          break;
-        }
+        inbound_frame_set_settings_entry(iframe);
       }
       if(iframe->payloadleft) {
         inbound_frame_set_mark(iframe, NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH);
