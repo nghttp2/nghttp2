@@ -99,6 +99,39 @@ static int state_reserved_local(nghttp2_session *session,
     nghttp2_session_is_my_stream_id(session, stream->stream_id);
 }
 
+/*
+ * Checks whether received stream_id is valid.
+ * This function returns 1 if it succeeds, or 0.
+ */
+static int session_is_new_peer_stream_id(nghttp2_session *session,
+                                         int32_t stream_id)
+{
+  if(stream_id == 0 || session->last_recv_stream_id >= stream_id) {
+    return 0;
+  }
+  if(session->server) {
+    return stream_id % 2 == 1;
+  } else {
+    return stream_id % 2 == 0;
+  }
+}
+
+static int session_detect_idle_stream(nghttp2_session *session,
+                                      int32_t stream_id)
+{
+  /* Assume that stream object with stream_id does not exist */
+  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+    if(session->next_stream_id <= (uint32_t)stream_id) {
+      return 1;
+    }
+    return 0;
+  }
+  if(session_is_new_peer_stream_id(session, stream_id)) {
+    return 1;
+  }
+  return 0;
+}
+
 int nghttp2_session_terminate_session(nghttp2_session *session,
                                       nghttp2_error_code error_code)
 {
@@ -1123,17 +1156,16 @@ static int session_predicate_priority_send
 {
   nghttp2_stream *stream;
   stream = nghttp2_session_get_stream(session, stream_id);
-  if(stream == NULL) {
-    return NGHTTP2_ERR_STREAM_CLOSED;
-  }
-  if(stream->state == NGHTTP2_STREAM_CLOSING) {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  }
+
   /* PRIORITY must not be sent in reserved(local) */
-  if(state_reserved_local(session, stream)) {
-    return NGHTTP2_ERR_INVALID_STREAM_STATE;
+  if(stream) {
+    if(state_reserved_local(session, stream)) {
+      return NGHTTP2_ERR_INVALID_STREAM_STATE;
+    }
+  } else if(session_detect_idle_stream(session, stream_id)) {
+    return NGHTTP2_ERR_INVALID_STREAM_ID;
   }
-  /* Sending PRIORITY in reserved(remote) state is OK */
+
   return 0;
 }
 
@@ -2091,7 +2123,7 @@ static int session_after_frame_sent(nghttp2_session *session)
     }
     case NGHTTP2_PRIORITY: {
       nghttp2_stream *stream;
-      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+      stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
       if(!stream) {
         break;
       }
@@ -2522,39 +2554,6 @@ static int session_call_on_header(nghttp2_session *session,
     if(rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
-  }
-  return 0;
-}
-
-/*
- * Checks whether received stream_id is valid.
- * This function returns 1 if it succeeds, or 0.
- */
-static int session_is_new_peer_stream_id(nghttp2_session *session,
-                                         int32_t stream_id)
-{
-  if(stream_id == 0 || session->last_recv_stream_id >= stream_id) {
-    return 0;
-  }
-  if(session->server) {
-    return stream_id % 2 == 1;
-  } else {
-    return stream_id % 2 == 0;
-  }
-}
-
-static int session_detect_idle_stream(nghttp2_session *session,
-                                      int32_t stream_id)
-{
-  /* Assume that stream object with stream_id does not exist */
-  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
-    if(session->next_stream_id <= (uint32_t)stream_id) {
-      return 1;
-    }
-    return 0;
-  }
-  if(session_is_new_peer_stream_id(session, stream_id)) {
-    return 1;
   }
   return 0;
 }
@@ -3078,7 +3077,7 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
     return session_handle_invalid_connection(session, frame,
                                              NGHTTP2_PROTOCOL_ERROR);
   }
-  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
   if(!stream) {
     if(session_detect_idle_stream(session, frame->hd.stream_id)) {
       return session_handle_invalid_connection(session, frame,
