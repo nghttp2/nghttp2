@@ -45,11 +45,10 @@
 
 #define NGHTTP2_MAX_PAYLOADLEN 16383
 /* The one frame buffer length for tranmission.  We may use several of
-   them to support CONTINUATION.  To account for padding specifiers
-   (PAD_HIGH and PAD_LOW), we allocate extra 2 bytes, which saves
-   extra large memcopying. */
+   them to support CONTINUATION.  To account for Pad Length field, we
+   allocate extra 1 byte, which saves extra large memcopying. */
 #define NGHTTP2_FRAMEBUF_CHUNKLEN \
-  (NGHTTP2_FRAME_HDLEN + 2 + NGHTTP2_MAX_PAYLOADLEN)
+  (NGHTTP2_FRAME_HDLEN + 1 + NGHTTP2_MAX_PAYLOADLEN)
 
 /* The maximum length of DATA frame payload. */
 #define NGHTTP2_DATA_PAYLOADLEN 4096
@@ -93,8 +92,8 @@ typedef struct {
    */
   nghttp2_data_provider data_prd;
   /**
-   * The number of bytes added as padding. This includes PAD_HIGH and
-   * PAD_LOW.
+   * The number of bytes added as padding.  This includes Pad Length
+   * field (1 byte).
    */
   size_t padlen;
   /**
@@ -169,7 +168,7 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
 /*
  * Unpacks HEADERS frame byte sequence into |frame|.  This function
  * only unapcks bytes that come before name/value header block and
- * after PAD_HIGH and PAD_LOW.
+ * after possible Pad Length field.
  *
  * This function always succeeds and returns 0.
  */
@@ -301,7 +300,7 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
 /*
  * Unpacks PUSH_PROMISE frame byte sequence into |frame|.  This
  * function only unapcks bytes that come before name/value header
- * block and after PAD_HIGH and PAD_LOW.
+ * block and after possible Pad Length field.
  *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
@@ -542,9 +541,9 @@ void nghttp2_frame_blocked_free(nghttp2_blocked *frame);
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
 
 /*
- * Returns the number of padding bytes after payload. The total
- * padding length is given in the |padlen|. The returned value does
- * not include the PAD_HIGH and PAD_LOW.
+ * Returns the number of padding bytes after payload.  The total
+ * padding length is given in the |padlen|.  The returned value does
+ * not include the Pad Length field.
  */
 size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen);
 
@@ -606,11 +605,10 @@ void nghttp2_nv_array_del(nghttp2_nv *nva);
 int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
 
 /*
- * Sets PAD_HIGH and PAD_LOW fields, flags and adjust frame header
- * position of each buffers in |bufs|.  The padding is given in the
- * |padlen|. The |hd| is the frame header for the serialized data.
- * The |type| is used as a frame type when padding requires additional
- * buffers.
+ * Sets Pad Length field and flags and adjusts frame header position
+ * of each buffers in |bufs|.  The number of padding is given in the
+ * |padlen| including Pad Length field.  The |hd| is the frame header
+ * for the serialized data.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -621,6 +619,6 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  *     The length of the resulting frame is too large.
  */
 int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
-                          size_t padlen, nghttp2_frame_type type);
+                          size_t padlen);
 
 #endif /* NGHTTP2_FRAME_H */

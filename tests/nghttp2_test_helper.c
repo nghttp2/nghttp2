@@ -53,8 +53,7 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
   nghttp2_frame_unpack_frame_hd(&frame->hd, in);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS:
-    payloadoff = ((frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH) > 0) +
-      ((frame->hd.flags & NGHTTP2_FLAG_PAD_LOW) > 0);
+    payloadoff = ((frame->hd.flags & NGHTTP2_FLAG_PADDED) > 0);
     rv = nghttp2_frame_unpack_headers_payload
       (&frame->headers, payload + payloadoff, payloadlen - payloadoff);
     break;
@@ -224,14 +223,14 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
 
 int frame_pack_bufs_init(nghttp2_bufs *bufs)
 {
-  /* 2 for PAD_HIGH and PAD_LOW */
-  return nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 2);
+  /* 1 for Pad Length */
+  return nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 1);
 }
 
 void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size)
 {
-  /* 2 for PAD_HIGH and PAD_LOW */
-  nghttp2_bufs_init2(bufs, chunk_size, 16, NGHTTP2_FRAME_HDLEN + 2);
+  /* 1 for Pad Length */
+  nghttp2_bufs_init2(bufs, chunk_size, 16, NGHTTP2_FRAME_HDLEN + 1);
 }
 
 static nghttp2_stream* open_stream_with_all(nghttp2_session *session,

@@ -499,7 +499,7 @@ void test_nghttp2_frame_pack_altsvc(void)
 
   buf = &bufs.head->buf;
 
-  CU_ASSERT(buf->pos - buf->begin == 2);
+  CU_ASSERT(buf->pos - buf->begin == 1);
 
   /* Check no origin case */
 

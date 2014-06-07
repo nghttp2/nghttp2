@@ -239,9 +239,7 @@ void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata)
 
 size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen)
 {
-  return padlen
-    - ((frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH) > 0)
-    - ((frame->hd.flags & NGHTTP2_FLAG_PAD_LOW) > 0);
+  return padlen - ((frame->hd.flags & NGHTTP2_FLAG_PADDED) > 0);
 }
 
 void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
@@ -1042,40 +1040,18 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
 {
   size_t trail_padlen;
 
-  if(padlen > 256) {
-    DEBUGF(fprintf(stderr, "send: padlen=%zu, shift left 2 bytes\n", padlen));
+  DEBUGF(fprintf(stderr, "send: padlen=%zu, shift left 1 bytes\n", padlen));
 
-    memmove(buf->pos - 2, buf->pos, NGHTTP2_FRAME_HDLEN);
+  memmove(buf->pos - 1, buf->pos, NGHTTP2_FRAME_HDLEN);
 
-    buf->pos -= 2;
+  --buf->pos;
 
-    buf->pos[3] |= NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW;
+  buf->pos[3] |= NGHTTP2_FLAG_PADDED;
 
-    nghttp2_put_uint16be(buf->pos, nghttp2_get_uint16(buf->pos) + padlen);
+  nghttp2_put_uint16be(buf->pos, nghttp2_get_uint16(buf->pos) + padlen);
 
-    trail_padlen = padlen - 2;
-    buf->pos[NGHTTP2_FRAME_HDLEN] = trail_padlen >> 8;
-    buf->pos[NGHTTP2_FRAME_HDLEN + 1] = trail_padlen & 0xff;
-
-  } else if(padlen > 0) {
-    DEBUGF(fprintf(stderr, "send: padlen=%zu, shift left 1 bytes\n", padlen));
-
-    memmove(buf->pos - 1, buf->pos, NGHTTP2_FRAME_HDLEN);
-
-    --buf->pos;
-
-    buf->pos[3] |= NGHTTP2_FLAG_PAD_LOW;
-
-    nghttp2_put_uint16be(buf->pos, nghttp2_get_uint16(buf->pos) + padlen);
-
-    trail_padlen = padlen - 1;
-    buf->pos[NGHTTP2_FRAME_HDLEN] = trail_padlen;
-
-  } else {
-    DEBUGF(fprintf(stderr, "send: padlen=0, no shift left was made\n"));
-
-    return;
-  }
+  trail_padlen = padlen - 1;
+  buf->pos[NGHTTP2_FRAME_HDLEN] = trail_padlen;
 
   /* zero out padding */
   memset(buf->last, 0, trail_padlen);
@@ -1087,13 +1063,9 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
 }
 
 int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
-                          size_t padlen, nghttp2_frame_type type)
+                          size_t padlen)
 {
-  int rv;
-  size_t trail_padlen;
-  size_t last_avail;
   nghttp2_buf *buf;
-  nghttp2_frame_hd last_hd;
 
   if(padlen == 0) {
     DEBUGF(fprintf(stderr, "send: padlen = 0, nothing to do\n"));
@@ -1107,87 +1079,28 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
    *  0                   1                   2                   3
    *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   * | | |Frame header   | Frame payload...                          |
-   * +-+-+---------------+-------------------------------------------+
-   * | | |Frame header   | Frame payload...                          |
-   * +-+-+---------------+-------------------------------------------+
-   * | | |Frame header   | Frame payload...                          |
-   * +-+-+---------------+-------------------------------------------+
+   * | |Frame header   | Frame payload...                            :
+   * +-+---------------+---------------------------------------------+
+   * | |Frame header   | Frame payload...                            :
+   * +-+---------------+---------------------------------------------+
+   * | |Frame header   | Frame payload...                            :
+   * +-+---------------+---------------------------------------------+
    *
-   * Since we limit the length of the padding bytes, they are
-   * completely included in one frame payload or across 2 frames.  We
-   * are going to adjust buf->pos of frame which includes part of
-   * padding. And serialize (memmove) frame header in the correct
-   * position. Also extends buf->last to include padding.
+   * We arranged padding so that it is included in the first frame
+   * completely.  For padded frame, we are going to adjust buf->pos of
+   * frame which includes padding and serialize (memmove) frame header
+   * in the correct position.  Also extends buf->last to include
+   * padding.
    */
 
-  nghttp2_bufs_seek_last_present(bufs);
+  buf = &bufs->head->buf;
 
-  buf = &bufs->cur->buf;
+  assert(nghttp2_buf_avail(buf) >= (ssize_t)padlen - 1);
 
-  last_avail = nghttp2_buf_avail(buf);
-
-  if(last_avail >= padlen) {
-    /* Last frame can include all paddings bytes */
-    DEBUGF(fprintf(stderr, "send: last frame includes all paddings\n"));
-
-    frame_set_pad(buf, padlen);
-
-  } else {
-    /* padding across 2 frames */
-
-    /* type = DATA must not be here */
-    assert(type == NGHTTP2_CONTINUATION);
-
-    /* This will seek to the last chain */
-    rv = nghttp2_bufs_advance(bufs);
-    if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
-      return NGHTTP2_ERR_FRAME_SIZE_ERROR;
-    }
-
-    if(rv != 0) {
-      return rv;
-    }
-
-    if(type == NGHTTP2_CONTINUATION) {
-      /* former last frame has END_HEADERS flag set. Clear it. */
-      buf->pos[3] &= ~NGHTTP2_FLAG_END_HEADERS;
-    }
-
-    trail_padlen = nghttp2_buf_avail(buf);
-
-    /* former last frame may have zero buffer available */
-    if(trail_padlen == 0) {
-      DEBUGF(fprintf(stderr,
-                     "send: last frame has no space to include padding\n"));
-    } else {
-      DEBUGF(fprintf(stderr, "send: padding across 2 frames\n"));
-
-      frame_set_pad(buf, trail_padlen);
-    }
-
-    /* This buffer does not have frame header serialized */
-    buf = &bufs->cur->buf;
-
-    trail_padlen = padlen - trail_padlen;
-
-    last_hd.length = 0;
-    last_hd.type = type;
-    last_hd.stream_id = hd->stream_id;
-
-    if(type == NGHTTP2_CONTINUATION) {
-      last_hd.flags = NGHTTP2_FLAG_END_HEADERS;
-    } else {
-      last_hd.flags = NGHTTP2_FLAG_NONE;
-    }
-
-    buf->pos -= NGHTTP2_FRAME_HDLEN;
-    nghttp2_frame_pack_frame_hd(buf->pos, &last_hd);
-
-    frame_set_pad(buf, trail_padlen);
-  }
+  frame_set_pad(buf, padlen);
 
   hd->length += padlen;
+  hd->flags |= NGHTTP2_FLAG_PADDED;
 
   DEBUGF(fprintf(stderr, "send: final payloadlen=%zu, padlen=%zu\n",
                  hd->length, padlen));

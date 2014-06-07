@@ -74,7 +74,7 @@ typedef struct {
   int begin_headers_cb_called;
   nghttp2_nv nv;
   size_t data_chunk_len;
-  size_t padding_boundary;
+  size_t padlen;
 } my_user_data;
 
 static void scripted_data_feed_init2(scripted_data_feed *df,
@@ -225,9 +225,7 @@ static ssize_t select_padding_callback(nghttp2_session *session,
                                        void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
-  return nghttp2_min(max_payloadlen,
-                     (frame->hd.length + ud->padding_boundary - 1)
-                     / ud->padding_boundary * ud->padding_boundary);
+  return nghttp2_min(max_payloadlen, frame->hd.length + ud->padlen);
 }
 
 static ssize_t fixed_length_data_source_read_callback
@@ -4240,13 +4238,11 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void)
   memset(data, 0, sizeof(data));
   hd.length = 357;
   hd.type = NGHTTP2_DATA;
-  hd.flags = NGHTTP2_FLAG_END_STREAM |
-    NGHTTP2_FLAG_PAD_HIGH | NGHTTP2_FLAG_PAD_LOW;;
+  hd.flags = NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PADDED;
   hd.stream_id = 1;
   nghttp2_frame_pack_frame_hd(data, &hd);
-  /* Add 2 byte padding (PAD_LOW itself is padding) */
-  data[NGHTTP2_FRAME_HDLEN] = 1;
-  data[NGHTTP2_FRAME_HDLEN + 1] = 1;
+  /* Set Pad Length field, which itself is padding */
+  data[NGHTTP2_FRAME_HDLEN] = 255;
 
   CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + hd.length) ==
             nghttp2_session_mem_recv(session, data,
@@ -4665,7 +4661,7 @@ void test_nghttp2_session_pack_data_with_padding(void)
 
   nghttp2_session_client_new(&session, &callbacks, &ud);
 
-  ud.padding_boundary = 512;
+  ud.padlen = 63;
 
   nghttp2_submit_request(session, NULL, NULL, 0, &data_prd, NULL);
   ud.block_count = 1;
@@ -4676,33 +4672,8 @@ void test_nghttp2_session_pack_data_with_padding(void)
 
   frame = OB_DATA(session->aob.item);
 
-  CU_ASSERT(ud.padding_boundary - datalen == frame->padlen);
-  /* We no longer set PAD_HIGH and PAD_LOW flags in frame->hd */
-  /* CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PAD_LOW); */
-  /* CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH); */
-
-  /* Check reception of this DATA frame */
-  check_session_recv_data_with_padding(&session->aob.framebufs, datalen);
-
-  nghttp2_session_del(session);
-
-  /* Check without PAD_HIGH */
-  nghttp2_session_client_new(&session, &callbacks, &ud);
-
-  ud.padding_boundary = 64;
-
-  nghttp2_submit_request(session, NULL, NULL, 0, &data_prd, NULL);
-  ud.block_count = 1;
-  ud.data_source_length = datalen;
-  /* Sends HEADERS */
-  CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(NGHTTP2_HEADERS == ud.sent_frame_type);
-
-  frame = OB_DATA(session->aob.item);
-  CU_ASSERT((frame->padlen + datalen) % ud.padding_boundary == 0);
-  /* We no longer set PAD_HIGH and PAD_LOW flags in frame->hd */
-  /* CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PAD_LOW); */
-  CU_ASSERT(0 == (frame->hd.flags & NGHTTP2_FLAG_PAD_HIGH));
+  CU_ASSERT(ud.padlen == frame->padlen);
+  CU_ASSERT(frame->hd.flags & NGHTTP2_FLAG_PADDED);
 
   /* Check reception of this DATA frame */
   check_session_recv_data_with_padding(&session->aob.framebufs, datalen);
@@ -4711,167 +4682,6 @@ void test_nghttp2_session_pack_data_with_padding(void)
 }
 
 void test_nghttp2_session_pack_headers_with_padding(void)
-{
-  nghttp2_session *session, *sv_session;
-  accumulator acc;
-  my_user_data ud;
-  nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[8172];
-  size_t i;
-
-  for(i = 0; i < ARRLEN(nva); ++i) {
-    nva[i].name = (uint8_t*)":path";
-    nva[i].namelen = 5;
-    nva[i].value = (uint8_t*)"/";
-    nva[i].valuelen = 1;
-    nva[i].flags = NGHTTP2_NV_FLAG_NONE;
-  }
-
-  memset(&callbacks, 0, sizeof(callbacks));
-  callbacks.send_callback = accumulator_send_callback;
-  callbacks.on_frame_send_callback = on_frame_send_callback;
-  callbacks.select_padding_callback = select_padding_callback;
-  callbacks.on_frame_recv_callback = on_frame_recv_callback;
-
-  acc.length = 0;
-  ud.acc = &acc;
-
-  /* In this test, padding is laid out across 2 frames: HEADERS and
-     CONTINUATION frames */
-  nghttp2_session_client_new(&session, &callbacks, &ud);
-  nghttp2_session_server_new(&sv_session, &callbacks, &ud);
-
-  ud.padding_boundary = 16385;
-
-  CU_ASSERT(1 ==
-            nghttp2_submit_request(session, NULL,
-                                   nva, ARRLEN(nva), NULL, NULL));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-
-  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
-  ud.frame_recv_cb_called = 0;
-  CU_ASSERT((ssize_t)acc.length ==
-            nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));
-  CU_ASSERT(1 == ud.frame_recv_cb_called);
-  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(sv_session));
-
-  /* Check PUSH_PROMISE */
-  CU_ASSERT(2 ==
-            nghttp2_submit_push_promise(sv_session, NGHTTP2_FLAG_NONE, 1,
-                                        nva, ARRLEN(nva), NULL));
-  acc.length = 0;
-  CU_ASSERT(0 == nghttp2_session_send(sv_session));
-
-  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
-  ud.frame_recv_cb_called = 0;
-  CU_ASSERT((ssize_t)acc.length ==
-            nghttp2_session_mem_recv(session, acc.buf, acc.length));
-  CU_ASSERT(1 == ud.frame_recv_cb_called);
-  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
-
-  nghttp2_session_del(sv_session);
-  nghttp2_session_del(session);
-}
-
-void test_nghttp2_session_pack_headers_with_padding2(void)
-{
-  nghttp2_session *session, *sv_session;
-  accumulator acc;
-  my_user_data ud;
-  nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[16364];
-  size_t i;
-
-  for(i = 0; i < ARRLEN(nva); ++i) {
-    nva[i].name = (uint8_t*)":path";
-    nva[i].namelen = 5;
-    nva[i].value = (uint8_t*)"/";
-    nva[i].valuelen = 1;
-    nva[i].flags = NGHTTP2_NV_FLAG_NONE;
-  }
-
-  memset(&callbacks, 0, sizeof(callbacks));
-  callbacks.send_callback = accumulator_send_callback;
-  callbacks.on_frame_send_callback = on_frame_send_callback;
-  callbacks.select_padding_callback = select_padding_callback;
-  callbacks.on_frame_recv_callback = on_frame_recv_callback;
-
-  acc.length = 0;
-  ud.acc = &acc;
-
-  /* In this test, padding is laid out across 2 CONTINUATION frames */
-  nghttp2_session_client_new(&session, &callbacks, &ud);
-  nghttp2_session_server_new(&sv_session, &callbacks, &ud);
-
-  ud.padding_boundary = 16385;
-
-  CU_ASSERT(1 ==
-            nghttp2_submit_request(session, NULL,
-                                   nva, ARRLEN(nva), NULL, NULL));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-
-  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
-
-  ud.frame_recv_cb_called = 0;
-  CU_ASSERT((ssize_t)acc.length ==
-            nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));
-  CU_ASSERT(1 == ud.frame_recv_cb_called);
-  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(sv_session));
-
-  nghttp2_session_del(sv_session);
-  nghttp2_session_del(session);
-}
-
-void test_nghttp2_session_pack_headers_with_padding3(void)
-{
-  nghttp2_session *session, *sv_session;
-  accumulator acc;
-  my_user_data ud;
-  nghttp2_session_callbacks callbacks;
-  nghttp2_nv nva[9120];
-  size_t i;
-
-  for(i = 0; i < ARRLEN(nva); ++i) {
-    nva[i].name = (uint8_t*)":path";
-    nva[i].namelen = 5;
-    nva[i].value = (uint8_t*)"/";
-    nva[i].valuelen = 1;
-    nva[i].flags = NGHTTP2_NV_FLAG_NONE;
-  }
-
-  memset(&callbacks, 0, sizeof(callbacks));
-  callbacks.send_callback = accumulator_send_callback;
-  callbacks.on_frame_send_callback = on_frame_send_callback;
-  callbacks.select_padding_callback = select_padding_callback;
-  callbacks.on_frame_recv_callback = on_frame_recv_callback;
-
-  acc.length = 0;
-  ud.acc = &acc;
-
-  /* In this test, padding is included in the last CONTINUATION
-     frame */
-  nghttp2_session_client_new(&session, &callbacks, &ud);
-  nghttp2_session_server_new(&sv_session, &callbacks, &ud);
-
-  ud.padding_boundary = 16385;
-
-  CU_ASSERT(1 ==
-            nghttp2_submit_request(session, NULL,
-                                   nva, ARRLEN(nva), NULL, NULL));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-
-  CU_ASSERT(acc.length > NGHTTP2_MAX_PAYLOADLEN);
-  ud.frame_recv_cb_called = 0;
-  CU_ASSERT((ssize_t)acc.length ==
-            nghttp2_session_mem_recv(sv_session, acc.buf, acc.length));
-  CU_ASSERT(1 == ud.frame_recv_cb_called);
-  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(sv_session));
-
-  nghttp2_session_del(sv_session);
-  nghttp2_session_del(session);
-}
-
-void test_nghttp2_session_pack_headers_with_padding4(void)
 {
   nghttp2_session *session, *sv_session;
   accumulator acc;
@@ -4888,15 +4698,12 @@ void test_nghttp2_session_pack_headers_with_padding4(void)
   acc.length = 0;
   ud.acc = &acc;
 
-  /* In this test, padding is included in the first HEADERS frame */
   nghttp2_session_client_new(&session, &callbacks, &ud);
   nghttp2_session_server_new(&sv_session, &callbacks, &ud);
 
-  ud.padding_boundary = 16385;
+  ud.padlen = 163;
 
-  CU_ASSERT(1 ==
-            nghttp2_submit_request(session, NULL,
-                                   &nv, 1, NULL, NULL));
+  CU_ASSERT(1 == nghttp2_submit_request(session, NULL, &nv, 1, NULL, NULL));
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   CU_ASSERT(acc.length < NGHTTP2_MAX_PAYLOADLEN);

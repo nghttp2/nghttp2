@@ -209,12 +209,6 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_pack_data_with_padding) ||
       !CU_add_test(pSuite, "session_pack_headers_with_padding",
                    test_nghttp2_session_pack_headers_with_padding) ||
-      !CU_add_test(pSuite, "session_pack_headers_with_padding2",
-                   test_nghttp2_session_pack_headers_with_padding2) ||
-      !CU_add_test(pSuite, "session_pack_headers_with_padding3",
-                   test_nghttp2_session_pack_headers_with_padding3) ||
-      !CU_add_test(pSuite, "session_pack_headers_with_padding4",
-                   test_nghttp2_session_pack_headers_with_padding4) ||
       !CU_add_test(pSuite, "pack_settings_payload",
                    test_nghttp2_pack_settings_payload) ||
       !CU_add_test(pSuite, "session_stream_dep_add",

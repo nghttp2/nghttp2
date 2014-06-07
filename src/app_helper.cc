@@ -229,17 +229,11 @@ void print_flags(const nghttp2_frame_hd& hd)
       }
       s += "END_SEGMENT";
     }
-    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+    if(hd.flags & NGHTTP2_FLAG_PADDED) {
       if(!s.empty()) {
         s += " | ";
       }
-      s += "PAD_LOW";
-    }
-    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
-      if(!s.empty()) {
-        s += " | ";
-      }
-      s += "PAD_HIGH";
+      s += "PADDED";
     }
     break;
   case NGHTTP2_HEADERS:
@@ -258,17 +252,11 @@ void print_flags(const nghttp2_frame_hd& hd)
       }
       s += "END_HEADERS";
     }
-    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+    if(hd.flags & NGHTTP2_FLAG_PADDED) {
       if(!s.empty()) {
         s += " | ";
       }
-      s += "PAD_LOW";
-    }
-    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
-      if(!s.empty()) {
-        s += " | ";
-      }
-      s += "PAD_HIGH";
+      s += "PADDED";
     }
     if(hd.flags & NGHTTP2_FLAG_PRIORITY) {
       if(!s.empty()) {
@@ -289,17 +277,11 @@ void print_flags(const nghttp2_frame_hd& hd)
     if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
       s += "END_HEADERS";
     }
-    if(hd.flags & NGHTTP2_FLAG_PAD_LOW) {
+    if(hd.flags & NGHTTP2_FLAG_PADDED) {
       if(!s.empty()) {
         s += " | ";
       }
-      s += "PAD_LOW";
-    }
-    if(hd.flags & NGHTTP2_FLAG_PAD_HIGH) {
-      if(!s.empty()) {
-        s += " | ";
-      }
-      s += "PAD_HIGH";
+      s += "PADDED";
     }
     break;
   case NGHTTP2_PING:
