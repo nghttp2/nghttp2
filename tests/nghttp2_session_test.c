@@ -75,7 +75,6 @@ typedef struct {
   nghttp2_nv nv;
   size_t data_chunk_len;
   size_t padding_boundary;
-  int compress_data;
 } my_user_data;
 
 static void scripted_data_feed_init2(scripted_data_feed *df,
@@ -247,24 +246,6 @@ static ssize_t fixed_length_data_source_read_callback
   if(ud->data_source_length == 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
-  return wlen;
-}
-
-static ssize_t compressed_fixed_length_data_source_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
-{
-  my_user_data *ud = (my_user_data*)user_data;
-  size_t wlen;
-
-  wlen = fixed_length_data_source_read_callback
-    (session, stream_id, buf, len, data_flags, source, user_data);
-
-  if(ud->compress_data) {
-    *data_flags |= NGHTTP2_DATA_FLAG_COMPRESSED;
-  }
-
   return wlen;
 }
 
@@ -720,57 +701,6 @@ void test_nghttp2_session_recv_data(void)
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == OB_CTRL(item)->goaway.error_code);
-
-  nghttp2_session_del(session);
-
-  /* Receiving compressed DATA while SETTINGS_COMPRESS_DATA == 0 is
-     subject to connection error */
-
-  nghttp2_session_client_new(&session, &callbacks, &ud);
-
-  hd.length = 4096;
-  hd.type = NGHTTP2_DATA;
-  hd.flags = NGHTTP2_FLAG_COMPRESSED;
-  hd.stream_id = 1;
-  nghttp2_frame_pack_frame_hd(data, &hd);
-
-  stream = nghttp2_session_open_stream(session, 1,
-                                       NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENED, NULL);
-
-  ud.data_chunk_recv_cb_called = 0;
-  ud.frame_recv_cb_called = 0;
-  rv = nghttp2_session_mem_recv(session, data, 8+4096);
-  CU_ASSERT(8+4096 == rv);
-
-  CU_ASSERT(0 == ud.data_chunk_recv_cb_called);
-  CU_ASSERT(0 == ud.frame_recv_cb_called);
-  item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
-
-  nghttp2_session_del(session);
-
-  /* Receiving compressed DATA while SETTINGS_COMPRESS_DATA == 1 is
-     allowed */
-
-  nghttp2_session_client_new(&session, &callbacks, &ud);
-
-  session->local_settings[NGHTTP2_SETTINGS_COMPRESS_DATA] = 1;
-
-  stream = nghttp2_session_open_stream(session, 1,
-                                       NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENED, NULL);
-
-  ud.data_chunk_recv_cb_called = 0;
-  ud.frame_recv_cb_called = 0;
-  rv = nghttp2_session_mem_recv(session, data, 8+4096);
-  CU_ASSERT(8+4096 == rv);
-
-  CU_ASSERT(1 == ud.data_chunk_recv_cb_called);
-  CU_ASSERT(1 == ud.frame_recv_cb_called);
-  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 
   nghttp2_session_del(session);
 }
@@ -2699,13 +2629,11 @@ void test_nghttp2_submit_data(void)
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = block_count_send_callback;
 
-  data_prd.read_callback = compressed_fixed_length_data_source_read_callback;
+  data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = NGHTTP2_DATA_PAYLOADLEN * 2;
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
   aob = &session->aob;
   framebufs = &aob->framebufs;
-
-  session->remote_settings[NGHTTP2_SETTINGS_COMPRESS_DATA] = 1;
 
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                               &pri_spec_default, NGHTTP2_STREAM_OPENING,
@@ -2714,8 +2642,6 @@ void test_nghttp2_submit_data(void)
                                      NGHTTP2_FLAG_END_STREAM |
                                      NGHTTP2_FLAG_END_SEGMENT, 1, &data_prd));
 
-  /* First, no compression */
-  ud.compress_data = 0;
   ud.block_count = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));
   data_frame = nghttp2_outbound_item_get_data_frame(aob->item);
@@ -2726,21 +2652,6 @@ void test_nghttp2_submit_data(void)
   CU_ASSERT(NGHTTP2_FLAG_NONE == hd.flags);
   /* frame->hd.flags has these flags */
   CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT) ==
-            data_frame->hd.flags);
-
-  /* Now compression enabled */
-  ud.compress_data = 1;
-  ud.block_count = 1;
-  CU_ASSERT(0 == nghttp2_session_send(session));
-  data_frame = nghttp2_outbound_item_get_data_frame(aob->item);
-  nghttp2_frame_unpack_frame_hd(&hd, buf->pos);
-
-  /* This is the last frame, so we must have following flags */
-  CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT |
-             NGHTTP2_FLAG_COMPRESSED) == hd.flags);
-  /* frame->hd.flags has these flags */
-  CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT |
-             NGHTTP2_FLAG_COMPRESSED) ==
             data_frame->hd.flags);
 
   nghttp2_session_del(session);

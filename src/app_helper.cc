@@ -99,8 +99,6 @@ const char* strsettingsid(int32_t id)
     return "SETTINGS_MAX_CONCURRENT_STREAMS";
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
     return "SETTINGS_INITIAL_WINDOW_SIZE";
-  case NGHTTP2_SETTINGS_COMPRESS_DATA:
-    return "SETTINGS_COMPRESS_DATA";
   default:
     return "UNKNOWN";
   }
@@ -242,12 +240,6 @@ void print_flags(const nghttp2_frame_hd& hd)
         s += " | ";
       }
       s += "PAD_HIGH";
-    }
-    if(hd.flags & NGHTTP2_FLAG_COMPRESSED) {
-      if(!s.empty()) {
-        s += " | ";
-      }
-      s += "COMPRESSED";
     }
     break;
   case NGHTTP2_HEADERS:
