@@ -417,7 +417,7 @@ int nghttp2_session_client_new2(nghttp2_session **session_ptr,
                                 const nghttp2_option *option)
 {
   int rv;
-  /* For client side session, header compression is disabled. */
+
   rv = session_new(session_ptr, callbacks, user_data, 0, option);
 
   if(rv != 0) {
@@ -441,7 +441,7 @@ int nghttp2_session_server_new2(nghttp2_session **session_ptr,
                                 const nghttp2_option *option)
 {
   int rv;
-  /* Enable header compression on server side. */
+
   rv = session_new(session_ptr, callbacks, user_data, 1, option);
 
   if(rv != 0) {
