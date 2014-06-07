@@ -2231,6 +2231,8 @@ int32_t nghttp2_submit_request(nghttp2_session *session,
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
  */
 int nghttp2_submit_response(nghttp2_session *session,
                             int32_t stream_id,
@@ -2297,6 +2299,8 @@ int nghttp2_submit_response(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`
  *     No stream ID is available because maximum stream ID was
  *     reached.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
  *
  * .. warning::
  *
@@ -2332,6 +2336,8 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_DATA_EXIST`
  *     DATA has been already submitted and not fully processed yet.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
  */
 int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
                         int32_t stream_id,
@@ -2363,7 +2369,8 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |pri_spec| is NULL; or trying to depend on itself.
+ *     The |stream_id| is 0; or the |pri_spec| is NULL; or trying to
+ *     depend on itself.
  */
 int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
                             int32_t stream_id,
@@ -2383,6 +2390,8 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
  */
 int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
                               int32_t stream_id,
@@ -2466,6 +2475,8 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`
  *     No stream ID is available because maximum stream ID was
  *     reached.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
  *
  * .. warning::
  *
