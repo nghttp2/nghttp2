@@ -1146,6 +1146,82 @@ void test_nghttp2_session_recv_altsvc(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_unknown_frame(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  uint8_t data[16384];
+  size_t datalen;
+  nghttp2_frame_hd hd;
+  ssize_t rv;
+
+  hd.length = 16000;
+  hd.stream_id = 0;
+  hd.type = 99;
+  hd.flags = NGHTTP2_FLAG_NONE;
+
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  datalen = NGHTTP2_FRAME_HDLEN + hd.length;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  ud.frame_recv_cb_called = 0;
+
+  /* Unknown frame must be ignored */
+  rv = nghttp2_session_mem_recv(session, data, datalen);
+
+  CU_ASSERT(rv == (ssize_t)datalen);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_recv_unexpected_continuation(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  uint8_t data[16384];
+  size_t datalen;
+  nghttp2_frame_hd hd;
+  ssize_t rv;
+  nghttp2_outbound_item *item;
+
+  hd.length = 16000;
+  hd.stream_id = 1;
+  hd.type = NGHTTP2_CONTINUATION;
+  hd.flags = NGHTTP2_FLAG_END_HEADERS;
+
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  datalen = NGHTTP2_FRAME_HDLEN + hd.length;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  open_stream(session, 1);
+
+  ud.frame_recv_cb_called = 0;
+
+  /* unexpected CONTINUATION must be treated as connection error */
+  rv = nghttp2_session_mem_recv(session, data, datalen);
+
+  CU_ASSERT(rv == (ssize_t)datalen);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_continue(void)
 {
   nghttp2_session *session;

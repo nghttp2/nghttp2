@@ -4457,6 +4457,22 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         inbound_frame_set_mark(iframe, 8);
 
         break;
+      case NGHTTP2_CONTINUATION:
+        DEBUGF(fprintf(stderr, "recv: unexpected CONTINUATION\n"));
+
+        /* Receiving CONTINUATION in this state are subject to
+           connection error of type PROTOCOL_ERROR */
+        rv = nghttp2_session_terminate_session(session,
+                                               NGHTTP2_PROTOCOL_ERROR);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        busy = 1;
+
+        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+        break;
       case NGHTTP2_ALTSVC:
         DEBUGF(fprintf(stderr, "recv: ALTSVC\n"));
 
@@ -4512,13 +4528,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       default:
         DEBUGF(fprintf(stderr, "recv: unknown frame\n"));
 
-        /* Receiving unknown frame type and CONTINUATION in this state
-           are subject to connection error of type PROTOCOL_ERROR */
-        rv = nghttp2_session_terminate_session(session,
-                                               NGHTTP2_PROTOCOL_ERROR);
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
-        }
+        /* Silently ignore unknown frame type. */
 
         busy = 1;
 
@@ -4849,6 +4859,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       switch(iframe->frame.hd.type) {
       case NGHTTP2_HEADERS:
       case NGHTTP2_PUSH_PROMISE:
+      case NGHTTP2_CONTINUATION:
         /* Mark inflater bad so that we won't perform further decoding */
         session->hd_inflater.ctx.bad = 1;
         break;

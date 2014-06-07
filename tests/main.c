@@ -89,6 +89,10 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_recv_premature_headers) ||
       !CU_add_test(pSuite, "session_recv_altsvc",
                    test_nghttp2_session_recv_altsvc) ||
+      !CU_add_test(pSuite, "session_recv_unknown_frame",
+                   test_nghttp2_session_recv_unknown_frame) ||
+      !CU_add_test(pSuite, "session_recv_unexpected_continuation",
+                   test_nghttp2_session_recv_unexpected_continuation) ||
       !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
