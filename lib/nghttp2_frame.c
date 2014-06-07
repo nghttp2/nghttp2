@@ -513,8 +513,8 @@ size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
 {
   size_t i;
   for(i = 0; i < niv; ++i, buf += NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) {
-    buf[0] = iv[i].settings_id;
-    nghttp2_put_uint32be(buf + 1, iv[i].value);
+    nghttp2_put_uint16be(buf, iv[i].settings_id);
+    nghttp2_put_uint32be(buf + 2, iv[i].value);
   }
   return NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH * niv;
 }
@@ -544,8 +544,8 @@ int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
 void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
                                          const uint8_t *payload)
 {
-  iv->settings_id = payload[0];
-  iv->value = nghttp2_get_uint32(&payload[1]);
+  iv->settings_id = nghttp2_get_uint16(&payload[0]);
+  iv->value = nghttp2_get_uint32(&payload[2]);
 }
 
 int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,

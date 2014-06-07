@@ -55,7 +55,7 @@
 #define NGHTTP2_DATA_PAYLOADLEN 4096
 
 /* The number of bytes for each SETTINGS entry */
-#define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 5
+#define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 6
 
 /* The maximum header table size in SETTINGS_HEADER_TABLE_SIZE */
 #define NGHTTP2_MAX_HEADER_TABLE_SIZE ((1u << 31) - 1)
