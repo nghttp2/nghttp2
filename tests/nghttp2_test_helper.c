@@ -87,12 +87,13 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
       (&frame->window_update, payload, payloadlen);
     break;
   case NGHTTP2_ALTSVC:
-    gift_payloadlen = payloadlen - 8;
+    gift_payloadlen = payloadlen - NGHTTP2_ALTSVC_FIXED_PARTLEN;
     gift_payload = malloc(gift_payloadlen);
 
-    memcpy(gift_payload, payload + 8, gift_payloadlen);
+    memcpy(gift_payload, payload + NGHTTP2_ALTSVC_FIXED_PARTLEN,
+           gift_payloadlen);
 
-    payloadlen -= 8;
+    payloadlen -= NGHTTP2_ALTSVC_FIXED_PARTLEN;
 
     rv = nghttp2_frame_unpack_altsvc_payload(&frame->altsvc,
                                              payload, payloadlen,

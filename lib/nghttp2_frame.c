@@ -776,10 +776,6 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame)
   nghttp2_put_uint16be(buf->last, frame->port);
   buf->last += 2;
 
-  /* Reserved */
-  buf->last[0] = 0;
-  ++buf->last;
-
   buf->last[0] = frame->protocol_id_len;
   ++buf->last;
 
@@ -828,15 +824,12 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_altsvc *frame,
   frame->port = nghttp2_get_uint16(payload);
   payload += 2;
 
-  /* Skip Reserved */
-  ++payload;
-
   frame->protocol_id_len = *payload;
 
   nghttp2_buf_wrap_init(&buf, var_gift_payload, var_gift_payloadlen);
   buf.last += var_gift_payloadlen;
 
-  /* 1 for HOST_LEN */
+  /* 1 for Host-Len */
   if(nghttp2_buf_len(&buf) < 1 + (ssize_t)frame->protocol_id_len) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }

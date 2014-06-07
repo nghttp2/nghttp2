@@ -63,12 +63,12 @@
 #define NGHTTP2_PRIORITY_SPECLEN 5
 
 /* Length of fixed part in ALTSVC frame, that is the sum of fields of
-   Max-Age, Port, Reserved and PID_LEN. */
-#define NGHTTP2_ALTSVC_FIXED_PARTLEN 8
+   Max-Age, Port and Proto-Len. */
+#define NGHTTP2_ALTSVC_FIXED_PARTLEN 7
 
 /* Minimum length of ALTSVC frame.  NGHTTP2_ALTSVC_FIXED_PARTLEN +
-   HOST_LEN. */
-#define NGHTTP2_ALTSVC_MINLEN 9
+   Host-Len. */
+#define NGHTTP2_ALTSVC_MINLEN 8
 
 
 /* Category of frames. */
