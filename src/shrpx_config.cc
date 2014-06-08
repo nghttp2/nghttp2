@@ -194,7 +194,7 @@ namespace {
 FILE* open_file_for_write(const char *filename)
 {
   auto f = fopen(filename, "wb");
-  if(f == NULL) {
+  if(f == nullptr) {
     LOG(ERROR) << "Failed to open " << filename << " for writing. Cause: "
                << strerror(errno);
   }
