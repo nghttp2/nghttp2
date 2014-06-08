@@ -919,47 +919,85 @@ int int_syslog_facility(const char *strfacility)
 {
   if(util::strieq(strfacility, "auth")) {
     return LOG_AUTH;
-  } else if(util::strieq(strfacility, "authpriv")) {
-    return LOG_AUTHPRIV;
-  } else if(util::strieq(strfacility, "cron")) {
-    return LOG_CRON;
-  } else if(util::strieq(strfacility, "daemon")) {
-    return LOG_DAEMON;
-  } else if(util::strieq(strfacility, "ftp")) {
-    return LOG_FTP;
-  } else if(util::strieq(strfacility, "kern")) {
-    return LOG_KERN;
-  } else if(util::strieq(strfacility, "local0")) {
-    return LOG_LOCAL0;
-  } else if(util::strieq(strfacility, "local1")) {
-    return LOG_LOCAL1;
-  } else if(util::strieq(strfacility, "local2")) {
-    return LOG_LOCAL2;
-  } else if(util::strieq(strfacility, "local3")) {
-    return LOG_LOCAL3;
-  } else if(util::strieq(strfacility, "local4")) {
-    return LOG_LOCAL4;
-  } else if(util::strieq(strfacility, "local5")) {
-    return LOG_LOCAL5;
-  } else if(util::strieq(strfacility, "local6")) {
-    return LOG_LOCAL6;
-  } else if(util::strieq(strfacility, "local7")) {
-    return LOG_LOCAL7;
-  } else if(util::strieq(strfacility, "lpr")) {
-    return LOG_LPR;
-  } else if(util::strieq(strfacility, "mail")) {
-    return LOG_MAIL;
-  } else if(util::strieq(strfacility, "news")) {
-    return LOG_NEWS;
-  } else if(util::strieq(strfacility, "syslog")) {
-    return LOG_SYSLOG;
-  } else if(util::strieq(strfacility, "user")) {
-    return LOG_USER;
-  } else if(util::strieq(strfacility, "uucp")) {
-    return LOG_UUCP;
-  } else {
-    return -1;
   }
+
+  if(util::strieq(strfacility, "authpriv")) {
+    return LOG_AUTHPRIV;
+  }
+
+  if(util::strieq(strfacility, "cron")) {
+    return LOG_CRON;
+  }
+
+  if(util::strieq(strfacility, "daemon")) {
+    return LOG_DAEMON;
+  }
+
+  if(util::strieq(strfacility, "ftp")) {
+    return LOG_FTP;
+  }
+
+  if(util::strieq(strfacility, "kern")) {
+    return LOG_KERN;
+  }
+
+  if(util::strieq(strfacility, "local0")) {
+    return LOG_LOCAL0;
+  }
+
+  if(util::strieq(strfacility, "local1")) {
+    return LOG_LOCAL1;
+  }
+
+  if(util::strieq(strfacility, "local2")) {
+    return LOG_LOCAL2;
+  }
+
+  if(util::strieq(strfacility, "local3")) {
+    return LOG_LOCAL3;
+  }
+
+  if(util::strieq(strfacility, "local4")) {
+    return LOG_LOCAL4;
+  }
+
+  if(util::strieq(strfacility, "local5")) {
+    return LOG_LOCAL5;
+  }
+
+  if(util::strieq(strfacility, "local6")) {
+    return LOG_LOCAL6;
+  }
+
+  if(util::strieq(strfacility, "local7")) {
+    return LOG_LOCAL7;
+  }
+
+  if(util::strieq(strfacility, "lpr")) {
+    return LOG_LPR;
+  }
+
+  if(util::strieq(strfacility, "mail")) {
+    return LOG_MAIL;
+  }
+
+  if(util::strieq(strfacility, "news")) {
+    return LOG_NEWS;
+  }
+
+  if(util::strieq(strfacility, "syslog")) {
+    return LOG_SYSLOG;
+  }
+
+  if(util::strieq(strfacility, "user")) {
+    return LOG_USER;
+  }
+
+  if(util::strieq(strfacility, "uucp")) {
+    return LOG_UUCP;
+  }
+
+  return -1;
 }
 
 } // namespace shrpx
