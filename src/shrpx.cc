@@ -144,14 +144,15 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
-  auto node = strcmp("*", get_config()->host) == 0 ? NULL : get_config()->host;
+  auto node = strcmp("*", get_config()->host.get()) == 0 ?
+    nullptr : get_config()->host.get();
 
   addrinfo *res, *rp;
   r = getaddrinfo(node, service.c_str(), &hints, &res);
   if(r != 0) {
     if(LOG_ENABLED(INFO)) {
       LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
-                << " address for " << get_config()->host << ": "
+                << " address for " << get_config()->host.get() << ": "
                 << gai_strerror(r);
     }
     return NULL;
@@ -240,11 +241,12 @@ void drop_privileges()
 namespace {
 void save_pid()
 {
-  std::ofstream out(get_config()->pid_file, std::ios::binary);
+  std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
   out << getpid() << "\n";
   out.close();
   if(!out) {
-    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
+    LOG(ERROR) << "Could not save PID to file "
+               << get_config()->pid_file.get();
     exit(EXIT_FAILURE);
   }
 }
@@ -288,7 +290,7 @@ int event_loop()
   auto evlistener4 = create_evlistener(listener_handler, AF_INET);
   if(!evlistener6 && !evlistener4) {
     LOG(FATAL) << "Failed to listen on address "
-               << get_config()->host << ", port " << get_config()->port;
+               << get_config()->host.get() << ", port " << get_config()->port;
     exit(EXIT_FAILURE);
   }
 
@@ -347,11 +349,11 @@ void fill_default_config()
   mod_config()->daemon = false;
 
   mod_config()->server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
-  set_config_str(&mod_config()->host, "*");
+  mod_config()->host = strcopy("*");
   mod_config()->port = 3000;
-  mod_config()->private_key_file = 0;
-  mod_config()->private_key_passwd = 0;
-  mod_config()->cert_file = 0;
+  mod_config()->private_key_file = nullptr;
+  mod_config()->private_key_passwd = nullptr;
+  mod_config()->cert_file = nullptr;
 
   // Read timeout for HTTP2 upstream connection
   mod_config()->http2_upstream_read_timeout.tv_sec = 180;
@@ -388,9 +390,9 @@ void fill_default_config()
   mod_config()->upstream_no_tls = false;
   mod_config()->downstream_no_tls = false;
 
-  set_config_str(&mod_config()->downstream_host, "127.0.0.1");
+  mod_config()->downstream_host = strcopy("127.0.0.1");
   mod_config()->downstream_port = 80;
-  mod_config()->downstream_hostport = 0;
+  mod_config()->downstream_hostport = nullptr;
   mod_config()->downstream_addrlen = 0;
 
   mod_config()->num_worker = 1;
@@ -398,13 +400,13 @@ void fill_default_config()
   mod_config()->add_x_forwarded_for = false;
   mod_config()->no_via = false;
   mod_config()->accesslog = false;
-  set_config_str(&mod_config()->conf_path, "/etc/nghttpx/nghttpx.conf");
+  mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
   mod_config()->syslog = false;
   mod_config()->syslog_facility = LOG_DAEMON;
   mod_config()->use_syslog = false;
   // Default accept() backlog
   mod_config()->backlog = -1;
-  mod_config()->ciphers = 0;
+  mod_config()->ciphers = nullptr;
   mod_config()->honor_cipher_order = false;
   mod_config()->http2_proxy = false;
   mod_config()->http2_bridge = false;
@@ -412,16 +414,16 @@ void fill_default_config()
   mod_config()->client = false;
   mod_config()->client_mode = false;
   mod_config()->insecure = false;
-  mod_config()->cacert = 0;
-  mod_config()->pid_file = 0;
+  mod_config()->cacert = nullptr;
+  mod_config()->pid_file = nullptr;
   mod_config()->uid = 0;
   mod_config()->gid = 0;
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
   mod_config()->tty = isatty(fileno(stderr));
   mod_config()->cert_tree = 0;
-  mod_config()->downstream_http_proxy_userinfo = 0;
-  mod_config()->downstream_http_proxy_host = 0;
+  mod_config()->downstream_http_proxy_userinfo = nullptr;
+  mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
   mod_config()->downstream_http_proxy_addrlen = 0;
   mod_config()->rate_limit_cfg = nullptr;
@@ -497,14 +499,14 @@ Connections:
   -b, --backend=<HOST,PORT>
                      Set backend host and port.
                      Default: ')"
-      << get_config()->downstream_host << ","
+      << get_config()->downstream_host.get() << ","
       << get_config()->downstream_port << R"('
   -f, --frontend=<HOST,PORT>
                      Set frontend host and port.  If <HOST> is '*', it
                      assumes  all addresses  including  both IPv4  and
                      IPv6.
                      Default: ')"
-      << get_config()->host << "," << get_config()->port << R"('
+      << get_config()->host.get() << "," << get_config()->port << R"('
   --backlog=<NUM>    Set  listen  backlog  size.    If  -1  is  given,
                      libevent will choose suitable value.
                      Default: )"
@@ -798,7 +800,7 @@ Misc:
                      intended to be used to drop root privileges.
   --conf=<PATH>      Load configuration from <PATH>.
                      Default: )"
-      << get_config()->conf_path << R"(
+      << get_config()->conf_path.get() << R"(
   -v, --version      Print version and exit.
   -h, --help         Print this help and exit.)"
       << std::endl;
@@ -978,7 +980,7 @@ int main(int argc, char **argv)
         break;
       case 12:
         // --conf
-        set_config_str(&mod_config()->conf_path, optarg);
+        mod_config()->conf_path = strcopy(optarg);
         break;
       case 13:
         // --syslog
@@ -1166,10 +1168,10 @@ int main(int argc, char **argv)
   nghttp2::ssl::LibsslGlobalLock();
 #endif // NOTHREADS
 
-  if(conf_exists(get_config()->conf_path)) {
-    if(load_config(get_config()->conf_path) == -1) {
+  if(conf_exists(get_config()->conf_path.get())) {
+    if(load_config(get_config()->conf_path.get()) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
-                 << get_config()->conf_path;
+                 << get_config()->conf_path.get();
       exit(EXIT_FAILURE);
     }
   }
@@ -1211,13 +1213,13 @@ int main(int argc, char **argv)
 
   if(get_config()->cert_file && get_config()->private_key_file) {
     mod_config()->default_ssl_ctx =
-      ssl::create_ssl_context(get_config()->private_key_file,
-                              get_config()->cert_file);
+      ssl::create_ssl_context(get_config()->private_key_file.get(),
+                              get_config()->cert_file.get());
     if(get_config()->cert_tree) {
-      if(ssl::cert_lookup_tree_add_cert_from_file(get_config()->cert_tree,
-                                                  get_config()->default_ssl_ctx,
-                                                  get_config()->cert_file)
-         == -1) {
+      if(ssl::cert_lookup_tree_add_cert_from_file
+         (get_config()->cert_tree,
+          get_config()->default_ssl_ctx,
+          get_config()->cert_file.get()) == -1) {
         LOG(FATAL) << "Failed to parse command-line argument.";
         exit(EXIT_FAILURE);
       }
@@ -1256,31 +1258,33 @@ int main(int argc, char **argv)
   }
 
   bool downstream_ipv6_addr =
-    is_ipv6_numeric_addr(get_config()->downstream_host);
+    is_ipv6_numeric_addr(get_config()->downstream_host.get());
 
-  std::string hostport;
+  {
+    std::string hostport;
 
-  if(downstream_ipv6_addr) {
-    hostport += "[";
+    if(downstream_ipv6_addr) {
+      hostport += "[";
+    }
+
+    hostport += get_config()->downstream_host.get();
+
+    if(downstream_ipv6_addr) {
+      hostport += "]";
+    }
+
+    hostport += ":";
+    hostport += util::utos(get_config()->downstream_port);
+
+    mod_config()->downstream_hostport = strcopy(hostport);
   }
-
-  hostport += get_config()->downstream_host;
-
-  if(downstream_ipv6_addr) {
-    hostport += "]";
-  }
-
-  hostport += ":";
-  hostport += util::utos(get_config()->downstream_port);
-
-  set_config_str(&mod_config()->downstream_hostport, hostport.c_str());
 
   if(LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
   }
   if(resolve_hostname(&mod_config()->downstream_addr,
                       &mod_config()->downstream_addrlen,
-                      get_config()->downstream_host,
+                      get_config()->downstream_host.get(),
                       get_config()->downstream_port,
                       get_config()->backend_ipv4 ? AF_INET :
                       (get_config()->backend_ipv6 ?
@@ -1294,7 +1298,7 @@ int main(int argc, char **argv)
     }
     if(resolve_hostname(&mod_config()->downstream_http_proxy_addr,
                         &mod_config()->downstream_http_proxy_addrlen,
-                        get_config()->downstream_http_proxy_host,
+                        get_config()->downstream_http_proxy_host.get(),
                         get_config()->downstream_http_proxy_port,
                         AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);

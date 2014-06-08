@@ -162,25 +162,25 @@ struct Config {
   timeval downstream_read_timeout;
   timeval downstream_write_timeout;
   timeval downstream_idle_read_timeout;
-  char *host;
-  char *private_key_file;
-  char *private_key_passwd;
-  char *cert_file;
-  char *dh_param_file;
+  std::unique_ptr<char[]> host;
+  std::unique_ptr<char[]> private_key_file;
+  std::unique_ptr<char[]> private_key_passwd;
+  std::unique_ptr<char[]> cert_file;
+  std::unique_ptr<char[]> dh_param_file;
   SSL_CTX *default_ssl_ctx;
   ssl::CertLookupTree *cert_tree;
   const char *server_name;
-  char *downstream_host;
-  char *downstream_hostport;
-  char *backend_tls_sni_name;
-  char *pid_file;
-  char *conf_path;
-  char *ciphers;
-  char *cacert;
+  std::unique_ptr<char[]> downstream_host;
+  std::unique_ptr<char[]> downstream_hostport;
+  std::unique_ptr<char[]> backend_tls_sni_name;
+  std::unique_ptr<char[]> pid_file;
+  std::unique_ptr<char[]> conf_path;
+  std::unique_ptr<char[]> ciphers;
+  std::unique_ptr<char[]> cacert;
   // userinfo in http proxy URI, not percent-encoded form
-  char *downstream_http_proxy_userinfo;
+  std::unique_ptr<char[]> downstream_http_proxy_userinfo;
   // host in http proxy URI
-  char *downstream_http_proxy_host;
+  std::unique_ptr<char[]> downstream_http_proxy_host;
   // Rate limit configuration per connection
   ev_token_bucket_cfg *rate_limit_cfg;
   // Rate limit configuration per worker (thread)
@@ -194,9 +194,9 @@ struct Config {
   char **tls_proto_list;
   // Path to file containing CA certificate solely used for client
   // certificate validation
-  char *verify_client_cacert;
-  char *client_private_key_file;
-  char *client_cert_file;
+  std::unique_ptr<char[]> verify_client_cacert;
+  std::unique_ptr<char[]> client_private_key_file;
+  std::unique_ptr<char[]> client_cert_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_option *http2_option;
@@ -293,9 +293,11 @@ std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s);
 // allowed.  This function returns pair of NAME and VALUE.
 std::pair<std::string, std::string> parse_header(const char *optarg);
 
-// Copies NULL-terminated string |val| to |*destp|. If |*destp| is not
-// NULL, it is freed before copying.
-void set_config_str(char **destp, const char *val);
+// Returns a copy of NULL-terminated string |val|.
+std::unique_ptr<char[]> strcopy(const char *val);
+
+// Returns a copy of val.c_str().
+std::unique_ptr<char[]> strcopy(const std::string& val);
 
 // Returns string for syslog |facility|.
 const char* str_syslog_facility(int facility);

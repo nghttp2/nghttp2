@@ -107,13 +107,13 @@ namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
 {
   auto config = static_cast<Config*>(user_data);
-  int len = (int)strlen(config->private_key_passwd);
+  int len = (int)strlen(config->private_key_passwd.get());
   if (size < len + 1) {
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
     return 0;
   }
   // Copy string including last '\0'.
-  memcpy(buf, config->private_key_passwd, len+1);
+  memcpy(buf, config->private_key_passwd.get(), len + 1);
   return len;
 }
 } // namespace
@@ -252,7 +252,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
 
   const char *ciphers;
   if(get_config()->ciphers) {
-    ciphers = get_config()->ciphers;
+    ciphers = get_config()->ciphers.get();
     // If ciphers are given, honor its order unconditionally
     SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
   } else {
@@ -291,7 +291,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
 
   if(get_config()->dh_param_file) {
     // Read DH parameters from file
-    auto bio = BIO_new_file(get_config()->dh_param_file, "r");
+    auto bio = BIO_new_file(get_config()->dh_param_file.get(), "r");
     if(bio == nullptr) {
       LOG(FATAL) << "BIO_new_file() failed: "
                  << ERR_error_string(ERR_get_error(), nullptr);
@@ -333,11 +333,11 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   }
   if(get_config()->verify_client) {
     if(get_config()->verify_client_cacert) {
-      if(SSL_CTX_load_verify_locations(ssl_ctx,
-                                       get_config()->verify_client_cacert,
-                                       nullptr) != 1) {
+      if(SSL_CTX_load_verify_locations
+         (ssl_ctx, get_config()->verify_client_cacert.get(), nullptr) != 1) {
+
         LOG(FATAL) << "Could not load trusted ca certificates from "
-                   << get_config()->verify_client_cacert << ": "
+                   << get_config()->verify_client_cacert.get() << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
@@ -345,10 +345,11 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
       // error even though it returns success. See
       // http://forum.nginx.org/read.php?29,242540
       ERR_clear_error();
-      auto list = SSL_load_client_CA_file(get_config()->verify_client_cacert);
+      auto list = SSL_load_client_CA_file
+        (get_config()->verify_client_cacert.get());
       if(!list) {
         LOG(FATAL) << "Could not load ca certificates from "
-                   << get_config()->verify_client_cacert << ": "
+                   << get_config()->verify_client_cacert.get() << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
@@ -405,7 +406,7 @@ SSL_CTX* create_ssl_client_context()
 
   const char *ciphers;
   if(get_config()->ciphers) {
-    ciphers = get_config()->ciphers;
+    ciphers = get_config()->ciphers.get();
   } else {
     ciphers = "HIGH:!aNULL:!eNULL";
   }
@@ -425,10 +426,11 @@ SSL_CTX* create_ssl_client_context()
   }
 
   if(get_config()->cacert) {
-    if(SSL_CTX_load_verify_locations(ssl_ctx, get_config()->cacert, nullptr)
-       != 1) {
+    if(SSL_CTX_load_verify_locations
+       (ssl_ctx, get_config()->cacert.get(), nullptr) != 1) {
+
       LOG(FATAL) << "Could not load trusted ca certificates from "
-                 << get_config()->cacert << ": "
+                 << get_config()->cacert.get() << ": "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
@@ -436,20 +438,20 @@ SSL_CTX* create_ssl_client_context()
 
   if(get_config()->client_private_key_file) {
     if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
-                                   get_config()->client_private_key_file,
+                                   get_config()->client_private_key_file.get(),
                                    SSL_FILETYPE_PEM) != 1) {
       LOG(FATAL) << "Could not load client private key from "
-                 << get_config()->client_private_key_file << ": "
+                 << get_config()->client_private_key_file.get() << ": "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
   }
   if(get_config()->client_cert_file) {
-    if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
-                                          get_config()->client_cert_file)
-       != 1) {
+    if(SSL_CTX_use_certificate_chain_file
+       (ssl_ctx, get_config()->client_cert_file.get()) != 1) {
+
       LOG(FATAL) << "Could not load client certificate from "
-                 << get_config()->client_cert_file << ": "
+                 << get_config()->client_cert_file.get() << ": "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
@@ -686,7 +688,7 @@ int check_cert(SSL *ssl)
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  if(verify_hostname(get_config()->downstream_host,
+  if(verify_hostname(get_config()->downstream_host.get(),
                      &get_config()->downstream_addr,
                      get_config()->downstream_addrlen,
                      dns_names, ip_addrs, common_name) != 0) {

@@ -222,12 +222,20 @@ std::string read_passwd_from_file(const char *filename)
   return line;
 }
 
-void set_config_str(char **destp, const char *val)
+std::unique_ptr<char[]> strcopy(const char *val)
 {
-  if(*destp) {
-    free(*destp);
-  }
-  *destp = strdup(val);
+  auto len = strlen(val);
+  auto res = util::make_unique<char[]>(len + 1);
+  memcpy(res.get(), val, len + 1);
+  return res;
+}
+
+std::unique_ptr<char[]> strcopy(const std::string& val)
+{
+  auto len = val.size();
+  auto res = util::make_unique<char[]>(len + 1);
+  memcpy(res.get(), val.c_str(), len + 1);
+  return res;
 }
 
 std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s)
@@ -275,17 +283,17 @@ int parse_config(const char *opt, const char *optarg)
   if(util::strieq(opt, SHRPX_OPT_BACKEND)) {
     if(split_host_port(host, sizeof(host), &port, optarg) == -1) {
       return -1;
-    } else {
-      set_config_str(&mod_config()->downstream_host, host);
-      mod_config()->downstream_port = port;
     }
+
+    mod_config()->downstream_host = strcopy(host);
+    mod_config()->downstream_port = port;
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND)) {
     if(split_host_port(host, sizeof(host), &port, optarg) == -1) {
       return -1;
-    } else {
-      set_config_str(&mod_config()->host, host);
-      mod_config()->port = port;
     }
+
+    mod_config()->host = strcopy(host);
+    mod_config()->port = port;
   } else if(util::strieq(opt, SHRPX_OPT_WORKERS)) {
     mod_config()->num_worker = strtol(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS)) {
@@ -374,9 +382,9 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_NO_TLS)) {
     mod_config()->downstream_no_tls = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_TLS_SNI_FIELD)) {
-    set_config_str(&mod_config()->backend_tls_sni_name, optarg);
+    mod_config()->backend_tls_sni_name = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_PID_FILE)) {
-    set_config_str(&mod_config()->pid_file, optarg);
+    mod_config()->pid_file = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_USER)) {
     auto pwd = getpwnam(optarg);
     if(!pwd) {
@@ -387,18 +395,18 @@ int parse_config(const char *opt, const char *optarg)
     mod_config()->uid = pwd->pw_uid;
     mod_config()->gid = pwd->pw_gid;
   } else if(util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_FILE)) {
-    set_config_str(&mod_config()->private_key_file, optarg);
+    mod_config()->private_key_file = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE)) {
     auto passwd = read_passwd_from_file(optarg);
     if (passwd.empty()) {
       LOG(ERROR) << "Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    set_config_str(&mod_config()->private_key_passwd, passwd.c_str());
+    mod_config()->private_key_passwd = strcopy(passwd);
   } else if(util::strieq(opt, SHRPX_OPT_CERTIFICATE_FILE)) {
-    set_config_str(&mod_config()->cert_file, optarg);
+    mod_config()->cert_file = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_DH_PARAM_FILE)) {
-    set_config_str(&mod_config()->dh_param_file, optarg);
+    mod_config()->dh_param_file = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_SUBCERT)) {
     // Private Key file and certificate file separated by ':'.
     const char *sp = strchr(optarg, ':');
@@ -419,7 +427,7 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_BACKLOG)) {
     mod_config()->backlog = strtol(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_CIPHERS)) {
-    set_config_str(&mod_config()->ciphers, optarg);
+    mod_config()->ciphers = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_HONOR_CIPHER_ORDER)) {
     mod_config()->honor_cipher_order = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_CLIENT)) {
@@ -427,7 +435,7 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_INSECURE)) {
     mod_config()->insecure = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_CACERT)) {
-    set_config_str(&mod_config()->cacert, optarg);
+    mod_config()->cacert = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_IPV4)) {
     mod_config()->backend_ipv4 = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_BACKEND_IPV6)) {
@@ -445,13 +453,12 @@ int parse_config(const char *opt, const char *optarg)
         // userinfo component is empty string.
         if(!val.empty()) {
           val = util::percentDecode(val.begin(), val.end());
-          set_config_str(&mod_config()->downstream_http_proxy_userinfo,
-                         val.c_str());
+          mod_config()->downstream_http_proxy_userinfo = strcopy(val);
         }
       }
       if(u.field_set & UF_HOST) {
         http2::copy_url_component(val, &u, UF_HOST, optarg);
-        set_config_str(&mod_config()->downstream_http_proxy_host, val.c_str());
+        mod_config()->downstream_http_proxy_host = strcopy(val);
       } else {
         LOG(ERROR) << "backend-http-proxy-uri does not contain hostname";
         return -1;
@@ -493,11 +500,11 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT)) {
     mod_config()->verify_client = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT_CACERT)) {
-    set_config_str(&mod_config()->verify_client_cacert, optarg);
+    mod_config()->verify_client_cacert = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE)) {
-    set_config_str(&mod_config()->client_private_key_file, optarg);
+    mod_config()->client_private_key_file = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_CLIENT_CERT_FILE)) {
-    set_config_str(&mod_config()->client_cert_file, optarg);
+    mod_config()->client_cert_file = strcopy(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER)) {
     auto f = open_file_for_write(optarg);
     if(f == NULL) {
