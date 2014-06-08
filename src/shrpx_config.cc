@@ -238,12 +238,12 @@ std::unique_ptr<char[]> strcopy(const std::string& val)
   return res;
 }
 
-std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s)
+std::vector<char*> parse_config_str_list(const char *s)
 {
   size_t len = 1;
   for(const char *first = s, *p = nullptr; (p = strchr(first, ','));
       ++len, first = p + 1);
-  auto list = util::make_unique<char*[]>(len);
+  auto list = std::vector<char*>(len);
   auto first = strdup(s);
   len = 0;
   for(;;) {
@@ -256,8 +256,18 @@ std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s)
     first = p + 1;
   }
   list[len++] = first;
-  *outlen = len;
+
   return list;
+}
+
+void clear_config_str_list(std::vector<char*>& list)
+{
+  if(list.empty()) {
+    return;
+  }
+
+  free(list[0]);
+  list.clear();
 }
 
 std::pair<std::string, std::string> parse_header(const char *optarg)
@@ -490,13 +500,13 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_WORKER_WRITE_BURST)) {
     mod_config()->worker_write_burst = strtoul(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_NPN_LIST)) {
-    delete [] mod_config()->npn_list;
-    mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
-                                                   optarg).release();
+    clear_config_str_list(mod_config()->npn_list);
+
+    mod_config()->npn_list = parse_config_str_list(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_TLS_PROTO_LIST)) {
-    delete [] mod_config()->tls_proto_list;
-    mod_config()->tls_proto_list = parse_config_str_list
-      (&mod_config()->tls_proto_list_len, optarg).release();
+    clear_config_str_list(mod_config()->tls_proto_list);
+
+    mod_config()->tls_proto_list = parse_config_str_list(optarg);
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT)) {
     mod_config()->verify_client = util::strieq(optarg, "yes");
   } else if(util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT_CACERT)) {
@@ -524,17 +534,15 @@ int parse_config(const char *opt, const char *optarg)
   } else if(util::strieq(opt, SHRPX_OPT_PADDING)) {
     mod_config()->padding = strtoul(optarg, nullptr, 10);
   } else if(util::strieq(opt, SHRPX_OPT_ALTSVC)) {
-    size_t len;
+    auto tokens = parse_config_str_list(optarg);
 
-    auto tokens = parse_config_str_list(&len, optarg);
-
-    if(len < 2) {
+    if(tokens.size() < 2) {
       // Requires at least protocol_id and port
       LOG(ERROR) << "altsvc: too few parameters: " << optarg;
       return -1;
     }
 
-    if(len > 4) {
+    if(tokens.size() > 4) {
       // We only need protocol_id, port, host and origin
       LOG(ERROR) << "altsvc: too many parameters: " << optarg;
       return -1;
@@ -555,11 +563,11 @@ int parse_config(const char *opt, const char *optarg)
     altsvc.protocol_id = tokens[0];
     altsvc.protocol_id_len = strlen(altsvc.protocol_id);
 
-    if(len > 2) {
+    if(tokens.size() > 2) {
       altsvc.host = tokens[2];
       altsvc.host_len = strlen(altsvc.host);
 
-      if(len > 3) {
+      if(tokens.size() > 3) {
         altsvc.origin = tokens[3];
         altsvc.origin_len = strlen(altsvc.origin);
       }

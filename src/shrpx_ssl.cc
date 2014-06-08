@@ -88,14 +88,14 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 } // namespace
 
 namespace {
-size_t set_npn_prefs(unsigned char *out, char **protos, size_t len)
+size_t set_npn_prefs(unsigned char *out, const std::vector<char*>& protos)
 {
   unsigned char *ptr = out;
   size_t listlen = 0;
-  for(size_t i = 0; i < len; ++i) {
-    size_t plen = strlen(protos[i]);
+  for(auto proto : protos) {
+    auto plen = strlen(proto);
     *ptr = plen;
-    memcpy(ptr+1, protos[i], *ptr);
+    memcpy(ptr+1, proto, *ptr);
     ptr += *ptr+1;
     listlen += 1 + plen;
   }
@@ -166,11 +166,7 @@ int alpn_select_proto_cb(SSL* ssl,
   // We assume that get_config()->npn_list contains ALPN protocol
   // identifier sorted by preference order.  So we just break when we
   // found the first overlap.
-  for(auto needle_ptr = get_config()->npn_list,
-        end_needle_ptr = needle_ptr + get_config()->npn_list_len;
-      needle_ptr < end_needle_ptr; ++needle_ptr) {
-
-    auto target_proto_id = *needle_ptr;
+  for(auto target_proto_id : get_config()->npn_list) {
     auto target_proto_len =
       strlen(reinterpret_cast<const char*>(target_proto_id));
 
@@ -206,27 +202,29 @@ int alpn_select_proto_cb(SSL* ssl,
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 namespace {
-const char *names[] = { "TLSv1.2", "TLSv1.1", "TLSv1.0", "SSLv3" };
-const size_t namelen = sizeof(names)/sizeof(names[0]);
-const long int masks[] = { SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
-                           SSL_OP_NO_TLSv1, SSL_OP_NO_SSLv3 };
-long int create_tls_proto_mask(char **tls_proto_list, size_t len)
+const char *tls_names[] = { "TLSv1.2", "TLSv1.1", "TLSv1.0", "SSLv3" };
+const size_t tls_namelen = sizeof(tls_names)/sizeof(tls_names[0]);
+const long int tls_masks[] = { SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
+                               SSL_OP_NO_TLSv1, SSL_OP_NO_SSLv3 };
+} // namespace
+
+long int create_tls_proto_mask(const std::vector<char*>& tls_proto_list)
 {
   long int res = 0;
-  for(size_t i = 0; i < namelen; ++i) {
+
+  for(size_t i = 0; i < tls_namelen; ++i) {
     size_t j;
-    for(j = 0; j < len; ++j) {
-      if(strcasecmp(names[i], tls_proto_list[j]) == 0) {
+    for(j = 0; j < tls_proto_list.size(); ++j) {
+      if(util::strieq(tls_names[i], tls_proto_list[j])) {
         break;
       }
     }
-    if(j == len) {
-      res |= masks[i];
+    if(j == tls_proto_list.size()) {
+      res |= tls_masks[i];
     }
   }
   return res;
 }
-} // namespace
 
 SSL_CTX* create_ssl_context(const char *private_key_file,
                             const char *cert_file)
@@ -243,8 +241,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
                       SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
                       SSL_OP_NO_TICKET |
-                      create_tls_proto_mask(get_config()->tls_proto_list,
-                                            get_config()->tls_proto_list_len));
+                      get_config()->tls_proto_mask);
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx)-1);
@@ -364,8 +361,8 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
   // NPN advertisement
-  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,
-                                      get_config()->npn_list_len);
+  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list);
+
   next_proto.first = proto_list;
   next_proto.second = proto_list_len;
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
@@ -401,8 +398,7 @@ SSL_CTX* create_ssl_client_context()
   SSL_CTX_set_options(ssl_ctx,
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                      create_tls_proto_mask(get_config()->tls_proto_list,
-                                            get_config()->tls_proto_list_len));
+                      get_config()->tls_proto_mask);
 
   const char *ciphers;
   if(get_config()->ciphers) {
@@ -461,8 +457,8 @@ SSL_CTX* create_ssl_client_context()
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement
-  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,
-                                      get_config()->npn_list_len);
+  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list);
+
   next_proto.first = proto_list;
   next_proto.second = proto_list_len;
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list[0] + 1);
@@ -900,12 +896,11 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   return 0;
 }
 
-bool in_proto_list(char **protos, size_t len,
-                   const unsigned char *proto, size_t protolen)
+bool in_proto_list(const std::vector<char*>& protos,
+                   const unsigned char *needle, size_t len)
 {
-  for(size_t i = 0; i < len; ++i) {
-    if(strlen(protos[i]) == protolen &&
-       memcmp(protos[i], proto, protolen) == 0) {
+  for(auto proto : protos) {
+    if(strlen(proto) == len && memcmp(proto, needle, len) == 0) {
       return true;
     }
   }

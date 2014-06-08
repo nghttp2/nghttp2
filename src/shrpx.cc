@@ -435,7 +435,6 @@ void fill_default_config()
   mod_config()->worker_read_burst = 0;
   mod_config()->worker_write_rate = 0;
   mod_config()->worker_write_burst = 0;
-  mod_config()->npn_list = nullptr;
   mod_config()->verify_client = false;
   mod_config()->verify_client_cacert = nullptr;
   mod_config()->client_private_key_file = nullptr;
@@ -452,6 +451,8 @@ void fill_default_config()
     (mod_config()->http2_option, 1);
   nghttp2_option_set_no_auto_connection_window_update
     (mod_config()->http2_option, 1);
+
+  mod_config()->tls_proto_mask = 0;
 }
 } // namespace
 
@@ -1188,14 +1189,16 @@ int main(int argc, char **argv)
     }
   }
 
-  if(!get_config()->npn_list) {
-    mod_config()->npn_list = parse_config_str_list(&mod_config()->npn_list_len,
-                                                   DEFAULT_NPN_LIST).release();
+  if(get_config()->npn_list.empty()) {
+    mod_config()->npn_list = parse_config_str_list(DEFAULT_NPN_LIST);
   }
-  if(!get_config()->tls_proto_list) {
+  if(get_config()->tls_proto_list.empty()) {
     mod_config()->tls_proto_list = parse_config_str_list
-      (&mod_config()->tls_proto_list_len, DEFAULT_TLS_PROTO_LIST).release();
+      (DEFAULT_TLS_PROTO_LIST);
   }
+
+  mod_config()->tls_proto_mask =
+    ssl::create_tls_proto_mask(get_config()->tls_proto_list);
 
   if(!get_config()->subcerts.empty()) {
     mod_config()->cert_tree = ssl::cert_lookup_tree_new();

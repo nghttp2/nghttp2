@@ -188,10 +188,10 @@ struct Config {
   // list of supported NPN/ALPN protocol strings in the order of
   // preference. The each element of this list is a NULL-terminated
   // string.
-  char **npn_list;
+  std::vector<char*> npn_list;
   // list of supported SSL/TLS protocol strings. The each element of
   // this list is a NULL-terminated string.
-  char **tls_proto_list;
+  std::vector<char*> tls_proto_list;
   // Path to file containing CA certificate solely used for client
   // certificate validation
   std::unique_ptr<char[]> verify_client_cacert;
@@ -217,11 +217,10 @@ struct Config {
   size_t worker_read_burst;
   size_t worker_write_rate;
   size_t worker_write_burst;
-  // The number of elements in npn_list
-  size_t npn_list_len;
-  // The number of elements in tls_proto_list
-  size_t tls_proto_list_len;
   size_t padding;
+  // Bit mask to disable SSL/TLS protocol versions.  This will be
+  // passed to SSL_CTX_set_options().
+  long int tls_proto_mask;
   // downstream protocol; this will be determined by given options.
   shrpx_proto downstream_proto;
   int syslog_facility;
@@ -278,14 +277,18 @@ std::string read_passwd_from_file(const char *filename);
 
 // Parses comma delimited strings in |s| and returns the array of
 // pointers, each element points to the each substring in |s|.  The
-// number of elements are stored in |*outlen|.  The |s| must be comma
-// delimited list of strings.  The strings must be delimited by a
-// single comma and any white spaces around it are treated as a part
-// of protocol strings.  This function may modify |s| and the caller
-// must leave it as is after this call.  This function copies |s| and
-// first element in the return value points to it.  It is caller's
-// responsibility to deallocate its memory.
-std::unique_ptr<char*[]> parse_config_str_list(size_t *outlen, const char *s);
+// |s| must be comma delimited list of strings.  The strings must be
+// delimited by a single comma and any white spaces around it are
+// treated as a part of protocol strings.  This function may modify
+// |s| and the caller must leave it as is after this call.  This
+// function copies |s| and first element in the return value points to
+// it.  It is caller's responsibility to deallocate its memory.
+std::vector<char*> parse_config_str_list(const char *s);
+
+// Clears all elements of |list|, which is returned by
+// parse_config_str_list().  If list is not empty, list[0] is freed by
+// free(2).  After this call, list.empty() must be true.
+void clear_config_str_list(std::vector<char*>& list);
 
 // Parses header field in |optarg|.  We expect header field is formed
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"

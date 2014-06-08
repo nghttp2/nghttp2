@@ -123,14 +123,18 @@ SSL_CTX* cert_lookup_tree_lookup(CertLookupTree *lt, const char *hostname,
 int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
                                         const char *certfile);
 
-// Returns true if |proto| which has |protolen| bytes is included in
-// the protocol list |protos|, which has |len| elements. The format of
-// the |protos| is the one used in Config::npn_list.
-bool in_proto_list(char **protos, size_t len,
-                   const unsigned char *proto, size_t protolen);
+// Returns true if |needle| which has |len| bytes is included in the
+// protocol list |protos|.
+bool in_proto_list(const std::vector<char*>& protos,
+                   const unsigned char *needle, size_t len);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
 bool check_http2_requirement(SSL *ssl);
+
+// Returns SSL/TLS option mask to disable SSL/TLS protocol version not
+// included in |tls_proto_list|.  The returned mask can be directly
+// passed to SSL_CTX_set_options().
+long int create_tls_proto_mask(const std::vector<char*>& tls_proto_list);
 
 } // namespace ssl
 

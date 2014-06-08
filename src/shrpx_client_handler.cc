@@ -384,7 +384,6 @@ int ClientHandler::validate_next_proto()
         CLOG(INFO, this) << "The negotiated next protocol: " << proto;
       }
       if(!ssl::in_proto_list(get_config()->npn_list,
-                             get_config()->npn_list_len,
                              next_proto, next_proto_len)) {
         break;
       }
