@@ -421,7 +421,7 @@ void fill_default_config()
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
   mod_config()->tty = isatty(fileno(stderr));
-  mod_config()->cert_tree = 0;
+  mod_config()->cert_tree = nullptr;
   mod_config()->downstream_http_proxy_userinfo = nullptr;
   mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
