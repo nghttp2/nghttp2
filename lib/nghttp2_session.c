@@ -932,7 +932,7 @@ void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
 
   DEBUGF(fprintf(stderr, "stream: adjusting kept closed streams "
                  "num_closed_streams=%zu, num_incoming_streams=%zu, "
-                 "max_concurrent_streams=%u\n",
+                 "max_concurrent_streams=%zu\n",
                  session->num_closed_streams, session->num_incoming_streams,
                  num_stream_max));
 
@@ -4095,7 +4095,8 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
     break;
   default:
-    DEBUGF(fprintf(stderr, "recv: ignore unknown settings id=0x%02x\n"));
+    DEBUGF(fprintf(stderr, "recv: ignore unknown settings id=0x%02x\n",
+                   iv.settings_id));
     return -1;
   }
 
