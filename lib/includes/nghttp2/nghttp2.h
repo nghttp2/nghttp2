@@ -396,7 +396,8 @@ typedef struct {
 
 /**
  * @enum
- * The control frame types in HTTP/2.
+ *
+ * The frame types in HTTP/2 specification.
  */
 typedef enum {
   /**
@@ -438,16 +439,27 @@ typedef enum {
   /**
    * The CONTINUATION frame.
    */
-  NGHTTP2_CONTINUATION = 0x09,
-  /**
-   * The ALTSVC frame.
-   */
-  NGHTTP2_ALTSVC = 0x0a,
-  /**
-   * The BLOCKED frame.
-   */
-  NGHTTP2_BLOCKED = 0x0b
+  NGHTTP2_CONTINUATION = 0x09
 } nghttp2_frame_type;
+
+/**
+ * @enum
+ *
+ * The extension frame types.
+ *
+ * TODO: The assigned frame types were carried from draft-12, and now
+ * actually TBD.
+ */
+typedef enum {
+  /**
+   * The ALTSVC extension frame.
+   */
+  NGHTTP2_EXT_ALTSVC = 0x0a,
+  /**
+   * The BLOCKED extension frame.
+   */
+  NGHTTP2_EXT_BLOCKED = 0x0b
+} nghttp2_ext_frame_type;
 
 /**
  * @enum
@@ -938,16 +950,30 @@ typedef struct {
   int32_t window_size_increment;
 } nghttp2_window_update;
 
-/**
- * @struct
- *
- * The ALTSVC frame.  It has following members:
- */
 typedef struct {
   /**
    * The frame header.
    */
   nghttp2_frame_hd hd;
+  /**
+   * The pointer to extension payload.  The exact pointer type is
+   * determined by hd.type.
+   *
+   * If hd.type == :enum:`NGHTTP2_EXT_ALTSVC`, it is a pointer to
+   * :type:`nghttp2_ext_altsvc`.
+   *
+   * If hd.type == :enum:`NGHTTP2_EXT_BLOCKED`, it points to ``NULL``,
+   * since BLOCKED extension frame has no payload.
+   */
+  void *payload;
+} nghttp2_extension;
+
+/**
+ * @struct
+ *
+ * The ALTSVC extension frame payload.  It has following members:
+ */
+typedef struct {
   /**
    * Protocol ID
    */
@@ -980,19 +1006,7 @@ typedef struct {
    * Port
    */
   uint16_t port;
-} nghttp2_altsvc;
-
-/**
- * @struct
- *
- * The BLOCKED frame.  It has following members:
- */
-typedef struct {
-  /**
-   * The frame header.
-   */
-  nghttp2_frame_hd hd;
-} nghttp2_blocked;
+} nghttp2_ext_altsvc;
 
 /**
  * @union
@@ -1043,13 +1057,9 @@ typedef union {
    */
   nghttp2_window_update window_update;
   /**
-   * The ALTSVC frame.
+   * The extension frame.
    */
-  nghttp2_altsvc altsvc;
-  /**
-   * The BLOCKED frame.
-   */
-  nghttp2_blocked blocked;
+  nghttp2_extension ext;
 } nghttp2_frame;
 
 /**

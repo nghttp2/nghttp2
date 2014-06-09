@@ -230,14 +230,16 @@ static void session_inbound_frame_reset(nghttp2_session *session)
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_window_update_free(&iframe->frame.window_update);
     break;
-  case NGHTTP2_ALTSVC:
-    nghttp2_frame_altsvc_free(&iframe->frame.altsvc);
+  case NGHTTP2_EXT_ALTSVC:
+    nghttp2_frame_altsvc_free(&iframe->frame.ext);
     break;
-  case NGHTTP2_BLOCKED:
-    nghttp2_frame_blocked_free(&iframe->frame.blocked);
+  case NGHTTP2_EXT_BLOCKED:
+    nghttp2_frame_blocked_free(&iframe->frame.ext);
     break;
   }
+
   memset(&iframe->frame, 0, sizeof(nghttp2_frame));
+  memset(&iframe->ext_frame_payload, 0, sizeof(nghttp2_ext_frame_payload));
 
   iframe->state = NGHTTP2_IB_READ_HEAD;
 
@@ -1504,12 +1506,14 @@ static int session_add_blocked(nghttp2_session *session, int32_t stream_id)
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_frame_blocked_init(&frame->blocked, stream_id);
+  frame->ext.payload = NULL;
+
+  nghttp2_frame_blocked_init(&frame->ext, stream_id);
 
   rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
 
   if(rv != 0) {
-    nghttp2_frame_blocked_free(&frame->blocked);
+    nghttp2_frame_blocked_free(&frame->ext);
     free(frame);
 
     return rv;
@@ -1751,28 +1755,28 @@ static int session_prep_frame(nghttp2_session *session,
         return framerv;
       }
       break;
-    case NGHTTP2_ALTSVC:
+    case NGHTTP2_EXT_ALTSVC:
       rv = session_predicate_altsvc_send(session, frame->hd.stream_id);
       if(rv != 0) {
         return rv;
       }
 
       framerv = nghttp2_frame_pack_altsvc(&session->aob.framebufs,
-                                          &frame->altsvc);
+                                          &frame->ext);
 
       if(framerv < 0) {
         return framerv;
       }
 
       break;
-    case NGHTTP2_BLOCKED:
+    case NGHTTP2_EXT_BLOCKED:
       rv = session_predicate_blocked_send(session, frame->hd.stream_id);
       if(rv != 0) {
         return rv;
       }
 
       framerv = nghttp2_frame_pack_blocked(&session->aob.framebufs,
-                                           &frame->blocked);
+                                           &frame->ext);
 
       if(framerv < 0) {
         return framerv;
@@ -3650,7 +3654,9 @@ static int session_process_altsvc_frame(nghttp2_session *session)
   nghttp2_frame *frame = &iframe->frame;
   int rv;
 
-  rv = nghttp2_frame_unpack_altsvc_payload(&frame->altsvc,
+  frame->ext.payload = &iframe->ext_frame_payload;
+
+  rv = nghttp2_frame_unpack_altsvc_payload(&frame->ext,
                                            iframe->sbuf.pos,
                                            nghttp2_buf_len(&iframe->sbuf),
                                            iframe->lbuf.pos,
@@ -3676,6 +3682,8 @@ static int session_process_blocked_frame(nghttp2_session *session)
 {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
+
+  frame->ext.payload = NULL;
 
   return nghttp2_session_on_blocked_received(session, frame);
 }
@@ -4463,7 +4471,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
 
         break;
-      case NGHTTP2_ALTSVC:
+      case NGHTTP2_EXT_ALTSVC:
         DEBUGF(fprintf(stderr, "recv: ALTSVC\n"));
 
         iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
@@ -4494,7 +4502,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         inbound_frame_set_mark(iframe, NGHTTP2_ALTSVC_FIXED_PARTLEN);
 
         break;
-      case NGHTTP2_BLOCKED:
+      case NGHTTP2_EXT_BLOCKED:
         DEBUGF(fprintf(stderr, "recv: BLOCKED\n"));
 
         iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
@@ -4694,7 +4702,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         session_inbound_frame_reset(session);
 
         break;
-      case NGHTTP2_ALTSVC: {
+      case NGHTTP2_EXT_ALTSVC: {
         size_t varlen;
 
         varlen = iframe->frame.hd.length - NGHTTP2_ALTSVC_FIXED_PARTLEN;

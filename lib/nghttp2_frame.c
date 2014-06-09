@@ -186,7 +186,7 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame)
 {}
 
-void nghttp2_frame_altsvc_init(nghttp2_altsvc *frame, int32_t stream_id,
+void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
                                uint32_t max_age,
                                uint16_t port,
                                uint8_t *protocol_id,
@@ -195,34 +195,45 @@ void nghttp2_frame_altsvc_init(nghttp2_altsvc *frame, int32_t stream_id,
                                uint8_t *origin, size_t origin_len)
 {
   size_t payloadlen;
+  nghttp2_ext_altsvc *altsvc;
+
+  altsvc = frame->payload;
 
   payloadlen = NGHTTP2_ALTSVC_MINLEN + protocol_id_len + host_len + origin_len;
 
-  frame_set_hd(&frame->hd, payloadlen, NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE,
+  frame_set_hd(&frame->hd, payloadlen, NGHTTP2_EXT_ALTSVC, NGHTTP2_FLAG_NONE,
                stream_id);
 
-  frame->max_age = max_age;
-  frame->port = port;
-  frame->protocol_id = protocol_id;
-  frame->protocol_id_len = protocol_id_len;
-  frame->host = host;
-  frame->host_len = host_len;
-  frame->origin = origin;
-  frame->origin_len = origin_len;
+  altsvc->max_age = max_age;
+  altsvc->port = port;
+  altsvc->protocol_id = protocol_id;
+  altsvc->protocol_id_len = protocol_id_len;
+  altsvc->host = host;
+  altsvc->host_len = host_len;
+  altsvc->origin = origin;
+  altsvc->origin_len = origin_len;
 }
 
-void nghttp2_frame_altsvc_free(nghttp2_altsvc *frame)
+void nghttp2_frame_altsvc_free(nghttp2_extension *frame)
 {
-  free(frame->protocol_id);
+  nghttp2_ext_altsvc *altsvc;
+
+  altsvc = frame->payload;
+
+  if(altsvc == NULL) {
+    return;
+  }
+
+  free(altsvc->protocol_id);
 }
 
-void nghttp2_frame_blocked_init(nghttp2_blocked *frame, int32_t stream_id)
+void nghttp2_frame_blocked_init(nghttp2_extension *frame, int32_t stream_id)
 {
-  frame_set_hd(&frame->hd, 0, NGHTTP2_BLOCKED, NGHTTP2_FLAG_NONE,
+  frame_set_hd(&frame->hd, 0, NGHTTP2_EXT_BLOCKED, NGHTTP2_FLAG_NONE,
                stream_id);
 }
 
-void nghttp2_frame_blocked_free(nghttp2_blocked *frame)
+void nghttp2_frame_blocked_free(nghttp2_extension *frame)
 {}
 
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata)
@@ -757,12 +768,15 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
     NGHTTP2_WINDOW_SIZE_INCREMENT_MASK;
 }
 
-int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame)
+int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame)
 {
   int rv;
   nghttp2_buf *buf;
+  nghttp2_ext_altsvc *altsvc;
 
   assert(bufs->head == bufs->cur);
+
+  altsvc = frame->payload;
 
   buf = &bufs->head->buf;
 
@@ -770,31 +784,31 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame)
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
 
-  nghttp2_put_uint32be(buf->last, frame->max_age);
+  nghttp2_put_uint32be(buf->last, altsvc->max_age);
   buf->last += 4;
 
-  nghttp2_put_uint16be(buf->last, frame->port);
+  nghttp2_put_uint16be(buf->last, altsvc->port);
   buf->last += 2;
 
-  buf->last[0] = frame->protocol_id_len;
+  buf->last[0] = altsvc->protocol_id_len;
   ++buf->last;
 
-  rv = nghttp2_bufs_add(bufs, frame->protocol_id, frame->protocol_id_len);
+  rv = nghttp2_bufs_add(bufs, altsvc->protocol_id, altsvc->protocol_id_len);
   if(rv != 0) {
     goto fail;
   }
 
-  rv = nghttp2_bufs_addb(bufs, frame->host_len);
+  rv = nghttp2_bufs_addb(bufs, altsvc->host_len);
   if(rv != 0) {
     goto fail;
   }
 
-  rv = nghttp2_bufs_add(bufs, frame->host, frame->host_len);
+  rv = nghttp2_bufs_add(bufs, altsvc->host, altsvc->host_len);
   if(rv != 0) {
     goto fail;
   }
 
-  rv = nghttp2_bufs_add(bufs, frame->origin, frame->origin_len);
+  rv = nghttp2_bufs_add(bufs, altsvc->origin, altsvc->origin_len);
   if(rv != 0) {
     goto fail;
   }
@@ -810,50 +824,53 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame)
   return rv;
 }
 
-int nghttp2_frame_unpack_altsvc_payload(nghttp2_altsvc *frame,
+int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
                                         const uint8_t *payload,
                                         size_t payloadlen,
                                         uint8_t *var_gift_payload,
                                         size_t var_gift_payloadlen)
 {
   nghttp2_buf buf;
+  nghttp2_ext_altsvc *altsvc;
 
-  frame->max_age = nghttp2_get_uint32(payload);
+  altsvc = frame->payload;
+
+  altsvc->max_age = nghttp2_get_uint32(payload);
   payload += 4;
 
-  frame->port = nghttp2_get_uint16(payload);
+  altsvc->port = nghttp2_get_uint16(payload);
   payload += 2;
 
-  frame->protocol_id_len = *payload;
+  altsvc->protocol_id_len = *payload;
 
   nghttp2_buf_wrap_init(&buf, var_gift_payload, var_gift_payloadlen);
   buf.last += var_gift_payloadlen;
 
   /* 1 for Host-Len */
-  if(nghttp2_buf_len(&buf) < 1 + (ssize_t)frame->protocol_id_len) {
+  if(nghttp2_buf_len(&buf) < 1 + (ssize_t)altsvc->protocol_id_len) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
 
-  frame->protocol_id = buf.pos;
-  buf.pos += frame->protocol_id_len;
+  altsvc->protocol_id = buf.pos;
+  buf.pos += altsvc->protocol_id_len;
 
-  frame->host_len = *buf.pos;
+  altsvc->host_len = *buf.pos;
   ++buf.pos;
 
-  if(nghttp2_buf_len(&buf) < (ssize_t)frame->host_len) {
+  if(nghttp2_buf_len(&buf) < (ssize_t)altsvc->host_len) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
 
-  frame->host = buf.pos;
-  buf.pos += frame->host_len;
+  altsvc->host = buf.pos;
+  buf.pos += altsvc->host_len;
 
-  frame->origin = buf.pos;
-  frame->origin_len = nghttp2_buf_len(&buf);
+  altsvc->origin = buf.pos;
+  altsvc->origin_len = nghttp2_buf_len(&buf);
 
   return 0;
 }
 
-int nghttp2_frame_pack_blocked(nghttp2_bufs *bufs, nghttp2_blocked *frame)
+int nghttp2_frame_pack_blocked(nghttp2_bufs *bufs, nghttp2_extension *frame)
 {
   nghttp2_buf *buf;
 

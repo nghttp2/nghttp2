@@ -66,10 +66,9 @@
    Max-Age, Port and Proto-Len. */
 #define NGHTTP2_ALTSVC_FIXED_PARTLEN 7
 
-/* Minimum length of ALTSVC frame.  NGHTTP2_ALTSVC_FIXED_PARTLEN +
-   Host-Len. */
+/* Minimum length of ALTSVC extension frame payload.
+   NGHTTP2_ALTSVC_FIXED_PARTLEN + Host-Len. */
 #define NGHTTP2_ALTSVC_MINLEN 8
-
 
 /* Category of frames. */
 typedef enum {
@@ -78,6 +77,11 @@ typedef enum {
   /* DATA frame */
   NGHTTP2_CAT_DATA
 } nghttp2_frame_category;
+
+/* Union of extension frame payload */
+typedef union {
+  nghttp2_ext_altsvc altsvc;
+} nghttp2_ext_frame_payload;
 
 /**
  * @struct
@@ -402,6 +406,9 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
  * The caller must make sure that nghttp2_bufs_reset(bufs) is called
  * before calling this function.
  *
+ * The caller must make sure that frame->payload points to
+ * nghttp2_ext_altsvc object.
+ *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
@@ -410,7 +417,7 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
  * NGHTTP2_ERR_FRAME_SIZE_ERROR
  *     The length of the frame is too large.
  */
-int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame);
+int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame);
 
 
 /*
@@ -421,13 +428,16 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_altsvc *frame);
  * and then |frame|.  The |var_gift_payloadlen| must be freed by
  * nghttp2_frame_altsvc_free().
  *
+ * The caller must make sure that frame->payload points to
+ * nghttp2_ext_altsvc object.
+ *
  * This function returns 0 if it succeeds or one of the following
  * negative error codes:
  *
  * NGHTTP2_ERR_FRAME_SIZE_ERROR
  *   The |var_gift_payload| does not contain required data.
  */
-int nghttp2_frame_unpack_altsvc_payload(nghttp2_altsvc *frame,
+int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
                                         const uint8_t *payload,
                                         size_t payloadlen,
                                         uint8_t *var_gift_payload,
@@ -441,7 +451,7 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_altsvc *frame,
  *
  * This function always returns 0.
  */
-int nghttp2_frame_pack_blocked(nghttp2_bufs *bufs, nghttp2_blocked *frame);
+int nghttp2_frame_pack_blocked(nghttp2_bufs *bufs, nghttp2_extension *frame);
 
 /*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
@@ -524,7 +534,7 @@ void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
    |protocol_id_len| == 0 and |host_len| + |origin_len| > 0.  If
    |protocol_id_len|, |host_len| and |origin_len| are all zero,
    |protocol_id| can be NULL. */
-void nghttp2_frame_altsvc_init(nghttp2_altsvc *frame, int32_t stream_id,
+void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
                                uint32_t max_age,
                                uint16_t port,
                                uint8_t *protocol_id,
@@ -532,11 +542,15 @@ void nghttp2_frame_altsvc_init(nghttp2_altsvc *frame, int32_t stream_id,
                                uint8_t *host, size_t host_len,
                                uint8_t *origin, size_t origin_len);
 
-void nghttp2_frame_altsvc_free(nghttp2_altsvc *frame);
+/*
+ *  Frees resources used by |frame|.  This function does not free
+ *  frame->payload itself.
+ */
+void nghttp2_frame_altsvc_free(nghttp2_extension *frame);
 
-void nghttp2_frame_blocked_init(nghttp2_blocked *frame, int32_t stream_id);
+void nghttp2_frame_blocked_init(nghttp2_extension *frame, int32_t stream_id);
 
-void nghttp2_frame_blocked_free(nghttp2_blocked *frame);
+void nghttp2_frame_blocked_free(nghttp2_extension *frame);
 
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
 

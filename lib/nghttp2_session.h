@@ -83,6 +83,9 @@ typedef enum {
 
 typedef struct {
   nghttp2_frame frame;
+  /* Storage for extension frame payload.  frame->ext.payload points
+     to this structure to avoid frequent memory allocation. */
+  nghttp2_ext_frame_payload ext_frame_payload;
   /* The received SETTINGS entry. The protocol says that we only cares
      about the defined settings ID. If unknown ID is received, it is
      subject to connection error */

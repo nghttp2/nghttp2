@@ -57,11 +57,11 @@ typedef struct {
   accumulator *acc;
   scripted_data_feed *df;
   int frame_recv_cb_called, invalid_frame_recv_cb_called;
-  nghttp2_frame_type recv_frame_type;
+  uint8_t recv_frame_type;
   int frame_send_cb_called;
-  nghttp2_frame_type sent_frame_type;
+  uint8_t sent_frame_type;
   int frame_not_send_cb_called;
-  nghttp2_frame_type not_sent_frame_type;
+  uint8_t not_sent_frame_type;
   int not_sent_error;
   int stream_close_cb_called;
   size_t data_source_length;
@@ -1055,6 +1055,7 @@ void test_nghttp2_session_recv_altsvc(void)
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   nghttp2_frame frame;
+  nghttp2_ext_altsvc altsvc;
   size_t protocol_id_len, host_len, origin_len;
   uint8_t *protocol_id, *host, *origin;
   uint8_t *data;
@@ -1087,16 +1088,18 @@ void test_nghttp2_session_recv_altsvc(void)
          "http://www.example.org", origin_len);
   origin = data + protocol_id_len + host_len;
 
-  nghttp2_frame_altsvc_init(&frame.altsvc, 1000000007, 1u << 31, 4000,
+  frame.ext.payload = &altsvc;
+
+  nghttp2_frame_altsvc_init(&frame.ext, 1000000007, 1u << 31, 4000,
                             protocol_id, protocol_id_len,
                             host, host_len, origin, origin_len);
 
-  rv = nghttp2_frame_pack_altsvc(&bufs, &frame.altsvc);
+  rv = nghttp2_frame_pack_altsvc(&bufs, &frame.ext);
 
   CU_ASSERT(0 == rv);
   CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
 
-  nghttp2_frame_altsvc_free(&frame.altsvc);
+  nghttp2_frame_altsvc_free(&frame.ext);
 
   buf = &bufs.head->buf;
   assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
@@ -1124,7 +1127,7 @@ void test_nghttp2_session_recv_altsvc(void)
 
   CU_ASSERT(rv == nghttp2_buf_len(buf));
   CU_ASSERT(1 == ud.frame_recv_cb_called);
-  CU_ASSERT(NGHTTP2_ALTSVC == ud.recv_frame_type);
+  CU_ASSERT(NGHTTP2_EXT_ALTSVC == ud.recv_frame_type);
 
   /* premature payload */
   nghttp2_put_uint16be(buf->pos, 8);
@@ -3529,6 +3532,7 @@ void test_nghttp2_submit_altsvc(void)
   const char host[] = "localhost";
   const char origin[] = "http://localhost/";
   nghttp2_frame *frame;
+  nghttp2_ext_altsvc *altsvc;
   nghttp2_outbound_item *item;
   my_user_data ud;
 
@@ -3564,28 +3568,30 @@ void test_nghttp2_submit_altsvc(void)
 
   frame = OB_CTRL(item);
 
-  CU_ASSERT(NGHTTP2_ALTSVC == frame->hd.type);
+  CU_ASSERT(NGHTTP2_EXT_ALTSVC == frame->hd.type);
   CU_ASSERT(9 == frame->hd.stream_id);
 
-  CU_ASSERT(12345 == frame->altsvc.max_age);
-  CU_ASSERT(3000 == frame->altsvc.port);
+  altsvc = frame->ext.payload;
 
-  CU_ASSERT(strlen(protocol_id) == frame->altsvc.protocol_id_len);
-  CU_ASSERT(strlen(host) == frame->altsvc.host_len);
-  CU_ASSERT(strlen(origin) == frame->altsvc.origin_len);
+  CU_ASSERT(12345 == altsvc->max_age);
+  CU_ASSERT(3000 == altsvc->port);
 
-  CU_ASSERT(0 == memcmp(protocol_id, frame->altsvc.protocol_id,
-                        frame->altsvc.protocol_id_len));
-  CU_ASSERT(0 == memcmp(host, frame->altsvc.host, frame->altsvc.host_len));
-  CU_ASSERT(0 == memcmp(origin, frame->altsvc.origin,
-                        frame->altsvc.origin_len));
+  CU_ASSERT(strlen(protocol_id) == altsvc->protocol_id_len);
+  CU_ASSERT(strlen(host) == altsvc->host_len);
+  CU_ASSERT(strlen(origin) == altsvc->origin_len);
+
+  CU_ASSERT(0 == memcmp(protocol_id, altsvc->protocol_id,
+                        altsvc->protocol_id_len));
+  CU_ASSERT(0 == memcmp(host, altsvc->host, altsvc->host_len));
+  CU_ASSERT(0 == memcmp(origin, altsvc->origin,
+                        altsvc->origin_len));
 
   ud.frame_send_cb_called = 0;
 
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   CU_ASSERT(1 == ud.frame_send_cb_called);
-  CU_ASSERT(NGHTTP2_ALTSVC == ud.sent_frame_type);
+  CU_ASSERT(NGHTTP2_EXT_ALTSVC == ud.sent_frame_type);
 
   nghttp2_session_del(session);
 }

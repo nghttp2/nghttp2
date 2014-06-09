@@ -379,6 +379,7 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
   size_t varlen;
   uint8_t *var, *varp;
   nghttp2_frame *frame;
+  nghttp2_ext_altsvc *altsvc;
   uint8_t *copy_protocol_id, *copy_host, *copy_origin;
 
   if(!session->server) {
@@ -392,6 +393,14 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
+  altsvc = malloc(sizeof(nghttp2_ext_altsvc));
+
+  if(altsvc == NULL) {
+    rv = NGHTTP2_ERR_NOMEM;
+
+    goto fail;
+  }
+
   if(varlen == 0) {
     var = NULL;
     copy_protocol_id = NULL;
@@ -401,7 +410,9 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
     var = malloc(varlen);
 
     if(var == NULL) {
-      return NGHTTP2_ERR_NOMEM;
+      rv = NGHTTP2_ERR_NOMEM;
+
+      goto var_alloc_fail;
     }
 
     varp = var;
@@ -424,25 +435,37 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
   frame = malloc(sizeof(nghttp2_frame));
 
   if(frame == NULL) {
-    free(var);
+    rv = NGHTTP2_ERR_NOMEM;
 
-    return NGHTTP2_ERR_NOMEM;
+    goto frame_alloc_fail;
   }
 
-  nghttp2_frame_altsvc_init(&frame->altsvc, stream_id, max_age, port,
+  frame->ext.payload = altsvc;
+
+  nghttp2_frame_altsvc_init(&frame->ext, stream_id, max_age, port,
                             copy_protocol_id, protocol_id_len,
                             copy_host, host_len, copy_origin, origin_len);
 
   rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
 
   if(rv != 0) {
-    nghttp2_frame_altsvc_free(&frame->altsvc);
+    nghttp2_frame_altsvc_free(&frame->ext);
     free(frame);
+    free(altsvc);
 
     return rv;
   }
 
   return 0;
+
+ frame_alloc_fail:
+  free(var);
+
+ var_alloc_fail:
+  free(altsvc);
+
+ fail:
+  return rv;
 }
 
 static uint8_t set_request_flags(const nghttp2_priority_spec *pri_spec,
