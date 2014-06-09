@@ -277,11 +277,6 @@ static void active_outbound_item_reset(nghttp2_active_outbound_item *aob)
   aob->state = NGHTTP2_OB_POP_ITEM;
 }
 
-typedef struct {
-  nghttp2_session *session;
-  int rv;
-} header_cb_arg;
-
 static int session_new(nghttp2_session **session_ptr,
                        const nghttp2_session_callbacks *callbacks,
                        void *user_data,
