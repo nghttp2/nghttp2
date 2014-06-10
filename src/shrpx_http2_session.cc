@@ -257,14 +257,13 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       SSLOG(INFO, http2session) << "Connection established";
     }
     http2session->set_state(Http2Session::CONNECTED);
-    if(!get_config()->downstream_no_tls) {
-      if(!ssl::check_http2_requirement(http2session->get_ssl()) ||
-         (!get_config()->insecure && http2session->check_cert() != 0)) {
+    if(!get_config()->downstream_no_tls &&
+       !get_config()->insecure &&
+       http2session->check_cert() != 0) {
 
-        http2session->disconnect();
+      http2session->disconnect();
 
-        return;
-      }
+      return;
     }
 
     if(http2session->on_connect() != 0) {
@@ -1268,9 +1267,25 @@ int Http2Session::on_connect()
     return -1;
   }
 
+  if(!get_config()->downstream_no_tls &&
+     !ssl::check_http2_requirement(ssl_)) {
+
+    rv = terminate_session(NGHTTP2_INADEQUATE_SECURITY);
+
+    if(rv != 0) {
+      return -1;
+    }
+  }
+
   rv = send();
   if(rv != 0) {
     return -1;
+  }
+
+  if(!get_config()->downstream_no_tls &&
+     !ssl::check_http2_requirement(ssl_)) {
+
+    return 0;
   }
 
   // submit pending request
