@@ -407,7 +407,6 @@ void fill_default_config()
   // Default accept() backlog
   mod_config()->backlog = -1;
   mod_config()->ciphers = nullptr;
-  mod_config()->honor_cipher_order = false;
   mod_config()->http2_proxy = false;
   mod_config()->http2_bridge = false;
   mod_config()->client_proxy = false;
@@ -616,12 +615,7 @@ Timeout:
 
 SSL/TLS:
   --ciphers=<SUITE>  Set  allowed  cipher  list.  The  format  of  the
-                     string  is described  in OpenSSL  ciphers(1).  If
-                     this  option  is  used,  --honor-cipher-order  is
-                     implicitly enabled.
-  --honor-cipher-order
-                     Honor server cipher order,  giving the ability to
-                     mitigate BEAST attacks.
+                     string  is described  in OpenSSL  ciphers(1).
   -k, --insecure
                      Don't verify backend  server's certificate if -p,
                      --client   or   --http2-bridge  are   given   and
@@ -859,7 +853,6 @@ int main(int argc, char **argv)
       {"backend-no-tls", no_argument, &flag, 27},
       {"frontend-no-tls", no_argument, &flag, 29},
       {"backend-tls-sni-field", required_argument, &flag, 31},
-      {"honor-cipher-order", no_argument, &flag, 32},
       {"dh-param-file", required_argument, &flag, 33},
       {"read-rate", required_argument, &flag, 34},
       {"read-burst", required_argument, &flag, 35},
@@ -1050,10 +1043,6 @@ int main(int argc, char **argv)
       case 31:
         // --backend-tls-sni-field
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SNI_FIELD, optarg);
-        break;
-      case 32:
-        // --honor-cipher-order
-        cmdcfgs.emplace_back(SHRPX_OPT_HONOR_CIPHER_ORDER, "yes");
         break;
       case 33:
         // --dh-param-file
