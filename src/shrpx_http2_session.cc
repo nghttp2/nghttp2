@@ -338,15 +338,16 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr)
       SSLOG(INFO, http2session) << "Connected to the proxy";
     }
     std::string req = "CONNECT ";
-    req += get_config()->downstream_hostport;
+    req += get_config()->downstream_hostport.get();
     req += " HTTP/1.1\r\nHost: ";
-    req += get_config()->downstream_host;
+    req += get_config()->downstream_host.get();
     req += "\r\n";
     if(get_config()->downstream_http_proxy_userinfo) {
       req += "Proxy-Authorization: Basic ";
-      size_t len = strlen(get_config()->downstream_http_proxy_userinfo);
-      req += base64::encode(get_config()->downstream_http_proxy_userinfo,
-                            get_config()->downstream_http_proxy_userinfo+len);
+      size_t len = strlen(get_config()->downstream_http_proxy_userinfo.get());
+      req += base64::encode
+        (get_config()->downstream_http_proxy_userinfo.get(),
+         get_config()->downstream_http_proxy_userinfo.get() + len);
       req += "\r\n";
     }
     req += "\r\n";
@@ -393,7 +394,8 @@ int Http2Session::initiate_connection()
   if(get_config()->downstream_http_proxy_host && state_ == DISCONNECTED) {
     if(LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Connecting to the proxy "
-                        << get_config()->downstream_http_proxy_host << ":"
+                        << get_config()->downstream_http_proxy_host.get()
+                        << ":"
                         << get_config()->downstream_http_proxy_port;
     }
     bev_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_DEFER_CALLBACKS);
@@ -414,7 +416,8 @@ int Http2Session::initiate_connection()
        get_config()->downstream_http_proxy_addrlen);
     if(rv != 0) {
       SSLOG(ERROR, this) << "Failed to connect to the proxy "
-                         << get_config()->downstream_http_proxy_host << ":"
+                         << get_config()->downstream_http_proxy_host.get()
+                         << ":"
                          << get_config()->downstream_http_proxy_port;
       return SHRPX_ERR_NETWORK;
     }
@@ -442,13 +445,13 @@ int Http2Session::initiate_connection()
 
       const char *sni_name = nullptr;
       if ( get_config()->backend_tls_sni_name ) {
-        sni_name = get_config()->backend_tls_sni_name;
+        sni_name = get_config()->backend_tls_sni_name.get();
       }
       else {
-        sni_name = get_config()->downstream_host;
+        sni_name = get_config()->downstream_host.get();
       }
 
-      if(!util::numeric_host(sni_name)) {
+      if(sni_name && !util::numeric_host(sni_name)) {
         // TLS extensions: SNI. There is no documentation about the return
         // code for this function (actually this is macro wrapping SSL_ctrl
         // at the time of this writing).

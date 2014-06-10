@@ -88,14 +88,14 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 } // namespace
 
 namespace {
-size_t set_npn_prefs(unsigned char *out, char **protos, size_t len)
+size_t set_npn_prefs(unsigned char *out, const std::vector<char*>& protos)
 {
   unsigned char *ptr = out;
   size_t listlen = 0;
-  for(size_t i = 0; i < len; ++i) {
-    size_t plen = strlen(protos[i]);
+  for(auto proto : protos) {
+    auto plen = strlen(proto);
     *ptr = plen;
-    memcpy(ptr+1, protos[i], *ptr);
+    memcpy(ptr+1, proto, *ptr);
     ptr += *ptr+1;
     listlen += 1 + plen;
   }
@@ -107,13 +107,13 @@ namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
 {
   auto config = static_cast<Config*>(user_data);
-  int len = (int)strlen(config->private_key_passwd);
+  int len = (int)strlen(config->private_key_passwd.get());
   if (size < len + 1) {
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
     return 0;
   }
   // Copy string including last '\0'.
-  memcpy(buf, config->private_key_passwd, len+1);
+  memcpy(buf, config->private_key_passwd.get(), len + 1);
   return len;
 }
 } // namespace
@@ -166,11 +166,7 @@ int alpn_select_proto_cb(SSL* ssl,
   // We assume that get_config()->npn_list contains ALPN protocol
   // identifier sorted by preference order.  So we just break when we
   // found the first overlap.
-  for(auto needle_ptr = get_config()->npn_list,
-        end_needle_ptr = needle_ptr + get_config()->npn_list_len;
-      needle_ptr < end_needle_ptr; ++needle_ptr) {
-
-    auto target_proto_id = *needle_ptr;
+  for(auto target_proto_id : get_config()->npn_list) {
     auto target_proto_len =
       strlen(reinterpret_cast<const char*>(target_proto_id));
 
@@ -206,27 +202,29 @@ int alpn_select_proto_cb(SSL* ssl,
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 namespace {
-const char *names[] = { "TLSv1.2", "TLSv1.1", "TLSv1.0", "SSLv3" };
-const size_t namelen = sizeof(names)/sizeof(names[0]);
-const long int masks[] = { SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
-                           SSL_OP_NO_TLSv1, SSL_OP_NO_SSLv3 };
-long int create_tls_proto_mask(char **tls_proto_list, size_t len)
+const char *tls_names[] = { "TLSv1.2", "TLSv1.1", "TLSv1.0", "SSLv3" };
+const size_t tls_namelen = sizeof(tls_names)/sizeof(tls_names[0]);
+const long int tls_masks[] = { SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
+                               SSL_OP_NO_TLSv1, SSL_OP_NO_SSLv3 };
+} // namespace
+
+long int create_tls_proto_mask(const std::vector<char*>& tls_proto_list)
 {
   long int res = 0;
-  for(size_t i = 0; i < namelen; ++i) {
+
+  for(size_t i = 0; i < tls_namelen; ++i) {
     size_t j;
-    for(j = 0; j < len; ++j) {
-      if(strcasecmp(names[i], tls_proto_list[j]) == 0) {
+    for(j = 0; j < tls_proto_list.size(); ++j) {
+      if(util::strieq(tls_names[i], tls_proto_list[j])) {
         break;
       }
     }
-    if(j == len) {
-      res |= masks[i];
+    if(j == tls_proto_list.size()) {
+      res |= tls_masks[i];
     }
   }
   return res;
 }
-} // namespace
 
 SSL_CTX* create_ssl_context(const char *private_key_file,
                             const char *cert_file)
@@ -243,8 +241,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
                       SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
                       SSL_OP_NO_TICKET |
-                      create_tls_proto_mask(get_config()->tls_proto_list,
-                                            get_config()->tls_proto_list_len));
+                      get_config()->tls_proto_mask);
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx)-1);
@@ -252,7 +249,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
 
   const char *ciphers;
   if(get_config()->ciphers) {
-    ciphers = get_config()->ciphers;
+    ciphers = get_config()->ciphers.get();
     // If ciphers are given, honor its order unconditionally
     SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
   } else {
@@ -291,7 +288,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
 
   if(get_config()->dh_param_file) {
     // Read DH parameters from file
-    auto bio = BIO_new_file(get_config()->dh_param_file, "r");
+    auto bio = BIO_new_file(get_config()->dh_param_file.get(), "r");
     if(bio == nullptr) {
       LOG(FATAL) << "BIO_new_file() failed: "
                  << ERR_error_string(ERR_get_error(), nullptr);
@@ -333,11 +330,11 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   }
   if(get_config()->verify_client) {
     if(get_config()->verify_client_cacert) {
-      if(SSL_CTX_load_verify_locations(ssl_ctx,
-                                       get_config()->verify_client_cacert,
-                                       nullptr) != 1) {
+      if(SSL_CTX_load_verify_locations
+         (ssl_ctx, get_config()->verify_client_cacert.get(), nullptr) != 1) {
+
         LOG(FATAL) << "Could not load trusted ca certificates from "
-                   << get_config()->verify_client_cacert << ": "
+                   << get_config()->verify_client_cacert.get() << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
@@ -345,10 +342,11 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
       // error even though it returns success. See
       // http://forum.nginx.org/read.php?29,242540
       ERR_clear_error();
-      auto list = SSL_load_client_CA_file(get_config()->verify_client_cacert);
+      auto list = SSL_load_client_CA_file
+        (get_config()->verify_client_cacert.get());
       if(!list) {
         LOG(FATAL) << "Could not load ca certificates from "
-                   << get_config()->verify_client_cacert << ": "
+                   << get_config()->verify_client_cacert.get() << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
@@ -363,8 +361,8 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
   // NPN advertisement
-  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,
-                                      get_config()->npn_list_len);
+  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list);
+
   next_proto.first = proto_list;
   next_proto.second = proto_list_len;
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
@@ -400,12 +398,11 @@ SSL_CTX* create_ssl_client_context()
   SSL_CTX_set_options(ssl_ctx,
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                      create_tls_proto_mask(get_config()->tls_proto_list,
-                                            get_config()->tls_proto_list_len));
+                      get_config()->tls_proto_mask);
 
   const char *ciphers;
   if(get_config()->ciphers) {
-    ciphers = get_config()->ciphers;
+    ciphers = get_config()->ciphers.get();
   } else {
     ciphers = "HIGH:!aNULL:!eNULL";
   }
@@ -425,10 +422,11 @@ SSL_CTX* create_ssl_client_context()
   }
 
   if(get_config()->cacert) {
-    if(SSL_CTX_load_verify_locations(ssl_ctx, get_config()->cacert, nullptr)
-       != 1) {
+    if(SSL_CTX_load_verify_locations
+       (ssl_ctx, get_config()->cacert.get(), nullptr) != 1) {
+
       LOG(FATAL) << "Could not load trusted ca certificates from "
-                 << get_config()->cacert << ": "
+                 << get_config()->cacert.get() << ": "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
@@ -436,20 +434,20 @@ SSL_CTX* create_ssl_client_context()
 
   if(get_config()->client_private_key_file) {
     if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
-                                   get_config()->client_private_key_file,
+                                   get_config()->client_private_key_file.get(),
                                    SSL_FILETYPE_PEM) != 1) {
       LOG(FATAL) << "Could not load client private key from "
-                 << get_config()->client_private_key_file << ": "
+                 << get_config()->client_private_key_file.get() << ": "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
   }
   if(get_config()->client_cert_file) {
-    if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
-                                          get_config()->client_cert_file)
-       != 1) {
+    if(SSL_CTX_use_certificate_chain_file
+       (ssl_ctx, get_config()->client_cert_file.get()) != 1) {
+
       LOG(FATAL) << "Could not load client certificate from "
-                 << get_config()->client_cert_file << ": "
+                 << get_config()->client_cert_file.get() << ": "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
@@ -459,8 +457,8 @@ SSL_CTX* create_ssl_client_context()
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement
-  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list,
-                                      get_config()->npn_list_len);
+  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list);
+
   next_proto.first = proto_list;
   next_proto.second = proto_list_len;
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list[0] + 1);
@@ -686,7 +684,7 @@ int check_cert(SSL *ssl)
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  if(verify_hostname(get_config()->downstream_host,
+  if(verify_hostname(get_config()->downstream_host.get(),
                      &get_config()->downstream_addr,
                      get_config()->downstream_addrlen,
                      dns_names, ip_addrs, common_name) != 0) {
@@ -898,12 +896,11 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   return 0;
 }
 
-bool in_proto_list(char **protos, size_t len,
-                   const unsigned char *proto, size_t protolen)
+bool in_proto_list(const std::vector<char*>& protos,
+                   const unsigned char *needle, size_t len)
 {
-  for(size_t i = 0; i < len; ++i) {
-    if(strlen(protos[i]) == protolen &&
-       memcmp(protos[i], proto, protolen) == 0) {
+  for(auto proto : protos) {
+    if(strlen(proto) == len && memcmp(proto, needle, len) == 0) {
       return true;
     }
   }
