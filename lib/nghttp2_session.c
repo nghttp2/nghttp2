@@ -37,24 +37,24 @@
 /*
  * Returns non-zero if the number of outgoing opened streams is larger
  * than or equal to
- * remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS].
+ * remote_settings.max_concurrent_streams.
  */
 static int session_is_outgoing_concurrent_streams_max
 (nghttp2_session *session)
 {
-  return session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]
+  return session->remote_settings.max_concurrent_streams
     <= session->num_outgoing_streams;
 }
 
 /*
  * Returns non-zero if the number of incoming opened streams is larger
  * than or equal to
- * local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS].
+ * local_settings.max_concurrent_streams.
  */
 static int session_is_incoming_concurrent_streams_max
 (nghttp2_session *session)
 {
-  return session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]
+  return session->local_settings.max_concurrent_streams
     <= session->num_incoming_streams;
 }
 
@@ -255,15 +255,12 @@ static void session_inbound_frame_reset(nghttp2_session *session)
   iframe->padlen = 0;
 }
 
-static void init_settings(uint32_t *settings)
+static void init_settings(nghttp2_settings_storage *settings)
 {
-  settings[NGHTTP2_SETTINGS_HEADER_TABLE_SIZE] =
-    NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
-  settings[NGHTTP2_SETTINGS_ENABLE_PUSH] = 1;
-  settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
-    NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
-  settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
-    NGHTTP2_INITIAL_WINDOW_SIZE;
+  settings->header_table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
+  settings->enable_push = 1;
+  settings->max_concurrent_streams = NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  settings->initial_window_size = NGHTTP2_INITIAL_WINDOW_SIZE;
 }
 
 static void active_outbound_item_reset(nghttp2_active_outbound_item *aob)
@@ -348,8 +345,8 @@ static int session_new(nghttp2_session **session_ptr,
 
   active_outbound_item_reset(&(*session_ptr)->aob);
 
-  init_settings((*session_ptr)->remote_settings);
-  init_settings((*session_ptr)->local_settings);
+  init_settings(&(*session_ptr)->remote_settings);
+  init_settings(&(*session_ptr)->local_settings);
 
 
   if(option) {
@@ -371,8 +368,7 @@ static int session_new(nghttp2_session **session_ptr,
 
     if(option->opt_set_mask & NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS) {
 
-      (*session_ptr)->
-        remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+      (*session_ptr)->remote_settings.max_concurrent_streams =
         option->peer_max_concurrent_streams;
 
     }
@@ -730,10 +726,8 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
 
   nghttp2_stream_init(stream, stream_id, flags, initial_state,
                       pri_spec->weight, &session->roots,
-                      session->remote_settings
-                      [NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE],
-                      session->local_settings
-                      [NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE],
+                      session->remote_settings.initial_window_size,
+                      session->local_settings.initial_window_size,
                       stream_user_data);
 
   rv = nghttp2_map_insert(&session->streams, &stream->map_entry);
@@ -920,10 +914,8 @@ void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
 {
   size_t num_stream_max;
 
-  num_stream_max =
-    nghttp2_min
-    (session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS],
-     session->pending_local_max_concurrent_stream);
+  num_stream_max = nghttp2_min(session->local_settings.max_concurrent_streams,
+                               session->pending_local_max_concurrent_stream);
 
   DEBUGF(fprintf(stderr, "stream: adjusting kept closed streams "
                  "num_closed_streams=%zu, num_incoming_streams=%zu, "
@@ -1206,7 +1198,7 @@ static int session_predicate_push_promise_send
   if(rv != 0) {
     return rv;
   }
-  if(session->remote_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] == 0) {
+  if(session->remote_settings.enable_push == 0) {
     return NGHTTP2_ERR_PUSH_DISABLED;
   }
   if(stream->state == NGHTTP2_STREAM_CLOSING) {
@@ -3212,10 +3204,11 @@ static int session_update_remote_initial_window_size
  int32_t new_initial_window_size)
 {
   nghttp2_update_window_size_arg arg;
+
   arg.session = session;
   arg.new_window_size = new_initial_window_size;
-  arg.old_window_size =
-    session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE];
+  arg.old_window_size = session->remote_settings.initial_window_size;
+
   return nghttp2_map_each(&session->streams,
                           update_remote_initial_window_size_func,
                           &arg);
@@ -3322,18 +3315,32 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     rv = session_update_local_initial_window_size
       (session,
        new_initial_window_size,
-       session->local_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
+       session->local_settings.initial_window_size);
     if(rv != 0) {
       return rv;
     }
   }
+
   for(i = 0; i < niv; ++i) {
-    if(iv[i].settings_id > 0 && iv[i].settings_id <= NGHTTP2_SETTINGS_MAX) {
-      session->local_settings[iv[i].settings_id] = iv[i].value;
+    switch(iv[i].settings_id) {
+    case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+      session->local_settings.header_table_size = iv[i].value;
+      break;
+    case NGHTTP2_SETTINGS_ENABLE_PUSH:
+      session->local_settings.enable_push = iv[i].value;
+      break;
+    case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+      session->local_settings.max_concurrent_streams = iv[i].value;
+      break;
+    case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+      session->local_settings.initial_window_size = iv[i].value;
+      break;
     }
   }
+
   session->pending_local_max_concurrent_stream =
     NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+
   return 0;
 }
 
@@ -3343,7 +3350,11 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 {
   int rv;
   int i;
-  int check[NGHTTP2_SETTINGS_MAX+1];
+  int header_table_size_seen = 0;
+  int enable_push_seen = 0;
+  int max_concurrent_streams_seen = 0;
+  int initial_window_size_seen = 0;
+
   if(frame->hd.stream_id != 0) {
     return session_handle_invalid_connection(session, frame,
                                              NGHTTP2_PROTOCOL_ERROR);
@@ -3374,25 +3385,27 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     }
     return session_call_on_frame_received(session, frame);
   }
-  /* Check ID/value pairs and persist them if necessary. */
-  memset(check, 0, sizeof(check));
+
   for(i = (int)frame->settings.niv - 1; i >= 0; --i) {
     nghttp2_settings_entry *entry = &frame->settings.iv[i];
+
     /* The spec says the settings values are processed in the order
-       they appear in the payload. In other words, if the multiple
+       they appear in the payload.  In other words, if the multiple
        values for the same ID were found, use the last one and ignore
        the rest. */
-    if(entry->settings_id > NGHTTP2_SETTINGS_MAX || entry->settings_id <= 0 ||
-       check[entry->settings_id] == 1) {
-      continue;
-    }
-    check[entry->settings_id] = 1;
     switch(entry->settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+      if(header_table_size_seen) {
+        break;
+      }
+
+      header_table_size_seen = 1;
+
       if(entry->value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
         return session_handle_invalid_connection
           (session, frame, NGHTTP2_COMPRESSION_ERROR);
       }
+
       rv = nghttp2_hd_deflate_change_table_size(&session->hd_deflater,
                                                 entry->value);
       if(rv != 0) {
@@ -3403,46 +3416,84 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
             (session, frame, NGHTTP2_COMPRESSION_ERROR);
         }
       }
+
+      session->remote_settings.header_table_size = entry->value;
+
       break;
     case NGHTTP2_SETTINGS_ENABLE_PUSH:
+      if(enable_push_seen) {
+        break;
+      }
+
+      enable_push_seen = 1;
+
       if(entry->value != 0 && entry->value != 1) {
         return session_handle_invalid_connection
           (session, frame, NGHTTP2_PROTOCOL_ERROR);
       }
+
       if(!session->server && entry->value != 0) {
         return session_handle_invalid_connection
           (session, frame, NGHTTP2_PROTOCOL_ERROR);
       }
+
+      session->remote_settings.enable_push = entry->value;
+
+      break;
+    case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+      if(max_concurrent_streams_seen) {
+        break;
+      }
+
+      max_concurrent_streams_seen = 1;
+
+      session->remote_settings.max_concurrent_streams = entry->value;
+
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+      if(initial_window_size_seen) {
+        break;
+      }
+
+      initial_window_size_seen = 1;
+
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
       if(entry->value > NGHTTP2_MAX_WINDOW_SIZE) {
         return session_handle_invalid_connection
           (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
       }
+
       rv = session_update_remote_initial_window_size(session, entry->value);
+
       if(nghttp2_is_fatal(rv)) {
         return rv;
       }
+
       if(rv != 0) {
         return session_handle_invalid_connection
           (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
       }
+
+      session->remote_settings.initial_window_size = entry->value;
+
       break;
     }
-    session->remote_settings[entry->settings_id] = entry->value;
   }
+
   if(!noack) {
     rv = nghttp2_session_add_settings(session, NGHTTP2_FLAG_ACK, NULL, 0);
+
     if(rv != 0) {
       if(nghttp2_is_fatal(rv)) {
         return rv;
       }
+
       return session_handle_invalid_connection
         (session, frame, NGHTTP2_INTERNAL_ERROR);
     }
   }
+
   return session_call_on_frame_received(session, frame);
 }
 
@@ -3473,8 +3524,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
     return session_inflate_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
-  if(session->server ||
-     session->local_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] == 0) {
+  if(session->server || session->local_settings.enable_push == 0) {
     return session_inflate_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR);
   }
@@ -5580,11 +5630,18 @@ int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session* session,
 uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
                                              nghttp2_settings_id id)
 {
-  if(id > NGHTTP2_SETTINGS_MAX) {
-    return 0;
+  switch(id) {
+  case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+    return session->remote_settings.header_table_size;
+  case NGHTTP2_SETTINGS_ENABLE_PUSH:
+    return session->remote_settings.enable_push;
+  case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+    return session->remote_settings.max_concurrent_streams;
+  case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+    return session->remote_settings.initial_window_size;
   }
 
-  return session->remote_settings[id];
+  assert(0);
 }
 
 int nghttp2_session_upgrade(nghttp2_session *session,

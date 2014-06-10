@@ -519,10 +519,6 @@ typedef enum {
    * SETTINGS_INITIAL_WINDOW_SIZE
    */
   NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 4,
-  /**
-   * Maximum ID of :type:`nghttp2_settings_id`.
-   */
-  NGHTTP2_SETTINGS_MAX = 4
 } nghttp2_settings_id;
 
 /**
@@ -2030,6 +2026,8 @@ int nghttp2_session_terminate_session(nghttp2_session *session,
  * @function
  *
  * Returns the value of SETTINGS |id| notified by a remote endpoint.
+ * The |id| must be one of values defined in
+ * :enum:`nghttp2_settings_id`.
  */
 uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
                                              nghttp2_settings_id id);

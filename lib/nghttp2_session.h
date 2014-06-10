@@ -106,6 +106,13 @@ typedef struct {
   uint8_t raw_sbuf[8];
 } nghttp2_inbound_frame;
 
+typedef struct {
+  uint32_t header_table_size;
+  uint32_t enable_push;
+  uint32_t max_concurrent_streams;
+  uint32_t initial_window_size;
+} nghttp2_settings_storage;
+
 typedef enum {
   NGHTTP2_GOAWAY_NONE = 0,
   /* Flag means GOAWAY frame is sent to the remote peer. */
@@ -159,10 +166,10 @@ struct nghttp2_session {
      in-flight SETTINGS. */
   ssize_t inflight_niv;
   /* The number of outgoing streams. This will be capped by
-     remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]. */
+     remote_settings.max_concurrent_streams. */
   size_t num_outgoing_streams;
   /* The number of incoming streams. This will be capped by
-     local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]. */
+     local_settings.max_concurrent_streams. */
   size_t num_incoming_streams;
   /* The number of closed streams still kept in |streams| hash.  The
      closed streams can be accessed through single linked list
@@ -201,9 +208,9 @@ struct nghttp2_session {
   int32_t local_window_size;
   /* Settings value received from the remote endpoint. We just use ID
      as index. The index = 0 is unused. */
-  uint32_t remote_settings[NGHTTP2_SETTINGS_MAX+1];
+  nghttp2_settings_storage remote_settings;
   /* Settings value of the local endpoint. */
-  uint32_t local_settings[NGHTTP2_SETTINGS_MAX+1];
+  nghttp2_settings_storage local_settings;
   /* Option flags. This is bitwise-OR of 0 or more of nghttp2_optmask. */
   uint32_t opt_flags;
   /* Unacked local SETTINGS_MAX_CONCURRENT_STREAMS value. We use this

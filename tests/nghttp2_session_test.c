@@ -1514,7 +1514,7 @@ void test_nghttp2_session_on_request_headers_received(void)
   CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
 
   nghttp2_frame_headers_free(&frame.headers);
-  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] =
+  session->local_settings.max_concurrent_streams =
     NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
 
   /* Stream ID less than or equal to the previouly received request
@@ -1706,7 +1706,7 @@ void test_nghttp2_session_on_push_response_headers_received(void)
 
   /* If ACKed max concurrent streams limit is exceeded, GOAWAY is
      issued */
-  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  session->local_settings.max_concurrent_streams = 1;
 
   stream = nghttp2_session_open_stream(session, 6, NGHTTP2_STREAM_FLAG_NONE,
                                        &pri_spec_default,
@@ -1874,7 +1874,7 @@ void test_nghttp2_session_on_settings_received(void)
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   nghttp2_session_client_new(&session, &callbacks, &user_data);
-  session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] = 16*1024;
+  session->remote_settings.initial_window_size = 16*1024;
 
   stream1 = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                                         &pri_spec_default,
@@ -1891,14 +1891,10 @@ void test_nghttp2_session_on_settings_received(void)
                               dup_iv(iv, niv), niv);
 
   CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
-  CU_ASSERT(1000000009 ==
-            session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
-  CU_ASSERT(64*1024 ==
-            session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
-  CU_ASSERT(1024 ==
-            session->remote_settings[NGHTTP2_SETTINGS_HEADER_TABLE_SIZE]);
-  CU_ASSERT(0 ==
-            session->remote_settings[NGHTTP2_SETTINGS_ENABLE_PUSH]);
+  CU_ASSERT(1000000009 == session->remote_settings.max_concurrent_streams);
+  CU_ASSERT(64*1024 == session->remote_settings.initial_window_size);
+  CU_ASSERT(1024 == session->remote_settings.header_table_size);
+  CU_ASSERT(0 == session->remote_settings.enable_push);
 
   CU_ASSERT(64*1024 == stream1->remote_window_size);
   CU_ASSERT(0 == stream2->remote_window_size);
@@ -2102,7 +2098,7 @@ void test_nghttp2_session_on_push_promise_received(void)
                                        &pri_spec_default,
                                        NGHTTP2_STREAM_OPENING, NULL);
 
-  session->local_settings[NGHTTP2_SETTINGS_ENABLE_PUSH] = 0;
+  session->local_settings.enable_push = 0;
 
   nghttp2_frame_push_promise_init(&frame.push_promise,
                                   NGHTTP2_FLAG_END_HEADERS, 1, 2,
@@ -2616,10 +2612,8 @@ void test_nghttp2_session_upgrade(void)
   CU_ASSERT(NULL == stream->stream_user_data);
   CU_ASSERT(NGHTTP2_SHUT_RD == stream->shut_flags);
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
-  CU_ASSERT(1 ==
-            session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
-  CU_ASSERT(4095 ==
-            session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
+  CU_ASSERT(1 == session->remote_settings.max_concurrent_streams);
+  CU_ASSERT(4095 == session->remote_settings.initial_window_size);
   /* Call nghttp2_session_upgrade() again is error */
   CU_ASSERT(NGHTTP2_ERR_PROTO == nghttp2_session_upgrade(session,
                                                          settings_payload,
@@ -3240,9 +3234,9 @@ void test_nghttp2_submit_settings(void)
 
   /* Make sure that local settings are not changed */
   CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
-            session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+            session->local_settings.max_concurrent_streams);
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE ==
-            session->local_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
+            session->local_settings.initial_window_size);
 
   /* Now sends without 5th one */
   CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 4));
@@ -3271,11 +3265,9 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &ack_frame, 0));
   nghttp2_frame_settings_free(&ack_frame.settings);
 
-  CU_ASSERT(16*1024 ==
-            session->local_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
+  CU_ASSERT(16*1024 == session->local_settings.initial_window_size);
   CU_ASSERT(0 == session->hd_inflater.ctx.hd_table_bufsize_max);
-  CU_ASSERT(50 ==
-            session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(50 == session->local_settings.max_concurrent_streams);
   CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
             session->pending_local_max_concurrent_stream);
 
@@ -3716,7 +3708,7 @@ void test_nghttp2_session_get_next_ob_item(void)
   callbacks.send_callback = null_send_callback;
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
-  session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
+  session->remote_settings.max_concurrent_streams = 2;
 
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
   nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
@@ -3746,7 +3738,7 @@ void test_nghttp2_session_get_next_ob_item(void)
   nghttp2_submit_request(session, &pri_spec, NULL, 0, NULL, NULL);
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 
-  session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 3;
+  session->remote_settings.max_concurrent_streams = 3;
 
   CU_ASSERT(NGHTTP2_HEADERS ==
             OB_CTRL_TYPE(nghttp2_session_get_next_ob_item(session)));
@@ -3765,7 +3757,7 @@ void test_nghttp2_session_pop_next_ob_item(void)
   callbacks.send_callback = null_send_callback;
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
-  session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  session->remote_settings.max_concurrent_streams = 1;
 
   CU_ASSERT(NULL == nghttp2_session_pop_next_ob_item(session));
 
@@ -3808,7 +3800,7 @@ void test_nghttp2_session_pop_next_ob_item(void)
 
   CU_ASSERT(NULL == nghttp2_session_pop_next_ob_item(session));
 
-  session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 2;
+  session->remote_settings.max_concurrent_streams = 2;
 
   item = nghttp2_session_pop_next_ob_item(session);
   CU_ASSERT(NGHTTP2_HEADERS == OB_CTRL_TYPE(item));
@@ -3819,7 +3811,7 @@ void test_nghttp2_session_pop_next_ob_item(void)
 
   /* Check that push reply HEADERS are queued into ob_ss_pq */
   nghttp2_session_server_new(&session, &callbacks, NULL);
-  session->remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 0;
+  session->remote_settings.max_concurrent_streams = 0;
   nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
                               &pri_spec_default, NGHTTP2_STREAM_RESERVED,
                               NULL);
@@ -3882,7 +3874,7 @@ void test_nghttp2_session_max_concurrent_streams(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   /* Check ACKed SETTINGS_MAX_CONCURRENT_STREAMS */
-  session->local_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS] = 1;
+  session->local_settings.max_concurrent_streams = 1;
   frame.hd.stream_id = 5;
 
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
@@ -4067,7 +4059,7 @@ void test_nghttp2_session_flow_control(void)
   nghttp2_session_client_new(&session, &callbacks, &ud);
   /* Change it to 64KiB for easy calculation */
   session->remote_window_size = 64*1024;
-  session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] = 64*1024;
+  session->remote_settings.initial_window_size = 64*1024;
 
   nghttp2_submit_request(session, NULL, NULL, 0, &data_prd, NULL);
 
@@ -4097,10 +4089,9 @@ void test_nghttp2_session_flow_control(void)
      negative. */
   new_initial_window_size = 16*1024;
   stream->remote_window_size = new_initial_window_size-
-    (session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]
+    (session->remote_settings.initial_window_size
      - stream->remote_window_size);
-  session->remote_settings[NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] =
-    new_initial_window_size;
+  session->remote_settings.initial_window_size = new_initial_window_size;
   CU_ASSERT(-48*1024 == stream->remote_window_size);
 
   /* Back 48KiB to stream window */
@@ -4565,9 +4556,7 @@ void test_nghttp2_session_set_option(void)
 
   nghttp2_session_client_new2(&session, &callbacks, NULL, option);
 
-  CU_ASSERT(100 ==
-            session->
-            remote_settings[NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS]);
+  CU_ASSERT(100 == session->remote_settings.max_concurrent_streams);
   nghttp2_session_del(session);
 
   nghttp2_option_del(option);
