@@ -4123,10 +4123,8 @@ static size_t inbound_frame_buf_read(nghttp2_inbound_frame *iframe,
 
 /*
  * Unpacks SETTINGS entry in iframe->sbuf.
- *
- * This function returns 0 if it succeeds, or -1.
  */
-static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
+static void inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
 {
   nghttp2_settings_entry iv;
   size_t i;
@@ -4142,7 +4140,7 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   default:
     DEBUGF(fprintf(stderr, "recv: ignore unknown settings id=0x%02x\n",
                    iv.settings_id));
-    return -1;
+    return;
   }
 
   for(i = 0; i < iframe->niv; ++i) {
@@ -4155,8 +4153,6 @@ static int inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   if(i == iframe->niv) {
     iframe->iv[iframe->niv++] = iv;
   }
-
-  return 0;
 }
 
 /*
