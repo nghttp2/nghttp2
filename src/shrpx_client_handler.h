@@ -85,7 +85,6 @@ public:
   bool get_tls_handshake() const;
   void set_tls_renegotiation(bool f);
   bool get_tls_renegotiation() const;
-  bool get_teardown() const;
 private:
   std::set<DownstreamConnection*> dconn_pool_;
   std::unique_ptr<Upstream> upstream_;
@@ -95,13 +94,13 @@ private:
   // HTTP2. Not deleted by this object.
   Http2Session *http2session_;
   SSL *ssl_;
+  event *reneg_shutdown_timerev_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   int fd_;
   bool should_close_after_write_;
   bool tls_handshake_;
   bool tls_renegotiation_;
-  bool teardown_;
 };
 
 } // namespace shrpx

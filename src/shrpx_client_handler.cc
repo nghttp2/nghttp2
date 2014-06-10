@@ -60,12 +60,6 @@ void upstream_writecb(bufferevent *bev, void *arg)
 {
   auto handler = static_cast<ClientHandler*>(arg);
 
-  if(handler->get_teardown()) {
-    // It seems that after calling SSL_shutdown(), this function is
-    // somehow called from ClientHandler dtor.
-    return;
-  }
-
   // We actually depend on write low-water mark == 0.
   if(handler->get_outbuf_length() > 0) {
     // Possibly because of deferred callback, we may get this callback
@@ -229,30 +223,6 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 }
 } // namespace
 
-namespace {
-void tls_raw_readcb(evbuffer *buffer, const evbuffer_cb_info *info, void *arg)
-{
-  auto handler = static_cast<ClientHandler*>(arg);
-  if(handler->get_tls_renegotiation()) {
-    if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "Close connection due to TLS renegotiation";
-    }
-    delete handler;
-  }
-}
-} // namespace
-
-namespace {
-void tls_raw_writecb(evbuffer *buffer, const evbuffer_cb_info *info, void *arg)
-{
-  auto handler = static_cast<ClientHandler*>(arg);
-  // upstream_writecb() is called when external bufferevent
-  // handler->bev's output buffer gets empty. But the underlying
-  // bufferevent may have pending output buffer.
-  upstream_writecb(handler->get_bev(), handler);
-}
-} // namespace
-
 ClientHandler::ClientHandler(bufferevent *bev,
                              bufferevent_rate_limit_group *rate_limit_group,
                              int fd, SSL *ssl,
@@ -261,27 +231,21 @@ ClientHandler::ClientHandler(bufferevent *bev,
     bev_(bev),
     http2session_(nullptr),
     ssl_(ssl),
+    reneg_shutdown_timerev_(nullptr),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
     fd_(fd),
     should_close_after_write_(false),
     tls_handshake_(false),
-    tls_renegotiation_(false),
-    teardown_(false)
+    tls_renegotiation_(false)
 {
   int rv;
 
-  auto rate_limit_bev = bufferevent_get_underlying(bev_);
-  if(!rate_limit_bev) {
-    rate_limit_bev = bev_;
-  }
-
-  rv = bufferevent_set_rate_limit(rate_limit_bev,
-                                  get_config()->rate_limit_cfg);
+  rv = bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
   if(rv == -1) {
     CLOG(FATAL, this) << "bufferevent_set_rate_limit() failed";
   }
 
-  rv = bufferevent_add_to_rate_limit_group(rate_limit_bev, rate_limit_group);
+  rv = bufferevent_add_to_rate_limit_group(bev_, rate_limit_group);
   if(rv == -1) {
     CLOG(FATAL, this) << "bufferevent_add_to_rate_limit_group() failed";
   }
@@ -293,10 +257,6 @@ ClientHandler::ClientHandler(bufferevent *bev,
   if(ssl_) {
     SSL_set_app_data(ssl_, reinterpret_cast<char*>(this));
     set_bev_cb(nullptr, upstream_writecb, upstream_eventcb);
-    auto input = bufferevent_get_input(bufferevent_get_underlying(bev_));
-    evbuffer_add_cb(input, tls_raw_readcb, this);
-    auto output = bufferevent_get_output(bufferevent_get_underlying(bev_));
-    evbuffer_add_cb(output, tls_raw_writecb, this);
   } else {
     // For non-TLS version, first create HttpsUpstream. It may be
     // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
@@ -308,10 +268,12 @@ ClientHandler::ClientHandler(bufferevent *bev,
 
 ClientHandler::~ClientHandler()
 {
-  teardown_ = true;
-
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Deleting";
+  }
+
+  if(reneg_shutdown_timerev_) {
+    event_free(reneg_shutdown_timerev_);
   }
 
   if(ssl_) {
@@ -320,23 +282,15 @@ ClientHandler::~ClientHandler()
     SSL_shutdown(ssl_);
   }
 
-  auto underlying = bufferevent_get_underlying(bev_);
-
-  if(underlying) {
-    bufferevent_remove_from_rate_limit_group(underlying);
-  } else {
-    bufferevent_remove_from_rate_limit_group(bev_);
-  }
+  bufferevent_remove_from_rate_limit_group(bev_);
 
   bufferevent_disable(bev_, EV_READ | EV_WRITE);
   bufferevent_free(bev_);
+
   if(ssl_) {
     SSL_free(ssl_);
   }
-  if(underlying) {
-    bufferevent_disable(underlying, EV_READ | EV_WRITE);
-    bufferevent_free(underlying);
-  }
+
   shutdown(fd_, SHUT_WR);
   close(fd_);
   for(auto dconn : dconn_pool_) {
@@ -372,13 +326,7 @@ void ClientHandler::set_bev_cb
 void ClientHandler::set_upstream_timeouts(const timeval *read_timeout,
                                           const timeval *write_timeout)
 {
-  auto bev = bufferevent_get_underlying(bev_);
-
-  if(!bev) {
-    bev = bev_;
-  }
-
-  bufferevent_set_timeouts(bev, read_timeout, write_timeout);
+  bufferevent_set_timeouts(bev_, read_timeout, write_timeout);
 }
 
 int ClientHandler::validate_next_proto()
@@ -521,12 +469,7 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
 
 size_t ClientHandler::get_outbuf_length()
 {
-  auto underlying = bufferevent_get_underlying(bev_);
-  auto len = evbuffer_get_length(bufferevent_get_output(bev_));
-  if(underlying) {
-    len += evbuffer_get_length(bufferevent_get_output(underlying));
-  }
-  return len;
+  return evbuffer_get_length(bufferevent_get_output(bev_));
 }
 
 SSL* ClientHandler::get_ssl() const
@@ -597,6 +540,19 @@ std::string ClientHandler::get_upstream_scheme() const
   }
 }
 
+namespace {
+void shutdown_cb(evutil_socket_t fd, short what, void *arg)
+{
+  auto handler = static_cast<ClientHandler*>(arg);
+
+  if(LOG_ENABLED(INFO)) {
+    CLOG(INFO, handler) << "Close connection due to TLS renegotiation";
+  }
+
+  delete handler;
+}
+} // namespace
+
 void ClientHandler::set_tls_handshake(bool f)
 {
   tls_handshake_ = f;
@@ -609,17 +565,26 @@ bool ClientHandler::get_tls_handshake() const
 
 void ClientHandler::set_tls_renegotiation(bool f)
 {
+  if(tls_renegotiation_ == false) {
+    if(LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "TLS renegotiation detected. "
+                       << "Start shutdown timer now.";
+    }
+
+    reneg_shutdown_timerev_ = evtimer_new(get_evbase(), shutdown_cb, this);
+    event_priority_set(reneg_shutdown_timerev_, 0);
+
+    timeval timeout = {0, 0};
+
+    // TODO What to do if this failed?
+    evtimer_add(reneg_shutdown_timerev_, &timeout);
+  }
   tls_renegotiation_ = f;
 }
 
 bool ClientHandler::get_tls_renegotiation() const
 {
   return tls_renegotiation_;
-}
-
-bool ClientHandler::get_teardown() const
-{
-  return teardown_;
 }
 
 } // namespace shrpx
