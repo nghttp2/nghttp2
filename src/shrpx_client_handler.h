@@ -85,6 +85,7 @@ public:
   bool get_tls_handshake() const;
   void set_tls_renegotiation(bool f);
   bool get_tls_renegotiation() const;
+  bool get_teardown() const;
 private:
   std::set<DownstreamConnection*> dconn_pool_;
   std::unique_ptr<Upstream> upstream_;
@@ -100,6 +101,7 @@ private:
   bool should_close_after_write_;
   bool tls_handshake_;
   bool tls_renegotiation_;
+  bool teardown_;
 };
 
 } // namespace shrpx

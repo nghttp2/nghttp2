@@ -59,6 +59,13 @@ namespace {
 void upstream_writecb(bufferevent *bev, void *arg)
 {
   auto handler = static_cast<ClientHandler*>(arg);
+
+  if(handler->get_teardown()) {
+    // It seems that after calling SSL_shutdown(), this function is
+    // somehow called from ClientHandler dtor.
+    return;
+  }
+
   // We actually depend on write low-water mark == 0.
   if(handler->get_outbuf_length() > 0) {
     // Possibly because of deferred callback, we may get this callback
@@ -258,7 +265,8 @@ ClientHandler::ClientHandler(bufferevent *bev,
     fd_(fd),
     should_close_after_write_(false),
     tls_handshake_(false),
-    tls_renegotiation_(false)
+    tls_renegotiation_(false),
+    teardown_(false)
 {
   int rv;
 
@@ -300,9 +308,12 @@ ClientHandler::ClientHandler(bufferevent *bev,
 
 ClientHandler::~ClientHandler()
 {
+  teardown_ = true;
+
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Deleting";
   }
+
   if(ssl_) {
     SSL_set_app_data(ssl_, nullptr);
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
@@ -374,6 +385,8 @@ int ClientHandler::validate_next_proto()
 {
   const unsigned char *next_proto = nullptr;
   unsigned int next_proto_len;
+  int rv;
+
   // First set callback for catch all cases
   set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
@@ -391,14 +404,21 @@ int ClientHandler::validate_next_proto()
          memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
                 NGHTTP2_PROTO_VERSION_ID_LEN) == 0) {
 
-        // For NPN, we must check security requirement here.
-        if(!ssl::check_http2_requirement(ssl_)) {
-          return -1;
-        }
-
         set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
                    upstream_eventcb);
-        upstream_ = util::make_unique<Http2Upstream>(this);
+
+        auto http2_upstream = util::make_unique<Http2Upstream>(this);
+
+        if(!ssl::check_http2_requirement(ssl_)) {
+          rv = http2_upstream->terminate_session(NGHTTP2_INADEQUATE_SECURITY);
+
+          if(rv != 0) {
+            return -1;
+          }
+        }
+
+        upstream_ = std::move(http2_upstream);
+
         return 0;
       } else {
 #ifdef HAVE_SPDYLAY
@@ -595,6 +615,11 @@ void ClientHandler::set_tls_renegotiation(bool f)
 bool ClientHandler::get_tls_renegotiation() const
 {
   return tls_renegotiation_;
+}
+
+bool ClientHandler::get_teardown() const
+{
+  return teardown_;
 }
 
 } // namespace shrpx
