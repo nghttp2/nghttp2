@@ -136,6 +136,8 @@ bool check_http2_requirement(SSL *ssl);
 // passed to SSL_CTX_set_options().
 long int create_tls_proto_mask(const std::vector<char*>& tls_proto_list);
 
+std::vector<unsigned char> set_alpn_prefs(const std::vector<char*>& protos);
+
 } // namespace ssl
 
 } // namespace shrpx

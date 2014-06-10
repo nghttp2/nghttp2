@@ -1189,6 +1189,8 @@ int main(int argc, char **argv)
   mod_config()->tls_proto_mask =
     ssl::create_tls_proto_mask(get_config()->tls_proto_list);
 
+  mod_config()->alpn_prefs = ssl::set_alpn_prefs(get_config()->npn_list);
+
   if(!get_config()->subcerts.empty()) {
     mod_config()->cert_tree = ssl::cert_lookup_tree_new();
   }

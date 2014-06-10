@@ -58,17 +58,12 @@ namespace shrpx {
 namespace ssl {
 
 namespace {
-std::pair<unsigned char*, size_t> next_proto;
-unsigned char proto_list[256];
-} // namespace
-
-namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                   void *arg)
 {
-  auto next_proto = static_cast<std::pair<unsigned char*, size_t>*>(arg);
-  *data = next_proto->first;
-  *len = next_proto->second;
+  auto& prefs = get_config()->alpn_prefs;
+  *data = prefs.data();
+  *len = prefs.size();
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
@@ -87,21 +82,26 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 }
 } // namespace
 
-namespace {
-size_t set_npn_prefs(unsigned char *out, const std::vector<char*>& protos)
+std::vector<unsigned char> set_alpn_prefs(const std::vector<char*>& protos)
 {
-  unsigned char *ptr = out;
-  size_t listlen = 0;
+  unsigned char out[256];
+  auto ptr = out;
+  auto end = ptr + sizeof(out);
+
   for(auto proto : protos) {
     auto plen = strlen(proto);
+
+    if(ptr + plen + 1 > end) {
+      LOG(FATAL) << "Too long alpn list";
+      DIE();
+    }
+
     *ptr = plen;
-    memcpy(ptr+1, proto, *ptr);
-    ptr += *ptr+1;
-    listlen += 1 + plen;
+    memcpy(ptr + 1, proto, plen);
+    ptr += plen + 1;
   }
-  return listlen;
+  return std::vector<unsigned char>(out, ptr);
 }
-} // namespace
 
 namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data)
@@ -361,11 +361,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
   // NPN advertisement
-  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list);
-
-  next_proto.first = proto_list;
-  next_proto.second = proto_list_len;
-  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
+  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, nullptr);
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
@@ -456,12 +452,15 @@ SSL_CTX* create_ssl_client_context()
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, nullptr);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  // ALPN advertisement
-  auto proto_list_len = set_npn_prefs(proto_list, get_config()->npn_list);
+  // ALPN advertisement; We only advertise HTTP/2
+  unsigned char proto_list[256];
 
-  next_proto.first = proto_list;
-  next_proto.second = proto_list_len;
-  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list[0] + 1);
+  proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
+  memcpy(proto_list + 1, NGHTTP2_PROTO_VERSION_ID,
+         NGHTTP2_PROTO_VERSION_ID_LEN);
+  auto proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
+
+  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list_len);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   return ssl_ctx;
