@@ -157,7 +157,7 @@ void info_callback(const SSL *ssl, int where, int ret)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
-int alpn_select_proto_cb(SSL* ssl,
+int alpn_select_proto_cb(SSL *ssl,
                          const unsigned char **out,
                          unsigned char *outlen,
                          const unsigned char *in, unsigned int inlen,
@@ -170,21 +170,13 @@ int alpn_select_proto_cb(SSL* ssl,
     auto target_proto_len =
       strlen(reinterpret_cast<const char*>(target_proto_id));
 
-    if(target_proto_len == NGHTTP2_PROTO_VERSION_ID_LEN &&
-       memcmp(target_proto_id, NGHTTP2_PROTO_VERSION_ID,
-              NGHTTP2_PROTO_VERSION_ID_LEN) == 0) {
-
-      if(!check_http2_requirement(ssl)) {
-        continue;
-      }
-    }
-
     for(auto p = in, end = in + inlen; p < end;) {
       auto proto_id = p + 1;
       auto proto_len = *p;
 
       if(proto_id + proto_len <= end &&
-         util::streq(target_proto_id, target_proto_len, proto_id, proto_len)) {
+         target_proto_len == proto_len &&
+         memcmp(target_proto_id, proto_id, proto_len) == 0) {
 
         *out = reinterpret_cast<const unsigned char*>(proto_id);
         *outlen = proto_len;
