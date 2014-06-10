@@ -946,6 +946,11 @@ typedef struct {
   int32_t window_size_increment;
 } nghttp2_window_update;
 
+/**
+ * @struct
+ *
+ * The extension frame.  It has following members:
+ */
 typedef struct {
   /**
    * The frame header.
@@ -1788,9 +1793,6 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  *    3. If the received frame is unpacked but is interpreted as
  *       invalid,
  *       :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`
- *       is invoked.
- *    4. If the received frame type is unknown,
- *       :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`
  *       is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following
