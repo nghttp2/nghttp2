@@ -43,7 +43,7 @@ int unpack_framebuf(nghttp2_frame *frame, nghttp2_bufs *bufs)
 
 int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len)
 {
-  ssize_t rv = 0;
+  int rv = 0;
   const uint8_t *payload = in + NGHTTP2_FRAME_HDLEN;
   size_t payloadlen = len - NGHTTP2_FRAME_HDLEN;
   size_t payloadoff;
@@ -187,7 +187,7 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
     bp = *buf;
 
     if(offset) {
-      int n;
+      ssize_t n;
 
       n = nghttp2_min((ssize_t)offset, nghttp2_buf_len(&bp));
       bp.pos += n;

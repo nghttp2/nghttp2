@@ -63,9 +63,9 @@ int nghttp2_gzip_inflate(nghttp2_gzip *inflater,
   if(inflater->finished) {
     return -1;
   }
-  inflater->zst.avail_in = *inlen_ptr;
+  inflater->zst.avail_in = (unsigned int)*inlen_ptr;
   inflater->zst.next_in = (unsigned char*)in;
-  inflater->zst.avail_out = *outlen_ptr;
+  inflater->zst.avail_out = (unsigned int)*outlen_ptr;
   inflater->zst.next_out = out;
 
   rv = inflate(&inflater->zst, Z_NO_FLUSH);

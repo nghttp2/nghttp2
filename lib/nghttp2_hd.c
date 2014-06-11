@@ -443,7 +443,7 @@ static int emit_literal_header(nghttp2_nv *nv_out, nghttp2_nv *nv)
   return 0;
 }
 
-static size_t count_encoded_length(size_t n, int prefix)
+static size_t count_encoded_length(size_t n, size_t prefix)
 {
   size_t k = (1 << prefix) - 1;
   size_t len = 0;
@@ -464,7 +464,7 @@ static size_t count_encoded_length(size_t n, int prefix)
   return len;
 }
 
-static size_t encode_length(uint8_t *buf, size_t n, int prefix)
+static size_t encode_length(uint8_t *buf, size_t n, size_t prefix)
 {
   size_t k = (1 << prefix) - 1;
   size_t len = 0;
@@ -507,8 +507,8 @@ static size_t encode_length(uint8_t *buf, size_t n, int prefix)
  * partial decoding, or stores -1 in |*res|, indicating decoding
  * error.
  */
-static  uint8_t* decode_length(ssize_t *res, int *final, ssize_t initial,
-                               uint8_t *in, uint8_t *last, int prefix)
+static uint8_t* decode_length(ssize_t *res, int *final, ssize_t initial,
+                              uint8_t *in, uint8_t *last, size_t prefix)
 {
   int k = (1 << prefix) - 1, r;
   ssize_t n = initial;
@@ -624,7 +624,7 @@ static int emit_string(nghttp2_bufs *bufs,
                        size_t enclen, int huffman,
                        const uint8_t *str, size_t len)
 {
-  size_t rv;
+  int rv;
   uint8_t sb[16];
   uint8_t *bufp;
   size_t blocklen;
@@ -998,7 +998,7 @@ static int check_index_range(nghttp2_hd_context *context, size_t idx)
   return idx < context->hd_table.len + STATIC_TABLE_LENGTH;
 }
 
-static int get_max_index(nghttp2_hd_context *context)
+static size_t get_max_index(nghttp2_hd_context *context)
 {
   return context->hd_table.len + STATIC_TABLE_LENGTH - 1;
 }
@@ -1352,7 +1352,7 @@ static void hd_inflate_set_huffman_encoded(nghttp2_hd_inflater *inflater,
 static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater,
                                    int *rfin,
                                    uint8_t *in, uint8_t *last,
-                                   int prefix, size_t maxlen)
+                                   size_t prefix, size_t maxlen)
 {
   uint8_t *nin;
   *rfin = 0;
@@ -1389,21 +1389,21 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
                                     nghttp2_bufs *bufs,
                                     uint8_t *in, uint8_t *last)
 {
-  int rv;
+  ssize_t readlen;
   int final = 0;
   if(last - in >= inflater->left) {
     last = in + inflater->left;
     final = 1;
   }
-  rv = nghttp2_hd_huff_decode(&inflater->huff_decode_ctx, bufs,
-                              in, last - in, final);
+  readlen = nghttp2_hd_huff_decode(&inflater->huff_decode_ctx, bufs,
+                                   in, last - in, final);
 
-  if(rv < 0) {
+  if(readlen < 0) {
     DEBUGF(fprintf(stderr, "inflatehd: huffman decoding failed\n"));
-    return rv;
+    return readlen;
   }
-  inflater->left -= rv;
-  return rv;
+  inflater->left -= readlen;
+  return readlen;
 }
 
 /*
@@ -1925,7 +1925,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       rv = hd_inflate_read(inflater, &inflater->nvbufs, in, last);
       if(rv < 0) {
         DEBUGF(fprintf(stderr, "inflatehd: value read failure %zd: %s\n",
-                       rv, nghttp2_strerror(rv)));
+                       rv, nghttp2_strerror((int)rv)));
         goto fail;
       }
 

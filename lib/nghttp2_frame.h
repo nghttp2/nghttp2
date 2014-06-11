@@ -589,14 +589,14 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
  *
  * The |*nva_ptr| must be freed using nghttp2_nv_array_del().
  *
- * This function returns the number of name/value pairs in |*nva_ptr|,
- * or one of the following negative error codes:
+ * This function returns 0 if it succeeds or one of the following
+ * negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
-                              const nghttp2_nv *nva, size_t nvlen);
+int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
+                          const nghttp2_nv *nva, size_t nvlen);
 
 /*
  * Returns nonzero if the name/value pair |a| equals to |b|. The name

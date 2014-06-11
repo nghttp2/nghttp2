@@ -104,13 +104,13 @@ void test_nghttp2_pq_update(void)
 {
   nghttp2_pq pq;
   node nodes[10];
-  size_t i;
+  int i;
   node *nd;
   int ans[] = {-8, -6, -4, -2, 0, 1, 3, 5, 7, 9};
 
   nghttp2_pq_init(&pq, node_compar);
 
-  for(i = 0; i < sizeof(nodes)/sizeof(nodes[0]); ++i) {
+  for(i = 0; i < (int)(sizeof(nodes)/sizeof(nodes[0])); ++i) {
     nodes[i].key = i;
     nodes[i].val = i;
     nghttp2_pq_push(&pq, &nodes[i]);
@@ -118,7 +118,7 @@ void test_nghttp2_pq_update(void)
 
   nghttp2_pq_update(&pq, node_update, NULL);
 
-  for(i = 0; i < sizeof(nodes)/sizeof(nodes[0]); ++i) {
+  for(i = 0; i < (int)(sizeof(nodes)/sizeof(nodes[0])); ++i) {
     nd = nghttp2_pq_top(&pq);
     CU_ASSERT(ans[i] == nd->key);
     nghttp2_pq_pop(&pq);

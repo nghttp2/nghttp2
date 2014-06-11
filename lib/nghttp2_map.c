@@ -88,7 +88,7 @@ void nghttp2_map_entry_init(nghttp2_map_entry *entry, key_type key)
 
 /* Same hash function in android HashMap source code. */
 /* The |mod| must be power of 2 */
-static int32_t hash(int32_t h, int32_t mod)
+static int32_t hash(int32_t h, size_t mod)
 {
   h ^= (h >> 20) ^ (h >> 12);
   h ^= (h >> 7) ^ (h >> 4);

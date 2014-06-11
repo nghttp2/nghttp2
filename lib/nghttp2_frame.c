@@ -359,7 +359,7 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
                                nghttp2_hd_deflater *deflater)
 {
   size_t nv_offset;
-  ssize_t rv;
+  int rv;
   nghttp2_buf *buf;
 
   assert(bufs->head == bufs->cur);
@@ -592,7 +592,7 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
                                     nghttp2_hd_deflater *deflater)
 {
   size_t nv_offset = 4;
-  ssize_t rv;
+  int rv;
   nghttp2_buf *buf;
 
   assert(bufs->head == bufs->cur);
@@ -970,8 +970,8 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen)
   qsort(nva, nvlen, sizeof(nghttp2_nv), nv_compar);
 }
 
-ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
-                              const nghttp2_nv *nva, size_t nvlen)
+int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
+                          const nghttp2_nv *nva, size_t nvlen)
 {
   size_t i;
   uint8_t *data;
@@ -982,8 +982,7 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
     buflen += nva[i].namelen + nva[i].valuelen;
   }
 
-  /* If all name/value pair is 0-length, remove them */
-  if(nvlen == 0 || buflen == 0) {
+  if(nvlen == 0) {
     *nva_ptr = NULL;
 
     return 0;
@@ -1014,7 +1013,7 @@ ssize_t nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
     data += nva[i].valuelen;
     ++p;
   }
-  return nvlen;
+  return 0;
 }
 
 int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)

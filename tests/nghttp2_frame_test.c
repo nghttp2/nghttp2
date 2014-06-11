@@ -172,7 +172,6 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   nghttp2_headers frame;
   nghttp2_bufs bufs;
   nghttp2_nv *nva;
-  ssize_t nvlen;
   size_t big_vallen = NGHTTP2_HD_MAX_NV;
   nghttp2_nv big_hds[16];
   size_t big_hdslen = ARRLEN(big_hds);
@@ -184,19 +183,19 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void)
   for(i = 0; i < big_hdslen; ++i) {
     big_hds[i].name = (uint8_t*)"header";
     big_hds[i].value = malloc(big_vallen+1);
-    memset(big_hds[i].value, '0'+i, big_vallen);
+    memset(big_hds[i].value, '0' + (int)i, big_vallen);
     big_hds[i].value[big_vallen] = '\0';
     big_hds[i].namelen = strlen((char*)big_hds[i].name);
     big_hds[i].valuelen = big_vallen;
     big_hds[i].flags = NGHTTP2_NV_FLAG_NONE;
   }
 
-  nvlen = nghttp2_nv_array_copy(&nva, big_hds, big_hdslen);
+  nghttp2_nv_array_copy(&nva, big_hds, big_hdslen);
   nghttp2_hd_deflate_init(&deflater);
   nghttp2_frame_headers_init(&frame,
                              NGHTTP2_FLAG_END_STREAM|NGHTTP2_FLAG_END_HEADERS,
                              1000000007, NGHTTP2_HCAT_REQUEST,
-                             NULL, nva, nvlen);
+                             NULL, nva, big_hdslen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
   CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == rv);
 
@@ -611,10 +610,15 @@ void test_nghttp2_nv_array_copy(void)
 
   rv = nghttp2_nv_array_copy(&nva, emptynv, ARRLEN(emptynv));
   CU_ASSERT(0 == rv);
-  CU_ASSERT(NULL == nva);
+  CU_ASSERT(nva[0].namelen == 0);
+  CU_ASSERT(nva[0].valuelen == 0);
+  CU_ASSERT(nva[1].namelen == 0);
+  CU_ASSERT(nva[1].valuelen == 0);
+
+  nghttp2_nv_array_del(nva);
 
   rv = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv));
-  CU_ASSERT(2 == rv);
+  CU_ASSERT(0 == rv);
   CU_ASSERT(nva[0].namelen == 5);
   CU_ASSERT(0 == memcmp("alpha", nva[0].name, 5));
   CU_ASSERT(nva[0].valuelen = 5);
@@ -628,7 +632,7 @@ void test_nghttp2_nv_array_copy(void)
 
   /* Large header field is acceptable */
   rv = nghttp2_nv_array_copy(&nva, &bignv, 1);
-  CU_ASSERT(1 == rv);
+  CU_ASSERT(0 == rv);
 
   nghttp2_nv_array_del(nva);
 

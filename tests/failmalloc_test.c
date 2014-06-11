@@ -254,7 +254,8 @@ static void run_nghttp2_session_recv(void)
   ud.df = &df;
 
   nghttp2_failmalloc_pause();
-  nvlen = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv));
+  nvlen = ARRLEN(nv);
+  nghttp2_nv_array_copy(&nva, nv, nvlen);
   nghttp2_hd_deflate_init(&deflater);
   nghttp2_session_server_new(&session, &callbacks, &ud);
   nghttp2_failmalloc_unpause();
@@ -362,8 +363,9 @@ static void run_nghttp2_frame_pack_headers(void)
   if(rv != 0) {
     goto inflate_init_fail;
   }
-  nvlen = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv));
-  if(nvlen < 0) {
+  nvlen = ARRLEN(nv);
+  rv = nghttp2_nv_array_copy(&nva, nv, nvlen);
+  if(rv < 0) {
     goto nv_copy_fail;
   }
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM,

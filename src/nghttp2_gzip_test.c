@@ -46,9 +46,9 @@ static ssize_t deflate_data(uint8_t *out, size_t outlen,
   rv = deflateInit(&zst, Z_DEFAULT_COMPRESSION);
   assert(rv == Z_OK);
 
-  zst.avail_in = inlen;
+  zst.avail_in = (unsigned int)inlen;
   zst.next_in = (uint8_t*)in;
-  zst.avail_out = outlen;
+  zst.avail_out = (unsigned int)outlen;
   zst.next_out = out;
   rv = deflate(&zst, Z_SYNC_FLUSH);
   assert(rv == Z_OK);

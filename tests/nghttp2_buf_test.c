@@ -164,6 +164,7 @@ void test_nghttp2_bufs_remove(void)
   nghttp2_buf_chain *chain;
   int i;
   uint8_t *out;
+  ssize_t outlen;
 
   rv = nghttp2_bufs_init(&bufs, 1000, 3);
   CU_ASSERT(0 == rv);
@@ -185,10 +186,10 @@ void test_nghttp2_bufs_remove(void)
   rv = nghttp2_bufs_add(&bufs, "world", 5);
   CU_ASSERT(0 == rv);
 
-  rv = nghttp2_bufs_remove(&bufs, &out);
-  CU_ASSERT(11 == rv);
+  outlen = nghttp2_bufs_remove(&bufs, &out);
+  CU_ASSERT(11 == outlen);
 
-  CU_ASSERT(0 == memcmp("hello world", out, rv));
+  CU_ASSERT(0 == memcmp("hello world", out, outlen));
   CU_ASSERT(0 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(bufs.cur->buf.pos == bufs.cur->buf.begin);
 

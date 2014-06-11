@@ -148,7 +148,7 @@ static int32_t submit_headers_shared_nva
  const nghttp2_data_provider *data_prd,
  void *stream_user_data)
 {
-  ssize_t rv;
+  int rv;
   nghttp2_nv *nva_copy;
   nghttp2_priority_spec copy_pri_spec;
 
@@ -165,7 +165,7 @@ static int32_t submit_headers_shared_nva
   }
 
   return submit_headers_shared(session, flags, stream_id,
-                               &copy_pri_spec, nva_copy, rv, data_prd,
+                               &copy_pri_spec, nva_copy, nvlen, data_prd,
                                stream_user_data);
 }
 

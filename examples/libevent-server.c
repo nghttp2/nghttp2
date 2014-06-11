@@ -83,7 +83,7 @@ static int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                          void *arg)
 {
   *data = next_proto_list;
-  *len = next_proto_list_len;
+  *len = (unsigned int)next_proto_list_len;
   return SSL_TLSEXT_ERR_OK;
 }
 
@@ -240,16 +240,17 @@ static int session_send(http2_session_data *session_data)
    function. */
 static int session_recv(http2_session_data *session_data)
 {
-  int rv;
+  ssize_t readlen;
   struct evbuffer *input = bufferevent_get_input(session_data->bev);
   size_t datalen = evbuffer_get_length(input);
   unsigned char *data = evbuffer_pullup(input, -1);
-  rv = nghttp2_session_mem_recv(session_data->session, data, datalen);
-  if(rv < 0) {
-    warnx("Fatal error: %s", nghttp2_strerror(rv));
+
+  readlen = nghttp2_session_mem_recv(session_data->session, data, datalen);
+  if(readlen < 0) {
+    warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
     return -1;
   }
-  evbuffer_drain(input, rv);
+  evbuffer_drain(input, readlen);
   if(session_send(session_data) != 0) {
     return -1;
   }
@@ -366,6 +367,7 @@ static int error_reply(nghttp2_session *session,
                        http2_stream_data *stream_data)
 {
   int rv;
+  ssize_t writelen;
   int pipefd[2];
   nghttp2_nv hdrs[] = {
     MAKE_NV(":status", "404")
@@ -384,10 +386,10 @@ static int error_reply(nghttp2_session *session,
     return 0;
   }
 
-  rv = write(pipefd[1], ERROR_HTML, sizeof(ERROR_HTML) - 1);
+  writelen = write(pipefd[1], ERROR_HTML, sizeof(ERROR_HTML) - 1);
   close(pipefd[1]);
 
-  if(rv != sizeof(ERROR_HTML)) {
+  if(writelen != sizeof(ERROR_HTML)) {
     close(pipefd[0]);
     return -1;
   }
