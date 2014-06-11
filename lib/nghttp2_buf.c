@@ -236,8 +236,8 @@ ssize_t nghttp2_bufs_len(nghttp2_bufs *bufs)
 
 static int bufs_avail(nghttp2_bufs *bufs)
 {
-  return nghttp2_buf_avail(&bufs->cur->buf) +
-    (bufs->chunk_length - bufs->offset) * (bufs->max_chunk - bufs->chunk_used);
+  return (int)(nghttp2_buf_avail(&bufs->cur->buf) +
+    (bufs->chunk_length - bufs->offset) * (bufs->max_chunk - bufs->chunk_used));
 }
 
 static int bufs_alloc_chain(nghttp2_bufs *bufs)

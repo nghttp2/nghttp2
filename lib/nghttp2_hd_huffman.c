@@ -133,7 +133,7 @@ int nghttp2_hd_huff_encode(nghttp2_bufs *bufs,
         avail = nghttp2_bufs_cur_avail(bufs);
       }
     }
-    rembits = huff_encode_sym(bufs, &avail, rembits, sym);
+    rembits = (int)huff_encode_sym(bufs, &avail, rembits, sym);
     if(rembits < 0) {
       return rembits;
     }

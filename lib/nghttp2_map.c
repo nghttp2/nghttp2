@@ -98,7 +98,7 @@ static int32_t hash(int32_t h, int32_t mod)
 static int insert(nghttp2_map_entry **table, size_t tablelen,
                   nghttp2_map_entry *entry)
 {
-  int32_t h = hash(entry->key, tablelen);
+  int32_t h = hash(entry->key, (int)tablelen);
   if(table[h] == NULL) {
     table[h] = entry;
   } else {
@@ -163,7 +163,7 @@ nghttp2_map_entry* nghttp2_map_find(nghttp2_map *map, key_type key)
 {
   int32_t h;
   nghttp2_map_entry *entry;
-  h = hash(key, map->tablelen);
+  h = hash(key, (int)map->tablelen);
   for(entry = map->table[h]; entry; entry = entry->next) {
     if(entry->key == key) {
       return entry;
@@ -176,7 +176,7 @@ int nghttp2_map_remove(nghttp2_map *map, key_type key)
 {
   int32_t h;
   nghttp2_map_entry *entry, *prev;
-  h = hash(key, map->tablelen);
+  h = hash(key, (int)map->tablelen);
   prev = NULL;
   for(entry = map->table[h]; entry; entry = entry->next) {
     if(entry->key == key) {
