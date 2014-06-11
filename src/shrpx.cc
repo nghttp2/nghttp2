@@ -280,6 +280,10 @@ int event_loop()
       LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
       exit(EXIT_FAILURE);
     }
+
+    // Set tty = false when daemonized.  syslog is garbling with ANSI
+    // escape.
+    mod_config()->tty = false;
   }
 
   if(get_config()->pid_file) {
