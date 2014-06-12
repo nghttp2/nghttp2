@@ -33,7 +33,7 @@ static void http2(void)
 {
   const unsigned char p[] = {
     8, 'h', 't', 't', 'p', '/', '1', '.', '1',
-    5, 'h', '2', '-', '1', '3',
+    5, 'h', '2', '-', 'l', 'c',
     6, 's', 'p', 'd', 'y', '/', '3'
   };
   unsigned char outlen;
