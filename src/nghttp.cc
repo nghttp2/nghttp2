@@ -902,17 +902,17 @@ struct HttpClient {
     }
     if(path_cache.count(uri)) {
       return false;
-    } else {
-      if(config.multiply == 1) {
-        path_cache.insert(uri);
-      }
-
-      reqvec.push_back(util::make_unique<Request>(uri, u, data_prd,
-                                                  data_length,
-                                                  pri_spec, std::move(dep),
-                                                  pri, level));
-      return true;
     }
+
+    if(config.multiply == 1) {
+      path_cache.insert(uri);
+    }
+
+    reqvec.push_back(util::make_unique<Request>(uri, u, data_prd,
+                                                data_length,
+                                                pri_spec, std::move(dep),
+                                                pri, level));
+    return true;
   }
   void record_handshake_time()
   {
