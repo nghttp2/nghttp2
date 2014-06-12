@@ -540,6 +540,16 @@ std::string ClientHandler::get_upstream_scheme() const
   }
 }
 
+void ClientHandler::set_tls_handshake(bool f)
+{
+  tls_handshake_ = f;
+}
+
+bool ClientHandler::get_tls_handshake() const
+{
+  return tls_handshake_;
+}
+
 namespace {
 void shutdown_cb(evutil_socket_t fd, short what, void *arg)
 {
@@ -552,16 +562,6 @@ void shutdown_cb(evutil_socket_t fd, short what, void *arg)
   delete handler;
 }
 } // namespace
-
-void ClientHandler::set_tls_handshake(bool f)
-{
-  tls_handshake_ = f;
-}
-
-bool ClientHandler::get_tls_handshake() const
-{
-  return tls_handshake_;
-}
 
 void ClientHandler::set_tls_renegotiation(bool f)
 {
