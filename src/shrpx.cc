@@ -280,10 +280,6 @@ int event_loop()
       LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
       exit(EXIT_FAILURE);
     }
-
-    // Set tty = false when daemonized.  syslog is garbling with ANSI
-    // escape.
-    mod_config()->tty = false;
   }
 
   if(get_config()->pid_file) {
@@ -1182,6 +1178,13 @@ int main(int argc, char **argv)
     }
   }
 
+  if(get_config()->syslog) {
+    openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
+            get_config()->syslog_facility);
+    mod_config()->use_syslog = true;
+    mod_config()->tty = false;
+  }
+
   if(get_config()->npn_list.empty()) {
     mod_config()->npn_list = parse_config_str_list(DEFAULT_NPN_LIST);
   }
@@ -1301,12 +1304,6 @@ int main(int argc, char **argv)
                         AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }
-  }
-
-  if(get_config()->syslog) {
-    openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
-            get_config()->syslog_facility);
-    mod_config()->use_syslog = true;
   }
 
   mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new

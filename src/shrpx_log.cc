@@ -90,21 +90,26 @@ Log::Log(int severity, const char *filename, int linenum)
 
 Log::~Log()
 {
-  if(log_enabled(severity_)) {
-    fprintf(stderr, "[%s%s%s] %s\n       %s(%s:%d)%s\n",
-            get_config()->tty ? SEVERITY_COLOR[severity_] : "",
-            SEVERITY_STR[severity_],
-            get_config()->tty ? "\033[0m" : "",
-            stream_.str().c_str(),
-            get_config()->tty ? "\033[1;30m" : "",
-            filename_, linenum_,
-            get_config()->tty ? "\033[0m" : "");
-    fflush(stderr);
-    if(get_config()->use_syslog) {
-      syslog(severity_to_syslog_level(severity_), "%s (%s:%d)\n",
-             stream_.str().c_str(), filename_, linenum_);
-    }
+  if(!log_enabled(severity_)) {
+    return;
   }
+
+  if(get_config()->use_syslog) {
+    syslog(severity_to_syslog_level(severity_), "%s (%s:%d)",
+           stream_.str().c_str(), filename_, linenum_);
+
+    return;
+  }
+
+  fprintf(stderr, "[%s%s%s] %s\n       %s(%s:%d)%s\n",
+          get_config()->tty ? SEVERITY_COLOR[severity_] : "",
+          SEVERITY_STR[severity_],
+          get_config()->tty ? "\033[0m" : "",
+          stream_.str().c_str(),
+          get_config()->tty ? "\033[1;30m" : "",
+          filename_, linenum_,
+          get_config()->tty ? "\033[0m" : "");
+  fflush(stderr);
 }
 
 } // namespace shrpx

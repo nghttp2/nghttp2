@@ -251,7 +251,7 @@ struct Config {
   bool insecure;
   bool backend_ipv4;
   bool backend_ipv6;
-  // true if stderr refers to a terminal and not daemonized
+  // true if stderr refers to a terminal and syslog is not used
   bool tty;
   bool http2_no_cookie_crumbling;
   bool upstream_frame_debug;

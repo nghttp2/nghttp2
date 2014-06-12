@@ -36,8 +36,9 @@
 namespace shrpx {
 
 namespace {
-void get_datestr(char *buf)
+std::string get_datestr()
 {
+  char buf[64];
   time_t now = time(0);
   if(ctime_r(&now, buf) == 0) {
     buf[0] = '\0';
@@ -49,18 +50,22 @@ void get_datestr(char *buf)
       buf[strlen(buf)-1] = '\0';
     }
   }
+  return buf;
 }
 } // namespace
 
 void upstream_connect(const std::string& client_ip)
 {
-  char datestr[64];
-  get_datestr(datestr);
-  fprintf(stderr, "%s [%s] ACCEPT\n", client_ip.c_str(), datestr);
-  fflush(stderr);
   if(get_config()->use_syslog) {
     syslog(LOG_INFO, "%s ACCEPT\n", client_ip.c_str());
+
+    return;
   }
+
+  fprintf(stderr, "%s [%s] ACCEPT\n", client_ip.c_str(),
+          get_datestr().c_str());
+
+  fflush(stderr);
 }
 
 namespace {
@@ -85,49 +90,57 @@ const char* status_code_color(unsigned int status_code)
 void upstream_response(const std::string& client_ip, unsigned int status_code,
                        Downstream *downstream)
 {
-  char datestr[64];
-  get_datestr(datestr);
-  if(downstream) {
-    const char *path;
-
-    if(downstream->get_request_path().empty()) {
-      path = downstream->get_request_http2_authority().c_str();
-    } else {
-      path = downstream->get_request_path().c_str();
-    }
-
-    fprintf(stderr, "%s%s [%s] %u%s %d \"%s %s HTTP/%u.%u\"\n",
-            get_config()->tty ? status_code_color(status_code) : "",
-            client_ip.c_str(), datestr,
-            status_code,
-            get_config()->tty ? "\033[0m" : "",
-            downstream->get_stream_id(),
-            downstream->get_request_method().c_str(),
-            path,
-            downstream->get_request_major(),
-            downstream->get_request_minor());
-    fflush(stderr);
-    if(get_config()->use_syslog) {
-      syslog(LOG_INFO, "%s %u %d \"%s %s HTTP/%u.%u\"\n",
-            client_ip.c_str(),
-            status_code,
-            downstream->get_stream_id(),
-            downstream->get_request_method().c_str(),
-            path,
-            downstream->get_request_major(),
-            downstream->get_request_minor());
-    }
-  } else {
-    fprintf(stderr, "%s%s [%s] %u%s 0 \"-\"\n",
-            get_config()->tty ? status_code_color(status_code) : "",
-            client_ip.c_str(), datestr,
-            status_code,
-            get_config()->tty ? "\033[0m" : "");
+  if(!downstream) {
     if(get_config()->use_syslog) {
       syslog(LOG_INFO, "%s %u 0 \"-\"\n", client_ip.c_str(), status_code);
+
+      return;
     }
+
+    fprintf(stderr, "%s%s [%s] %u%s 0 \"-\"\n",
+            get_config()->tty ? status_code_color(status_code) : "",
+            client_ip.c_str(), get_datestr().c_str(),
+            status_code,
+            get_config()->tty ? "\033[0m" : "");
+
     fflush(stderr);
+
+    return;
   }
+
+  const char *path;
+
+  if(downstream->get_request_path().empty()) {
+    path = downstream->get_request_http2_authority().c_str();
+  } else {
+    path = downstream->get_request_path().c_str();
+  }
+
+  if(get_config()->use_syslog) {
+    syslog(LOG_INFO, "%s %u %d \"%s %s HTTP/%u.%u\"",
+           client_ip.c_str(),
+           status_code,
+           downstream->get_stream_id(),
+           downstream->get_request_method().c_str(),
+           path,
+           downstream->get_request_major(),
+           downstream->get_request_minor());
+
+    return;
+  }
+
+  fprintf(stderr, "%s [%s] %s%u%s stream(%d) \"%s %s HTTP/%u.%u\"\n",
+          client_ip.c_str(), get_datestr().c_str(),
+          get_config()->tty ? status_code_color(status_code) : "",
+          status_code,
+          get_config()->tty ? "\033[0m" : "",
+          downstream->get_stream_id(),
+          downstream->get_request_method().c_str(),
+          path,
+          downstream->get_request_major(),
+          downstream->get_request_minor());
+
+  fflush(stderr);
 }
 
 } // namespace shrpx
