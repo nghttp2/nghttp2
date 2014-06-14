@@ -98,7 +98,7 @@ static nghttp2_hd_static_entry static_table[] = {
   MAKE_STATIC_ENT(47, "proxy-authenticate", "", 3993199572u, 0u),
   MAKE_STATIC_ENT(60, "www-authenticate", "", 4051929931u, 0u),
   MAKE_STATIC_ENT(23, "cache-control", "", 4086191634u, 0u),
-  MAKE_STATIC_ENT(15, "accept-encoding", "", 4127597688u, 0u),
+  MAKE_STATIC_ENT(15, "accept-encoding", "gzip, deflate", 4127597688u, 1733326877u),
 };
 
 /* Index to the position in static_table */

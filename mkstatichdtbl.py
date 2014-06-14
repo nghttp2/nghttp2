@@ -9,8 +9,8 @@ def hash(s):
 
 entries = []
 for line in sys.stdin:
-    m = re.match(r'(\d+)\s+(\S+)\s+(\S+)?', line)
-    val = m.group(3) if m.group(3) else ''
+    m = re.match(r'(\d+)\s+(\S+)\s+(\S.*)?', line)
+    val = m.group(3).strip() if m.group(3) else ''
     entries.append((hash(m.group(2)), int(m.group(1)), m.group(2), val))
 
 entries.sort()
