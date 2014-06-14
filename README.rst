@@ -34,7 +34,7 @@ ALTSVC extension            Yes \*2
 =========================== =======
 
 * \*1 As described in draft-12.
-* \*2 As described in draft-12, but reserved byte is removed.
+* \*2 As described in draft-12, but reserved byte was removed.
 
 
 Public Test Server
