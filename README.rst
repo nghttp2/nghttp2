@@ -1,8 +1,17 @@
 nghttp2 - HTTP/2 C Library
-============================
+==========================
 
-This is an experimental implementation of Hypertext Transfer Protocol
-version 2.
+This is an implementation of Hypertext Transfer Protocol version 2
+in C.
+
+The framing layer of HTTP/2 is implemented as form of reusable C
+library.  On top of that, we have implemented HTTP/2 client, server
+and proxy.  Also we have developed load test/benchmarking tool for
+HTTP/2 and SPDY.
+
+HPACK encoding and decoding are available as public API.
+
+We didn't cover everything, but we have Python binding of this libary.
 
 Development Status
 ------------------
@@ -14,13 +23,19 @@ header compression
 
 The nghttp2 code base was forked from spdylay project.
 
-========================== =====
-Features                   h2-12
-========================== =====
-Dependency based priority  Done
-BLOCKED frame              Done
-COMPRESSED DATA            Done
-========================== =====
+=========================== =======
+HTTP/2 Features             Support
+=========================== =======
+Core frames handling        Yes
+Dependency Tree             Yes
+Large header (CONTINUATION) Yes
+BLOCKED extension           Yes \*1
+ALTSVC extension            Yes \*2
+=========================== =======
+
+* \*1 As described in draft-12.
+* \*2 As described in draft-12, but reserved byte is removed.
+
 
 Public Test Server
 ------------------
@@ -367,8 +382,8 @@ information.  Here is sample output from ``nghttpd`` server::
 nghttpx - proxy
 +++++++++++++++
 
-``nghttpx`` is a multi-threaded reverse proxy for
-``h2-12``, SPDY and HTTP/1.1. It has several operation modes:
+``nghttpx`` is a multi-threaded reverse proxy for ``h2-12``, SPDY and
+HTTP/1.1 and powers nghttp2.org site.  It has several operation modes:
 
 ================== ============================ ============== =============
 Mode option        Frontend                     Backend        Note
