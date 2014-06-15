@@ -204,7 +204,7 @@ void on_ctrl_recv_callback
       downstream->set_request_path(path);
     }
 
-    downstream->check_upgrade_request();
+    downstream->inspect_http2_request();
 
     if(LOG_ENABLED(INFO)) {
       std::stringstream ss;
@@ -940,6 +940,9 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
                       downstream->get_response_http_status(),
                       downstream);
   }
+
+  downstream->clear_response_headers();
+
   return 0;
 }
 

@@ -252,6 +252,8 @@ int HttpDownstreamConnection::push_request_headers()
                            &get_config()->downstream_read_timeout,
                            &get_config()->downstream_write_timeout);
 
+  downstream_->clear_request_headers();
+
   return 0;
 }
 
@@ -389,6 +391,7 @@ int htp_hdrs_completecb(http_parser *htp)
   downstream->set_response_minor(htp->http_minor);
   downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
+  downstream->inspect_http1_response();
   downstream->check_upgrade_fulfilled();
   if(downstream->get_upgraded()) {
     downstream->set_response_connection_close(true);

@@ -150,7 +150,8 @@ int htp_hdrs_completecb(http_parser *htp)
 
   downstream->set_request_connection_close(!http_should_keep_alive(htp));
 
-  downstream->check_upgrade_request();
+  downstream->inspect_http1_request();
+
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
     ss << downstream->get_request_method() << " "
@@ -359,7 +360,7 @@ int HttpsUpstream::on_read()
       }
 
       if(handler->get_http2_upgrade_allowed() &&
-         downstream->http2_upgrade_request()) {
+         downstream->get_http2_upgrade_request()) {
 
         if(handler->perform_http2_upgrade(this) != 0) {
           return -1;
@@ -827,6 +828,9 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     upstream_response(this->get_client_handler()->get_ipaddr(),
                       downstream->get_response_http_status(), downstream);
   }
+
+  downstream->clear_response_headers();
+
   return 0;
 }
 

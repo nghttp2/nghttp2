@@ -71,16 +71,20 @@ public:
   bool get_output_buffer_full();
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
   void check_upgrade_fulfilled();
-  // Checks request headers whether the request is upgrade request or
-  // not.
-  void check_upgrade_request();
   // Returns true if the request is upgrade.
   bool get_upgrade_request() const;
   // Returns true if the upgrade is succeded as a result of the call
   // check_upgrade_fulfilled().
   bool get_upgraded() const;
+  // Inspects HTTP/2 request.
+  void inspect_http2_request();
+  // Inspects HTTP/1 request.  This checks whether the request is
+  // upgrade request and tranfer-encoding etc.
+  void inspect_http1_request();
   // Returns true if the request is HTTP Upgrade for HTTP/2
-  bool http2_upgrade_request() const;
+  bool get_http2_upgrade_request() const;
+  // Returns the value of HTTP2-Settings request header field.
+  const std::string& get_http2_settings() const;
   // downstream request API
   const Headers& get_request_headers() const;
   void crumble_request_cookie();
@@ -109,6 +113,8 @@ public:
   bool get_request_header_key_prev() const;
   void append_last_request_header_key(const char *data, size_t len);
   void append_last_request_header_value(const char *data, size_t len);
+  // Empties request headers.
+  void clear_request_headers();
 
   size_t get_request_headers_sum() const;
 
@@ -178,6 +184,8 @@ public:
   bool get_response_header_key_prev() const;
   void append_last_response_header_key(const char *data, size_t len);
   void append_last_response_header_value(const char *data, size_t len);
+  // Empties response headers.
+  void clear_response_headers();
 
   size_t get_response_headers_sum() const;
 
@@ -198,6 +206,8 @@ public:
   evbuffer* get_response_body_buf();
   nghttp2_error_code get_response_rst_stream_error_code() const;
   void set_response_rst_stream_error_code(nghttp2_error_code error_code);
+  // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
+  void inspect_http1_response();
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -217,6 +227,8 @@ private:
   std::string request_http2_scheme_;
   std::string request_http2_authority_;
   std::string assembled_request_cookie_;
+  std::string http2_settings_;
+
   // the length of request body
   int64_t request_bodylen_;
 
@@ -251,6 +263,9 @@ private:
   bool upgrade_request_;
   // true if the connection is upgraded (HTTP Upgrade or CONNECT)
   bool upgraded_;
+
+  bool http2_upgrade_seen_;
+  bool http2_settings_seen_;
 
   bool chunked_request_;
   bool request_connection_close_;

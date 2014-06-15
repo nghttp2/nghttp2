@@ -58,6 +58,8 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     response_minor_(1),
     upgrade_request_(false),
     upgraded_(false),
+    http2_upgrade_seen_(false),
+    http2_settings_seen_(false),
     chunked_request_(false),
     request_connection_close_(false),
     request_expect_100_continue_(false),
@@ -116,34 +118,6 @@ void Downstream::force_resume_read()
     dconn_->force_resume_read();
   }
 }
-
-namespace {
-void check_header_field(bool *result, const Headers::value_type &item,
-                        const char *name, const char *value)
-{
-  if(util::strieq(item.name.c_str(), name)) {
-    if(util::strifind(item.value.c_str(), value)) {
-      *result = true;
-    }
-  }
-}
-} // namespace
-
-namespace {
-void check_transfer_encoding_chunked(bool *chunked,
-                                     const Headers::value_type &item)
-{
-  return check_header_field(chunked, item, "transfer-encoding", "chunked");
-}
-} // namespace
-
-namespace {
-void check_expect_100_continue(bool *res,
-                               const Headers::value_type& item)
-{
-  return check_header_field(res, item, "expect", "100-continue");
-}
-} // namespace
 
 namespace {
 Headers::const_iterator get_norm_header(const Headers& headers,
@@ -272,8 +246,6 @@ void Downstream::set_last_request_header_value(std::string value)
   request_headers_sum_ += value.size();
   Headers::value_type &item = request_headers_.back();
   item.value = std::move(value);
-  check_transfer_encoding_chunked(&chunked_request_, item);
-  check_expect_100_continue(&request_expect_100_continue_, item);
 }
 
 void Downstream::split_add_request_header
@@ -305,6 +277,11 @@ void Downstream::append_last_request_header_value(const char *data, size_t len)
   request_headers_sum_ += len;
   auto& item = request_headers_.back();
   item.value.append(data, len);
+}
+
+void Downstream::clear_request_headers()
+{
+  Headers().swap(request_headers_);
 }
 
 size_t Downstream::get_request_headers_sum() const
@@ -531,8 +508,6 @@ void Downstream::add_response_header(std::string name, std::string value)
   response_header_key_prev_ = true;
   response_headers_sum_ += name.size() + value.size();
   response_headers_.emplace_back(std::move(name), std::move(value));
-  check_transfer_encoding_chunked(&chunked_response_,
-                                  response_headers_.back());
 }
 
 void Downstream::set_last_response_header_value(std::string value)
@@ -541,7 +516,6 @@ void Downstream::set_last_response_header_value(std::string value)
   response_headers_sum_ += value.size();
   auto& item = response_headers_.back();
   item.value = std::move(value);
-  check_transfer_encoding_chunked(&chunked_response_, item);
 }
 
 void Downstream::split_add_response_header
@@ -574,6 +548,11 @@ void Downstream::append_last_response_header_value(const char *data,
   response_headers_sum_ += len;
   auto& item = response_headers_.back();
   item.value.append(data, len);
+}
+
+void Downstream::clear_response_headers()
+{
+  Headers().swap(response_headers_);
 }
 
 size_t Downstream::get_response_headers_sum() const
@@ -694,14 +673,66 @@ void Downstream::check_upgrade_fulfilled()
 {
   if(request_method_ == "CONNECT") {
     upgraded_ = 200 <= response_http_status_ && response_http_status_ < 300;
-  } else {
+
+    return;
+  }
+
+  if(response_http_status_ == 101) {
     // TODO Do more strict checking for upgrade headers
-    if(response_http_status_ == 101) {
-      for(auto& hd : request_headers_) {
-        if(util::strieq("upgrade", hd.name.c_str())) {
-          upgraded_ = true;
-          break;
-        }
+    upgraded_ = upgrade_request_;
+
+    return;
+  }
+}
+
+void Downstream::inspect_http2_request()
+{
+  if(request_method_ == "CONNECT") {
+    upgrade_request_ = true;
+  }
+}
+
+void Downstream::inspect_http1_request()
+{
+  if(request_method_ == "CONNECT") {
+    upgrade_request_ = true;
+  }
+
+  for(auto& hd : request_headers_) {
+    if(!upgrade_request_ && util::strieq("upgrade", hd.name.c_str())) {
+      // TODO Perform more strict checking for upgrade headers
+      upgrade_request_ = true;
+
+      if(util::streq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID,
+                     hd.value.c_str(), hd.value.size())) {
+        http2_upgrade_seen_ = true;
+      }
+    } else if(!http2_settings_seen_ &&
+              util::strieq(hd.name.c_str(), "http2-settings")) {
+
+      http2_settings_seen_ = true;
+      http2_settings_ = hd.value;
+    } else if(!chunked_request_ &&
+              util::strieq(hd.name.c_str(), "transfer-encoding")) {
+      if(util::strifind(hd.value.c_str(), "chunked")) {
+        chunked_request_ = true;
+      }
+    } else if(!request_expect_100_continue_ &&
+              util::strieq(hd.name.c_str(), "expect")) {
+      if(util::strifind(hd.value.c_str(), "100-continue")) {
+        request_expect_100_continue_ = true;
+      }
+    }
+  }
+}
+
+void Downstream::inspect_http1_response()
+{
+  for(auto& hd : response_headers_) {
+    if(!chunked_response_ &&
+       util::strieq(hd.name.c_str(), "transfer-encoding")) {
+      if(util::strifind(hd.value.c_str(), "chunked")) {
+        chunked_response_ = true;
       }
     }
   }
@@ -712,47 +743,19 @@ bool Downstream::get_upgraded() const
   return upgraded_;
 }
 
-void Downstream::check_upgrade_request()
-{
-  if(request_method_ == "CONNECT") {
-    upgrade_request_ = true;
-  } else {
-    // TODO Do more strict checking for upgrade headers
-    for(auto& hd : request_headers_) {
-      if(util::strieq("upgrade", hd.name.c_str())) {
-        upgrade_request_ = true;
-        break;
-      }
-    }
-  }
-}
-
 bool Downstream::get_upgrade_request() const
 {
   return upgrade_request_;
 }
 
-bool Downstream::http2_upgrade_request() const
+bool Downstream::get_http2_upgrade_request() const
 {
-  if(request_bodylen_ != 0) {
-    return false;
-  }
-  bool upgrade_seen = false;
-  bool http2_settings_seen = false;
-  for(auto& hd : request_headers_) {
-    // For now just check NGHTTP2_CLEARTEXT_PROTO_VERSION_ID in
-    // Upgrade header field and existence of HTTP2-Settings header
-    // field.
-    if(util::strieq(hd.name.c_str(), "upgrade")) {
-       if(util::strieq(hd.value.c_str(),
-                       NGHTTP2_CLEARTEXT_PROTO_VERSION_ID)) {
-        upgrade_seen = true;
-      }
-    } else if(util::strieq(hd.name.c_str(), "http2-settings")) {
-      http2_settings_seen = true;
-    }
-  }
-  return upgrade_seen && http2_settings_seen;
+  return request_bodylen_ == 0 && http2_upgrade_seen_ && http2_settings_seen_;
+}
+
+const std::string& Downstream::get_http2_settings() const
+{
+  return http2_settings_;
 }
 
 void Downstream::set_downstream_stream_id(int32_t stream_id)

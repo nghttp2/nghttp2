@@ -938,6 +938,16 @@ int on_response_headers(Http2Session *http2session,
   downstream->set_response_major(2);
   downstream->set_response_minor(0);
 
+  if(LOG_ENABLED(INFO)) {
+    std::stringstream ss;
+    for(auto& nv : nva) {
+      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+    }
+    SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
+                              << frame->hd.stream_id
+                              << "\n" << ss.str();
+  }
+
   auto content_length = http2::get_header(nva, "content-length");
   if(!content_length && downstream->get_request_method() != "HEAD" &&
      downstream->get_request_method() != "CONNECT") {
@@ -956,18 +966,9 @@ int on_response_headers(Http2Session *http2session,
         // connection open.  In HTTP2, we are supporsed not to
         // receive transfer-encoding.
         downstream->add_response_header("transfer-encoding", "chunked");
+        downstream->set_chunked_response(true);
       }
     }
-  }
-
-  if(LOG_ENABLED(INFO)) {
-    std::stringstream ss;
-    for(auto& nv : nva) {
-      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
-    }
-    SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
-                              << frame->hd.stream_id
-                              << "\n" << ss.str();
   }
 
   auto upstream = downstream->get_upstream();

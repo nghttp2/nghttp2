@@ -429,6 +429,9 @@ int Http2DownstreamConnection::push_request_headers()
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";
     return -1;
   }
+
+  downstream_->clear_request_headers();
+
   http2session_->notify();
   return 0;
 }

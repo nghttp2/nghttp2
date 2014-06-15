@@ -112,16 +112,14 @@ int on_stream_close_callback
 int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
 {
   int rv;
-  std::string settings_payload;
   auto downstream = http->get_downstream();
-  for(auto& hd : downstream->get_request_headers()) {
-    if(util::strieq(hd.name.c_str(), "http2-settings")) {
-      auto val = hd.value;
-      util::to_base64(val);
-      settings_payload = base64::decode(std::begin(val), std::end(val));
-      break;
-    }
-  }
+
+  auto http2_settings = downstream->get_http2_settings();
+  util::to_base64(http2_settings);
+
+  auto settings_payload = base64::decode(std::begin(http2_settings),
+                                         std::end(http2_settings));
+
   rv = nghttp2_session_upgrade
     (session_,
      reinterpret_cast<const uint8_t*>(settings_payload.c_str()),
@@ -334,7 +332,7 @@ int on_request_headers(Http2Upstream *upstream,
   downstream->set_request_http2_authority(http2::value_to_str(authority));
   downstream->set_request_path(http2::value_to_str(path));
 
-  downstream->check_upgrade_request();
+  downstream->inspect_http2_request();
 
   auto dconn = upstream->get_client_handler()->get_downstream_connection();
   rv = dconn->attach_downstream(downstream);
@@ -1147,6 +1145,9 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
                       downstream->get_response_http_status(),
                       downstream);
   }
+
+  downstream->clear_response_headers();
+
   return 0;
 }
 
