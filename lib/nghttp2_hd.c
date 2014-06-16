@@ -483,7 +483,7 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix)
       *buf++ = (1 << 7) | (n & 0x7f);
       n >>= 7;
     } else {
-      *buf++ = n;
+      *buf++ = (uint8_t)n;
       break;
     }
   } while(n);
@@ -883,7 +883,7 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   size_t i;
   uint32_t name_hash = hash(nv->name, nv->namelen);
   uint32_t value_hash = hash(nv->value, nv->valuelen);
-  ssize_t left = -1, right = STATIC_TABLE_LENGTH;
+  ssize_t left = -1, right = (ssize_t)STATIC_TABLE_LENGTH;
   int use_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) == 0;
 
   if(use_index) {
@@ -891,10 +891,10 @@ static search_result search_hd_table(nghttp2_hd_context *context,
       nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
       if(ent->name_hash == name_hash && name_eq(&ent->nv, nv)) {
         if(res.index == -1) {
-          res.index = i;
+          res.index = (ssize_t)i;
         }
         if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
-          res.index = i;
+          res.index = (ssize_t)i;
           res.name_value_match = 1;
           return res;
         }
@@ -919,11 +919,11 @@ static search_result search_hd_table(nghttp2_hd_context *context,
     }
     if(name_eq(&ent->nv, nv)) {
       if(res.index == -1) {
-        res.index = context->hd_table.len + static_table[i].index;
+        res.index = (ssize_t)(context->hd_table.len + static_table[i].index);
       }
       if(use_index &&
          ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
-        res.index = context->hd_table.len + static_table[i].index;
+        res.index = (ssize_t)(context->hd_table.len + static_table[i].index);
         res.name_value_match = 1;
         return res;
       }
@@ -1274,7 +1274,7 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
     return rv;
   }
 
-  return buflen;
+  return (ssize_t)buflen;
 }
 
 size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
@@ -1365,7 +1365,7 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater,
                    maxlen));
     return NGHTTP2_ERR_HEADER_COMP;
   }
-  return nin - in;
+  return (ssize_t)(nin - in);
 }
 
 /*
@@ -1428,8 +1428,8 @@ static ssize_t hd_inflate_read(nghttp2_hd_inflater *inflater,
   if(rv != 0) {
     return rv;
   }
-  inflater->left -= len;
-  return len;
+  inflater->left -= (ssize_t)len;
+  return (ssize_t)len;
 }
 
 /*
@@ -1758,7 +1758,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
         /* If rv == 1, no header was emitted */
         if(rv == 0) {
           *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
-          return in - first;
+          return (ssize_t)(in - first);
         }
       } else {
         inflater->index = inflater->left;
@@ -1877,7 +1877,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
         }
         inflater->state = NGHTTP2_HD_STATE_OPCODE;
         *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
-        return in - first;
+        return (ssize_t)(in - first);
       }
 
       if(inflater->huffman_encoded) {
@@ -1918,7 +1918,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       inflater->state = NGHTTP2_HD_STATE_OPCODE;
       *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
 
-      return in - first;
+      return (ssize_t)(in - first);
     case NGHTTP2_HD_STATE_READ_VALUE:
       rv = hd_inflate_read(inflater, &inflater->nvbufs, in, last);
       if(rv < 0) {
@@ -1950,7 +1950,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       inflater->state = NGHTTP2_HD_STATE_OPCODE;
       *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
 
-      return in - first;
+      return (ssize_t)(in - first);
     }
   }
 
@@ -1978,13 +1978,13 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
          (ent->flags & NGHTTP2_HD_FLAG_EMIT) == 0) {
         emit_indexed_header(nv_out, ent);
         *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
-        return in - first;
+        return (ssize_t)(in - first);
       }
       ent->flags &= ~NGHTTP2_HD_FLAG_EMIT;
     }
     *inflate_flags |= NGHTTP2_HD_INFLATE_FINAL;
   }
-  return in - first;
+  return (ssize_t)(in - first);
 
  almost_ok:
   if(in_final && inflater->state != NGHTTP2_HD_STATE_OPCODE) {
