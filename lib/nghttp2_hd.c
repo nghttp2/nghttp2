@@ -993,10 +993,8 @@ static void clear_refset(nghttp2_hd_context *context)
   }
 }
 
-static int check_index_range(nghttp2_hd_context *context, size_t idx)
-{
-  return idx < context->hd_table.len + STATIC_TABLE_LENGTH;
-}
+#define INDEX_RANGE_VALID(context, idx) \
+  ((idx) < (context)->hd_table.len + STATIC_TABLE_LENGTH)
 
 static size_t get_max_index(nghttp2_hd_context *context)
 {
@@ -1006,7 +1004,7 @@ static size_t get_max_index(nghttp2_hd_context *context)
 nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                        size_t idx)
 {
-  assert(check_index_range(context, idx));
+  assert(INDEX_RANGE_VALID(context, idx));
   if(idx < context->hd_table.len) {
     return hd_ringbuf_get(&context->hd_table, idx);
   } else {
