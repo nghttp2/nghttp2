@@ -95,7 +95,7 @@ static ssize_t huff_encode_sym(nghttp2_bufs *bufs, size_t *avail_ptr,
       *avail_ptr = nghttp2_bufs_cur_avail(bufs);
     }
   }
-  return rembits;
+  return (ssize_t)rembits;
 }
 
 size_t nghttp2_hd_huff_encode_count(const uint8_t *src, size_t len)
@@ -203,5 +203,5 @@ ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
   if(final && !ctx->accept) {
     return NGHTTP2_ERR_HEADER_COMP;
   }
-  return i;
+  return (ssize_t)i;
 }
