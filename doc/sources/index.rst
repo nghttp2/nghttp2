@@ -40,5 +40,5 @@ Released Versions
 Resources
 ---------
 
-* http://tools.ietf.org/html/draft-ietf-httpbis-http2-12
-* http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07
+* http://tools.ietf.org/html/draft-ietf-httpbis-http2-13
+* http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-08
