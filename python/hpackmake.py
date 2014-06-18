@@ -13,7 +13,8 @@ import sys, base64, json, os.path, os, argparse, errno
 from binascii import b2a_hex
 import nghttp2
 
-def testsuite(testdata, filename, outdir, table_size, deflate_table_size):
+def testsuite(testdata, filename, outdir, table_size, deflate_table_size,
+              simulate_table_size_change):
     res = {
         'draft':8,
         'description': '''\
@@ -29,11 +30,24 @@ result in less bits on the wire.'''
     if table_size != nghttp2.DEFAULT_HEADER_TABLE_SIZE:
         deflater.change_table_size(table_size)
 
+    num_item = len(testdata['cases'])
+
+    change_points = {}
+    if simulate_table_size_change and num_item > 1:
+        change_points[num_item * 2 // 3] = table_size * 2 // 3
+        change_points[num_item // 3] = table_size // 3
+
     for casenum, item  in enumerate(testdata['cases']):
         outitem = {
             'seqno': casenum,
             'headers': item['headers']
         }
+
+        if casenum in change_points:
+            new_table_size = change_points[casenum]
+            deflater.change_table_size(new_table_size)
+            outitem['header_table_size'] = new_table_size
+
         casenum += 1
         hdrs = [(list(x.keys())[0].encode('utf-8'),
                  list(x.values())[0].encode('utf-8')) \
@@ -57,6 +71,10 @@ if __name__ == '__main__':
     ap.add_argument('-S', '--deflate-table-size',
                     help='max header table size for deflater',
                     type=int, default=nghttp2.DEFLATE_MAX_HEADER_TABLE_SIZE)
+    ap.add_argument('-c', '--simulate-table-size-change',
+                    help='simulate table size change scenario',
+                    action='store_true')
+
     ap.add_argument('file', nargs='*', help='input file')
     args = ap.parse_args()
     try:
@@ -69,4 +87,5 @@ if __name__ == '__main__':
         with open(filename) as f:
             input = f.read()
         testsuite(json.loads(input), os.path.basename(filename),
-                  args.dir, args.table_size, args.deflate_table_size)
+                  args.dir, args.table_size, args.deflate_table_size,
+                  args.simulate_table_size_change)
