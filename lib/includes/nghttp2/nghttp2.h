@@ -41,7 +41,7 @@ extern "C" {
  * The protocol version identification string of this library
  * supports.  This identifier is used if HTTP/2 is used over TLS.
  */
-#define NGHTTP2_PROTO_VERSION_ID "h2-lc"
+#define NGHTTP2_PROTO_VERSION_ID "h2-13"
 /**
  * @macro
  *
@@ -56,7 +56,7 @@ extern "C" {
  * supports.  This identifier is used if HTTP/2 is used over cleartext
  * TCP.
  */
-#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "h2c-lc"
+#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "h2c-13"
 
 /**
  * @macro
