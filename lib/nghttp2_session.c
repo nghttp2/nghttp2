@@ -139,9 +139,7 @@ int nghttp2_session_terminate_session(nghttp2_session *session,
     return 0;
   }
   session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
-  if(session->goaway_flags & NGHTTP2_GOAWAY_SEND) {
-    return 0;
-  }
+
   return nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, error_code,
                                NULL, 0);
 }
@@ -1729,13 +1727,6 @@ static int session_prep_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_GOAWAY:
-      if(session->goaway_flags & NGHTTP2_GOAWAY_SEND) {
-        /* TODO The spec does not mandate that both endpoints have to
-           exchange GOAWAY. This implementation allows receiver of
-           first GOAWAY can sent its own GOAWAY to tell the remote
-           peer that last-stream-id. */
-        return NGHTTP2_ERR_GOAWAY_ALREADY_SENT;
-      }
       framerv = nghttp2_frame_pack_goaway(&session->aob.framebufs,
                                           &frame->goaway);
       if(framerv < 0) {
