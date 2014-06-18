@@ -270,10 +270,10 @@ static int on_stream_close_callback(nghttp2_session *session,
   req = nghttp2_session_get_stream_user_data(session, stream_id);
   if(req) {
     int rv;
-    rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
-                               NULL, 0);
+    rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
+
     if(rv != 0) {
-      diec("nghttp2_submit_goaway", rv);
+      diec("nghttp2_session_terminate_session", rv);
     }
   }
   return 0;

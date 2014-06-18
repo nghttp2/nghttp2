@@ -4429,7 +4429,8 @@ void test_nghttp2_session_on_ctrl_not_send(void)
   user_data.frame_not_send_cb_called = 0;
   /* Send GOAWAY */
   CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE,
-                                       NGHTTP2_NO_ERROR, NULL, 0));
+                                       (1u << 31) - 1, NGHTTP2_NO_ERROR,
+                                       NULL, 0));
 
   session->next_stream_id = 9;
 
@@ -4456,7 +4457,7 @@ void test_nghttp2_session_get_outbound_queue_size(void)
   CU_ASSERT(1 == nghttp2_session_get_outbound_queue_size(session));
 
   CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE,
-                                       NGHTTP2_NO_ERROR, NULL, 0));
+                                       3, NGHTTP2_NO_ERROR, NULL, 0));
   CU_ASSERT(2 == nghttp2_session_get_outbound_queue_size(session));
 
   nghttp2_session_del(session);

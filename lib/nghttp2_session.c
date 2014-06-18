@@ -135,13 +135,22 @@ static int session_detect_idle_stream(nghttp2_session *session,
 int nghttp2_session_terminate_session(nghttp2_session *session,
                                       nghttp2_error_code error_code)
 {
+  return nghttp2_session_terminate_session2(session,
+                                            session->last_proc_stream_id,
+                                            error_code);
+}
+
+int nghttp2_session_terminate_session2(nghttp2_session *session,
+                                       int32_t last_stream_id,
+                                       nghttp2_error_code error_code)
+{
   if(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) {
     return 0;
   }
   session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
 
-  return nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, error_code,
-                               NULL, 0);
+  return nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, last_stream_id,
+                               error_code, NULL, 0);
 }
 
 int nghttp2_session_is_my_stream_id(nghttp2_session *session,
