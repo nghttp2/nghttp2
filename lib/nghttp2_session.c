@@ -322,7 +322,7 @@ static int session_new(nghttp2_session **session_ptr,
   (*session_ptr)->local_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
 
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
-  (*session_ptr)->last_stream_id = 0;
+  (*session_ptr)->remote_last_stream_id = 0;
 
   (*session_ptr)->inflight_niv = -1;
 
@@ -3650,7 +3650,7 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
     return session_handle_invalid_connection(session, frame,
                                              NGHTTP2_PROTOCOL_ERROR);
   }
-  session->last_stream_id = frame->goaway.last_stream_id;
+  session->remote_last_stream_id = frame->goaway.last_stream_id;
   session->goaway_flags |= NGHTTP2_GOAWAY_RECV;
   return session_call_on_frame_received(session, frame);
 }

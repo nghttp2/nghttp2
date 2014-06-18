@@ -190,7 +190,7 @@ struct nghttp2_session {
      NGHTTP2_MAX_UNIQUE_ID */
   uint32_t next_unique_id;
   /* This is the value in GOAWAY frame received from remote endpoint. */
-  int32_t last_stream_id;
+  int32_t remote_last_stream_id;
   /* Current sender window size. This value is computed against the
      current initial window size of remote endpoint. */
   int32_t remote_window_size;
