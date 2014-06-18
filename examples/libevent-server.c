@@ -392,7 +392,7 @@ static int error_reply(nghttp2_session *session,
   writelen = write(pipefd[1], ERROR_HTML, sizeof(ERROR_HTML) - 1);
   close(pipefd[1]);
 
-  if(writelen != sizeof(ERROR_HTML)) {
+  if(writelen != sizeof(ERROR_HTML) - 1) {
     close(pipefd[0]);
     return -1;
   }
