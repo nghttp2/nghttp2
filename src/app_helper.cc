@@ -383,7 +383,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     break;
   case NGHTTP2_RST_STREAM:
     print_frame_attr_indent();
-    fprintf(outfile, "(error_code=%s(%u))\n",
+    fprintf(outfile, "(error_code=%s(0x%02x))\n",
             strstatus(frame->rst_stream.error_code),
             frame->rst_stream.error_code);
     break;
@@ -393,7 +393,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
             static_cast<unsigned long>(frame->settings.niv));
     for(size_t i = 0; i < frame->settings.niv; ++i) {
       print_frame_attr_indent();
-      fprintf(outfile, "[%s(%d):%u]\n",
+      fprintf(outfile, "[%s(0x%02x):%u]\n",
               strsettingsid(frame->settings.iv[i].settings_id),
               frame->settings.iv[i].settings_id,
               frame->settings.iv[i].value);
@@ -414,7 +414,8 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();
     fprintf(outfile,
-            "(last_stream_id=%d, error_code=%s(%u), opaque_data(%u)=[%s])\n",
+            "(last_stream_id=%d, error_code=%s(0x%02x), "
+            "opaque_data(%u)=[%s])\n",
             frame->goaway.last_stream_id,
             strstatus(frame->goaway.error_code),
             frame->goaway.error_code,
