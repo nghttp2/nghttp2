@@ -204,7 +204,7 @@ static void run_nghttp2_session_send(void)
   if(rv != 0) {
     goto fail;
   }
-  rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, NGHTTP2_NO_ERROR,
+  rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, 100, NGHTTP2_NO_ERROR,
                              NULL, 0);
   if(rv != 0) {
     goto fail;
