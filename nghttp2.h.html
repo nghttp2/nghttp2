@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.4.1 documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.4.2-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.4.1 documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -184,7 +184,7 @@
 <span class="cm"> * The protocol version identification string of this library</span>
 <span class="cm"> * supports.  This identifier is used if HTTP/2 is used over TLS.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;h2-12&quot;</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;h2-13&quot;</span>
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
@@ -199,7 +199,7 @@
 <span class="cm"> * supports.  This identifier is used if HTTP/2 is used over cleartext</span>
 <span class="cm"> * TCP.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID &quot;h2c-12&quot;</span>
+<span class="cp">#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID &quot;h2c-13&quot;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -539,7 +539,8 @@
 
 <span class="cm">/**</span>
 <span class="cm"> * @enum</span>
-<span class="cm"> * The control frame types in HTTP/2.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The frame types in HTTP/2 specification.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
   <span class="cm">/**</span>
@@ -581,16 +582,27 @@
   <span class="cm">/**</span>
 <span class="cm">   * The CONTINUATION frame.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_CONTINUATION</span> <span class="o">=</span> <span class="mh">0x09</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The ALTSVC frame.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_ALTSVC</span> <span class="o">=</span> <span class="mh">0x0a</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The BLOCKED frame.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_BLOCKED</span> <span class="o">=</span> <span class="mh">0x0b</span>
+  <span class="n">NGHTTP2_CONTINUATION</span> <span class="o">=</span> <span class="mh">0x09</span>
 <span class="p">}</span> <span class="n">nghttp2_frame_type</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @enum</span>
+<span class="cm"> *</span>
+<span class="cm"> * The extension frame types.</span>
+<span class="cm"> *</span>
+<span class="cm"> * TODO: The assigned frame types were carried from draft-12, and now</span>
+<span class="cm"> * actually TBD.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The ALTSVC extension frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_EXT_ALTSVC</span> <span class="o">=</span> <span class="mh">0x0a</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The BLOCKED extension frame.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_EXT_BLOCKED</span> <span class="o">=</span> <span class="mh">0x0b</span>
+<span class="p">}</span> <span class="n">nghttp2_ext_frame_type</span><span class="p">;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @enum</span>
@@ -620,21 +632,13 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLAG_END_SEGMENT</span> <span class="o">=</span> <span class="mh">0x02</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The PAD_LOW flag.</span>
+<span class="cm">   * The PADDED flag.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_PAD_LOW</span> <span class="o">=</span> <span class="mh">0x08</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The PAD_HIGH flag.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_PAD_HIGH</span> <span class="o">=</span> <span class="mh">0x10</span><span class="p">,</span>
+  <span class="n">NGHTTP2_FLAG_PADDED</span> <span class="o">=</span> <span class="mh">0x08</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * The PRIORITY flag.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_PRIORITY</span> <span class="o">=</span> <span class="mh">0x20</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * THE COMPRESSED flag.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_COMPRESSED</span> <span class="o">=</span> <span class="mh">0x20</span>
+  <span class="n">NGHTTP2_FLAG_PRIORITY</span> <span class="o">=</span> <span class="mh">0x20</span>
 <span class="p">}</span> <span class="n">nghttp2_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -645,27 +649,19 @@
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_HEADER_TABLE_SIZE</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_HEADER_TABLE_SIZE</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="n">NGHTTP2_SETTINGS_HEADER_TABLE_SIZE</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_ENABLE_PUSH</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_ENABLE_PUSH</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="n">NGHTTP2_SETTINGS_ENABLE_PUSH</span> <span class="o">=</span> <span class="mh">0x02</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_MAX_CONCURRENT_STREAMS</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS</span> <span class="o">=</span> <span class="mh">0x03</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_INITIAL_WINDOW_SIZE</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * SETTINGS_COMPRESS_DATA</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_COMPRESS_DATA</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * Maximum ID of :type:`nghttp2_settings_id`.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_MAX</span> <span class="o">=</span> <span class="mi">5</span>
+  <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mh">0x04</span>
 <span class="p">}</span> <span class="n">nghttp2_settings_id</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -682,55 +678,55 @@
   <span class="cm">/**</span>
 <span class="cm">   * No errors.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_NO_ERROR</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="n">NGHTTP2_NO_ERROR</span> <span class="o">=</span> <span class="mh">0x00</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * PROTOCOL_ERROR</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_PROTOCOL_ERROR</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="n">NGHTTP2_PROTOCOL_ERROR</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * INTERNAL_ERROR</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_INTERNAL_ERROR</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="n">NGHTTP2_INTERNAL_ERROR</span> <span class="o">=</span> <span class="mh">0x02</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * FLOW_CONTROL_ERROR</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLOW_CONTROL_ERROR</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="n">NGHTTP2_FLOW_CONTROL_ERROR</span> <span class="o">=</span> <span class="mh">0x03</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_TIMEOUT</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_TIMEOUT</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+  <span class="n">NGHTTP2_SETTINGS_TIMEOUT</span> <span class="o">=</span> <span class="mh">0x04</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * STREAM_CLOSED</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_STREAM_CLOSED</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+  <span class="n">NGHTTP2_STREAM_CLOSED</span> <span class="o">=</span> <span class="mh">0x05</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * FRAME_SIZE_ERROR</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_FRAME_SIZE_ERROR</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+  <span class="n">NGHTTP2_FRAME_SIZE_ERROR</span> <span class="o">=</span> <span class="mh">0x06</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * REFUSED_STREAM</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_REFUSED_STREAM</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+  <span class="n">NGHTTP2_REFUSED_STREAM</span> <span class="o">=</span> <span class="mh">0x07</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * CANCEL</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_CANCEL</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+  <span class="n">NGHTTP2_CANCEL</span> <span class="o">=</span> <span class="mh">0x08</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * COMPRESSION_ERROR</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_COMPRESSION_ERROR</span> <span class="o">=</span> <span class="mi">9</span><span class="p">,</span>
+  <span class="n">NGHTTP2_COMPRESSION_ERROR</span> <span class="o">=</span> <span class="mh">0x09</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * CONNECT_ERROR</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_CONNECT_ERROR</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+  <span class="n">NGHTTP2_CONNECT_ERROR</span> <span class="o">=</span> <span class="mh">0x0a</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * ENHANCE_YOUR_CALM</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_ENHANCE_YOUR_CALM</span> <span class="o">=</span> <span class="mi">11</span><span class="p">,</span>
+  <span class="n">NGHTTP2_ENHANCE_YOUR_CALM</span> <span class="o">=</span> <span class="mh">0x0b</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * INADEQUATE_SECURITY</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_INADEQUATE_SECURITY</span> <span class="o">=</span> <span class="mi">12</span>
+  <span class="n">NGHTTP2_INADEQUATE_SECURITY</span> <span class="o">=</span> <span class="mh">0x0c</span>
 <span class="p">}</span> <span class="n">nghttp2_error_code</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -788,11 +784,7 @@
   <span class="cm">/**</span>
 <span class="cm">   * Indicates EOF was sensed.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_DATA_FLAG_EOF</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * Indicates data was compressed by application.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_DATA_FLAG_COMPRESSED</span> <span class="o">=</span> <span class="mh">0x02</span>
+  <span class="n">NGHTTP2_DATA_FLAG_EOF</span> <span class="o">=</span> <span class="mh">0x01</span>
 <span class="p">}</span> <span class="n">nghttp2_data_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -804,11 +796,6 @@
 <span class="cm"> * bytes of data from |source| (or possibly other places) and store</span>
 <span class="cm"> * them in |buf| and return number of data stored in |buf|.  If EOF is</span>
 <span class="cm"> * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_flags|.</span>
-<span class="cm"> *</span>
-<span class="cm"> * To send compressed data payload without affecting content-length,</span>
-<span class="cm"> * set :enum:`NGHTTP2_DATA_FLAG_COMPRESSED` flag in |*data_flags|.</span>
-<span class="cm"> * Compression must be done by application prior to fill data in</span>
-<span class="cm"> * |buf|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the application wants to postpone DATA frames (e.g.,</span>
 <span class="cm"> * asynchronous I/O, or reading data blocks for long time), it is</span>
@@ -1105,13 +1092,32 @@
 <span class="cm">/**</span>
 <span class="cm"> * @struct</span>
 <span class="cm"> *</span>
-<span class="cm"> * The ALTSVC frame.  It has following members:</span>
+<span class="cm"> * The extension frame.  It has following members:</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="cm">/**</span>
 <span class="cm">   * The frame header.</span>
 <span class="cm">   */</span>
   <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The pointer to extension payload.  The exact pointer type is</span>
+<span class="cm">   * determined by hd.type.</span>
+<span class="cm">   *</span>
+<span class="cm">   * If hd.type == :enum:`NGHTTP2_EXT_ALTSVC`, it is a pointer to</span>
+<span class="cm">   * :type:`nghttp2_ext_altsvc`.</span>
+<span class="cm">   *</span>
+<span class="cm">   * If hd.type == :enum:`NGHTTP2_EXT_BLOCKED`, it points to ``NULL``,</span>
+<span class="cm">   * since BLOCKED extension frame has no payload.</span>
+<span class="cm">   */</span>
+  <span class="kt">void</span> <span class="o">*</span><span class="n">payload</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_extension</span><span class="p">;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * The ALTSVC extension frame payload.  It has following members:</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="cm">/**</span>
 <span class="cm">   * Protocol ID</span>
 <span class="cm">   */</span>
@@ -1144,19 +1150,7 @@
 <span class="cm">   * Port</span>
 <span class="cm">   */</span>
   <span class="kt">uint16_t</span> <span class="n">port</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">nghttp2_altsvc</span><span class="p">;</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @struct</span>
-<span class="cm"> *</span>
-<span class="cm"> * The BLOCKED frame.  It has following members:</span>
-<span class="cm"> */</span>
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The frame header.</span>
-<span class="cm">   */</span>
-  <span class="n">nghttp2_frame_hd</span> <span class="n">hd</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">nghttp2_blocked</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_ext_altsvc</span><span class="p">;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @union</span>
@@ -1207,13 +1201,9 @@
 <span class="cm">   */</span>
   <span class="n">nghttp2_window_update</span> <span class="n">window_update</span><span class="p">;</span>
   <span class="cm">/**</span>
-<span class="cm">   * The ALTSVC frame.</span>
+<span class="cm">   * The extension frame.</span>
 <span class="cm">   */</span>
-  <span class="n">nghttp2_altsvc</span> <span class="n">altsvc</span><span class="p">;</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The BLOCKED frame.</span>
-<span class="cm">   */</span>
-  <span class="n">nghttp2_blocked</span> <span class="n">blocked</span><span class="p">;</span>
+  <span class="n">nghttp2_extension</span> <span class="n">ext</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_frame</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -1947,9 +1937,6 @@
 <span class="cm"> *       invalid,</span>
 <span class="cm"> *       :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`</span>
 <span class="cm"> *       is invoked.</span>
-<span class="cm"> *    4. If the received frame type is unknown,</span>
-<span class="cm"> *       :member:`nghttp2_session_callbacks.on_unknown_frame_recv_callback`</span>
-<span class="cm"> *       is invoked.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
@@ -2159,13 +2146,13 @@
 <span class="cm"> *</span>
 <span class="cm"> * Signals the session so that the connection should be terminated.</span>
 <span class="cm"> *</span>
-<span class="cm"> * GOAWAY frame with the given |error_code| will be submitted if it</span>
-<span class="cm"> * has not been transmitted.  After the transmission, both</span>
-<span class="cm"> * `nghttp2_session_want_read()` and `nghttp2_session_want_write()`</span>
-<span class="cm"> * return 0.  If GOAWAY frame has already transmitted at the time when</span>
-<span class="cm"> * this function is invoked, `nghttp2_session_want_read()` and</span>
-<span class="cm"> * `nghttp2_session_want_write()` returns 0 immediately after this</span>
-<span class="cm"> * function succeeds.</span>
+<span class="cm"> * The last stream ID is the ID of a stream for which</span>
+<span class="cm"> * :type:`nghttp2_on_frame_recv_callback` was called most recently.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |error_code| is the error code of this GOAWAY frame.</span>
+<span class="cm"> *</span>
+<span class="cm"> * After the transmission, both `nghttp2_session_want_read()` and</span>
+<span class="cm"> * `nghttp2_session_want_write()` return 0.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function should be called when the connection should be</span>
 <span class="cm"> * terminated after sending GOAWAY.  If the remaining streams should</span>
@@ -2183,7 +2170,28 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
+<span class="cm"> * Signals the session so that the connection should be terminated.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function behaves like `nghttp2_session_terminate_session()`,</span>
+<span class="cm"> * but the last stream ID can be specified by the application for fine</span>
+<span class="cm"> * grained control of stream.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_terminate_session2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                       <span class="kt">int32_t</span> <span class="n">last_stream_id</span><span class="p">,</span>
+                                       <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
 <span class="cm"> * Returns the value of SETTINGS |id| notified by a remote endpoint.</span>
+<span class="cm"> * The |id| must be one of values defined in</span>
+<span class="cm"> * :enum:`nghttp2_settings_id`.</span>
 <span class="cm"> */</span>
 <span class="kt">uint32_t</span> <span class="nf">nghttp2_session_get_remote_settings</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                              <span class="n">nghttp2_settings_id</span> <span class="n">id</span><span class="p">);</span>
@@ -2395,6 +2403,8 @@
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |stream_id| is 0.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_response</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                             <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -2461,6 +2471,8 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
 <span class="cm"> *     No stream ID is available because maximum stream ID was</span>
 <span class="cm"> *     reached.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |stream_id| is 0.</span>
 <span class="cm"> *</span>
 <span class="cm"> * .. warning::</span>
 <span class="cm"> *</span>
@@ -2496,6 +2508,8 @@
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_DATA_EXIST`</span>
 <span class="cm"> *     DATA has been already submitted and not fully processed yet.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |stream_id| is 0.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                         <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -2527,7 +2541,8 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |pri_spec| is NULL; or trying to depend on itself.</span>
+<span class="cm"> *     The |stream_id| is 0; or the |pri_spec| is NULL; or trying to</span>
+<span class="cm"> *     depend on itself.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_priority</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                             <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -2547,6 +2562,8 @@
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |stream_id| is 0.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_rst_stream</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                               <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -2630,6 +2647,8 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`</span>
 <span class="cm"> *     No stream ID is available because maximum stream ID was</span>
 <span class="cm"> *     reached.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |stream_id| is 0.</span>
 <span class="cm"> *</span>
 <span class="cm"> * .. warning::</span>
 <span class="cm"> *</span>
@@ -2672,7 +2691,8 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Submits GOAWAY frame with the error code |error_code|.</span>
+<span class="cm"> * Submits GOAWAY frame with the last stream ID |last_stream_id| and</span>
+<span class="cm"> * the error code |error_code|.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |flags| is currently ignored and should be</span>
 <span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
@@ -2684,15 +2704,22 @@
 <span class="cm"> * keep this memory after the return of this function.  If the</span>
 <span class="cm"> * |opaque_data_len| is 0, the |opaque_data| could be ``NULL``.</span>
 <span class="cm"> *</span>
+<span class="cm"> * To shutdown gracefully, first send GOAWAY with ``last_stream_id =</span>
+<span class="cm"> * (1u &lt;&lt; 31) - 1``.  After 1 RTT, call either</span>
+<span class="cm"> * `nghttp2_submit_goaway()`, `nghttp2_session_terminate_session()` or</span>
+<span class="cm"> * `nghttp2_session_terminate_session2()`.  The latter 2 will close</span>
+<span class="cm"> * HTTP/2 session immediately after transmission of the frame.</span>
+<span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
-<span class="cm"> * NGHTTP2_ERR_INVALID_ARGUMENT</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
 <span class="cm"> *     The |opaque_data_len| is too large.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_goaway</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                          <span class="kt">int32_t</span> <span class="n">last_stream_id</span><span class="p">,</span>
                           <span class="n">nghttp2_error_code</span> <span class="n">error_code</span><span class="p">,</span>
                           <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">opaque_data_len</span><span class="p">);</span>
 
@@ -3202,7 +3229,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.4.1',
+            VERSION:'0.4.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

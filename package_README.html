@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.4.1 documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.4.2-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.4.1 documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
         <link rel="next" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
@@ -141,37 +141,53 @@
             
   <div class="section" id="nghttp2-http-2-c-library">
 <h1>nghttp2 - HTTP/2 C Library<a class="headerlink" href="#nghttp2-http-2-c-library" title="Permalink to this headline">¶</a></h1>
-<p>This is an experimental implementation of Hypertext Transfer Protocol
-version 2.</p>
+<p>This is an implementation of Hypertext Transfer Protocol version 2
+in C.</p>
+<p>The framing layer of HTTP/2 is implemented as form of reusable C
+library.  On top of that, we have implemented HTTP/2 client, server
+and proxy.  Also we have developed load test/benchmarking tool for
+HTTP/2 and SPDY.</p>
+<p>HPACK encoding and decoding are available as public API.</p>
+<p>We didn&#8217;t cover everything, but we have Python binding of this libary.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
-<p>We started to implement h2-12
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-12">http://tools.ietf.org/html/draft-ietf-httpbis-http2-12</a>) and the
+<p>We started to implement h2-13
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-13">http://tools.ietf.org/html/draft-ietf-httpbis-http2-13</a>) and the
 header compression
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07</a>).</p>
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-08">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-08</a>).</p>
 <p>The nghttp2 code base was forked from spdylay project.</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="84%" />
-<col width="16%" />
+<col width="79%" />
+<col width="21%" />
 </colgroup>
 <thead valign="bottom">
-<tr class="row-odd"><th class="head">Features</th>
-<th class="head">h2-12</th>
+<tr class="row-odd"><th class="head">HTTP/2 Features</th>
+<th class="head">Support</th>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td>Dependency based priority</td>
-<td>Done</td>
+<tr class="row-even"><td>Core frames handling</td>
+<td>Yes</td>
 </tr>
-<tr class="row-odd"><td>BLOCKED frame</td>
-<td>Done</td>
+<tr class="row-odd"><td>Dependency Tree</td>
+<td>Yes</td>
 </tr>
-<tr class="row-even"><td>COMPRESSED DATA</td>
-<td>Done</td>
+<tr class="row-even"><td>Large header (CONTINUATION)</td>
+<td>Yes</td>
+</tr>
+<tr class="row-odd"><td>BLOCKED extension</td>
+<td>Yes *1</td>
+</tr>
+<tr class="row-even"><td>ALTSVC extension</td>
+<td>Yes *2</td>
 </tr>
 </tbody>
 </table>
+<ul class="simple">
+<li>*1 As described in draft-12.</li>
+<li>*2 As described in draft-12, but reserved byte was removed.</li>
+</ul>
 </div>
 <div class="section" id="public-test-server">
 <h2>Public Test Server<a class="headerlink" href="#public-test-server" title="Permalink to this headline">¶</a></h2>
@@ -179,11 +195,13 @@ header compression
 implementation.</p>
 <ul>
 <li><p class="first"><a class="reference external" href="https://nghttp2.org/">https://nghttp2.org/</a> (TLS + NPN)</p>
-<p>NPN offer <tt class="docutils literal"><span class="pre">h2-12</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.
+<p>NPN offer <tt class="docutils literal"><span class="pre">h2-13</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.
 ALPN is currently disabled.</p>
+<p>This endpoint requires TLSv1.2 and DHE or EDCHE with GCM cipher
+suite for HTTP/2 connection.</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://nghttp2.org/">http://nghttp2.org/</a> (Upgrade / Direct)</p>
-<p><tt class="docutils literal"><span class="pre">h2c-12</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.  We configured this server to send
+<p><tt class="docutils literal"><span class="pre">h2c-13</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.  We configured this server to send
 ALTSVC frame or Alt-Svc header field to announce that alternative
 service is available at port 443.</p>
 </li>
@@ -303,10 +321,10 @@ with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nv https://nghttp2.org
 [  0.033][NPN] server offers:
-          * h2-12
+          * h2-13
           * spdy/3.1
           * http/1.1
-The negotiated protocol: h2-12
+The negotiated protocol: h2-13
 [  0.068] send SETTINGS frame &lt;length=15, flags=0x00, stream_id=0&gt;
           (niv=3)
           [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
@@ -375,7 +393,7 @@ The negotiated protocol: h2-12
 GET / HTTP/1.1
 Host: nghttp2.org
 Connection: Upgrade, HTTP2-Settings
-Upgrade: h2c-12
+Upgrade: h2c-13
 HTTP2-Settings: AwAAAGQEAAD__wUAAAAB
 Accept: */*
 User-Agent: nghttp2/0.4.0-DEV
@@ -384,7 +402,7 @@ User-Agent: nghttp2/0.4.0-DEV
 [  0.024] HTTP Upgrade response
 HTTP/1.1 101 Switching Protocols
 Connection: Upgrade
-Upgrade: h2c-12
+Upgrade: h2c-13
 
 
 [  0.024] HTTP Upgrade success
@@ -398,7 +416,7 @@ Upgrade: h2c-12
           [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
           [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
 [  0.024] recv ALTSVC frame &lt;length=43, flags=0x00, stream_id=0&gt;
-          (max-age=86400, port=443, protocol_id=h2-12, host=nghttp2.org, origin=http://nghttp2.org)
+          (max-age=86400, port=443, protocol_id=h2-13, host=nghttp2.org, origin=http://nghttp2.org)
 [  0.024] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
@@ -503,8 +521,8 @@ IPv6: listen on port 8080
 </div>
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for
-<tt class="docutils literal"><span class="pre">h2-12</span></tt>, SPDY and HTTP/1.1. It has several operation modes:</p>
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for <tt class="docutils literal"><span class="pre">h2-13</span></tt>, SPDY and
+HTTP/1.1 and powers nghttp2.org site.  It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="25%" />
@@ -548,7 +566,7 @@ IPv6: listen on port 8080
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-12</span></tt>, SPDY and HTTP/1.1 and can
+a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-13</span></tt>, SPDY and HTTP/1.1 and can
 be deployed SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
@@ -1203,7 +1221,7 @@ BaseRequestHandler usage:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.4.1',
+            VERSION:'0.4.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

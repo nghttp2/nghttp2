@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tutorial: HTTP/2 server &mdash; nghttp2 0.4.1 documentation</title>
+  <title>Tutorial: HTTP/2 server &mdash; nghttp2 0.4.2-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.4.1 documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttpx - HOW-TO" href="nghttpx-howto.html"/>
         <link rel="prev" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/> 
 
@@ -171,10 +171,9 @@ life time:</p>
                          <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="n">next_proto_list</span><span class="p">;</span>
-  <span class="o">*</span><span class="n">len</span> <span class="o">=</span> <span class="n">next_proto_list_len</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="n">next_proto_list_len</span><span class="p">;</span>
   <span class="k">return</span> <span class="n">SSL_TLSEXT_ERR_OK</span><span class="p">;</span>
 <span class="p">}</span>
-
 
 <span class="k">static</span> <span class="n">SSL_CTX</span><span class="o">*</span> <span class="nf">create_ssl_ctx</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key_file</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">cert_file</span><span class="p">)</span>
 <span class="p">{</span>
@@ -417,16 +416,20 @@ functions for these pending data. To process received data, we call
 <tt class="docutils literal"><span class="pre">session_recv()</span></tt> function:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">session_recv</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="kt">ssize_t</span> <span class="n">readlen</span><span class="p">;</span>
   <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">bufferevent_get_input</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
   <span class="kt">size_t</span> <span class="n">datalen</span> <span class="o">=</span> <span class="n">evbuffer_get_length</span><span class="p">(</span><span class="n">input</span><span class="p">);</span>
   <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="n">evbuffer_pullup</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
-  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datalen</span><span class="p">);</span>
-  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+
+  <span class="n">readlen</span> <span class="o">=</span> <span class="n">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datalen</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">readlen</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">readlen</span><span class="p">));</span>
     <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
   <span class="p">}</span>
-  <span class="n">evbuffer_drain</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">rv</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">evbuffer_drain</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">readlen</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: evbuffer_drain failed&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">session_send</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
   <span class="p">}</span>
@@ -799,7 +802,7 @@ stream is about to close and we no longer use that object.</p>
                          <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="n">next_proto_list</span><span class="p">;</span>
-  <span class="o">*</span><span class="n">len</span> <span class="o">=</span> <span class="n">next_proto_list_len</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="n">next_proto_list_len</span><span class="p">;</span>
   <span class="k">return</span> <span class="n">SSL_TLSEXT_ERR_OK</span><span class="p">;</span>
 <span class="p">}</span>
 
@@ -956,16 +959,20 @@ stream is about to close and we no longer use that object.</p>
 <span class="cm">   function. */</span>
 <span class="k">static</span> <span class="kt">int</span> <span class="nf">session_recv</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="kt">ssize_t</span> <span class="n">readlen</span><span class="p">;</span>
   <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">bufferevent_get_input</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
   <span class="kt">size_t</span> <span class="n">datalen</span> <span class="o">=</span> <span class="n">evbuffer_get_length</span><span class="p">(</span><span class="n">input</span><span class="p">);</span>
   <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="n">evbuffer_pullup</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
-  <span class="n">rv</span> <span class="o">=</span> <span class="n">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datalen</span><span class="p">);</span>
-  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">(</span><span class="n">rv</span><span class="p">));</span>
+
+  <span class="n">readlen</span> <span class="o">=</span> <span class="n">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">datalen</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">readlen</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: %s&quot;</span><span class="p">,</span> <span class="n">nghttp2_strerror</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">readlen</span><span class="p">));</span>
     <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
   <span class="p">}</span>
-  <span class="n">evbuffer_drain</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">rv</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">evbuffer_drain</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">readlen</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">warnx</span><span class="p">(</span><span class="s">&quot;Fatal error: evbuffer_drain failed&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">session_send</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
   <span class="p">}</span>
@@ -1082,6 +1089,7 @@ stream is about to close and we no longer use that object.</p>
                        <span class="n">http2_stream_data</span> <span class="o">*</span><span class="n">stream_data</span><span class="p">)</span>
 <span class="p">{</span>
   <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+  <span class="kt">ssize_t</span> <span class="n">writelen</span><span class="p">;</span>
   <span class="kt">int</span> <span class="n">pipefd</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
   <span class="n">nghttp2_nv</span> <span class="n">hdrs</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
     <span class="n">MAKE_NV</span><span class="p">(</span><span class="s">&quot;:status&quot;</span><span class="p">,</span> <span class="s">&quot;404&quot;</span><span class="p">)</span>
@@ -1100,10 +1108,10 @@ stream is about to close and we no longer use that object.</p>
     <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
   <span class="p">}</span>
 
-  <span class="n">rv</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ERROR_HTML</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ERROR_HTML</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="n">writelen</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ERROR_HTML</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ERROR_HTML</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
   <span class="n">close</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
 
-  <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ERROR_HTML</span><span class="p">))</span> <span class="p">{</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">writelen</span> <span class="o">!=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">ERROR_HTML</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">close</span><span class="p">(</span><span class="n">pipefd</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
     <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
   <span class="p">}</span>
@@ -1513,7 +1521,7 @@ stream is about to close and we no longer use that object.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.4.1',
+            VERSION:'0.4.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
