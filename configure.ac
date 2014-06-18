@@ -194,6 +194,7 @@ esac
 if test "x$android_build" = "xyes"; then
   # Use zlib provided by NDK
   SRC_LIBS="-lz $SRC_LIBS"
+  have_zlib=yes
 else
   PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3], [have_zlib=yes], [have_zlib=no])
 
