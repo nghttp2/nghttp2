@@ -48,6 +48,9 @@ implementation.
   NPN offer ``h2-13``, ``spdy/3.1`` and ``http/1.1``.
   ALPN is currently disabled.
 
+  This endpoint requires TLSv1.2 and DHE or EDCHE with GCM cipher
+  suite for HTTP/2 connection.
+
 * http://nghttp2.org/ (Upgrade / Direct)
 
   ``h2c-13`` and ``http/1.1``.  We configured this server to send
