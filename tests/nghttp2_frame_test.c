@@ -257,9 +257,26 @@ void test_nghttp2_frame_pack_rst_stream(void)
                      &oframe.hd);
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == oframe.error_code);
 
-  nghttp2_bufs_free(&bufs);
   nghttp2_frame_rst_stream_free(&oframe);
+  nghttp2_bufs_reset(&bufs);
+
+  /* Unknown error code is treated as NGHTTP2_INTERNAL_ERROR */
+  frame.error_code = 1000000009;
+  rv = nghttp2_frame_pack_rst_stream(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
+
+  check_frame_header(4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, 1000000007,
+                     &oframe.hd);
+
+  CU_ASSERT(NGHTTP2_INTERNAL_ERROR == oframe.error_code);
+
+  nghttp2_frame_rst_stream_free(&oframe);
+
   nghttp2_frame_rst_stream_free(&frame);
+
+  nghttp2_bufs_free(&bufs);
 }
 
 void test_nghttp2_frame_pack_settings()
@@ -403,9 +420,24 @@ void test_nghttp2_frame_pack_goaway()
   CU_ASSERT(opaque_data_len == oframe.opaque_data_len);
   CU_ASSERT(memcmp(opaque_data, oframe.opaque_data, opaque_data_len) == 0);
 
-  nghttp2_bufs_free(&bufs);
   nghttp2_frame_goaway_free(&oframe);
+  nghttp2_bufs_reset(&bufs);
+
+  /* Unknown error code is treated as NGHTTP2_INTERNAL_ERROR */
+  frame.error_code = 1000000009;
+
+  rv = nghttp2_frame_pack_goaway(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
+  check_frame_header(24, NGHTTP2_GOAWAY, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
+  CU_ASSERT(NGHTTP2_INTERNAL_ERROR == oframe.error_code);
+
+  nghttp2_frame_goaway_free(&oframe);
+
   nghttp2_frame_goaway_free(&frame);
+
+  nghttp2_bufs_free(&bufs);
 }
 
 void test_nghttp2_frame_pack_window_update(void)
