@@ -5791,3 +5791,41 @@ void test_nghttp2_session_keep_closed_stream(void)
 
   nghttp2_session_del(session);
 }
+
+void test_nghttp2_session_graceful_shutdown(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = block_count_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE,
+                                       (1u << 31) - 1, NGHTTP2_NO_ERROR,
+                                       NULL, 0));
+
+  ud.block_count = 1;
+  ud.frame_send_cb_called = 0;
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(1 == ud.frame_send_cb_called);
+  CU_ASSERT((1u << 31) - 1 == session->local_last_stream_id);
+
+  CU_ASSERT(0 == nghttp2_session_terminate_session2(session, 300,
+                                                    NGHTTP2_NO_ERROR));
+
+  ud.block_count = 1;
+  ud.frame_send_cb_called = 0;
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(1 == ud.frame_send_cb_called);
+  CU_ASSERT(300 == session->local_last_stream_id);
+
+  nghttp2_session_del(session);
+}
