@@ -250,7 +250,10 @@ static int session_recv(http2_session_data *session_data)
     warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
     return -1;
   }
-  evbuffer_drain(input, readlen);
+  if(evbuffer_drain(input, readlen) != 0) {
+    warnx("Fatal error: evbuffer_drain failed");
+    return -1;
+  }
   if(session_send(session_data) != 0) {
     return -1;
   }
