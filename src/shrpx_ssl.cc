@@ -940,11 +940,10 @@ bool check_http2_requirement(SSL *ssl)
   auto tls_ver = SSL_version(ssl);
 
   switch(tls_ver) {
-  case TLS1_1_VERSION:
   case TLS1_2_VERSION:
     break;
   default:
-    LOG(INFO) << "TLSv1.2 or TLSv1.1 was not negotiated. "
+    LOG(INFO) << "TLSv1.2 was not negotiated. "
               << "HTTP/2 must not be negotiated.";
     return false;
   }
