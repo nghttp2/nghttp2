@@ -322,6 +322,7 @@ static int session_new(nghttp2_session **session_ptr,
   (*session_ptr)->local_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
 
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
+  (*session_ptr)->local_last_stream_id = (1u << 31) - 1;
   (*session_ptr)->remote_last_stream_id = 0;
 
   (*session_ptr)->inflight_niv = -1;
@@ -1727,11 +1728,17 @@ static int session_prep_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_GOAWAY:
+      if(session->local_last_stream_id < frame->goaway.last_stream_id) {
+        return NGHTTP2_ERR_INVALID_ARGUMENT;
+      }
+
       framerv = nghttp2_frame_pack_goaway(&session->aob.framebufs,
                                           &frame->goaway);
       if(framerv < 0) {
         return framerv;
       }
+      session->local_last_stream_id = frame->goaway.last_stream_id;
+
       break;
     case NGHTTP2_EXT_ALTSVC:
       rv = session_predicate_altsvc_send(session, frame->hd.stream_id);

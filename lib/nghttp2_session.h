@@ -189,6 +189,8 @@ struct nghttp2_session {
   /* Counter of unique ID of PING. Wraps when it exceeds
      NGHTTP2_MAX_UNIQUE_ID */
   uint32_t next_unique_id;
+  /* This is the last-stream-ID we have sent in GOAWAY */
+  int32_t local_last_stream_id;
   /* This is the value in GOAWAY frame received from remote endpoint. */
   int32_t remote_last_stream_id;
   /* Current sender window size. This value is computed against the
