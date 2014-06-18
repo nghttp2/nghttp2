@@ -260,7 +260,11 @@ data is available to read in the bufferevent input buffer::
         delete_http2_session_data(session_data);
         return;
       }
-      evbuffer_drain(input, readlen);
+      if(evbuffer_drain(input, readlen) != 0) {
+        warnx("Fatal error: evbuffer_drain failed");
+        delete_http2_session_data(session_data);
+        return;
+      }
       if(session_send(session_data) != 0) {
         delete_http2_session_data(session_data);
         return;
