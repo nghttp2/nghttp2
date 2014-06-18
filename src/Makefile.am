@@ -54,7 +54,7 @@ LDADD = \
 
 if ENABLE_APP
 
-bin_PROGRAMS += nghttp nghttpd nghttpx h2load
+bin_PROGRAMS += nghttp nghttpd nghttpx
 
 HELPER_OBJECTS = util.cc http2.cc timegm.c app_helper.cc nghttp2_gzip.c
 HELPER_HFILES = util.h http2.h timegm.h app_helper.h nghttp2_config.h \
@@ -74,6 +74,10 @@ nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	ssl.cc ssl.h \
 	HttpServer.cc HttpServer.h
 
+if ENABLE_H2LOAD
+
+bin_PROGRAMS += h2load
+
 h2load_SOURCES = util.cc util.h http2.cc http2.h h2load.cc h2load.h \
 	timegm.c timegm.h \
 	ssl.cc ssl.h \
@@ -83,6 +87,8 @@ h2load_SOURCES = util.cc util.h http2.cc http2.h h2load.cc h2load.h \
 if HAVE_SPDYLAY
 h2load_SOURCES += h2load_spdy_session.cc h2load_spdy_session.h
 endif # HAVE_SPDYLAY
+
+endif # ENABLE_H2LOAD
 
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \

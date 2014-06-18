@@ -137,12 +137,13 @@ fi
 
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 
+AC_LANG_PUSH(C++)
+
 # Check that std::chrono::steady_clock is available. In particular,
 # gcc 4.6 does not have one, but has monotonic_clock which is the old
 # name existed in the pre-standard draft. If steady_clock is not
 # available, don't define HAVE_STEADY_CLOCK and replace steady_clock
 # with monotonic_clock.
-AC_LANG_PUSH(C++)
 AC_MSG_CHECKING([whether std::chrono::steady_clock is available])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
 [[
@@ -155,6 +156,24 @@ auto tp = std::chrono::steady_clock::now();
                [Define to 1 if you have the `std::chrono::steady_clock`.])
      AC_MSG_RESULT([yes])],
     [AC_MSG_RESULT([no])])
+
+# Check that std::future is available.
+AC_MSG_CHECKING([whether std::future is available])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <vector>
+#include <future>
+]],
+[[
+std::vector<std::future<int>> v;
+]])],
+    [AC_DEFINE([HAVE_STD_FUTURE], [1],
+               [Define to 1 if you have the `std::future`.])
+     have_std_future=yes
+     AC_MSG_RESULT([yes])],
+    [have_std_future=no
+     AC_MSG_RESULT([no])])
+
 AC_LANG_POP()
 
 # Checks for libraries.
@@ -324,6 +343,7 @@ if test "x${request_app}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([ENABLE_APP], [ test "x${enable_app}" = "xyes" ])
+AM_CONDITIONAL([ENABLE_H2LOAD], [ test "x${have_std_future}" = "xyes" ])
 
 enable_hpack_tools=no
 # HPACK tools requires jansson
