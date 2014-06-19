@@ -123,13 +123,6 @@ void upstream_eventcb(bufferevent *bev, short events, void *arg)
           CLOG(INFO, handler) << "SSL/TLS session reused";
         }
       }
-      // At this point, input buffer is already filled with some
-      // bytes.  The read callback is not called until new data
-      // come. So consume input buffer here.
-      if(handler->get_upstream()->on_read() != 0) {
-        delete handler;
-        return;
-      }
     }
   }
 }
@@ -367,17 +360,38 @@ int ClientHandler::validate_next_proto()
 
         upstream_ = std::move(http2_upstream);
 
+        // At this point, input buffer is already filled with some
+        // bytes.  The read callback is not called until new data
+        // come. So consume input buffer here.
+        upstream_http2_connhd_readcb(bev_, this);
+
         return 0;
       } else {
 #ifdef HAVE_SPDYLAY
         uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
         if(version) {
           upstream_ = util::make_unique<SpdyUpstream>(version, this);
+
+          // At this point, input buffer is already filled with some
+          // bytes.  The read callback is not called until new data
+          // come. So consume input buffer here.
+          if(upstream_->on_read() != 0) {
+            return -1;
+          }
+
           return 0;
         }
 #endif // HAVE_SPDYLAY
         if(next_proto_len == 8 && memcmp("http/1.1", next_proto, 8) == 0) {
           upstream_ = util::make_unique<HttpsUpstream>(this);
+
+          // At this point, input buffer is already filled with some
+          // bytes.  The read callback is not called until new data
+          // come. So consume input buffer here.
+          if(upstream_->on_read() != 0) {
+            return -1;
+          }
+
           return 0;
         }
       }
@@ -394,6 +408,14 @@ int ClientHandler::validate_next_proto()
       CLOG(INFO, this) << "No protocol negotiated. Fallback to HTTP/1.1";
     }
     upstream_ = util::make_unique<HttpsUpstream>(this);
+
+    // At this point, input buffer is already filled with some bytes.
+    // The read callback is not called until new data come. So consume
+    // input buffer here.
+    if(upstream_->on_read() != 0) {
+      return -1;
+    }
+
     return 0;
   }
   if(LOG_ENABLED(INFO)) {
