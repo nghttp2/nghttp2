@@ -428,13 +428,11 @@ struct HttpClient {
   event *settings_timerev;
   addrinfo *addrs;
   addrinfo *next_addr;
-  nghttp2_gzip *inflater;
   // The number of completed requests, including failed ones.
   size_t complete;
   // The length of settings_payload
   size_t settings_payloadlen;
   client_state state;
-  int32_t last_inflate_error_stream_id;
   // The HTTP status code of the response message of HTTP Upgrade.
   unsigned int upgrade_response_status_code;
   // true if the response message of HTTP Upgrade request is fully
@@ -454,11 +452,9 @@ struct HttpClient {
       settings_timerev(nullptr),
       addrs(nullptr),
       next_addr(nullptr),
-      inflater(nullptr),
       complete(0),
       settings_payloadlen(0),
       state(STATE_IDLE),
-      last_inflate_error_stream_id(0),
       upgrade_response_status_code(0),
       upgrade_response_complete(false)
   {}
@@ -917,38 +913,6 @@ struct HttpClient {
   void record_handshake_time()
   {
     stat.on_handshake_time = get_time();
-  }
-
-  bool check_inflater(int32_t stream_id)
-  {
-    if(inflater == nullptr || last_inflate_error_stream_id == stream_id) {
-      return false;
-    }
-
-    last_inflate_error_stream_id = 0;
-
-    return true;
-  }
-
-  bool reset_inflater()
-  {
-    int rv;
-    nghttp2_gzip *gzip;
-
-    if(inflater) {
-      nghttp2_gzip_inflate_del(inflater);
-      inflater = nullptr;
-    }
-
-    rv = nghttp2_gzip_inflate_new(&gzip);
-
-    if(rv != 0) {
-      return false;
-    }
-
-    inflater = gzip;
-
-    return true;
   }
 
   void on_request(Request *req)
@@ -1684,10 +1648,6 @@ int communicate(const std::string& scheme, const std::string& host,
   }
   {
     HttpClient client{callbacks, evbase, ssl_ctx};
-
-    if(!client.reset_inflater()) {
-      goto fin;
-    }
 
     nghttp2_priority_spec pri_spec;
 
