@@ -293,7 +293,7 @@ int Client::on_connect()
   for(; nreq > 0; --nreq) {
     submit_request();
   }
-  return 0;
+  return session->on_write();
 }
 
 int Client::on_read()
