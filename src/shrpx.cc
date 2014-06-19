@@ -337,7 +337,7 @@ const char *DEFAULT_NPN_LIST = NGHTTP2_PROTO_VERSION_ID ","
 } // namespace
 
 namespace {
-const char *DEFAULT_TLS_PROTO_LIST = "TLSv1.2,TLSv1.1,TLSv1.0";
+const char *DEFAULT_TLS_PROTO_LIST = "TLSv1.2,TLSv1.1";
 } // namespace
 
 namespace {
