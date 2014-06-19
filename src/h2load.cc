@@ -315,7 +315,7 @@ int Client::on_write()
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                Config *config)
   : stats{0}, evbase(event_base_new()), ssl_ctx(ssl_ctx), config(config),
-    id(id), term_timer_started(false)
+    term_timer(nullptr), id(id)
 {
   stats.req_todo = req_todo;
   progress_interval = std::max((size_t)1, req_todo / 10);
@@ -326,6 +326,9 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 
 Worker::~Worker()
 {
+  if(term_timer) {
+    event_free(term_timer);
+  }
   event_base_free(evbase);
 }
 
@@ -350,11 +353,11 @@ void term_timeout_cb(evutil_socket_t fd, short what, void *arg)
 
 void Worker::schedule_terminate()
 {
-  if(term_timer_started) {
+  if(term_timer) {
     return;
   }
-  term_timer_started = true;
-  auto term_timer = evtimer_new(evbase, term_timeout_cb, this);
+
+  term_timer = evtimer_new(evbase, term_timeout_cb, this);
   timeval timeout = { 0, 0 };
   evtimer_add(term_timer, &timeout);
 }
@@ -998,6 +1001,9 @@ int main(int argc, char **argv)
             << worker.stats.bytes_head << " bytes headers, "
             << worker.stats.bytes_body << " bytes data"
             << std::endl;
+
+  SSL_CTX_free(ssl_ctx);
+
   return 0;
 }
 

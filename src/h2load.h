@@ -113,9 +113,9 @@ struct Worker {
   event_base *evbase;
   SSL_CTX *ssl_ctx;
   Config *config;
+  event *term_timer;
   size_t progress_interval;
   uint32_t id;
-  bool term_timer_started;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          Config *config);
