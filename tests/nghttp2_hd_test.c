@@ -641,6 +641,57 @@ void test_nghttp2_hd_inflate_zero_length_huffman(void)
   nghttp2_hd_inflate_free(&inflater);
 }
 
+void test_nghttp2_hd_ringbuf_reserve(void)
+{
+  nghttp2_hd_deflater deflater;
+  nghttp2_hd_inflater inflater;
+  nghttp2_nv nv;
+  nghttp2_bufs bufs;
+  nva_out out;
+  int i;
+  ssize_t rv;
+  ssize_t blocklen;
+
+  frame_pack_bufs_init(&bufs);
+  nva_out_init(&out);
+
+  nv.flags = NGHTTP2_NV_FLAG_NONE;
+  nv.name = (uint8_t*)"a";
+  nv.namelen = strlen((const char*)nv.name);
+  nv.valuelen = 4;
+  nv.value = malloc(nv.valuelen);
+  memset(nv.value, 0, nv.valuelen);
+
+  nghttp2_hd_deflate_init2(&deflater, 8000);
+  nghttp2_hd_inflate_init(&inflater);
+
+  nghttp2_hd_inflate_change_table_size(&inflater, 8000);
+  nghttp2_hd_deflate_change_table_size(&deflater, 8000);
+
+  for(i = 0; i < 150; ++i) {
+    memcpy(nv.value, &i, sizeof(i));
+    rv = nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, &nv, 1);
+    blocklen = nghttp2_bufs_len(&bufs);
+
+    CU_ASSERT(0 == rv);
+    CU_ASSERT(blocklen > 0);
+
+    CU_ASSERT(blocklen == inflate_hd(&inflater, &out, &bufs, 0));
+
+    CU_ASSERT(1 == out.nvlen);
+    assert_nv_equal(&nv, out.nva, 1);
+
+    nva_out_reset(&out);
+    nghttp2_bufs_reset(&bufs);
+  }
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+
+  free(nv.value);
+}
+
 void test_nghttp2_hd_change_table_size(void)
 {
   nghttp2_hd_deflater deflater;
@@ -663,10 +714,8 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, 8000));
   CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, 8000));
 
-  CU_ASSERT(127 == deflater.ctx.hd_table.mask);
   CU_ASSERT(4096 == deflater.ctx.hd_table_bufsize_max);
 
-  CU_ASSERT(255 == inflater.ctx.hd_table.mask);
   CU_ASSERT(8000 == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(8000 == inflater.settings_hd_table_bufsize_max);
 
@@ -691,10 +740,8 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, 1024));
   CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, 1024));
 
-  CU_ASSERT(127 == deflater.ctx.hd_table.mask);
   CU_ASSERT(1024 == deflater.ctx.hd_table_bufsize_max);
 
-  CU_ASSERT(255 == inflater.ctx.hd_table.mask);
   CU_ASSERT(1024 == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(1024 == inflater.settings_hd_table_bufsize_max);
 
@@ -718,11 +765,9 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, 0));
   CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, 0));
 
-  CU_ASSERT(127 == deflater.ctx.hd_table.mask);
   CU_ASSERT(0 == deflater.ctx.hd_table.len);
   CU_ASSERT(0 == deflater.ctx.hd_table_bufsize_max);
 
-  CU_ASSERT(255 == inflater.ctx.hd_table.mask);
   CU_ASSERT(0 == inflater.ctx.hd_table.len);
   CU_ASSERT(0 == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(0 == inflater.settings_hd_table_bufsize_max);
@@ -757,10 +802,8 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, 8000));
   CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, 8000));
 
-  CU_ASSERT(255 == deflater.ctx.hd_table.mask);
   CU_ASSERT(8000 == deflater.ctx.hd_table_bufsize_max);
 
-  CU_ASSERT(255 == inflater.ctx.hd_table.mask);
   CU_ASSERT(8000 == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(8000 == inflater.settings_hd_table_bufsize_max);
 
@@ -783,10 +826,8 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, 16383));
   CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, 16383));
 
-  CU_ASSERT(255 == deflater.ctx.hd_table.mask);
   CU_ASSERT(8192 == deflater.ctx.hd_table_bufsize_max);
 
-  CU_ASSERT(511 == inflater.ctx.hd_table.mask);
   CU_ASSERT(16383 == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(16383 == inflater.settings_hd_table_bufsize_max);
 
@@ -823,7 +864,6 @@ void test_nghttp2_hd_change_table_size(void)
   nghttp2_hd_deflate_init2(&deflater, 1024);
   nghttp2_hd_inflate_init(&inflater);
 
-  CU_ASSERT(127 == deflater.ctx.hd_table.mask);
   CU_ASSERT(1024 == deflater.ctx.hd_table_bufsize_max);
 
   /* This emits context update with buffer size 1024 */

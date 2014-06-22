@@ -37,6 +37,7 @@ void test_nghttp2_hd_inflate_newname_noinc(void);
 void test_nghttp2_hd_inflate_newname_inc(void);
 void test_nghttp2_hd_inflate_clearall_inc(void);
 void test_nghttp2_hd_inflate_zero_length_huffman(void);
+void test_nghttp2_hd_ringbuf_reserve(void);
 void test_nghttp2_hd_change_table_size(void);
 void test_nghttp2_hd_deflate_inflate(void);
 void test_nghttp2_hd_no_index(void);

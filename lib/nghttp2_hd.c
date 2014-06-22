@@ -273,12 +273,20 @@ static void hd_ringbuf_free(nghttp2_hd_ringbuf *ringbuf)
   free(ringbuf->buffer);
 }
 
-static size_t hd_ringbuf_push_front(nghttp2_hd_ringbuf *ringbuf,
-                                    nghttp2_hd_entry *ent)
+static int hd_ringbuf_push_front(nghttp2_hd_ringbuf *ringbuf,
+                                 nghttp2_hd_entry *ent)
 {
-  assert(ringbuf->len <= ringbuf->mask);
+  int rv;
+
+  rv = hd_ringbuf_reserve(ringbuf, ringbuf->len + 1);
+
+  if(rv != 0) {
+    return rv;
+  }
+
   ringbuf->buffer[--ringbuf->first & ringbuf->mask] = ent;
   ++ringbuf->len;
+
   return 0;
 }
 
@@ -852,8 +860,17 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
        immediately evicted. */
     --new_ent->ref;
   } else {
+    rv = hd_ringbuf_push_front(&context->hd_table, new_ent);
+
+    if(rv != 0) {
+      --new_ent->ref;
+      nghttp2_hd_entry_free(new_ent);
+      free(new_ent);
+
+      return NULL;
+    }
+
     context->hd_table_bufsize += room;
-    hd_ringbuf_push_front(&context->hd_table, new_ent);
 
     new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
   }
@@ -950,14 +967,8 @@ static void hd_context_shrink_table_size(nghttp2_hd_context *context)
 int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
                                          size_t settings_hd_table_bufsize_max)
 {
-  int rv;
   size_t next_bufsize = nghttp2_min(settings_hd_table_bufsize_max,
                                     deflater->deflate_hd_table_bufsize_max);
-  rv = hd_ringbuf_reserve
-    (&deflater->ctx.hd_table, next_bufsize / NGHTTP2_HD_ENTRY_OVERHEAD);
-  if(rv != 0) {
-    return rv;
-  }
 
   deflater->ctx.hd_table_bufsize_max = next_bufsize;
 
@@ -970,14 +981,6 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
 int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
                                          size_t settings_hd_table_bufsize_max)
 {
-  int rv;
-
-  rv = hd_ringbuf_reserve
-    (&inflater->ctx.hd_table,
-     settings_hd_table_bufsize_max / NGHTTP2_HD_ENTRY_OVERHEAD);
-  if(rv != 0) {
-    return rv;
-  }
   inflater->settings_hd_table_bufsize_max = settings_hd_table_bufsize_max;
   inflater->ctx.hd_table_bufsize_max = settings_hd_table_bufsize_max;
   hd_context_shrink_table_size(&inflater->ctx);

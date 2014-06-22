@@ -273,6 +273,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_hd_inflate_clearall_inc) ||
       !CU_add_test(pSuite, "hd_inflate_zero_length_huffman",
                    test_nghttp2_hd_inflate_zero_length_huffman) ||
+      !CU_add_test(pSuite, "hd_ringbuf_reserve",
+                   test_nghttp2_hd_ringbuf_reserve) ||
       !CU_add_test(pSuite, "hd_change_table_size",
                    test_nghttp2_hd_change_table_size) ||
       !CU_add_test(pSuite, "hd_deflate_inflate",
