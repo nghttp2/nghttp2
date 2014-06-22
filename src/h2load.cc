@@ -108,13 +108,16 @@ Stream::Stream()
   : status_success(-1)
 {}
 
-Client::Client(Worker *worker)
+Client::Client(Worker *worker, size_t req_todo)
   : worker(worker),
     ssl(nullptr),
     bev(nullptr),
     next_addr(config.addrs),
     reqidx(0),
-    state(CLIENT_IDLE)
+    state(CLIENT_IDLE),
+    req_todo(req_todo),
+    req_started(0),
+    req_done(0)
 {}
 
 Client::~Client()
@@ -192,13 +195,16 @@ void Client::submit_request()
 {
   session->submit_request();
   ++worker->stats.req_started;
+  ++req_started;
 }
 
 void Client::process_abandoned_streams()
 {
-  worker->stats.req_failed += streams.size();
-  worker->stats.req_error += streams.size();
-  worker->stats.req_done += streams.size();
+  auto req_abandoned = req_todo - req_done;
+
+  worker->stats.req_failed += req_abandoned;
+  worker->stats.req_error += req_abandoned;
+  worker->stats.req_done += req_abandoned;
 }
 
 void Client::report_progress()
@@ -265,6 +271,7 @@ void Client::on_header(int32_t stream_id,
 void Client::on_stream_close(int32_t stream_id, bool success)
 {
   ++worker->stats.req_done;
+  ++req_done;
   if(success && streams[stream_id].status_success == 1) {
     ++worker->stats.req_success;
   } else {
@@ -277,7 +284,7 @@ void Client::on_stream_close(int32_t stream_id, bool success)
     return;
   }
 
-  if(worker->stats.req_started < worker->stats.req_todo) {
+  if(req_started < req_todo) {
     submit_request();
     return;
   }
@@ -287,9 +294,9 @@ int Client::on_connect()
 {
   session->on_connect();
 
-  auto nreq = std::min(worker->stats.req_todo - worker->stats.req_started,
-                       std::min(worker->stats.req_todo / worker->clients.size(),
-                                (size_t)config.max_concurrent_streams));
+  auto nreq = std::min(req_todo - req_started,
+                       (size_t)config.max_concurrent_streams);
+
   for(; nreq > 0; --nreq) {
     submit_request();
   }
@@ -319,8 +326,17 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 {
   stats.req_todo = req_todo;
   progress_interval = std::max((size_t)1, req_todo / 10);
+
+  auto nreqs_per_client = req_todo / nclients;
+  auto nreqs_rem = req_todo % nclients;
+
   for(size_t i = 0; i < nclients; ++i) {
-    clients.push_back(util::make_unique<Client>(this));
+    auto req_todo = nreqs_per_client;
+    if(nreqs_rem > 0) {
+      ++req_todo;
+      --nreqs_rem;
+    }
+    clients.push_back(util::make_unique<Client>(this, req_todo));
   }
 }
 

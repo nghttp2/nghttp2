@@ -139,8 +139,15 @@ struct Client {
   addrinfo *next_addr;
   size_t reqidx;
   ClientState state;
+  // The number of requests this client has to issue.
+  size_t req_todo;
+  // The number of requests this client has issued so far.
+  size_t req_started;
+  // The number of requests this client has issued and got response so
+  // far.
+  size_t req_done;
 
-  Client(Worker *worker);
+  Client(Worker *worker, size_t req_todo);
   ~Client();
   int connect();
   void disconnect();
