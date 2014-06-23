@@ -129,8 +129,6 @@ const char* strframetype(uint8_t type)
     return "WINDOW_UPDATE";
   case NGHTTP2_EXT_ALTSVC:
     return "ALTSVC";
-  case NGHTTP2_EXT_BLOCKED:
-    return "BLOCKED";
   default:
     return "UNKNOWN";
   }

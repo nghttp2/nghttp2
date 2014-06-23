@@ -227,15 +227,6 @@ void nghttp2_frame_altsvc_free(nghttp2_extension *frame)
   free(altsvc->protocol_id);
 }
 
-void nghttp2_frame_blocked_init(nghttp2_extension *frame, int32_t stream_id)
-{
-  frame_set_hd(&frame->hd, 0, NGHTTP2_EXT_BLOCKED, NGHTTP2_FLAG_NONE,
-               stream_id);
-}
-
-void nghttp2_frame_blocked_free(nghttp2_extension *frame)
-{}
-
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata)
 {
   frame->hd = pdata->hd;
@@ -888,20 +879,6 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
 
   altsvc->origin = buf.pos;
   altsvc->origin_len = nghttp2_buf_len(&buf);
-
-  return 0;
-}
-
-int nghttp2_frame_pack_blocked(nghttp2_bufs *bufs, nghttp2_extension *frame)
-{
-  nghttp2_buf *buf;
-
-  assert(bufs->head == bufs->cur);
-
-  buf = &bufs->head->buf;
-  buf->pos -= NGHTTP2_FRAME_HDLEN;
-
-  nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
 
   return 0;
 }

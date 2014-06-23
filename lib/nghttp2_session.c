@@ -240,9 +240,6 @@ static void session_inbound_frame_reset(nghttp2_session *session)
   case NGHTTP2_EXT_ALTSVC:
     nghttp2_frame_altsvc_free(&iframe->frame.ext);
     break;
-  case NGHTTP2_EXT_BLOCKED:
-    nghttp2_frame_blocked_free(&iframe->frame.ext);
-    break;
   }
 
   memset(&iframe->frame, 0, sizeof(nghttp2_frame));
@@ -1292,41 +1289,6 @@ static int session_predicate_altsvc_send
 }
 
 /*
- * This function checks BLOCKED with the stream ID |stream_id| can be
- * sent at this time.  If |stream_id| is 0, BLOCKED frame is always
- * allowed to send.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_STREAM_CLOSED
- *     The stream is already closed or does not exist.
- * NGHTTP2_ERR_STREAM_CLOSING
- *     RST_STREAM was queued for this stream.
- */
-static int session_predicate_blocked_send
-(nghttp2_session *session, int32_t stream_id)
-{
-  nghttp2_stream *stream;
-
-  if(stream_id == 0) {
-    return 0;
-  }
-
-  stream = nghttp2_session_get_stream(session, stream_id);
-
-  if(stream == NULL) {
-    return NGHTTP2_ERR_STREAM_CLOSED;
-  }
-
-  if(stream->state == NGHTTP2_STREAM_CLOSING) {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  }
-
-  return 0;
-}
-
-/*
  * This function checks SETTINGS can be sent at this time.
  *
  * Currently this function always returns 0.
@@ -1476,71 +1438,6 @@ static int session_headers_add_pad(nghttp2_session *session,
   }
 
   frame->headers.padlen = padlen;
-
-  return 0;
-}
-
-/*
- * Adds BLOCKED frame to outbound queue.  The |stream_id| could be 0,
- * which means DATA is blocked by connection level flow control.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory
- */
-static int session_add_blocked(nghttp2_session *session, int32_t stream_id)
-{
-  int rv;
-  nghttp2_frame *frame;
-
-  frame = malloc(sizeof(nghttp2_frame));
-
-  if(frame == NULL) {
-    return NGHTTP2_ERR_NOMEM;
-  }
-
-  frame->ext.payload = NULL;
-
-  nghttp2_frame_blocked_init(&frame->ext, stream_id);
-
-  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
-
-  if(rv != 0) {
-    nghttp2_frame_blocked_free(&frame->ext);
-    free(frame);
-
-    return rv;
-  }
-  return 0;
-}
-
-/*
- * Adds BLOCKED frame(s) to outbound queue if they are allowed to
- * send.  We check BLOCKED frame can be sent for connection and stream
- * individually.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory
- */
-static int session_consider_blocked(nghttp2_session *session,
-                                    nghttp2_stream *stream)
-{
-  if(session->blocked_sent == 0 && session->remote_window_size <= 0) {
-    session->blocked_sent = 1;
-
-    return session_add_blocked(session, 0);
-  }
-
-  if(stream->blocked_sent == 0 && stream->remote_window_size <= 0) {
-    stream->blocked_sent = 1;
-
-    return session_add_blocked(session, stream->stream_id);
-  }
 
   return 0;
 }
@@ -1763,20 +1660,6 @@ static int session_prep_frame(nghttp2_session *session,
       }
 
       break;
-    case NGHTTP2_EXT_BLOCKED:
-      rv = session_predicate_blocked_send(session, frame->hd.stream_id);
-      if(rv != 0) {
-        return rv;
-      }
-
-      framerv = nghttp2_frame_pack_blocked(&session->aob.framebufs,
-                                           &frame->ext);
-
-      if(framerv < 0) {
-        return framerv;
-      }
-
-      break;
     default:
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
@@ -1813,12 +1696,6 @@ static int session_prep_frame(nghttp2_session *session,
     next_readmax = nghttp2_session_next_data_read(session, stream);
 
     if(next_readmax == 0) {
-      rv = session_consider_blocked(session, stream);
-
-      if(nghttp2_is_fatal(rv)) {
-        return rv;
-      }
-
       rv = nghttp2_stream_defer_data(stream,
                                      NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL,
                                      &session->ob_pq, session->last_cycle);
@@ -2227,12 +2104,6 @@ static int session_after_frame_sent(nghttp2_session *session)
       next_readmax = nghttp2_session_next_data_read(session, stream);
 
       if(next_readmax == 0) {
-        rv = session_consider_blocked(session, stream);
-
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
         rv = nghttp2_stream_defer_data
           (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, &session->ob_pq,
            session->last_cycle);
@@ -3177,10 +3048,6 @@ static int update_remote_initial_window_size_func
                                              NGHTTP2_FLOW_CONTROL_ERROR);
   }
 
-  if(stream->remote_window_size > 0) {
-    stream->blocked_sent = 0;
-  }
-
   /* If window size gets positive, push deferred DATA frame to
      outbound queue. */
   if(nghttp2_stream_check_deferred_by_flow_control(stream) &&
@@ -3725,22 +3592,6 @@ static int session_process_altsvc_frame(nghttp2_session *session)
   return nghttp2_session_on_altsvc_received(session, frame);
 }
 
-int nghttp2_session_on_blocked_received(nghttp2_session *session,
-                                        nghttp2_frame *frame)
-{
-  return session_call_on_frame_received(session, frame);
-}
-
-static int session_process_blocked_frame(nghttp2_session *session)
-{
-  nghttp2_inbound_frame *iframe = &session->iframe;
-  nghttp2_frame *frame = &iframe->frame;
-
-  frame->ext.payload = NULL;
-
-  return nghttp2_session_on_blocked_received(session, frame);
-}
-
 static int push_back_deferred_data_func(nghttp2_map_entry *entry, void *ptr)
 {
   int rv;
@@ -3789,7 +3640,6 @@ static int session_on_connection_window_update_received
   /* To queue the DATA deferred by connection-level flow-control, we
      have to check all streams. Bad. */
   if(session->remote_window_size > 0) {
-    session->blocked_sent = 0;
 
     rv = session_push_back_deferred_data(session);
     if(rv != 0) {
@@ -3824,10 +3674,6 @@ static int session_on_stream_window_update_received
                                          NGHTTP2_FLOW_CONTROL_ERROR);
   }
   stream->remote_window_size += frame->window_update.window_size_increment;
-
-  if(stream->remote_window_size > 0) {
-    stream->blocked_sent = 0;
-  }
 
   if(stream->remote_window_size > 0 &&
      session->remote_window_size > 0 &&
@@ -4551,27 +4397,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         iframe->state = NGHTTP2_IB_READ_NBYTE;
         inbound_frame_set_mark(iframe, NGHTTP2_ALTSVC_FIXED_PARTLEN);
-
-        break;
-      case NGHTTP2_EXT_BLOCKED:
-        DEBUGF(fprintf(stderr, "recv: BLOCKED\n"));
-
-        iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
-
-        if(iframe->payloadleft != 0) {
-          busy = 1;
-
-          iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
-
-          break;
-        }
-
-        rv = session_process_blocked_frame(session);
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
-        session_inbound_frame_reset(session);
 
         break;
       default:

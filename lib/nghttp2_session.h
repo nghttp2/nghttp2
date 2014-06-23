@@ -223,9 +223,6 @@ struct nghttp2_session {
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
      composed by bitwise OR-ing nghttp2_goaway_flag. */
   uint8_t goaway_flags;
-  /* nonzero if blocked was sent and remote_window_size is still 0 or
-     negative */
-  uint8_t blocked_sent;
 };
 
 /* Struct used when updating initial window size of each active
@@ -599,19 +596,6 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
  */
 int nghttp2_session_on_altsvc_received(nghttp2_session *session,
                                        nghttp2_frame *frame);
-
-/*
- * Called when BLOCKED is received, assuming |frame| is properly
- * initialized.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_CALLBACK_FAILURE
- *   The callback function failed.
- */
-int nghttp2_session_on_blocked_received(nghttp2_session *session,
-                                        nghttp2_frame *frame);
 
 /*
  * Called when DATA is received, assuming |frame| is properly

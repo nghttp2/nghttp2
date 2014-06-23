@@ -444,16 +444,6 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
                                         size_t var_gift_payloadlen);
 
 /*
- * Packs BLOCKED frame |frame| in wire format and store it in |bufs|.
- *
- * The caller must make sure that nghttp2_bufs_reset(bufs) is called
- * before calling this function.
- *
- * This function always returns 0.
- */
-int nghttp2_frame_pack_blocked(nghttp2_bufs *bufs, nghttp2_extension *frame);
-
-/*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
  * ownership of |nva|, so caller must not free it. If |stream_id| is
  * not assigned yet, it must be -1.
@@ -547,10 +537,6 @@ void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
  *  frame->payload itself.
  */
 void nghttp2_frame_altsvc_free(nghttp2_extension *frame);
-
-void nghttp2_frame_blocked_init(nghttp2_extension *frame, int32_t stream_id);
-
-void nghttp2_frame_blocked_free(nghttp2_extension *frame);
 
 void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
 

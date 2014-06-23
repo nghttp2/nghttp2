@@ -454,11 +454,7 @@ typedef enum {
   /**
    * The ALTSVC extension frame.
    */
-  NGHTTP2_EXT_ALTSVC = 0x0a,
-  /**
-   * The BLOCKED extension frame.
-   */
-  NGHTTP2_EXT_BLOCKED = 0x0b
+  NGHTTP2_EXT_ALTSVC = 0x0a
 } nghttp2_ext_frame_type;
 
 /**
@@ -962,9 +958,6 @@ typedef struct {
    *
    * If hd.type == :enum:`NGHTTP2_EXT_ALTSVC`, it is a pointer to
    * :type:`nghttp2_ext_altsvc`.
-   *
-   * If hd.type == :enum:`NGHTTP2_EXT_BLOCKED`, it points to ``NULL``,
-   * since BLOCKED extension frame has no payload.
    */
   void *payload;
 } nghttp2_extension;
