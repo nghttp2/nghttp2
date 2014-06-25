@@ -2784,6 +2784,8 @@ typedef struct nghttp2_hd_deflater nghttp2_hd_deflater;
  * The |deflate_hd_table_bufsize_max| is the upper bound of header
  * table size the deflater will use.
  *
+ * If this function fails, |*deflater_ptr| is left untouched.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -2891,6 +2893,8 @@ typedef struct nghttp2_hd_inflater nghttp2_hd_inflater;
  * @function
  *
  * Initializes |*inflater_ptr| for inflating name/values pairs.
+ *
+ * If this function fails, |*inflater_ptr| is left untouched.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:

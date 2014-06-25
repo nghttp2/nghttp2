@@ -1315,13 +1315,24 @@ size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
 int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
                            size_t deflate_hd_table_bufsize_max)
 {
-  *deflater_ptr = malloc(sizeof(nghttp2_hd_deflater));
+  int rv;
+  nghttp2_hd_deflater *deflater;
 
-  if(*deflater_ptr == NULL) {
+  deflater = malloc(sizeof(nghttp2_hd_deflater));
+
+  if(deflater == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
-  return nghttp2_hd_deflate_init2(*deflater_ptr, deflate_hd_table_bufsize_max);
+  rv =  nghttp2_hd_deflate_init2(deflater, deflate_hd_table_bufsize_max);
+
+  if(rv != 0) {
+    return rv;
+  }
+
+  *deflater_ptr = deflater;
+
+  return 0;
 }
 
 void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater)
@@ -2015,13 +2026,24 @@ int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 
 int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr)
 {
-  *inflater_ptr = malloc(sizeof(nghttp2_hd_inflater));
+  int rv;
+  nghttp2_hd_inflater *inflater;
 
-  if(*inflater_ptr == NULL) {
+  inflater = malloc(sizeof(nghttp2_hd_inflater));
+
+  if(inflater == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
-  return nghttp2_hd_inflate_init(*inflater_ptr);
+  rv = nghttp2_hd_inflate_init(inflater);
+
+  if(rv != 0) {
+    return rv;
+  }
+
+  *inflater_ptr = inflater;
+
+  return 0;
 }
 
 void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater)
