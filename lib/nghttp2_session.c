@@ -415,14 +415,18 @@ int nghttp2_session_client_new2(nghttp2_session **session_ptr,
                                 const nghttp2_option *option)
 {
   int rv;
+  nghttp2_session *session;
 
-  rv = session_new(session_ptr, callbacks, user_data, 0, option);
+  rv = session_new(&session, callbacks, user_data, 0, option);
 
   if(rv != 0) {
     return rv;
   }
   /* IDs for use in client */
-  (*session_ptr)->next_stream_id = 1;
+  session->next_stream_id = 1;
+
+  *session_ptr = session;
+
   return 0;
 }
 
@@ -439,14 +443,18 @@ int nghttp2_session_server_new2(nghttp2_session **session_ptr,
                                 const nghttp2_option *option)
 {
   int rv;
+  nghttp2_session *session;
 
-  rv = session_new(session_ptr, callbacks, user_data, 1, option);
+  rv = session_new(&session, callbacks, user_data, 1, option);
 
   if(rv != 0) {
     return rv;
   }
   /* IDs for use in client */
-  (*session_ptr)->next_stream_id = 2;
+  session->next_stream_id = 2;
+
+  *session_ptr = session;
+
   return 0;
 }
 

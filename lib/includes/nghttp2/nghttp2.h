@@ -1564,6 +1564,8 @@ void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
  * the :member:`nghttp2_session_callbacks.recv_callback` must be
  * specified.  The other members of |callbacks| can be ``NULL``.
  *
+ * If this function fails, |*session_ptr| is left untouched.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -1586,6 +1588,8 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
  * specified.  If the application code uses `nghttp2_session_recv()`,
  * the :member:`nghttp2_session_callbacks.recv_callback` must be
  * specified.  The other members of |callbacks| can be ``NULL``.
+ *
+ * If this function fails, |*session_ptr| is left untouched.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
