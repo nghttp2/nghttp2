@@ -1415,12 +1415,16 @@ static int session_headers_add_pad(nghttp2_session *session,
   nghttp2_active_outbound_item *aob;
   nghttp2_bufs *framebufs;
   size_t padlen;
+  size_t max_payloadlen;
 
   aob = &session->aob;
   framebufs = &aob->framebufs;
 
+  max_payloadlen = nghttp2_min(NGHTTP2_MAX_PAYLOADLEN, frame->hd.length + 256);
+
   padded_payloadlen = session_call_select_padding(session, frame,
-                                                  NGHTTP2_MAX_PAYLOADLEN);
+                                                  max_payloadlen);
+
   if(nghttp2_is_fatal((int)padded_payloadlen)) {
     return (int)padded_payloadlen;
   }
@@ -5282,6 +5286,7 @@ int nghttp2_session_pack_data(nghttp2_session *session,
   nghttp2_frame data_frame;
   nghttp2_frame_hd hd;
   nghttp2_buf *buf;
+  size_t max_payloadlen;
 
   assert(bufs->head == bufs->cur);
 
@@ -5333,8 +5338,11 @@ int nghttp2_session_pack_data(nghttp2_session *session,
   data_frame.hd.flags = flags;
   data_frame.data.padlen = 0;
 
+  max_payloadlen = nghttp2_min(datamax, data_frame.hd.length + 256);
+
   padded_payloadlen = session_call_select_padding(session, &data_frame,
-                                                  datamax);
+                                                  max_payloadlen);
+
   if(nghttp2_is_fatal((int)padded_payloadlen)) {
     return (int)padded_payloadlen;
   }
