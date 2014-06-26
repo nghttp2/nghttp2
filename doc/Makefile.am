@@ -31,6 +31,7 @@ EXTRA_DIST = \
 	sources/tutorial-client.rst \
 	sources/tutorial-server.rst \
 	sources/nghttpx-howto.rst \
+	sources/h2load-howto.rst \
 	_themes/sphinx_rtd_theme/footer.html \
 	_themes/sphinx_rtd_theme/theme.conf \
 	_themes/sphinx_rtd_theme/layout_old.html \

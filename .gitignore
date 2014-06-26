@@ -36,3 +36,4 @@ doc/package_README.rst
 doc/tutorial-client.rst
 doc/tutorial-server.rst
 doc/nghttpx-howto.rst
+doc/h2load-howto.rst

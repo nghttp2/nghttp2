@@ -20,6 +20,7 @@ Contents:
    tutorial-client
    tutorial-server
    nghttpx-howto
+   h2load-howto
    apiref
    python-apiref
    nghttp2.h
