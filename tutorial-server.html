@@ -29,7 +29,7 @@
 
   
     <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
-        <link rel="next" title="nghttpx - HOW-TO" href="nghttpx-howto.html"/>
+        <link rel="next" title="nghttpx - HTTP/2 proxy - HOW-TO" href="nghttpx-howto.html"/>
         <link rel="prev" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/> 
 
   
@@ -78,7 +78,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HOW-TO</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-mode">Client mode</a></li>
@@ -87,6 +87,14 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#flow-control">Flow Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multi-threading">Multi-Threading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#selecting-protocol-for-clear-text">Selecting protocol for clear text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multiple-uris">Multiple URIs</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
@@ -1489,7 +1497,7 @@ stream is about to close and we no longer use that object.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="nghttpx-howto.html" class="btn btn-neutral float-right" title="nghttpx - HOW-TO">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="nghttpx-howto.html" class="btn btn-neutral float-right" title="nghttpx - HTTP/2 proxy - HOW-TO">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="tutorial-client.html" class="btn btn-neutral" title="Tutorial: HTTP/2 client"><span class="fa fa-arrow-circle-left"></span> Previous</a>

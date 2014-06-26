@@ -1,0 +1,299 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>h2load - HTTP/2 benchmarking tool - HOW-TO &mdash; nghttp2 0.4.2-DEV documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
+        <link rel="next" title="API Reference" href="apiref.html"/>
+        <link rel="prev" title="nghttpx - HTTP/2 proxy - HOW-TO" href="nghttpx-howto.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2 server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-mode">Client mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-proxy-mode">Client proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-bridge-mode">HTTP/2 bridge mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#flow-control">Flow Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-threading">Multi-Threading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#selecting-protocol-for-clear-text">Selecting protocol for clear text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multiple-uris">Multiple URIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#hpack-api">HPACK API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#http-2-servers">HTTP/2 servers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">nghttp2</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>h2load - HTTP/2 benchmarking tool - HOW-TO</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="h2load-http-2-benchmarking-tool-how-to">
+<h1>h2load - HTTP/2 benchmarking tool - HOW-TO<a class="headerlink" href="#h2load-http-2-benchmarking-tool-how-to" title="Permalink to this headline">¶</a></h1>
+<p>h2load is benchmarking tool for HTTP/2.  If built with
+spdylay (<a class="reference external" href="http://tatsuhiro-t.github.io/spdylay/">http://tatsuhiro-t.github.io/spdylay/</a>) library, it also
+supports SPDY protocol.  It supports SSL/TLS and clear text for both
+HTTP/2 and SPDY.</p>
+<div class="section" id="basic-usage">
+<h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this headline">¶</a></h2>
+<p>In order to set benchmark settings, specify following 3 options.</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">-n</span></tt></dt>
+<dd>The number of total requests.  Default: 1</dd>
+<dt><tt class="docutils literal"><span class="pre">-c</span></tt></dt>
+<dd>The number of concurrent clients.  Default: 1</dd>
+<dt><tt class="docutils literal"><span class="pre">-m</span></tt></dt>
+<dd>The max concurrent streams to issue per client.
+If <tt class="docutils literal"><span class="pre">auto</span></tt> is given, the number of given URIs is used.
+Default: <tt class="docutils literal"><span class="pre">auto</span></tt></dd>
+</dl>
+<p>Here is a command-line to perform benchmark to URI https://localhost
+using total 100000 requests, 100 concurrent clients and 10 max
+concurrent streams:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ h2load -n100000 -c100 -m10 https://localhost
+</pre></div>
+</div>
+<p>The benchmarking result looks like this:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">finished</span> <span class="n">in</span> <span class="mi">0</span> <span class="n">sec</span><span class="p">,</span> <span class="mi">385</span> <span class="n">millisec</span> <span class="n">and</span> <span class="mi">851</span> <span class="n">microsec</span><span class="p">,</span> <span class="mi">2591</span> <span class="n">req</span><span class="o">/</span><span class="n">s</span><span class="p">,</span> <span class="mi">1689</span> <span class="n">kbytes</span><span class="o">/</span><span class="n">s</span>
+<span class="nl">requests:</span> <span class="mi">1000</span> <span class="n">total</span><span class="p">,</span> <span class="mi">1000</span> <span class="n">started</span><span class="p">,</span> <span class="mi">1000</span> <span class="n">done</span><span class="p">,</span> <span class="mi">1000</span> <span class="n">succeeded</span><span class="p">,</span> <span class="mi">0</span> <span class="n">failed</span><span class="p">,</span> <span class="mi">0</span> <span class="n">errored</span>
+<span class="n">status</span> <span class="n">codes</span><span class="o">:</span> <span class="mi">1000</span> <span class="mi">2</span><span class="n">xx</span><span class="p">,</span> <span class="mi">0</span> <span class="mi">3</span><span class="n">xx</span><span class="p">,</span> <span class="mi">0</span> <span class="mi">4</span><span class="n">xx</span><span class="p">,</span> <span class="mi">0</span> <span class="mi">5</span><span class="n">xx</span>
+<span class="nl">traffic:</span> <span class="mi">667500</span> <span class="n">bytes</span> <span class="n">total</span><span class="p">,</span> <span class="mi">28700</span> <span class="n">bytes</span> <span class="n">headers</span><span class="p">,</span> <span class="mi">612000</span> <span class="n">bytes</span> <span class="n">data</span>
+</pre></div>
+</div>
+<p>The number of <tt class="docutils literal"><span class="pre">failed</span></tt> is the number of requests returned with non
+2xx status.  The number of <tt class="docutils literal"><span class="pre">error</span></tt> is the number of <tt class="docutils literal"><span class="pre">failed</span></tt> plus
+the number of requests which failed with connection error.</p>
+<p>The number of <tt class="docutils literal"><span class="pre">total</span></tt> in <tt class="docutils literal"><span class="pre">traffic</span></tt> is the received application
+data.  If SSL/TLS is used, this number is calculated after decryption.
+The number of <tt class="docutils literal"><span class="pre">headers</span></tt> is the sum of payload size of response
+HEADERS (or SYN_REPLY for SPDY).  This number comes before
+decompressing header block.  The number of <tt class="docutils literal"><span class="pre">data</span></tt> is the sum of
+response body.</p>
+</div>
+<div class="section" id="flow-control">
+<h2>Flow Control<a class="headerlink" href="#flow-control" title="Permalink to this headline">¶</a></h2>
+<p>HTTP/2 and SPDY/3 or later employ flow control and it may affect
+benchmarking results.  To adjust receiver flow control window size,
+there is following options:</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">-w</span></tt></dt>
+<dd>Sets  the stream  level  initial  window size  to
+(2**&lt;N&gt;)-1.  For SPDY, 2**&lt;N&gt; is used instead.</dd>
+<dt><tt class="docutils literal"><span class="pre">-W</span></tt></dt>
+<dd>Sets the connection level  initial window size to
+(2**&lt;N&gt;)-1.  For  SPDY, if  &lt;N&gt; is  strictly less
+than  16,  this  option  is  ignored.   Otherwise
+2**&lt;N&gt; is used for SPDY.</dd>
+</dl>
+</div>
+<div class="section" id="multi-threading">
+<h2>Multi-Threading<a class="headerlink" href="#multi-threading" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes benchmarking client itself becomes a bottleneck.  To remedy
+this situation, use <tt class="docutils literal"><span class="pre">-t</span></tt> option to specify the number of native
+thread to use.</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">-t</span></tt></dt>
+<dd>The number of native threads. Default: 1</dd>
+</dl>
+</div>
+<div class="section" id="selecting-protocol-for-clear-text">
+<h2>Selecting protocol for clear text<a class="headerlink" href="#selecting-protocol-for-clear-text" title="Permalink to this headline">¶</a></h2>
+<p>By default, if http:// URI is given, HTTP/2 protocol is used.  To
+change the protocol to use for clear text, use <tt class="docutils literal"><span class="pre">-p</span></tt> option.</p>
+</div>
+<div class="section" id="multiple-uris">
+<h2>Multiple URIs<a class="headerlink" href="#multiple-uris" title="Permalink to this headline">¶</a></h2>
+<p>If multiple URIs are specified, they are used in round robin manner.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Please note that h2load uses sheme, host and port in the first URI
+and ignores those parts in the rest of the URIs.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="apiref.html" class="btn btn-neutral float-right" title="API Reference">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="nghttpx-howto.html" class="btn btn-neutral" title="nghttpx - HTTP/2 proxy - HOW-TO"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.4.2-DEV',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  false
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

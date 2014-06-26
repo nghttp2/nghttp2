@@ -30,7 +30,7 @@
   
     <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
         <link rel="next" title="Python API Reference" href="python-apiref.html"/>
-        <link rel="prev" title="nghttpx - HOW-TO" href="nghttpx-howto.html"/> 
+        <link rel="prev" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -78,7 +78,7 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HOW-TO</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-mode">Client mode</a></li>
@@ -87,6 +87,14 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#flow-control">Flow Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multi-threading">Multi-Threading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#selecting-protocol-for-clear-text">Selecting protocol for clear text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multiple-uris">Multiple URIs</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">API Reference</a><ul>
@@ -645,13 +653,6 @@ actually TBD.</p>
 <tt class="descname">NGHTTP2_EXT_ALTSVC</tt><a class="headerlink" href="#c.NGHTTP2_EXT_ALTSVC" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x0a</span></tt>)
 The ALTSVC extension frame.</p>
-</dd></dl>
-
-<dl class="macro">
-<dt id="c.NGHTTP2_EXT_BLOCKED">
-<tt class="descname">NGHTTP2_EXT_BLOCKED</tt><a class="headerlink" href="#c.NGHTTP2_EXT_BLOCKED" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">0x0b</span></tt>)
-The BLOCKED extension frame.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1392,8 +1393,6 @@ void *<tt class="descname">payload</tt><a class="headerlink" href="#c.nghttp2_ex
 determined by hd.type.</p>
 <p>If hd.type == <a class="reference internal" href="#c.NGHTTP2_EXT_ALTSVC" title="NGHTTP2_EXT_ALTSVC"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_EXT_ALTSVC</span></tt></a>, it is a pointer to
 <a class="reference internal" href="#c.nghttp2_ext_altsvc" title="nghttp2_ext_altsvc"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_ext_altsvc</span></tt></a>.</p>
-<p>If hd.type == <a class="reference internal" href="#c.NGHTTP2_EXT_BLOCKED" title="NGHTTP2_EXT_BLOCKED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_EXT_BLOCKED</span></tt></a>, it points to <tt class="docutils literal"><span class="pre">NULL</span></tt>,
-since BLOCKED extension frame has no payload.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1990,6 +1989,7 @@ supplied data, which will be passed to the callback functions.</p>
 specified.  If the application code uses <a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a>,
 the <a class="reference internal" href="#c.nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> must be
 specified.  The other members of <em>callbacks</em> can be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
+<p>If this function fails, <em>*session_ptr</em> is left untouched.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -2009,6 +2009,7 @@ supplied data, which will be passed to the callback functions.</p>
 specified.  If the application code uses <a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a>,
 the <a class="reference internal" href="#c.nghttp2_session_callbacks.recv_callback" title="nghttp2_session_callbacks.recv_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.recv_callback</span></tt></a> must be
 specified.  The other members of <em>callbacks</em> can be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
+<p>If this function fails, <em>*session_ptr</em> is left untouched.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -2992,6 +2993,7 @@ int <tt class="descname">nghttp2_hd_deflate_new</tt><big>(</big><a class="refere
 <dd><p>Initializes <em>*deflater_ptr</em> for deflating name/values pairs.</p>
 <p>The <em>deflate_hd_table_bufsize_max</em> is the upper bound of header
 table size the deflater will use.</p>
+<p>If this function fails, <em>*deflater_ptr</em> is left untouched.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -3074,6 +3076,7 @@ size_t <tt class="descname">nghttp2_hd_deflate_bound</tt><big>(</big><a class="r
 <dt id="c.nghttp2_hd_inflate_new">
 int <tt class="descname">nghttp2_hd_inflate_new</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_inflater" title="nghttp2_hd_inflater">nghttp2_hd_inflater</a><em>&nbsp;**inflater_ptr</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_inflate_new" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initializes <em>*inflater_ptr</em> for inflating name/values pairs.</p>
+<p>If this function fails, <em>*inflater_ptr</em> is left untouched.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -3197,7 +3200,7 @@ always succeeds.</p>
         <a href="python-apiref.html" class="btn btn-neutral float-right" title="Python API Reference">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="nghttpx-howto.html" class="btn btn-neutral" title="nghttpx - HOW-TO"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="h2load-howto.html" class="btn btn-neutral" title="h2load - HTTP/2 benchmarking tool - HOW-TO"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

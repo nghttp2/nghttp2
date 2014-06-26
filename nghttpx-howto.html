@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx - HOW-TO &mdash; nghttp2 0.4.2-DEV documentation</title>
+  <title>nghttpx - HTTP/2 proxy - HOW-TO &mdash; nghttp2 0.4.2-DEV documentation</title>
   
 
   
@@ -29,7 +29,7 @@
 
   
     <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
-        <link rel="next" title="API Reference" href="apiref.html"/>
+        <link rel="next" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/>
         <link rel="prev" title="Tutorial: HTTP/2 server" href="tutorial-server.html"/> 
 
   
@@ -78,7 +78,7 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">nghttpx - HOW-TO</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#default-mode">Default mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#client-mode">Client mode</a></li>
@@ -87,6 +87,14 @@
 <li class="toctree-l2"><a class="reference internal" href="#disable-ssl-tls">Disable SSL/TLS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#read-write-rate-limit">Read/write rate limit</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#flow-control">Flow Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multi-threading">Multi-Threading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#selecting-protocol-for-clear-text">Selecting protocol for clear text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multiple-uris">Multiple URIs</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
@@ -130,7 +138,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li>nghttpx - HOW-TO</li>
+    <li>nghttpx - HTTP/2 proxy - HOW-TO</li>
       <li class="wy-breadcrumbs-aside">
         
       </li>
@@ -139,8 +147,8 @@
 </div>
           <div role="main">
             
-  <div class="section" id="nghttpx-how-to">
-<h1>nghttpx - HOW-TO<a class="headerlink" href="#nghttpx-how-to" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="nghttpx-http-2-proxy-how-to">
+<h1>nghttpx - HTTP/2 proxy - HOW-TO<a class="headerlink" href="#nghttpx-http-2-proxy-how-to" title="Permalink to this headline">¶</a></h1>
 <p>nghttpx is a proxy translating protocols between HTTP/2 and other
 protocols (e.g., HTTP/1, SPDY).  It operates in several modes and each
 mode may require additional programs to work with.  This article
@@ -346,7 +354,7 @@ do with HTTP/2 flow control.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="apiref.html" class="btn btn-neutral float-right" title="API Reference">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="h2load-howto.html" class="btn btn-neutral float-right" title="h2load - HTTP/2 benchmarking tool - HOW-TO">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="tutorial-server.html" class="btn btn-neutral" title="Tutorial: HTTP/2 server"><span class="fa fa-arrow-circle-left"></span> Previous</a>

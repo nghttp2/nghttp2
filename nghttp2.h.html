@@ -78,7 +78,7 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HOW-TO</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-mode">Client mode</a></li>
@@ -87,6 +87,14 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#flow-control">Flow Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multi-threading">Multi-Threading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#selecting-protocol-for-clear-text">Selecting protocol for clear text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multiple-uris">Multiple URIs</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
@@ -597,11 +605,7 @@
   <span class="cm">/**</span>
 <span class="cm">   * The ALTSVC extension frame.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_EXT_ALTSVC</span> <span class="o">=</span> <span class="mh">0x0a</span><span class="p">,</span>
-  <span class="cm">/**</span>
-<span class="cm">   * The BLOCKED extension frame.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_EXT_BLOCKED</span> <span class="o">=</span> <span class="mh">0x0b</span>
+  <span class="n">NGHTTP2_EXT_ALTSVC</span> <span class="o">=</span> <span class="mh">0x0a</span>
 <span class="p">}</span> <span class="n">nghttp2_ext_frame_type</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -1105,9 +1109,6 @@
 <span class="cm">   *</span>
 <span class="cm">   * If hd.type == :enum:`NGHTTP2_EXT_ALTSVC`, it is a pointer to</span>
 <span class="cm">   * :type:`nghttp2_ext_altsvc`.</span>
-<span class="cm">   *</span>
-<span class="cm">   * If hd.type == :enum:`NGHTTP2_EXT_BLOCKED`, it points to ``NULL``,</span>
-<span class="cm">   * since BLOCKED extension frame has no payload.</span>
 <span class="cm">   */</span>
   <span class="kt">void</span> <span class="o">*</span><span class="n">payload</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_extension</span><span class="p">;</span>
@@ -1714,6 +1715,8 @@
 <span class="cm"> * the :member:`nghttp2_session_callbacks.recv_callback` must be</span>
 <span class="cm"> * specified.  The other members of |callbacks| can be ``NULL``.</span>
 <span class="cm"> *</span>
+<span class="cm"> * If this function fails, |*session_ptr| is left untouched.</span>
+<span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
@@ -1736,6 +1739,8 @@
 <span class="cm"> * specified.  If the application code uses `nghttp2_session_recv()`,</span>
 <span class="cm"> * the :member:`nghttp2_session_callbacks.recv_callback` must be</span>
 <span class="cm"> * specified.  The other members of |callbacks| can be ``NULL``.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If this function fails, |*session_ptr| is left untouched.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
@@ -2930,6 +2935,8 @@
 <span class="cm"> * The |deflate_hd_table_bufsize_max| is the upper bound of header</span>
 <span class="cm"> * table size the deflater will use.</span>
 <span class="cm"> *</span>
+<span class="cm"> * If this function fails, |*deflater_ptr| is left untouched.</span>
+<span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
@@ -3037,6 +3044,8 @@
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * Initializes |*inflater_ptr| for inflating name/values pairs.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If this function fails, |*inflater_ptr| is left untouched.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
