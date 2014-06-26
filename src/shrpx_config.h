@@ -108,6 +108,7 @@ extern const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[];
 extern const char SHRPX_OPT_PADDING[];
 extern const char SHRPX_OPT_ALTSVC[];
 extern const char SHRPX_OPT_ADD_RESPONSE_HEADER[];
+extern const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -212,6 +213,7 @@ struct Config {
   size_t worker_write_rate;
   size_t worker_write_burst;
   size_t padding;
+  size_t worker_frontend_connections;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;

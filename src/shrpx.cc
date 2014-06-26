@@ -439,6 +439,7 @@ void fill_default_config()
   mod_config()->http2_no_cookie_crumbling = false;
   mod_config()->upstream_frame_debug = false;
   mod_config()->padding = 0;
+  mod_config()->worker_frontend_connections = 0;
 
   nghttp2_option_new(&mod_config()->http2_option);
 
@@ -539,6 +540,10 @@ Performance:
                      means write burst size is unlimited.
                      Default: )"
       << get_config()->worker_write_burst << R"(
+  --worker-frontend-connections=<NUM>
+                     Set  maximum number  of simultaneous  connections
+                     frontend accepts.  Setting 0 means unlimited.
+                     Default: 0
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
@@ -844,6 +849,7 @@ int main(int argc, char **argv)
       {"worker-write-burst", required_argument, &flag, 53},
       {"altsvc", required_argument, &flag, 54},
       {"add-response-header", required_argument, &flag, 55},
+      {"worker-frontend-connections", required_argument, &flag, 56},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1092,6 +1098,10 @@ int main(int argc, char **argv)
         // --add-response-header
         cmdcfgs.emplace_back(SHRPX_OPT_ADD_RESPONSE_HEADER, optarg);
         break;
+      case 56:
+        // --worker-frontend-connections
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS, optarg);
+        break;
       default:
         break;
       }
@@ -1183,6 +1193,11 @@ int main(int argc, char **argv)
     LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
                << "same time.";
     exit(EXIT_FAILURE);
+  }
+
+  if(get_config()->worker_frontend_connections == 0) {
+    mod_config()->worker_frontend_connections =
+      std::numeric_limits<size_t>::max();
   }
 
   if(get_config()->http2_proxy + get_config()->http2_bridge +

@@ -34,6 +34,12 @@
 
 namespace shrpx {
 
+struct WorkerStat {
+  WorkerStat() : num_connections(0) {}
+
+  size_t num_connections;
+};
+
 class Worker {
 public:
   Worker(WorkerInfo *info);

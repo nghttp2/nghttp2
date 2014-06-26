@@ -118,6 +118,8 @@ const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[] = "frontend-frame-debug";
 const char SHRPX_OPT_PADDING[] = "padding";
 const char SHRPX_OPT_ALTSVC[] = "altsvc";
 const char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
+const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
+  "worker-frontend-connections";
 
 namespace {
 Config *config = nullptr;
@@ -789,6 +791,21 @@ int parse_config(const char *opt, const char *optarg)
       return -1;
     }
     mod_config()->add_response_headers.push_back(std::move(p));
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS)) {
+    errno = 0;
+    auto n = strtoul(optarg, nullptr, 10);
+
+    if(errno != 0) {
+      LOG(ERROR) << "worker-frontend-connections: invalid argument: "
+                 << optarg;
+      return -1;
+    }
+
+    mod_config()->worker_frontend_connections = n;
 
     return 0;
   }

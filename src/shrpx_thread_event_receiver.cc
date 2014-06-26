@@ -30,6 +30,10 @@
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_worker.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -40,7 +44,8 @@ ThreadEventReceiver::ThreadEventReceiver(event_base *evbase,
     ssl_ctx_(ssl_ctx),
     http2session_(http2session),
     rate_limit_group_(bufferevent_rate_limit_group_new
-                      (evbase_, get_config()->worker_rate_limit_cfg))
+                      (evbase_, get_config()->worker_rate_limit_cfg)),
+    worker_stat_(util::make_unique<WorkerStat>())
 {}
 
 ThreadEventReceiver::~ThreadEventReceiver()
@@ -67,12 +72,27 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
       TLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
                        << ", addrlen=" << wev.client_addrlen;
     }
+
+    if(worker_stat_->num_connections >=
+       get_config()->worker_frontend_connections) {
+
+      if(LOG_ENABLED(INFO)) {
+        TLOG(INFO, this) << "Too many connections >= "
+                         << get_config()->worker_frontend_connections;
+      }
+
+      close(wev.client_fd);
+
+      continue;
+    }
+
     auto evbase = bufferevent_get_base(bev);
     auto client_handler = ssl::accept_connection(evbase, rate_limit_group_,
                                                  ssl_ctx_,
                                                  wev.client_fd,
                                                  &wev.client_addr.sa,
-                                                 wev.client_addrlen);
+                                                 wev.client_addrlen,
+                                                 worker_stat_.get());
     if(client_handler) {
       client_handler->set_http2_session(http2session_);
 

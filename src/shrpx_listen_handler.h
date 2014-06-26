@@ -30,6 +30,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <memory>
+
 #include <openssl/ssl.h>
 
 #include <event.h>
@@ -45,6 +47,7 @@ struct WorkerInfo {
 };
 
 class Http2Session;
+struct WorkerStat;
 
 class ListenHandler {
 public:
@@ -65,6 +68,7 @@ private:
   // multi-threaded case, see shrpx_worker.cc.
   Http2Session *http2session_;
   bufferevent_rate_limit_group *rate_limit_group_;
+  std::unique_ptr<WorkerStat> worker_stat_;
   size_t num_worker_;
   unsigned int worker_round_robin_cnt_;
 };

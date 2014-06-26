@@ -37,6 +37,7 @@
 namespace shrpx {
 
 class ClientHandler;
+struct WorkerStat;
 
 namespace ssl {
 
@@ -50,7 +51,8 @@ ClientHandler* accept_connection
  bufferevent_rate_limit_group *rate_limit_group,
  SSL_CTX *ssl_ctx,
  evutil_socket_t fd,
- sockaddr *addr, int addrlen);
+ sockaddr *addr, int addrlen,
+ WorkerStat *worker_stat);
 
 int check_cert(SSL *ssl);
 

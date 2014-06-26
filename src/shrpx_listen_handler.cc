@@ -38,6 +38,9 @@
 #include "shrpx_worker.h"
 #include "shrpx_config.h"
 #include "shrpx_http2_session.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -50,6 +53,7 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
     http2session_(nullptr),
     rate_limit_group_(bufferevent_rate_limit_group_new
                       (evbase, get_config()->worker_rate_limit_cfg)),
+    worker_stat_(util::make_unique<WorkerStat>()),
     num_worker_(0),
     worker_round_robin_cnt_(0)
 {}
@@ -110,12 +114,29 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
   if(num_worker_ == 0) {
+
+    if(worker_stat_->num_connections >=
+       get_config()->worker_frontend_connections) {
+
+      if(LOG_ENABLED(INFO)) {
+        TLOG(INFO, this) << "Too many connections >="
+                         << get_config()->worker_frontend_connections;
+      }
+
+      close(fd);
+      return -1;
+    }
+
     auto client = ssl::accept_connection(evbase_, rate_limit_group_,
-                                         sv_ssl_ctx_, fd, addr, addrlen);
+                                         sv_ssl_ctx_, fd, addr, addrlen,
+                                         worker_stat_.get());
     if(!client) {
       LLOG(ERROR, this) << "ClientHandler creation failed";
-      return 0;
+
+      close(fd);
+      return -1;
     }
+
     client->set_http2_session(http2session_);
     return 0;
   }
@@ -129,8 +150,10 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
   auto output = bufferevent_get_output(workers_[idx].bev);
   if(evbuffer_add(output, &wev, sizeof(wev)) != 0) {
     LLOG(FATAL, this) << "evbuffer_add() failed";
+    close(fd);
     return -1;
   }
+
   return 0;
 }
 

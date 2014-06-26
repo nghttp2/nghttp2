@@ -35,6 +35,7 @@
 #include "shrpx_http2_downstream_connection.h"
 #include "shrpx_accesslog.h"
 #include "shrpx_ssl.h"
+#include "shrpx_worker.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -219,12 +220,14 @@ void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 ClientHandler::ClientHandler(bufferevent *bev,
                              bufferevent_rate_limit_group *rate_limit_group,
                              int fd, SSL *ssl,
-                             const char *ipaddr)
+                             const char *ipaddr,
+                             WorkerStat *worker_stat)
   : ipaddr_(ipaddr),
     bev_(bev),
     http2session_(nullptr),
     ssl_(ssl),
     reneg_shutdown_timerev_(nullptr),
+    worker_stat_(worker_stat),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
     fd_(fd),
     should_close_after_write_(false),
@@ -232,6 +235,8 @@ ClientHandler::ClientHandler(bufferevent *bev,
     tls_renegotiation_(false)
 {
   int rv;
+
+  ++worker_stat->num_connections;
 
   rv = bufferevent_add_to_rate_limit_group(bev_, rate_limit_group);
   if(rv == -1) {
@@ -259,6 +264,8 @@ ClientHandler::~ClientHandler()
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Deleting";
   }
+
+  --worker_stat_->num_connections;
 
   if(reneg_shutdown_timerev_) {
     event_free(reneg_shutdown_timerev_);

@@ -49,6 +49,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_accesslog.h"
+#include "shrpx_worker.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -467,59 +468,62 @@ ClientHandler* accept_connection
  bufferevent_rate_limit_group *rate_limit_group,
  SSL_CTX *ssl_ctx,
  evutil_socket_t fd,
- sockaddr *addr, int addrlen)
+ sockaddr *addr, int addrlen,
+ WorkerStat *worker_stat)
 {
   char host[NI_MAXHOST];
   int rv;
   rv = getnameinfo(addr, addrlen, host, sizeof(host), nullptr, 0,
                    NI_NUMERICHOST);
-  if(rv == 0) {
-    if(get_config()->accesslog) {
-      upstream_connect(host);
-    }
-
-    int val = 1;
-    rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-                    reinterpret_cast<char *>(&val), sizeof(val));
-    if(rv == -1) {
-      LOG(WARNING) << "Setting option TCP_NODELAY failed: errno="
-                   << errno;
-    }
-    SSL *ssl = nullptr;
-    bufferevent *bev;
-    if(ssl_ctx) {
-      ssl = SSL_new(ssl_ctx);
-      if(!ssl) {
-        LOG(ERROR) << "SSL_new() failed: "
-                   << ERR_error_string(ERR_get_error(), nullptr);
-        return nullptr;
-      }
-
-      if(SSL_set_fd(ssl, fd) == 0) {
-        LOG(ERROR) << "SSL_set_fd() failed: "
-                   << ERR_error_string(ERR_get_error(), nullptr);
-        SSL_free(ssl);
-        return nullptr;
-      }
-
-      bev = bufferevent_openssl_socket_new(evbase, fd, ssl,
-                                           BUFFEREVENT_SSL_ACCEPTING,
-                                           BEV_OPT_DEFER_CALLBACKS);
-    } else {
-      bev = bufferevent_socket_new(evbase, fd, BEV_OPT_DEFER_CALLBACKS);
-    }
-    if(!bev) {
-      LOG(ERROR) << "bufferevent_socket_new() failed";
-      if(ssl) {
-        SSL_free(ssl);
-      }
-      return nullptr;
-    }
-    return new ClientHandler(bev, rate_limit_group, fd, ssl, host);
-  } else {
+  if(rv != 0) {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
+
     return nullptr;
   }
+
+  if(get_config()->accesslog) {
+    upstream_connect(host);
+  }
+
+  int val = 1;
+  rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+                  reinterpret_cast<char *>(&val), sizeof(val));
+  if(rv == -1) {
+    LOG(WARNING) << "Setting option TCP_NODELAY failed: errno="
+                 << errno;
+  }
+  SSL *ssl = nullptr;
+  bufferevent *bev;
+  if(ssl_ctx) {
+    ssl = SSL_new(ssl_ctx);
+    if(!ssl) {
+      LOG(ERROR) << "SSL_new() failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      return nullptr;
+    }
+
+    if(SSL_set_fd(ssl, fd) == 0) {
+      LOG(ERROR) << "SSL_set_fd() failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      SSL_free(ssl);
+      return nullptr;
+    }
+
+    bev = bufferevent_openssl_socket_new(evbase, fd, ssl,
+                                         BUFFEREVENT_SSL_ACCEPTING,
+                                         BEV_OPT_DEFER_CALLBACKS);
+  } else {
+    bev = bufferevent_socket_new(evbase, fd, BEV_OPT_DEFER_CALLBACKS);
+  }
+  if(!bev) {
+    LOG(ERROR) << "bufferevent_socket_new() failed";
+    if(ssl) {
+      SSL_free(ssl);
+    }
+    return nullptr;
+  }
+
+  return new ClientHandler(bev, rate_limit_group, fd, ssl, host, worker_stat);
 }
 
 namespace {
