@@ -161,12 +161,19 @@ int Client::connect()
   return 0;
 }
 
-void Client::disconnect()
+void Client::fail()
 {
   process_abandoned_streams();
+
   if(worker->stats.req_done == worker->stats.req_todo) {
     worker->schedule_terminate();
   }
+
+  disconnect();
+}
+
+void Client::disconnect()
+{
   int fd = -1;
   streams.clear();
   session.reset();
@@ -353,7 +360,7 @@ void Worker::run()
   for(auto& client : clients) {
     if(client->connect() != 0) {
       std::cerr << "client could not connect to host" << std::endl;
-      client->disconnect();
+      client->fail();
     }
   }
   event_base_loop(evbase, 0);
@@ -419,7 +426,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
 
       if(!next_proto) {
         debug_nextproto_error();
-        client->disconnect();
+        client->fail();
         return;
       }
 
@@ -435,12 +442,12 @@ void eventcb(bufferevent *bev, short events, void *ptr)
                                                            spdy_version);
         } else {
           debug_nextproto_error();
-          client->disconnect();
+          client->fail();
           return;
         }
 #else // !HAVE_SPDYLAY
         debug_nextproto_error();
-        client->disconnect();
+        client->fail();
         return;
 #endif // !HAVE_SPDYLAY
       }
@@ -477,7 +484,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     return;
   }
   if(events & BEV_EVENT_EOF) {
-    client->disconnect();
+    client->fail();
     return;
   }
   if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
@@ -489,7 +496,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       }
     }
     debug("error/eof\n");
-    client->disconnect();
+    client->fail();
     return;
   }
 }
@@ -502,7 +509,7 @@ void readcb(bufferevent *bev, void *ptr)
   auto client = static_cast<Client*>(ptr);
   rv = client->on_read();
   if(rv != 0) {
-    client->disconnect();
+    client->fail();
   }
 }
 } // namespace
@@ -517,7 +524,7 @@ void writecb(bufferevent *bev, void *ptr)
   auto client = static_cast<Client*>(ptr);
   rv = client->on_write();
   if(rv != 0) {
-    client->disconnect();
+    client->fail();
   }
 }
 } // namespace

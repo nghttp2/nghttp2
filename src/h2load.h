@@ -151,6 +151,7 @@ struct Client {
   ~Client();
   int connect();
   void disconnect();
+  void fail();
   void submit_request();
   void process_abandoned_streams();
   void report_progress();
