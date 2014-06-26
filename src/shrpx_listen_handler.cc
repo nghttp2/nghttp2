@@ -49,7 +49,6 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
   : evbase_(evbase),
     sv_ssl_ctx_(sv_ssl_ctx),
     cl_ssl_ctx_(cl_ssl_ctx),
-    http2session_(nullptr),
     rate_limit_group_(bufferevent_rate_limit_group_new
                       (evbase, get_config()->worker_rate_limit_cfg)),
     worker_stat_(util::make_unique<WorkerStat>()),
@@ -136,7 +135,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
       return -1;
     }
 
-    client->set_http2_session(http2session_);
+    client->set_http2_session(http2session_.get());
     return 0;
   }
   size_t idx = worker_round_robin_cnt_ % num_worker_;
@@ -164,7 +163,7 @@ event_base* ListenHandler::get_evbase() const
 int ListenHandler::create_http2_session()
 {
   int rv;
-  http2session_ = new Http2Session(evbase_, cl_ssl_ctx_);
+  http2session_ = util::make_unique<Http2Session>(evbase_, cl_ssl_ctx_);
   rv = http2session_->init_notification();
   return rv;
 }

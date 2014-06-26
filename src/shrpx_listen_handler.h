@@ -67,7 +67,7 @@ private:
   SSL_CTX *cl_ssl_ctx_;
   // Shared backend HTTP2 session. NULL if multi-threaded. In
   // multi-threaded case, see shrpx_worker.cc.
-  Http2Session *http2session_;
+  std::unique_ptr<Http2Session> http2session_;
   bufferevent_rate_limit_group *rate_limit_group_;
   std::unique_ptr<WorkerStat> worker_stat_;
   size_t num_worker_;
