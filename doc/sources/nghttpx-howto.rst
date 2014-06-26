@@ -1,5 +1,5 @@
-nghttpx - HOW-TO
-================
+nghttpx - HTTP/2 proxy - HOW-TO
+===============================
 
 nghttpx is a proxy translating protocols between HTTP/2 and other
 protocols (e.g., HTTP/1, SPDY).  It operates in several modes and each
