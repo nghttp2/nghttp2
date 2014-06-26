@@ -31,6 +31,7 @@
 #include <sys/socket.h>
 
 #include <memory>
+#include <vector>
 
 #include <openssl/ssl.h>
 
@@ -58,12 +59,12 @@ public:
   event_base* get_evbase() const;
   int create_http2_session();
 private:
+  std::vector<WorkerInfo> workers_;
   event_base *evbase_;
   // The frontend server SSL_CTX
   SSL_CTX *sv_ssl_ctx_;
   // The backend server SSL_CTX
   SSL_CTX *cl_ssl_ctx_;
-  WorkerInfo *workers_;
   // Shared backend HTTP2 session. NULL if multi-threaded. In
   // multi-threaded case, see shrpx_worker.cc.
   Http2Session *http2session_;

@@ -49,7 +49,6 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
   : evbase_(evbase),
     sv_ssl_ctx_(sv_ssl_ctx),
     cl_ssl_ctx_(cl_ssl_ctx),
-    workers_(nullptr),
     http2session_(nullptr),
     rate_limit_group_(bufferevent_rate_limit_group_new
                       (evbase, get_config()->worker_rate_limit_cfg)),
@@ -65,7 +64,7 @@ ListenHandler::~ListenHandler()
 
 void ListenHandler::create_worker_thread(size_t num)
 {
-  workers_ = new WorkerInfo[num];
+  workers_.resize(num);
   num_worker_ = 0;
   for(size_t i = 0; i < num; ++i) {
     int rv;
