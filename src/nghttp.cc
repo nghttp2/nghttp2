@@ -1013,7 +1013,7 @@ int submit_request
      {"accept-encoding", "gzip, deflate"},
      {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
   if(config.continuation) {
-    for(size_t i = 0; i < 8; ++i) {
+    for(size_t i = 0; i < 6; ++i) {
       build_headers.emplace_back("continuation-test-" + util::utos(i+1),
                                  std::string(4096, '-'));
     }
