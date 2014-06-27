@@ -428,7 +428,7 @@ With ``--http2-proxy`` option, it works as so called secure proxy (aka
 SPDY proxy)::
 
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
-                                           [secure proxy]            (e.g., Squid)
+                                           [secure proxy]          (e.g., Squid, ATS)
 
 The ``Client`` in the above is needs to be configured to use
 ``nghttpx`` as secure proxy.

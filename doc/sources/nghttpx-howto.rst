@@ -47,9 +47,10 @@ HTTP/2 proxy mode
 
 If nghttpx is invoked with ``-s`` option, it operates in HTTP/2 proxy
 mode.  The supported protocols in frontend and backend connections are
-the same in `default mode`_.  The difference is that this mode acts like
-forward proxy and assumes the backend is HTTP/1 proxy server (e.g.,
-squid).  So HTTP/1 request must include absolute URI in request line.
+the same in `default mode`_.  The difference is that this mode acts
+like forward proxy and assumes the backend is HTTP/1 proxy server
+(e.g., squid, traffic server).  So HTTP/1 request must include
+absolute URI in request line.
 
 By default, frontend connection is encrypted, this mode is also called
 secure proxy.  If nghttpx is linked with spdylay, it supports SPDY
@@ -66,18 +67,17 @@ server and caching contents.
 
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP/1 proxy server is configured to listen
-to HTTP/1 request at port 3128 in the same host, run nghttpx
+to HTTP/1 request at port 8080 in the same host, run nghttpx
 command-line like this::
 
-    $ nghttpx -s -f0.0.0.0,8443 -b127.0.0.1,3128 /path/to/server.key /path/to/server.crt
+    $ nghttpx -s -f'*,8443' -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
-At the time of this writing, there is no known HTTP/2 client which
-supports HTTP/2 proxy in this fashion.  You can use Google Chrome to
-use this as secure (SPDY) proxy to test it out, though it does not use
-HTTP/2 at all.
+At the time of this writing, Firefox nightly supports HTTP/2 proxy.
+Chromium can use nghttpx as secure (SPDY) proxy and will support
+HTTP/2 proxy in the near future.
 
-The one way to configure Google Chrome to use secure proxy is create
-proxy.pac script like this:
+To make Firefox nightly or Chromium use nghttpx as HTTP/2 or SPDY
+proxy, user has to create proxy.pac script file like this:
 
 .. code-block:: javascript
 
@@ -86,12 +86,31 @@ proxy.pac script like this:
     }
 
 ``SERVERADDR`` and ``PORT`` is the hostname/address and port of the
-machine nghttpx is running.  Please note that Google Chrome requires
-valid certificate for secure proxy.
+machine nghttpx is running.  Please note that both Firefox nightly and
+Chromium requires valid certificate for secure proxy.
 
-Then run Google Chrome with the following arguments::
+For Firefox nightly, open Preference window and select Advanced then
+click Network tab.  Clicking Connection Settings button will show the
+dialog.  Select "Automatic proxy configuration URL" and enter the path
+to proxy.pac file, something like this::
+
+    file:///path/to/proxy.pac
+
+For Chromium, use following command-line::
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
+
+Squid may work as out-of-box.  Traffic server requires to be
+configured as forward proxy.  Here is the minimum configuration items
+to edit::
+
+    CONFIG proxy.config.reverse_proxy.enabled INT 0
+    CONFIG proxy.config.url_remap.remap_required INT 0
+
+Consult Traffic server `documentation
+<https://docs.trafficserver.apache.org/en/latest/admin/forward-proxy.en.html>`_
+to know how to configure traffic server as forward proxy and its
+security implications.
 
 Client mode
 -----------
