@@ -63,11 +63,12 @@ std::string get_status_string(unsigned int status_code)
   case 410: return "410 Gone";
   case 411: return "411 Length Required";
   case 412: return "412 Precondition Failed";
-  case 413: return "413 Request Entity Too Large";
-  case 414: return "414 Request-URI Too Long";
+  case 413: return "413 Payload Too Large";
+  case 414: return "414 URI Too Long";
   case 415: return "415 Unsupported Media Type";
   case 416: return "416 Requested Range Not Satisfiable";
   case 417: return "417 Expectation Failed";
+  case 426: return "426 Upgrade Required";
   case 500: return "500 Internal Server Error";
   case 501: return "501 Not Implemented";
   case 502: return "502 Bad Gateway";
