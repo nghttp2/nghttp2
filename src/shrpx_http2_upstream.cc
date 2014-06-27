@@ -212,11 +212,20 @@ int on_header_callback(nghttp2_session *session,
     return 0;
   }
   if(downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
+    if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return 0;
+    }
+
     if(LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << downstream->get_request_headers_sum();
     }
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+
+    if(upstream->error_reply(downstream, 413) != 0) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+
+    return 0;
   }
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
@@ -266,6 +275,10 @@ int on_request_headers(Http2Upstream *upstream,
                        const nghttp2_frame *frame)
 {
   int rv;
+
+  if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    return 0;
+  }
 
   downstream->normalize_request_headers();
   auto& nva = downstream->get_request_headers();
