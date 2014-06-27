@@ -1291,9 +1291,23 @@ int Http2Session::on_connect()
 
   // submit pending request
   for(auto dconn : dconns_) {
-    if(dconn->push_request_headers() != 0) {
-      return -1;
+    if(dconn->push_request_headers() == 0) {
+      continue;
     }
+
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "backend request failed";
+    }
+
+    auto downstream = dconn->get_downstream();
+
+    if(!downstream) {
+      continue;
+    }
+
+    auto upstream = downstream->get_upstream();
+
+    upstream->on_downstream_abort_request(downstream, 400);
   }
   return 0;
 }

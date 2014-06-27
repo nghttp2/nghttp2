@@ -887,4 +887,10 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream)
   return 0;
 }
 
+int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
+                                               unsigned int status_code)
+{
+  return error_reply(status_code);
+}
+
 } // namespace shrpx

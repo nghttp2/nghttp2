@@ -1030,4 +1030,18 @@ int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
   return send();
 }
 
+int SpdyUpstream::on_downstream_abort_request(Downstream *downstream,
+                                              unsigned int status_code)
+{
+  int rv;
+
+  rv = error_reply(downstream, status_code);
+
+  if(rv != 0) {
+    return -1;
+  }
+
+  return send();
+}
+
 } // namespace shrpx

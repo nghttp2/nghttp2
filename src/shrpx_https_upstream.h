@@ -44,7 +44,8 @@ public:
   virtual int on_read();
   virtual int on_write();
   virtual int on_event();
-  //int send();
+  virtual int on_downstream_abort_request(Downstream *downstream,
+                                          unsigned int status_code);
   virtual ClientHandler* get_client_handler() const;
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
