@@ -184,18 +184,17 @@ header compression
 <tr class="row-even"><td>Large header (CONTINUATION)</td>
 <td>Yes</td>
 </tr>
-<tr class="row-odd"><td>BLOCKED extension</td>
+<tr class="row-odd"><td>ALTSVC extension</td>
 <td>Yes *1</td>
-</tr>
-<tr class="row-even"><td>ALTSVC extension</td>
-<td>Yes *2</td>
 </tr>
 </tbody>
 </table>
 <ul class="simple">
-<li>*1 As described in draft-12.</li>
-<li>*2 As described in draft-12, but reserved byte was removed.</li>
+<li>*1 As described in draft-12, but reserved byte was removed.  ALTSVC
+may be removed from nghttp2 public API since it is not stabilized
+yet.</li>
 </ul>
+<p>BLOCKED frame, which once existed in h2-12, was removed in h2-13.</p>
 </div>
 <div class="section" id="public-test-server">
 <h2>Public Test Server<a class="headerlink" href="#public-test-server" title="Permalink to this headline">¶</a></h2>
@@ -597,7 +596,7 @@ sample configuration file <tt class="docutils literal"><span class="pre">nghttpx
 <p>With <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> option, it works as so called secure proxy (aka
 SPDY proxy):</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Proxy</span>
-                                       <span class="p">[</span><span class="n">secure</span> <span class="n">proxy</span><span class="p">]</span>            <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">Squid</span><span class="p">)</span>
+                                       <span class="p">[</span><span class="n">secure</span> <span class="n">proxy</span><span class="p">]</span>          <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">Squid</span><span class="p">,</span> <span class="n">ATS</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <tt class="docutils literal"><span class="pre">Client</span></tt> in the above is needs to be configured to use
