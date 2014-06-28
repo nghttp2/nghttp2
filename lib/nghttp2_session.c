@@ -342,7 +342,7 @@ static int session_new(nghttp2_session **session_ptr,
 
   /* 1 for Pad Field. */
   rv = nghttp2_bufs_init3(&(*session_ptr)->aob.framebufs,
-                          NGHTTP2_FRAMEBUF_CHUNKLEN, 8, 1,
+                          NGHTTP2_FRAMEBUF_CHUNKLEN, 4, 1,
                           NGHTTP2_FRAME_HDLEN + 1);
   if(rv != 0) {
     goto fail_aob_framebuf;

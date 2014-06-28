@@ -366,7 +366,7 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
   inflater->opcode = NGHTTP2_HD_OPCODE_NONE;
   inflater->state = NGHTTP2_HD_STATE_OPCODE;
 
-  rv = nghttp2_bufs_init(&inflater->nvbufs, NGHTTP2_HD_MAX_NV / 2, 2);
+  rv = nghttp2_bufs_init3(&inflater->nvbufs, NGHTTP2_HD_MAX_NV / 8, 8, 1, 0);
 
   if(rv != 0) {
     goto nvbufs_fail;
