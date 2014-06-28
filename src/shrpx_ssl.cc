@@ -51,18 +51,13 @@
 #include "shrpx_accesslog.h"
 #include "shrpx_worker.h"
 #include "util.h"
+#include "ssl.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
 namespace ssl {
-
-// Recommended general purpose "Non-Backward Compatible" cipher by
-// mozilla.
-//
-// https://wiki.mozilla.org/Security/Server_Side_TLS
-#define DEFAULT_CIPHER_LIST "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK"
 
 namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
@@ -250,7 +245,7 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   if(get_config()->ciphers) {
     ciphers = get_config()->ciphers.get();
   } else {
-    ciphers = DEFAULT_CIPHER_LIST;
+    ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }
 
   SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);

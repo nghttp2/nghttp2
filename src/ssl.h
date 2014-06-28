@@ -38,6 +38,8 @@ public:
   LibsslGlobalLock& operator=(const LibsslGlobalLock&) = delete;
 };
 
+extern const char* const DEFAULT_CIPHER_LIST;
+
 } // namespace ssl
 
 } // namespace nghttp2
