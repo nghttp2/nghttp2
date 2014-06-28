@@ -29,13 +29,14 @@ HTTP/2 Features             Support
 Core frames handling        Yes
 Dependency Tree             Yes
 Large header (CONTINUATION) Yes
-BLOCKED extension           Yes \*1
-ALTSVC extension            Yes \*2
+ALTSVC extension            Yes \*1
 =========================== =======
 
-* \*1 As described in draft-12.
-* \*2 As described in draft-12, but reserved byte was removed.
+* \*1 As described in draft-12, but reserved byte was removed.  ALTSVC
+  may be removed from nghttp2 public API since it is not stabilized
+  yet.
 
+BLOCKED frame, which once existed in h2-12, was removed in h2-13.
 
 Public Test Server
 ------------------
