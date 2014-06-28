@@ -249,3 +249,21 @@ specified, the lower rate is used.
 
 Please note that rate limit is performed on top of TCP and nothing to
 do with HTTP/2 flow control.
+
+Rewriting location header field
+-------------------------------
+
+nghttpx automatically rewrites location response header field if the
+following all conditions satisfy:
+
+* URI in location header field is not absolute URI or is not https URI.
+* URI in location header field includes non empty host component.
+* host (without port) in URI in location header field must match the
+  host appearing in :authority or host header field.
+
+When rewrite happens, URI scheme and port are replaced with the ones
+used in frontend, and host is replaced with which appears in
+:authority or host request header field.  :authority header field has
+precedence.  If the above conditions are not met with the host value
+in :authority header field, rewrite is retried with the value in host
+header field.
