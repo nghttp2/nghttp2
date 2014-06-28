@@ -329,7 +329,7 @@ static int session_new(nghttp2_session **session_ptr,
 
   (*session_ptr)->goaway_flags = NGHTTP2_GOAWAY_NONE;
   (*session_ptr)->local_last_stream_id = (1u << 31) - 1;
-  (*session_ptr)->remote_last_stream_id = 0;
+  (*session_ptr)->remote_last_stream_id = (1u << 31) - 1;
 
   (*session_ptr)->inflight_niv = -1;
 
@@ -3545,6 +3545,13 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
     return session_handle_invalid_connection(session, frame,
                                              NGHTTP2_PROTOCOL_ERROR);
   }
+  /* Draft says Endpoints MUST NOT increase the value they send in the
+     last stream identifier. */
+  if(session->remote_last_stream_id < frame->goaway.last_stream_id) {
+    return session_handle_invalid_connection(session, frame,
+                                             NGHTTP2_PROTOCOL_ERROR);
+  }
+
   session->remote_last_stream_id = frame->goaway.last_stream_id;
   session->goaway_flags |= NGHTTP2_GOAWAY_RECV;
   return session_call_on_frame_received(session, frame);
