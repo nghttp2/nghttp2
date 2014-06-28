@@ -1694,6 +1694,28 @@ int HttpServer::run()
 
 #endif // OPENSSL_NO_EC
 
+    if(!config_->dh_param_file.empty()) {
+      // Read DH parameters from file
+      auto bio = BIO_new_file(config_->dh_param_file.c_str(), "r");
+      if(bio == nullptr) {
+        std::cerr << "BIO_new_file() failed: "
+                  << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+        return -1;
+      }
+
+      auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
+
+      if(dh == nullptr) {
+        std::cerr << "PEM_read_bio_DHparams() failed: "
+                  << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+        return -1;
+      }
+
+      SSL_CTX_set_tmp_dh(ssl_ctx, dh);
+      DH_free(dh);
+      BIO_free(bio);
+    }
+
     if(SSL_CTX_use_PrivateKey_file(ssl_ctx,
                                    config_->private_key_file.c_str(),
                                    SSL_FILETYPE_PEM) != 1) {

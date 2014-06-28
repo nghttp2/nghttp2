@@ -63,6 +63,7 @@ struct Config {
   std::string host;
   std::string private_key_file;
   std::string cert_file;
+  std::string dh_param_file;
   timeval stream_read_timeout;
   timeval stream_write_timeout;
   void *data_ptr;
