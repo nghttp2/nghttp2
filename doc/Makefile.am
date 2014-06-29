@@ -33,6 +33,7 @@ EXTRA_DIST = \
 	sources/tutorial-hpack.rst \
 	sources/nghttpx-howto.rst \
 	sources/h2load-howto.rst \
+	sources/python-apiref.rst \
 	_themes/sphinx_rtd_theme/footer.html \
 	_themes/sphinx_rtd_theme/theme.conf \
 	_themes/sphinx_rtd_theme/layout_old.html \
