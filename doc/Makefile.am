@@ -30,6 +30,7 @@ EXTRA_DIST = \
 	sources/index.rst \
 	sources/tutorial-client.rst \
 	sources/tutorial-server.rst \
+	sources/tutorial-hpack.rst \
 	sources/nghttpx-howto.rst \
 	sources/h2load-howto.rst \
 	_themes/sphinx_rtd_theme/footer.html \

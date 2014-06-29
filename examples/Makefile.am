@@ -38,12 +38,14 @@ LDADD = \
 	$(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la
 
-noinst_PROGRAMS = client libevent-client libevent-server
+noinst_PROGRAMS = client libevent-client libevent-server deflate
 
 client_SOURCES = client.c
 
 libevent_client_SOURCES = libevent-client.c
 
 libevent_server_SOURCES = libevent-server.c
+
+deflate_SOURCES = deflate.c
 
 endif # ENABLE_EXAMPLES

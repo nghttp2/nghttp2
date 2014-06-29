@@ -19,6 +19,7 @@ Contents:
    package_README
    tutorial-client
    tutorial-server
+   tutorial-hpack
    nghttpx-howto
    h2load-howto
    apiref

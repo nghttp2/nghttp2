@@ -1,3 +1,4 @@
 client
 libevent-client
 libevent-server
+deflate
