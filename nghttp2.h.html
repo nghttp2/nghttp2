@@ -78,6 +78,12 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-hpack.html">Tutorial: HPACK API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflating-encoding-headers">Deflating (encoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#inflating-decoding-headers">Inflating (decoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflate-c">deflate.c</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
@@ -87,6 +93,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -3020,7 +3027,7 @@
 <span class="cm"> */</span>
 <span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_deflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span>
                               <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span>
-                              <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
+                              <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>

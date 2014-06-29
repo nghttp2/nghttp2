@@ -30,7 +30,7 @@
   
     <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/>
-        <link rel="prev" title="Tutorial: HTTP/2 server" href="tutorial-server.html"/> 
+        <link rel="prev" title="Tutorial: HPACK API" href="tutorial-hpack.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -78,6 +78,12 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-hpack.html">Tutorial: HPACK API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflating-encoding-headers">Deflating (encoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#inflating-decoding-headers">Inflating (decoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflate-c">deflate.c</a></li>
+</ul>
+</li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#default-mode">Default mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
@@ -87,6 +93,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#disable-ssl-tls">Disable SSL/TLS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#read-write-rate-limit">Read/write rate limit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rewriting-location-header-field">Rewriting location header field</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -363,6 +370,23 @@ specified, the lower rate is used.</p>
 <p>Please note that rate limit is performed on top of TCP and nothing to
 do with HTTP/2 flow control.</p>
 </div>
+<div class="section" id="rewriting-location-header-field">
+<h2>Rewriting location header field<a class="headerlink" href="#rewriting-location-header-field" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx automatically rewrites location response header field if the
+following all conditions satisfy:</p>
+<ul class="simple">
+<li>URI in location header field is not absolute URI or is not https URI.</li>
+<li>URI in location header field includes non empty host component.</li>
+<li>host (without port) in URI in location header field must match the
+host appearing in :authority or host header field.</li>
+</ul>
+<p>When rewrite happens, URI scheme and port are replaced with the ones
+used in frontend, and host is replaced with which appears in
+:authority or host request header field.  :authority header field has
+precedence.  If the above conditions are not met with the host value
+in :authority header field, rewrite is retried with the value in host
+header field.</p>
+</div>
 </div>
 
 
@@ -374,7 +398,7 @@ do with HTTP/2 flow control.</p>
         <a href="h2load-howto.html" class="btn btn-neutral float-right" title="h2load - HTTP/2 benchmarking tool - HOW-TO">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="tutorial-server.html" class="btn btn-neutral" title="Tutorial: HTTP/2 server"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="tutorial-hpack.html" class="btn btn-neutral" title="Tutorial: HPACK API"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

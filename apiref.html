@@ -78,6 +78,12 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-hpack.html">Tutorial: HPACK API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflating-encoding-headers">Deflating (encoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#inflating-decoding-headers">Inflating (decoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflate-c">deflate.c</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
@@ -87,6 +93,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -3042,7 +3049,7 @@ negative error codes:</p>
 
 <dl class="function">
 <dt id="c.nghttp2_hd_deflate_hd">
-ssize_t <tt class="descname">nghttp2_hd_deflate_hd</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em>, uint8_t<em>&nbsp;*buf</em>, size_t<em>&nbsp;buflen</em>, <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_hd" title="Permalink to this definition">¶</a></dt>
+ssize_t <tt class="descname">nghttp2_hd_deflate_hd</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em>, uint8_t<em>&nbsp;*buf</em>, size_t<em>&nbsp;buflen</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_hd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Deflates the <em>nva</em>, which has the <em>nvlen</em> name/value pairs, into
 the <em>buf</em> of length <em>buflen</em>.</p>
 <p>If <em>buf</em> is not large enough to store the deflated header block,
