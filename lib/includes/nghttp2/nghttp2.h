@@ -2869,7 +2869,7 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
  */
 ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                               uint8_t *buf, size_t buflen,
-                              nghttp2_nv *nva, size_t nvlen);
+                              const nghttp2_nv *nva, size_t nvlen);
 
 /**
  * @function

@@ -682,7 +682,7 @@ static uint8_t pack_first_byte(int inc_indexing, int no_index)
 }
 
 static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
-                              nghttp2_nv *nv,
+                              const nghttp2_nv *nv,
                               int inc_indexing)
 {
   int rv;
@@ -738,7 +738,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
   return 0;
 }
 
-static int emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
+static int emit_newname_block(nghttp2_bufs *bufs, const nghttp2_nv *nv,
                               int inc_indexing)
 {
   int rv;
@@ -804,7 +804,7 @@ static int emit_implicit(nghttp2_bufs *bufs, size_t idx)
 
 static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
                                                   nghttp2_bufs *bufs,
-                                                  nghttp2_nv *nv,
+                                                  const nghttp2_nv *nv,
                                                   uint8_t entry_flags)
 {
   int rv;
@@ -894,7 +894,7 @@ typedef struct {
 } search_result;
 
 static search_result search_hd_table(nghttp2_hd_context *context,
-                                     nghttp2_nv *nv)
+                                     const nghttp2_nv *nv)
 {
   search_result res = { -1, 0 };
   size_t i;
@@ -1040,7 +1040,7 @@ static int hd_deflate_should_indexing(nghttp2_hd_deflater *deflater,
 }
 
 static int deflate_nv(nghttp2_hd_deflater *deflater,
-                      nghttp2_bufs *bufs, nghttp2_nv *nv)
+                      nghttp2_bufs *bufs, const nghttp2_nv *nv)
 {
   int rv;
   nghttp2_hd_entry *ent;
@@ -1196,7 +1196,7 @@ static int deflate_post_process_hd_entry(nghttp2_hd_entry *ent,
 
 int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
                                nghttp2_bufs *bufs,
-                               nghttp2_nv *nv, size_t nvlen)
+                               const nghttp2_nv *nv, size_t nvlen)
 {
   size_t i;
   int rv = 0;
@@ -1252,7 +1252,7 @@ int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
 
 ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
                               uint8_t *buf, size_t buflen,
-                              nghttp2_nv *nv, size_t nvlen)
+                              const nghttp2_nv *nv, size_t nvlen)
 {
   nghttp2_bufs bufs;
   int rv;

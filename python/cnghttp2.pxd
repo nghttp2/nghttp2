@@ -309,7 +309,7 @@ cdef extern from 'nghttp2_hd.h':
 
     int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
                                    nghttp2_bufs *bufs,
-                                   nghttp2_nv *nva, size_t nvlen)
+                                   const nghttp2_nv *nva, size_t nvlen)
 
     nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                            size_t index)

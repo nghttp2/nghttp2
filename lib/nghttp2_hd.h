@@ -262,7 +262,7 @@ void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater);
  */
 int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
                                nghttp2_bufs *bufs,
-                               nghttp2_nv *nva, size_t nvlen);
+                               const nghttp2_nv *nva, size_t nvlen);
 
 /*
  * Initializes |inflater| for inflating name/values pairs.
