@@ -2989,7 +2989,7 @@ typedef enum {
  *     int inflate_header_block(nghttp2_hd_inflater *hd_inflater,
  *                              uint8_t *in, size_t inlen, int final)
  *     {
- *         int rv;
+ *         ssize_t rv;
  *
  *         for(;;) {
  *             nghttp2_nv nv;
@@ -2999,7 +2999,7 @@ typedef enum {
  *                                        in, inlen, final);
  *
  *             if(rv < 0) {
- *                 fprintf(stderr, "inflate failed with error code %d", rv);
+ *                 fprintf(stderr, "inflate failed with error code %zd", rv);
  *                 return -1;
  *             }
  *
