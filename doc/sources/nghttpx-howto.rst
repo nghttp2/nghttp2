@@ -174,7 +174,7 @@ that server, invoke nghttpx like this::
 
 .. note::
 
-    You may need ``-k`` option if HTTP/2 server'ss certificate is
+    You may need ``-k`` option if HTTP/2 server's certificate is
     self-signed. But please note that it is insecure.
 
 Then you can use curl to issue HTTP request via HTTP/2 proxy::
@@ -188,11 +188,13 @@ HTTP/2 bridge mode
 ------------------
 
 If nghttpx is invoked with ``--http2-bridge`` option, it operates in
-HTTP/2 bridge mode.  The supported protocols in frontend and backend
-connections are the same in `default mode`_.
+HTTP/2 bridge mode.  The supported protocols in frontend connections
+are the same in `default mode`_.  The protocol in backend is HTTP/2
+only.
 
 With ``--frontend-no-tls`` option, SSL/TLS is turned off in frontend
-connection, so the connection gets insecure.
+connection, so the connection gets insecure.  To disable SSL/TLS in
+backend connection, use ``--backend-no-tls`` option.
 
 The backend server is supporsed to be a HTTP/2 web server or HTTP/2
 proxy.  Since HTTP/2 requests opaque between proxied and non-proxied
