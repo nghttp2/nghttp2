@@ -50,4 +50,11 @@ if __name__ == '__main__':
         sys.stderr.write('{}: '.format(filename))
         with open(filename) as f:
             input = f.read()
+
+        testdata = json.loads(input)
+
+        if 'draft' not in testdata or testdata['draft'] != 8:
+            sys.stderr.write('Not supported\n')
+            continue
+
         testsuite(json.loads(input))
