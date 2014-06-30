@@ -82,16 +82,16 @@ cdef class HDDeflater:
 
     '''
 
-    cdef cnghttp2.nghttp2_hd_deflater _deflater
+    cdef cnghttp2.nghttp2_hd_deflater *_deflater
 
     def __cinit__(self, hd_table_bufsize_max = DEFLATE_MAX_HEADER_TABLE_SIZE):
-        rv = cnghttp2.nghttp2_hd_deflate_init2(&self._deflater,
-                                               hd_table_bufsize_max)
+        rv = cnghttp2.nghttp2_hd_deflate_new(&self._deflater,
+                                             hd_table_bufsize_max)
         if rv != 0:
             raise Exception(_strerror(rv))
 
     def __dealloc__(self):
-        cnghttp2.nghttp2_hd_deflate_free(&self._deflater)
+        cnghttp2.nghttp2_hd_deflate_del(self._deflater)
 
     def deflate(self, headers):
         '''Compresses the |headers|. The |headers| must be sequence of tuple
@@ -115,26 +115,22 @@ cdef class HDDeflater:
             nvap[0].flags = cnghttp2.NGHTTP2_NV_FLAG_NONE
             nvap += 1
 
-        cdef cnghttp2.nghttp2_bufs bufs
         cdef size_t outcap = 0
         cdef ssize_t rv
         cdef uint8_t *out
+        cdef size_t outlen
 
-        cnghttp2.nghttp2_bufs_init(&bufs, 4096, 16)
+        outlen = cnghttp2.nghttp2_hd_deflate_bound(self._deflater,
+                                                   nva, len(headers))
 
-        rv = cnghttp2.nghttp2_hd_deflate_hd_bufs(&self._deflater, &bufs,
-                                                 nva, len(headers))
+        out = <uint8_t*>malloc(outlen)
+
+        rv = cnghttp2.nghttp2_hd_deflate_hd(self._deflater, out, outlen,
+                                            nva, len(headers))
         free(nva)
 
         if rv < 0:
-            cnghttp2.nghttp2_bufs_free(&bufs);
-
-            raise Exception(_strerror(rv))
-
-        rv = cnghttp2.nghttp2_bufs_remove(&bufs, &out)
-
-        if rv < 0:
-            cnghttp2.nghttp2_bufs_free(&bufs);
+            free(out)
 
             raise Exception(_strerror(rv))
 
@@ -143,8 +139,7 @@ cdef class HDDeflater:
         try:
             res = out[:rv]
         finally:
-            cnghttp2.nghttp2_free(out)
-            cnghttp2.nghttp2_bufs_free(&bufs)
+            free(out)
 
         return res
 
@@ -155,7 +150,7 @@ cdef class HDDeflater:
         reference set.
 
         '''
-        cnghttp2.nghttp2_hd_deflate_set_no_refset(&self._deflater, no_refset)
+        cnghttp2.nghttp2_hd_deflate_set_no_refset(self._deflater, no_refset)
 
     def change_table_size(self, hd_table_bufsize_max):
         '''Changes header table size to |hd_table_bufsize_max| byte.
@@ -164,7 +159,7 @@ cdef class HDDeflater:
 
         '''
         cdef int rv
-        rv = cnghttp2.nghttp2_hd_deflate_change_table_size(&self._deflater,
+        rv = cnghttp2.nghttp2_hd_deflate_change_table_size(self._deflater,
                                                            hd_table_bufsize_max)
         if rv != 0:
             raise Exception(_strerror(rv))
@@ -185,15 +180,15 @@ cdef class HDInflater:
 
     '''
 
-    cdef cnghttp2.nghttp2_hd_inflater _inflater
+    cdef cnghttp2.nghttp2_hd_inflater *_inflater
 
     def __cinit__(self):
-        rv = cnghttp2.nghttp2_hd_inflate_init(&self._inflater)
+        rv = cnghttp2.nghttp2_hd_inflate_new(&self._inflater)
         if rv != 0:
             raise Exception(_strerror(rv))
 
     def __dealloc__(self):
-        cnghttp2.nghttp2_hd_inflate_free(&self._inflater)
+        cnghttp2.nghttp2_hd_inflate_del(self._inflater)
 
     def inflate(self, data):
         '''Decompresses the compressed header block |data|. The |data| must be
@@ -208,7 +203,7 @@ cdef class HDInflater:
         res = []
         while True:
             inflate_flags = 0
-            rv = cnghttp2.nghttp2_hd_inflate_hd(&self._inflater, &nv,
+            rv = cnghttp2.nghttp2_hd_inflate_hd(self._inflater, &nv,
                                                 &inflate_flags,
                                                 buf, buflen, 1)
             if rv < 0:
@@ -221,7 +216,7 @@ cdef class HDInflater:
             if inflate_flags & cnghttp2.NGHTTP2_HD_INFLATE_FINAL:
                 break
 
-        cnghttp2.nghttp2_hd_inflate_end_headers(&self._inflater)
+        cnghttp2.nghttp2_hd_inflate_end_headers(self._inflater)
         return res
 
     def change_table_size(self, hd_table_bufsize_max):
@@ -231,7 +226,7 @@ cdef class HDInflater:
 
         '''
         cdef int rv
-        rv = cnghttp2.nghttp2_hd_inflate_change_table_size(&self._inflater,
+        rv = cnghttp2.nghttp2_hd_inflate_change_table_size(self._inflater,
                                                            hd_table_bufsize_max)
         if rv != 0:
             raise Exception(_strerror(rv))

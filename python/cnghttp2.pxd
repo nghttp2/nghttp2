@@ -247,11 +247,27 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     const char* nghttp2_strerror(int lib_error_code)
 
+    int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
+                               size_t deflate_hd_table_bufsize_max)
+
+    void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater)
+
     void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
                                           uint8_t no_refset)
 
     int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
                                              size_t hd_table_bufsize_max)
+
+    ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
+                                  uint8_t *buf, size_t buflen,
+                                  const nghttp2_nv *nva, size_t nvlen)
+
+    size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
+                                    const nghttp2_nv *nva, size_t nvlen)
+
+    int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr)
+
+    void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater)
 
     int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
                                              size_t hd_table_bufsize_max)
@@ -297,19 +313,6 @@ cdef extern from 'nghttp2_hd.h':
 
     ctypedef struct nghttp2_hd_inflater:
         nghttp2_hd_context ctx
-
-    int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
-                                 size_t deflate_hd_table_bufsize_max)
-
-    int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
-
-    void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater)
-
-    void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater)
-
-    int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
-                                   nghttp2_bufs *bufs,
-                                   const nghttp2_nv *nva, size_t nvlen)
 
     nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                            size_t index)
