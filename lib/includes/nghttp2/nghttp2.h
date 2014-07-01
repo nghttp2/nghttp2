@@ -2540,7 +2540,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
  *     Out of memory.
  */
 int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
-                        uint8_t *opaque_data);
+                        const uint8_t *opaque_data);
 
 /**
  * @function

@@ -295,7 +295,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session,
  *     Out of memory.
  */
 int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
-                             uint8_t *opaque_data);
+                             const uint8_t *opaque_data);
 
 /*
  * Adds GOAWAY frame with the last-stream-ID |last_stream_id| and the
