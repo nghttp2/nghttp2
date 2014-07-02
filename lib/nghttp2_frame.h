@@ -50,8 +50,15 @@
 #define NGHTTP2_FRAMEBUF_CHUNKLEN \
   (NGHTTP2_FRAME_HDLEN + 1 + NGHTTP2_MAX_PAYLOADLEN)
 
+/* Number of inbound buffer */
+#define NGHTTP2_FRAMEBUF_MAX_NUM 5
+
 /* The maximum length of DATA frame payload. */
 #define NGHTTP2_DATA_PAYLOADLEN 4096
+
+/* Maximum headers payload length, calculated in compressed form.
+   This applies to both transmission and reception. */
+#define NGHTTP2_MAX_HEADERSLEN 65536
 
 /* The number of bytes for each SETTINGS entry */
 #define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 6

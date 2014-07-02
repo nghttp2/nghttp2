@@ -257,6 +257,7 @@ static void session_inbound_frame_reset(nghttp2_session *session)
   iframe->niv = 0;
   iframe->payloadleft = 0;
   iframe->padlen = 0;
+  iframe->headers_payload_length = 0;
 }
 
 static void init_settings(nghttp2_settings_storage *settings)
@@ -342,8 +343,8 @@ static int session_new(nghttp2_session **session_ptr,
 
   /* 1 for Pad Field. */
   rv = nghttp2_bufs_init3(&(*session_ptr)->aob.framebufs,
-                          NGHTTP2_FRAMEBUF_CHUNKLEN, 4, 1,
-                          NGHTTP2_FRAME_HDLEN + 1);
+                          NGHTTP2_FRAMEBUF_CHUNKLEN, NGHTTP2_FRAMEBUF_MAX_NUM,
+                          1, NGHTTP2_FRAME_HDLEN + 1);
   if(rv != 0) {
     goto fail_aob_framebuf;
   }
@@ -4192,6 +4193,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                    NGHTTP2_FLAG_PADDED |
                                    NGHTTP2_FLAG_PRIORITY);
 
+        iframe->headers_payload_length = iframe->frame.hd.length;
+
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
         if(rv < 0) {
           busy = 1;
@@ -4316,6 +4319,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_HEADERS |
                                    NGHTTP2_FLAG_PADDED);
+
+        iframe->headers_payload_length = iframe->frame.hd.length;
 
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
         if(rv < 0) {
@@ -4880,6 +4885,27 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                        cont_hd.stream_id, cont_hd.type));
         rv = nghttp2_session_terminate_session(session,
                                                NGHTTP2_PROTOCOL_ERROR);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        busy = 1;
+
+        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+        break;
+      }
+
+      iframe->headers_payload_length += cont_hd.length;
+
+      if(iframe->headers_payload_length > NGHTTP2_MAX_HEADERSLEN) {
+
+        DEBUGF(fprintf(stderr,
+                       "recv: headers too large %zu\n",
+                       iframe->headers_payload_length));
+
+        rv = nghttp2_session_terminate_session(session,
+                                               NGHTTP2_INTERNAL_ERROR);
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
