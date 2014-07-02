@@ -57,6 +57,7 @@ Http2Session::Http2Session(event_base *evbase, SSL_CTX *ssl_ctx)
     wrbev_(nullptr),
     rdbev_(nullptr),
     settings_timerev_(nullptr),
+    recv_ign_window_size_(0),
     fd_(-1),
     state_(DISCONNECTED),
     notified_(false),
@@ -668,6 +669,7 @@ int Http2Session::submit_window_update(Http2DownstreamConnection *dconn,
     stream_id = dconn->get_downstream()->get_downstream_stream_id();
   } else {
     stream_id = 0;
+    recv_ign_window_size_ = 0;
   }
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
                                     stream_id, amount);
@@ -1101,11 +1103,13 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
+    http2session->handle_ign_data_chunk(len);
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
   if(!downstream || downstream->get_downstream_stream_id() != stream_id) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
+    http2session->handle_ign_data_chunk(len);
     return 0;
   }
 
@@ -1113,6 +1117,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   rv = upstream->on_downstream_body(downstream, data, len, false);
   if(rv != 0) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
+    http2session->handle_ign_data_chunk(len);
     downstream->set_response_state(Downstream::MSG_RESET);
   }
   call_downstream_readcb(http2session, downstream);
@@ -1452,6 +1457,21 @@ size_t Http2Session::get_outbuf_length() const
 SSL* Http2Session::get_ssl() const
 {
   return ssl_;
+}
+
+int Http2Session::handle_ign_data_chunk(size_t len)
+{
+  int32_t window_size;
+
+  recv_ign_window_size_ += len;
+
+  window_size = nghttp2_session_get_effective_local_window_size(session_);
+
+  if(recv_ign_window_size_ >= window_size / 2) {
+    submit_window_update(nullptr, recv_ign_window_size_);
+  }
+
+  return 0;
 }
 
 } // namespace shrpx

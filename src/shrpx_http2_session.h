@@ -108,6 +108,8 @@ public:
 
   SSL* get_ssl() const;
 
+  int handle_ign_data_chunk(size_t len);
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -138,6 +140,7 @@ private:
   bufferevent *wrbev_;
   bufferevent *rdbev_;
   event *settings_timerev_;
+  int32_t recv_ign_window_size_;
   // fd_ is used for proxy connection and no TLS connection. For
   // direct or TLS connection, it may be -1 even after connection is
   // established. Use bufferevent_getfd(bev_) to get file descriptor
