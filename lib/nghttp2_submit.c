@@ -348,6 +348,11 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
     if(rv != 0) {
       return rv;
     }
+
+    /* recv_ign_window_size keeps track of ignored DATA bytes before
+       any connection-level WINDOW_UPDATE therefore, we can reset it
+       here. */
+    session->recv_ign_window_size = 0;
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
     if(stream) {
@@ -362,6 +367,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
       return 0;
     }
   }
+
   if(window_size_increment > 0) {
     return nghttp2_session_add_window_update(session, flags, stream_id,
                                              window_size_increment);

@@ -200,6 +200,15 @@ struct nghttp2_session {
      WINDOW_UPDATE. This could be negative after submitting negative
      value to WINDOW_UPDATE. */
   int32_t recv_window_size;
+  /* The number of bytes in ignored DATA frame received without
+     connection-level WINDOW_UPDATE.  Since we do not call
+     on_data_chunk_recv_callback for ignored DATA chunk, if
+     nghttp2_option_set_no_auto_connection_window_update is used,
+     application may not have a chance to send connection
+     WINDOW_UPDATE.  To fix this, we accumulate those received bytes,
+     and if it exceeds certain number, we automatically send
+     connection-level WINDOW_UPDATE. */
+  int32_t recv_ign_window_size;
   /* The amount of recv_window_size cut using submitting negative
      value to WINDOW_UPDATE */
   int32_t recv_reduction;

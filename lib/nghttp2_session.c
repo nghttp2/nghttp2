@@ -3889,6 +3889,10 @@ static int session_update_recv_connection_window_size
                                             session->recv_window_size);
       if(rv == 0) {
         session->recv_window_size = 0;
+        /* recv_ign_window_size keeps track of ignored DATA bytes
+           before any connection-level WINDOW_UPDATE therefore, we can
+           reset it here. */
+        session->recv_ign_window_size = 0;
       } else {
         return rv;
       }
@@ -5027,11 +5031,29 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                      readlen, iframe->payloadleft));
 
       if(readlen > 0) {
+        session->recv_ign_window_size += readlen;
+
         /* Update connection-level flow control window for ignored
            DATA frame too */
         rv = session_update_recv_connection_window_size(session, readlen);
         if(nghttp2_is_fatal(rv)) {
           return rv;
+        }
+
+        if((session->opt_flags &
+            NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE) &&
+           nghttp2_should_send_window_update
+           (session->local_window_size, session->recv_ign_window_size)) {
+
+          rv = nghttp2_session_add_window_update
+            (session, NGHTTP2_FLAG_NONE, 0, session->recv_ign_window_size);
+
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+
+          session->recv_window_size -= session->recv_ign_window_size;
+          session->recv_ign_window_size = 0;
         }
       }
 
