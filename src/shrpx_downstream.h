@@ -218,6 +218,9 @@ public:
 
   // Maximum buffer size for header name/value pairs.
   static const size_t MAX_HEADERS_SUM = 32768;
+
+  bool get_rst_stream_after_end_stream() const;
+  void set_rst_stream_after_end_stream(bool f);
 private:
   Headers request_headers_;
   Headers response_headers_;
@@ -275,6 +278,10 @@ private:
   bool chunked_response_;
   bool response_connection_close_;
   bool response_header_key_prev_;
+
+  // If true, RST_STREAM with NGHTTP2_NO_ERROR is issued after
+  // response is closed with END_STREAM.
+  bool rst_stream_after_end_stream_;
 };
 
 } // namespace shrpx

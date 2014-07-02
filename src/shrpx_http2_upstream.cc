@@ -453,6 +453,11 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     return 0;
   }
 
+  if(!downstream->get_downstream_connection()) {
+    upstream->handle_ign_data_chunk(len);
+    return 0;
+  }
+
   if(downstream->push_upload_data_chunk(data, len) != 0) {
     upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     upstream->handle_ign_data_chunk(len);
@@ -994,6 +999,12 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     if(!downstream->get_upgraded()) {
       *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
+      if(downstream->get_rst_stream_after_end_stream() &&
+         downstream->get_request_state() != Downstream::MSG_COMPLETE) {
+
+        upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
+      }
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
       if(LOG_ENABLED(INFO)) {
@@ -1054,6 +1065,9 @@ int Http2Upstream::error_reply(Downstream *downstream,
     upstream_response(get_client_handler()->get_ipaddr(),
                       status_code, downstream);
   }
+
+  downstream->set_rst_stream_after_end_stream(true);
+
   return 0;
 }
 
