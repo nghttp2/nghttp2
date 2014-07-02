@@ -2383,7 +2383,7 @@ void test_nghttp2_session_send_headers_reply(void)
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_send_headers_header_comp_error(void)
+void test_nghttp2_session_send_headers_frame_size_error(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
@@ -2394,6 +2394,7 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
   nghttp2_nv nv[28];
   size_t nnv = ARRLEN(nv);
   size_t i;
+  my_user_data ud;
 
   for(i = 0; i < nnv; ++i) {
     nv[i].name = (uint8_t*)"header";
@@ -2407,8 +2408,9 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
 
-  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_session_client_new(&session, &callbacks, &ud);
   nvlen = nnv;
   nghttp2_nv_array_copy(&nva, nv, nvlen);
 
@@ -2419,10 +2421,14 @@ void test_nghttp2_session_send_headers_header_comp_error(void)
   session->next_stream_id += 2;
 
   nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, NULL);
+
+  ud.frame_not_send_cb_called = 0;
+
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  CU_ASSERT(session->goaway_flags &
-            (NGHTTP2_GOAWAY_SEND | NGHTTP2_GOAWAY_FAIL_ON_SEND));
+  CU_ASSERT(1 == ud.frame_not_send_cb_called);
+  CU_ASSERT(NGHTTP2_HEADERS == ud.not_sent_frame_type);
+  CU_ASSERT(NGHTTP2_ERR_FRAME_SIZE_ERROR == ud.not_sent_error);
 
   for(i = 0; i < nnv; ++i) {
     free(nv[i].value);

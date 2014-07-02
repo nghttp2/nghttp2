@@ -124,8 +124,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_send_headers_start_stream) ||
       !CU_add_test(pSuite, "session_send_headers_reply",
                    test_nghttp2_session_send_headers_reply) ||
-      !CU_add_test(pSuite, "session_send_headers_header_comp_error",
-                   test_nghttp2_session_send_headers_header_comp_error) ||
+      !CU_add_test(pSuite, "session_send_headers_frame_size_error",
+                   test_nghttp2_session_send_headers_frame_size_error) ||
       !CU_add_test(pSuite, "session_send_headers_push_reply",
                    test_nghttp2_session_send_headers_push_reply) ||
       !CU_add_test(pSuite, "session_send_rst_stream",

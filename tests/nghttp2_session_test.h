@@ -52,7 +52,7 @@ void test_nghttp2_session_on_window_update_received(void);
 void test_nghttp2_session_on_data_received(void);
 void test_nghttp2_session_send_headers_start_stream(void);
 void test_nghttp2_session_send_headers_reply(void);
-void test_nghttp2_session_send_headers_header_comp_error(void);
+void test_nghttp2_session_send_headers_frame_size_error(void);
 void test_nghttp2_session_send_headers_push_reply(void);
 void test_nghttp2_session_send_rst_stream(void);
 void test_nghttp2_session_send_push_promise(void);

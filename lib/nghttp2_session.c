@@ -1455,6 +1455,14 @@ static int session_headers_add_pad(nghttp2_session *session,
   return 0;
 }
 
+static size_t session_estimate_headers_payload
+(nghttp2_session *session, const nghttp2_nv *nva, size_t nvlen,
+ size_t additional)
+{
+  return nghttp2_hd_deflate_bound
+    (&session->hd_deflater, nva, nvlen) + additional;
+}
+
 /*
  * This function serializes frame for transmission.
  *
@@ -1473,8 +1481,17 @@ static int session_prep_frame(nghttp2_session *session,
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS: {
       nghttp2_headers_aux_data *aux_data;
+      size_t estimated_payloadlen;
 
       aux_data = (nghttp2_headers_aux_data*)item->aux_data;
+
+      estimated_payloadlen = session_estimate_headers_payload
+        (session, frame->headers.nva, frame->headers.nvlen,
+         NGHTTP2_PRIORITY_SPECLEN);
+
+      if(estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
+        return NGHTTP2_ERR_FRAME_SIZE_ERROR;
+      }
 
       if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
         nghttp2_stream *stream;
@@ -1589,8 +1606,16 @@ static int session_prep_frame(nghttp2_session *session,
       nghttp2_stream *stream;
       nghttp2_headers_aux_data *aux_data;
       nghttp2_priority_spec pri_spec;
+      size_t estimated_payloadlen;
 
       aux_data = (nghttp2_headers_aux_data*)item->aux_data;
+
+      estimated_payloadlen = session_estimate_headers_payload
+        (session, frame->push_promise.nva, frame->push_promise.nvlen, 0);
+
+      if(estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
+        return NGHTTP2_ERR_FRAME_SIZE_ERROR;
+      }
 
       rv = session_predicate_push_promise_send(session, frame->hd.stream_id);
       if(rv != 0) {
