@@ -298,7 +298,10 @@ int on_request_headers(Http2Upstream *upstream,
   }
 
   if(!http2::check_http2_headers(nva)) {
-    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    if(upstream->error_reply(downstream, 400) != 0) {
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    }
+
     return 0;
   }
 
@@ -314,7 +317,11 @@ int on_request_headers(Http2Upstream *upstream,
   if(is_connect) {
     // Here we strictly require :authority header field.
     if(scheme || path || !having_authority) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+
+      if(upstream->error_reply(downstream, 400) != 0) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      }
+
       return 0;
     }
   } else {
@@ -325,7 +332,11 @@ int on_request_headers(Http2Upstream *upstream,
        (get_config()->http2_proxy && !having_authority) ||
        (!get_config()->http2_proxy && !having_authority && !having_host) ||
        !http2::non_empty_value(path)) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+
+      if(upstream->error_reply(downstream, 400) != 0) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      }
+
       return 0;
     }
   }
@@ -333,9 +344,13 @@ int on_request_headers(Http2Upstream *upstream,
      (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
     auto content_length = http2::get_header(nva, "content-length");
     if(!content_length || http2::value_lws(content_length)) {
-      // If content-length is missing,
-      // Downstream::push_upload_data_chunk will fail and
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+
+      // TODO We still need content-length here?
+
+      if(upstream->error_reply(downstream, 400) != 0) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      }
+
       return 0;
     }
   }
@@ -350,14 +365,21 @@ int on_request_headers(Http2Upstream *upstream,
   auto dconn = upstream->get_client_handler()->get_downstream_connection();
   rv = dconn->attach_downstream(downstream);
   if(rv != 0) {
-    // If downstream connection fails, issue RST_STREAM.
-    upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    // downstream connection fails, send error page
+    if(upstream->error_reply(downstream, 503) != 0) {
+      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    }
+
     downstream->set_request_state(Downstream::CONNECT_FAIL);
+
     return 0;
   }
   rv = downstream->push_request_headers();
   if(rv != 0) {
-    upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if(upstream->error_reply(downstream, 503) != 0) {
+      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    }
+
     return 0;
   }
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
