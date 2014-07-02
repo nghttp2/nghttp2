@@ -449,11 +449,13 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   auto downstream = upstream->find_downstream(stream_id);
 
   if(!downstream) {
+    upstream->handle_ign_data_chunk(len);
     return 0;
   }
 
   if(downstream->push_upload_data_chunk(data, len) != 0) {
     upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    upstream->handle_ign_data_chunk(len);
     return 0;
   }
 
@@ -532,7 +534,8 @@ nghttp2_error_code infer_upstream_rst_stream_error_code
 Http2Upstream::Http2Upstream(ClientHandler *handler)
   : handler_(handler),
     session_(nullptr),
-    settings_timerev_(nullptr)
+    settings_timerev_(nullptr),
+    recv_ign_window_size_(0)
 {
   handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
                                  &get_config()->upstream_write_timeout);
@@ -938,10 +941,18 @@ int Http2Upstream::window_update(Downstream *downstream,
                                  int32_t window_size_increment)
 {
   int rv;
+  int32_t stream_id;
+
+  if(downstream) {
+    stream_id = downstream->get_stream_id();
+  } else {
+    stream_id = 0;
+    recv_ign_window_size_ = 0;
+  }
+
   rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
-                                    downstream ?
-                                    downstream->get_stream_id() : 0,
-                                    window_size_increment);
+                                    stream_id, window_size_increment);
+
   if(rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_window_update() failed: "
                       << nghttp2_strerror(rv);
@@ -1241,6 +1252,21 @@ int Http2Upstream::on_downstream_abort_request(Downstream *downstream,
   }
 
   return send();
+}
+
+int Http2Upstream::handle_ign_data_chunk(size_t len)
+{
+  int32_t window_size;
+
+  recv_ign_window_size_ += len;
+
+  window_size = nghttp2_session_get_effective_local_window_size(session_);
+
+  if(recv_ign_window_size_ >= window_size / 2) {
+    window_update(nullptr, recv_ign_window_size_);
+  }
+
+  return 0;
 }
 
 } // namespace shrpx

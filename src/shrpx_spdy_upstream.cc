@@ -251,11 +251,13 @@ void on_data_chunk_recv_callback(spdylay_session *session,
   auto downstream = upstream->find_downstream(stream_id);
 
   if(!downstream) {
+    upstream->handle_ign_data_chunk(len);
     return;
   }
 
   if(downstream->push_upload_data_chunk(data, len) != 0) {
     upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    upstream->handle_ign_data_chunk(len);
     return;
   }
 
@@ -379,7 +381,8 @@ uint32_t infer_upstream_rst_stream_status_code
 
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   : handler_(handler),
-    session_(nullptr)
+    session_(nullptr),
+    recv_ign_window_size_(0)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
@@ -726,10 +729,17 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
 int SpdyUpstream::window_update(Downstream *downstream, int32_t delta)
 {
   int rv;
-  rv = spdylay_submit_window_update(session_,
-                                    downstream ?
-                                    downstream->get_stream_id() : 0,
-                                    delta);
+  int32_t stream_id;
+
+  if(downstream) {
+    stream_id = downstream->get_stream_id();
+  } else {
+    stream_id = 0;
+    recv_ign_window_size_ = 0;
+  }
+
+  rv = spdylay_submit_window_update(session_, stream_id, delta);
+
   if(rv < SPDYLAY_ERR_FATAL) {
     ULOG(FATAL, this) << "spdylay_submit_window_update() failed: "
                       << spdylay_strerror(rv);
@@ -1042,6 +1052,24 @@ int SpdyUpstream::on_downstream_abort_request(Downstream *downstream,
   }
 
   return send();
+}
+
+int SpdyUpstream::handle_ign_data_chunk(size_t len)
+{
+  int32_t window_size;
+
+  if(spdylay_session_get_recv_data_length(session_) == -1) {
+    // No connection flow control
+    return 0;
+  }
+
+  window_size = 1 << get_config()->http2_upstream_connection_window_bits;
+
+  if(recv_ign_window_size_ >= window_size / 2) {
+    window_update(0, recv_ign_window_size_);
+  }
+
+  return 0;
 }
 
 } // namespace shrpx

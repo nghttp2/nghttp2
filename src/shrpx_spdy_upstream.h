@@ -71,12 +71,15 @@ public:
 
   bool get_flow_control() const;
 
+  int handle_ign_data_chunk(size_t len);
+
   nghttp2::util::EvbufferBuffer sendbuf;
 private:
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;
   int32_t initial_window_size_;
+  int32_t recv_ign_window_size_;
   bool flow_control_;
 };
 
