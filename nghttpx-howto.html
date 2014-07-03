@@ -307,7 +307,7 @@ that server, invoke nghttpx like this:</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">You may need <tt class="docutils literal"><span class="pre">-k</span></tt> option if HTTP/2 server&#8217;ss certificate is
+<p class="last">You may need <tt class="docutils literal"><span class="pre">-k</span></tt> option if HTTP/2 server&#8217;s certificate is
 self-signed. But please note that it is insecure.</p>
 </div>
 <p>Then you can use curl to issue HTTP request via HTTP/2 proxy:</p>
@@ -320,10 +320,12 @@ proxy.</p>
 <div class="section" id="http-2-bridge-mode">
 <h2>HTTP/2 bridge mode<a class="headerlink" href="#http-2-bridge-mode" title="Permalink to this headline">¶</a></h2>
 <p>If nghttpx is invoked with <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> option, it operates in
-HTTP/2 bridge mode.  The supported protocols in frontend and backend
-connections are the same in <a class="reference internal" href="#default-mode">default mode</a>.</p>
+HTTP/2 bridge mode.  The supported protocols in frontend connections
+are the same in <a class="reference internal" href="#default-mode">default mode</a>.  The protocol in backend is HTTP/2
+only.</p>
 <p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, SSL/TLS is turned off in frontend
-connection, so the connection gets insecure.</p>
+connection, so the connection gets insecure.  To disable SSL/TLS in
+backend connection, use <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
 <p>The backend server is supporsed to be a HTTP/2 web server or HTTP/2
 proxy.  Since HTTP/2 requests opaque between proxied and non-proxied
 request, the backend server may be proxy or just web server depending

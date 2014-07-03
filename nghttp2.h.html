@@ -2153,6 +2153,25 @@
 <span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_remote_window_size</span><span class="p">(</span><span class="n">nghttp2_session</span><span class="o">*</span> <span class="n">session</span><span class="p">,</span>
                                                       <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
 
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns 1 if local peer half closed the given stream |stream_id|.</span>
+<span class="cm"> * Returns 0 if it did not.  Returns -1 if no such stream exists.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_get_stream_local_close</span><span class="p">(</span><span class="n">nghttp2_session</span><span class="o">*</span> <span class="n">session</span><span class="p">,</span>
+                                           <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns 1 if remote peer half closed the given stream |stream_id|.</span>
+<span class="cm"> * Returns 0 if it did not.  Returns -1 if no such stream exists.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_get_stream_remote_close</span><span class="p">(</span><span class="n">nghttp2_session</span><span class="o">*</span> <span class="n">session</span><span class="p">,</span>
+                                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
@@ -2698,7 +2717,7 @@
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_ping</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                        <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">);</span>
+                        <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -3147,7 +3166,7 @@
 <span class="cm"> *     int inflate_header_block(nghttp2_hd_inflater *hd_inflater,</span>
 <span class="cm"> *                              uint8_t *in, size_t inlen, int final)</span>
 <span class="cm"> *     {</span>
-<span class="cm"> *         int rv;</span>
+<span class="cm"> *         ssize_t rv;</span>
 <span class="cm"> *</span>
 <span class="cm"> *         for(;;) {</span>
 <span class="cm"> *             nghttp2_nv nv;</span>
@@ -3157,7 +3176,7 @@
 <span class="cm"> *                                        in, inlen, final);</span>
 <span class="cm"> *</span>
 <span class="cm"> *             if(rv &lt; 0) {</span>
-<span class="cm"> *                 fprintf(stderr, &quot;inflate failed with error code %d&quot;, rv);</span>
+<span class="cm"> *                 fprintf(stderr, &quot;inflate failed with error code %zd&quot;, rv);</span>
 <span class="cm"> *                 return -1;</span>
 <span class="cm"> *             }</span>
 <span class="cm"> *</span>

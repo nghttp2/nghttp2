@@ -2365,6 +2365,20 @@ local endpoint can send without WINDOW_UPDATE.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="c.nghttp2_session_get_stream_local_close">
+int <tt class="descname">nghttp2_session_get_stream_local_close</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a>*<em>&nbsp;session</em>, int32_t<em>&nbsp;stream_id</em><big>)</big><a class="headerlink" href="#c.nghttp2_session_get_stream_local_close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns 1 if local peer half closed the given stream <em>stream_id</em>.
+Returns 0 if it did not.  Returns -1 if no such stream exists.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_session_get_stream_remote_close">
+int <tt class="descname">nghttp2_session_get_stream_remote_close</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a>*<em>&nbsp;session</em>, int32_t<em>&nbsp;stream_id</em><big>)</big><a class="headerlink" href="#c.nghttp2_session_get_stream_remote_close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns 1 if remote peer half closed the given stream <em>stream_id</em>.
+Returns 0 if it did not.  Returns -1 if no such stream exists.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="c.nghttp2_session_terminate_session">
 int <tt class="descname">nghttp2_session_terminate_session</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, <a class="reference internal" href="#c.nghttp2_error_code" title="nghttp2_error_code">nghttp2_error_code</a><em>&nbsp;error_code</em><big>)</big><a class="headerlink" href="#c.nghttp2_session_terminate_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Signals the session so that the connection should be terminated.</p>
@@ -2792,7 +2806,7 @@ called for this frame.</p>
 
 <dl class="function">
 <dt id="c.nghttp2_submit_ping">
-int <tt class="descname">nghttp2_submit_ping</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, uint8_t<em>&nbsp;*opaque_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_ping" title="Permalink to this definition">¶</a></dt>
+int <tt class="descname">nghttp2_submit_ping</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, const uint8_t<em>&nbsp;*opaque_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_ping" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits PING frame.  You don&#8217;t have to send PING back when you
 received PING frame.  The library automatically submits PING frame
 in this case.</p>
@@ -3148,7 +3162,7 @@ or one of the following negative error codes:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="kt">int</span> <span class="nf">inflate_header_block</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">hd_inflater</span><span class="p">,</span>
                          <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">,</span> <span class="kt">int</span> <span class="n">final</span><span class="p">)</span>
 <span class="p">{</span>
-    <span class="kt">int</span> <span class="n">rv</span><span class="p">;</span>
+    <span class="kt">ssize_t</span> <span class="n">rv</span><span class="p">;</span>
 
     <span class="k">for</span><span class="p">(;;)</span> <span class="p">{</span>
         <span class="n">nghttp2_nv</span> <span class="n">nv</span><span class="p">;</span>
@@ -3158,7 +3172,7 @@ or one of the following negative error codes:</p>
                                    <span class="n">in</span><span class="p">,</span> <span class="n">inlen</span><span class="p">,</span> <span class="n">final</span><span class="p">);</span>
 
         <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;inflate failed with error code %d&quot;</span><span class="p">,</span> <span class="n">rv</span><span class="p">);</span>
+            <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;inflate failed with error code %zd&quot;</span><span class="p">,</span> <span class="n">rv</span><span class="p">);</span>
             <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
         <span class="p">}</span>
 
