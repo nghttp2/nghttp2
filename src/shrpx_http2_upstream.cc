@@ -340,25 +340,16 @@ int on_request_headers(Http2Upstream *upstream,
       return 0;
     }
   }
-  if(!is_connect &&
-     (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-    auto content_length = http2::get_header(nva, "content-length");
-    if(!content_length || http2::value_lws(content_length)) {
-
-      // TODO We still need content-length here?
-
-      if(upstream->error_reply(downstream, 400) != 0) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      }
-
-      return 0;
-    }
-  }
 
   downstream->set_request_method(http2::value_to_str(method));
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
   downstream->set_request_http2_authority(http2::value_to_str(authority));
   downstream->set_request_path(http2::value_to_str(path));
+
+
+  if(!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
+    downstream->set_request_http2_expect_body(true);
+  }
 
   downstream->inspect_http2_request();
 

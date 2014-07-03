@@ -64,6 +64,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     request_connection_close_(false),
     request_expect_100_continue_(false),
     request_header_key_prev_(false),
+    request_http2_expect_body_(false),
     chunked_response_(false),
     response_connection_close_(false),
     response_header_key_prev_(false),
@@ -393,6 +394,11 @@ bool Downstream::get_chunked_request() const
   return chunked_request_;
 }
 
+void Downstream::set_chunked_request(bool f)
+{
+  chunked_request_ = f;
+}
+
 bool Downstream::get_request_connection_close() const
 {
   return request_connection_close_;
@@ -401,6 +407,16 @@ bool Downstream::get_request_connection_close() const
 void Downstream::set_request_connection_close(bool f)
 {
   request_connection_close_ = f;
+}
+
+bool Downstream::get_request_http2_expect_body() const
+{
+  return request_http2_expect_body_;
+}
+
+void Downstream::set_request_http2_expect_body(bool f)
+{
+  request_http2_expect_body_ = f;
 }
 
 bool Downstream::get_expect_100_continue() const

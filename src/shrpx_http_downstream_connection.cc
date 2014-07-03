@@ -164,6 +164,13 @@ int HttpDownstreamConnection::push_request_headers()
     hdrs += "\r\n";
   }
 
+  if(downstream_->get_request_http2_expect_body() &&
+     downstream_->get_norm_request_header("content-length") == end_headers) {
+
+    downstream_->set_chunked_request(true);
+    hdrs += "Transfer-Encoding: chunked\r\n";
+  }
+
   if(downstream_->get_request_connection_close()) {
     hdrs += "Connection: close\r\n";
   }

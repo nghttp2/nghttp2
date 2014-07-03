@@ -204,6 +204,10 @@ void on_ctrl_recv_callback
       downstream->set_request_path(path);
     }
 
+    if(!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
+      downstream->set_request_http2_expect_body(true);
+    }
+
     downstream->inspect_http2_request();
 
     if(LOG_ENABLED(INFO)) {

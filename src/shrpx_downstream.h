@@ -137,8 +137,11 @@ public:
   int get_request_minor() const;
   int push_request_headers();
   bool get_chunked_request() const;
+  void set_chunked_request(bool f);
   bool get_request_connection_close() const;
   void set_request_connection_close(bool f);
+  bool get_request_http2_expect_body() const;
+  void set_request_http2_expect_body(bool f);
   bool get_expect_100_continue() const;
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
@@ -274,6 +277,7 @@ private:
   bool request_connection_close_;
   bool request_expect_100_continue_;
   bool request_header_key_prev_;
+  bool request_http2_expect_body_;
 
   bool chunked_response_;
   bool response_connection_close_;

@@ -347,11 +347,6 @@ int Http2DownstreamConnection::push_request_headers()
 
   http2::copy_norm_headers_to_nva(nva, downstream_->get_request_headers());
 
-  bool content_length = false;
-  if(downstream_->get_norm_request_header("content-length") != end_headers) {
-    content_length = true;
-  }
-
   bool chunked_encoding = false;
   auto transfer_encoding =
     downstream_->get_norm_request_header("transfer-encoding");
@@ -414,7 +409,7 @@ int Http2DownstreamConnection::push_request_headers()
   }
 
   if(downstream_->get_request_method() == "CONNECT" ||
-     chunked_encoding || content_length) {
+     chunked_encoding || downstream_->get_request_http2_expect_body()) {
     // Request-body is expected.
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
