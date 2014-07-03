@@ -390,6 +390,19 @@ bool HttpDownstreamConnection::get_output_buffer_full()
 }
 
 namespace {
+int htp_msg_begincb(http_parser *htp)
+{
+  auto downstream = static_cast<Downstream*>(htp->data);
+
+  if(downstream->get_response_state() != Downstream::INITIAL) {
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
   auto downstream = static_cast<Downstream*>(htp->data);
@@ -498,7 +511,7 @@ int htp_msg_completecb(http_parser *htp)
 
 namespace {
 http_parser_settings htp_hooks = {
-  nullptr, // http_cb      on_message_begin;
+  htp_msg_begincb, // http_cb on_message_begin;
   nullptr, // http_data_cb on_url;
   nullptr, // http_data_cb on_status;
   htp_hdr_keycb, // http_data_cb on_header_field;
