@@ -67,8 +67,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     request_http2_expect_body_(false),
     chunked_response_(false),
     response_connection_close_(false),
-    response_header_key_prev_(false),
-    rst_stream_after_end_stream_(false)
+    response_header_key_prev_(false)
 {}
 
 Downstream::~Downstream()
@@ -794,16 +793,6 @@ void Downstream::set_response_rst_stream_error_code
 (nghttp2_error_code error_code)
 {
   response_rst_stream_error_code_ = error_code;
-}
-
-bool Downstream::get_rst_stream_after_end_stream() const
-{
-  return rst_stream_after_end_stream_;
-}
-
-void Downstream::set_rst_stream_after_end_stream(bool f)
-{
-  rst_stream_after_end_stream_ = f;
 }
 
 } // namespace shrpx

@@ -1013,9 +1013,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     if(!downstream->get_upgraded()) {
       *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
-      if(downstream->get_rst_stream_after_end_stream() &&
-         downstream->get_request_state() != Downstream::MSG_COMPLETE) {
-
+      if(nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
         upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
       }
     } else {
@@ -1078,8 +1076,6 @@ int Http2Upstream::error_reply(Downstream *downstream,
     upstream_response(get_client_handler()->get_ipaddr(),
                       status_code, downstream);
   }
-
-  downstream->set_rst_stream_after_end_stream(true);
 
   return 0;
 }

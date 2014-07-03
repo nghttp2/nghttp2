@@ -1995,6 +1995,25 @@ int32_t nghttp2_session_get_effective_local_window_size
 int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session* session,
                                                       int32_t stream_id);
 
+
+/**
+ * @function
+ *
+ * Returns 1 if local peer half closed the given stream |stream_id|.
+ * Returns 0 if it did not.  Returns -1 if no such stream exists.
+ */
+int nghttp2_session_get_stream_local_close(nghttp2_session* session,
+                                           int32_t stream_id);
+
+/**
+ * @function
+ *
+ * Returns 1 if remote peer half closed the given stream |stream_id|.
+ * Returns 0 if it did not.  Returns -1 if no such stream exists.
+ */
+int nghttp2_session_get_stream_remote_close(nghttp2_session* session,
+                                            int32_t stream_id);
+
 /**
  * @function
  *
