@@ -76,6 +76,7 @@ struct Config {
   bool verify_client;
   bool no_tls;
   bool error_gzip;
+  bool early_response;
   Config();
 };
 

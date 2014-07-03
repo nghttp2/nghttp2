@@ -113,7 +113,8 @@ Config::Config()
     daemon(false),
     verify_client(false),
     no_tls(false),
-    error_gzip(false)
+    error_gzip(false),
+    early_response(false)
 {}
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
@@ -961,16 +962,21 @@ ssize_t file_read_callback
   while((nread = read(fd, buf, length)) == -1 && errno == EINTR);
 
   if(nread == -1) {
-    if(stream) {
-      remove_stream_read_timeout(stream);
-      remove_stream_write_timeout(stream);
-    }
+    remove_stream_read_timeout(stream);
+    remove_stream_write_timeout(stream);
 
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
   if(nread == 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
+    if(nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
+      remove_stream_read_timeout(stream);
+      remove_stream_write_timeout(stream);
+
+      hd->submit_rst_stream(stream, NGHTTP2_NO_ERROR);
+    }
   }
 
   return nread;
@@ -1215,8 +1221,9 @@ int hd_on_frame_recv_callback
 
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
-
-      prepare_response(stream, hd);
+      if(!hd->get_config()->early_response) {
+        prepare_response(stream, hd);
+      }
     } else {
       add_stream_read_timeout(stream);
     }
@@ -1250,12 +1257,17 @@ int hd_on_frame_recv_callback
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
+
+      if(hd->get_config()->early_response) {
+        prepare_response(stream, hd);
+      }
     }
 
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
-
-      prepare_response(stream, hd);
+      if(!hd->get_config()->early_response) {
+        prepare_response(stream, hd);
+      }
     } else {
       add_stream_read_timeout(stream);
     }

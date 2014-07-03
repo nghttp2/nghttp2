@@ -137,6 +137,9 @@ Options:
                      Path to  file that contains DH  parameters in PEM
                      format.  Without  this option, DHE  cipher suites
                      are not available.
+  --early-response   Start  sending response  when request  HEADERS is
+                     received,   rather  than   complete  request   is
+                     received.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)"
       << std::endl;
@@ -164,6 +167,7 @@ int main(int argc, char **argv)
       {"color", no_argument, &flag, 2},
       {"version", no_argument, &flag, 3},
       {"dh-param-file", required_argument, &flag, 4},
+      {"early-response", no_argument, &flag, 5},
       {nullptr, 0, nullptr, 0}
     };
     int option_index = 0;
@@ -241,6 +245,10 @@ int main(int argc, char **argv)
       case 4:
         // dh-param-file
         config.dh_param_file = optarg;
+        break;
+      case 5:
+        // early-response
+        config.early_response = true;
         break;
       }
       break;
