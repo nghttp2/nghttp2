@@ -408,8 +408,12 @@ int Http2DownstreamConnection::push_request_headers()
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }
 
+  auto content_length =
+    downstream_->get_norm_request_header("content-length") != end_headers;
+
   if(downstream_->get_request_method() == "CONNECT" ||
-     chunked_encoding || downstream_->get_request_http2_expect_body()) {
+     chunked_encoding || content_length ||
+     downstream_->get_request_http2_expect_body()) {
     // Request-body is expected.
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;
