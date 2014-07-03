@@ -100,6 +100,7 @@ struct Config {
   bool stat;
   bool upgrade;
   bool continuation;
+  bool no_content_length;
 
   Config()
     : output_upper_thres(1024*1024),
@@ -117,7 +118,8 @@ struct Config {
       get_assets(false),
       stat(false),
       upgrade(false),
-      continuation(false)
+      continuation(false),
+      no_content_length(false)
   {
     nghttp2_option_new(&http2_option);
     nghttp2_option_set_peer_max_concurrent_streams
@@ -1019,7 +1021,7 @@ int submit_request
     }
   }
   auto num_initial_headers = build_headers.size();
-  if(req->data_prd) {
+  if(!config.no_content_length && req->data_prd) {
     build_headers.emplace_back("content-length", util::utos(req->data_length));
   }
   for(auto& kv : headers) {
@@ -1875,6 +1877,8 @@ Options:
                      padding.  Specify 0 to disable padding.
   --color            Force colored log output.
   --continuation     Send large header to test CONTINUATION.
+  --no-content-length
+                     Don't send content-length header field.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)"
       << std::endl;
@@ -1909,6 +1913,7 @@ int main(int argc, char **argv)
       {"color", no_argument, &flag, 3},
       {"continuation", no_argument, &flag, 4},
       {"version", no_argument, &flag, 5},
+      {"no-content-length", no_argument, &flag, 6},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -2053,6 +2058,10 @@ int main(int argc, char **argv)
         // version option
         print_version(std::cout);
         exit(EXIT_SUCCESS);
+      case 6:
+        // no-content-length option
+        config.no_content_length = true;
+        break;
       }
       break;
     default:
