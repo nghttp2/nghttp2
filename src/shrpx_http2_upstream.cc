@@ -539,12 +539,14 @@ namespace {
 nghttp2_error_code infer_upstream_rst_stream_error_code
 (nghttp2_error_code downstream_error_code)
 {
-  // Only propagate NGHTTP2_REFUSED_STREAM so that upstream client
-  // can resend request.
-  if(downstream_error_code != NGHTTP2_REFUSED_STREAM) {
-    return NGHTTP2_INTERNAL_ERROR;
-  } else {
+  // NGHTTP2_REFUSED_STREAM is important because it tells upstream
+  // client to retry.
+  switch(downstream_error_code) {
+  case NGHTTP2_NO_ERROR:
+  case NGHTTP2_REFUSED_STREAM:
     return downstream_error_code;
+  default:
+    return NGHTTP2_INTERNAL_ERROR;
   }
 }
 } // namespace
