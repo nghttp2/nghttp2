@@ -1036,7 +1036,14 @@ int on_frame_recv_callback
     break;
   }
   case NGHTTP2_HEADERS:
-    return on_response_headers(http2session, session, frame);
+    if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
+      rv = on_response_headers(http2session, session, frame);
+
+      if(rv != 0) {
+        return rv;
+      }
+    }
+    break;
   case NGHTTP2_RST_STREAM: {
     auto sd = static_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
