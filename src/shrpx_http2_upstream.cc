@@ -906,7 +906,7 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
       // stream, we don't have to do anything since response was
       // complete.
       if(downstream->get_upgraded()) {
-        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
       }
     } else {
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
@@ -1022,8 +1022,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
         ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
                              << stream_id;
       }
-      upstream->rst_stream(downstream, infer_upstream_rst_stream_error_code
-                           (downstream->get_response_rst_stream_error_code()));
+      upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
     }
   }
 
