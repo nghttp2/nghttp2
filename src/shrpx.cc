@@ -362,6 +362,7 @@ int event_loop()
   // After that, we drop the root privileges if needed.
   drop_privileges();
 
+#ifndef NOTHREADS
   sigset_t signals;
   sigemptyset(&signals);
   sigaddset(&signals, REOPEN_LOG_SIGNAL);
@@ -370,6 +371,7 @@ int event_loop()
   if(rv != 0) {
     LOG(ERROR) << "Blocking REOPEN_LOG_SIGNAL failed: " << strerror(rv);
   }
+#endif // !NOTHREADS
 
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
@@ -377,10 +379,12 @@ int event_loop()
     listener_handler->create_http2_session();
   }
 
+#ifndef NOTHREADS
   rv = pthread_sigmask(SIG_UNBLOCK, &signals, nullptr);
   if(rv != 0) {
     LOG(ERROR) << "Unblocking REOPEN_LOG_SIGNAL failed: " << strerror(rv);
   }
+#endif // !NOTHREADS
 
   auto reopen_log_signal_event = evsignal_new(evbase, REOPEN_LOG_SIGNAL,
                                               reopen_log_signal_cb,
@@ -1013,7 +1017,7 @@ int main(int argc, char **argv)
       break;
     case 'n':
 #ifdef NOTHREADS
-	  LOG(WARNING) << "Threading disabled at build time, no threads created.";
+      LOG(WARNING) << "Threading disabled at build time, no threads created.";
 #else
       cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
 #endif // NOTHREADS
