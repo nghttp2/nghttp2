@@ -57,28 +57,6 @@ const char *SEVERITY_COLOR[] = {
 };
 } // namespace
 
-namespace {
-std::string get_datestr()
-{
-  return "";
-  // Format data like this:
-  // 03/Jul/2014:00:19:38 +0900
-  char buf[64];
-  struct tm tms;
-  auto now = time(nullptr);
-
-  if(localtime_r(&now, &tms) == nullptr) {
-    return "";
-  }
-
-  if(strftime(buf, sizeof(buf), "%d/%b/%Y:%T %z", &tms) == 0) {
-    return "";
-  }
-
-  return buf;
-}
-} // namespace
-
 int Log::severity_thres_ = WARNING;
 
 void Log::set_severity_level(int severity)
@@ -141,7 +119,7 @@ Log::~Log()
 
   rv = snprintf(buf, sizeof(buf),
                 "%s [%s%s%s] %s\n       %s(%s:%d)%s\n",
-                get_datestr().c_str(),
+                get_config()->cached_time,
                 tty ? SEVERITY_COLOR[severity_] : "",
                 SEVERITY_STR[severity_],
                 tty ? "\033[0m" : "",
@@ -201,7 +179,7 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
 
   rv = snprintf(buf, sizeof(buf), fmt,
                 client_ip.c_str(),
-                get_datestr().c_str(),
+                get_config()->cached_time,
                 method,
                 path,
                 major,

@@ -276,6 +276,45 @@ void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg)
 } // namespace
 
 namespace {
+char time_cache_buf[2][64];
+size_t time_cache_buf_idx = 0;
+} // namespace
+
+namespace {
+const char* cache_time(size_t idx)
+{
+  auto buf = time_cache_buf[idx];
+
+  buf[0] = '\0';
+
+  // Format data like this:
+  // 03/Jul/2014:00:19:38 +0900
+  struct tm tms;
+  auto now = time(nullptr);
+
+  if(localtime_r(&now, &tms) == nullptr) {
+    return buf;
+  }
+
+  if(strftime(buf, sizeof(time_cache_buf[0]), "%d/%b/%Y:%T %z", &tms) == 0) {
+    buf[0] = '\0';
+
+    return buf;
+  }
+
+  return buf;
+}
+} // namespace
+
+namespace {
+void refresh_cb(evutil_socket_t sig, short events, void *arg)
+{
+  time_cache_buf_idx ^= 1;
+  mod_config()->cached_time = cache_time(time_cache_buf_idx);
+}
+} // namespace
+
+namespace {
 int event_loop()
 {
   int rv;
@@ -356,11 +395,32 @@ int event_loop()
     }
   }
 
+  auto refresh_event = event_new(evbase, -1, EV_PERSIST, refresh_cb,
+                                 nullptr);
+
+  if(!refresh_event) {
+    LOG(ERROR) << "event_new failed";
+
+    exit(EXIT_FAILURE);
+  }
+
+  timeval refresh_timeout = { 1, 0 };
+  rv = event_add(refresh_event, &refresh_timeout);
+
+  if(rv == -1) {
+    LOG(ERROR) << "Adding refresh_event failed";
+
+    exit(EXIT_FAILURE);
+  }
+
   if(LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
   }
   event_base_loop(evbase, 0);
 
+  if(refresh_event) {
+    event_free(refresh_event);
+  }
   if(reopen_log_signal_event) {
     event_free(reopen_log_signal_event);
   }
@@ -505,6 +565,7 @@ void fill_default_config()
     (mod_config()->http2_option, 1);
 
   mod_config()->tls_proto_mask = 0;
+  mod_config()->cached_time = cache_time(time_cache_buf_idx);
 }
 } // namespace
 
