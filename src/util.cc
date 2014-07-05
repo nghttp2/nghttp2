@@ -590,7 +590,7 @@ bool numeric_host(const char *hostname)
 int reopen_log_file(const char *path)
 {
   auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT,
-                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+                 S_IRUSR | S_IWUSR | S_IRGRP);
 
   if(fd == -1) {
     return -1;
