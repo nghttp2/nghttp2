@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2014 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,21 +22,25 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_ACCESSLOG_H
-#define SHRPX_ACCESSLOG_H
+#ifndef SHRPX_WORKER_CONFIG_H
+#define SHRPX_WORKER_CONFIG_H
 
 #include "shrpx.h"
 
-#include <stdint.h>
-
 namespace shrpx {
 
-class Downstream;
+struct WorkerConfig {
+  int accesslog_fd;
+  int errorlog_fd;
+  // true if errorlog_fd is referring to a terminal.
+  bool errorlog_tty;
 
-void upstream_connect(const std::string& client_ip);
-void upstream_response(const std::string& client_ip, unsigned int status_code,
-                       Downstream *downstream);
+  WorkerConfig();
+};
+
+// We need WorkerConfig per thread
+extern thread_local WorkerConfig worker_config;
 
 } // namespace shrpx
 
-#endif // SHRPX_LOG_H
+#endif // SHRPX_WORKER_CONFIG_H

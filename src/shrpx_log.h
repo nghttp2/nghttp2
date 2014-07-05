@@ -31,6 +31,8 @@
 
 namespace shrpx {
 
+class Downstream;
+
 #define ENABLE_LOG 1
 
 #define LOG_ENABLED(SEVERITY) (ENABLE_LOG && Log::log_enabled(SEVERITY))
@@ -95,8 +97,13 @@ private:
   static int severity_thres_;
 };
 
-#define TTY_HTTP_HD (get_config()->tty ? "\033[1;34m" : "")
-#define TTY_RST (get_config()->tty ? "\033[0m" : "")
+#define TTY_HTTP_HD (worker_config.errorlog_tty ? "\033[1;34m" : "")
+#define TTY_RST (worker_config.errorlog_tty ? "\033[0m" : "")
+
+void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
+                        Downstream *downstream);
+
+int reopen_log_files();
 
 } // namespace shrpx
 

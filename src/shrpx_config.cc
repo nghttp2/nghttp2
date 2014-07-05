@@ -74,7 +74,10 @@ const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[] = "frontend-read-timeout";
 const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[] = "frontend-write-timeout";
 const char SHRPX_OPT_BACKEND_READ_TIMEOUT[] = "backend-read-timeout";
 const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[] = "backend-write-timeout";
-const char SHRPX_OPT_ACCESSLOG[] = "accesslog";
+const char SHRPX_OPT_ACCESSLOG_FILE[] = "accesslog-file";
+const char SHRPX_OPT_ACCESSLOG_SYSLOG[] = "accesslog-syslog";
+const char SHRPX_OPT_ERRORLOG_FILE[] = "errorlog-file";
+const char SHRPX_OPT_ERRORLOG_SYSLOG[] = "errorlog-syslog";
 const char
 SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] = "backend-keep-alive-timeout";
 const char
@@ -89,7 +92,6 @@ const char SHRPX_OPT_BACKEND_NO_TLS[] = "backend-no-tls";
 const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[] = "backend-tls-sni-field";
 const char SHRPX_OPT_PID_FILE[] = "pid-file";
 const char SHRPX_OPT_USER[] = "user";
-const char SHRPX_OPT_SYSLOG[] = "syslog";
 const char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
 const char SHRPX_OPT_BACKLOG[] = "backlog";
 const char SHRPX_OPT_CIPHERS[] = "ciphers";
@@ -401,8 +403,26 @@ int parse_config(const char *opt, const char *optarg)
     return 0;
   }
 
-  if(util::strieq(opt, SHRPX_OPT_ACCESSLOG)) {
-    mod_config()->accesslog = util::strieq(optarg, "yes");
+  if(util::strieq(opt, SHRPX_OPT_ACCESSLOG_FILE)) {
+    mod_config()->accesslog_file = strcopy(optarg);
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_ACCESSLOG_SYSLOG)) {
+    mod_config()->accesslog_syslog = util::strieq(optarg, "yes");
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_ERRORLOG_FILE)) {
+    mod_config()->errorlog_file = strcopy(optarg);
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_ERRORLOG_SYSLOG)) {
+    mod_config()->errorlog_syslog = util::strieq(optarg, "yes");
 
     return 0;
   }
@@ -536,12 +556,6 @@ int parse_config(const char *opt, const char *optarg)
       // TODO Do we need private key for subcert?
       mod_config()->subcerts.emplace_back(keyfile, sp+1);
     }
-
-    return 0;
-  }
-
-  if(util::strieq(opt, SHRPX_OPT_SYSLOG)) {
-    mod_config()->syslog = util::strieq(optarg, "yes");
 
     return 0;
   }

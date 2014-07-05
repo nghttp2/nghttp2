@@ -40,6 +40,7 @@ namespace shrpx {
 
 Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
   : request_bodylen_(0),
+    response_bodylen_(0),
     upstream_(upstream),
     dconn_(nullptr),
     response_body_buf_(nullptr),
@@ -408,6 +409,16 @@ void Downstream::set_request_connection_close(bool f)
   request_connection_close_ = f;
 }
 
+void Downstream::set_request_user_agent(std::string user_agent)
+{
+  request_user_agent_ = std::move(user_agent);
+}
+
+const std::string& Downstream::get_request_user_agent() const
+{
+  return request_user_agent_;
+}
+
 bool Downstream::get_request_http2_expect_body() const
 {
   return request_http2_expect_body_;
@@ -673,6 +684,16 @@ int Downstream::init_response_body_buf()
 evbuffer* Downstream::get_response_body_buf()
 {
   return response_body_buf_;
+}
+
+void Downstream::add_response_bodylen(size_t amount)
+{
+  response_bodylen_ += amount;
+}
+
+int64_t Downstream::get_response_bodylen() const
+{
+  return response_bodylen_;
 }
 
 void Downstream::set_priority(int32_t pri)

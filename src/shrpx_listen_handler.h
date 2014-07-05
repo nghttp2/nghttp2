@@ -56,6 +56,7 @@ public:
   ~ListenHandler();
   int accept_connection(evutil_socket_t fd, sockaddr *addr, int addrlen);
   void create_worker_thread(size_t num);
+  void worker_reopen_log_files();
   event_base* get_evbase() const;
   int create_http2_session();
 private:
@@ -70,7 +71,6 @@ private:
   std::unique_ptr<Http2Session> http2session_;
   bufferevent_rate_limit_group *rate_limit_group_;
   std::unique_ptr<WorkerStat> worker_stat_;
-  size_t num_worker_;
   unsigned int worker_round_robin_cnt_;
 };
 

@@ -48,7 +48,6 @@
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
-#include "shrpx_accesslog.h"
 #include "shrpx_worker.h"
 #include "util.h"
 #include "ssl.h"
@@ -474,10 +473,6 @@ ClientHandler* accept_connection
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
 
     return nullptr;
-  }
-
-  if(get_config()->accesslog) {
-    upstream_connect(host);
   }
 
   int val = 1;

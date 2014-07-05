@@ -478,6 +478,11 @@ private:
 
 bool numeric_host(const char *hostname);
 
+// Opens |path| with O_APPEND enabled.  If file does not exist, it is
+// created first.  This function returns file descriptor referring the
+// opened file if it succeeds, or -1.
+int reopen_log_file(const char *path);
+
 } // namespace util
 
 } // namespace nghttp2

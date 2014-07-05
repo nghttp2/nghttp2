@@ -36,16 +36,17 @@
 #include "shrpx_thread_event_receiver.h"
 #include "shrpx_log.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_worker_config.h"
 #include "util.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
-Worker::Worker(WorkerInfo *info)
-  : sv_ssl_ctx_(info->sv_ssl_ctx),
-    cl_ssl_ctx_(info->cl_ssl_ctx),
-    fd_(info->sv[1])
+Worker::Worker(const WorkerInfo& info)
+  : sv_ssl_ctx_(info.sv_ssl_ctx),
+    cl_ssl_ctx_(info.cl_ssl_ctx),
+    fd_(info.sv[1])
 {}
 
 Worker::~Worker()
@@ -76,6 +77,8 @@ void eventcb(bufferevent *bev, short events, void *arg)
 
 void Worker::run()
 {
+  (void)reopen_log_files();
+
   auto evbase = std::unique_ptr<event_base, decltype(&event_base_free)>
     (event_base_new(), event_base_free);
   if(!evbase) {
@@ -105,7 +108,7 @@ void Worker::run()
   event_base_loop(evbase.get(), 0);
 }
 
-void start_threaded_worker(WorkerInfo *info)
+void start_threaded_worker(WorkerInfo info)
 {
   Worker worker(info);
   worker.run();

@@ -28,6 +28,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <cassert>
 #include <cstdio>
@@ -583,6 +585,18 @@ bool numeric_host(const char *hostname)
   }
   freeaddrinfo(res);
   return true;
+}
+
+int reopen_log_file(const char *path)
+{
+  auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT,
+                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+  if(fd == -1) {
+    return -1;
+  }
+
+  return fd;
 }
 
 } // namespace util

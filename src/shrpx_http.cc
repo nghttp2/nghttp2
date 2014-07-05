@@ -26,6 +26,7 @@
 
 #include "shrpx_config.h"
 #include "shrpx_log.h"
+#include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
 

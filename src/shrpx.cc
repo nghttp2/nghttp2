@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <syslog.h>
+#include <signal.h>
 
 #include <limits>
 #include <cstdlib>
@@ -52,6 +53,7 @@
 #include "shrpx_config.h"
 #include "shrpx_listen_handler.h"
 #include "shrpx_ssl.h"
+#include "shrpx_worker_config.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -59,6 +61,10 @@
 using namespace nghttp2;
 
 namespace shrpx {
+
+namespace {
+const int REOPEN_LOG_SIGNAL = SIGUSR1;
+} // namespace
 
 namespace {
 void ssl_acceptcb(evconnlistener *listener, int fd,
@@ -253,8 +259,27 @@ void save_pid()
 } // namespace
 
 namespace {
+void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg)
+{
+  auto listener_handler = static_cast<ListenHandler*>(arg);
+
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Reopening log files: worker_info(" << &worker_config << ")";
+  }
+
+  (void)reopen_log_files();
+
+  if(get_config()->num_worker > 1) {
+    listener_handler->worker_reopen_log_files();
+  }
+}
+} // namespace
+
+namespace {
 int event_loop()
 {
+  int rv;
+
   auto evbase = event_base_new();
   if(!evbase) {
     LOG(FATAL) << "event_base_new() failed";
@@ -298,16 +323,47 @@ int event_loop()
   // After that, we drop the root privileges if needed.
   drop_privileges();
 
+  sigset_t signals;
+  sigemptyset(&signals);
+  sigaddset(&signals, REOPEN_LOG_SIGNAL);
+
+  rv = pthread_sigmask(SIG_BLOCK, &signals, nullptr);
+  if(rv != 0) {
+    LOG(ERROR) << "Blocking REOPEN_LOG_SIGNAL failed: " << strerror(rv);
+  }
+
   if(get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
   } else if(get_config()->downstream_proto == PROTO_HTTP2) {
     listener_handler->create_http2_session();
   }
 
+  rv = pthread_sigmask(SIG_UNBLOCK, &signals, nullptr);
+  if(rv != 0) {
+    LOG(ERROR) << "Unblocking REOPEN_LOG_SIGNAL failed: " << strerror(rv);
+  }
+
+  auto reopen_log_signal_event = evsignal_new(evbase, REOPEN_LOG_SIGNAL,
+                                              reopen_log_signal_cb,
+                                              listener_handler);
+
+  if(!reopen_log_signal_event) {
+    LOG(ERROR) << "evsignal_new failed";
+  } else {
+    rv = event_add(reopen_log_signal_event, nullptr);
+    if(rv < 0) {
+      LOG(ERROR) << "event_add for reopen_log_signal_event failed";
+    }
+  }
+
   if(LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
   }
   event_base_loop(evbase, 0);
+
+  if(reopen_log_signal_event) {
+    event_free(reopen_log_signal_event);
+  }
   if(evlistener4) {
     evconnlistener_free(evlistener4);
   }
@@ -399,11 +455,12 @@ void fill_default_config()
   mod_config()->http2_max_concurrent_streams = 100;
   mod_config()->add_x_forwarded_for = false;
   mod_config()->no_via = false;
-  mod_config()->accesslog = false;
+  mod_config()->accesslog_file = nullptr;
+  mod_config()->accesslog_syslog = false;
+  mod_config()->errorlog_file = strcopy("/dev/stderr");
+  mod_config()->errorlog_syslog = false;
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
-  mod_config()->syslog = false;
   mod_config()->syslog_facility = LOG_DAEMON;
-  mod_config()->use_syslog = false;
   // Default accept() backlog
   mod_config()->backlog = -1;
   mod_config()->ciphers = nullptr;
@@ -419,7 +476,6 @@ void fill_default_config()
   mod_config()->gid = 0;
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
-  mod_config()->tty = isatty(fileno(stderr));
   mod_config()->cert_tree = nullptr;
   mod_config()->downstream_http_proxy_userinfo = nullptr;
   mod_config()->downstream_http_proxy_host = nullptr;
@@ -719,8 +775,19 @@ Logging:
                      Set the  severity level  of log  output.  <LEVEL>
                      must be one of INFO, WARNING, ERROR and FATAL.
                      Default: WARNING
-  --accesslog        Print simple accesslog to stderr.
-  --syslog           Send log messages to syslog.
+  --accesslog-file=<PATH>
+                     Set path  to write  access log.  To  reopen file,
+                     send USR1 signal to nghttpx.
+  --accesslog-syslog
+                     Send  access log  to syslog.   If this  option is
+                     used, --access-file option is ignored.
+  --errorlog-file=<PATH>
+                     Set  path to  write error  log.  To  reopen file,
+                     send USR1 signal to nghttpx.
+                     Default: )"
+      << get_config()->errorlog_file.get() << R"(
+  --errorlog-syslog  Send  error log  to  syslog.  If  this option  is
+                     used, --errorlog-file option is ignored.
   --syslog-facility=<FACILITY>
                      Set syslog facility to <FACILITY>.
                      Default: )"
@@ -807,13 +874,12 @@ int main(int argc, char **argv)
       {"frontend-write-timeout", required_argument, &flag, 4},
       {"backend-read-timeout", required_argument, &flag, 5},
       {"backend-write-timeout", required_argument, &flag, 6},
-      {"accesslog", no_argument, &flag, 7},
+      {"accesslog-file", required_argument, &flag, 7},
       {"backend-keep-alive-timeout", required_argument, &flag, 8},
       {"frontend-http2-window-bits", required_argument, &flag, 9},
       {"pid-file", required_argument, &flag, 10},
       {"user", required_argument, &flag, 11},
       {"conf", required_argument, &flag, 12},
-      {"syslog", no_argument, &flag, 13},
       {"syslog-facility", required_argument, &flag, 14},
       {"backlog", required_argument, &flag, 15},
       {"ciphers", required_argument, &flag, 16},
@@ -850,6 +916,9 @@ int main(int argc, char **argv)
       {"altsvc", required_argument, &flag, 54},
       {"add-response-header", required_argument, &flag, 55},
       {"worker-frontend-connections", required_argument, &flag, 56},
+      {"accesslog-syslog", no_argument, &flag, 57},
+      {"errorlog-file", required_argument, &flag, 58},
+      {"errorlog-syslog", no_argument, &flag, 59},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -930,7 +999,7 @@ int main(int argc, char **argv)
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_WRITE_TIMEOUT, optarg);
         break;
       case 7:
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FILE, optarg);
         break;
       case 8:
         // --backend-keep-alive-timeout
@@ -949,10 +1018,6 @@ int main(int argc, char **argv)
       case 12:
         // --conf
         mod_config()->conf_path = strcopy(optarg);
-        break;
-      case 13:
-        // --syslog
-        cmdcfgs.emplace_back(SHRPX_OPT_SYSLOG, "yes");
         break;
       case 14:
         // --syslog-facility
@@ -1102,6 +1167,18 @@ int main(int argc, char **argv)
         // --worker-frontend-connections
         cmdcfgs.emplace_back(SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS, optarg);
         break;
+      case 57:
+        // --accesslog-syslog
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_SYSLOG, "yes");
+        break;
+      case 58:
+        // --errorlog-file
+        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_FILE, optarg);
+        break;
+      case 59:
+        // --errorlog-syslog
+        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_SYSLOG, "yes");
+        break;
       default:
         break;
       }
@@ -1140,11 +1217,14 @@ int main(int argc, char **argv)
     }
   }
 
-  if(get_config()->syslog) {
+  if(get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
     openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
             get_config()->syslog_facility);
-    mod_config()->use_syslog = true;
-    mod_config()->tty = false;
+  }
+
+  if(reopen_log_files() != 0) {
+    LOG(FATAL) << "Failed to open log file";
+    exit(EXIT_FAILURE);
   }
 
   if(get_config()->npn_list.empty()) {

@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2014 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,56 +22,17 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_THREAD_EVENT_RECEIVER_H
-#define SHRPX_THREAD_EVENT_RECEIVER_H
-
-#include "shrpx.h"
-
-#include <memory>
-
-#include <openssl/ssl.h>
-
-#include <event2/bufferevent.h>
-
-#include "shrpx_config.h"
+#include "shrpx_worker_config.h"
 
 namespace shrpx {
 
-class Http2Session;
-struct WorkerStat;
+WorkerConfig::WorkerConfig()
+  : accesslog_fd(-1),
+    errorlog_fd(-1),
+    errorlog_tty(false)
+{}
 
-enum WorkerEventType {
-  NEW_CONNECTION = 0x01,
-  REOPEN_LOG = 0x02
-};
-
-struct WorkerEvent {
-  WorkerEventType type;
-  union {
-    struct {
-      sockaddr_union client_addr;
-      size_t client_addrlen;
-      evutil_socket_t client_fd;
-    };
-  };
-};
-
-class ThreadEventReceiver {
-public:
-  ThreadEventReceiver(event_base *evbase, SSL_CTX *ssl_ctx,
-                      Http2Session *http2session);
-  ~ThreadEventReceiver();
-  void on_read(bufferevent *bev);
-private:
-  event_base *evbase_;
-  SSL_CTX *ssl_ctx_;
-  // Shared HTTP2 session for each thread. NULL if not client
-  // mode. Not deleted by this object.
-  Http2Session *http2session_;
-  bufferevent_rate_limit_group *rate_limit_group_;
-  std::unique_ptr<WorkerStat> worker_stat_;
-};
+thread_local WorkerConfig worker_config;
 
 } // namespace shrpx
 
-#endif // SHRPX_THREAD_EVENT_RECEIVER_H

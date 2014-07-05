@@ -40,6 +40,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
+#include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -1119,6 +1120,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     http2session->handle_ign_data_chunk(len);
     return 0;
   }
+
+  downstream->add_response_bodylen(len);
 
   auto upstream = downstream->get_upstream();
   rv = upstream->on_downstream_body(downstream, data, len, false);

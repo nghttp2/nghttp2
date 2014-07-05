@@ -30,6 +30,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_http.h"
+#include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
 
@@ -234,7 +235,7 @@ int HttpDownstreamConnection::push_request_headers()
   if(LOG_ENABLED(INFO)) {
     const char *hdrp;
     std::string nhdrs;
-    if(get_config()->tty) {
+    if(worker_config.errorlog_tty) {
       nhdrs = http::colorizeHeaders(hdrs.c_str());
       hdrp = nhdrs.c_str();
     } else {
@@ -492,6 +493,9 @@ namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len)
 {
   auto downstream = static_cast<Downstream*>(htp->data);
+
+  downstream->add_response_bodylen(len);
+
   return downstream->get_upstream()->on_downstream_body
     (downstream, reinterpret_cast<const uint8_t*>(data), len, true);
 }

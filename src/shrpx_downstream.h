@@ -140,6 +140,8 @@ public:
   void set_chunked_request(bool f);
   bool get_request_connection_close() const;
   void set_request_connection_close(bool f);
+  void set_request_user_agent(std::string user_agent);
+  const std::string& get_request_user_agent() const;
   bool get_request_http2_expect_body() const;
   void set_request_http2_expect_body(bool f);
   bool get_expect_100_continue() const;
@@ -207,6 +209,8 @@ public:
   int get_response_state() const;
   int init_response_body_buf();
   evbuffer* get_response_body_buf();
+  void add_response_bodylen(size_t amount);
+  int64_t get_response_bodylen() const;
   nghttp2_error_code get_response_rst_stream_error_code() const;
   void set_response_rst_stream_error_code(nghttp2_error_code error_code);
   // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
@@ -230,6 +234,7 @@ private:
 
   std::string request_method_;
   std::string request_path_;
+  std::string request_user_agent_;
   std::string request_http2_scheme_;
   std::string request_http2_authority_;
   std::string assembled_request_cookie_;
@@ -237,6 +242,8 @@ private:
 
   // the length of request body
   int64_t request_bodylen_;
+  // the length of response body
+  int64_t response_bodylen_;
 
   Upstream *upstream_;
   DownstreamConnection *dconn_;

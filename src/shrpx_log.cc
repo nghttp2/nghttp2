@@ -25,11 +25,20 @@
 #include "shrpx_log.h"
 
 #include <syslog.h>
+#include <unistd.h>
+#include <inttypes.h>
 
 #include <cstdio>
 #include <cstring>
+#include <ctime>
+#include <iostream>
 
 #include "shrpx_config.h"
+#include "shrpx_downstream.h"
+#include "shrpx_worker_config.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -46,6 +55,28 @@ const char *SEVERITY_COLOR[] = {
   "\033[1;31m", // ERROR
   "\033[1;35m", // FATAL
 };
+} // namespace
+
+namespace {
+std::string get_datestr()
+{
+  return "";
+  // Format data like this:
+  // 03/Jul/2014:00:19:38 +0900
+  char buf[64];
+  struct tm tms;
+  auto now = time(nullptr);
+
+  if(localtime_r(&now, &tms) == nullptr) {
+    return "";
+  }
+
+  if(strftime(buf, sizeof(buf), "%d/%b/%Y:%T %z", &tms) == 0) {
+    return "";
+  }
+
+  return buf;
+}
 } // namespace
 
 int Log::severity_thres_ = WARNING;
@@ -90,26 +121,163 @@ Log::Log(int severity, const char *filename, int linenum)
 
 Log::~Log()
 {
-  if(!log_enabled(severity_)) {
+  int rv;
+
+  if(!log_enabled(severity_) ||
+     (worker_config.errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
     return;
   }
 
-  if(get_config()->use_syslog) {
-    syslog(severity_to_syslog_level(severity_), "%s (%s:%d)",
-           stream_.str().c_str(), filename_, linenum_);
+  if(get_config()->errorlog_syslog) {
+    syslog(severity_to_syslog_level(severity_), "[%s] %s (%s:%d)",
+           SEVERITY_STR[severity_], stream_.str().c_str(),
+           filename_, linenum_);
 
     return;
   }
 
-  fprintf(stderr, "[%s%s%s] %s\n       %s(%s:%d)%s\n",
-          get_config()->tty ? SEVERITY_COLOR[severity_] : "",
-          SEVERITY_STR[severity_],
-          get_config()->tty ? "\033[0m" : "",
-          stream_.str().c_str(),
-          get_config()->tty ? "\033[1;30m" : "",
-          filename_, linenum_,
-          get_config()->tty ? "\033[0m" : "");
-  fflush(stderr);
+  char buf[4096];
+  auto tty = worker_config.errorlog_tty;
+
+  rv = snprintf(buf, sizeof(buf),
+                "%s [%s%s%s] %s\n       %s(%s:%d)%s\n",
+                get_datestr().c_str(),
+                tty ? SEVERITY_COLOR[severity_] : "",
+                SEVERITY_STR[severity_],
+                tty ? "\033[0m" : "",
+                stream_.str().c_str(),
+                tty ? "\033[1;30m" : "",
+                filename_, linenum_,
+                tty ? "\033[0m" : "");
+
+  if(rv < 0) {
+    return;
+  }
+
+  auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
+
+  write(worker_config.errorlog_fd, buf, nwrite);
+}
+
+void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
+                        Downstream *downstream)
+{
+  if(worker_config.accesslog_fd == -1 && !get_config()->accesslog_syslog) {
+    return;
+  }
+
+  char buf[1024];
+  int rv;
+
+  const char *path;
+  const char *method;
+  unsigned int major, minor;
+  const char *user_agent;
+  int64_t response_bodylen;
+
+  if(!downstream) {
+    path = "-";
+    method = "-";
+    major = 1;
+    minor = 0;
+    user_agent = "-";
+    response_bodylen = 0;
+  } else {
+    if(downstream->get_request_path().empty()) {
+      path = downstream->get_request_http2_authority().c_str();
+    } else {
+      path = downstream->get_request_path().c_str();
+    }
+
+    method = downstream->get_request_method().c_str();
+    major = downstream->get_request_major();
+    minor = downstream->get_request_minor();
+    user_agent = downstream->get_request_user_agent().c_str();
+    response_bodylen = downstream->get_response_bodylen();
+  }
+
+  static const char fmt[] =
+    "%s - - [%s] \"%s %s HTTP/%u.%u\" %u %" PRId64 " \"-\" \"%s\"\n";
+
+  rv = snprintf(buf, sizeof(buf), fmt,
+                client_ip.c_str(),
+                get_datestr().c_str(),
+                method,
+                path,
+                major,
+                minor,
+                status_code,
+                response_bodylen,
+                user_agent);
+
+  if(rv < 0) {
+    return;
+  }
+
+  auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
+
+  if(get_config()->accesslog_syslog) {
+    syslog(LOG_INFO, "%s", buf);
+
+    return;
+  }
+
+  write(worker_config.accesslog_fd, buf, nwrite);
+}
+
+int reopen_log_files()
+{
+  int res = 0;
+
+  if(worker_config.accesslog_fd != -1) {
+    close(worker_config.accesslog_fd);
+    worker_config.accesslog_fd = -1;
+  }
+
+  if(!get_config()->accesslog_syslog && get_config()->accesslog_file) {
+
+    worker_config.accesslog_fd =
+      util::reopen_log_file(get_config()->accesslog_file.get());
+
+    if(worker_config.accesslog_fd == -1) {
+      LOG(ERROR) << "Failed to open accesslog file "
+                 << get_config()->accesslog_file.get();
+      res = -1;
+    }
+  }
+
+  int new_errorlog_fd = -1;
+
+  if(!get_config()->errorlog_syslog && get_config()->errorlog_file) {
+
+    new_errorlog_fd = util::reopen_log_file(get_config()->errorlog_file.get());
+
+    if(new_errorlog_fd == -1) {
+      if(worker_config.errorlog_fd != -1) {
+        LOG(ERROR) << "Failed to open errorlog file "
+                   << get_config()->errorlog_file.get();
+      } else {
+        std::cerr << "Failed to open errorlog file "
+                  << get_config()->errorlog_file.get()
+                  << std::endl;
+      }
+
+      res = -1;
+    }
+  }
+
+  if(worker_config.errorlog_fd != -1) {
+    close(worker_config.errorlog_fd);
+    worker_config.errorlog_fd = -1;
+    worker_config.errorlog_tty = false;
+  }
+
+  if(new_errorlog_fd != -1) {
+    worker_config.errorlog_fd = new_errorlog_fd;
+    worker_config.errorlog_tty = isatty(worker_config.errorlog_fd);
+  }
+
+  return res;
 }
 
 } // namespace shrpx

@@ -52,7 +52,6 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
     rate_limit_group_(bufferevent_rate_limit_group_new
                       (evbase, get_config()->worker_rate_limit_cfg)),
     worker_stat_(util::make_unique<WorkerStat>()),
-    num_worker_(0),
     worker_round_robin_cnt_(0)
 {}
 
@@ -61,22 +60,33 @@ ListenHandler::~ListenHandler()
   bufferevent_rate_limit_group_free(rate_limit_group_);
 }
 
+void ListenHandler::worker_reopen_log_files()
+{
+  WorkerEvent wev;
+
+  memset(&wev, 0, sizeof(wev));
+  wev.type = REOPEN_LOG;
+
+  for(auto& info : workers_) {
+    bufferevent_write(info.bev, &wev, sizeof(wev));
+  }
+}
+
 void ListenHandler::create_worker_thread(size_t num)
 {
-  workers_.resize(num);
-  num_worker_ = 0;
+  workers_.resize(0);
   for(size_t i = 0; i < num; ++i) {
     int rv;
-    auto info = &workers_[num_worker_];
-    rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
+    auto info = WorkerInfo();
+    rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info.sv);
     if(rv == -1) {
       LLOG(ERROR, this) << "socketpair() failed: errno=" << errno;
       continue;
     }
-    evutil_make_socket_nonblocking(info->sv[0]);
-    evutil_make_socket_nonblocking(info->sv[1]);
-    info->sv_ssl_ctx = sv_ssl_ctx_;
-    info->cl_ssl_ctx = cl_ssl_ctx_;
+    evutil_make_socket_nonblocking(info.sv[0]);
+    evutil_make_socket_nonblocking(info.sv[1]);
+    info.sv_ssl_ctx = sv_ssl_ctx_;
+    info.cl_ssl_ctx = cl_ssl_ctx_;
     try {
       auto thread = std::thread{start_threaded_worker, info};
       thread.detach();
@@ -84,24 +94,26 @@ void ListenHandler::create_worker_thread(size_t num)
       LLOG(ERROR, this) << "Could not start thread: code=" << error.code()
                         << " msg=" << error.what();
       for(size_t j = 0; j < 2; ++j) {
-        close(info->sv[j]);
+        close(info.sv[j]);
       }
       continue;
     }
-    auto bev = bufferevent_socket_new(evbase_, info->sv[0],
+    auto bev = bufferevent_socket_new(evbase_, info.sv[0],
                                       BEV_OPT_DEFER_CALLBACKS);
     if(!bev) {
       LLOG(ERROR, this) << "bufferevent_socket_new() failed";
       for(size_t j = 0; j < 2; ++j) {
-        close(info->sv[j]);
+        close(info.sv[j]);
       }
       continue;
     }
-    info->bev = bev;
+    info.bev = bev;
+
+    workers_.push_back(info);
+
     if(LOG_ENABLED(INFO)) {
-      LLOG(INFO, this) << "Created thread #" << num_worker_;
+      LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
     }
-    ++num_worker_;
   }
 }
 
@@ -111,7 +123,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
   if(LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
-  if(num_worker_ == 0) {
+  if(get_config()->num_worker == 1) {
 
     if(worker_stat_->num_connections >=
        get_config()->worker_frontend_connections) {
@@ -138,10 +150,11 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     client->set_http2_session(http2session_.get());
     return 0;
   }
-  size_t idx = worker_round_robin_cnt_ % num_worker_;
+  size_t idx = worker_round_robin_cnt_ % workers_.size();
   ++worker_round_robin_cnt_;
   WorkerEvent wev;
   memset(&wev, 0, sizeof(wev));
+  wev.type = NEW_CONNECTION;
   wev.client_fd = fd;
   memcpy(&wev.client_addr, addr, addrlen);
   wev.client_addrlen = addrlen;

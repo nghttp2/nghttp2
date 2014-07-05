@@ -70,7 +70,10 @@ extern const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[];
 extern const char SHRPX_OPT_BACKEND_READ_TIMEOUT[];
 extern const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[];
-extern const char SHRPX_OPT_ACCESSLOG[];
+extern const char SHRPX_OPT_ACCESSLOG_FILE[];
+extern const char SHRPX_OPT_ACCESSLOG_SYSLOG[];
+extern const char SHRPX_OPT_ERRORLOG_FILE[];
+extern const char SHRPX_OPT_ERRORLOG_SYSLOG[];
 extern const char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS[];
 extern const char SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS[];
@@ -80,7 +83,6 @@ extern const char SHRPX_OPT_FRONTEND_NO_TLS[];
 extern const char SHRPX_OPT_BACKEND_NO_TLS[];
 extern const char SHRPX_OPT_PID_FILE[];
 extern const char SHRPX_OPT_USER[];
-extern const char SHRPX_OPT_SYSLOG[];
 extern const char SHRPX_OPT_SYSLOG_FACILITY[];
 extern const char SHRPX_OPT_BACKLOG[];
 extern const char SHRPX_OPT_CIPHERS[];
@@ -192,6 +194,8 @@ struct Config {
   std::unique_ptr<char[]> verify_client_cacert;
   std::unique_ptr<char[]> client_private_key_file;
   std::unique_ptr<char[]> client_cert_file;
+  std::unique_ptr<char[]> accesslog_file;
+  std::unique_ptr<char[]> errorlog_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_option *http2_option;
@@ -235,20 +239,18 @@ struct Config {
   bool client_proxy;
   bool add_x_forwarded_for;
   bool no_via;
-  bool accesslog;
   bool upstream_no_tls;
   bool downstream_no_tls;
-  bool syslog;
-  // This member finally decides syslog is used or not
-  bool use_syslog;
+  // Send accesslog to syslog, ignoring accesslog_file.
+  bool accesslog_syslog;
+  // Send errorlog to syslog, ignoring errorlog_file.
+  bool errorlog_syslog;
   bool client;
   // true if --client or --client-proxy are enabled.
   bool client_mode;
   bool insecure;
   bool backend_ipv4;
   bool backend_ipv6;
-  // true if stderr refers to a terminal and syslog is not used
-  bool tty;
   bool http2_no_cookie_crumbling;
   bool upstream_frame_debug;
 };
