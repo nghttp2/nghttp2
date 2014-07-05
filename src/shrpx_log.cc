@@ -118,8 +118,9 @@ Log::~Log()
   auto tty = worker_config.errorlog_tty;
 
   rv = snprintf(buf, sizeof(buf),
-                "%s [%s%s%s] %s\n       %s(%s:%d)%s\n",
+                "%s PID%d [%s%s%s] %s\n    %s(%s:%d)%s\n",
                 get_config()->cached_time,
+                getpid(),
                 tty ? SEVERITY_COLOR[severity_] : "",
                 SEVERITY_STR[severity_],
                 tty ? "\033[0m" : "",
