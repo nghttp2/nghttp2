@@ -171,6 +171,9 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
     major = downstream->get_request_major();
     minor = downstream->get_request_minor();
     user_agent = downstream->get_request_user_agent().c_str();
+    if(!user_agent[0]) {
+      user_agent = "-";
+    }
     response_bodylen = downstream->get_response_bodylen();
   }
 
