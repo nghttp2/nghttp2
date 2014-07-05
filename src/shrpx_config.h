@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <vector>
 #include <memory>
+#include <atomic>
 
 #include <event.h>
 #include <openssl/ssl.h>
@@ -199,7 +200,7 @@ struct Config {
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_option *http2_option;
-  volatile const char *cached_time;
+  std::atomic<const char*> cached_time;
   size_t downstream_addrlen;
   size_t num_worker;
   size_t http2_max_concurrent_streams;

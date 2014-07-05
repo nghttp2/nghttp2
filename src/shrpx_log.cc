@@ -119,7 +119,7 @@ Log::~Log()
 
   rv = snprintf(buf, sizeof(buf),
                 "%s PID%d [%s%s%s] %s\n    %s(%s:%d)%s\n",
-                get_config()->cached_time,
+                get_config()->cached_time.load(std::memory_order_acquire),
                 getpid(),
                 tty ? SEVERITY_COLOR[severity_] : "",
                 SEVERITY_STR[severity_],
@@ -183,7 +183,7 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
 
   rv = snprintf(buf, sizeof(buf), fmt,
                 client_ip.c_str(),
-                get_config()->cached_time,
+                get_config()->cached_time.load(std::memory_order_acquire),
                 method,
                 path,
                 major,

@@ -569,7 +569,8 @@ void fill_default_config()
     (mod_config()->http2_option, 1);
 
   mod_config()->tls_proto_mask = 0;
-  mod_config()->cached_time = cache_time(time_cache_buf_idx);
+  mod_config()->cached_time.store(cache_time(time_cache_buf_idx),
+                                  std::memory_order_release);
 }
 } // namespace
 
