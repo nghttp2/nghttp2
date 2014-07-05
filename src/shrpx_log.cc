@@ -197,7 +197,7 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
   }
 
   static const char fmt[] =
-    "%s - - [%s] \"%s %s HTTP/%u.%u\" %u %" PRId64 " \"-\" \"%s\"\n";
+    "%s - - [%s] \"%s %s HTTP/%u.%u\" %u %lld \"-\" \"%s\"\n";
 
   rv = snprintf(buf, sizeof(buf), fmt,
                 client_ip.c_str(),
@@ -207,7 +207,7 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
                 major,
                 minor,
                 status_code,
-                response_bodylen,
+                (long long int)response_bodylen,
                 user_agent);
 
   if(rv < 0) {
