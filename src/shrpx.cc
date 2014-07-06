@@ -139,7 +139,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
 {
   addrinfo hints;
   int fd = -1;
-  int r;
+  int rv;
 
   auto service = util::utos(get_config()->port);
   memset(&hints, 0, sizeof(addrinfo));
@@ -154,14 +154,14 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
     nullptr : get_config()->host.get();
 
   addrinfo *res, *rp;
-  r = getaddrinfo(node, service.c_str(), &hints, &res);
-  if(r != 0) {
+  rv = getaddrinfo(node, service.c_str(), &hints, &res);
+  if(rv != 0) {
     if(LOG_ENABLED(INFO)) {
       LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
                 << " address for " << get_config()->host.get() << ": "
-                << gai_strerror(r);
+                << gai_strerror(rv);
     }
-    return NULL;
+    return nullptr;
   }
   for(rp = res; rp; rp = rp->ai_next) {
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -189,28 +189,31 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
     }
     close(fd);
   }
-  if(rp) {
-    char host[NI_MAXHOST];
-    r = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host),
-                        0, 0, NI_NUMERICHOST);
-    if(r == 0) {
-      if(LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Listening on " << host << ", port "
-                  << get_config()->port;
-      }
-    } else {
-      LOG(FATAL) << gai_strerror(r);
-      DIE();
-    }
+
+  if(!rp) {
+    LOG(WARNING) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
+                 << " socket failed";
+
+    return nullptr;
   }
+
+  char host[NI_MAXHOST];
+  rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host),
+                   nullptr, 0, NI_NUMERICHOST);
+
+  if(rv != 0) {
+    LOG(WARNING) << gai_strerror(rv);
+
+    close(fd);
+
+    return nullptr;
+  }
+
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Listening on " << host << ", port " << get_config()->port;
+  }
+
   freeaddrinfo(res);
-  if(rp == 0) {
-    if(LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
-                << " socket failed";
-    }
-    return 0;
-  }
 
   auto evlistener = evconnlistener_new
     (handler->get_evbase(),
