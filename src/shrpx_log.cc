@@ -120,16 +120,16 @@ Log::~Log()
   auto cached_time = get_config()->cached_time;
 
   rv = snprintf(buf, sizeof(buf),
-                "%s PID%d [%s%s%s] %s\n    %s(%s:%d)%s\n",
+                "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
                 cached_time->c_str(),
                 getpid(),
                 tty ? SEVERITY_COLOR[severity_] : "",
                 SEVERITY_STR[severity_],
                 tty ? "\033[0m" : "",
-                stream_.str().c_str(),
                 tty ? "\033[1;30m" : "",
                 filename_, linenum_,
-                tty ? "\033[0m" : "");
+                tty ? "\033[0m" : "",
+                stream_.str().c_str());
 
   if(rv < 0) {
     return;
