@@ -153,6 +153,7 @@ struct Config {
   std::vector<AltSvc> altsvcs;
   std::vector<std::pair<std::string, std::string>> add_response_headers;
   std::vector<unsigned char> alpn_prefs;
+  std::shared_ptr<std::string> cached_time;
   sockaddr_union downstream_addr;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
@@ -200,7 +201,6 @@ struct Config {
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_option *http2_option;
-  std::atomic<const char*> cached_time;
   size_t downstream_addrlen;
   size_t num_worker;
   size_t http2_max_concurrent_streams;
