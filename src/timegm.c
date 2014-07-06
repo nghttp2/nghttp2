@@ -69,7 +69,7 @@ time_t timegm(struct tm *tm)
       return -1;
     }
   }
-  return t;
+  return (time_t)t;
 }
 
 #endif /* !HAVE_TIMEGM */

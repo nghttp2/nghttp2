@@ -36,6 +36,11 @@ PATH=$TOOLCHAIN/bin:$PATH
     --host=arm-linux-androideabi \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
     --with-xml-prefix="$PREFIX" \
+    --disable-python-bindings \
+    --disable-examples \
+    --enable-werror \
+    CC=clang \
+    CXX=clang++ \
     CPPFLAGS="-I$PREFIX/include" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-L$PREFIX/lib"

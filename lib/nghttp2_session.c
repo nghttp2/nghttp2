@@ -1784,6 +1784,7 @@ static int session_prep_frame(nghttp2_session *session,
   } else {
     /* Unreachable */
     assert(0);
+    return 0;
   }
 }
 
@@ -2221,6 +2222,7 @@ static int session_after_frame_sent(nghttp2_session *session)
   }
   /* Unreachable */
   assert(0);
+  return 0;
 }
 
 ssize_t nghttp2_session_mem_send(nghttp2_session *session,

@@ -520,6 +520,7 @@ int Http2Session::initiate_connection()
 
   // Unreachable
   DIE();
+  return 0;
 }
 
 void Http2Session::unwrap_free_bev()
