@@ -32,7 +32,10 @@ WorkerConfig::WorkerConfig()
     errorlog_tty(false)
 {}
 
-thread_local WorkerConfig worker_config;
+#ifndef NOTHREADS
+thread_local
+#endif // NOTHREADS
+WorkerConfig worker_config;
 
 } // namespace shrpx
 

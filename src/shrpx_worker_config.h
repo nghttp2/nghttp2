@@ -39,7 +39,11 @@ struct WorkerConfig {
 };
 
 // We need WorkerConfig per thread
-extern thread_local WorkerConfig worker_config;
+extern
+#ifndef NOTHREADS
+thread_local
+#endif // NOTHREADS
+WorkerConfig worker_config;
 
 } // namespace shrpx
 
