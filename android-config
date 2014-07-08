@@ -39,6 +39,7 @@ PATH=$TOOLCHAIN/bin:$PATH
     --disable-python-bindings \
     --disable-examples \
     --enable-werror \
+    --disable-threads \
     CC=clang \
     CXX=clang++ \
     CPPFLAGS="-I$PREFIX/include" \
