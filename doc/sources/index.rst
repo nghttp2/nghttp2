@@ -20,6 +20,10 @@ Contents:
    tutorial-client
    tutorial-server
    tutorial-hpack
+   nghttp.1
+   nghttpd.1
+   nghttpx.1
+   h2load.1
    nghttpx-howto
    h2load-howto
    apiref

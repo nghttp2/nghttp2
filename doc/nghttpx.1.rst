@@ -1,0 +1,530 @@
+.. program:: nghttpx
+
+nghttpx(1)
+==========
+
+NAME
+----
+nghttpx - HTTP/2 experimental proxy
+
+SYNOPSIS
+--------
+**nghttpx** [OPTIONS]... [<PRIVATE_KEY> <CERT>]
+
+DESCRIPTION
+-----------
+A reverse proxy for HTTP/2, HTTP/1 and SPDY.
+
+.. option:: PRIVATE_KEY
+
+    Set  path  to  server's  private  key.   Required
+    unless  :option:`-p`,  :option:`--client`  or  :option:`--frontend-no-tls`  are
+    given.
+
+.. option:: CERT
+
+    Set  path  to   server's  certificate.   Required
+    unless  :option:`-p`,  :option:`--client`  or  :option:`--frontend-no-tls`  are
+    given.
+
+OPTIONS
+-------
+
+The options are categorized into several groups.
+
+Connections
+^^^^^^^^^^^
+
+.. option:: -b, --backend=<HOST,PORT>
+
+    
+    Set backend host and port.
+    Default: '127.0.0.1,80'
+
+.. option:: -f, --frontend=<HOST,PORT>
+
+    
+    Set frontend host and port.  If <HOST> is '\*', it
+    assumes  all addresses  including  both IPv4  and
+    IPv6.
+    Default: '\*,3000'
+
+.. option:: --backlog=<NUM>
+
+    
+    Set  listen  backlog  size.    If  -1  is  given,
+    libevent will choose suitable value.
+    Default: -1
+
+.. option:: --backend-ipv4
+
+    
+    Resolve backend hostname to IPv4 address only.
+
+.. option:: --backend-ipv6
+
+    
+    Resolve backend hostname to IPv6 address only.
+
+Performance
+^^^^^^^^^^^
+
+.. option:: -n, --workers=<CORES>
+
+    
+    Set the number of worker threads.
+    Default: 1
+
+.. option:: --worker-read-rate=<RATE>
+
+    
+    Set  maximum   average  read  rate   on  frontend
+    connection per worker.  Setting  0 to this option
+    means read rate is unlimited.
+    Default: 0
+
+.. option:: --worker-read-burst=<SIZE>
+
+    
+    Set   maximum  read   burst   size  on   frontend
+    connection per worker.  Setting  0 to this option
+    means read burst size is unlimited.
+    Default: 0
+
+.. option:: --worker-write-rate=<RATE>
+
+    
+    Set  maximum  average   write  rate  on  frontend
+    connection per worker.  Setting  0 to this option
+    means write rate is unlimited.
+    Default: 0
+
+.. option:: --worker-write-burst=<SIZE>
+
+    
+    Set   maximum  write   burst  size   on  frontend
+    connection per worker.  Setting  0 to this option
+    means write burst size is unlimited.
+    Default: 0
+
+.. option:: --worker-frontend-connections=<NUM>
+
+    
+    Set  maximum number  of simultaneous  connections
+    frontend accepts.  Setting 0 means unlimited.
+    Default: 0
+
+Timeout
+^^^^^^^
+
+.. option:: --frontend-http2-read-timeout=<SEC>
+
+    
+    Specify read timeout for HTTP/2 and SPDY frontend
+    connection.
+    Default: 180
+
+.. option:: --frontend-read-timeout=<SEC>
+
+    
+    Specify  read   timeout  for   HTTP/1.1  frontend
+    connection.
+    Default: 180
+
+.. option:: --frontend-write-timeout=<SEC>
+
+    
+    Specify   write   timeout    for   all   frontend
+    connections.
+    Default: 60
+
+.. option:: --backend-read-timeout=<SEC>
+
+    
+    Specify read timeout for backend connection.
+    Default: 900
+
+.. option:: --backend-write-timeout=<SEC>
+
+    
+    Specify write timeout for backend connection.
+    Default: 60
+
+.. option:: --backend-keep-alive-timeout=<SEC>
+
+    
+    Specify    keep-alive    timeout   for    backend
+    connection.
+    Default: 60
+
+.. option:: --backend-http-proxy-uri=<URI>
+
+    
+    Specify     proxy     URI     in     the     form
+    http://[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
+    proxy requires authentication, specify <USER> and
+    <PASS>.    Note  that   they  must   be  properly
+    percent-encoded.   This proxy  is  used when  the
+    backend  connection  is  HTTP/2.  First,  make  a
+    CONNECT request  to the proxy and  it connects to
+    the  backend on  behalf of  nghttpx.  This  forms
+    tunnel.   After  that, nghttpx  performs  SSL/TLS
+    handshake with the downstream through the tunnel.
+    The timeouts  when connecting and  making CONNECT
+    request       can      be       specified      by
+    :option:`--backend-read-timeout`                        and
+    :option:`--backend-write-timeout` options.
+
+SSL/TLS
+^^^^^^^
+
+.. option:: --ciphers=<SUITE>
+
+    
+    Set  allowed  cipher  list.  The  format  of  the
+    string  is described  in OpenSSL  ciphers(1).
+
+.. option:: -k, --insecure
+
+    
+    Don't verify backend  server's certificate if :option:`-p`,
+    :option:`--client`   or   :option:`--http2-bridge`  are   given   and
+    :option:`--backend-no-tls` is not given.
+
+.. option:: --cacert=<PATH>
+
+    
+    Set path  to trusted  CA certificate file  if :option:`-p`,
+    :option:`--client`   or   :option:`--http2-bridge`  are   given   and
+    :option:`--backend-no-tls` is not given.   The file must be
+    in   PEM  format.    It   can  contain   multiple
+    certificates.    If   the   linked   OpenSSL   is
+    configured to load system wide certificates, they
+    are loaded at startup regardless of this option.
+
+.. option:: --private-key-passwd-file=<FILEPATH>
+
+    
+    Path  to  file  that contains  password  for  the
+    server's private  key.  If none is  given and the
+    private  key  is   password  protected  it'll  be
+    requested interactively.
+
+.. option:: --subcert=<KEYPATH>:<CERTPATH>
+
+    
+    Specify  additional certificate  and private  key
+    file.  nghttpx will  choose certificates based on
+    the hostname  indicated by  client using  TLS SNI
+    extension.   This  option  can be  used  multiple
+    times.
+
+.. option:: --backend-tls-sni-field=<HOST>
+
+    
+    Explicitly  set  the  content   of  the  TLS  SNI
+    extension.  This will default to the backend HOST
+    name.
+
+.. option:: --dh-param-file=<PATH>
+
+    
+    Path to  file that contains DH  parameters in PEM
+    format.  Without  this option, DHE  cipher suites
+    are not available.
+
+.. option:: --npn-list=<LIST>
+
+    
+    Comma delimited list  of ALPN protocol identifier
+    sorted in  the order  of preference.   That means
+    most  desirable protocol  comes  first.  This  is
+    used in both ALPN and NPN.  The parameter must be
+    delimited by  a single  comma only and  any white
+    spaces are treated as a part of protocol string.
+    Default: h2-13,spdy/3.1,spdy/3,spdy/2,http/1.1
+
+.. option:: --verify-client
+
+    
+    Require and verify client certificate.
+
+.. option:: --verify-client-cacert=<PATH>
+
+    
+    Path  to file  that contains  CA certificates  to
+    verify client  certificate.  The file must  be in
+    PEM    format.    It    can   contain    multiple
+    certificates.
+
+.. option:: --client-private-key-file=<PATH>
+
+    
+    Path  to file  that contains  client private  key
+    used in backend client authentication.
+
+.. option:: --client-cert-file=<PATH>
+
+    
+    Path  to file  that  contains client  certificate
+    used in backend client authentication.
+
+.. option:: --tls-proto-list=<LIST>
+
+    
+    Comma delimited  list of  SSL/TLS protocol  to be
+    enabled.  The following  protocols are available:
+    TLSv1.2,  TLSv1.1, TLSv1.0  and SSLv3.   The name
+    matching is done in case-insensitive manner.  The
+    parameter  must be  delimited by  a single  comma
+    only and any  white spaces are treated  as a part
+    of protocol string.
+    Default: TLSv1.2,TLSv1.1
+
+HTTP/2 and SPDY
+^^^^^^^^^^^^^^^
+
+.. option:: -c, --http2-max-concurrent-streams=<NUM>
+
+    
+    Set the maximum number  of the concurrent streams
+    in one HTTP/2 and SPDY session.
+    Default: 100
+
+.. option:: --frontend-http2-window-bits=<N>
+
+    
+    Sets the per-stream initial window size of HTTP/2
+    SPDY frontend  connection.  For HTTP/2,  the size
+    is 2\*\*<N>-1.  For SPDY, the size is 2\*\*<N>.
+    Default: 16
+
+.. option:: --frontend-http2-connection-window-bits=<N>
+
+    
+    Sets the per-connection window size of HTTP/2 and
+    SPDY frontend  connection.  For HTTP/2,  the size
+    is 2\*\*<N>-1. For SPDY, the size is 2\*\*<N>.
+    Default: 16
+
+.. option:: --frontend-no-tls
+
+    
+    Disable SSL/TLS on frontend connections.
+
+.. option:: --backend-http2-window-bits=<N>
+
+    
+    Sets the  initial window  size of  HTTP/2 backend
+    connection to 2\*\*<N>-1.
+    Default: 16
+
+.. option:: --backend-http2-connection-window-bits=<N>
+
+    
+    Sets  the per-connection  window  size of  HTTP/2
+    backend connection to 2\*\*<N>-1.
+    Default: 16
+
+.. option:: --backend-no-tls
+
+    
+    Disable SSL/TLS on backend connections.
+
+.. option:: --http2-no-cookie-crumbling
+
+    
+    Don't crumble cookie header field.
+
+.. option:: --padding=<N>
+
+    
+    Add at most  <N> bytes to a  HTTP/2 frame payload
+    as padding.  Specify 0  to disable padding.  This
+    option  is meant  for debugging  purpose and  not
+    intended to enhance protocol security.
+
+Mode
+^^^^
+
+.. describe:: (default mode)
+
+    Accept  HTTP/2, SPDY  and HTTP/1.1  over SSL/TLS.
+    If :option:`--frontend-no-tls`  is used, accept  HTTP/2 and
+    HTTP/1.1.  The  incoming HTTP/1.1  connection can
+    be upgraded to HTTP/2  through HTTP Upgrade.  The
+    protocol to the backend is HTTP/1.1.
+
+.. option:: -s, --http2-proxy
+
+    
+    Like default mode, but enable secure proxy mode.
+
+.. option:: --http2-bridge
+
+    
+    Like  default  mode,  but  communicate  with  the
+    backend  in   HTTP/2  over  SSL/TLS.    Thus  the
+    incoming all connections  are converted to HTTP/2
+    connection  and  relayed  to  the  backend.   See
+    :option:`--backend-http-proxy-uri` option if you are behind
+    the  proxy and  want  to connect  to the  outside
+    HTTP/2 proxy.
+
+.. option:: --client
+
+    
+    Accept HTTP/2 and  HTTP/1.1 without SSL/TLS.  The
+    incoming HTTP/1.1  connection can be  upgraded to
+    HTTP/2  connection  through  HTTP  Upgrade.   The
+    protocol  to  the  backend  is  HTTP/2.   To  use
+    nghttpx  as  a  forward   proxy,  use  :option:`-p`  option
+    instead.
+
+.. option:: -p, --client-proxy
+
+    
+    Like :option:`--client`  option, but  it also  requires the
+    request path  from frontend  must be  an absolute
+    URI, suitable for use as a forward proxy.
+
+Logging
+^^^^^^^
+
+.. option:: -L, --log-level=<LEVEL>
+
+    
+    Set the  severity level  of log  output.  <LEVEL>
+    must be one of INFO, WARNING, ERROR and FATAL.
+    Default: WARNING
+
+.. option:: --accesslog-file=<PATH>
+
+    
+    Set path  to write  access log.  To  reopen file,
+    send USR1 signal to nghttpx.
+
+.. option:: --accesslog-syslog
+
+    
+    Send  access log  to syslog.   If this  option is
+    used, :option:`--access-file` option is ignored.
+
+.. option:: --errorlog-file=<PATH>
+
+    
+    Set  path to  write error  log.  To  reopen file,
+    send USR1 signal to nghttpx.
+    Default: /dev/stderr
+
+.. option:: --errorlog-syslog
+
+    
+    Send  error log  to  syslog.  If  this option  is
+    used, :option:`--errorlog-file` option is ignored.
+
+.. option:: --syslog-facility=<FACILITY>
+
+    
+    Set syslog facility to <FACILITY>.
+    Default: daemon
+
+Misc
+^^^^
+
+.. option:: --add-x-forwarded-for
+
+    
+    Append  X-Forwarded-For   header  field   to  the
+    downstream request.
+
+.. option:: --no-via
+
+    
+    Don't append to Via  header field.  If Via header
+    field is received, it is left unaltered.
+
+.. option:: --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
+
+    
+    Specify  protocol ID,  port, host  and origin  of
+    alternative  service.   <HOST> and  <ORIGIN>  are
+    optional.  They are  advertised in alt-svc header
+    field or HTTP/2 ALTSVC frame.  This option can be
+    used   multiple   times   to   specify   multiple
+    alternative services.  Example: --altsvc=h2,443
+
+.. option:: --add-response-header=<HEADER>
+
+    
+    Specify  additional   header  field  to   add  to
+    response  header set.   This option  just appends
+    header field  and won't replace  anything already
+    set.  This  option can  be used several  times to
+    specify multiple header fields.
+    Example: --add-response-header="foo: bar"
+
+.. option:: --frontend-http2-dump-request-header=<PATH>
+
+    
+    Dumps request headers received by HTTP/2 frontend
+    to  the file  denoted in  <PATH>.  The  output is
+    done  in  HTTP/1  header field  format  and  each
+    header block is followed  by an empty line.  This
+    option is  not thread safe  and MUST NOT  be used
+    with option -n<N>, where <N> >= 2.
+
+.. option:: --frontend-http2-dump-response-header=<PATH>
+
+    
+    Dumps response headers  sent from HTTP/2 frontend
+    to  the file  denoted in  <PATH>.  The  output is
+    done  in  HTTP/1  header field  format  and  each
+    header block is followed  by an empty line.  This
+    option is  not thread safe  and MUST NOT  be used
+    with option -n<N>, where <N> >= 2.
+
+.. option:: -o, --frontend-frame-debug
+
+    
+    Print HTTP/2 frames in  frontend to stderr.  This
+    option is  not thread safe  and MUST NOT  be used
+    with option -n=N, where N >= 2.
+
+.. option:: -D, --daemon
+
+    
+    Run in a background.  If  :option:`-D` is used, the current
+    working directory is changed to '/'.
+
+.. option:: --pid-file=<PATH>
+
+    
+    Set path to save PID of this program.
+
+.. option:: --user=<USER>
+
+    
+    Run  this  program  as <USER>.   This  option  is
+    intended to be used to drop root privileges.
+
+.. option:: --conf=<PATH>
+
+    
+    Load configuration from <PATH>.
+    Default: /etc/nghttpx/nghttpx.conf
+
+.. option:: -v, --version
+
+    
+    Print version and exit.
+
+.. option:: -h, --help
+
+    
+    Print this help and exit.
+
+SEE ALSO
+--------
+
+nghttp(1), nghttpd(1), h2load(1)

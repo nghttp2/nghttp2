@@ -1,0 +1,166 @@
+.. program:: nghttp
+
+nghttp(1)
+=========
+
+NAME
+----
+nghttp - HTTP/2 experimental client
+
+SYNOPSIS
+--------
+**nghttp** [OPTIONS]... <URI>...
+
+DESCRIPTION
+-----------
+HTTP/2 experimental client
+
+.. option:: URI
+
+    Specify URI to access.
+
+OPTIONS
+-------
+
+.. option:: -v, --verbose
+
+    
+    Print  debug information  such  as reception  and
+    transmission of frames and name/value pairs.
+
+.. option:: -n, --null-out
+
+    
+    Discard downloaded data.
+
+.. option:: -O, --remote-name
+
+    
+    Save download data in the current directory.  The
+    filename is dereived from  URI.  If URI ends with
+    \&'/',  'index.html' is  used as  a filename.   Not
+    implemented yet.
+
+.. option:: -t, --timeout=<N>
+
+    
+    Timeout each request after <N> seconds.
+
+.. option:: -w, --window-bits=<N>
+
+    
+    Sets  the stream  level  initial  window size  to
+    2\*\*<N>-1.
+
+.. option:: -W, --connection-window-bits=<N>
+
+    
+    Sets the connection level  initial window size to
+    2\*\*<N>-1.
+
+.. option:: -a, --get-assets
+
+    
+    Download assets  such as stylesheets,  images and
+    script files linked from the downloaded resource.
+    Only links  whose origins  are the same  with the
+    linking resource will be downloaded.
+
+.. option:: -s, --stat
+
+    
+    Print statistics.
+
+.. option:: -H, --header
+
+    
+    Add a header to the requests.
+
+.. option:: --cert=<CERT>
+
+    
+    Use the  specified client certificate  file.  The
+    file must be in PEM format.
+
+.. option:: --key=<KEY>
+
+    
+    Use the  client private key file.   The file must
+    be in PEM format.
+
+.. option:: -d, --data=<FILE>
+
+    
+    Post FILE to  server. If '-' is  given, data will
+    be read from stdin.
+
+.. option:: -m, --multiply=<N>
+
+    Request each URI <N> times.
+    By default, same URI
+    is not requested twice.   This option disables it
+    too.
+
+.. option:: -u, --upgrade
+
+    
+    Perform HTTP Upgrade for  HTTP/2.  This option is
+    ignored if the request  URI has https scheme.  If
+    :option:`-d` is used, the HTTP upgrade request is performed
+    with OPTIONS method.
+
+.. option:: -p, --weight=<WEIGHT>
+
+    
+    Sets  priority  group  weight.  The  valid  value
+    range is [1, 256], inclusive.
+    Default: 16
+
+.. option:: -M, --peer-max-concurrent-streams=<N>
+
+    
+    Use <N>  as SETTINGS_MAX_CONCURRENT_STREAMS value
+    of  remote  endpoint  as  if it  is  received  in
+    SETTINGS frame.   The default is large  enough as
+    it is seen as unlimited.
+
+.. option:: -c, --header-table-size=<N>
+
+    
+    Specify decoder header table size.
+
+.. option:: -b, --padding=<N>
+
+    
+    Add  at most  <N>  bytes to  a  frame payload  as
+    padding.  Specify 0 to disable padding.
+
+.. option:: --color
+
+    
+    Force colored log output.
+
+.. option:: --continuation
+
+    
+    Send large header to test CONTINUATION.
+
+.. option:: --no-content-length
+
+    
+    Don't send content-length header field.
+
+.. option:: --version
+
+    
+    Display version information and exit.
+
+.. option:: -h, --help
+
+    
+    Display this help and exit.
+
+SEE ALSO
+--------
+
+nghttpd(1), nghttpx(1), h2load(1)

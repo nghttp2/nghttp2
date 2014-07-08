@@ -11,3 +11,7 @@ help2man --output=doc/nghttpx.1 --name="HTTP/2 experimental proxy" \
 
 help2man --output=doc/h2load.1 --name="HTTP/2 benchmarking tool" \
     -N --include doc/h2load.h2m src/h2load
+
+for file in doc/nghttp.1 doc/nghttpd.1 doc/nghttpx.1 doc/h2load.1; do
+    ./man2rst.py < $file > $file.rst
+done

@@ -27,6 +27,10 @@ EXTRA_DIST = \
 	mkapiref.py \
 	README.rst \
 	apiref-header.rst \
+	nghttp.1.rst \
+	nghttpd.1.rst \
+	nghttpx.1.rst \
+	h2load.1.rst \
 	sources/index.rst \
 	sources/tutorial-client.rst \
 	sources/tutorial-server.rst \
