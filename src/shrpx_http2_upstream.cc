@@ -221,7 +221,7 @@ int on_header_callback(nghttp2_session *session,
                            << downstream->get_request_headers_sum();
     }
 
-    if(upstream->error_reply(downstream, 413) != 0) {
+    if(upstream->error_reply(downstream, 431) != 0) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
