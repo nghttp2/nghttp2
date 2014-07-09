@@ -40,21 +40,21 @@ int nghttp2_frame_is_data_frame(uint8_t *head)
 
 void nghttp2_frame_pack_frame_hd(uint8_t* buf, const nghttp2_frame_hd *hd)
 {
-  nghttp2_put_uint16be(&buf[0], hd->length);
-  buf[2]=  hd->type;
-  buf[3] = hd->flags;
-  nghttp2_put_uint32be(&buf[4], hd->stream_id);
+  nghttp2_put_uint32be(&buf[0], (uint32_t)(hd->length << 8));
+  buf[3]=  hd->type;
+  buf[4] = hd->flags;
+  nghttp2_put_uint32be(&buf[5], hd->stream_id);
 }
 
 void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf)
 {
-  hd->length = nghttp2_get_uint16(&buf[0]) & NGHTTP2_FRAME_LENGTH_MASK;
-  hd->type = buf[2];
-  hd->flags = buf[3];
-  hd->stream_id = nghttp2_get_uint32(&buf[4]) & NGHTTP2_STREAM_ID_MASK;
+  hd->length = nghttp2_get_uint32(&buf[0]) >> 8;
+  hd->type = buf[3];
+  hd->flags = buf[4];
+  hd->stream_id = nghttp2_get_uint32(&buf[5]) & NGHTTP2_STREAM_ID_MASK;
 }
 
-static void frame_set_hd(nghttp2_frame_hd *hd, uint16_t length,
+static void frame_set_hd(nghttp2_frame_hd *hd, size_t length,
                          uint8_t type, uint8_t flags,
                          int32_t stream_id)
 {
@@ -1047,6 +1047,7 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
 static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
 {
   size_t trail_padlen;
+  size_t newlen;
 
   DEBUGF(fprintf(stderr, "send: padlen=%zu, shift left 1 bytes\n", padlen));
 
@@ -1054,9 +1055,10 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
 
   --buf->pos;
 
-  buf->pos[3] |= NGHTTP2_FLAG_PADDED;
+  buf->pos[4] |= NGHTTP2_FLAG_PADDED;
 
-  nghttp2_put_uint16be(buf->pos, nghttp2_get_uint16(buf->pos) + padlen);
+  newlen = (nghttp2_get_uint32(buf->pos) >> 8) + padlen;
+  nghttp2_put_uint32be(buf->pos, (uint32_t)((newlen << 8) + buf->pos[3]));
 
   trail_padlen = padlen - 1;
   buf->pos[NGHTTP2_FRAME_HDLEN] = trail_padlen;
@@ -1087,12 +1089,12 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
    *  0                   1                   2                   3
    *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   * | |Frame header   | Frame payload...                            :
-   * +-+---------------+---------------------------------------------+
-   * | |Frame header   | Frame payload...                            :
-   * +-+---------------+---------------------------------------------+
-   * | |Frame header   | Frame payload...                            :
-   * +-+---------------+---------------------------------------------+
+   * | |Frame header     | Frame payload...                          :
+   * +-+-----------------+-------------------------------------------+
+   * | |Frame header     | Frame payload...                          :
+   * +-+-----------------+-------------------------------------------+
+   * | |Frame header     | Frame payload...                          :
+   * +-+-----------------+-------------------------------------------+
    *
    * We arranged padding so that it is included in the first frame
    * completely.  For padded frame, we are going to adjust buf->pos of

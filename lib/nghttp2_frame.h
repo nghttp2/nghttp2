@@ -33,7 +33,7 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_buf.h"
 
-#define NGHTTP2_FRAME_LENGTH_MASK ((1 << 14) - 1)
+#define NGHTTP2_FRAME_LENGTH_MASK ((1 << 24) - 1)
 #define NGHTTP2_STREAM_ID_MASK ((1u << 31) - 1)
 #define NGHTTP2_PRI_GROUP_ID_MASK ((1u << 31) - 1)
 #define NGHTTP2_PRIORITY_MASK ((1u << 31) - 1)
@@ -41,9 +41,9 @@
 #define NGHTTP2_SETTINGS_ID_MASK ((1 << 24) - 1)
 
 /* The number of bytes of frame header. */
-#define NGHTTP2_FRAME_HDLEN 8
+#define NGHTTP2_FRAME_HDLEN 9
 
-#define NGHTTP2_MAX_PAYLOADLEN 16383
+#define NGHTTP2_MAX_PAYLOADLEN 16384
 /* The one frame buffer length for tranmission.  We may use several of
    them to support CONTINUATION.  To account for Pad Length field, we
    allocate extra 1 byte, which saves extra large memcopying. */
