@@ -598,6 +598,10 @@ int Http2Handler::wait_events()
     active = 1;
   }
 
+  if(pending_datalen_ > 0) {
+    active = 1;
+  }
+
   return active ? 0 : -1;
 }
 
