@@ -5241,7 +5241,16 @@ int nghttp2_session_want_read(nghttp2_session *session)
   /* Unless GOAWAY is sent or received, we always want to read
      incoming frames. After GOAWAY is sent or received, we are only
      interested in active streams. */
-  return !session->goaway_flags || num_active_streams > 0;
+
+  if(num_active_streams > 0) {
+    return 1;
+  }
+
+  if(session->goaway_flags & (NGHTTP2_GOAWAY_SEND | NGHTTP2_GOAWAY_RECV)) {
+    return 0;
+  }
+
+  return 1;
 }
 
 int nghttp2_session_want_write(nghttp2_session *session)
@@ -5264,10 +5273,23 @@ int nghttp2_session_want_write(nghttp2_session *session)
    * write them.  After GOAWAY is sent or received, we want to write
    * frames if there is pending ones AND there are active frames.
    */
-  return (session->aob.item != NULL || !nghttp2_pq_empty(&session->ob_pq) ||
-          (!nghttp2_pq_empty(&session->ob_ss_pq) &&
-           !session_is_outgoing_concurrent_streams_max(session))) &&
-    (!session->goaway_flags || num_active_streams > 0);
+
+  if(session->aob.item == NULL &&
+     nghttp2_pq_empty(&session->ob_pq) &&
+     (nghttp2_pq_empty(&session->ob_ss_pq) ||
+      session_is_outgoing_concurrent_streams_max(session))) {
+    return 0;
+  }
+
+  if(num_active_streams > 0) {
+    return 1;
+  }
+
+  if(session->goaway_flags & (NGHTTP2_GOAWAY_SEND | NGHTTP2_GOAWAY_RECV)) {
+    return 0;
+  }
+
+  return 1;
 }
 
 int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
