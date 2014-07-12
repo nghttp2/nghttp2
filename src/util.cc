@@ -599,6 +599,23 @@ int reopen_log_file(const char *path)
   return fd;
 }
 
+std::string ascii_dump(const uint8_t *data, size_t len)
+{
+  std::string res;
+
+  for(size_t i = 0; i < len; ++i) {
+    auto c = data[i];
+
+    if(c >= 0x20 && c < 0x7f) {
+      res += c;
+    } else {
+      res += ".";
+    }
+  }
+
+  return res;
+}
+
 } // namespace util
 
 } // namespace nghttp2

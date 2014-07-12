@@ -447,6 +447,19 @@ int on_frame_recv_callback
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
     break;
+  case NGHTTP2_GOAWAY:
+    if(LOG_ENABLED(INFO)) {
+      auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
+                                         frame->goaway.opaque_data_len);
+
+      ULOG(INFO, upstream) << "GOAWAY received: last-stream-id="
+                           << frame->goaway.last_stream_id
+                           << ", error_code="
+                           << frame->goaway.error_code
+                           << ", debug_data="
+                           << debug_data;
+    }
+    break;
   default:
     break;
   }
@@ -491,11 +504,28 @@ int on_frame_send_callback(nghttp2_session* session,
     verbose_on_frame_send_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream*>(user_data);
-  if(frame->hd.type == NGHTTP2_SETTINGS &&
-     (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
-    if(upstream->start_settings_timer() != 0) {
+
+  switch(frame->hd.type) {
+  case NGHTTP2_SETTINGS:
+    if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0 &&
+       upstream->start_settings_timer() != 0) {
+
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+    break;
+  case NGHTTP2_GOAWAY:
+    if(LOG_ENABLED(INFO)) {
+      auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
+                                         frame->goaway.opaque_data_len);
+
+      ULOG(INFO, upstream) << "Sending GOAWAY: last-stream-id="
+                           << frame->goaway.last_stream_id
+                           << ", error_code="
+                           << frame->goaway.error_code
+                           << ", debug_data="
+                           << debug_data;
+    }
+    break;
   }
   return 0;
 }
