@@ -230,11 +230,6 @@ Headers::const_iterator Downstream::get_norm_request_header
   return get_norm_header(request_headers_, name);
 }
 
-void Downstream::concat_norm_request_headers()
-{
-  request_headers_ = http2::concat_norm_headers(std::move(request_headers_));
-}
-
 void Downstream::add_request_header(std::string name, std::string value)
 {
   request_header_key_prev_ = true;
@@ -256,8 +251,8 @@ void Downstream::split_add_request_header
  bool no_index)
 {
   request_headers_sum_ += namelen + valuelen;
-  http2::split_add_header(request_headers_, name, namelen, value, valuelen,
-                          no_index);
+  http2::add_header(request_headers_, name, namelen, value, valuelen,
+                    no_index);
 }
 
 bool Downstream::get_request_header_key_prev() const
@@ -485,11 +480,6 @@ void Downstream::normalize_response_headers()
   http2::normalize_headers(response_headers_);
 }
 
-void Downstream::concat_norm_response_headers()
-{
-  response_headers_ = http2::concat_norm_headers(std::move(response_headers_));
-}
-
 Headers::const_iterator Downstream::get_norm_response_header
 (const std::string& name) const
 {
@@ -551,8 +541,8 @@ void Downstream::split_add_response_header
  bool no_index)
 {
   response_headers_sum_ += namelen + valuelen;
-  http2::split_add_header(response_headers_, name, namelen, value, valuelen,
-                          no_index);
+  http2::add_header(response_headers_, name, namelen, value, valuelen,
+                    no_index);
 }
 
 bool Downstream::get_response_header_key_prev() const

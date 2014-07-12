@@ -244,7 +244,7 @@ int Http2DownstreamConnection::push_request_headers()
     downstream_->crumble_request_cookie();
   }
   downstream_->normalize_request_headers();
-  downstream_->concat_norm_request_headers();
+
   auto end_headers = std::end(downstream_->get_request_headers());
 
   // 7 means:

@@ -1048,8 +1048,6 @@ int submit_request
                      return lhs.name < rhs.name;
                    });
 
-  build_headers = http2::concat_norm_headers(std::move(build_headers));
-
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(build_headers.size());
 
@@ -1264,8 +1262,8 @@ int on_header_callback(nghttp2_session *session,
     if(!req) {
       break;
     }
-    http2::split_add_header(req->res_nva, name, namelen, value, valuelen,
-                            flags & NGHTTP2_NV_FLAG_NO_INDEX);
+    http2::add_header(req->res_nva, name, namelen, value, valuelen,
+                      flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -1274,8 +1272,8 @@ int on_header_callback(nghttp2_session *session,
     if(!req) {
       break;
     }
-    http2::split_add_header(req->push_req_nva, name, namelen, value, valuelen,
-                            flags & NGHTTP2_NV_FLAG_NO_INDEX);
+    http2::add_header(req->push_req_nva, name, namelen, value, valuelen,
+                      flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
   }
   }

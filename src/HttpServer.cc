@@ -94,9 +94,9 @@ namespace {
 void append_nv(Stream *stream, const std::vector<nghttp2_nv>& nva)
 {
   for(auto& nv : nva) {
-    http2::split_add_header(stream->headers,
-                            nv.name, nv.namelen, nv.value, nv.valuelen,
-                            nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+    http2::add_header(stream->headers,
+                      nv.name, nv.namelen, nv.value, nv.valuelen,
+                      nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
   }
 }
 } // namespace
@@ -1158,8 +1158,8 @@ int on_header_callback(nghttp2_session *session,
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
   }
-  http2::split_add_header(stream->headers, name, namelen, value, valuelen,
-                          flags & NGHTTP2_NV_FLAG_NO_INDEX);
+  http2::add_header(stream->headers, name, namelen, value, valuelen,
+                    flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;
 }
 } // namespace

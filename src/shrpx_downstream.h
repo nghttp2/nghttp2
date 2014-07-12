@@ -99,10 +99,6 @@ public:
   // called after calling normalize_request_headers().
   Headers::const_iterator get_norm_request_header
   (const std::string& name) const;
-  // Concatenates request header fields with same name by NULL as
-  // delimiter. See http2::concat_norm_headers(). This function must
-  // be called after calling normalize_request_headers().
-  void concat_norm_request_headers();
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(std::string value);
 
@@ -162,10 +158,6 @@ public:
   const Headers& get_response_headers() const;
   // Makes key lowercase and sort headers by name using <
   void normalize_response_headers();
-  // Concatenates response header fields with same name by NULL as
-  // delimiter. See http2::concat_norm_headers(). This function must
-  // be called after calling normalize_response_headers().
-  void concat_norm_response_headers();
   // Returns iterator pointing to the response header with the name
   // |name|. If multiple header have |name| as name, return first
   // occurrence from the beginning. If no such header is found,

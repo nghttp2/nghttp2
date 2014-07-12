@@ -275,31 +275,12 @@ Headers::value_type to_header(const uint8_t *name, size_t namelen,
                 no_index);
 }
 
-void split_add_header(Headers& nva,
-                      const uint8_t *name, size_t namelen,
-                      const uint8_t *value, size_t valuelen,
-                      bool no_index)
+void add_header(Headers& nva,
+                const uint8_t *name, size_t namelen,
+                const uint8_t *value, size_t valuelen,
+                bool no_index)
 {
-  if(valuelen == 0) {
-    nva.push_back(to_header(name, namelen, value, valuelen, no_index));
-    return;
-  }
-  auto j = value;
-  auto end = value + valuelen;
-  for(;;) {
-    // Skip 0 length value
-    j = std::find_if(j, end,
-                     [](uint8_t c)
-                     {
-                       return c != '\0';
-                     });
-    if(j == end) {
-      break;
-    }
-    auto l = std::find(j, end, '\0');
-    nva.push_back(to_header(name, namelen, j, l-j, no_index));
-    j = l;
-  }
+  nva.push_back(to_header(name, namelen, value, valuelen, no_index));
 }
 
 const Headers::value_type* get_unique_header(const Headers& nva,
@@ -353,29 +334,6 @@ nghttp2_nv make_nv(const std::string& name, const std::string& value,
 
   return {(uint8_t*)name.c_str(), (uint8_t*)value.c_str(),
       name.size(), value.size(), flags};
-}
-
-Headers concat_norm_headers(Headers headers)
-{
-  auto res = Headers();
-  res.reserve(headers.size());
-  for(auto& kv : headers) {
-    if(!res.empty() && res.back().name == kv.name &&
-       kv.name != "cookie" && kv.name != "set-cookie") {
-
-      auto& last = res.back();
-
-      if(!kv.value.empty()) {
-        last.value.append(1, '\0');
-        last.value += kv.value;
-      }
-      // We do ORing nv flags.  This is done even if value is empty.
-      last.no_index |= kv.no_index;
-    } else {
-      res.push_back(std::move(kv));
-    }
-  }
-  return res;
 }
 
 void copy_norm_headers_to_nva

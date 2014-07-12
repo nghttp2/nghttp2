@@ -1161,7 +1161,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     downstream->rewrite_norm_location_response_header
       (get_client_handler()->get_upstream_scheme(), get_config()->port);
   }
-  downstream->concat_norm_response_headers();
+
   auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();
