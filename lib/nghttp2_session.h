@@ -726,4 +726,19 @@ int nghttp2_session_reprioritize_stream
 (nghttp2_session *session, nghttp2_stream *stream,
  const nghttp2_priority_spec *pri_spec);
 
+/*
+ * Terminates current |session| with the |error_code|.  The |reason|
+ * is NULL-terminated debug string.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     The |reason| is too long.
+ */
+int nghttp2_session_terminate_session_with_reason
+(nghttp2_session *session, nghttp2_error_code error_code, const char *reason);
+
 #endif /* NGHTTP2_SESSION_H */

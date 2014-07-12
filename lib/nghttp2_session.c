@@ -132,25 +132,49 @@ static int session_detect_idle_stream(nghttp2_session *session,
   return 0;
 }
 
+static int session_terminate_session
+(nghttp2_session *session, int32_t last_stream_id,
+ nghttp2_error_code error_code, const char *reason)
+{
+  const uint8_t *debug_data;
+  size_t debug_datalen;
+
+  if(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) {
+    return 0;
+  }
+  session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
+
+  if(reason == NULL) {
+    debug_data = NULL;
+    debug_datalen = 0;
+  } else {
+    debug_data = (const uint8_t*)reason;
+    debug_datalen = strlen(reason);
+  }
+
+  return nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, last_stream_id,
+                               error_code, debug_data, debug_datalen);
+}
+
 int nghttp2_session_terminate_session(nghttp2_session *session,
                                       nghttp2_error_code error_code)
 {
-  return nghttp2_session_terminate_session2(session,
-                                            session->last_proc_stream_id,
-                                            error_code);
+  return session_terminate_session(session, session->last_proc_stream_id,
+                                   error_code, NULL);
 }
 
 int nghttp2_session_terminate_session2(nghttp2_session *session,
                                        int32_t last_stream_id,
                                        nghttp2_error_code error_code)
 {
-  if(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) {
-    return 0;
-  }
-  session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
+  return session_terminate_session(session, last_stream_id, error_code, NULL);
+}
 
-  return nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, last_stream_id,
-                               error_code, NULL, 0);
+int nghttp2_session_terminate_session_with_reason
+(nghttp2_session *session, nghttp2_error_code error_code, const char *reason)
+{
+  return session_terminate_session(session, session->last_proc_stream_id,
+                                   error_code, reason);
 }
 
 int nghttp2_session_is_my_stream_id(nghttp2_session *session,
@@ -511,8 +535,8 @@ int nghttp2_session_reprioritize_stream
   nghttp2_stream *root_stream;
 
   if(pri_spec->stream_id == stream->stream_id) {
-    return nghttp2_session_terminate_session(session,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_terminate_session_with_reason
+      (session, NGHTTP2_PROTOCOL_ERROR, "depend on itself");
   }
 
   if(pri_spec->stream_id == 0) {
@@ -2296,8 +2320,8 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
         if(rv == NGHTTP2_ERR_HEADER_COMP) {
           /* If header compression error occurred, should terminiate
              connection. */
-          rv = nghttp2_session_terminate_session(session,
-                                                 NGHTTP2_INTERNAL_ERROR);
+          rv = nghttp2_session_terminate_session
+            (session, NGHTTP2_INTERNAL_ERROR);
         }
         if(nghttp2_is_fatal(rv)) {
           return rv;
@@ -2522,7 +2546,8 @@ static int session_inflate_handle_invalid_stream
 static int session_handle_invalid_connection
 (nghttp2_session *session,
  nghttp2_frame *frame,
- nghttp2_error_code error_code)
+ nghttp2_error_code error_code,
+ const char *reason)
 {
   if(session->callbacks.on_invalid_frame_recv_callback) {
     if(session->callbacks.on_invalid_frame_recv_callback
@@ -2530,16 +2555,18 @@ static int session_handle_invalid_connection
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
-  return nghttp2_session_terminate_session(session, error_code);
+  return nghttp2_session_terminate_session_with_reason
+    (session, error_code, reason);
 }
 
 static int session_inflate_handle_invalid_connection
 (nghttp2_session *session,
  nghttp2_frame *frame,
- nghttp2_error_code error_code)
+ nghttp2_error_code error_code,
+ const char *reason)
 {
   int rv;
-  rv = session_handle_invalid_connection(session, frame, error_code);
+  rv = session_handle_invalid_connection(session, frame, error_code, reason);
   if(nghttp2_is_fatal(rv)) {
     return rv;
   }
@@ -2770,7 +2797,8 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   nghttp2_stream *stream;
   if(frame->hd.stream_id == 0) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "request HEADERS: stream_id == 0");
   }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
@@ -2781,18 +2809,21 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
        stream ID, it MUST issue connection error with error code
        PROTOCOL_ERROR */
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "request HEADERS: invalid stream_id");
   }
   session->last_recv_stream_id = frame->hd.stream_id;
 
   if(session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_ENHANCE_YOUR_CALM);
+      (session, frame, NGHTTP2_ENHANCE_YOUR_CALM,
+       "request HEADERS: max concurrent streams exceeded");
   }
 
   if(frame->headers.pri_spec.stream_id == frame->hd.stream_id) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "request HEADERS: depend on itself");
   }
 
   if(session_is_incoming_concurrent_streams_pending_max(session)) {
@@ -2828,7 +2859,8 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
          nghttp2_session_is_my_stream_id(session, frame->hd.stream_id));
   if(frame->hd.stream_id == 0) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "response HEADERS: stream_id == 0");
   }
   if(stream->shut_flags & NGHTTP2_SHUT_RD) {
     /* half closed (remote): from the spec:
@@ -2856,7 +2888,8 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
   assert(stream->state == NGHTTP2_STREAM_RESERVED);
   if(frame->hd.stream_id == 0) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "push response HEADERS: stream_id == 0");
   }
   if(session->goaway_flags) {
     /* We don't accept new stream after GOAWAY is sent or received. */
@@ -2865,7 +2898,8 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
 
   if(session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_ENHANCE_YOUR_CALM);
+      (session, frame, NGHTTP2_ENHANCE_YOUR_CALM,
+       "push response HEADERS: max concurrent streams exceeded");
   }
   if(session_is_incoming_concurrent_streams_pending_max(session)) {
     return session_inflate_handle_invalid_stream
@@ -2888,7 +2922,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
   int rv = 0;
   if(frame->hd.stream_id == 0) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "HEADERS: stream_id == 0");
   }
   if(stream->state == NGHTTP2_STREAM_RESERVED) {
     /* reserved. The valid push response HEADERS is processed by
@@ -2896,7 +2930,7 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
        generic HEADERS is called invalid cases for HEADERS against
        reserved state. */
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "HEADERS: stream in reserved");
   }
   if((stream->shut_flags & NGHTTP2_SHUT_RD)) {
     /* half closed (remote): from the spec:
@@ -2951,7 +2985,8 @@ static int session_process_headers_frame(nghttp2_session *session)
                                             nghttp2_buf_len(&iframe->sbuf));
 
   if(rv != 0) {
-    return nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_terminate_session_with_reason
+      (session, NGHTTP2_PROTOCOL_ERROR, "HEADERS: could not unpack");
   }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
@@ -2984,20 +3019,20 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
   nghttp2_stream *stream;
 
   if(frame->hd.stream_id == 0) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "PRIORITY: stream_id == 0");
   }
   stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
   if(!stream) {
     if(session_detect_idle_stream(session, frame->hd.stream_id)) {
-      return session_handle_invalid_connection(session, frame,
-                                               NGHTTP2_PROTOCOL_ERROR);
+      return session_handle_invalid_connection
+        (session, frame, NGHTTP2_PROTOCOL_ERROR, "PRIORITY: stream in idle");
     }
     return 0;
   }
   if(state_reserved_remote(session, stream)) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "PRIORITY: stream in reserved");
   }
   /* Only update priority of the stream, only if it is not pushed
      stream and is initiated by remote peer, or it is pushed stream
@@ -3035,14 +3070,14 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
   int rv;
   nghttp2_stream *stream;
   if(frame->hd.stream_id == 0) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "RST_STREAM: stream_id == 0");
   }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
     if(session_detect_idle_stream(session, frame->hd.stream_id)) {
-      return session_handle_invalid_connection(session, frame,
-                                               NGHTTP2_PROTOCOL_ERROR);
+      return session_handle_invalid_connection
+        (session, frame, NGHTTP2_PROTOCOL_ERROR, "RST_STREAM: stream in idle");
     }
   }
 
@@ -3271,17 +3306,18 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
   int initial_window_size_seen = 0;
 
   if(frame->hd.stream_id != 0) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "SETTINGS: stream_id != 0");
   }
   if(frame->hd.flags & NGHTTP2_FLAG_ACK) {
     if(frame->settings.niv != 0) {
       return session_handle_invalid_connection
-        (session, frame, NGHTTP2_FRAME_SIZE_ERROR);
+        (session, frame, NGHTTP2_FRAME_SIZE_ERROR,
+         "SETTINGS: ACK and payload != 0");
     }
     if(session->inflight_niv == -1) {
-      return session_handle_invalid_connection(session, frame,
-                                               NGHTTP2_PROTOCOL_ERROR);
+      return session_handle_invalid_connection
+        (session, frame, NGHTTP2_PROTOCOL_ERROR, "SETTINGS: unexpected ACK");
     }
     rv = nghttp2_session_update_local_settings(session, session->inflight_iv,
                                                session->inflight_niv);
@@ -3296,7 +3332,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       if(rv == NGHTTP2_ERR_HEADER_COMP) {
         error_code = NGHTTP2_COMPRESSION_ERROR;
       }
-      return session_handle_invalid_connection(session, frame, error_code);
+      return session_handle_invalid_connection
+        (session, frame, error_code, NULL);
     }
     return session_call_on_frame_received(session, frame);
   }
@@ -3318,7 +3355,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
       if(entry->value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
         return session_handle_invalid_connection
-          (session, frame, NGHTTP2_COMPRESSION_ERROR);
+          (session, frame, NGHTTP2_COMPRESSION_ERROR,
+           "SETTINGS: too large SETTINGS_HEADER_TABLE_SIZE");
       }
 
       rv = nghttp2_hd_deflate_change_table_size(&session->hd_deflater,
@@ -3328,7 +3366,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
           return rv;
         } else {
           return session_handle_invalid_connection
-            (session, frame, NGHTTP2_COMPRESSION_ERROR);
+            (session, frame, NGHTTP2_COMPRESSION_ERROR, NULL);
         }
       }
 
@@ -3344,12 +3382,14 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
       if(entry->value != 0 && entry->value != 1) {
         return session_handle_invalid_connection
-          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+          (session, frame, NGHTTP2_PROTOCOL_ERROR,
+           "SETTINGS: invalid SETTINGS_ENBLE_PUSH");
       }
 
       if(!session->server && entry->value != 0) {
         return session_handle_invalid_connection
-          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+          (session, frame, NGHTTP2_PROTOCOL_ERROR,
+           "SETTINGS: server attempted to enable push");
       }
 
       session->remote_settings.enable_push = entry->value;
@@ -3376,7 +3416,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       /* Check that initial_window_size < (1u << 31) */
       if(entry->value > NGHTTP2_MAX_WINDOW_SIZE) {
         return session_handle_invalid_connection
-          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
+          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR,
+           "SETTINGS: too large SETTINGS_INITIAL_WINDOW_SIZE");
       }
 
       rv = session_update_remote_initial_window_size(session, entry->value);
@@ -3387,7 +3428,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
       if(rv != 0) {
         return session_handle_invalid_connection
-          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
+          (session, frame, NGHTTP2_FLOW_CONTROL_ERROR, NULL);
       }
 
       session->remote_settings.initial_window_size = entry->value;
@@ -3405,7 +3446,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       }
 
       return session_handle_invalid_connection
-        (session, frame, NGHTTP2_INTERNAL_ERROR);
+        (session, frame, NGHTTP2_INTERNAL_ERROR, NULL);
     }
   }
 
@@ -3437,36 +3478,41 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
 
   if(frame->hd.stream_id == 0) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "PUSH_PROMISE: stream_id == 0");
   }
   if(session->server || session->local_settings.enable_push == 0) {
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "PUSH_PROMISE: push disabled");
   }
   if(session->goaway_flags) {
     /* We just dicard PUSH_PROMISE after GOAWAY is sent or
        received. */
     return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
+
+  if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+    return session_inflate_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "PUSH_PROMISE: invalid stream_id");
+  }
+
   if(!session_is_new_peer_stream_id
      (session, frame->push_promise.promised_stream_id)) {
     /* The spec says if an endpoint receives a PUSH_PROMISE with
        illegal stream ID is subject to a connection error of type
        PROTOCOL_ERROR. */
     return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "PUSH_PROMISE: invalid promised_stream_id");
   }
   session->last_recv_stream_id = frame->push_promise.promised_stream_id;
-  if(!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-    return session_inflate_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
-  }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
     if(!stream) {
       if(session_detect_idle_stream(session, frame->hd.stream_id)) {
         return session_inflate_handle_invalid_connection
-          (session, frame, NGHTTP2_PROTOCOL_ERROR);
+          (session, frame, NGHTTP2_PROTOCOL_ERROR,
+           "PUSH_PROMISE: stream in idle");
       }
     }
     rv = nghttp2_session_add_rst_stream
@@ -3529,7 +3575,8 @@ static int session_process_push_promise_frame(nghttp2_session *session)
      iframe->sbuf.pos, nghttp2_buf_len(&iframe->sbuf));
 
   if(rv != 0) {
-    return nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
+    return nghttp2_session_terminate_session_with_reason
+      (session, NGHTTP2_PROTOCOL_ERROR, "PUSH_PROMISE: could not unpack");
   }
 
   return nghttp2_session_on_push_promise_received(session, frame);
@@ -3540,8 +3587,8 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
 {
   int rv = 0;
   if(frame->hd.stream_id != 0) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "PING: stream_id != 0");
   }
   if((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
     /* Peer sent ping, so ping it back */
@@ -3570,14 +3617,15 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
                                        nghttp2_frame *frame)
 {
   if(frame->hd.stream_id != 0) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "GOAWAY: stream_id != 0");
   }
   /* Draft says Endpoints MUST NOT increase the value they send in the
      last stream identifier. */
   if(session->remote_last_stream_id < frame->goaway.last_stream_id) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "GOAWAY: invalid last_stream_id");
   }
 
   session->remote_last_stream_id = frame->goaway.last_stream_id;
@@ -3608,8 +3656,8 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
      already rejected ALTSVC if it is received by server. */
   if(frame->hd.stream_id != 0 &&
      !nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_PROTOCOL_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_PROTOCOL_ERROR, "ALTSVC: invalid stream_id");
   }
 
   return session_call_on_frame_received(session, frame);
@@ -3630,8 +3678,8 @@ static int session_process_altsvc_frame(nghttp2_session *session)
                                            nghttp2_buf_len(&iframe->lbuf));
 
   if(rv != 0) {
-    return session_handle_invalid_connection(session, frame,
-                                             NGHTTP2_FRAME_SIZE_ERROR);
+    return session_handle_invalid_connection
+      (session, frame, NGHTTP2_FRAME_SIZE_ERROR, "ALTSVC: could not unpack");
   }
 
   nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
@@ -3681,7 +3729,7 @@ static int session_on_connection_window_update_received
   if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
      session->remote_window_size) {
     return session_handle_invalid_connection
-      (session, frame, NGHTTP2_FLOW_CONTROL_ERROR);
+      (session, frame, NGHTTP2_FLOW_CONTROL_ERROR, NULL);
   }
   session->remote_window_size += frame->window_update.window_size_increment;
   /* To queue the DATA deferred by connection-level flow-control, we
@@ -3706,14 +3754,16 @@ static int session_on_stream_window_update_received
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if(!stream) {
     if(session_detect_idle_stream(session, frame->hd.stream_id)) {
-      return session_handle_invalid_connection(session, frame,
-                                               NGHTTP2_PROTOCOL_ERROR);
+      return session_handle_invalid_connection
+        (session, frame, NGHTTP2_PROTOCOL_ERROR,
+         "WINDOW_UPDATE to idle stream");
     }
     return 0;
   }
   if(stream->state == NGHTTP2_STREAM_RESERVED) {
     return session_handle_invalid_connection
-      (session, frame, NGHTTP2_PROTOCOL_ERROR);
+      (session, frame, NGHTTP2_PROTOCOL_ERROR,
+       "WINDOW_UPADATE to reserved stream");
   }
   if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
      stream->remote_window_size) {
@@ -3952,6 +4002,7 @@ static int session_on_data_received_fail_fast(nghttp2_session *session)
   nghttp2_stream *stream;
   nghttp2_inbound_frame *iframe;
   int32_t stream_id;
+  const char *failure_reason;
 
   iframe = &session->iframe;
   stream_id = iframe->frame.hd.stream_id;
@@ -3960,16 +4011,19 @@ static int session_on_data_received_fail_fast(nghttp2_session *session)
     /* The spec says that if a DATA frame is received whose stream ID
        is 0, the recipient MUST respond with a connection error of
        type PROTOCOL_ERROR. */
+    failure_reason = "DATA: stream_id == 0";
     goto fail;
   }
   stream = nghttp2_session_get_stream(session, stream_id);
   if(!stream) {
     if(session_detect_idle_stream(session, stream_id)) {
+      failure_reason = "DATA: stream in idle";
       goto fail;
     }
     return NGHTTP2_ERR_IGN_PAYLOAD;
   }
   if(stream->shut_flags & NGHTTP2_SHUT_RD) {
+      failure_reason = "DATA: stream in half-closed(remote)";
     goto fail;
   }
 
@@ -3978,11 +4032,13 @@ static int session_on_data_received_fail_fast(nghttp2_session *session)
       return NGHTTP2_ERR_IGN_PAYLOAD;
     }
     if(stream->state != NGHTTP2_STREAM_OPENED) {
+      failure_reason = "DATA: stream not opened";
       goto fail;
     }
     return 0;
   }
   if(stream->state == NGHTTP2_STREAM_RESERVED) {
+    failure_reason = "DATA: stream in reserved";
     goto fail;
   }
   if(stream->state == NGHTTP2_STREAM_CLOSING) {
@@ -3990,7 +4046,8 @@ static int session_on_data_received_fail_fast(nghttp2_session *session)
   }
   return 0;
  fail:
-  rv = nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
+  rv = nghttp2_session_terminate_session_with_reason
+    (session, NGHTTP2_PROTOCOL_ERROR, failure_reason);
   if(nghttp2_is_fatal(rv)) {
     return rv;
   }
@@ -4193,8 +4250,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
         if(rv < 0) {
           iframe->state = NGHTTP2_IB_IGN_DATA;
-          rv = nghttp2_session_terminate_session(session,
-                                                 NGHTTP2_PROTOCOL_ERROR);
+          rv = nghttp2_session_terminate_session_with_reason
+            (session, NGHTTP2_PROTOCOL_ERROR,
+             "DATA: insufficient padding space");
 
           if(nghttp2_is_fatal(rv)) {
             return rv;
@@ -4228,8 +4286,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
           iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
 
-          rv = nghttp2_session_terminate_session(session,
-                                                 NGHTTP2_PROTOCOL_ERROR);
+          rv = nghttp2_session_terminate_session_with_reason
+            (session, NGHTTP2_PROTOCOL_ERROR,
+             "HEADERS: insufficient padding space");
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
@@ -4353,8 +4412,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         if(rv < 0) {
           busy = 1;
           iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
-          rv = nghttp2_session_terminate_session(session,
-                                                 NGHTTP2_PROTOCOL_ERROR);
+          rv = nghttp2_session_terminate_session_with_reason
+            (session, NGHTTP2_PROTOCOL_ERROR,
+             "PUSH_PROMISE: insufficient padding space");
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
@@ -4412,8 +4472,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         /* Receiving CONTINUATION in this state are subject to
            connection error of type PROTOCOL_ERROR */
-        rv = nghttp2_session_terminate_session(session,
-                                               NGHTTP2_PROTOCOL_ERROR);
+        rv = nghttp2_session_terminate_session_with_reason
+          (session, NGHTTP2_PROTOCOL_ERROR, "CONTINUATION: unexpected");
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
@@ -4429,8 +4489,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
 
         if(session->server) {
-          rv = nghttp2_session_terminate_session(session,
-                                                 NGHTTP2_PROTOCOL_ERROR);
+          rv = nghttp2_session_terminate_session_with_reason
+            (session, NGHTTP2_PROTOCOL_ERROR,
+             "ALTSVC: reserved for server only");
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
@@ -4488,8 +4549,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           padlen = inbound_frame_compute_pad(iframe);
           if(padlen < 0) {
             busy = 1;
-            rv = nghttp2_session_terminate_session(session,
-                                                   NGHTTP2_PROTOCOL_ERROR);
+            rv = nghttp2_session_terminate_session_with_reason
+              (session, NGHTTP2_PROTOCOL_ERROR, "HEADERS: invalid padding");
             if(nghttp2_is_fatal(rv)) {
               return rv;
             }
@@ -4554,8 +4615,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           padlen = inbound_frame_compute_pad(iframe);
           if(padlen < 0) {
             busy = 1;
-            rv = nghttp2_session_terminate_session(session,
-                                                   NGHTTP2_PROTOCOL_ERROR);
+            rv = nghttp2_session_terminate_session_with_reason
+              (session, NGHTTP2_PROTOCOL_ERROR,
+               "PUSH_PROMISE: invalid padding");
             if(nghttp2_is_fatal(rv)) {
               return rv;
             }
@@ -4910,8 +4972,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                        "got stream_id=%d, type=%d\n",
                        iframe->frame.hd.stream_id, NGHTTP2_CONTINUATION,
                        cont_hd.stream_id, cont_hd.type));
-        rv = nghttp2_session_terminate_session(session,
-                                               NGHTTP2_PROTOCOL_ERROR);
+        rv = nghttp2_session_terminate_session_with_reason
+          (session, NGHTTP2_PROTOCOL_ERROR,
+           "unexpected non-CONTINUATION frame or stream_id is invalid");
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
@@ -4931,8 +4994,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                        "recv: headers too large %zu\n",
                        iframe->headers_payload_length));
 
-        rv = nghttp2_session_terminate_session(session,
-                                               NGHTTP2_INTERNAL_ERROR);
+        rv = nghttp2_session_terminate_session_with_reason
+          (session, NGHTTP2_INTERNAL_ERROR, "header is too large");
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
@@ -4993,8 +5056,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
       padlen = inbound_frame_compute_pad(iframe);
       if(padlen < 0) {
-        rv = nghttp2_session_terminate_session(session,
-                                               NGHTTP2_PROTOCOL_ERROR);
+        rv = nghttp2_session_terminate_session_with_reason
+          (session, NGHTTP2_PROTOCOL_ERROR, "DATA: invalid padding");
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }
