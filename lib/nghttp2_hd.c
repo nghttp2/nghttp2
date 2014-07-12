@@ -318,7 +318,6 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
   if(rv != 0) {
     return rv;
   }
-  deflater->no_refset = 0;
 
   if(deflate_hd_table_bufsize_max < NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE) {
     deflater->notify_table_size_change = 1;
@@ -346,7 +345,6 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
 
   inflater->ent_keep = NULL;
   inflater->nv_keep = NULL;
-  inflater->end_headers_index = 0;
 
   inflater->opcode = NGHTTP2_HD_OPCODE_NONE;
   inflater->state = NGHTTP2_HD_STATE_OPCODE;
@@ -400,12 +398,6 @@ void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater)
   hd_context_free(&inflater->ctx);
 }
 
-void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
-                                      uint8_t no_refset)
-{
-  deflater->no_refset = no_refset;
-}
-
 static size_t entry_room(size_t namelen, size_t valuelen)
 {
   return NGHTTP2_HD_ENTRY_OVERHEAD + namelen + valuelen;
@@ -418,10 +410,8 @@ static int emit_indexed_header(nghttp2_nv *nv_out, nghttp2_hd_entry *ent)
   DEBUGF(fprintf(stderr, ": "));
   DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
   DEBUGF(fprintf(stderr, "\n"));
-  /* ent->ref may be 0. This happens if the careless stupid encoder
-     emits literal block larger than header table capacity with
-     indexing. */
-  ent->flags |= NGHTTP2_HD_FLAG_EMIT;
+  /* ent->ref may be 0. This happens if the encoder emits literal
+     block larger than header table capacity with indexing. */
   *nv_out = ent->nv;
   return 0;
 }
@@ -561,20 +551,6 @@ static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
   return in + 1 - start;
 }
 
-static int emit_clear_refset(nghttp2_bufs *bufs)
-{
-  int rv;
-
-  DEBUGF(fprintf(stderr, "deflatehd: emit clear refset\n"));
-
-  rv = nghttp2_bufs_addb(bufs, 0x30u);
-  if(rv != 0) {
-    return rv;
-  }
-
-  return 0;
-}
-
 static int emit_table_size(nghttp2_bufs *bufs, size_t table_size)
 {
   int rv;
@@ -584,7 +560,7 @@ static int emit_table_size(nghttp2_bufs *bufs, size_t table_size)
 
   DEBUGF(fprintf(stderr, "deflatehd: emit table_size=%zu\n", table_size));
 
-  blocklen = count_encoded_length(table_size, 4);
+  blocklen = count_encoded_length(table_size, 5);
 
   if(sizeof(sb) < blocklen) {
     return NGHTTP2_ERR_HEADER_COMP;
@@ -594,7 +570,7 @@ static int emit_table_size(nghttp2_bufs *bufs, size_t table_size)
 
   *bufp = 0x20u;
 
-  encode_length(bufp, table_size, 4);
+  encode_length(bufp, table_size, 5);
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
   if(rv != 0) {
@@ -789,23 +765,6 @@ static int emit_newname_block(nghttp2_bufs *bufs, const nghttp2_nv *nv,
   return 0;
 }
 
-/*
- * Emit common header with |index| by toggle off and on (thus 2
- * indexed representation emissions).
- */
-static int emit_implicit(nghttp2_bufs *bufs, size_t idx)
-{
-  int i, rv;
-
-  for(i = 0; i < 2; ++i) {
-    rv = emit_indexed_block(bufs, idx);
-    if(rv != 0) {
-      return rv;
-    }
-  }
-  return 0;
-}
-
 static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
                                                   nghttp2_bufs *bufs,
                                                   const nghttp2_nv *nv,
@@ -824,17 +783,7 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     nghttp2_hd_entry* ent = hd_ringbuf_get(&context->hd_table, idx);
 
     context->hd_table_bufsize -= entry_room(ent->nv.namelen, ent->nv.valuelen);
-    if(context->role == NGHTTP2_HD_ROLE_DEFLATE) {
-      if(ent->flags & NGHTTP2_HD_FLAG_IMPLICIT_EMIT) {
-        /* Emit common header just before it slips away from the
-           table. If we don't do this, we have to emit it in literal
-           representation which hurts compression. */
-        rv = emit_implicit(bufs, idx);
-        if(rv != 0) {
-          return NULL;
-        }
-      }
-    }
+
     DEBUGF(fprintf(stderr, "hpack: remove item from header table: "));
     DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
     DEBUGF(fprintf(stderr, ": "));
@@ -882,8 +831,6 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
     }
 
     context->hd_table_bufsize += room;
-
-    new_ent->flags |= NGHTTP2_HD_FLAG_REFSET;
   }
   return new_ent;
 }
@@ -987,15 +934,6 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
   return 0;
 }
 
-static void clear_refset(nghttp2_hd_context *context)
-{
-  size_t i;
-  for(i = 0; i < context->hd_table.len; ++i) {
-    nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
-    ent->flags &= ~NGHTTP2_HD_FLAG_REFSET;
-  }
-}
-
 #define INDEX_RANGE_VALID(context, idx) \
   ((idx) < (context)->hd_table.len + STATIC_TABLE_LENGTH)
 
@@ -1063,9 +1001,6 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
     if(idx >= deflater->ctx.hd_table.len) {
       nghttp2_hd_entry *new_ent;
 
-      /* It is important to first add entry to the header table and
-         let eviction go. If NGHTTP2_HD_FLAG_IMPLICIT_EMIT entry is
-         evicted, it must be emitted before the |nv|. */
       new_ent = add_hd_table_incremental(&deflater->ctx, bufs, &ent->nv,
                                          NGHTTP2_HD_FLAG_NONE);
       if(!new_ent) {
@@ -1075,51 +1010,15 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
         nghttp2_hd_entry_free(new_ent);
         free(new_ent);
         new_ent = NULL;
-      } else {
-        /* new_ent->ref > 0 means that new_ent is in the reference
-           set */
-        new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
       }
-      rv = emit_indexed_block(bufs, idx);
-      if(rv != 0) {
-        return rv;
-      }
-    } else if((ent->flags & NGHTTP2_HD_FLAG_REFSET) == 0) {
-      ent->flags |= NGHTTP2_HD_FLAG_REFSET | NGHTTP2_HD_FLAG_EMIT;
       rv = emit_indexed_block(bufs, idx);
       if(rv != 0) {
         return rv;
       }
     } else {
-      int num_emits = 0;
-      if(ent->flags & NGHTTP2_HD_FLAG_EMIT) {
-        /* occurrences of the same indexed representation. Emit index
-           twice. */
-        num_emits = 2;
-      } else if(ent->flags & NGHTTP2_HD_FLAG_IMPLICIT_EMIT) {
-        /* ent was implicitly emitted because it is the common
-           header field. To support occurrences of the same indexed
-           representation, we have to emit 4 times. This is because
-           "implicitly emitted" means actually not emitted at
-           all. So first 2 emits performs 1st header appears in the
-           reference set. And another 2 emits are done for 2nd
-           (current) header. */
-        ent->flags ^= NGHTTP2_HD_FLAG_IMPLICIT_EMIT;
-        ent->flags |= NGHTTP2_HD_FLAG_EMIT;
-        num_emits = 4;
-      } else {
-        /* This is common header and not emitted in the current
-           run. Just mark IMPLICIT_EMIT, in the hope that we are not
-           required to emit anything for this. We will emit toggle
-           off/on for this entry if it is removed from the header
-           table. */
-        ent->flags |= NGHTTP2_HD_FLAG_IMPLICIT_EMIT;
-      }
-      for(; num_emits > 0; --num_emits) {
-        rv = emit_indexed_block(bufs, idx);
-        if(rv != 0) {
-          return rv;
-        }
+      rv = emit_indexed_block(bufs, idx);
+      if(rv != 0) {
+        return rv;
       }
     }
   } else {
@@ -1150,10 +1049,6 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
       if(new_ent->ref == 0) {
         nghttp2_hd_entry_free(new_ent);
         free(new_ent);
-      } else {
-        /* new_ent->ref > 0 means that new_ent is in the reference
-           set. */
-        new_ent->flags |= NGHTTP2_HD_FLAG_EMIT;
       }
       incidx = 1;
     }
@@ -1166,30 +1061,6 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
       return rv;
     }
   }
-  return 0;
-}
-
-static int deflate_post_process_hd_entry(nghttp2_hd_entry *ent,
-                                         size_t idx,
-                                         nghttp2_bufs *bufs)
-{
-  int rv;
-
-  if((ent->flags & NGHTTP2_HD_FLAG_REFSET) &&
-     (ent->flags & NGHTTP2_HD_FLAG_IMPLICIT_EMIT) == 0 &&
-     (ent->flags & NGHTTP2_HD_FLAG_EMIT) == 0) {
-    /* This entry is not present in the current header set and must
-       be removed. */
-    ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
-
-    rv = emit_indexed_block(bufs, idx);
-    if(rv != 0) {
-      return rv;
-    }
-  }
-
-  ent->flags &= ~(NGHTTP2_HD_FLAG_EMIT | NGHTTP2_HD_FLAG_IMPLICIT_EMIT);
-
   return 0;
 }
 
@@ -1215,13 +1086,6 @@ int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
     }
   }
 
-  if(deflater->no_refset) {
-    rv = emit_clear_refset(bufs);
-    if(rv != 0) {
-      goto fail;
-    }
-    clear_refset(&deflater->ctx);
-  }
   for(i = 0; i < nvlen; ++i) {
     rv = deflate_nv(deflater, bufs, &nv[i]);
     if(rv != 0) {
@@ -1231,15 +1095,6 @@ int nghttp2_hd_deflate_hd_bufs(nghttp2_hd_deflater *deflater,
 
   DEBUGF(fprintf(stderr,
                  "deflatehd: all input name/value pairs were deflated\n"));
-
-  for(i = 0; i < deflater->ctx.hd_table.len; ++i) {
-    nghttp2_hd_entry *ent = hd_ringbuf_get(&deflater->ctx.hd_table, i);
-
-    rv = deflate_post_process_hd_entry(ent, i, bufs);
-    if(rv != 0) {
-      goto fail;
-    }
-  }
 
   return 0;
  fail:
@@ -1282,11 +1137,8 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
 size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
                                 const nghttp2_nv *nva, size_t nvlen)
 {
-  size_t n;
+  size_t n = 0;
   size_t i;
-
-  /* Possible Reference Set Emptying */
-  n = 1;
 
   /* Possible Maximum Header Table Size Change.  Encoding (1u << 31) -
      1 using 4 bit prefix requires 6 bytes. */
@@ -1304,9 +1156,6 @@ size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
   for(i = 0; i < nvlen; ++i) {
     n += nva[i].namelen + nva[i].valuelen;
   }
-
-  /* Add possible reference set toggle off */
-  n += deflater->ctx.hd_table.len;
 
   return n;
 }
@@ -1483,17 +1332,10 @@ static int hd_inflate_commit_indexed(nghttp2_hd_inflater *inflater,
     inflater->ent_keep = new_ent;
     return 0;
   }
-  ent->flags ^= NGHTTP2_HD_FLAG_REFSET;
-  if(ent->flags & NGHTTP2_HD_FLAG_REFSET) {
-    emit_indexed_header(nv_out, ent);
-    return 0;
-  }
-  DEBUGF(fprintf(stderr, "inflatehd: toggle off item: "));
-  DEBUGF(fwrite(ent->nv.name, ent->nv.namelen, 1, stderr));
-  DEBUGF(fprintf(stderr, ": "));
-  DEBUGF(fwrite(ent->nv.value, ent->nv.valuelen, 1, stderr));
-  DEBUGF(fprintf(stderr, "\n"));
-  return 1;
+
+  emit_indexed_header(nv_out, ent);
+
+  return 0;
 }
 
 static int hd_inflate_remove_bufs(nghttp2_hd_inflater *inflater,
@@ -1678,20 +1520,10 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
   for(; in != last;) {
     switch(inflater->state) {
     case NGHTTP2_HD_STATE_OPCODE:
-      if((*in & 0xf0u) == 0x20u) {
+      if((*in & 0xe0u) == 0x20u) {
         DEBUGF(fprintf(stderr, "inflatehd: header table size change\n"));
         inflater->opcode = NGHTTP2_HD_OPCODE_INDEXED;
         inflater->state = NGHTTP2_HD_STATE_READ_TABLE_SIZE;
-      } else if((*in & 0xf0u) == 0x30u) {
-        if(*in != 0x30u) {
-          rv = NGHTTP2_ERR_HEADER_COMP;
-          goto fail;
-        }
-
-        DEBUGF(fprintf(stderr, "inflatehd: clearing reference set\n"));
-        inflater->opcode = NGHTTP2_HD_OPCODE_INDEXED;
-        inflater->state = NGHTTP2_HD_STATE_CLEAR_REFSET;
-        ++in;
       } else if(*in & 0x80u) {
         DEBUGF(fprintf(stderr, "inflatehd: indexed repr\n"));
         inflater->opcode = NGHTTP2_HD_OPCODE_INDEXED;
@@ -1721,14 +1553,9 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       inflater->left = 0;
       inflater->shift = 0;
       break;
-    case NGHTTP2_HD_STATE_CLEAR_REFSET:
-      clear_refset(&inflater->ctx);
-      inflater->state = NGHTTP2_HD_STATE_OPCODE;
-
-      break;
     case NGHTTP2_HD_STATE_READ_TABLE_SIZE:
       rfin = 0;
-      rv = hd_inflate_read_len(inflater, &rfin, in, last, 4,
+      rv = hd_inflate_read_len(inflater, &rfin, in, last, 5,
                                inflater->settings_hd_table_bufsize_max);
       if(rv < 0) {
         goto fail;
@@ -1995,20 +1822,6 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       goto fail;
     }
-    for(; inflater->end_headers_index < inflater->ctx.hd_table.len;
-        ++inflater->end_headers_index) {
-      nghttp2_hd_entry *ent;
-      ent = hd_ringbuf_get(&inflater->ctx.hd_table,
-                           inflater->end_headers_index);
-
-      if((ent->flags & NGHTTP2_HD_FLAG_REFSET) &&
-         (ent->flags & NGHTTP2_HD_FLAG_EMIT) == 0) {
-        emit_indexed_header(nv_out, ent);
-        *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
-        return (ssize_t)(in - first);
-      }
-      ent->flags &= ~NGHTTP2_HD_FLAG_EMIT;
-    }
     *inflate_flags |= NGHTTP2_HD_INFLATE_FINAL;
   }
   return (ssize_t)(in - first);
@@ -2033,7 +1846,6 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 {
   hd_inflate_keep_free(inflater);
-  inflater->end_headers_index = 0;
   return 0;
 }
 

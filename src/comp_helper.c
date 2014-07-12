@@ -43,8 +43,6 @@ json_t* dump_header_table(nghttp2_hd_context *context)
     json_object_set_new(outent, "index", json_integer(i + 1));
     dump_val(outent, "name", ent->nv.name, ent->nv.namelen);
     dump_val(outent, "value", ent->nv.value, ent->nv.valuelen);
-    json_object_set_new(outent, "referenced",
-                        json_boolean(ent->flags & NGHTTP2_HD_FLAG_REFSET));
     json_object_set_new(outent, "size",
                         json_integer(ent->nv.namelen + ent->nv.valuelen +
                                      NGHTTP2_HD_ENTRY_OVERHEAD));

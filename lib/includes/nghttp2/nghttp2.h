@@ -2822,18 +2822,6 @@ void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater);
 /**
  * @function
  *
- * Sets the availability of reference set in the |deflater|.  If
- * |no_refset| is nonzero, the deflater will first emit "Reference Set
- * Emptying" in the each subsequent invocation of
- * `nghttp2_hd_deflate_hd()` to clear up reference set.  By default,
- * the deflater uses reference set.
- */
-void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
-                                      uint8_t no_refset);
-
-/**
- * @function
- *
  * Changes header table size of the |deflater| to
  * |settings_hd_table_bufsize_max| bytes.  This may trigger eviction
  * in the dynamic table.

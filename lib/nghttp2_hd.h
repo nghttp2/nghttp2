@@ -58,18 +58,12 @@ typedef enum {
   NGHTTP2_HD_FLAG_NAME_ALLOC = 1,
   /* Indicates value was dynamically allocated and must be freed */
   NGHTTP2_HD_FLAG_VALUE_ALLOC = 1 << 1,
-  /* Indicates that the entry is in the reference set */
-  NGHTTP2_HD_FLAG_REFSET = 1 << 2,
-  /* Indicates that the entry is emitted in the current header
-     processing. */
-  NGHTTP2_HD_FLAG_EMIT = 1 << 3,
-  NGHTTP2_HD_FLAG_IMPLICIT_EMIT = 1 << 4,
   /* Indicates that the name was gifted to the entry and no copying
      necessary. */
-  NGHTTP2_HD_FLAG_NAME_GIFT = 1 << 5,
+  NGHTTP2_HD_FLAG_NAME_GIFT = 1 << 2,
   /* Indicates that the value was gifted to the entry and no copying
      necessary. */
-  NGHTTP2_HD_FLAG_VALUE_GIFT = 1 << 6
+  NGHTTP2_HD_FLAG_VALUE_GIFT = 1 << 3
 } nghttp2_hd_flags;
 
 typedef struct {
@@ -97,7 +91,6 @@ typedef enum {
 
 typedef enum {
   NGHTTP2_HD_STATE_OPCODE,
-  NGHTTP2_HD_STATE_CLEAR_REFSET,
   NGHTTP2_HD_STATE_READ_TABLE_SIZE,
   NGHTTP2_HD_STATE_READ_INDEX,
   NGHTTP2_HD_STATE_NEWNAME_CHECK_NAMELEN,
@@ -131,9 +124,6 @@ struct nghttp2_hd_deflater {
   nghttp2_hd_context ctx;
   /* The upper limit of the header table size the deflater accepts. */
   size_t deflate_hd_table_bufsize_max;
-  /* Set to this nonzero to clear reference set on each deflation each
-     time. */
-  uint8_t no_refset;
   /* If nonzero, send header table size using encoding context update
      in the next deflate process */
   uint8_t notify_table_size_change;
@@ -159,9 +149,6 @@ struct nghttp2_hd_inflater {
   size_t left;
   /* The index in indexed repr or indexed name */
   size_t index;
-  /* The index of header table to toggle off the entry from reference
-     set at the end of decompression. */
-  size_t end_headers_index;
   /* The length of new name encoded in literal.  For huffman encoded
      string, this is the length after it is decoded. */
   size_t newnamelen;

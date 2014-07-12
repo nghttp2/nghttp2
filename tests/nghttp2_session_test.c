@@ -927,7 +927,7 @@ void test_nghttp2_session_recv_headers_with_priority(void)
   rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
 
   CU_ASSERT(0 == rv);
-  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 5 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 5 + 2 == nghttp2_bufs_len(&bufs));
 
   nghttp2_frame_headers_free(&frame.headers);
 
