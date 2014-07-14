@@ -1231,6 +1231,182 @@ void test_nghttp2_session_recv_unexpected_continuation(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_settings_header_table_size(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_frame frame;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  ssize_t rv;
+  my_user_data ud;
+  nghttp2_settings_entry iv[3];
+  nghttp2_nv nv = MAKE_NV(":authority", "example.org");
+
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[0].value = 3000;
+
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 16384;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(iv, 2), 2);
+
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_settings_free(&frame.settings);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(rv == nghttp2_buf_len(buf));
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+
+  CU_ASSERT(3000 == session->remote_settings.header_table_size);
+  CU_ASSERT(16384 == session->remote_settings.initial_window_size);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* 2 SETTINGS_HEADER_TABLE_SIZE */
+  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[0].value = 3001;
+
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 16383;
+
+  iv[2].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[2].value = 3001;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(iv, 3), 3);
+
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_settings_free(&frame.settings);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(rv == nghttp2_buf_len(buf));
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+
+  CU_ASSERT(3001 == session->remote_settings.header_table_size);
+  CU_ASSERT(16383 == session->remote_settings.initial_window_size);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* 2 SETTINGS_HEADER_TABLE_SIZE; first entry clears dynamic header
+     table. */
+
+  nghttp2_submit_request(session, NULL, &nv, 1, NULL, NULL);
+  nghttp2_session_send(session);
+
+  CU_ASSERT(0 < session->hd_deflater.ctx.hd_table.len);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[0].value = 0;
+
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 16382;
+
+  iv[2].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[2].value = 4096;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(iv, 3), 3);
+
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_settings_free(&frame.settings);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(rv == nghttp2_buf_len(buf));
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+
+  CU_ASSERT(4096 == session->remote_settings.header_table_size);
+  CU_ASSERT(16382 == session->remote_settings.initial_window_size);
+  CU_ASSERT(0 == session->hd_deflater.ctx.hd_table.len);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* 2 SETTINGS_HEADER_TABLE_SIZE; second entry clears dynamic header
+     table. */
+
+  nghttp2_submit_request(session, NULL, &nv, 1, NULL, NULL);
+  nghttp2_session_send(session);
+
+  CU_ASSERT(0 < session->hd_deflater.ctx.hd_table.len);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[0].value = 3000;
+
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 16381;
+
+  iv[2].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[2].value = 0;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(iv, 3), 3);
+
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_settings_free(&frame.settings);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(rv == nghttp2_buf_len(buf));
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+
+  CU_ASSERT(0 == session->remote_settings.header_table_size);
+  CU_ASSERT(16381 == session->remote_settings.initial_window_size);
+  CU_ASSERT(0 == session->hd_deflater.ctx.hd_table.len);
+
+  nghttp2_bufs_reset(&bufs);
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_continue(void)
 {
   nghttp2_session *session;
@@ -1868,6 +2044,7 @@ void test_nghttp2_session_on_settings_received(void)
   const size_t niv = 5;
   nghttp2_settings_entry iv[255];
   nghttp2_outbound_item *item;
+  nghttp2_nv nv = MAKE_NV(":authority", "example.org");
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[0].value = 50;
@@ -1885,6 +2062,8 @@ void test_nghttp2_session_on_settings_received(void)
   iv[4].value = 0;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
   nghttp2_session_client_new(&session, &callbacks, &user_data);
   session->remote_settings.initial_window_size = 16*1024;
 
@@ -1949,6 +2128,34 @@ void test_nghttp2_session_on_settings_received(void)
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(item != NULL);
   CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+
+  nghttp2_frame_settings_free(&frame.settings);
+  nghttp2_session_del(session);
+
+  /* Check that 2 SETTINGS_HEADER_TABLE_SIZE 0 and 4096 are included
+     and header table size is once cleared to 0. */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  nghttp2_submit_request(session, NULL, &nv, 1, NULL, NULL);
+
+  nghttp2_session_send(session);
+
+  CU_ASSERT(session->hd_deflater.ctx.hd_table.len > 0);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[0].value = 0;
+
+  iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[1].value = 2048;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(iv, 2), 2);
+
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+
+  CU_ASSERT(0 == session->hd_deflater.ctx.hd_table.len);
+  CU_ASSERT(2048 == session->hd_deflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(2048 == session->remote_settings.header_table_size);
 
   nghttp2_frame_settings_free(&frame.settings);
   nghttp2_session_del(session);

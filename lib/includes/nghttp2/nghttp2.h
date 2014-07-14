@@ -516,6 +516,8 @@ typedef enum {
    */
   NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 0x04
 } nghttp2_settings_id;
+/* Note: If we add SETTINGS, update the capacity of
+   NGHTTP2_INBOUND_NUM_IV as well */
 
 /**
  * @macro

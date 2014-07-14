@@ -81,6 +81,8 @@ typedef enum {
   NGHTTP2_IB_IGN_DATA
 } nghttp2_inbound_state;
 
+#define NGHTTP2_INBOUND_NUM_IV 5
+
 typedef struct {
   nghttp2_frame frame;
   /* Storage for extension frame payload.  frame->ext.payload points
@@ -88,8 +90,9 @@ typedef struct {
   nghttp2_ext_frame_payload ext_frame_payload;
   /* The received SETTINGS entry. The protocol says that we only cares
      about the defined settings ID. If unknown ID is received, it is
-     subject to connection error */
-  nghttp2_settings_entry iv[5];
+     ignored.  We use last entry to hold minimum header table size if
+     same settings are multiple times. */
+  nghttp2_settings_entry iv[NGHTTP2_INBOUND_NUM_IV];
   /* buffer pointers to small buffer, raw_sbuf */
   nghttp2_buf sbuf;
   /* buffer pointers to large buffer, raw_lbuf */

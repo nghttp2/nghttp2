@@ -282,6 +282,9 @@ static void session_inbound_frame_reset(nghttp2_session *session)
   iframe->payloadleft = 0;
   iframe->padlen = 0;
   iframe->headers_payload_length = 0;
+  iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].settings_id =
+    NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].value = UINT32_MAX;
 }
 
 static void init_settings(nghttp2_settings_storage *settings)
@@ -3299,11 +3302,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
                                          int noack)
 {
   int rv;
-  int i;
-  int header_table_size_seen = 0;
-  int enable_push_seen = 0;
-  int max_concurrent_streams_seen = 0;
-  int initial_window_size_seen = 0;
+  size_t i;
 
   if(frame->hd.stream_id != 0) {
     return session_handle_invalid_connection
@@ -3338,20 +3337,11 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     return session_call_on_frame_received(session, frame);
   }
 
-  for(i = (int)frame->settings.niv - 1; i >= 0; --i) {
+  for(i = 0; i < frame->settings.niv; ++i) {
     nghttp2_settings_entry *entry = &frame->settings.iv[i];
 
-    /* The spec says the settings values are processed in the order
-       they appear in the payload.  In other words, if the multiple
-       values for the same ID were found, use the last one and ignore
-       the rest. */
     switch(entry->settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
-      if(header_table_size_seen) {
-        break;
-      }
-
-      header_table_size_seen = 1;
 
       if(entry->value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
         return session_handle_invalid_connection
@@ -3374,11 +3364,6 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
       break;
     case NGHTTP2_SETTINGS_ENABLE_PUSH:
-      if(enable_push_seen) {
-        break;
-      }
-
-      enable_push_seen = 1;
 
       if(entry->value != 0 && entry->value != 1) {
         return session_handle_invalid_connection
@@ -3396,21 +3381,11 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
       break;
     case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
-      if(max_concurrent_streams_seen) {
-        break;
-      }
-
-      max_concurrent_streams_seen = 1;
 
       session->remote_settings.max_concurrent_streams = entry->value;
 
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
-      if(initial_window_size_seen) {
-        break;
-      }
-
-      initial_window_size_seen = 1;
 
       /* Update the initial window size of the all active streams */
       /* Check that initial_window_size < (1u << 31) */
@@ -3458,6 +3433,27 @@ static int session_process_settings_frame(nghttp2_session *session)
   int rv;
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
+  size_t i;
+  nghttp2_settings_entry min_header_size_entry;
+
+  min_header_size_entry = iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1];
+
+  if(min_header_size_entry.value < UINT32_MAX) {
+    /* If we have less value, then we must have
+       SETTINGS_HEADER_TABLE_SIZE in i < iframe->niv */
+    for(i = 0; i < iframe->niv; ++i) {
+      if(iframe->iv[i].settings_id == NGHTTP2_SETTINGS_HEADER_TABLE_SIZE) {
+        break;
+      }
+    }
+
+    assert(i < iframe->niv);
+
+    if(min_header_size_entry.value != iframe->iv[i].value) {
+      iframe->iv[iframe->niv++] = iframe->iv[i];
+      iframe->iv[i] = min_header_size_entry;
+    }
+  }
 
   rv = nghttp2_frame_unpack_settings_payload(&frame->settings,
                                              iframe->iv, iframe->niv);
@@ -4114,6 +4110,12 @@ static void inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
 
   if(i == iframe->niv) {
     iframe->iv[iframe->niv++] = iv;
+  }
+
+  if(iv.settings_id == NGHTTP2_SETTINGS_HEADER_TABLE_SIZE &&
+     iv.value < iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].value) {
+
+    iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1] = iv;
   }
 }
 
