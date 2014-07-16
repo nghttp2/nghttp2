@@ -100,7 +100,7 @@ static nghttp2_hd_entry static_table[] = {
   MAKE_ENT("www-authenticate", "", 4051929931u, 0u),
 };
 
-static const size_t STATIC_TABLE_LENGTH =
+const size_t NGHTTP2_STATIC_TABLE_LENGTH =
   sizeof(static_table)/sizeof(static_table[0]);
 
 static int memeq(const void *s1, const void *s2, size_t n)
@@ -860,15 +860,33 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   uint32_t value_hash = hash(nv->value, nv->valuelen);
   int use_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) == 0;
 
+  for(i = 0; i < NGHTTP2_STATIC_TABLE_LENGTH; ++i) {
+    nghttp2_hd_entry *ent = &static_table[i];
+    if(ent->name_hash != name_hash || !name_eq(&ent->nv, nv)) {
+      continue;
+    }
+
+    if(res.index == -1) {
+      res.index = (ssize_t)i;
+    }
+
+    if(use_index &&
+       ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
+      res.index = (ssize_t)i;
+      res.name_value_match = 1;
+      return res;
+    }
+  }
+
   if(use_index) {
     for(i = 0; i < context->hd_table.len; ++i) {
       nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
       if(ent->name_hash == name_hash && name_eq(&ent->nv, nv)) {
         if(res.index == -1) {
-          res.index = (ssize_t)i;
+          res.index = (ssize_t)i + NGHTTP2_STATIC_TABLE_LENGTH;
         }
         if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
-          res.index = (ssize_t)i;
+          res.index = (ssize_t)i + NGHTTP2_STATIC_TABLE_LENGTH;
           res.name_value_match = 1;
           return res;
         }
@@ -876,23 +894,6 @@ static search_result search_hd_table(nghttp2_hd_context *context,
     }
   }
 
-  for(i = 0; i < STATIC_TABLE_LENGTH; ++i) {
-    nghttp2_hd_entry *ent = &static_table[i];
-    if(ent->name_hash != name_hash || !name_eq(&ent->nv, nv)) {
-      continue;
-    }
-
-    if(res.index == -1) {
-      res.index = (ssize_t)(context->hd_table.len + i);
-    }
-
-    if(use_index &&
-       ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
-      res.index = (ssize_t)(context->hd_table.len + i);
-      res.name_value_match = 1;
-      return res;
-    }
-  }
   return res;
 }
 
@@ -935,21 +936,21 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
 }
 
 #define INDEX_RANGE_VALID(context, idx) \
-  ((idx) < (context)->hd_table.len + STATIC_TABLE_LENGTH)
+  ((idx) < (context)->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH)
 
 static size_t get_max_index(nghttp2_hd_context *context)
 {
-  return context->hd_table.len + STATIC_TABLE_LENGTH - 1;
+  return context->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH - 1;
 }
 
 nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                        size_t idx)
 {
   assert(INDEX_RANGE_VALID(context, idx));
-  if(idx < context->hd_table.len) {
-    return hd_ringbuf_get(&context->hd_table, idx);
+  if(idx >= NGHTTP2_STATIC_TABLE_LENGTH) {
+    return hd_ringbuf_get(&context->hd_table, idx - NGHTTP2_STATIC_TABLE_LENGTH);
   } else {
-    return &static_table[idx - context->hd_table.len];
+    return &static_table[idx];
   }
 }
 
@@ -980,7 +981,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
                       nghttp2_bufs *bufs, const nghttp2_nv *nv)
 {
   int rv;
-  nghttp2_hd_entry *ent;
+  /* nghttp2_hd_entry *ent; */
   search_result res;
 
   DEBUGF(fprintf(stderr, "deflatehd: deflating "));
@@ -997,29 +998,9 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
     DEBUGF(fprintf(stderr, "deflatehd: name/value match index=%zd\n",
                    res.index));
 
-    ent = nghttp2_hd_table_get(&deflater->ctx, idx);
-    if(idx >= deflater->ctx.hd_table.len) {
-      nghttp2_hd_entry *new_ent;
-
-      new_ent = add_hd_table_incremental(&deflater->ctx, bufs, &ent->nv,
-                                         NGHTTP2_HD_FLAG_NONE);
-      if(!new_ent) {
-        return NGHTTP2_ERR_HEADER_COMP;
-      }
-      if(new_ent->ref == 0) {
-        nghttp2_hd_entry_free(new_ent);
-        free(new_ent);
-        new_ent = NULL;
-      }
-      rv = emit_indexed_block(bufs, idx);
-      if(rv != 0) {
-        return rv;
-      }
-    } else {
-      rv = emit_indexed_block(bufs, idx);
-      if(rv != 0) {
-        return rv;
-      }
+    rv = emit_indexed_block(bufs, idx);
+    if(rv != 0) {
+      return rv;
     }
   } else {
     ssize_t idx = -1;
@@ -1032,7 +1013,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
     }
     if(hd_deflate_should_indexing(deflater, nv)) {
       nghttp2_hd_entry *new_ent;
-      if(idx >= (ssize_t)deflater->ctx.hd_table.len) {
+      if(idx != -1 && idx < (ssize_t)NGHTTP2_STATIC_TABLE_LENGTH) {
         nghttp2_nv nv_indname;
         nv_indname = *nv;
         nv_indname.name = nghttp2_hd_table_get(&deflater->ctx, idx)->nv.name;
@@ -1320,18 +1301,6 @@ static int hd_inflate_commit_indexed(nghttp2_hd_inflater *inflater,
                                      nghttp2_nv *nv_out)
 {
   nghttp2_hd_entry *ent = nghttp2_hd_table_get(&inflater->ctx, inflater->index);
-  if(inflater->index >= inflater->ctx.hd_table.len) {
-    nghttp2_hd_entry *new_ent;
-    new_ent = add_hd_table_incremental(&inflater->ctx, NULL, &ent->nv,
-                                       NGHTTP2_HD_FLAG_NONE);
-    if(!new_ent) {
-      return NGHTTP2_ERR_NOMEM;
-    }
-    /* new_ent->ref == 0 may be hold */
-    emit_indexed_header(nv_out, new_ent);
-    inflater->ent_keep = new_ent;
-    return 0;
-  }
 
   emit_indexed_header(nv_out, ent);
 
@@ -1462,7 +1431,7 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
     int static_name;
 
     ent_flags = NGHTTP2_HD_FLAG_VALUE_ALLOC | NGHTTP2_HD_FLAG_VALUE_GIFT;
-    static_name = inflater->index >= inflater->ctx.hd_table.len;
+    static_name = inflater->index < NGHTTP2_STATIC_TABLE_LENGTH;
 
     if(!static_name) {
       ent_flags |= NGHTTP2_HD_FLAG_NAME_ALLOC;

@@ -47,6 +47,9 @@
    encoder only uses the memory up to this value. */
 #define NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE (1 << 12)
 
+/* Exported for unit test */
+extern const size_t NGHTTP2_STATIC_TABLE_LENGTH;
+
 typedef enum {
   NGHTTP2_HD_ROLE_DEFLATE,
   NGHTTP2_HD_ROLE_INFLATE

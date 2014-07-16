@@ -294,9 +294,11 @@ void test_nghttp2_hd_inflate_indname_inc(void)
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1);
   CU_ASSERT(1 == inflater.ctx.hd_table.len);
-  assert_nv_equal(&nv,
-                  &GET_TABLE_ENT(&inflater.ctx,
-                                 inflater.ctx.hd_table.len-1)->nv, 1);
+  assert_nv_equal
+    (&nv,
+     &GET_TABLE_ENT
+     (&inflater.ctx,
+      NGHTTP2_STATIC_TABLE_LENGTH + inflater.ctx.hd_table.len-1)->nv, 1);
 
   nva_out_reset(&out);
   nghttp2_bufs_free(&bufs);
@@ -413,9 +415,11 @@ void test_nghttp2_hd_inflate_newname_inc(void)
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1);
   CU_ASSERT(1 == inflater.ctx.hd_table.len);
-  assert_nv_equal(&nv,
-                  &GET_TABLE_ENT(&inflater.ctx,
-                                 inflater.ctx.hd_table.len-1)->nv, 1);
+  assert_nv_equal
+    (&nv,
+     &GET_TABLE_ENT
+     (&inflater.ctx,
+      NGHTTP2_STATIC_TABLE_LENGTH + inflater.ctx.hd_table.len-1)->nv, 1);
 
   nva_out_reset(&out);
   nghttp2_bufs_free(&bufs);
@@ -579,8 +583,8 @@ void test_nghttp2_hd_change_table_size(void)
 {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
-  nghttp2_nv nva[] = { MAKE_NV(":method", "GET"),
-                       MAKE_NV(":path", "/") };
+  nghttp2_nv nva[] = { MAKE_NV("alpha", "bravo"),
+                       MAKE_NV("charlie", "delta") };
   nghttp2_bufs bufs;
   ssize_t rv;
   nva_out out;
