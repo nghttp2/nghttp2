@@ -133,7 +133,7 @@ static void deflate(nghttp2_hd_deflater *deflater,
   outlen = rv;
 
   printf("\nDeflate (%zu byte(s), ratio %.02f):\n\n",
-         outlen, (double)outlen / sum);
+         outlen, sum == 0 ? 0 : (double)outlen / sum);
 
   for(i = 0; i < outlen; ++i) {
     if((i & 0x0fu) == 0) {
