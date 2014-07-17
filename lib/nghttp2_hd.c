@@ -1334,6 +1334,8 @@ int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
   rv =  nghttp2_hd_deflate_init2(deflater, deflate_hd_table_bufsize_max);
 
   if(rv != 0) {
+    free(deflater);
+
     return rv;
   }
 
@@ -2045,6 +2047,8 @@ int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr)
   rv = nghttp2_hd_inflate_init(inflater);
 
   if(rv != 0) {
+    free(inflater);
+
     return rv;
   }
 

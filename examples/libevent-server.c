@@ -708,6 +708,8 @@ static void start_listen(struct event_base *evbase, const char *service,
                                        LEV_OPT_REUSEABLE, 16,
                                        rp->ai_addr, rp->ai_addrlen);
     if(listener) {
+      freeaddrinfo(res);
+
       return;
     }
   }

@@ -110,16 +110,20 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
   char host[NI_MAXHOST];
   rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host),
                   0, 0, NI_NUMERICHOST);
-  if(rv == 0) {
-    if(LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Address resolution for " << hostname << " succeeded: "
-                << host;
-    }
-  } else {
+  if(rv != 0) {
     LOG(FATAL) << "Address resolution for " << hostname << " failed: "
                << gai_strerror(rv);
+
+    freeaddrinfo(res);
+
     return -1;
   }
+
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Address resolution for " << hostname << " succeeded: "
+              << host;
+  }
+
   memcpy(addr, res->ai_addr, res->ai_addrlen);
   *addrlen = res->ai_addrlen;
   freeaddrinfo(res);
@@ -194,12 +198,16 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
     LOG(WARNING) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
                  << " socket failed";
 
+    freeaddrinfo(res);
+
     return nullptr;
   }
 
   char host[NI_MAXHOST];
   rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host),
                    nullptr, 0, NI_NUMERICHOST);
+
+  freeaddrinfo(res);
 
   if(rv != 0) {
     LOG(WARNING) << gai_strerror(rv);
@@ -212,8 +220,6 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   if(LOG_ENABLED(INFO)) {
     LOG(INFO) << "Listening on " << host << ", port " << get_config()->port;
   }
-
-  freeaddrinfo(res);
 
   auto evlistener = evconnlistener_new
     (handler->get_evbase(),
