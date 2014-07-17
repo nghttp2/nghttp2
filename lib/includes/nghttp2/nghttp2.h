@@ -344,10 +344,6 @@ typedef enum {
   NGHTTP2_ERR_CALLBACK_FAILURE = -902
 } nghttp2_error;
 
-typedef enum {
-  NGHTTP2_MSG_MORE
-} nghttp2_io_flag;
-
 /**
  * @enum
  *
