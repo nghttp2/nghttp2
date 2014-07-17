@@ -137,7 +137,7 @@ Log::~Log()
 
   auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
 
-  write(worker_config.errorlog_fd, buf, nwrite);
+  while(write(worker_config.errorlog_fd, buf, nwrite) == -1 && errno == EINTR);
 }
 
 void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
@@ -208,7 +208,8 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
     return;
   }
 
-  write(worker_config.accesslog_fd, buf, nwrite);
+  while(write(worker_config.accesslog_fd, buf, nwrite) == -1 &&
+        errno == EINTR);
 }
 
 int reopen_log_files()
