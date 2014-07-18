@@ -133,12 +133,6 @@ static uint32_t hash(const uint8_t *s, size_t n)
   return h;
 }
 
-typedef struct {
-  nghttp2_nv *nva;
-  size_t nvacap;
-  size_t nvlen;
-} nghttp2_nva_out;
-
 int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
                           uint8_t *name, size_t namelen,
                           uint8_t *value, size_t valuelen)
