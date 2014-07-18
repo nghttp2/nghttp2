@@ -11,7 +11,8 @@ HTTP/2 and SPDY.
 
 HPACK encoding and decoding are available as public API.
 
-We didn't cover everything, but we have Python binding of this libary.
+We have Python binding of this libary, but we have not covered
+everything yet.
 
 Development Status
 ------------------
@@ -141,6 +142,8 @@ used::
     $ autoconf
     $ ./configure
     $ make
+
+To compile source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 
 .. note::
 
