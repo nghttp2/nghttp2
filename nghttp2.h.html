@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.4.2-DEV documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.5.1-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.4.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.5.1-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -82,6 +82,38 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflating-encoding-headers">Deflating (encoding) headers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#inflating-decoding-headers">Inflating (decoding) headers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflate-c">deflate.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#name">NAME</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#name">NAME</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
@@ -502,10 +534,6 @@
   <span class="n">NGHTTP2_ERR_CALLBACK_FAILURE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">902</span>
 <span class="p">}</span> <span class="n">nghttp2_error</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
-  <span class="n">NGHTTP2_MSG_MORE</span>
-<span class="p">}</span> <span class="n">nghttp2_io_flag</span><span class="p">;</span>
-
 <span class="cm">/**</span>
 <span class="cm"> * @enum</span>
 <span class="cm"> *</span>
@@ -674,6 +702,8 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mh">0x04</span>
 <span class="p">}</span> <span class="n">nghttp2_settings_id</span><span class="p">;</span>
+<span class="cm">/* Note: If we add SETTINGS, update the capacity of</span>
+<span class="cm">   NGHTTP2_INBOUND_NUM_IV as well */</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -3264,7 +3294,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.4.2-DEV',
+            VERSION:'0.5.1-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

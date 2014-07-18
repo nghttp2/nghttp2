@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Python Module Index &mdash; nghttp2 0.5.1-DEV documentation</title>
+  <title>h2load(1) &mdash; nghttp2 0.5.1-DEV documentation</title>
   
 
   
@@ -29,13 +29,8 @@
 
   
     <link rel="top" title="nghttp2 0.5.1-DEV documentation" href="index.html"/>
- 
-
-    <script type="text/javascript">
-      DOCUMENTATION_OPTIONS.COLLAPSE_INDEX = true;
-    </script>
-
-
+        <link rel="next" title="nghttpx - HTTP/2 proxy - HOW-TO" href="nghttpx-howto.html"/>
+        <link rel="prev" title="nghttpx(1)" href="nghttpx.1.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -62,7 +57,7 @@
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
         
-            <ul>
+            <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
@@ -113,12 +108,12 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">h2load(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#name">NAME</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
@@ -182,7 +177,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li></li>
+    <li>h2load(1)</li>
       <li class="wy-breadcrumbs-aside">
         
       </li>
@@ -191,27 +186,123 @@
 </div>
           <div role="main">
             
+  <div class="section" id="h2load-1">
+<h1>h2load(1)<a class="headerlink" href="#h2load-1" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="name">
+<h2>NAME<a class="headerlink" href="#name" title="Permalink to this headline">¶</a></h2>
+<p>h2load - HTTP/2 benchmarking tool</p>
+</div>
+<div class="section" id="synopsis">
+<h2>SYNOPSIS<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+<p><strong>h2load</strong> [OPTIONS]... &lt;URI&gt;...</p>
+</div>
+<div class="section" id="description">
+<h2>DESCRIPTION<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>benchmarking tool for HTTP/2 and SPDY server</p>
+<dl class="option">
+<dt id="cmdoption-h2load-arg-URI">
+<tt class="descname">URI</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load-arg-URI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  URI to  access.   Multiple  URIs can  be
+specified.  URIs are used  in this order for each
+client.   All URIs  are used,  then first  URI is
+used and  then 2nd URI,  and so on.   The scheme,
+host and port in the subsequent URIs, if present,
+are  ignored.  Those  in the  first URI  are used
+solely.</p>
+</dd></dl>
 
-   <h1>Python Module Index</h1>
+</div>
+<div class="section" id="options">
+<h2>OPTIONS<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
+<dl class="option">
+<dt id="cmdoption-h2load-n">
+<span id="cmdoption-h2load--requests"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--requests</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of requests. Default: 1</p>
+</dd></dl>
 
-   <div class="modindex-jumpbox">
-   <a href="#cap-n"><strong>n</strong></a>
-   </div>
+<dl class="option">
+<dt id="cmdoption-h2load-c">
+<span id="cmdoption-h2load--clients"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--clients</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-c" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of concurrent clients. Default: 1</p>
+</dd></dl>
 
-   <table class="indextable modindextable" cellspacing="0" cellpadding="2">
-     <tr class="pcap"><td></td><td>&nbsp;</td><td></td></tr>
-     <tr class="cap" id="cap-n"><td></td><td>
-       <strong>n</strong></td><td></td></tr>
-     <tr>
-       <td></td>
-       <td>
-       <a href="python-apiref.html#module-nghttp2"><tt class="xref">nghttp2</tt></a></td><td>
-       <em></em></td></tr>
-   </table>
+<dl class="option">
+<dt id="cmdoption-h2load-t">
+<span id="cmdoption-h2load--threads"></span><tt class="descname">-t</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--threads</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of native threads. Default: 1</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-h2load-m">
+<span id="cmdoption-h2load--max-concurrent-streams"></span><tt class="descname">-m</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--max-concurrent-streams</tt><tt class="descclassname">=(auto|&lt;N&gt;)</tt><a class="headerlink" href="#cmdoption-h2load-m" title="Permalink to this definition">¶</a></dt>
+<dd><p>Max concurrent streams to  issue per session.  If
+&#8220;auto&#8221;  is given,  the  number of  given URIs  is
+used.  Default: auto</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-h2load-w">
+<span id="cmdoption-h2load--window-bits"></span><tt class="descname">-w</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-w" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets  the stream  level  initial  window size  to
+(2**&lt;N&gt;)-1.  For SPDY, 2**&lt;N&gt; is used instead.</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-h2load-W">
+<span id="cmdoption-h2load--connection-window-bits"></span><tt class="descname">-W</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--connection-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-W" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the connection level  initial window size to
+(2**&lt;N&gt;)-1.  For  SPDY, if  &lt;N&gt; is  strictly less
+than  16,  this  option  is  ignored.   Otherwise
+2**&lt;N&gt; is used for SPDY.</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-h2load-p">
+<span id="cmdoption-h2load--no-tls-proto"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--no-tls-proto</tt><tt class="descclassname">=&lt;PROTOID&gt;</tt><a class="headerlink" href="#cmdoption-h2load-p" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  ALPN identifier  of the  protocol to  be
+used  when accessing  http  URI without  SSL/TLS.
+Available protocols: spdy/2, spdy/3, spdy/3.1 and
+h2c-13
+Default: h2c-13</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-h2load-v">
+<span id="cmdoption-h2load--verbose"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--verbose</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load-v" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output debug information.</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-h2load--version">
+<tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load--version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display version information and exit.</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-h2load-h">
+<span id="cmdoption-h2load--help"></span><tt class="descname">-h</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--help</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load-h" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display this help and exit.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="see-also">
+<h2>SEE ALSO<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h2>
+<p>nghttp(1), nghttpd(1), nghttpx(1)</p>
+</div>
+</div>
 
 
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="nghttpx-howto.html" class="btn btn-neutral float-right" title="nghttpx - HTTP/2 proxy - HOW-TO">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="nghttpx.1.html" class="btn btn-neutral" title="nghttpx(1)"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
