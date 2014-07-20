@@ -8,9 +8,9 @@ before_install:
   - $CC --version
   - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
-    #Install and use gcc-4.8 (don't build with gcc-4.6)
-    #libstdc++-4.8 is needed by Clang to build too
-  - sudo apt-get -qq install g++-4.8 libstdc++-4.8-dev
+    #Install and use gcc-4.9 (don't build with gcc < 4.8.3)
+    #libstdc++-4.9 is needed by Clang to build too
+  - sudo apt-get -qq install g++-4.9 libstdc++-4.9-dev
   - >
       sudo apt-get install --no-install-recommends -qq
       autoconf
@@ -25,7 +25,7 @@ before_install:
       libevent-dev
       libjansson-dev
       libjemalloc-dev
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
   - $CC --version
 before_script:
   - autoreconf -i
