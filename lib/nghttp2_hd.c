@@ -281,11 +281,9 @@ static void hd_ringbuf_pop_back(nghttp2_hd_ringbuf *ringbuf)
   --ringbuf->len;
 }
 
-static int hd_context_init(nghttp2_hd_context *context,
-                           nghttp2_hd_role role)
+static int hd_context_init(nghttp2_hd_context *context)
 {
   int rv;
-  context->role = role;
   context->bad = 0;
   context->hd_table_bufsize_max = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   rv = hd_ringbuf_init
@@ -314,7 +312,7 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
                              size_t deflate_hd_table_bufsize_max)
 {
   int rv;
-  rv =  hd_context_init(&deflater->ctx, NGHTTP2_HD_ROLE_DEFLATE);
+  rv =  hd_context_init(&deflater->ctx);
   if(rv != 0) {
     return rv;
   }
@@ -335,7 +333,7 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
 {
   int rv;
 
-  rv = hd_context_init(&inflater->ctx, NGHTTP2_HD_ROLE_INFLATE);
+  rv = hd_context_init(&inflater->ctx);
   if(rv != 0) {
     goto fail;
   }

@@ -51,11 +51,6 @@
 extern const size_t NGHTTP2_STATIC_TABLE_LENGTH;
 
 typedef enum {
-  NGHTTP2_HD_ROLE_DEFLATE,
-  NGHTTP2_HD_ROLE_INFLATE
-} nghttp2_hd_role;
-
-typedef enum {
   NGHTTP2_HD_FLAG_NONE = 0,
   /* Indicates name was dynamically allocated and must be freed */
   NGHTTP2_HD_FLAG_NAME_ALLOC = 1,
@@ -115,8 +110,6 @@ typedef struct {
   size_t hd_table_bufsize;
   /* The effective header table size. */
   size_t hd_table_bufsize_max;
-  /* Role of this context; deflate or infalte */
-  nghttp2_hd_role role;
   /* If inflate/deflate error occurred, this value is set to 1 and
      further invocation of inflate/deflate will fail with
      NGHTTP2_ERR_HEADER_COMP. */
