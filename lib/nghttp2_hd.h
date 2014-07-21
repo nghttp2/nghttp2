@@ -138,9 +138,6 @@ struct nghttp2_hd_inflater {
   /* Pointer to the name/value pair buffer which is used in the
      current header emission. */
   uint8_t *nv_keep;
-  /* Pointers to the name/value pair which is referred as indexed
-     name. This entry must be in header table. */
-  nghttp2_hd_entry *ent_name;
   /* The number of bytes to read */
   size_t left;
   /* The index in indexed repr or indexed name */

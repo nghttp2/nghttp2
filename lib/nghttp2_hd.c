@@ -360,7 +360,6 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
   inflater->newnamelen = 0;
   inflater->index_required = 0;
   inflater->no_index = 0;
-  inflater->ent_name = NULL;
 
   return 0;
 
@@ -1408,6 +1407,7 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
 {
   int rv;
   nghttp2_nv nv;
+  nghttp2_hd_entry *ent_name;
 
   rv = hd_inflate_remove_bufs(inflater, &nv, 1 /* value only */);
   if(rv != 0) {
@@ -1420,8 +1420,10 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
     nv.flags = NGHTTP2_NV_FLAG_NONE;
   }
 
-  nv.name = inflater->ent_name->nv.name;
-  nv.namelen = inflater->ent_name->nv.namelen;
+  ent_name = nghttp2_hd_table_get(&inflater->ctx, inflater->index);
+
+  nv.name = ent_name->nv.name;
+  nv.namelen = ent_name->nv.namelen;
 
   if(inflater->index_required) {
     nghttp2_hd_entry *new_ent;
@@ -1435,17 +1437,15 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
       ent_flags |= NGHTTP2_HD_FLAG_NAME_ALLOC;
       /* For entry in static table, we must not touch ref, because it
          is shared by threads */
-      ++inflater->ent_name->ref;
+      ++ent_name->ref;
     }
 
     new_ent = add_hd_table_incremental(&inflater->ctx, NULL, &nv, ent_flags);
 
-    if(!static_name && --inflater->ent_name->ref == 0) {
-      nghttp2_hd_entry_free(inflater->ent_name);
-      free(inflater->ent_name);
+    if(!static_name && --ent_name->ref == 0) {
+      nghttp2_hd_entry_free(ent_name);
+      free(ent_name);
     }
-
-    inflater->ent_name = NULL;
 
     if(new_ent) {
       emit_indexed_header(nv_out, new_ent);
@@ -1556,19 +1556,20 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       in += rv;
 
+      if(!rfin) {
+        goto almost_ok;
+      }
+
       if(inflater->left == 0) {
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
 
-      if(!rfin) {
-        goto almost_ok;
-      }
       DEBUGF(fprintf(stderr, "inflatehd: index=%zu\n", inflater->left));
       if(inflater->opcode == NGHTTP2_HD_OPCODE_INDEXED) {
         inflater->index = inflater->left;
-        assert(inflater->index > 0);
         --inflater->index;
+
         rv = hd_inflate_commit_indexed(inflater, nv_out);
         if(rv < 0) {
           goto fail;
@@ -1581,10 +1582,8 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
         }
       } else {
         inflater->index = inflater->left;
-        assert(inflater->index > 0);
         --inflater->index;
-        inflater->ent_name = nghttp2_hd_table_get(&inflater->ctx,
-                                                  inflater->index);
+
         inflater->state = NGHTTP2_HD_STATE_CHECK_VALUELEN;
       }
       break;
