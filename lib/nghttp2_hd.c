@@ -541,10 +541,7 @@ static uint8_t* decode_length(ssize_t *res, size_t *shift_ptr, int *final,
     *res = n;
     return in;
   }
-  if(*in & (1 << 7)) {
-    *res = -1;
-    return in + 1;
-  }
+
   *res = n;
   *final = 1;
   return in + 1;
