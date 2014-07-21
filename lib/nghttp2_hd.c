@@ -360,6 +360,7 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater)
   inflater->huffman_encoded = 0;
   inflater->index = 0;
   inflater->left = 0;
+  inflater->shift = 0;
   inflater->newnamelen = 0;
   inflater->index_required = 0;
   inflater->no_index = 0;
@@ -496,16 +497,20 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix)
  * set to nonzero.
  *
  * This function returns the next byte of read byte. This function
- * stores the decoded integer in |*res| if it succeed, including
- * partial decoding, or stores -1 in |*res|, indicating decoding
- * error.
+ * stores the decoded integer in |*res| and number of shift to make in
+ * the next decoding in |*shift_ptr| if it succeed, including partial
+ * decoding, or stores -1 in |*res|, indicating decoding error.
  */
-static uint8_t* decode_length(ssize_t *res, int *final, ssize_t initial,
+static uint8_t* decode_length(ssize_t *res, size_t *shift_ptr, int *final,
+                              ssize_t initial, size_t shift,
                               uint8_t *in, uint8_t *last, size_t prefix)
 {
-  int k = (1 << prefix) - 1, r;
+  int k = (1 << prefix) - 1;
   ssize_t n = initial;
+
+  *shift_ptr = 0;
   *final = 0;
+
   if(n == 0) {
     if((*in & k) == k) {
       n = k;
@@ -519,8 +524,8 @@ static uint8_t* decode_length(ssize_t *res, int *final, ssize_t initial,
       return in;
     }
   }
-  for(r = 0; in != last; ++in, r += 7) {
-    n += (*in & 0x7f) << r;
+  for(; in != last; ++in, shift += 7) {
+    n += (*in & 0x7f) << shift;
     if(n >= (1 << 16)) {
       *res = -1;
       return in + 1;
@@ -529,6 +534,9 @@ static uint8_t* decode_length(ssize_t *res, int *final, ssize_t initial,
       break;
     }
   }
+
+  *shift_ptr = shift;
+
   if(in == last) {
     *res = n;
     return in;
@@ -1350,7 +1358,8 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater,
 {
   uint8_t *nin;
   *rfin = 0;
-  nin = decode_length(&inflater->left, rfin, inflater->left, in, last, prefix);
+  nin = decode_length(&inflater->left, &inflater->shift, rfin, inflater->left,
+                      inflater->shift, in, last, prefix);
   if(inflater->left == -1) {
     DEBUGF(fprintf(stderr, "inflatehd: invalid integer\n"));
     return NGHTTP2_ERR_HEADER_COMP;
@@ -1691,6 +1700,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
         }
       }
       inflater->left = 0;
+      inflater->shift = 0;
       break;
     case NGHTTP2_HD_STATE_CLEAR_REFSET:
       clear_refset(&inflater->ctx);
@@ -1770,6 +1780,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       hd_inflate_set_huffman_encoded(inflater, in);
       inflater->state = NGHTTP2_HD_STATE_NEWNAME_READ_NAMELEN;
       inflater->left = 0;
+      inflater->shift = 0;
       DEBUGF(fprintf(stderr, "inflatehd: huffman encoded=%d\n",
                      inflater->huffman_encoded != 0));
       /* Fall through */
@@ -1844,6 +1855,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       hd_inflate_set_huffman_encoded(inflater, in);
       inflater->state = NGHTTP2_HD_STATE_READ_VALUELEN;
       inflater->left = 0;
+      inflater->shift = 0;
       DEBUGF(fprintf(stderr, "inflatehd: huffman encoded=%d\n",
                      inflater->huffman_encoded != 0));
       /* Fall through */

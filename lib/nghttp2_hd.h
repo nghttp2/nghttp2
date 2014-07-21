@@ -168,6 +168,8 @@ struct nghttp2_hd_inflater {
   /* The maximum header table size the inflater supports. This is the
      same value transmitted in SETTINGS_HEADER_TABLE_SIZE */
   size_t settings_hd_table_bufsize_max;
+  /* The number of next shift to decode integer */
+  size_t shift;
   nghttp2_hd_opcode opcode;
   nghttp2_hd_inflate_state state;
   /* nonzero if string is huffman encoded */
