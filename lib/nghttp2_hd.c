@@ -485,10 +485,10 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix)
 }
 
 /*
- * Decodes |prefx| prefixed integer stored from |in|. The |last|
+ * Decodes |prefx| prefixed integer stored from |in|.  The |last|
  * represents the 1 beyond the last of the valid contiguous memory
- * region from |in|. The decoded integer must be strictly less than 1
- * << 16.
+ * region from |in|.  The decoded integer must be less than or equal
+ * to UINT32_MAX.
  *
  * If the |initial| is nonzero, it is used as a initial value, this
  * function assumes the |in| starts with intermediate data.
@@ -496,40 +496,54 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix)
  * An entire integer is decoded successfully, decoded, the |*final| is
  * set to nonzero.
  *
- * This function returns the next byte of read byte. This function
- * stores the decoded integer in |*res| and number of shift to make in
- * the next decoding in |*shift_ptr| if it succeed, including partial
- * decoding, or stores -1 in |*res|, indicating decoding error.
+ * This function stores the decoded integer in |*res| if it succeed,
+ * including partial decoding (in this case, number of shift to make
+ * in the next call will be stored in |*shift_ptr|) and returns number
+ * of bytes processed, or returns -1, indicating decoding error.
  */
-static uint8_t* decode_length(ssize_t *res, size_t *shift_ptr, int *final,
-                              ssize_t initial, size_t shift,
-                              uint8_t *in, uint8_t *last, size_t prefix)
+static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
+                             uint32_t initial, size_t shift,
+                             uint8_t *in, uint8_t *last, size_t prefix)
 {
-  int k = (1 << prefix) - 1;
-  ssize_t n = initial;
+  uint32_t k = (1 << prefix) - 1;
+  uint32_t n = initial;
+  uint8_t *start = in;
 
   *shift_ptr = 0;
   *final = 0;
 
   if(n == 0) {
-    if((*in & k) == k) {
-      n = k;
-    } else {
+    if((*in & k) != k) {
       *res = (*in) & k;
       *final = 1;
-      return in + 1;
+      return 1;
     }
+
+    n = k;
+
     if(++in == last) {
       *res = n;
-      return in;
+      return in - start;
     }
   }
+
   for(; in != last; ++in, shift += 7) {
-    n += (*in & 0x7f) << shift;
-    if(n >= (1 << 16)) {
-      *res = -1;
-      return in + 1;
+    uint32_t add = *in & 0x7f;
+
+    if((UINT32_MAX >> shift) < add) {
+      DEBUGF(fprintf(stderr, "inflate: integer overflow on shift\n"));
+      return -1;
     }
+
+    add <<= shift;
+
+    if(UINT32_MAX - add < n) {
+      DEBUGF(fprintf(stderr, "inflate: integer overflow on addition\n"));
+      return -1;
+    }
+
+    n += add;
+
     if((*in & (1 << 7)) == 0) {
       break;
     }
@@ -539,12 +553,12 @@ static uint8_t* decode_length(ssize_t *res, size_t *shift_ptr, int *final,
 
   if(in == last) {
     *res = n;
-    return in;
+    return in - start;
   }
 
   *res = n;
   *final = 1;
-  return in + 1;
+  return in + 1 - start;
 }
 
 static int emit_clear_refset(nghttp2_bufs *bufs)
@@ -1353,21 +1367,29 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater,
                                    uint8_t *in, uint8_t *last,
                                    size_t prefix, size_t maxlen)
 {
-  uint8_t *nin;
+  ssize_t rv;
+  uint32_t out;
+
   *rfin = 0;
-  nin = decode_length(&inflater->left, &inflater->shift, rfin, inflater->left,
-                      inflater->shift, in, last, prefix);
-  if(inflater->left == -1) {
-    DEBUGF(fprintf(stderr, "inflatehd: invalid integer\n"));
+
+  rv = decode_length(&out, &inflater->shift, rfin, (uint32_t)inflater->left,
+                     inflater->shift, in, last, prefix);
+
+  if(rv == -1) {
+    DEBUGF(fprintf(stderr, "inflatehd: integer decoding failed\n"));
     return NGHTTP2_ERR_HEADER_COMP;
   }
-  if((size_t)inflater->left > maxlen) {
+
+  if(out > maxlen) {
     DEBUGF(fprintf(stderr,
                    "inflatehd: integer exceeded the maximum value %zu\n",
                    maxlen));
     return NGHTTP2_ERR_HEADER_COMP;
   }
-  return (ssize_t)(nin - in);
+
+  inflater->left = out;
+
+  return rv;
 }
 
 /*
@@ -1391,7 +1413,7 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
 {
   ssize_t readlen;
   int final = 0;
-  if(last - in >= inflater->left) {
+  if((size_t)(last - in) >= inflater->left) {
     last = in + inflater->left;
     final = 1;
   }
@@ -1402,7 +1424,7 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
     DEBUGF(fprintf(stderr, "inflatehd: huffman decoding failed\n"));
     return readlen;
   }
-  inflater->left -= readlen;
+  inflater->left -= (size_t)readlen;
   return readlen;
 }
 
@@ -1425,12 +1447,12 @@ static ssize_t hd_inflate_read(nghttp2_hd_inflater *inflater,
                                uint8_t *in, uint8_t *last)
 {
   int rv;
-  size_t len = nghttp2_min(last - in, inflater->left);
+  size_t len = nghttp2_min((size_t)(last - in), inflater->left);
   rv = nghttp2_bufs_add(bufs, in, len);
   if(rv != 0) {
     return rv;
   }
-  inflater->left -= (ssize_t)len;
+  inflater->left -= len;
   return (ssize_t)len;
 }
 
@@ -1715,7 +1737,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(!rfin) {
         goto almost_ok;
       }
-      DEBUGF(fprintf(stderr, "inflatehd: table_size=%zd\n", inflater->left));
+      DEBUGF(fprintf(stderr, "inflatehd: table_size=%zu\n", inflater->left));
       inflater->ctx.hd_table_bufsize_max = inflater->left;
       hd_context_shrink_table_size(&inflater->ctx);
       inflater->state = NGHTTP2_HD_STATE_OPCODE;
@@ -1748,7 +1770,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       if(!rfin) {
         goto almost_ok;
       }
-      DEBUGF(fprintf(stderr, "inflatehd: index=%zd\n", inflater->left));
+      DEBUGF(fprintf(stderr, "inflatehd: index=%zu\n", inflater->left));
       if(inflater->opcode == NGHTTP2_HD_OPCODE_INDEXED) {
         inflater->index = inflater->left;
         assert(inflater->index > 0);
@@ -1791,7 +1813,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       in += rv;
       if(!rfin) {
         DEBUGF(fprintf(stderr,
-                       "inflatehd: integer not fully decoded. current=%zd\n",
+                       "inflatehd: integer not fully decoded. current=%zu\n",
                        inflater->left));
 
         goto almost_ok;
@@ -1817,7 +1839,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       if(inflater->left) {
         DEBUGF(fprintf(stderr,
-                       "inflatehd: still %zd bytes to go\n", inflater->left));
+                       "inflatehd: still %zu bytes to go\n", inflater->left));
 
         goto almost_ok;
       }
@@ -1838,7 +1860,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
       DEBUGF(fprintf(stderr, "inflatehd: %zd bytes read\n", rv));
       if(inflater->left) {
         DEBUGF(fprintf(stderr,
-                       "inflatehd: still %zd bytes to go\n", inflater->left));
+                       "inflatehd: still %zu bytes to go\n", inflater->left));
 
         goto almost_ok;
       }
@@ -1870,7 +1892,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
         goto almost_ok;
       }
 
-      DEBUGF(fprintf(stderr, "inflatehd: valuelen=%zd\n", inflater->left));
+      DEBUGF(fprintf(stderr, "inflatehd: valuelen=%zu\n", inflater->left));
       if(inflater->left == 0) {
         if(inflater->opcode == NGHTTP2_HD_OPCODE_NEWNAME) {
           rv = hd_inflate_commit_newname(inflater, nv_out);
@@ -1905,7 +1927,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       if(inflater->left) {
         DEBUGF(fprintf(stderr,
-                       "inflatehd: still %zd bytes to go\n", inflater->left));
+                       "inflatehd: still %zu bytes to go\n", inflater->left));
 
         goto almost_ok;
       }
@@ -1938,7 +1960,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
       if(inflater->left) {
         DEBUGF(fprintf(stderr,
-                       "inflatehd: still %zd bytes to go\n", inflater->left));
+                       "inflatehd: still %zu bytes to go\n", inflater->left));
         goto almost_ok;
       }
 
@@ -2062,4 +2084,12 @@ int nghttp2_hd_emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
 int nghttp2_hd_emit_table_size(nghttp2_bufs *bufs, size_t table_size)
 {
   return emit_table_size(bufs, table_size);
+}
+
+ssize_t nghttp2_hd_decode_length(uint32_t *res, size_t *shift_ptr, int *final,
+                                 uint32_t initial, size_t shift,
+                                 uint8_t *in, uint8_t *last, size_t prefix)
+{
+  return decode_length(res, shift_ptr, final, initial, shift, in, last,
+                       prefix);
 }

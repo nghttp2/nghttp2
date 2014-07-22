@@ -883,9 +883,33 @@ void test_nghttp2_hd_change_table_size(void)
   nva_out_reset(&out);
   nghttp2_bufs_reset(&bufs);
 
-  nghttp2_bufs_free(&bufs);
   nghttp2_hd_inflate_free(&inflater);
   nghttp2_hd_deflate_free(&deflater);
+
+  /* Check that table size UINT32_MAX can be received */
+  nghttp2_hd_deflate_init2(&deflater, UINT32_MAX);
+  nghttp2_hd_inflate_init(&inflater);
+
+  CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, UINT32_MAX));
+  CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, UINT32_MAX));
+
+  rv = nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, nva, 2);
+  blocklen = nghttp2_bufs_len(&bufs);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(UINT32_MAX == deflater.ctx.hd_table_bufsize_max);
+
+  CU_ASSERT(blocklen == inflate_hd(&inflater, &out, &bufs, 0));
+  CU_ASSERT(UINT32_MAX == inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(UINT32_MAX == inflater.settings_hd_table_bufsize_max);
+
+  nva_out_reset(&out);
+  nghttp2_bufs_reset(&bufs);
+
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+
+  nghttp2_bufs_free(&bufs);
 }
 
 static void check_deflate_inflate(nghttp2_hd_deflater *deflater,
@@ -1199,3 +1223,79 @@ void test_nghttp2_hd_public_api(void)
   nghttp2_hd_deflate_del(deflater);
 }
 
+static size_t encode_length(uint8_t *buf, uint64_t n, size_t prefix)
+{
+  size_t k = (1 << prefix) - 1;
+  size_t len = 0;
+  *buf &= ~k;
+  if(n >= k) {
+    *buf++ |= k;
+    n -= k;
+    ++len;
+  } else {
+    *buf++ |= n;
+    return 1;
+  }
+  do {
+    ++len;
+    if(n >= 128) {
+      *buf++ = (1 << 7) | (n & 0x7f);
+      n >>= 7;
+    } else {
+      *buf++ = (uint8_t)n;
+      break;
+    }
+  } while(n);
+  return len;
+}
+
+void test_nghttp2_hd_decode_length(void)
+{
+  uint32_t out;
+  size_t shift;
+  int final;
+  uint8_t buf[16];
+  uint8_t *bufp;
+  size_t len;
+  ssize_t rv;
+  size_t i;
+
+  memset(buf, 0, sizeof(buf));
+  len = encode_length(buf, UINT32_MAX, 7);
+
+  rv = nghttp2_hd_decode_length(&out, &shift, &final, 0, 0, buf, buf + len, 7);
+
+  CU_ASSERT((ssize_t)len == rv);
+  CU_ASSERT(0 != final);
+  CU_ASSERT(UINT32_MAX == out);
+
+  /* Make sure that we can decode integer if we feed 1 byte at a
+     time */
+  out = 0;
+  shift = 0;
+  final = 0;
+  bufp = buf;
+
+  for(i = 0; i < len; ++i, ++bufp) {
+    rv = nghttp2_hd_decode_length(&out, &shift, &final, out, shift,
+                                  bufp, bufp + 1, 7);
+
+    CU_ASSERT(rv == 1);
+
+    if(final) {
+      break;
+    }
+  }
+
+  CU_ASSERT(i == len - 1);
+  CU_ASSERT(0 != final);
+  CU_ASSERT(UINT32_MAX == out);
+
+  /* Check overflow case */
+  memset(buf, 0, sizeof(buf));
+  len = encode_length(buf, 1ll << 32, 7);
+
+  rv = nghttp2_hd_decode_length(&out, &shift, &final, 0, 0, buf, buf + len, 7);
+
+  CU_ASSERT(-1 == rv);
+}

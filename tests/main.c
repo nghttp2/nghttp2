@@ -285,6 +285,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "hd_deflate_bound",
                    test_nghttp2_hd_deflate_bound) ||
       !CU_add_test(pSuite, "hd_public_api", test_nghttp2_hd_public_api) ||
+      !CU_add_test(pSuite, "hd_decode_length",
+                   test_nghttp2_hd_decode_length) ||
       !CU_add_test(pSuite, "adjust_local_window_size",
                    test_nghttp2_adjust_local_window_size) ||
       !CU_add_test(pSuite, "check_header_name",
