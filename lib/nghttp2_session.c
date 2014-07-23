@@ -2031,6 +2031,8 @@ static int session_after_frame_sent(nghttp2_session *session)
         /* Fall through */
       case NGHTTP2_HCAT_RESPONSE:
         stream->state = NGHTTP2_STREAM_OPENED;
+        /* Fall through */
+      case NGHTTP2_HCAT_HEADERS:
         if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
           nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
         }
@@ -2048,15 +2050,6 @@ static int session_after_frame_sent(nghttp2_session *session)
           }
           /* TODO nghttp2_submit_data() may fail if stream has already
              DATA frame item.  We might have to handle it here. */
-        }
-        break;
-      case NGHTTP2_HCAT_HEADERS:
-        if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-          nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
-        }
-        rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
         }
         break;
       }
