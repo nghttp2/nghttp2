@@ -63,12 +63,12 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     http2_settings_seen_(false),
     chunked_request_(false),
     request_connection_close_(false),
-    request_expect_100_continue_(false),
     request_header_key_prev_(false),
     request_http2_expect_body_(false),
     chunked_response_(false),
     response_connection_close_(false),
-    response_header_key_prev_(false)
+    response_header_key_prev_(false),
+    expect_final_response_(false)
 {}
 
 Downstream::~Downstream()
@@ -424,11 +424,6 @@ void Downstream::set_request_http2_expect_body(bool f)
   request_http2_expect_body_ = f;
 }
 
-bool Downstream::get_expect_100_continue() const
-{
-  return request_expect_100_continue_;
-}
-
 bool Downstream::get_output_buffer_full()
 {
   if(dconn_) {
@@ -744,11 +739,6 @@ void Downstream::inspect_http1_request()
       if(util::strifind(hd.value.c_str(), "chunked")) {
         chunked_request_ = true;
       }
-    } else if(!request_expect_100_continue_ &&
-              util::strieq(hd.name.c_str(), "expect")) {
-      if(util::strifind(hd.value.c_str(), "100-continue")) {
-        request_expect_100_continue_ = true;
-      }
     }
   }
 }
@@ -763,6 +753,18 @@ void Downstream::inspect_http1_response()
       }
     }
   }
+}
+
+void Downstream::reset_response()
+{
+  response_http_status_ = 0;
+  response_major_ = 1;
+  response_minor_ = 1;
+}
+
+bool Downstream::get_non_final_response() const
+{
+  return response_http_status_ / 100 == 1;
 }
 
 bool Downstream::get_upgraded() const
@@ -804,6 +806,16 @@ void Downstream::set_response_rst_stream_error_code
 (nghttp2_error_code error_code)
 {
   response_rst_stream_error_code_ = error_code;
+}
+
+void Downstream::set_expect_final_response(bool f)
+{
+  expect_final_response_ = f;
+}
+
+bool Downstream::get_expect_final_response() const
+{
+  return expect_final_response_;
 }
 
 } // namespace shrpx

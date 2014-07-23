@@ -140,7 +140,6 @@ public:
   const std::string& get_request_user_agent() const;
   bool get_request_http2_expect_body() const;
   void set_request_http2_expect_body(bool f);
-  bool get_expect_100_continue() const;
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
   enum {
@@ -207,6 +206,11 @@ public:
   void set_response_rst_stream_error_code(nghttp2_error_code error_code);
   // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
   void inspect_http1_response();
+  // Clears some of member variables for response.
+  void reset_response();
+  bool get_non_final_response() const;
+  void set_expect_final_response(bool f);
+  bool get_expect_final_response() const;
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -274,13 +278,13 @@ private:
 
   bool chunked_request_;
   bool request_connection_close_;
-  bool request_expect_100_continue_;
   bool request_header_key_prev_;
   bool request_http2_expect_body_;
 
   bool chunked_response_;
   bool response_connection_close_;
   bool response_header_key_prev_;
+  bool expect_final_response_;
 };
 
 } // namespace shrpx

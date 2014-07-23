@@ -165,7 +165,6 @@ size_t DISALLOWED_HDLEN = sizeof(DISALLOWED_HD)/sizeof(DISALLOWED_HD[0]);
 namespace {
 const char *IGN_HD[] = {
   "connection",
-  "expect",
   "http2-settings",
   "keep-alive",
   "proxy-connection",
@@ -186,7 +185,6 @@ namespace {
 const char *HTTP1_IGN_HD[] = {
   "connection",
   "cookie",
-  "expect",
   "http2-settings",
   "keep-alive",
   "proxy-connection",

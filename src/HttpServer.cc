@@ -843,6 +843,16 @@ int Http2Handler::submit_response(const std::string& status,
                                  data_prd);
 }
 
+int Http2Handler::submit_non_final_response(const std::string& status,
+                                            int32_t stream_id)
+{
+  auto nva = std::vector<nghttp2_nv>{
+    http2::make_nv_ls(":status", status)
+  };
+  return nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE, stream_id,
+                                nullptr, nva.data(), nva.size(), nullptr);
+}
+
 int Http2Handler::submit_push_promise(Stream *stream,
                                       const std::string& push_path)
 {
@@ -1264,6 +1274,12 @@ int hd_on_frame_recv_callback
          !http2::get_unique_header(stream->headers, "host")) {
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
+      }
+
+      auto expect100 = http2::get_header(stream->headers, "expect");
+
+      if(expect100 && util::strieq("100-continue", expect100->value.c_str())) {
+        hd->submit_non_final_response("100", frame->hd.stream_id);
       }
 
       if(hd->get_config()->early_response) {

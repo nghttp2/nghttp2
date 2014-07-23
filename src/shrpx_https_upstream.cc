@@ -190,16 +190,6 @@ int htp_hdrs_completecb(http_parser *htp)
 
   auto dconn = upstream->get_client_handler()->get_downstream_connection();
 
-  if(downstream->get_expect_100_continue()) {
-    static const char reply_100[] = "HTTP/1.1 100 Continue\r\n\r\n";
-    if(bufferevent_write(upstream->get_client_handler()->get_bev(),
-                         reply_100, sizeof(reply_100)-1) != 0) {
-      ULOG(FATAL, upstream) << "bufferevent_write() faild";
-      delete dconn;
-      return -1;
-    }
-  }
-
   rv =  dconn->attach_downstream(downstream);
 
   if(rv != 0) {
@@ -740,7 +730,11 @@ Downstream* HttpsUpstream::pop_downstream()
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
 {
   if(LOG_ENABLED(INFO)) {
-    DLOG(INFO, downstream) << "HTTP response header completed";
+    if(downstream->get_non_final_response()) {
+      DLOG(INFO, downstream) << "HTTP non-final response header";
+    } else {
+      DLOG(INFO, downstream) << "HTTP response header completed";
+    }
   }
 
   std::string hdrs = "HTTP/";
@@ -758,6 +752,20 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   auto end_headers = std::end(downstream->get_response_headers());
   http2::build_http1_headers_from_norm_headers
     (hdrs, downstream->get_response_headers());
+
+  if(downstream->get_non_final_response()) {
+    hdrs += "\r\n";
+
+    auto output = bufferevent_get_output(handler_->get_bev());
+    if(evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
+      ULOG(FATAL, this) << "evbuffer_add() failed";
+      return -1;
+    }
+
+    downstream->clear_response_headers();
+
+    return 0;
+  }
 
   // We check downstream->get_response_connection_close() in case when
   // the Content-Length is not available.

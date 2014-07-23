@@ -752,7 +752,6 @@ int on_stream_close_callback
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
  void *user_data)
 {
-  int rv;
   auto http2session = static_cast<Http2Session*>(user_data);
   if(LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Stream stream_id=" << stream_id
@@ -769,11 +768,8 @@ int on_stream_close_callback
   if(dconn) {
     auto downstream = dconn->get_downstream();
     if(downstream && downstream->get_downstream_stream_id() == stream_id) {
-      auto upstream = downstream->get_upstream();
       if(error_code == NGHTTP2_NO_ERROR) {
-        downstream->set_response_state(Downstream::MSG_COMPLETE);
-        rv = upstream->on_downstream_body_complete(downstream);
-        if(rv != 0) {
+        if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
           downstream->set_response_state(Downstream::MSG_RESET);
         }
       } else {
@@ -841,10 +837,6 @@ int on_header_callback(nghttp2_session *session,
                        uint8_t flags,
                        void *user_data)
 {
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
-    return 0;
-  }
   auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
   if(!sd || !sd->dconn) {
@@ -854,6 +846,13 @@ int on_header_callback(nghttp2_session *session,
   if(!downstream) {
     return 0;
   }
+
+  if(frame->hd.type != NGHTTP2_HEADERS ||
+     (frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
+      !downstream->get_expect_final_response())) {
+    return 0;
+  }
+
   if(downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
     if(LOG_ENABLED(INFO)) {
       DLOG(INFO, downstream) << "Too large header block size="
@@ -905,19 +904,14 @@ int on_begin_headers_callback(nghttp2_session *session,
 
 namespace {
 int on_response_headers(Http2Session *http2session,
+                        Downstream *downstream,
                         nghttp2_session *session,
                         const nghttp2_frame *frame)
 {
   int rv;
-  auto sd = static_cast<StreamData*>
-    (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
-  if(!sd || !sd->dconn) {
-    return 0;
-  }
-  auto downstream = sd->dconn->get_downstream();
-  if(!downstream) {
-    return 0;
-  }
+
+  auto upstream = downstream->get_upstream();
+
   downstream->normalize_response_headers();
   auto& nva = downstream->get_response_headers();
 
@@ -935,12 +929,37 @@ int on_response_headers(Http2Session *http2session,
                                     NGHTTP2_PROTOCOL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
     call_downstream_readcb(http2session, downstream);
+
     return 0;
   }
+
   downstream->set_response_http_status(strtoul(status->value.c_str(),
                                                nullptr, 10));
   downstream->set_response_major(2);
   downstream->set_response_minor(0);
+
+  if(downstream->get_non_final_response()) {
+
+    if(LOG_ENABLED(INFO)) {
+      SSLOG(INFO, http2session) << "HTTP non-final response. stream_id="
+                                << frame->hd.stream_id;
+    }
+
+    downstream->set_expect_final_response(true);
+    rv = upstream->on_downstream_header_complete(downstream);
+
+    // Now Dowstream's response headers are erased.
+
+    if(rv != 0) {
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
+      downstream->set_response_state(Downstream::MSG_RESET);
+    }
+
+    return 0;
+  }
+
+  downstream->set_expect_final_response(false);
 
   if(LOG_ENABLED(INFO)) {
     std::stringstream ss;
@@ -975,7 +994,6 @@ int on_response_headers(Http2Session *http2session,
     }
   }
 
-  auto upstream = downstream->get_upstream();
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->check_upgrade_fulfilled();
   if(downstream->get_upgraded()) {
@@ -1033,19 +1051,69 @@ int on_frame_recv_callback
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_INTERNAL_ERROR);
       downstream->set_response_state(Downstream::MSG_RESET);
+
+    } else if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+
+      if(downstream->get_response_state() != Downstream::MSG_RESET) {
+
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+        rv = upstream->on_downstream_body_complete(downstream);
+
+        if(rv != 0) {
+          downstream->set_response_state(Downstream::MSG_RESET);
+        }
+      }
     }
+
     call_downstream_readcb(http2session, downstream);
     break;
   }
-  case NGHTTP2_HEADERS:
+  case NGHTTP2_HEADERS: {
+    auto sd = static_cast<StreamData*>
+      (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+    if(!sd || !sd->dconn) {
+      break;
+    }
+    auto downstream = sd->dconn->get_downstream();
+
+    if(!downstream) {
+      return 0;
+    }
+
     if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
-      rv = on_response_headers(http2session, session, frame);
+      rv = on_response_headers(http2session, downstream, session, frame);
 
       if(rv != 0) {
         return rv;
       }
     }
+
+    if(frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
+       downstream->get_expect_final_response()) {
+
+      rv = on_response_headers(http2session, downstream, session, frame);
+
+      if(rv != 0) {
+        return rv;
+      }
+    }
+
+    if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      if(downstream->get_response_state() != Downstream::MSG_RESET) {
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+        auto upstream = downstream->get_upstream();
+
+        rv = upstream->on_downstream_body_complete(downstream);
+
+        if(rv != 0) {
+          downstream->set_response_state(Downstream::MSG_RESET);
+        }
+      }
+    }
     break;
+  }
   case NGHTTP2_RST_STREAM: {
     auto sd = static_cast<StreamData*>
       (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
@@ -1055,7 +1123,7 @@ int on_frame_recv_callback
          downstream->get_downstream_stream_id() == frame->hd.stream_id) {
         if(downstream->get_upgraded() &&
            downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-          // For tunneled connection, we has to submit RST_STREAM to
+          // For tunneled connection, we have to submit RST_STREAM to
           // upstream *after* whole response body is sent. We just set
           // MSG_COMPLETE here. Upstream will take care of that.
           if(LOG_ENABLED(INFO)) {
@@ -1118,6 +1186,14 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   auto downstream = sd->dconn->get_downstream();
   if(!downstream || downstream->get_downstream_stream_id() != stream_id) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
+    http2session->handle_ign_data_chunk(len);
+    return 0;
+  }
+
+  // We don't want DATA after non-final response, which is illegal in
+  // HTTP.
+  if(downstream->get_non_final_response()) {
+    http2session->submit_rst_stream(stream_id, NGHTTP2_PROTOCOL_ERROR);
     http2session->handle_ign_data_chunk(len);
     return 0;
   }

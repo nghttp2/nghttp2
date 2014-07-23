@@ -1153,9 +1153,16 @@ nghttp2_session* Http2Upstream::get_http2_session()
 // nghttp2_session_recv. These calls may delete downstream.
 int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
 {
+  int rv;
+
   if(LOG_ENABLED(INFO)) {
-    DLOG(INFO, downstream) << "HTTP response header completed";
+    if(downstream->get_non_final_response()) {
+      DLOG(INFO, downstream) << "HTTP non-final response header";
+    } else {
+      DLOG(INFO, downstream) << "HTTP response header completed";
+    }
   }
+
   downstream->normalize_response_headers();
   if(!get_config()->http2_proxy && !get_config()->client_proxy) {
     downstream->rewrite_norm_location_response_header
@@ -1172,6 +1179,22 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   nva.push_back(http2::make_nv_ls(":status", response_status));
 
   http2::copy_norm_headers_to_nva(nva, downstream->get_response_headers());
+
+  if(downstream->get_non_final_response()) {
+    rv = nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE,
+                                downstream->get_stream_id(), nullptr,
+                                nva.data(), nva.size(), nullptr);
+
+    downstream->clear_response_headers();
+
+    if(rv != 0) {
+      ULOG(FATAL, this) << "nghttp2_submit_headers() failed";
+      return -1;
+    }
+
+    return 0;
+  }
+
   auto via = downstream->get_norm_response_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
@@ -1214,7 +1237,6 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   data_prd.source.ptr = downstream;
   data_prd.read_callback = downstream_data_read_callback;
 
-  int rv;
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
                                nva.data(), nva.size(), &data_prd);
   if(rv != 0) {
