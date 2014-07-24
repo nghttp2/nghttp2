@@ -2641,7 +2641,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
  *
  * Only the server can send the ALTSVC frame.  If |session| is
  * initialized as client, this function fails and returns
- * :enum:`NGHTTP2_ERR_INVALID_STATE`.
+ * :enum:`NGHTTP2_ERR_PROTO`.
  *
  * If the |protocol_id_len| is 0, the |protocol_id| could be ``NULL``.
  *
