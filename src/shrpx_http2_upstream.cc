@@ -1163,6 +1163,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   http2::copy_norm_headers_to_nva(nva, downstream->get_response_headers());
 
   if(downstream->get_non_final_response()) {
+    if(LOG_ENABLED(INFO)) {
+      log_response_headers(downstream, nva);
+    }
+
     rv = nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE,
                                 downstream->get_stream_id(), nullptr,
                                 nva.data(), nva.size(), nullptr);
@@ -1197,17 +1201,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   }
 
   if(LOG_ENABLED(INFO)) {
-    std::stringstream ss;
-    for(auto& nv : nva) {
-      ss << TTY_HTTP_HD;
-      ss.write(reinterpret_cast<const char*>(nv.name), nv.namelen);
-      ss << TTY_RST << ": ";
-      ss.write(reinterpret_cast<const char*>(nv.value), nv.valuelen);
-      ss << "\n";
-    }
-    ULOG(INFO, this) << "HTTP response headers. stream_id="
-                     << downstream->get_stream_id() << "\n"
-                     << ss.str();
+    log_response_headers(downstream, nva);
   }
 
   if(get_config()->http2_upstream_dump_response_header) {
@@ -1332,6 +1326,22 @@ int Http2Upstream::consume(int32_t stream_id, size_t len)
   }
 
   return 0;
+}
+
+void Http2Upstream::log_response_headers
+(Downstream *downstream, const std::vector<nghttp2_nv>& nva) const
+{
+  std::stringstream ss;
+  for(auto& nv : nva) {
+    ss << TTY_HTTP_HD;
+    ss.write(reinterpret_cast<const char*>(nv.name), nv.namelen);
+    ss << TTY_RST << ": ";
+    ss.write(reinterpret_cast<const char*>(nv.value), nv.valuelen);
+    ss << "\n";
+  }
+  ULOG(INFO, this) << "HTTP response headers. stream_id="
+                   << downstream->get_stream_id() << "\n"
+                   << ss.str();
 }
 
 } // namespace shrpx

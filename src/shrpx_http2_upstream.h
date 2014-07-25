@@ -79,6 +79,8 @@ public:
   int start_settings_timer();
   void stop_settings_timer();
   int consume(int32_t stream_id, size_t len);
+  void log_response_headers(Downstream *downstream,
+                            const std::vector<nghttp2_nv>& nva) const;
 private:
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;

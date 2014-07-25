@@ -776,6 +776,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   if(downstream->get_non_final_response()) {
     hdrs += "\r\n";
 
+    if(LOG_ENABLED(INFO)) {
+      log_response_headers(hdrs);
+    }
+
     auto output = bufferevent_get_output(handler_->get_bev());
     if(evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
       ULOG(FATAL, this) << "evbuffer_add() failed";
@@ -846,17 +850,11 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
   }
 
   hdrs += "\r\n";
+
   if(LOG_ENABLED(INFO)) {
-    const char *hdrp;
-    std::string nhdrs;
-    if(worker_config.errorlog_tty) {
-      nhdrs = http::colorizeHeaders(hdrs.c_str());
-      hdrp = nhdrs.c_str();
-    } else {
-      hdrp = hdrs.c_str();
-    }
-    ULOG(INFO, this) << "HTTP response headers\n" << hdrp;
+    log_response_headers(hdrs);
   }
+
   auto output = bufferevent_get_output(handler_->get_bev());
   if(evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
@@ -937,6 +935,19 @@ int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
                                                unsigned int status_code)
 {
   return error_reply(status_code);
+}
+
+void HttpsUpstream::log_response_headers(const std::string& hdrs) const
+{
+  const char *hdrp;
+  std::string nhdrs;
+  if(worker_config.errorlog_tty) {
+    nhdrs = http::colorizeHeaders(hdrs.c_str());
+    hdrp = nhdrs.c_str();
+  } else {
+    hdrp = hdrs.c_str();
+  }
+  ULOG(INFO, this) << "HTTP response headers\n" << hdrp;
 }
 
 } // namespace shrpx

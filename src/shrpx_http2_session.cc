@@ -921,11 +921,20 @@ int on_response_headers(Http2Session *http2session,
   downstream->set_response_major(2);
   downstream->set_response_minor(0);
 
+  if(LOG_ENABLED(INFO)) {
+    std::stringstream ss;
+    for(auto& nv : nva) {
+      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+    }
+    SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
+                              << frame->hd.stream_id
+                              << "\n" << ss.str();
+  }
+
   if(downstream->get_non_final_response()) {
 
     if(LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "HTTP non-final response. stream_id="
-                                << frame->hd.stream_id;
+      SSLOG(INFO, http2session) << "This is non-final response.";
     }
 
     downstream->set_expect_final_response(true);
@@ -943,16 +952,6 @@ int on_response_headers(Http2Session *http2session,
   }
 
   downstream->set_expect_final_response(false);
-
-  if(LOG_ENABLED(INFO)) {
-    std::stringstream ss;
-    for(auto& nv : nva) {
-      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
-    }
-    SSLOG(INFO, http2session) << "HTTP response headers. stream_id="
-                              << frame->hd.stream_id
-                              << "\n" << ss.str();
-  }
 
   auto content_length = http2::get_header(nva, "content-length");
   if(!content_length && downstream->get_request_method() != "HEAD" &&
