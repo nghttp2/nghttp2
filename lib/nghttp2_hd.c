@@ -1136,8 +1136,9 @@ size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
   size_t i;
 
   /* Possible Maximum Header Table Size Change.  Encoding (1u << 31) -
-     1 using 4 bit prefix requires 6 bytes. */
-  n += 6;
+     1 using 4 bit prefix requires 6 bytes.  We may emit this at most
+     twice. */
+  n += 12;
 
   /* Use Literal Header Field without indexing - New Name, since it is
      most space consuming format.  Also we choose the less one between

@@ -1081,7 +1081,7 @@ void test_nghttp2_hd_deflate_bound(void)
 
   bound = nghttp2_hd_deflate_bound(&deflater, nva, ARRLEN(nva));
 
-  CU_ASSERT(6 + 6 * 2 * 2 +
+  CU_ASSERT(12 + 6 * 2 * 2 +
             nva[0].namelen + nva[0].valuelen +
             nva[1].namelen + nva[1].valuelen
             == bound);
