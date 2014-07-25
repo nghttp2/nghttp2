@@ -1171,7 +1171,9 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
-  if(!downstream || downstream->get_downstream_stream_id() != stream_id) {
+  if(!downstream || downstream->get_downstream_stream_id() != stream_id ||
+     !downstream->expect_response_body()) {
+
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
 
     if(http2session->consume(stream_id, len) != 0) {

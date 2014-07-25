@@ -851,4 +851,12 @@ void Downstream::reset_response_datalen()
   response_datalen_ = 0;
 }
 
+bool Downstream::expect_response_body() const
+{
+  return request_method_ != "HEAD" &&
+    response_http_status_ / 100 != 1 &&
+    response_http_status_ != 304 &&
+    response_http_status_ != 204;
+}
+
 } // namespace shrpx

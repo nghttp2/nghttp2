@@ -144,6 +144,7 @@ public:
   int end_upload_data();
   size_t get_request_datalen() const;
   void reset_request_datalen();
+  bool expect_response_body() const;
   enum {
     INITIAL,
     HEADER_COMPLETE,

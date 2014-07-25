@@ -1219,8 +1219,16 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   data_prd.source.ptr = downstream;
   data_prd.read_callback = downstream_data_read_callback;
 
+  nghttp2_data_provider *data_prdptr;
+
+  if(downstream->expect_response_body()) {
+    data_prdptr = &data_prd;
+  } else {
+    data_prdptr = nullptr;
+  }
+
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
-                               nva.data(), nva.size(), &data_prd);
+                               nva.data(), nva.size(),data_prdptr);
   if(rv != 0) {
     ULOG(FATAL, this) << "nghttp2_submit_response() failed";
     return -1;
