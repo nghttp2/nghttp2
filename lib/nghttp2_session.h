@@ -104,9 +104,6 @@ typedef struct {
   size_t payloadleft;
   /* padding length for the current frame */
   size_t padlen;
-  /* Sum of payload of (HEADERS | PUSH_PROMISE) + possible
-     CONTINUATION received so far. */
-  size_t headers_payload_length;
   nghttp2_inbound_state state;
   uint8_t raw_sbuf[8];
 } nghttp2_inbound_frame;

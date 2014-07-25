@@ -281,7 +281,6 @@ static void session_inbound_frame_reset(nghttp2_session *session)
   iframe->niv = 0;
   iframe->payloadleft = 0;
   iframe->padlen = 0;
-  iframe->headers_payload_length = 0;
   iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].settings_id =
     NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].value = UINT32_MAX;
@@ -4328,8 +4327,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                    NGHTTP2_FLAG_PADDED |
                                    NGHTTP2_FLAG_PRIORITY);
 
-        iframe->headers_payload_length = iframe->frame.hd.length;
-
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
         if(rv < 0) {
           busy = 1;
@@ -4455,8 +4452,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_HEADERS |
                                    NGHTTP2_FLAG_PADDED);
-
-        iframe->headers_payload_length = iframe->frame.hd.length;
 
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
         if(rv < 0) {
@@ -5025,27 +5020,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         rv = nghttp2_session_terminate_session_with_reason
           (session, NGHTTP2_PROTOCOL_ERROR,
            "unexpected non-CONTINUATION frame or stream_id is invalid");
-        if(nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
-        busy = 1;
-
-        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
-
-        break;
-      }
-
-      iframe->headers_payload_length += cont_hd.length;
-
-      if(iframe->headers_payload_length > NGHTTP2_MAX_HEADERSLEN) {
-
-        DEBUGF(fprintf(stderr,
-                       "recv: headers too large %zu\n",
-                       iframe->headers_payload_length));
-
-        rv = nghttp2_session_terminate_session_with_reason
-          (session, NGHTTP2_INTERNAL_ERROR, "header is too large");
         if(nghttp2_is_fatal(rv)) {
           return rv;
         }

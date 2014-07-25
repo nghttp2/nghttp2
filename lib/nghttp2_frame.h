@@ -57,7 +57,7 @@
 #define NGHTTP2_DATA_PAYLOADLEN 4096
 
 /* Maximum headers payload length, calculated in compressed form.
-   This applies to both transmission and reception. */
+   This applies to transmission only. */
 #define NGHTTP2_MAX_HEADERSLEN 65536
 
 /* The number of bytes for each SETTINGS entry */
