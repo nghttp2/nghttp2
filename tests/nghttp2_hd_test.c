@@ -585,6 +585,7 @@ void test_nghttp2_hd_change_table_size(void)
   nghttp2_hd_inflater inflater;
   nghttp2_nv nva[] = { MAKE_NV("alpha", "bravo"),
                        MAKE_NV("charlie", "delta") };
+  nghttp2_nv nva2[] = { MAKE_NV(":path", "/") };
   nghttp2_bufs bufs;
   ssize_t rv;
   nva_out out;
@@ -789,6 +790,36 @@ void test_nghttp2_hd_change_table_size(void)
   CU_ASSERT(blocklen == inflate_hd(&inflater, &out, &bufs, 0));
   CU_ASSERT(UINT32_MAX == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(UINT32_MAX == inflater.settings_hd_table_bufsize_max);
+
+  nva_out_reset(&out);
+  nghttp2_bufs_reset(&bufs);
+
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_hd_deflate_free(&deflater);
+
+  /* Check that context update emitted twice */
+  nghttp2_hd_deflate_init2(&deflater, 4096);
+  nghttp2_hd_inflate_init(&inflater);
+
+  CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, 0));
+  CU_ASSERT(0 == nghttp2_hd_inflate_change_table_size(&inflater, 3000));
+  CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, 0));
+  CU_ASSERT(0 == nghttp2_hd_deflate_change_table_size(&deflater, 3000));
+
+  CU_ASSERT(0 == deflater.min_hd_table_bufsize_max);
+  CU_ASSERT(3000 == deflater.ctx.hd_table_bufsize_max);
+
+  rv = nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, nva2, 1);
+  blocklen = nghttp2_bufs_len(&bufs);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(3 < blocklen);
+  CU_ASSERT(3000 == deflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(UINT32_MAX == deflater.min_hd_table_bufsize_max);
+
+  CU_ASSERT(blocklen == inflate_hd(&inflater, &out, &bufs, 0));
+  CU_ASSERT(3000 == inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(3000 == inflater.settings_hd_table_bufsize_max);
 
   nva_out_reset(&out);
   nghttp2_bufs_reset(&bufs);

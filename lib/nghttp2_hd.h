@@ -120,6 +120,8 @@ struct nghttp2_hd_deflater {
   nghttp2_hd_context ctx;
   /* The upper limit of the header table size the deflater accepts. */
   size_t deflate_hd_table_bufsize_max;
+  /* Minimum header table size notified in the next context update */
+  size_t min_hd_table_bufsize_max;
   /* If nonzero, send header table size using encoding context update
      in the next deflate process */
   uint8_t notify_table_size_change;
