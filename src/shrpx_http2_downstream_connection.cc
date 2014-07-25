@@ -321,7 +321,12 @@ int Http2DownstreamConnection::push_request_headers()
       http2::copy_url_component(path, &u, UF_PATH, url);
       http2::copy_url_component(query, &u, UF_QUERY, url);
       if(path.empty()) {
-        path = "/";
+        if(!authority.empty() &&
+           downstream_->get_request_method() == "OPTIONS") {
+          path = "*";
+        } else {
+          path = "/";
+        }
       }
       if(!query.empty()) {
         path += "?";

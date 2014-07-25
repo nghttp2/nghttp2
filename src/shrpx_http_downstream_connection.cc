@@ -135,15 +135,25 @@ int HttpDownstreamConnection::push_request_headers()
       hdrs += downstream_->get_request_path();
     }
   } else if(get_config()->http2_proxy &&
-     !downstream_->get_request_http2_scheme().empty() &&
-     !downstream_->get_request_http2_authority().empty() &&
-     downstream_->get_request_path().c_str()[0] == '/') {
+            !downstream_->get_request_http2_scheme().empty() &&
+            !downstream_->get_request_http2_authority().empty() &&
+            (downstream_->get_request_path().c_str()[0] == '/' ||
+             downstream_->get_request_path() == "*")) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
     hdrs += downstream_->get_request_http2_scheme();
     hdrs += "://";
     hdrs += downstream_->get_request_http2_authority();
-    hdrs += downstream_->get_request_path();
+
+    // Server-wide OPTIONS takes following form in proxy request:
+    //
+    // OPTIONS http://example.org HTTP/1.1
+    //
+    // Notice that no slash after authority. See
+    // http://tools.ietf.org/html/rfc7230#section-5.3.4
+    if(downstream_->get_request_path() != "*") {
+      hdrs += downstream_->get_request_path();
+    }
   } else {
     // No proxy case. get_request_path() may be absolute-form but we
     // don't care.
