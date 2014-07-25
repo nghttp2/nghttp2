@@ -37,22 +37,12 @@
 typedef enum {
   /**
    * This option prevents the library from sending WINDOW_UPDATE for a
-   * stream automatically. If this option is set to nonzero, the
-   * library won't send WINDOW_UPDATE for a stream and the application
-   * is responsible for sending WINDOW_UPDATE using
-   * `nghttp2_submit_window_update`. By default, this option is set to
-   * zero.
+   * connection automatically.  If this option is set to nonzero, the
+   * library won't send WINDOW_UPDATE for DATA until application calls
+   * nghttp2_session_consume() to indicate the amount of consumed
+   * DATA.  By default, this option is set to zero.
    */
-  NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE = 1,
-  /**
-   * This option prevents the library from sending WINDOW_UPDATE for a
-   * connection automatically. If this option is set to nonzero, the
-   * library won't send WINDOW_UPDATE for a connection and the
-   * application is responsible for sending WINDOW_UPDATE with stream
-   * ID 0 using `nghttp2_submit_window_update`. By default, this
-   * option is set to zero.
-   */
-  NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1,
+  NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE = 1,
   /**
    * This option sets the SETTINGS_MAX_CONCURRENT_STREAMS value of
    * remote endpoint as if it is received in SETTINGS frame. Without
@@ -66,7 +56,7 @@ typedef enum {
    * will be overwritten if the local endpoint receives
    * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
    */
-  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 2
+  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 1
 } nghttp2_option_flag;
 
 /**
@@ -83,13 +73,9 @@ struct nghttp2_option {
    */
   uint32_t peer_max_concurrent_streams;
   /**
-   * NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE
+   * NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE
    */
-  uint8_t no_auto_stream_window_update;
-  /**
-   * NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE
-   */
-  uint8_t no_auto_connection_window_update;
+  uint8_t no_auto_window_update;
 };
 
 #endif /* NGHTTP2_OPTION_H */

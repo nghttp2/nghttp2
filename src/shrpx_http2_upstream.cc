@@ -60,11 +60,16 @@ int on_stream_close_callback
     ULOG(INFO, upstream) << "Stream stream_id=" << stream_id
                          << " is being closed";
   }
+
   auto downstream = upstream->find_downstream(stream_id);
 
   if(!downstream) {
     return 0;
   }
+
+  upstream->consume(stream_id, downstream->get_request_datalen());
+
+  downstream->reset_request_datalen();
 
   if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
     upstream->remove_downstream(downstream);
@@ -476,19 +481,21 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   auto upstream = static_cast<Http2Upstream*>(user_data);
   auto downstream = upstream->find_downstream(stream_id);
 
-  if(!downstream) {
-    upstream->handle_ign_data_chunk(len);
-    return 0;
-  }
+  if(!downstream || !downstream->get_downstream_connection()) {
+    if(upstream->consume(stream_id, len) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
 
-  if(!downstream->get_downstream_connection()) {
-    upstream->handle_ign_data_chunk(len);
     return 0;
   }
 
   if(downstream->push_upload_data_chunk(data, len) != 0) {
     upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-    upstream->handle_ign_data_chunk(len);
+
+    if(upstream->consume(stream_id, len) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+
     return 0;
   }
 
@@ -586,8 +593,7 @@ nghttp2_error_code infer_upstream_rst_stream_error_code
 Http2Upstream::Http2Upstream(ClientHandler *handler)
   : handler_(handler),
     session_(nullptr),
-    settings_timerev_(nullptr),
-    recv_ign_window_size_(0)
+    settings_timerev_(nullptr)
 {
   handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
                                  &get_config()->upstream_write_timeout);
@@ -989,30 +995,6 @@ int Http2Upstream::rst_stream(Downstream *downstream,
   return 0;
 }
 
-int Http2Upstream::window_update(Downstream *downstream,
-                                 int32_t window_size_increment)
-{
-  int rv;
-  int32_t stream_id;
-
-  if(downstream) {
-    stream_id = downstream->get_stream_id();
-  } else {
-    stream_id = 0;
-    recv_ign_window_size_ = 0;
-  }
-
-  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
-                                    stream_id, window_size_increment);
-
-  if(rv < NGHTTP2_ERR_FATAL) {
-    ULOG(FATAL, this) << "nghttp2_submit_window_update() failed: "
-                      << nghttp2_strerror(rv);
-    DIE();
-  }
-  return 0;
-}
-
 int Http2Upstream::terminate_session(nghttp2_error_code error_code)
 {
   int rv;
@@ -1304,18 +1286,14 @@ void Http2Upstream::pause_read(IOCtrlReason reason)
 int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream)
 {
   if(get_flow_control()) {
-    int32_t window_size_increment;
-    window_size_increment = http2::determine_window_update_transmission
-      (session_, 0);
-    if(window_size_increment != -1) {
-      window_update(nullptr, window_size_increment);
+    if(consume(downstream->get_stream_id(),
+               downstream->get_request_datalen()) != 0) {
+      return -1;
     }
-    window_size_increment = http2::determine_window_update_transmission
-      (session_, downstream->get_stream_id());
-    if(window_size_increment != -1) {
-      window_update(downstream, window_size_increment);
-    }
+
+    downstream->reset_request_datalen();
   }
+
   return send();
 }
 
@@ -1333,16 +1311,16 @@ int Http2Upstream::on_downstream_abort_request(Downstream *downstream,
   return send();
 }
 
-int Http2Upstream::handle_ign_data_chunk(size_t len)
+int Http2Upstream::consume(int32_t stream_id, size_t len)
 {
-  int32_t window_size;
+  int rv;
 
-  recv_ign_window_size_ += len;
+  rv = nghttp2_session_consume(session_, stream_id, len);
 
-  window_size = nghttp2_session_get_effective_local_window_size(session_);
-
-  if(recv_ign_window_size_ >= window_size / 2) {
-    window_update(nullptr, recv_ign_window_size_);
+  if(rv != 0) {
+    ULOG(WARNING, this) << "nghttp2_session_consume() returned error: "
+                        << nghttp2_strerror(rv);
+    return -1;
   }
 
   return 0;

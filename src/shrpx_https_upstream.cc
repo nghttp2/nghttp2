@@ -406,6 +406,23 @@ int HttpsUpstream::on_write()
   int rv = 0;
   auto downstream = get_downstream();
   if(downstream) {
+    // We need to postpone detachment until all data are sent so that
+    // we can notify nghttp2 library all data consumed.
+    if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      auto dconn = downstream->get_downstream_connection();
+
+      if(downstream->get_response_connection_close()) {
+
+        // Connection close
+        downstream->set_downstream_connection(nullptr);
+
+        delete dconn;
+      } else {
+        // Keep-alive
+        dconn->detach_downstream(downstream);
+      }
+    }
+
     rv = downstream->resume_read(SHRPX_NO_BUFFER);
   }
   return rv;
@@ -493,17 +510,20 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
     return;
   }
 
+  // If pending data exist, we defer detachment to correctly notify
+  // the all consumed data to nghttp2 library.
+  if(handler->get_outbuf_length() == 0) {
+    if(downstream->get_response_connection_close()) {
+      // Connection close
+      downstream->set_downstream_connection(nullptr);
 
-  if(downstream->get_response_connection_close()) {
-    // Connection close
-    downstream->set_downstream_connection(nullptr);
+      delete dconn;
 
-    delete dconn;
-
-    dconn = nullptr;
-  } else {
-    // Keep-alive
-    dconn->detach_downstream(downstream);
+      dconn = nullptr;
+    } else {
+      // Keep-alive
+      dconn->detach_downstream(downstream);
+    }
   }
 
   if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {

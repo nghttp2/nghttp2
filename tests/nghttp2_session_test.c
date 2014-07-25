@@ -4762,25 +4762,13 @@ void test_nghttp2_session_set_option(void)
 
   nghttp2_option_new(&option);
 
-  nghttp2_option_set_no_auto_stream_window_update(option, 1);
+  nghttp2_option_set_no_auto_window_update(option, 1);
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   nghttp2_session_client_new2(&session, &callbacks, NULL, option);
 
-  CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE);
-  CU_ASSERT(!(session->opt_flags &
-              NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE));
-  nghttp2_session_del(session);
+  CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE);
 
-  nghttp2_option_set_no_auto_stream_window_update(option, 0);
-  nghttp2_option_set_no_auto_connection_window_update(option, 1);
-
-  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
-
-  CU_ASSERT(!(session->opt_flags &
-              NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE));
-  CU_ASSERT(session->opt_flags &
-            NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE);
   nghttp2_session_del(session);
 
   nghttp2_option_set_peer_max_concurrent_streams(option, 100);

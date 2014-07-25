@@ -46,6 +46,8 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     response_body_buf_(nullptr),
     request_headers_sum_(0),
     response_headers_sum_(0),
+    request_datalen_(0),
+    response_datalen_(0),
     stream_id_(stream_id),
     priority_(priority),
     downstream_stream_id_(-1),
@@ -453,7 +455,13 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen)
     return -1;
   }
   request_bodylen_ += datalen;
-  return dconn_->push_upload_data_chunk(data, datalen);
+  if(dconn_->push_upload_data_chunk(data, datalen) != 0) {
+    return -1;
+  }
+
+  request_datalen_ += datalen;
+
+  return 0;
 }
 
 int Downstream::end_upload_data()
@@ -816,6 +824,31 @@ void Downstream::set_expect_final_response(bool f)
 bool Downstream::get_expect_final_response() const
 {
   return expect_final_response_;
+}
+
+size_t Downstream::get_request_datalen() const
+{
+  return request_datalen_;
+}
+
+void Downstream::reset_request_datalen()
+{
+  request_datalen_ = 0;
+}
+
+void Downstream::add_response_datalen(size_t len)
+{
+  response_datalen_ += len;
+}
+
+size_t Downstream::get_response_datalen() const
+{
+  return response_datalen_;
+}
+
+void Downstream::reset_response_datalen()
+{
+  response_datalen_ = 0;
 }
 
 } // namespace shrpx

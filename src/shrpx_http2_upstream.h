@@ -60,9 +60,6 @@ public:
   nghttp2_session* get_http2_session();
 
   int rst_stream(Downstream *downstream, nghttp2_error_code error_code);
-  // To send WINDOW_UPDATE for a connection, specify nullptr to
-  // |downstream|.
-  int window_update(Downstream *downstream, int32_t window_size_increment);
   int terminate_session(nghttp2_error_code error_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
 
@@ -81,16 +78,13 @@ public:
   int upgrade_upstream(HttpsUpstream *upstream);
   int start_settings_timer();
   void stop_settings_timer();
-  int handle_ign_data_chunk(size_t len);
+  int consume(int32_t stream_id, size_t len);
 private:
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;
   ClientHandler *handler_;
   nghttp2_session *session_;
   event *settings_timerev_;
-  // Received DATA frame size while it is not sent to backend before
-  // any connection-level WINDOW_UPDATE
-  int32_t recv_ign_window_size_;
   bool flow_control_;
 };
 

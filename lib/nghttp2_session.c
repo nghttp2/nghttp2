@@ -352,6 +352,7 @@ static int session_new(nghttp2_session **session_ptr,
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
+  (*session_ptr)->consumed_size = 0;
   (*session_ptr)->recv_reduction = 0;
   (*session_ptr)->local_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
 
@@ -383,19 +384,10 @@ static int session_new(nghttp2_session **session_ptr,
 
 
   if(option) {
-    if((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE) &&
-       option->no_auto_stream_window_update) {
+    if((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE) &&
+       option->no_auto_window_update) {
 
-      (*session_ptr)->opt_flags |=
-        NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE;
-
-    }
-
-    if((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE) &&
-       option->no_auto_connection_window_update) {
-
-      (*session_ptr)->opt_flags |=
-        NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE;
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE;
 
     }
 
@@ -3175,10 +3167,11 @@ static int update_local_initial_window_size_func
     return nghttp2_session_terminate_session(arg->session,
                                              NGHTTP2_FLOW_CONTROL_ERROR);
   }
-  if(!(arg->session->opt_flags &
-       NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {
+  if(!(arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+
     if(nghttp2_should_send_window_update(stream->local_window_size,
                                          stream->recv_window_size)) {
+
       rv = nghttp2_session_add_window_update(arg->session,
                                              NGHTTP2_FLAG_NONE,
                                              stream->stream_id,
@@ -3876,9 +3869,9 @@ static int adjust_recv_window_size(int32_t *recv_window_size_ptr,
 
 /*
  * Accumulates received bytes |delta_size| for stream-level flow
- * control and decides whether to send WINDOW_UPDATE to that
- * stream. If NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE is set,
- * WINDOW_UPDATE will not be sent.
+ * control and decides whether to send WINDOW_UPDATE to that stream.
+ * If NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE is set, WINDOW_UPDATE will not
+ * be sent.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -3902,7 +3895,7 @@ static int session_update_recv_stream_window_size
   /* We don't have to send WINDOW_UPDATE if the data received is the
      last chunk in the incoming stream. */
   if(send_window_update &&
-     !(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE)) {
+     !(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
     /* We have to use local_settings here because it is the constraint
        the remote endpoint should honor. */
     if(nghttp2_should_send_window_update(stream->local_window_size,
@@ -3924,8 +3917,8 @@ static int session_update_recv_stream_window_size
 /*
  * Accumulates received bytes |delta_size| for connection-level flow
  * control and decides whether to send WINDOW_UPDATE to the
- * connection.  If NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE is
- * set, WINDOW_UPDATE will not be sent.
+ * connection.  If NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE is set,
+ * WINDOW_UPDATE will not be sent.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -3944,27 +3937,89 @@ static int session_update_recv_connection_window_size
     return nghttp2_session_terminate_session(session,
                                              NGHTTP2_FLOW_CONTROL_ERROR);
   }
-  if(!(session->opt_flags &
-       NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE)) {
+  if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+
     if(nghttp2_should_send_window_update(session->local_window_size,
                                          session->recv_window_size)) {
       /* Use stream ID 0 to update connection-level flow control
          window */
-      rv = nghttp2_session_add_window_update(session,
-                                            NGHTTP2_FLAG_NONE,
-                                            0,
-                                            session->recv_window_size);
-      if(rv == 0) {
-        session->recv_window_size = 0;
-        /* recv_ign_window_size keeps track of ignored DATA bytes
-           before any connection-level WINDOW_UPDATE therefore, we can
-           reset it here. */
-        session->recv_ign_window_size = 0;
-      } else {
+      rv = nghttp2_session_add_window_update(session, NGHTTP2_FLAG_NONE, 0,
+                                             session->recv_window_size);
+      if(rv != 0) {
         return rv;
       }
+
+      session->recv_window_size = 0;
     }
   }
+  return 0;
+}
+
+static int session_update_stream_consumed_size
+(nghttp2_session *session, nghttp2_stream *stream, size_t delta_size)
+{
+  int32_t recv_size;
+  int rv;
+
+  if((size_t)stream->consumed_size > NGHTTP2_MAX_WINDOW_SIZE - delta_size) {
+    return nghttp2_session_terminate_session(session,
+                                             NGHTTP2_FLOW_CONTROL_ERROR);
+  }
+
+  stream->consumed_size += delta_size;
+
+  /* recv_window_size may be smaller than consumed_size, because it
+     may be decreased by negative value with
+     nghttp2_submit_window_update(). */
+  recv_size = nghttp2_min(stream->consumed_size, stream->recv_window_size);
+
+  if(nghttp2_should_send_window_update(stream->local_window_size, recv_size)) {
+    rv = nghttp2_session_add_window_update(session, NGHTTP2_FLAG_NONE,
+                                           stream->stream_id, recv_size);
+
+    if(rv != 0) {
+      return rv;
+    }
+
+    stream->recv_window_size -= recv_size;
+    stream->consumed_size -= recv_size;
+  }
+
+  return 0;
+}
+
+static int session_update_connection_consumed_size
+(nghttp2_session *session, size_t delta_size)
+{
+  int32_t recv_size;
+  int rv;
+
+  if((size_t)session->consumed_size > NGHTTP2_MAX_WINDOW_SIZE - delta_size) {
+    return nghttp2_session_terminate_session(session,
+                                             NGHTTP2_FLOW_CONTROL_ERROR);
+  }
+
+  session->consumed_size += delta_size;
+
+  /* recv_window_size may be smaller than consumed_size, because it
+     may be decreased by negative value with
+     nghttp2_submit_window_update(). */
+  recv_size = nghttp2_min(session->consumed_size, session->recv_window_size);
+
+  if(nghttp2_should_send_window_update(session->local_window_size,
+                                       recv_size)) {
+
+    rv = nghttp2_session_add_window_update(session, NGHTTP2_FLAG_NONE, 0,
+                                           recv_size);
+
+    if(rv != 0) {
+      return rv;
+    }
+
+    session->recv_window_size -= recv_size;
+    session->consumed_size -= recv_size;
+  }
+
   return 0;
 }
 
@@ -5033,6 +5088,14 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         return rv;
       }
 
+      /* Pad Length field is consumed immediately */
+      rv = nghttp2_session_consume(session, iframe->frame.hd.stream_id,
+                                   readlen);
+
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
       stream = nghttp2_session_get_stream(session,
                                           iframe->frame.hd.stream_id);
       if(stream) {
@@ -5098,6 +5161,18 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         data_readlen = inbound_frame_effective_readlen
           (iframe, iframe->payloadleft, readlen);
 
+        padlen = readlen - data_readlen;
+
+        if(padlen > 0) {
+          /* Padding is considered as "consumed" immediately */
+          rv = nghttp2_session_consume(session, iframe->frame.hd.stream_id,
+                                       padlen);
+
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
+
         DEBUGF(fprintf(stderr, "recv: data_readlen=%zu\n", data_readlen));
 
         if(stream && data_readlen > 0 &&
@@ -5142,8 +5217,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                      readlen, iframe->payloadleft));
 
       if(readlen > 0) {
-        session->recv_ign_window_size += readlen;
-
         /* Update connection-level flow control window for ignored
            DATA frame too */
         rv = session_update_recv_connection_window_size(session, readlen);
@@ -5151,20 +5224,14 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           return rv;
         }
 
-        if((session->opt_flags &
-            NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE) &&
-           nghttp2_should_send_window_update
-           (session->local_window_size, session->recv_ign_window_size)) {
+        if(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
 
-          rv = nghttp2_session_add_window_update
-            (session, NGHTTP2_FLAG_NONE, 0, session->recv_ign_window_size);
+          /* Ignored DATA is considered as "consumed" immediately. */
+          rv = session_update_connection_consumed_size(session, readlen);
 
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
-
-          session->recv_window_size -= session->recv_ign_window_size;
-          session->recv_ign_window_size = 0;
         }
       }
 
@@ -5736,4 +5803,37 @@ int nghttp2_session_get_stream_remote_close(nghttp2_session* session,
   }
 
   return (stream->shut_flags & NGHTTP2_SHUT_RD) != 0;
+}
+
+int nghttp2_session_consume(nghttp2_session *session, int32_t stream_id,
+                            size_t size)
+{
+  int rv;
+  nghttp2_stream *stream;
+
+  if(stream_id == 0) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if(!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
+    return NGHTTP2_ERR_INVALID_STATE;
+  }
+
+  rv = session_update_connection_consumed_size(session, size);
+
+  if(nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+
+  if(stream) {
+    rv = session_update_stream_consumed_size(session, stream, size);
+
+    if(nghttp2_is_fatal(rv)) {
+      return rv;
+    }
+  }
+
+  return 0;
 }

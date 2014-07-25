@@ -142,6 +142,8 @@ public:
   void set_request_http2_expect_body(bool f);
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
+  size_t get_request_datalen() const;
+  void reset_request_datalen();
   enum {
     INITIAL,
     HEADER_COMPLETE,
@@ -211,6 +213,9 @@ public:
   bool get_non_final_response() const;
   void set_expect_final_response(bool f);
   bool get_expect_final_response() const;
+  void add_response_datalen(size_t len);
+  size_t get_response_datalen() const;
+  void reset_response_datalen();
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -249,6 +254,10 @@ private:
 
   size_t request_headers_sum_;
   size_t response_headers_sum_;
+
+  // The number of bytes not consumed by the application yet.
+  size_t request_datalen_;
+  size_t response_datalen_;
 
   int32_t stream_id_;
   int32_t priority_;

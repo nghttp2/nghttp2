@@ -151,6 +151,10 @@ struct nghttp2_stream {
      WINDOW_UPDATE. This could be negative after submitting negative
      value to WINDOW_UPDATE */
   int32_t recv_window_size;
+  /* The number of bytes consumed by the application and now is
+     subject to WINDOW_UPDATE.  This is only used when auto
+     WINDOW_UPDATE is turned off. */
+  int32_t consumed_size;
   /* The amount of recv_window_size cut using submitting negative
      value to WINDOW_UPDATE */
   int32_t recv_reduction;

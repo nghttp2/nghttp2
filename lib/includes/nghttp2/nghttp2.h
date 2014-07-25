@@ -1509,27 +1509,13 @@ void nghttp2_option_del(nghttp2_option *option);
  * @function
  *
  * This option prevents the library from sending WINDOW_UPDATE for a
- * stream automatically.  If this option is set to nonzero, the
- * library won't send WINDOW_UPDATE for a stream and the application
- * is responsible for sending WINDOW_UPDATE using
- * `nghttp2_submit_window_update`.  By default, this option is set to
- * zero.
- */
-void nghttp2_option_set_no_auto_stream_window_update(nghttp2_option *option,
-                                                     int val);
-
-/**
- * @function
- *
- * This option prevents the library from sending WINDOW_UPDATE for a
  * connection automatically.  If this option is set to nonzero, the
- * library won't send WINDOW_UPDATE for a connection and the
- * application is responsible for sending WINDOW_UPDATE with stream ID
- * 0 using `nghttp2_submit_window_update`.  By default, this option is
- * set to zero.
+ * library won't send WINDOW_UPDATE for DATA until application calls
+ * `nghttp2_session_consume()` to indicate the consumed amount of
+ * data.  Don't use `nghttp2_submit_window_update()` for this purpose.
+ * By default, this option is set to zero.
  */
-void nghttp2_option_set_no_auto_connection_window_update
-(nghttp2_option *option, int val);
+void nghttp2_option_set_no_auto_window_update(nghttp2_option *option, int val);
 
 /**
  * @function
@@ -2066,6 +2052,28 @@ int nghttp2_session_terminate_session2(nghttp2_session *session,
  */
 uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
                                              nghttp2_settings_id id);
+
+/**
+ * @function
+ *
+ * Tells the |session| that |size| bytes for a stream denoted by
+ * |stream_id| were consumed by application and are ready to
+ * WINDOW_UPDATE.  This function is intended to be used without
+ * automatic window update (see
+ * `nghttp2_option_set_no_auto_window_update()`).
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     Automatic WINDOW_UPDATE is not disabled.
+ */
+int nghttp2_session_consume(nghttp2_session *session, int32_t stream_id,
+                            size_t size);
 
 /**
  * @function
@@ -2609,12 +2617,11 @@ int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
  * difference.
  *
  * If the |window_size_increment| is negative, the local window size
- * is decreased by -|window_size_increment|.  If
- * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE` (or
- * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` if |stream_id|
- * is 0) is not set and the library decided that the WINDOW_UPDATE
- * should be submitted, then WINDOW_UPDATE is queued with the current
- * received bytes count.
+ * is decreased by -|window_size_increment|.  If automatic
+ * WINDOW_UPDATE is enabled
+ * (`nghttp2_option_set_no_auto_window_update()`), and the library
+ * decided that the WINDOW_UPDATE should be submitted, then
+ * WINDOW_UPDATE is queued with the current received bytes count.
  *
  * If the |window_size_increment| is 0, the function does nothing and
  * returns 0.

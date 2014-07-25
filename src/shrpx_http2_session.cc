@@ -58,7 +58,6 @@ Http2Session::Http2Session(event_base *evbase, SSL_CTX *ssl_ctx)
     wrbev_(nullptr),
     rdbev_(nullptr),
     settings_timerev_(nullptr),
-    recv_ign_window_size_(0),
     fd_(-1),
     state_(DISCONNECTED),
     notified_(false),
@@ -661,28 +660,6 @@ int Http2Session::submit_rst_stream(int32_t stream_id,
   return 0;
 }
 
-int Http2Session::submit_window_update(Http2DownstreamConnection *dconn,
-                                      int32_t amount)
-{
-  assert(state_ == CONNECTED);
-  int rv;
-  int32_t stream_id;
-  if(dconn) {
-    stream_id = dconn->get_downstream()->get_downstream_stream_id();
-  } else {
-    stream_id = 0;
-    recv_ign_window_size_ = 0;
-  }
-  rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE,
-                                    stream_id, amount);
-  if(rv < NGHTTP2_ERR_FATAL) {
-    SSLOG(FATAL, this) << "nghttp2_submit_window_update() failed: "
-                       << nghttp2_strerror(rv);
-    return -1;
-  }
-  return 0;
-}
-
 int Http2Session::submit_priority(Http2DownstreamConnection *dconn,
                                   int32_t pri)
 {
@@ -768,6 +745,12 @@ int on_stream_close_callback
   if(dconn) {
     auto downstream = dconn->get_downstream();
     if(downstream && downstream->get_downstream_stream_id() == stream_id) {
+
+      http2session->consume(downstream->get_downstream_stream_id(),
+                            downstream->get_response_datalen());
+
+      downstream->reset_response_datalen();
+
       if(error_code == NGHTTP2_NO_ERROR) {
         if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
           downstream->set_response_state(Downstream::MSG_RESET);
@@ -1180,13 +1163,21 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     (nghttp2_session_get_stream_user_data(session, stream_id));
   if(!sd || !sd->dconn) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
-    http2session->handle_ign_data_chunk(len);
+
+    if(http2session->consume(stream_id, len) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
   if(!downstream || downstream->get_downstream_stream_id() != stream_id) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
-    http2session->handle_ign_data_chunk(len);
+
+    if(http2session->consume(stream_id, len) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+
     return 0;
   }
 
@@ -1194,7 +1185,11 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   // HTTP.
   if(downstream->get_non_final_response()) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_PROTOCOL_ERROR);
-    http2session->handle_ign_data_chunk(len);
+
+    if(http2session->consume(stream_id, len) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+
     return 0;
   }
 
@@ -1204,9 +1199,16 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
   rv = upstream->on_downstream_body(downstream, data, len, false);
   if(rv != 0) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
-    http2session->handle_ign_data_chunk(len);
+
+    if(http2session->consume(stream_id, len) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+
     downstream->set_response_state(Downstream::MSG_RESET);
   }
+
+  downstream->add_response_datalen(len);
+
   call_downstream_readcb(http2session, downstream);
   return 0;
 }
@@ -1546,16 +1548,17 @@ SSL* Http2Session::get_ssl() const
   return ssl_;
 }
 
-int Http2Session::handle_ign_data_chunk(size_t len)
+int Http2Session::consume(int32_t stream_id, size_t len)
 {
-  int32_t window_size;
+  int rv;
 
-  recv_ign_window_size_ += len;
+  rv = nghttp2_session_consume(session_, stream_id, len);
 
-  window_size = nghttp2_session_get_effective_local_window_size(session_);
+  if(rv != 0) {
+    SSLOG(WARNING, this) << "nghttp2_session_consume() returned error: "
+                         << nghttp2_strerror(rv);
 
-  if(recv_ign_window_size_ >= window_size / 2) {
-    submit_window_update(nullptr, recv_ign_window_size_);
+    return -1;
   }
 
   return 0;

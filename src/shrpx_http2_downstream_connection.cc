@@ -67,6 +67,15 @@ Http2DownstreamConnection::~Http2DownstreamConnection()
     if(submit_rst_stream(downstream_) == 0) {
       http2session_->notify();
     }
+
+    if(downstream_->get_downstream_stream_id() != -1) {
+      http2session_->consume(downstream_->get_downstream_stream_id(),
+                             downstream_->get_response_datalen());
+
+      downstream_->reset_response_datalen();
+
+      http2session_->notify();
+    }
   }
   http2session_->remove_downstream_connection(this);
   // Downstream and DownstreamConnection may be deleted
@@ -122,6 +131,16 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream)
   if(submit_rst_stream(downstream) == 0) {
     http2session_->notify();
   }
+
+  if(downstream_->get_downstream_stream_id() != -1) {
+    http2session_->consume(downstream_->get_downstream_stream_id(),
+                           downstream_->get_response_datalen());
+
+    downstream_->reset_response_datalen();
+
+    http2session_->notify();
+  }
+
   downstream->set_downstream_connection(nullptr);
   downstream_ = nullptr;
 
@@ -469,34 +488,29 @@ int Http2DownstreamConnection::end_upload_data()
 
 int Http2DownstreamConnection::resume_read(IOCtrlReason reason)
 {
-  int rv1 = 0, rv2 = 0;
-  if(http2session_->get_state() == Http2Session::CONNECTED &&
-     http2session_->get_flow_control()) {
-    int32_t window_size_increment;
-    window_size_increment = http2::determine_window_update_transmission
-      (http2session_->get_session(), 0);
-    if(window_size_increment != -1) {
-      rv1 = http2session_->submit_window_update(nullptr, window_size_increment);
-      if(rv1 == 0) {
-        http2session_->notify();
-      }
-    }
-    if(downstream_ && downstream_->get_downstream_stream_id() != -1) {
-      window_size_increment = http2::determine_window_update_transmission
-        (http2session_->get_session(), downstream_->get_downstream_stream_id());
-      if(window_size_increment != -1) {
-        rv2 = http2session_->submit_window_update(this, window_size_increment);
-        if(rv2 == 0) {
-          http2session_->notify();
-        }
-      }
-    }
-  }
-  if(rv1 == 0 && rv2 == 0) {
+  int rv;
+
+  if(http2session_->get_state() != Http2Session::CONNECTED ||
+     !http2session_->get_flow_control()) {
     return 0;
   }
-  DLOG(WARNING, this) << "Sending WINDOW_UPDATE failed";
-  return -1;
+
+  if(!downstream_ || downstream_->get_downstream_stream_id() == -1) {
+    return 0;
+  }
+
+  rv = http2session_->consume(downstream_->get_downstream_stream_id(),
+                              downstream_->get_response_datalen());
+
+  if(rv != 0) {
+    return -1;
+  }
+
+  downstream_->reset_response_datalen();
+
+  http2session_->notify();
+
+  return 0;
 }
 
 int Http2DownstreamConnection::on_read()

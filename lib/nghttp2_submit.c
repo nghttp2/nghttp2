@@ -348,27 +348,30 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
     if(rv != 0) {
       return rv;
     }
-
-    /* recv_ign_window_size keeps track of ignored DATA bytes before
-       any connection-level WINDOW_UPDATE therefore, we can reset it
-       here. */
-    session->recv_ign_window_size = 0;
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
-    if(stream) {
-      rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
-                                            &stream->recv_window_size,
-                                            &stream->recv_reduction,
-                                            &window_size_increment);
-      if(rv != 0) {
-        return rv;
-      }
-    } else {
+    if(!stream) {
       return 0;
+    }
+
+    rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
+                                          &stream->recv_window_size,
+                                          &stream->recv_reduction,
+                                          &window_size_increment);
+    if(rv != 0) {
+      return rv;
     }
   }
 
   if(window_size_increment > 0) {
+    if(stream_id == 0) {
+      session->consumed_size =
+        nghttp2_max(0, session->consumed_size - window_size_increment);
+    } else {
+      stream->consumed_size =
+        nghttp2_max(0, stream->consumed_size - window_size_increment);
+    }
+
     return nghttp2_session_add_window_update(session, flags, stream_id,
                                              window_size_increment);
   }

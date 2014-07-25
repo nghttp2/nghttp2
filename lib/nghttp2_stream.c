@@ -48,6 +48,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->remote_window_size = remote_initial_window_size;
   stream->local_window_size = local_initial_window_size;
   stream->recv_window_size = 0;
+  stream->consumed_size = 0;
   stream->recv_reduction = 0;
   stream->blocked_sent = 0;
 
