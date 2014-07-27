@@ -292,6 +292,8 @@ static void init_settings(nghttp2_settings_storage *settings)
   settings->enable_push = 1;
   settings->max_concurrent_streams = NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
   settings->initial_window_size = NGHTTP2_INITIAL_WINDOW_SIZE;
+  settings->max_frame_size = NGHTTP2_MAX_FRAME_SIZE_MIN;
+  settings->max_header_set_size = UINT32_MAX;
 }
 
 static void active_outbound_item_reset(nghttp2_active_outbound_item *aob)
@@ -3273,6 +3275,12 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       session->local_settings.initial_window_size = iv[i].value;
       break;
+    case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+      session->local_settings.max_frame_size = iv[i].value;
+      break;
+    case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+      session->local_settings.max_header_set_size = iv[i].value;
+      break;
     }
   }
 
@@ -3392,6 +3400,23 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       }
 
       session->remote_settings.initial_window_size = entry->value;
+
+      break;
+    case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+
+      if(entry->value < NGHTTP2_MAX_FRAME_SIZE_MIN ||
+         entry->value > NGHTTP2_MAX_FRAME_SIZE_MAX) {
+        return session_handle_invalid_connection
+          (session, frame, NGHTTP2_PROTOCOL_ERROR,
+           "SETTINGS: invalid SETTINGS_MAX_FRAME_SIZE");
+      }
+
+      session->remote_settings.max_frame_size = entry->value;
+
+      break;
+    case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+
+      session->remote_settings.max_header_set_size = entry->value;
 
       break;
     }
@@ -4141,6 +4166,8 @@ static void inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   case NGHTTP2_SETTINGS_ENABLE_PUSH:
   case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+  case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+  case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
     break;
   default:
     DEBUGF(fprintf(stderr, "recv: ignore unknown settings id=0x%02x\n",
@@ -4272,6 +4299,26 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                      iframe->frame.hd.type,
                      iframe->frame.hd.flags,
                      iframe->frame.hd.stream_id));
+
+      if(iframe->frame.hd.length > session->local_settings.max_frame_size) {
+        DEBUGF(fprintf(stderr,
+                       "recv: legnth is too large %u > %u\n",
+                       iframe->frame.hd.length,
+                       session->local_settings.max_frame_size));
+
+        busy = 1;
+
+        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+        rv = nghttp2_session_terminate_session_with_reason
+          (session, NGHTTP2_PROTOCOL_ERROR, "too large frame size");
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        break;
+      }
 
       switch(iframe->frame.hd.type) {
       case NGHTTP2_DATA: {
@@ -5688,6 +5735,10 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
     return session->remote_settings.max_concurrent_streams;
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
     return session->remote_settings.initial_window_size;
+  case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+    return session->remote_settings.max_frame_size;
+  case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+    return session->remote_settings.max_header_set_size;
   }
 
   assert(0);

@@ -709,4 +709,21 @@ void test_nghttp2_iv_check(void)
   iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iv[1].value = UINT32_MAX;
   CU_ASSERT(!nghttp2_iv_check(iv, 2));
+
+  /* Too small SETTINGS_MAX_FRAME_SIZE */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MIN - 1;
+  CU_ASSERT(!nghttp2_iv_check(iv, 1));
+
+  /* Too large SETTINGS_MAX_FRAME_SIZE */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MAX + 1;
+  CU_ASSERT(!nghttp2_iv_check(iv, 1));
+
+  /* Max and min SETTINGS_MAX_FRAME_SIZE */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MIN;
+  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[1].value = NGHTTP2_MAX_FRAME_SIZE_MAX;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 }

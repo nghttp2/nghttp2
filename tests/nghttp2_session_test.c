@@ -1410,6 +1410,36 @@ void test_nghttp2_session_recv_settings_header_table_size(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_too_large_frame_length(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  uint8_t buf[NGHTTP2_FRAME_HDLEN];
+  nghttp2_outbound_item *item;
+  nghttp2_frame_hd hd = {
+    /* Initial max frame size is NGHTTP2_MAX_FRAME_SIZE_MIN */
+    NGHTTP2_MAX_FRAME_SIZE_MIN + 1,
+    1,
+    NGHTTP2_HEADERS,
+    NGHTTP2_FLAG_NONE
+  };
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  nghttp2_frame_pack_frame_hd(buf, &hd);
+
+  CU_ASSERT(sizeof(buf) ==
+            nghttp2_session_mem_recv(session, buf, sizeof(buf)));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(item != NULL);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_continue(void)
 {
   nghttp2_session *session;
@@ -2159,6 +2189,25 @@ void test_nghttp2_session_on_settings_received(void)
   CU_ASSERT(0 == session->hd_deflater.ctx.hd_table.len);
   CU_ASSERT(2048 == session->hd_deflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(2048 == session->remote_settings.header_table_size);
+
+  nghttp2_frame_settings_free(&frame.settings);
+  nghttp2_session_del(session);
+
+  /* Check too large SETTINGS_MAX_FRAME_SIZE */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MAX + 1;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(iv, 1), 1);
+
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(item != NULL);
+  CU_ASSERT(NGHTTP2_GOAWAY == OB_CTRL_TYPE(item));
 
   nghttp2_frame_settings_free(&frame.settings);
   nghttp2_session_del(session);

@@ -80,7 +80,7 @@ typedef enum {
   NGHTTP2_IB_IGN_DATA
 } nghttp2_inbound_state;
 
-#define NGHTTP2_INBOUND_NUM_IV 5
+#define NGHTTP2_INBOUND_NUM_IV 7
 
 typedef struct {
   nghttp2_frame frame;
@@ -113,6 +113,8 @@ typedef struct {
   uint32_t enable_push;
   uint32_t max_concurrent_streams;
   uint32_t initial_window_size;
+  uint32_t max_frame_size;
+  uint32_t max_header_set_size;
 } nghttp2_settings_storage;
 
 typedef enum {

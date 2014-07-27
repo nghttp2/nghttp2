@@ -1037,6 +1037,14 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
         return 0;
       }
       break;
+    case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+      if(iv[i].value < NGHTTP2_MAX_FRAME_SIZE_MIN ||
+         iv[i].value > NGHTTP2_MAX_FRAME_SIZE_MAX) {
+        return 0;
+      }
+      break;
+    case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+      break;
     default:
       return 0;
     }
