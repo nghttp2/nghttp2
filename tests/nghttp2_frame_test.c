@@ -700,10 +700,10 @@ void test_nghttp2_iv_check(void)
   iv[1].value = 3;
   CU_ASSERT(!nghttp2_iv_check(iv, 2));
 
-  /* Undefined SETTINGS ID */
+  /* Undefined SETTINGS ID is allowed */
   iv[1].settings_id = 1000000009;
   iv[1].value = 0;
-  CU_ASSERT(!nghttp2_iv_check(iv, 2));
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 
   /* Too large SETTINGS_HEADER_TABLE_SIZE */
   iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;

@@ -3485,8 +3485,9 @@ void test_nghttp2_submit_settings(void)
   my_user_data ud;
   nghttp2_outbound_item *item;
   nghttp2_frame *frame;
-  nghttp2_settings_entry iv[6];
+  nghttp2_settings_entry iv[7];
   nghttp2_frame ack_frame;
+  const int32_t UNKNOWN_ID = 1000000007;
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[0].value = 5;
@@ -3500,8 +3501,11 @@ void test_nghttp2_submit_settings(void)
   iv[3].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iv[3].value = 0;
 
-  iv[4].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  iv[4].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
+  iv[4].settings_id = UNKNOWN_ID;
+  iv[4].value = 999;
+
+  iv[5].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[5].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -3509,7 +3513,7 @@ void test_nghttp2_submit_settings(void)
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 5));
+            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 6));
 
   /* Make sure that local settings are not changed */
   CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
@@ -3517,15 +3521,15 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE ==
             session->local_settings.initial_window_size);
 
-  /* Now sends without 5th one */
-  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 4));
+  /* Now sends without 6th one */
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 5));
 
   item = nghttp2_session_get_next_ob_item(session);
 
   CU_ASSERT(NGHTTP2_SETTINGS == OB_CTRL_TYPE(item));
 
   frame = item->frame;
-  CU_ASSERT(4 == frame->settings.niv);
+  CU_ASSERT(5 == frame->settings.niv);
   CU_ASSERT(5 == frame->settings.iv[0].value);
   CU_ASSERT(NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS ==
             frame->settings.iv[0].settings_id);
@@ -3533,6 +3537,9 @@ void test_nghttp2_submit_settings(void)
   CU_ASSERT(16*1024 == frame->settings.iv[1].value);
   CU_ASSERT(NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE ==
             frame->settings.iv[1].settings_id);
+
+  CU_ASSERT(UNKNOWN_ID == frame->settings.iv[4].settings_id);
+  CU_ASSERT(999 == frame->settings.iv[4].value);
 
   ud.frame_send_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));
