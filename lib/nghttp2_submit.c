@@ -81,9 +81,7 @@ static int32_t submit_headers_shared
   }
 
   flags_copy =
-    (flags & (NGHTTP2_FLAG_END_STREAM |
-              NGHTTP2_FLAG_END_SEGMENT |
-              NGHTTP2_FLAG_PRIORITY)) |
+    (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY)) |
     NGHTTP2_FLAG_END_HEADERS;
 
   if(stream_id == -1) {
@@ -538,8 +536,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
 {
   int rv;
   nghttp2_private_data *data_frame;
-  uint8_t nflags = flags & (NGHTTP2_FLAG_END_STREAM |
-                            NGHTTP2_FLAG_END_SEGMENT);
+  uint8_t nflags = flags & NGHTTP2_FLAG_END_STREAM;
 
   if(stream_id == 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;

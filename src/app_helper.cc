@@ -221,12 +221,6 @@ void print_flags(const nghttp2_frame_hd& hd)
     if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
     }
-    if(hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
-      if(!s.empty()) {
-        s += " | ";
-      }
-      s += "END_SEGMENT";
-    }
     if(hd.flags & NGHTTP2_FLAG_PADDED) {
       if(!s.empty()) {
         s += " | ";
@@ -237,12 +231,6 @@ void print_flags(const nghttp2_frame_hd& hd)
   case NGHTTP2_HEADERS:
     if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
-    }
-    if(hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
-      if(!s.empty()) {
-        s += " | ";
-      }
-      s += "END_SEGMENT";
     }
     if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
       if(!s.empty()) {

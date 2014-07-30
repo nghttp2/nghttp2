@@ -477,10 +477,6 @@ typedef enum {
    */
   NGHTTP2_FLAG_ACK = 0x01,
   /**
-   * The END_SEGMENT flag.
-   */
-  NGHTTP2_FLAG_END_SEGMENT = 0x02,
-  /**
    * The PADDED flag.
    */
   NGHTTP2_FLAG_PADDED = 0x08,
@@ -2382,8 +2378,7 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  * Submits one or more DATA frames to the stream |stream_id|.  The
  * data to be sent are provided by |data_prd|.  If |flags| contains
  * :enum:`NGHTTP2_FLAG_END_STREAM`, the last DATA frame has END_STREAM
- * flag set.  If |flags| contains :enum:`NGHTTP2_FLAG_END_SEGMENT`,
- * the last DATA frame has END_SEGMENT flag set.
+ * flag set.
  *
  * This function does not take ownership of the |data_prd|.  The
  * function copies the members of the |data_prd|.

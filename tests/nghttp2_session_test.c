@@ -2989,8 +2989,7 @@ void test_nghttp2_submit_data(void)
                               &pri_spec_default, NGHTTP2_STREAM_OPENING,
                               NULL);
   CU_ASSERT(0 == nghttp2_submit_data(session,
-                                     NGHTTP2_FLAG_END_STREAM |
-                                     NGHTTP2_FLAG_END_SEGMENT, 1, &data_prd));
+                                     NGHTTP2_FLAG_END_STREAM, 1, &data_prd));
 
   ud.block_count = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));
@@ -3001,8 +3000,7 @@ void test_nghttp2_submit_data(void)
 
   CU_ASSERT(NGHTTP2_FLAG_NONE == hd.flags);
   /* frame->hd.flags has these flags */
-  CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT) ==
-            data_frame->hd.flags);
+  CU_ASSERT(NGHTTP2_FLAG_END_STREAM == data_frame->hd.flags);
 
   nghttp2_session_del(session);
 }

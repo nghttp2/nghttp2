@@ -4325,7 +4325,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         DEBUGF(fprintf(stderr, "recv: DATA\n"));
 
         iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_STREAM |
-                                   NGHTTP2_FLAG_END_SEGMENT |
                                    NGHTTP2_FLAG_PADDED);
         /* Check stream is open. If it is not open or closing,
            ignore payload. */
@@ -4369,7 +4368,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         DEBUGF(fprintf(stderr, "recv: HEADERS\n"));
 
         iframe->frame.hd.flags &= (NGHTTP2_FLAG_END_STREAM |
-                                   NGHTTP2_FLAG_END_SEGMENT |
                                    NGHTTP2_FLAG_END_HEADERS |
                                    NGHTTP2_FLAG_PADDED |
                                    NGHTTP2_FLAG_PRIORITY);
@@ -5576,16 +5574,13 @@ int nghttp2_session_pack_data(nghttp2_session *session,
 
   /* Clear flags, because this may contain previous flags of previous
      DATA */
-  frame->hd.flags &= (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_SEGMENT);
+  frame->hd.flags &= NGHTTP2_FLAG_END_STREAM;
   flags = NGHTTP2_FLAG_NONE;
 
   if(data_flags & NGHTTP2_DATA_FLAG_EOF) {
     frame->eof = 1;
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       flags |= NGHTTP2_FLAG_END_STREAM;
-    }
-    if(frame->hd.flags & NGHTTP2_FLAG_END_SEGMENT) {
-      flags |= NGHTTP2_FLAG_END_SEGMENT;
     }
   }
 
