@@ -1556,6 +1556,10 @@ int Http2Session::consume(int32_t stream_id, size_t len)
 {
   int rv;
 
+  if(!session_) {
+    return 0;
+  }
+
   rv = nghttp2_session_consume(session_, stream_id, len);
 
   if(rv != 0) {
