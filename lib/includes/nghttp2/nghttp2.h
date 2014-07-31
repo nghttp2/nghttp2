@@ -728,7 +728,9 @@ typedef enum {
   NGHTTP2_HCAT_PUSH_RESPONSE = 2,
   /**
    * The HEADERS frame which does not apply for the above categories,
-   * which is analogous to HEADERS in SPDY.
+   * which is analogous to HEADERS in SPDY.  If non-final response
+   * (e.g., status 1xx) is used, final response HEADERS frame will be
+   * categorized here.
    */
   NGHTTP2_HCAT_HEADERS = 3
 } nghttp2_headers_category;
