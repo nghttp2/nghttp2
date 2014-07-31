@@ -3732,7 +3732,8 @@ static int session_on_connection_window_update_received
 {
   int rv;
   /* Handle connection-level flow control */
-  if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
+  if(frame->window_update.window_size_increment == 0 ||
+     NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
      session->remote_window_size) {
     return session_handle_invalid_connection
       (session, frame, NGHTTP2_FLOW_CONTROL_ERROR, NULL);
@@ -3771,7 +3772,8 @@ static int session_on_stream_window_update_received
       (session, frame, NGHTTP2_PROTOCOL_ERROR,
        "WINDOW_UPADATE to reserved stream");
   }
-  if(NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
+  if(frame->window_update.window_size_increment == 0 ||
+     NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
      stream->remote_window_size) {
     return session_handle_invalid_stream(session, frame,
                                          NGHTTP2_FLOW_CONTROL_ERROR);
