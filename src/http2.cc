@@ -163,6 +163,31 @@ size_t DISALLOWED_HDLEN = sizeof(DISALLOWED_HD)/sizeof(DISALLOWED_HD[0]);
 } // namespace
 
 namespace {
+const char *REQUEST_PSEUDO_HD[] = {
+  ":authority",
+  ":method",
+  ":path",
+  ":scheme",
+};
+} // namespace
+
+namespace {
+size_t REQUEST_PSEUDO_HDLEN =
+  sizeof(REQUEST_PSEUDO_HD) / sizeof(REQUEST_PSEUDO_HD[0]);
+} // namespace
+
+namespace {
+const char *RESPONSE_PSEUDO_HD[] = {
+  ":status",
+};
+} // namespace
+
+namespace {
+size_t RESPONSE_PSEUDO_HDLEN =
+  sizeof(RESPONSE_PSEUDO_HD) / sizeof(RESPONSE_PSEUDO_HD[0]);
+} // namespace
+
+namespace {
 const char *IGN_HD[] = {
   "connection",
   "http2-settings",
@@ -221,6 +246,61 @@ bool check_http2_headers(const Headers& nva)
     }
   }
   return true;
+}
+
+namespace {
+template<typename InputIterator>
+bool check_pseudo_headers(const Headers& nva,
+                          InputIterator allowed_first,
+                          InputIterator allowed_last)
+{
+  // strict checking for pseudo headers.
+  for(auto& hd : nva) {
+    auto c = hd.name.c_str()[0];
+
+    if(c < ':') {
+      continue;
+    }
+
+    if(c > ':') {
+      break;
+    }
+
+    auto i = allowed_first;
+
+    for(; i != allowed_last; ++i) {
+      if(hd.name == *i) {
+        break;
+      }
+    }
+
+    if(i == allowed_last) {
+      return false;
+    }
+  }
+
+  return true;
+}
+} // namespace
+
+bool check_http2_request_headers(const Headers& nva)
+{
+  if(!check_http2_headers(nva)) {
+    return false;
+  }
+
+  return check_pseudo_headers(nva, REQUEST_PSEUDO_HD,
+                              REQUEST_PSEUDO_HD + REQUEST_PSEUDO_HDLEN);
+}
+
+bool check_http2_response_headers(const Headers& nva)
+{
+  if(!check_http2_headers(nva)) {
+    return false;
+  }
+
+  return check_pseudo_headers(nva, RESPONSE_PSEUDO_HD,
+                              RESPONSE_PSEUDO_HD + RESPONSE_PSEUDO_HDLEN);
 }
 
 void normalize_headers(Headers& nva)

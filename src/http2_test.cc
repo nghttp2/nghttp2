@@ -111,6 +111,21 @@ void test_http2_check_http2_headers(void)
     { "te2", "3" }
   };
   CU_ASSERT(http2::check_http2_headers(nva3));
+
+  auto nva4 = Headers{
+    { ":authority", "1" },
+    { ":method", "2" },
+    { ":path", "3" },
+    { ":scheme", "4" }
+  };
+  CU_ASSERT(http2::check_http2_request_headers(nva4));
+  CU_ASSERT(!http2::check_http2_response_headers(nva4));
+
+  auto nva5 = Headers{
+    { ":status", "1" }
+  };
+  CU_ASSERT(!http2::check_http2_request_headers(nva5));
+  CU_ASSERT(http2::check_http2_response_headers(nva5));
 }
 
 void test_http2_get_unique_header(void)

@@ -302,7 +302,7 @@ int on_request_headers(Http2Upstream *upstream,
     http2::dump_nv(get_config()->http2_upstream_dump_request_header, nva);
   }
 
-  if(!http2::check_http2_headers(nva)) {
+  if(!http2::check_http2_request_headers(nva)) {
     if(upstream->error_reply(downstream, 400) != 0) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
     }

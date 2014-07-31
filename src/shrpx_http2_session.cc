@@ -900,7 +900,7 @@ int on_response_headers(Http2Session *http2session,
 
   downstream->set_expect_final_response(false);
 
-  if(!http2::check_http2_headers(nva)) {
+  if(!http2::check_http2_response_headers(nva)) {
     http2session->submit_rst_stream(frame->hd.stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
