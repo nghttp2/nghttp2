@@ -95,6 +95,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_recv_unexpected_continuation) ||
       !CU_add_test(pSuite, "session_recv_settings_header_table_size",
                    test_nghttp2_session_recv_settings_header_table_size) ||
+      !CU_add_test(pSuite, "session_recv_too_large_frame_length",
+                   test_nghttp2_session_recv_too_large_frame_length) ||
       !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
@@ -255,10 +257,6 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
       !CU_add_test(pSuite, "hd_deflate_same_indexed_repr",
                    test_nghttp2_hd_deflate_same_indexed_repr) ||
-      !CU_add_test(pSuite, "hd_deflate_common_header_eviction",
-                   test_nghttp2_hd_deflate_common_header_eviction) ||
-      !CU_add_test(pSuite, "hd_deflate_clear_refset",
-                   test_nghttp2_hd_deflate_clear_refset) ||
       !CU_add_test(pSuite, "hd_inflate_indexed",
                    test_nghttp2_hd_inflate_indexed) ||
       !CU_add_test(pSuite, "hd_inflate_indname_noinc",

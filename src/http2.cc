@@ -163,9 +163,33 @@ size_t DISALLOWED_HDLEN = sizeof(DISALLOWED_HD)/sizeof(DISALLOWED_HD[0]);
 } // namespace
 
 namespace {
+const char *REQUEST_PSEUDO_HD[] = {
+  ":authority",
+  ":method",
+  ":path",
+  ":scheme",
+};
+} // namespace
+
+namespace {
+size_t REQUEST_PSEUDO_HDLEN =
+  sizeof(REQUEST_PSEUDO_HD) / sizeof(REQUEST_PSEUDO_HD[0]);
+} // namespace
+
+namespace {
+const char *RESPONSE_PSEUDO_HD[] = {
+  ":status",
+};
+} // namespace
+
+namespace {
+size_t RESPONSE_PSEUDO_HDLEN =
+  sizeof(RESPONSE_PSEUDO_HD) / sizeof(RESPONSE_PSEUDO_HD[0]);
+} // namespace
+
+namespace {
 const char *IGN_HD[] = {
   "connection",
-  "expect",
   "http2-settings",
   "keep-alive",
   "proxy-connection",
@@ -186,7 +210,6 @@ namespace {
 const char *HTTP1_IGN_HD[] = {
   "connection",
   "cookie",
-  "expect",
   "http2-settings",
   "keep-alive",
   "proxy-connection",
@@ -223,6 +246,61 @@ bool check_http2_headers(const Headers& nva)
     }
   }
   return true;
+}
+
+namespace {
+template<typename InputIterator>
+bool check_pseudo_headers(const Headers& nva,
+                          InputIterator allowed_first,
+                          InputIterator allowed_last)
+{
+  // strict checking for pseudo headers.
+  for(auto& hd : nva) {
+    auto c = hd.name.c_str()[0];
+
+    if(c < ':') {
+      continue;
+    }
+
+    if(c > ':') {
+      break;
+    }
+
+    auto i = allowed_first;
+
+    for(; i != allowed_last; ++i) {
+      if(hd.name == *i) {
+        break;
+      }
+    }
+
+    if(i == allowed_last) {
+      return false;
+    }
+  }
+
+  return true;
+}
+} // namespace
+
+bool check_http2_request_headers(const Headers& nva)
+{
+  if(!check_http2_headers(nva)) {
+    return false;
+  }
+
+  return check_pseudo_headers(nva, REQUEST_PSEUDO_HD,
+                              REQUEST_PSEUDO_HD + REQUEST_PSEUDO_HDLEN);
+}
+
+bool check_http2_response_headers(const Headers& nva)
+{
+  if(!check_http2_headers(nva)) {
+    return false;
+  }
+
+  return check_pseudo_headers(nva, RESPONSE_PSEUDO_HD,
+                              RESPONSE_PSEUDO_HD + RESPONSE_PSEUDO_HDLEN);
 }
 
 void normalize_headers(Headers& nva)
@@ -275,31 +353,12 @@ Headers::value_type to_header(const uint8_t *name, size_t namelen,
                 no_index);
 }
 
-void split_add_header(Headers& nva,
-                      const uint8_t *name, size_t namelen,
-                      const uint8_t *value, size_t valuelen,
-                      bool no_index)
+void add_header(Headers& nva,
+                const uint8_t *name, size_t namelen,
+                const uint8_t *value, size_t valuelen,
+                bool no_index)
 {
-  if(valuelen == 0) {
-    nva.push_back(to_header(name, namelen, value, valuelen, no_index));
-    return;
-  }
-  auto j = value;
-  auto end = value + valuelen;
-  for(;;) {
-    // Skip 0 length value
-    j = std::find_if(j, end,
-                     [](uint8_t c)
-                     {
-                       return c != '\0';
-                     });
-    if(j == end) {
-      break;
-    }
-    auto l = std::find(j, end, '\0');
-    nva.push_back(to_header(name, namelen, j, l-j, no_index));
-    j = l;
-  }
+  nva.push_back(to_header(name, namelen, value, valuelen, no_index));
 }
 
 const Headers::value_type* get_unique_header(const Headers& nva,
@@ -353,29 +412,6 @@ nghttp2_nv make_nv(const std::string& name, const std::string& value,
 
   return {(uint8_t*)name.c_str(), (uint8_t*)value.c_str(),
       name.size(), value.size(), flags};
-}
-
-Headers concat_norm_headers(Headers headers)
-{
-  auto res = Headers();
-  res.reserve(headers.size());
-  for(auto& kv : headers) {
-    if(!res.empty() && res.back().name == kv.name &&
-       kv.name != "cookie" && kv.name != "set-cookie") {
-
-      auto& last = res.back();
-
-      if(!kv.value.empty()) {
-        last.value.append(1, '\0');
-        last.value += kv.value;
-      }
-      // We do ORing nv flags.  This is done even if value is empty.
-      last.no_index |= kv.no_index;
-    } else {
-      res.push_back(std::move(kv));
-    }
-  }
-  return res;
 }
 
 void copy_norm_headers_to_nva

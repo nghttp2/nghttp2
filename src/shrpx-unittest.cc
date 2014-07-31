@@ -71,8 +71,7 @@ int main(int argc, char* argv[])
                    shrpx::test_shrpx_ssl_create_lookup_tree) ||
       !CU_add_test(pSuite, "ssl_cert_lookup_tree_add_cert_from_file",
                    shrpx::test_shrpx_ssl_cert_lookup_tree_add_cert_from_file) ||
-      !CU_add_test(pSuite, "http2_split_add_header",
-                   shrpx::test_http2_split_add_header) ||
+      !CU_add_test(pSuite, "http2_add_header", shrpx::test_http2_add_header) ||
       !CU_add_test(pSuite, "http2_sort_nva", shrpx::test_http2_sort_nva) ||
       !CU_add_test(pSuite, "http2_check_http2_headers",
                    shrpx::test_http2_check_http2_headers) ||
@@ -82,8 +81,6 @@ int main(int argc, char* argv[])
                    shrpx::test_http2_get_header) ||
       !CU_add_test(pSuite, "http2_value_lws",
                    shrpx::test_http2_value_lws) ||
-      !CU_add_test(pSuite, "http2_concat_norm_headers",
-                   shrpx::test_http2_concat_norm_headers) ||
       !CU_add_test(pSuite, "http2_copy_norm_headers_to_nva",
                    shrpx::test_http2_copy_norm_headers_to_nva) ||
       !CU_add_test(pSuite, "http2_build_http1_headers_from_norm_headers",

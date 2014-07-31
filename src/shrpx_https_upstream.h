@@ -65,6 +65,7 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   void reset_current_header_length();
+  void log_response_headers(const std::string& hdrs) const;
 private:
   ClientHandler *handler_;
   http_parser htp_;

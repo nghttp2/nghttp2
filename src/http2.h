@@ -96,6 +96,16 @@ bool check_http2_allowed_header(const char *name);
 // contains such headers.
 bool check_http2_headers(const Headers& nva);
 
+// Calls check_http2_headers() and also checks that |nva| only
+// contains pseudo headers allowed in request.  Returns true if all
+// checks passed.
+bool check_http2_request_headers(const Headers& nva);
+
+// Calls check_http2_headers() and also checks that |nva| only
+// contains pseudo headers allowed in response.  Returns true if all
+// checks passed.
+bool check_http2_response_headers(const Headers& nva);
+
 bool name_less(const Headers::value_type& lhs, const Headers::value_type& rhs);
 
 void normalize_headers(Headers& nva);
@@ -104,15 +114,13 @@ Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
                               bool no_index);
 
-// Add name/value pairs to |nva|. The name is given in the |name| with
-// |namelen| bytes. This function inspects the |value| and split it
-// using '\0' as delimiter. Each token is added to the |nva| with the
-// name |name|.  If |no_index| is true, this name/value pair won't be
-// indexed when it is forwarded to the next hop.
-void split_add_header(Headers& nva,
-                      const uint8_t *name, size_t namelen,
-                      const uint8_t *value, size_t valuelen,
-                      bool no_index);
+// Add name/value pairs to |nva|.  If |no_index| is true, this
+// name/value pair won't be indexed when it is forwarded to the next
+// hop.
+void add_header(Headers& nva,
+                const uint8_t *name, size_t namelen,
+                const uint8_t *value, size_t valuelen,
+                bool no_index);
 
 // Returns sorted |nva| with |nvlen| elements. The headers are sorted
 // by name only and not necessarily stable. In addition to the
@@ -142,12 +150,6 @@ bool value_lws(const Headers::value_type *nv);
 // Returns true if the value of |nv| is not empty value and not LWS
 // and not contain illegal characters.
 bool non_empty_value(const Headers::value_type *nv);
-
-// Concatenates field with same value by NULL as delimiter and returns
-// new vector containing the resulting header fields. cookie and
-// set-cookie header fields won't be concatenated. This function
-// assumes that the |headers| is sorted by name.
-Headers concat_norm_headers(Headers headers);
 
 // Creates nghttp2_nv using |name| and |value| and returns it. The
 // returned value only references the data pointer to name.c_str() and

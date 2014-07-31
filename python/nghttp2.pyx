@@ -33,12 +33,11 @@ HD_ENTRY_OVERHEAD = cnghttp2.NGHTTP2_HD_ENTRY_OVERHEAD
 
 class HDTableEntry:
 
-    def __init__(self, name, namelen, value, valuelen, ref):
+    def __init__(self, name, namelen, value, valuelen):
         self.name = name
         self.namelen = namelen
         self.value = value
         self.valuelen = valuelen
-        self.ref = ref
 
     def space(self):
         return self.namelen + self.valuelen + HD_ENTRY_OVERHEAD
@@ -52,8 +51,7 @@ cdef _get_hd_table(cnghttp2.nghttp2_hd_context *ctx):
         k = _get_pybytes(entry.nv.name, entry.nv.namelen)
         v = _get_pybytes(entry.nv.value, entry.nv.valuelen)
         res.append(HDTableEntry(k, entry.nv.namelen,
-                                v, entry.nv.valuelen,
-                                (entry.flags & cnghttp2.NGHTTP2_HD_FLAG_REFSET) != 0))
+                                v, entry.nv.valuelen))
     return res
 
 cdef _get_pybytes(uint8_t *b, uint16_t blen):
@@ -142,15 +140,6 @@ cdef class HDDeflater:
             free(out)
 
         return res
-
-    def set_no_refset(self, no_refset):
-        '''Tells the compressor not to use reference set if |no_refset| is
-        nonzero. If |no_refset| is nonzero, on each invocation of
-        deflate(), compressor first emits index=0 to clear up
-        reference set.
-
-        '''
-        cnghttp2.nghttp2_hd_deflate_set_no_refset(self._deflater, no_refset)
 
     def change_table_size(self, hd_table_bufsize_max):
         '''Changes header table size to |hd_table_bufsize_max| byte.
@@ -243,16 +232,14 @@ def print_hd_table(hdtable):
     function does not work if header name/value cannot be decoded using
     UTF-8 encoding.
 
-    s=N means the entry occupies N bytes in header table. if r=y, then
-    the entry is in the reference set.
+    s=N means the entry occupies N bytes in header table.
 
     '''
     idx = 0
     for entry in hdtable:
         idx += 1
-        print('[{}] (s={}) (r={}) {}: {}'\
+        print('[{}] (s={}) {}: {}'\
               .format(idx, entry.space(),
-                      'y' if entry.ref else 'n',
                       entry.name.decode('utf-8'),
                       entry.value.decode('utf-8')))
 

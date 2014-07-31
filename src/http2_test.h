@@ -27,13 +27,12 @@
 
 namespace shrpx {
 
-void test_http2_split_add_header(void);
+void test_http2_add_header(void);
 void test_http2_sort_nva(void);
 void test_http2_check_http2_headers(void);
 void test_http2_get_unique_header(void);
 void test_http2_get_header(void);
 void test_http2_value_lws(void);
-void test_http2_concat_norm_headers(void);
 void test_http2_copy_norm_headers_to_nva(void);
 void test_http2_build_http1_headers_from_norm_headers(void);
 void test_http2_lws(void);

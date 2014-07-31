@@ -43,8 +43,7 @@
  * Option flags.
  */
 typedef enum {
-  NGHTTP2_OPTMASK_NO_AUTO_STREAM_WINDOW_UPDATE = 1 << 0,
-  NGHTTP2_OPTMASK_NO_AUTO_CONNECTION_WINDOW_UPDATE = 1 << 1
+  NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0,
 } nghttp2_optmask;
 
 typedef enum {
@@ -81,7 +80,7 @@ typedef enum {
   NGHTTP2_IB_IGN_DATA
 } nghttp2_inbound_state;
 
-#define NGHTTP2_INBOUND_NUM_IV 5
+#define NGHTTP2_INBOUND_NUM_IV 7
 
 typedef struct {
   nghttp2_frame frame;
@@ -105,9 +104,6 @@ typedef struct {
   size_t payloadleft;
   /* padding length for the current frame */
   size_t padlen;
-  /* Sum of payload of (HEADERS | PUSH_PROMISE) + possible
-     CONTINUATION received so far. */
-  size_t headers_payload_length;
   nghttp2_inbound_state state;
   uint8_t raw_sbuf[8];
 } nghttp2_inbound_frame;
@@ -117,6 +113,8 @@ typedef struct {
   uint32_t enable_push;
   uint32_t max_concurrent_streams;
   uint32_t initial_window_size;
+  uint32_t max_frame_size;
+  uint32_t max_header_set_size;
 } nghttp2_settings_storage;
 
 typedef enum {
@@ -206,15 +204,10 @@ struct nghttp2_session {
      WINDOW_UPDATE. This could be negative after submitting negative
      value to WINDOW_UPDATE. */
   int32_t recv_window_size;
-  /* The number of bytes in ignored DATA frame received without
-     connection-level WINDOW_UPDATE.  Since we do not call
-     on_data_chunk_recv_callback for ignored DATA chunk, if
-     nghttp2_option_set_no_auto_connection_window_update is used,
-     application may not have a chance to send connection
-     WINDOW_UPDATE.  To fix this, we accumulate those received bytes,
-     and if it exceeds certain number, we automatically send
-     connection-level WINDOW_UPDATE. */
-  int32_t recv_ign_window_size;
+  /* The number of bytes consumed by the application and now is
+     subject to WINDOW_UPDATE.  This is only used when auto
+     WINDOW_UPDATE is turned off. */
+  int32_t consumed_size;
   /* The amount of recv_window_size cut using submitting negative
      value to WINDOW_UPDATE */
   int32_t recv_reduction;

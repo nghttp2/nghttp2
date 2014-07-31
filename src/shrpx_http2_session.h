@@ -70,10 +70,6 @@ public:
 
   int submit_rst_stream(int32_t stream_id, nghttp2_error_code error_code);
 
-  // To send WINDOW_UPDATE for a connection, specify nullptr to
-  // |dconn|.
-  int submit_window_update(Http2DownstreamConnection *dconn, int32_t amount);
-
   int submit_priority(Http2DownstreamConnection *dconn, int32_t pri);
 
   int terminate_session(nghttp2_error_code error_code);
@@ -108,7 +104,7 @@ public:
 
   SSL* get_ssl() const;
 
-  int handle_ign_data_chunk(size_t len);
+  int consume(int32_t stream_id, size_t len);
 
   enum {
     // Disconnected
@@ -140,7 +136,6 @@ private:
   bufferevent *wrbev_;
   bufferevent *rdbev_;
   event *settings_timerev_;
-  int32_t recv_ign_window_size_;
   // fd_ is used for proxy connection and no TLS connection. For
   // direct or TLS connection, it may be -1 even after connection is
   // established. Use bufferevent_getfd(bev_) to get file descriptor

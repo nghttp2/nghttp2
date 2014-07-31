@@ -61,7 +61,7 @@ static nghttp2_nv* headers(void)
   return nva;
 }
 
-static void check_frame_header(uint16_t length, uint8_t type, uint8_t flags,
+static void check_frame_header(size_t length, uint8_t type, uint8_t flags,
                                int32_t stream_id, nghttp2_frame_hd *hd)
 {
   CU_ASSERT(length == hd->length);
@@ -223,7 +223,7 @@ void test_nghttp2_frame_pack_priority(void)
   rv = nghttp2_frame_pack_priority(&bufs, &frame);
 
   CU_ASSERT(0 == rv);
-  CU_ASSERT(13 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 5 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(5, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE,
                      1000000007, &oframe.hd);
@@ -251,7 +251,7 @@ void test_nghttp2_frame_pack_rst_stream(void)
   rv = nghttp2_frame_pack_rst_stream(&bufs, &frame);
 
   CU_ASSERT(0 == rv);
-  CU_ASSERT(12 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, 1000000007,
                      &oframe.hd);
@@ -384,7 +384,7 @@ void test_nghttp2_frame_pack_ping(void)
   rv = nghttp2_frame_pack_ping(&bufs, &frame);
 
   CU_ASSERT(0 == rv);
-  CU_ASSERT(16 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 8 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(8, NGHTTP2_PING, NGHTTP2_FLAG_ACK, 0, &oframe.hd);
   CU_ASSERT(memcmp(opaque_data, oframe.opaque_data, sizeof(opaque_data) - 1)
@@ -411,7 +411,8 @@ void test_nghttp2_frame_pack_goaway()
   rv = nghttp2_frame_pack_goaway(&bufs, &frame);
 
   CU_ASSERT(0 == rv);
-  CU_ASSERT((ssize_t)(16 + opaque_data_len) == nghttp2_bufs_len(&bufs));
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + 8 + opaque_data_len) ==
+            nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(24, NGHTTP2_GOAWAY, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
   CU_ASSERT(1000000007 == oframe.last_stream_id);
@@ -453,7 +454,7 @@ void test_nghttp2_frame_pack_window_update(void)
   rv = nghttp2_frame_pack_window_update(&bufs, &frame);
 
   CU_ASSERT(0 == rv);
-  CU_ASSERT(12 == nghttp2_bufs_len(&bufs));
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame*)&oframe, &bufs));
   check_frame_header(4, NGHTTP2_WINDOW_UPDATE, NGHTTP2_FLAG_NONE,
                      1000000007, &oframe.hd);
@@ -541,7 +542,7 @@ void test_nghttp2_frame_pack_altsvc(void)
   /* Check no origin case */
 
   payloadlen = NGHTTP2_ALTSVC_MINLEN + protocol_id_len + host_len;
-  nghttp2_put_uint16be(buf->pos, payloadlen);
+  nghttp2_put_uint32be(buf->pos, (uint32_t)((payloadlen << 8) + buf->pos[3]));
 
   oframe.payload = &oaltsvc;
 
@@ -562,7 +563,7 @@ void test_nghttp2_frame_pack_altsvc(void)
 
   /* Check insufficient payload length for host */
   payloadlen = NGHTTP2_ALTSVC_MINLEN + protocol_id_len + host_len - 1;
-  nghttp2_put_uint16be(buf->pos, payloadlen);
+  nghttp2_put_uint32be(buf->pos, (uint32_t)((payloadlen << 8) + buf->pos[3]));
 
   oframe.payload = &oaltsvc;
 
@@ -579,7 +580,7 @@ void test_nghttp2_frame_pack_altsvc(void)
 
   /* Check no host case */
   payloadlen = NGHTTP2_ALTSVC_MINLEN + protocol_id_len;
-  nghttp2_put_uint16be(buf->pos, payloadlen);
+  nghttp2_put_uint32be(buf->pos, (uint32_t)((payloadlen << 8) + buf->pos[3]));
   buf->pos[NGHTTP2_FRAME_HDLEN + NGHTTP2_ALTSVC_FIXED_PARTLEN
            + protocol_id_len] = 0;
 
@@ -602,7 +603,7 @@ void test_nghttp2_frame_pack_altsvc(void)
 
   /* Check missing Host-Len */
   payloadlen = NGHTTP2_ALTSVC_FIXED_PARTLEN + protocol_id_len;
-  nghttp2_put_uint16be(buf->pos, payloadlen);
+  nghttp2_put_uint32be(buf->pos, (uint32_t)((payloadlen << 8) + buf->pos[3]));
 
   oframe.payload = &oaltsvc;
 
@@ -699,13 +700,30 @@ void test_nghttp2_iv_check(void)
   iv[1].value = 3;
   CU_ASSERT(!nghttp2_iv_check(iv, 2));
 
-  /* Undefined SETTINGS ID */
+  /* Undefined SETTINGS ID is allowed */
   iv[1].settings_id = 1000000009;
   iv[1].value = 0;
-  CU_ASSERT(!nghttp2_iv_check(iv, 2));
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 
   /* Too large SETTINGS_HEADER_TABLE_SIZE */
   iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iv[1].value = UINT32_MAX;
   CU_ASSERT(!nghttp2_iv_check(iv, 2));
+
+  /* Too small SETTINGS_MAX_FRAME_SIZE */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MIN - 1;
+  CU_ASSERT(!nghttp2_iv_check(iv, 1));
+
+  /* Too large SETTINGS_MAX_FRAME_SIZE */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MAX + 1;
+  CU_ASSERT(!nghttp2_iv_check(iv, 1));
+
+  /* Max and min SETTINGS_MAX_FRAME_SIZE */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MIN;
+  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+  iv[1].value = NGHTTP2_MAX_FRAME_SIZE_MAX;
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 }

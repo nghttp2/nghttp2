@@ -94,9 +94,9 @@ namespace {
 void append_nv(Stream *stream, const std::vector<nghttp2_nv>& nva)
 {
   for(auto& nv : nva) {
-    http2::split_add_header(stream->headers,
-                            nv.name, nv.namelen, nv.value, nv.valuelen,
-                            nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+    http2::add_header(stream->headers,
+                      nv.name, nv.namelen, nv.value, nv.valuelen,
+                      nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
   }
 }
 } // namespace
@@ -843,6 +843,16 @@ int Http2Handler::submit_response(const std::string& status,
                                  data_prd);
 }
 
+int Http2Handler::submit_non_final_response(const std::string& status,
+                                            int32_t stream_id)
+{
+  auto nva = std::vector<nghttp2_nv>{
+    http2::make_nv_ls(":status", status)
+  };
+  return nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE, stream_id,
+                                nullptr, nva.data(), nva.size(), nullptr);
+}
+
 int Http2Handler::submit_push_promise(Stream *stream,
                                       const std::string& push_path)
 {
@@ -1158,8 +1168,8 @@ int on_header_callback(nghttp2_session *session,
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
   }
-  http2::split_add_header(stream->headers, name, namelen, value, valuelen,
-                          flags & NGHTTP2_NV_FLAG_NO_INDEX);
+  http2::add_header(stream->headers, name, namelen, value, valuelen,
+                    flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;
 }
 } // namespace
@@ -1247,7 +1257,7 @@ int hd_on_frame_recv_callback
     if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
 
       http2::normalize_headers(stream->headers);
-      if(!http2::check_http2_headers(stream->headers)) {
+      if(!http2::check_http2_request_headers(stream->headers)) {
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
@@ -1264,6 +1274,12 @@ int hd_on_frame_recv_callback
          !http2::get_unique_header(stream->headers, "host")) {
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
+      }
+
+      auto expect100 = http2::get_header(stream->headers, "expect");
+
+      if(expect100 && util::strieq("100-continue", expect100->value.c_str())) {
+        hd->submit_non_final_response("100", frame->hd.stream_id);
       }
 
       if(hd->get_config()->early_response) {

@@ -41,7 +41,7 @@ extern "C" {
  * The protocol version identification string of this library
  * supports.  This identifier is used if HTTP/2 is used over TLS.
  */
-#define NGHTTP2_PROTO_VERSION_ID "h2-13"
+#define NGHTTP2_PROTO_VERSION_ID "h2-14"
 /**
  * @macro
  *
@@ -56,7 +56,7 @@ extern "C" {
  * supports.  This identifier is used if HTTP/2 is used over cleartext
  * TCP.
  */
-#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "h2c-13"
+#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "h2c-14"
 
 /**
  * @macro
@@ -477,10 +477,6 @@ typedef enum {
    */
   NGHTTP2_FLAG_ACK = 0x01,
   /**
-   * The END_SEGMENT flag.
-   */
-  NGHTTP2_FLAG_END_SEGMENT = 0x02,
-  /**
    * The PADDED flag.
    */
   NGHTTP2_FLAG_PADDED = 0x08,
@@ -510,7 +506,15 @@ typedef enum {
   /**
    * SETTINGS_INITIAL_WINDOW_SIZE
    */
-  NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 0x04
+  NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE = 0x04,
+  /**
+   * SETTINGS_MAX_FRAME_SIZE
+   */
+  NGHTTP2_SETTINGS_MAX_FRAME_SIZE = 0x05,
+  /**
+   * SETTINGS_MAX_HEADER_LIST_SIZE
+   */
+  NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE = 0x06
 } nghttp2_settings_id;
 /* Note: If we add SETTINGS, update the capacity of
    NGHTTP2_INBOUND_NUM_IV as well */
@@ -724,7 +728,9 @@ typedef enum {
   NGHTTP2_HCAT_PUSH_RESPONSE = 2,
   /**
    * The HEADERS frame which does not apply for the above categories,
-   * which is analogous to HEADERS in SPDY.
+   * which is analogous to HEADERS in SPDY.  If non-final response
+   * (e.g., status 1xx) is used, final response HEADERS frame will be
+   * categorized here.
    */
   NGHTTP2_HCAT_HEADERS = 3
 } nghttp2_headers_category;
@@ -1509,27 +1515,13 @@ void nghttp2_option_del(nghttp2_option *option);
  * @function
  *
  * This option prevents the library from sending WINDOW_UPDATE for a
- * stream automatically.  If this option is set to nonzero, the
- * library won't send WINDOW_UPDATE for a stream and the application
- * is responsible for sending WINDOW_UPDATE using
- * `nghttp2_submit_window_update`.  By default, this option is set to
- * zero.
- */
-void nghttp2_option_set_no_auto_stream_window_update(nghttp2_option *option,
-                                                     int val);
-
-/**
- * @function
- *
- * This option prevents the library from sending WINDOW_UPDATE for a
  * connection automatically.  If this option is set to nonzero, the
- * library won't send WINDOW_UPDATE for a connection and the
- * application is responsible for sending WINDOW_UPDATE with stream ID
- * 0 using `nghttp2_submit_window_update`.  By default, this option is
- * set to zero.
+ * library won't send WINDOW_UPDATE for DATA until application calls
+ * `nghttp2_session_consume()` to indicate the consumed amount of
+ * data.  Don't use `nghttp2_submit_window_update()` for this purpose.
+ * By default, this option is set to zero.
  */
-void nghttp2_option_set_no_auto_connection_window_update
-(nghttp2_option *option, int val);
+void nghttp2_option_set_no_auto_window_update(nghttp2_option *option, int val);
 
 /**
  * @function
@@ -2070,6 +2062,28 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
 /**
  * @function
  *
+ * Tells the |session| that |size| bytes for a stream denoted by
+ * |stream_id| were consumed by application and are ready to
+ * WINDOW_UPDATE.  This function is intended to be used without
+ * automatic window update (see
+ * `nghttp2_option_set_no_auto_window_update()`).
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     Automatic WINDOW_UPDATE is not disabled.
+ */
+int nghttp2_session_consume(nghttp2_session *session, int32_t stream_id,
+                            size_t size);
+
+/**
+ * @function
+ *
  * Performs post-process of HTTP Upgrade request.  This function can
  * be called from both client and server, but the behavior is very
  * different in each other.
@@ -2366,8 +2380,7 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  * Submits one or more DATA frames to the stream |stream_id|.  The
  * data to be sent are provided by |data_prd|.  If |flags| contains
  * :enum:`NGHTTP2_FLAG_END_STREAM`, the last DATA frame has END_STREAM
- * flag set.  If |flags| contains :enum:`NGHTTP2_FLAG_END_SEGMENT`,
- * the last DATA frame has END_SEGMENT flag set.
+ * flag set.
  *
  * This function does not take ownership of the |data_prd|.  The
  * function copies the members of the |data_prd|.
@@ -2609,12 +2622,11 @@ int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
  * difference.
  *
  * If the |window_size_increment| is negative, the local window size
- * is decreased by -|window_size_increment|.  If
- * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE` (or
- * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` if |stream_id|
- * is 0) is not set and the library decided that the WINDOW_UPDATE
- * should be submitted, then WINDOW_UPDATE is queued with the current
- * received bytes count.
+ * is decreased by -|window_size_increment|.  If automatic
+ * WINDOW_UPDATE is enabled
+ * (`nghttp2_option_set_no_auto_window_update()`), and the library
+ * decided that the WINDOW_UPDATE should be submitted, then
+ * WINDOW_UPDATE is queued with the current received bytes count.
  *
  * If the |window_size_increment| is 0, the function does nothing and
  * returns 0.
@@ -2641,7 +2653,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
  *
  * Only the server can send the ALTSVC frame.  If |session| is
  * initialized as client, this function fails and returns
- * :enum:`NGHTTP2_ERR_INVALID_STATE`.
+ * :enum:`NGHTTP2_ERR_PROTO`.
  *
  * If the |protocol_id_len| is 0, the |protocol_id| could be ``NULL``.
  *
@@ -2818,18 +2830,6 @@ int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
  * Deallocates any resources allocated for |deflater|.
  */
 void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater);
-
-/**
- * @function
- *
- * Sets the availability of reference set in the |deflater|.  If
- * |no_refset| is nonzero, the deflater will first emit "Reference Set
- * Emptying" in the each subsequent invocation of
- * `nghttp2_hd_deflate_hd()` to clear up reference set.  By default,
- * the deflater uses reference set.
- */
-void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
-                                      uint8_t no_refset);
 
 /**
  * @function

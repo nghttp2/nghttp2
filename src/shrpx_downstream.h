@@ -99,10 +99,6 @@ public:
   // called after calling normalize_request_headers().
   Headers::const_iterator get_norm_request_header
   (const std::string& name) const;
-  // Concatenates request header fields with same name by NULL as
-  // delimiter. See http2::concat_norm_headers(). This function must
-  // be called after calling normalize_request_headers().
-  void concat_norm_request_headers();
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(std::string value);
 
@@ -144,9 +140,11 @@ public:
   const std::string& get_request_user_agent() const;
   bool get_request_http2_expect_body() const;
   void set_request_http2_expect_body(bool f);
-  bool get_expect_100_continue() const;
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
+  size_t get_request_datalen() const;
+  void reset_request_datalen();
+  bool expect_response_body() const;
   enum {
     INITIAL,
     HEADER_COMPLETE,
@@ -162,10 +160,6 @@ public:
   const Headers& get_response_headers() const;
   // Makes key lowercase and sort headers by name using <
   void normalize_response_headers();
-  // Concatenates response header fields with same name by NULL as
-  // delimiter. See http2::concat_norm_headers(). This function must
-  // be called after calling normalize_response_headers().
-  void concat_norm_response_headers();
   // Returns iterator pointing to the response header with the name
   // |name|. If multiple header have |name| as name, return first
   // occurrence from the beginning. If no such header is found,
@@ -215,6 +209,14 @@ public:
   void set_response_rst_stream_error_code(nghttp2_error_code error_code);
   // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
   void inspect_http1_response();
+  // Clears some of member variables for response.
+  void reset_response();
+  bool get_non_final_response() const;
+  void set_expect_final_response(bool f);
+  bool get_expect_final_response() const;
+  void add_response_datalen(size_t len);
+  size_t get_response_datalen() const;
+  void reset_response_datalen();
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -254,6 +256,10 @@ private:
   size_t request_headers_sum_;
   size_t response_headers_sum_;
 
+  // The number of bytes not consumed by the application yet.
+  size_t request_datalen_;
+  size_t response_datalen_;
+
   int32_t stream_id_;
   int32_t priority_;
   // stream ID in backend connection
@@ -282,13 +288,13 @@ private:
 
   bool chunked_request_;
   bool request_connection_close_;
-  bool request_expect_100_continue_;
   bool request_header_key_prev_;
   bool request_http2_expect_body_;
 
   bool chunked_response_;
   bool response_connection_close_;
   bool response_header_key_prev_;
+  bool expect_final_response_;
 };
 
 } // namespace shrpx

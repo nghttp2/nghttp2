@@ -252,9 +252,6 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater)
 
-    void nghttp2_hd_deflate_set_no_refset(nghttp2_hd_deflater *deflater,
-                                          uint8_t no_refset)
-
     int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
                                              size_t hd_table_bufsize_max)
 
@@ -290,9 +287,6 @@ cdef extern from 'nghttp2_hd.h':
 
     # This is macro
     int NGHTTP2_HD_ENTRY_OVERHEAD
-
-    ctypedef enum nghttp2_hd_flags:
-        NGHTTP2_HD_FLAG_REFSET
 
     ctypedef enum nghttp2_hd_inflate_flag:
         NGHTTP2_HD_INFLATE_EMIT

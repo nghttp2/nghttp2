@@ -27,8 +27,6 @@
 
 void test_nghttp2_hd_deflate(void);
 void test_nghttp2_hd_deflate_same_indexed_repr(void);
-void test_nghttp2_hd_deflate_common_header_eviction(void);
-void test_nghttp2_hd_deflate_clear_refset(void);
 void test_nghttp2_hd_inflate_indexed(void);
 void test_nghttp2_hd_inflate_indname_noinc(void);
 void test_nghttp2_hd_inflate_indname_inc(void);

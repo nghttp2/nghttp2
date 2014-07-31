@@ -886,6 +886,15 @@ spdylay_session* SpdyUpstream::get_http2_session()
 // spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
 {
+  if(downstream->get_non_final_response()) {
+    // SPDY does not support non-final response.  We could send it
+    // with HEADERS and final response in SYN_REPLY, but it is not
+    // official way.
+    downstream->clear_response_headers();
+
+    return 0;
+  }
+
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }

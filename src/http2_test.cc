@@ -72,27 +72,19 @@ void test_http2_sort_nva(void)
   check_nv({"delta", "5"}, &nva[5]);
 }
 
-void test_http2_split_add_header(void)
+void test_http2_add_header(void)
 {
-  const uint8_t concatval[] = { '4', 0x00, 0x00, '6', 0x00, '5', '9', 0x00 };
   auto nva = Headers();
-  http2::split_add_header(nva, (const uint8_t*)"delta", 5,
-                          concatval, sizeof(concatval), false);
-  CU_ASSERT(Headers::value_type("delta", "4") == nva[0]);
-  CU_ASSERT(Headers::value_type("delta", "6") == nva[1]);
-  CU_ASSERT(Headers::value_type("delta", "59") == nva[2]);
 
-  nva.clear();
-
-  http2::split_add_header(nva, (const uint8_t*)"alpha", 5,
-                          (const uint8_t*)"123", 3, false);
+  http2::add_header(nva, (const uint8_t*)"alpha", 5,
+                    (const uint8_t*)"123", 3, false);
   CU_ASSERT(Headers::value_type("alpha", "123") == nva[0]);
   CU_ASSERT(!nva[0].no_index);
 
   nva.clear();
 
-  http2::split_add_header(nva, (const uint8_t*)"alpha", 5,
-                          (const uint8_t*)"", 0, true);
+  http2::add_header(nva, (const uint8_t*)"alpha", 5,
+                    (const uint8_t*)"", 0, true);
   CU_ASSERT(Headers::value_type("alpha", "") == nva[0]);
   CU_ASSERT(nva[0].no_index);
 }
@@ -119,6 +111,21 @@ void test_http2_check_http2_headers(void)
     { "te2", "3" }
   };
   CU_ASSERT(http2::check_http2_headers(nva3));
+
+  auto nva4 = Headers{
+    { ":authority", "1" },
+    { ":method", "2" },
+    { ":path", "3" },
+    { ":scheme", "4" }
+  };
+  CU_ASSERT(http2::check_http2_request_headers(nva4));
+  CU_ASSERT(!http2::check_http2_response_headers(nva4));
+
+  auto nva5 = Headers{
+    { ":status", "1" }
+  };
+  CU_ASSERT(!http2::check_http2_request_headers(nva5));
+  CU_ASSERT(http2::check_http2_response_headers(nva5));
 }
 
 void test_http2_get_unique_header(void)
@@ -199,24 +206,12 @@ auto headers = Headers
    {"zulu", "12"}};
 } // namespace
 
-void test_http2_concat_norm_headers(void)
-{
-  auto hds = headers;
-  hds.emplace_back("cookie", "foo");
-  hds.emplace_back("cookie", "bar");
-  hds.emplace_back("set-cookie", "baz");
-  hds.emplace_back("set-cookie", "buzz");
-  auto res = http2::concat_norm_headers(hds);
-  CU_ASSERT(14 == res.size());
-  CU_ASSERT(std::string("2") + '\0' + std::string("3") == res[2].value);
-}
-
 void test_http2_copy_norm_headers_to_nva(void)
 {
   std::vector<nghttp2_nv> nva;
   http2::copy_norm_headers_to_nva(nva, headers);
-  CU_ASSERT(6 == nva.size());
-  auto ans = std::vector<int>{0, 1, 4, 6, 7, 12};
+  CU_ASSERT(7 == nva.size());
+  auto ans = std::vector<int>{0, 1, 4, 5, 6, 7, 12};
   for(size_t i = 0; i < ans.size(); ++i) {
     check_nv(headers[ans[i]], &nva[i]);
 
@@ -236,6 +231,7 @@ void test_http2_build_http1_headers_from_norm_headers(void)
             "Alpha: 0\r\n"
             "Bravo: 1\r\n"
             "Delta: 4\r\n"
+            "Expect: 5\r\n"
             "Foxtrot: 6\r\n"
             "Tango: 7\r\n"
             "Te: 8\r\n"

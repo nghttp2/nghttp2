@@ -135,15 +135,25 @@ int HttpDownstreamConnection::push_request_headers()
       hdrs += downstream_->get_request_path();
     }
   } else if(get_config()->http2_proxy &&
-     !downstream_->get_request_http2_scheme().empty() &&
-     !downstream_->get_request_http2_authority().empty() &&
-     downstream_->get_request_path().c_str()[0] == '/') {
+            !downstream_->get_request_http2_scheme().empty() &&
+            !downstream_->get_request_http2_authority().empty() &&
+            (downstream_->get_request_path().c_str()[0] == '/' ||
+             downstream_->get_request_path() == "*")) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
     hdrs += downstream_->get_request_http2_scheme();
     hdrs += "://";
     hdrs += downstream_->get_request_http2_authority();
-    hdrs += downstream_->get_request_path();
+
+    // Server-wide OPTIONS takes following form in proxy request:
+    //
+    // OPTIONS http://example.org HTTP/1.1
+    //
+    // Notice that no slash after authority. See
+    // http://tools.ietf.org/html/rfc7230#section-5.3.4
+    if(downstream_->get_request_path() != "*") {
+      hdrs += downstream_->get_request_path();
+    }
   } else {
     // No proxy case. get_request_path() may be absolute-form but we
     // don't care.
@@ -408,9 +418,26 @@ namespace {
 int htp_hdrs_completecb(http_parser *htp)
 {
   auto downstream = static_cast<Downstream*>(htp->data);
+  auto upstream = downstream->get_upstream();
+  int rv;
+
   downstream->set_response_http_status(htp->status_code);
   downstream->set_response_major(htp->http_major);
   downstream->set_response_minor(htp->http_minor);
+
+  if(downstream->get_non_final_response()) {
+    // For non-final response code, we just call
+    // on_downstream_header_complete() without changing response
+    // state.
+    rv = upstream->on_downstream_header_complete(downstream);
+
+    if(rv != 0) {
+      return -1;
+    }
+
+    return 0;
+  }
+
   downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->inspect_http1_response();
@@ -418,15 +445,13 @@ int htp_hdrs_completecb(http_parser *htp)
   if(downstream->get_upgraded()) {
     downstream->set_response_connection_close(true);
   }
-  if(downstream->get_upstream()->on_downstream_header_complete(downstream)
-     != 0) {
+  if(upstream->on_downstream_header_complete(downstream) != 0) {
     return -1;
   }
 
   if(downstream->get_upgraded()) {
     // Upgrade complete, read until EOF in both ends
-    if(downstream->get_upstream()->resume_read(SHRPX_MSG_BLOCK,
-                                               downstream) != 0) {
+    if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream) != 0) {
       return -1;
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
@@ -443,6 +468,9 @@ int htp_hdrs_completecb(http_parser *htp)
   // 304 status code with nonzero Content-Length, but without response
   // body. See
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-20#section-3.3
+
+  // TODO It seems that the cases other than HEAD are handled by
+  // http-parser.  Need test.
   return downstream->get_request_method() == "HEAD" ||
     (100 <= status && status <= 199) || status == 204 ||
     status == 304 ? 1 : 0;
@@ -505,6 +533,13 @@ namespace {
 int htp_msg_completecb(http_parser *htp)
 {
   auto downstream = static_cast<Downstream*>(htp->data);
+
+  if(downstream->get_non_final_response()) {
+    downstream->reset_response();
+
+    return 0;
+  }
+
   downstream->set_response_state(Downstream::MSG_COMPLETE);
   // Block reading another response message from (broken?)
   // server. This callback is not called if the connection is

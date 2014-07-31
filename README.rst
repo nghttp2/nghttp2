@@ -17,10 +17,12 @@ everything yet.
 Development Status
 ------------------
 
-We started to implement h2-13
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-13) and the
-header compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-08).
+We started to implement h2-14
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), the header
+compression
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09)
+and HTTP Alternative Services
+(http://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-02).
 
 The nghttp2 code base was forked from spdylay project.
 
@@ -30,14 +32,8 @@ HTTP/2 Features             Support
 Core frames handling        Yes
 Dependency Tree             Yes
 Large header (CONTINUATION) Yes
-ALTSVC extension            Yes \*1
+ALTSVC extension            Yes
 =========================== =======
-
-* \*1 As described in draft-12, but reserved byte was removed.  ALTSVC
-  may be removed from nghttp2 public API since it is not stabilized
-  yet.
-
-BLOCKED frame, which once existed in h2-12, was removed in h2-13.
 
 Public Test Server
 ------------------
@@ -47,7 +43,7 @@ implementation.
 
 * https://nghttp2.org/ (TLS + NPN)
 
-  NPN offer ``h2-13``, ``spdy/3.1`` and ``http/1.1``.
+  NPN offer ``h2-14``, ``spdy/3.1`` and ``http/1.1``.
   ALPN is currently disabled.
 
   This endpoint requires TLSv1.2 and DHE or EDCHE with GCM cipher
@@ -186,10 +182,10 @@ output from ``nghttp`` client::
 
     $ src/nghttp -nv https://nghttp2.org
     [  0.033][NPN] server offers:
-              * h2-13
+              * h2-14
               * spdy/3.1
               * http/1.1
-    The negotiated protocol: h2-13
+    The negotiated protocol: h2-14
     [  0.068] send SETTINGS frame <length=15, flags=0x00, stream_id=0>
               (niv=3)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
@@ -281,7 +277,7 @@ The HTTP Upgrade is performed like this::
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
               [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
     [  0.024] recv ALTSVC frame <length=43, flags=0x00, stream_id=0>
-              (max-age=86400, port=443, protocol_id=h2-13, host=nghttp2.org, origin=http://nghttp2.org)
+              (max-age=86400, port=443, protocol_id=h2-14, host=nghttp2.org, origin=http://nghttp2.org)
     [  0.024] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)
@@ -389,7 +385,7 @@ information.  Here is sample output from ``nghttpd`` server::
 nghttpx - proxy
 +++++++++++++++
 
-``nghttpx`` is a multi-threaded reverse proxy for ``h2-13``, SPDY and
+``nghttpx`` is a multi-threaded reverse proxy for ``h2-14``, SPDY and
 HTTP/1.1 and powers nghttp2.org site.  It has several operation modes:
 
 ================== ============================ ============== =============
@@ -403,7 +399,7 @@ default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================ ============== =============
 
 The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for ``h2-13``, SPDY and HTTP/1.1 and can
+a reverse proxy and listens for ``h2-14``, SPDY and HTTP/1.1 and can
 be deployed SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use

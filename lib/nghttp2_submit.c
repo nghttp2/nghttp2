@@ -81,9 +81,7 @@ static int32_t submit_headers_shared
   }
 
   flags_copy =
-    (flags & (NGHTTP2_FLAG_END_STREAM |
-              NGHTTP2_FLAG_END_SEGMENT |
-              NGHTTP2_FLAG_PRIORITY)) |
+    (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY)) |
     NGHTTP2_FLAG_END_HEADERS;
 
   if(stream_id == -1) {
@@ -348,27 +346,30 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
     if(rv != 0) {
       return rv;
     }
-
-    /* recv_ign_window_size keeps track of ignored DATA bytes before
-       any connection-level WINDOW_UPDATE therefore, we can reset it
-       here. */
-    session->recv_ign_window_size = 0;
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
-    if(stream) {
-      rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
-                                            &stream->recv_window_size,
-                                            &stream->recv_reduction,
-                                            &window_size_increment);
-      if(rv != 0) {
-        return rv;
-      }
-    } else {
+    if(!stream) {
       return 0;
+    }
+
+    rv = nghttp2_adjust_local_window_size(&stream->local_window_size,
+                                          &stream->recv_window_size,
+                                          &stream->recv_reduction,
+                                          &window_size_increment);
+    if(rv != 0) {
+      return rv;
     }
   }
 
   if(window_size_increment > 0) {
+    if(stream_id == 0) {
+      session->consumed_size =
+        nghttp2_max(0, session->consumed_size - window_size_increment);
+    } else {
+      stream->consumed_size =
+        nghttp2_max(0, stream->consumed_size - window_size_increment);
+    }
+
     return nghttp2_session_add_window_update(session, flags, stream_id,
                                              window_size_increment);
   }
@@ -535,8 +536,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
 {
   int rv;
   nghttp2_private_data *data_frame;
-  uint8_t nflags = flags & (NGHTTP2_FLAG_END_STREAM |
-                            NGHTTP2_FLAG_END_SEGMENT);
+  uint8_t nflags = flags & NGHTTP2_FLAG_END_STREAM;
 
   if(stream_id == 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;

@@ -126,6 +126,8 @@ public:
    const std::vector<std::pair<std::string, std::string>>& headers,
    nghttp2_data_provider *data_prd);
 
+  int submit_non_final_response(const std::string& status, int32_t stream_id);
+
   int submit_push_promise(Stream *stream, const std::string& push_path);
 
   int submit_rst_stream(Stream *stream, nghttp2_error_code error_code);

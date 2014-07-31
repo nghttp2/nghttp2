@@ -40,18 +40,10 @@ void nghttp2_option_del(nghttp2_option *option)
   free(option);
 }
 
-void nghttp2_option_set_no_auto_stream_window_update(nghttp2_option *option,
-                                                     int val)
+void nghttp2_option_set_no_auto_window_update(nghttp2_option *option, int val)
 {
-  option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE;
-  option->no_auto_stream_window_update = val;
-}
-
-void nghttp2_option_set_no_auto_connection_window_update
-(nghttp2_option *option, int val)
-{
-  option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE;
-  option->no_auto_connection_window_update = val;
+  option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE;
+  option->no_auto_window_update = val;
 }
 
 void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
