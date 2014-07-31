@@ -1043,7 +1043,7 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
         return 0;
       }
       break;
-    case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+    case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
       break;
     default:
       return 0;

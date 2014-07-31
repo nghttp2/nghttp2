@@ -516,9 +516,9 @@ typedef enum {
    */
   NGHTTP2_SETTINGS_MAX_FRAME_SIZE = 0x05,
   /**
-   * SETTINGS_MAX_HEADER_SET_SIZE
+   * SETTINGS_MAX_HEADER_LIST_SIZE
    */
-  NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE = 0x06
+  NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE = 0x06
 } nghttp2_settings_id;
 /* Note: If we add SETTINGS, update the capacity of
    NGHTTP2_INBOUND_NUM_IV as well */

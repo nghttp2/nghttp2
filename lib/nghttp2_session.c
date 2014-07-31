@@ -3278,7 +3278,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
       session->local_settings.max_frame_size = iv[i].value;
       break;
-    case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+    case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
       session->local_settings.max_header_set_size = iv[i].value;
       break;
     }
@@ -3414,7 +3414,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       session->remote_settings.max_frame_size = entry->value;
 
       break;
-    case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+    case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
 
       session->remote_settings.max_header_set_size = entry->value;
 
@@ -4167,7 +4167,7 @@ static void inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe)
   case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
   case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
   case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
-  case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+  case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
     break;
   default:
     DEBUGF(fprintf(stderr, "recv: ignore unknown settings id=0x%02x\n",
@@ -5737,7 +5737,7 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
     return session->remote_settings.initial_window_size;
   case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
     return session->remote_settings.max_frame_size;
-  case NGHTTP2_SETTINGS_MAX_HEADER_SET_SIZE:
+  case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
     return session->remote_settings.max_header_set_size;
   }
 
