@@ -426,6 +426,8 @@ int on_frame_recv_callback
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
+    } else {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
 
     break;

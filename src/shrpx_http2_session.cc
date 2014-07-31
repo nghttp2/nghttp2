@@ -898,6 +898,8 @@ int on_response_headers(Http2Session *http2session,
   downstream->normalize_response_headers();
   auto& nva = downstream->get_response_headers();
 
+  downstream->set_expect_final_response(false);
+
   if(!http2::check_http2_headers(nva)) {
     http2session->submit_rst_stream(frame->hd.stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
@@ -950,8 +952,6 @@ int on_response_headers(Http2Session *http2session,
 
     return 0;
   }
-
-  downstream->set_expect_final_response(false);
 
   auto content_length = http2::get_header(nva, "content-length");
   if(!content_length && downstream->get_request_method() != "HEAD" &&
@@ -1036,7 +1036,7 @@ int on_frame_recv_callback
 
     } else if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
 
-      if(downstream->get_response_state() != Downstream::MSG_RESET) {
+      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
 
         downstream->set_response_state(Downstream::MSG_COMPLETE);
 
@@ -1071,18 +1071,21 @@ int on_frame_recv_callback
       }
     }
 
-    if(frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
-       downstream->get_expect_final_response()) {
+    if(frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+      if(downstream->get_expect_final_response()) {
 
-      rv = on_response_headers(http2session, downstream, session, frame);
+        rv = on_response_headers(http2session, downstream, session, frame);
 
-      if(rv != 0) {
-        return rv;
+        if(rv != 0) {
+          return rv;
+        }
+      } else if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
     }
 
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      if(downstream->get_response_state() != Downstream::MSG_RESET) {
+      if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         downstream->set_response_state(Downstream::MSG_COMPLETE);
 
         auto upstream = downstream->get_upstream();
