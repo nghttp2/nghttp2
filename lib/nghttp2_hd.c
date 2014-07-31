@@ -1517,7 +1517,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
           inflater->state = NGHTTP2_HD_STATE_READ_INDEX;
         }
         inflater->index_required = (*in & 0x40) != 0;
-        inflater->no_index = (*in & 0xf0u) ==  0x10u;
+        inflater->no_index = (*in & 0xf0u) == 0x10u;
         DEBUGF(fprintf(stderr,
                        "inflatehd: indexing required=%d, no_index=%d\n",
                        inflater->index_required,
