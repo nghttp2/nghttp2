@@ -2774,8 +2774,7 @@ int nghttp2_is_fatal(int lib_error);
  * @function
  *
  * Returns nonzero if HTTP header field name |name| of length |len| is
- * valid according to
- * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2
+ * valid according to http://tools.ietf.org/html/rfc7230#section-3.2
  *
  * Because this is a header field name in HTTP2, the upper cased alphabet
  * is treated as error.
@@ -2787,10 +2786,7 @@ int nghttp2_check_header_name(const uint8_t *name, size_t len);
  *
  * Returns nonzero if HTTP header field value |value| of length |len|
  * is valid according to
- * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2
- *
- * Because this is HTTP2 header field value, it can contain NULL
- * character (0x00).
+ * http://tools.ietf.org/html/rfc7230#section-3.2
  */
 int nghttp2_check_header_value(const uint8_t *value, size_t len);
 
