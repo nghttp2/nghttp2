@@ -1080,7 +1080,9 @@ int on_frame_recv_callback
           return rv;
         }
       } else if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+        http2session->submit_rst_stream(frame->hd.stream_id,
+                                        NGHTTP2_PROTOCOL_ERROR);
+        return 0;
       }
     }
 
