@@ -4304,7 +4304,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
       if(iframe->frame.hd.length > session->local_settings.max_frame_size) {
         DEBUGF(fprintf(stderr,
-                       "recv: legnth is too large %u > %u\n",
+                       "recv: length is too large %u > %u\n",
                        iframe->frame.hd.length,
                        session->local_settings.max_frame_size));
 
