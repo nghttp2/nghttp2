@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.5.1-DEV documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.5.2-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.1-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.5.2-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -231,7 +231,7 @@
 <span class="cm"> * The protocol version identification string of this library</span>
 <span class="cm"> * supports.  This identifier is used if HTTP/2 is used over TLS.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;h2-13&quot;</span>
+<span class="cp">#define NGHTTP2_PROTO_VERSION_ID &quot;h2-14&quot;</span>
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
 <span class="cm"> *</span>
@@ -246,7 +246,7 @@
 <span class="cm"> * supports.  This identifier is used if HTTP/2 is used over cleartext</span>
 <span class="cm"> * TCP.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID &quot;h2c-13&quot;</span>
+<span class="cp">#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID &quot;h2c-14&quot;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -667,10 +667,6 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLAG_ACK</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The END_SEGMENT flag.</span>
-<span class="cm">   */</span>
-  <span class="n">NGHTTP2_FLAG_END_SEGMENT</span> <span class="o">=</span> <span class="mh">0x02</span><span class="p">,</span>
-  <span class="cm">/**</span>
 <span class="cm">   * The PADDED flag.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_FLAG_PADDED</span> <span class="o">=</span> <span class="mh">0x08</span><span class="p">,</span>
@@ -700,7 +696,15 @@
   <span class="cm">/**</span>
 <span class="cm">   * SETTINGS_INITIAL_WINDOW_SIZE</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mh">0x04</span>
+  <span class="n">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</span> <span class="o">=</span> <span class="mh">0x04</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * SETTINGS_MAX_FRAME_SIZE</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX_FRAME_SIZE</span> <span class="o">=</span> <span class="mh">0x05</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * SETTINGS_MAX_HEADER_LIST_SIZE</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE</span> <span class="o">=</span> <span class="mh">0x06</span>
 <span class="p">}</span> <span class="n">nghttp2_settings_id</span><span class="p">;</span>
 <span class="cm">/* Note: If we add SETTINGS, update the capacity of</span>
 <span class="cm">   NGHTTP2_INBOUND_NUM_IV as well */</span>
@@ -914,7 +918,9 @@
   <span class="n">NGHTTP2_HCAT_PUSH_RESPONSE</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * The HEADERS frame which does not apply for the above categories,</span>
-<span class="cm">   * which is analogous to HEADERS in SPDY.</span>
+<span class="cm">   * which is analogous to HEADERS in SPDY.  If non-final response</span>
+<span class="cm">   * (e.g., status 1xx) is used, final response HEADERS frame will be</span>
+<span class="cm">   * categorized here.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_HCAT_HEADERS</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="p">}</span> <span class="n">nghttp2_headers_category</span><span class="p">;</span>
@@ -1699,27 +1705,13 @@
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * This option prevents the library from sending WINDOW_UPDATE for a</span>
-<span class="cm"> * stream automatically.  If this option is set to nonzero, the</span>
-<span class="cm"> * library won&#39;t send WINDOW_UPDATE for a stream and the application</span>
-<span class="cm"> * is responsible for sending WINDOW_UPDATE using</span>
-<span class="cm"> * `nghttp2_submit_window_update`.  By default, this option is set to</span>
-<span class="cm"> * zero.</span>
-<span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_option_set_no_auto_stream_window_update</span><span class="p">(</span><span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">,</span>
-                                                     <span class="kt">int</span> <span class="n">val</span><span class="p">);</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * This option prevents the library from sending WINDOW_UPDATE for a</span>
 <span class="cm"> * connection automatically.  If this option is set to nonzero, the</span>
-<span class="cm"> * library won&#39;t send WINDOW_UPDATE for a connection and the</span>
-<span class="cm"> * application is responsible for sending WINDOW_UPDATE with stream ID</span>
-<span class="cm"> * 0 using `nghttp2_submit_window_update`.  By default, this option is</span>
-<span class="cm"> * set to zero.</span>
+<span class="cm"> * library won&#39;t send WINDOW_UPDATE for DATA until application calls</span>
+<span class="cm"> * `nghttp2_session_consume()` to indicate the consumed amount of</span>
+<span class="cm"> * data.  Don&#39;t use `nghttp2_submit_window_update()` for this purpose.</span>
+<span class="cm"> * By default, this option is set to zero.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_option_set_no_auto_connection_window_update</span>
-<span class="p">(</span><span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">,</span> <span class="kt">int</span> <span class="n">val</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_option_set_no_auto_window_update</span><span class="p">(</span><span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">,</span> <span class="kt">int</span> <span class="n">val</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2260,6 +2252,28 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
+<span class="cm"> * Tells the |session| that |size| bytes for a stream denoted by</span>
+<span class="cm"> * |stream_id| were consumed by application and are ready to</span>
+<span class="cm"> * WINDOW_UPDATE.  This function is intended to be used without</span>
+<span class="cm"> * automatic window update (see</span>
+<span class="cm"> * `nghttp2_option_set_no_auto_window_update()`).</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |stream_id| is 0.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_STATE`</span>
+<span class="cm"> *     Automatic WINDOW_UPDATE is not disabled.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_consume</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                            <span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
 <span class="cm"> * Performs post-process of HTTP Upgrade request.  This function can</span>
 <span class="cm"> * be called from both client and server, but the behavior is very</span>
 <span class="cm"> * different in each other.</span>
@@ -2556,8 +2570,7 @@
 <span class="cm"> * Submits one or more DATA frames to the stream |stream_id|.  The</span>
 <span class="cm"> * data to be sent are provided by |data_prd|.  If |flags| contains</span>
 <span class="cm"> * :enum:`NGHTTP2_FLAG_END_STREAM`, the last DATA frame has END_STREAM</span>
-<span class="cm"> * flag set.  If |flags| contains :enum:`NGHTTP2_FLAG_END_SEGMENT`,</span>
-<span class="cm"> * the last DATA frame has END_SEGMENT flag set.</span>
+<span class="cm"> * flag set.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function does not take ownership of the |data_prd|.  The</span>
 <span class="cm"> * function copies the members of the |data_prd|.</span>
@@ -2799,12 +2812,11 @@
 <span class="cm"> * difference.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the |window_size_increment| is negative, the local window size</span>
-<span class="cm"> * is decreased by -|window_size_increment|.  If</span>
-<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE` (or</span>
-<span class="cm"> * :enum:`NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE` if |stream_id|</span>
-<span class="cm"> * is 0) is not set and the library decided that the WINDOW_UPDATE</span>
-<span class="cm"> * should be submitted, then WINDOW_UPDATE is queued with the current</span>
-<span class="cm"> * received bytes count.</span>
+<span class="cm"> * is decreased by -|window_size_increment|.  If automatic</span>
+<span class="cm"> * WINDOW_UPDATE is enabled</span>
+<span class="cm"> * (`nghttp2_option_set_no_auto_window_update()`), and the library</span>
+<span class="cm"> * decided that the WINDOW_UPDATE should be submitted, then</span>
+<span class="cm"> * WINDOW_UPDATE is queued with the current received bytes count.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the |window_size_increment| is 0, the function does nothing and</span>
 <span class="cm"> * returns 0.</span>
@@ -2831,7 +2843,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * Only the server can send the ALTSVC frame.  If |session| is</span>
 <span class="cm"> * initialized as client, this function fails and returns</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_STATE`.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_PROTO`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the |protocol_id_len| is 0, the |protocol_id| could be ``NULL``.</span>
 <span class="cm"> *</span>
@@ -3008,18 +3020,6 @@
 <span class="cm"> * Deallocates any resources allocated for |deflater|.</span>
 <span class="cm"> */</span>
 <span class="kt">void</span> <span class="nf">nghttp2_hd_deflate_del</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">);</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @function</span>
-<span class="cm"> *</span>
-<span class="cm"> * Sets the availability of reference set in the |deflater|.  If</span>
-<span class="cm"> * |no_refset| is nonzero, the deflater will first emit &quot;Reference Set</span>
-<span class="cm"> * Emptying&quot; in the each subsequent invocation of</span>
-<span class="cm"> * `nghttp2_hd_deflate_hd()` to clear up reference set.  By default,</span>
-<span class="cm"> * the deflater uses reference set.</span>
-<span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_hd_deflate_set_no_refset</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span>
-                                      <span class="kt">uint8_t</span> <span class="n">no_refset</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -3294,7 +3294,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.1-DEV',
+            VERSION:'0.5.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

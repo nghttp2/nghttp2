@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Reference &mdash; nghttp2 0.5.1-DEV documentation</title>
+  <title>API Reference &mdash; nghttp2 0.5.2-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.1-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.5.2-DEV documentation" href="index.html"/>
         <link rel="next" title="Python API Reference" href="python-apiref.html"/>
         <link rel="prev" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/> 
 
@@ -730,13 +730,6 @@ The ACK flag.</p>
 </dd></dl>
 
 <dl class="macro">
-<dt id="c.NGHTTP2_FLAG_END_SEGMENT">
-<tt class="descname">NGHTTP2_FLAG_END_SEGMENT</tt><a class="headerlink" href="#c.NGHTTP2_FLAG_END_SEGMENT" title="Permalink to this definition">¶</a></dt>
-<dd><p>(<tt class="docutils literal"><span class="pre">0x02</span></tt>)
-The END_SEGMENT flag.</p>
-</dd></dl>
-
-<dl class="macro">
 <dt id="c.NGHTTP2_FLAG_PADDED">
 <tt class="descname">NGHTTP2_FLAG_PADDED</tt><a class="headerlink" href="#c.NGHTTP2_FLAG_PADDED" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x08</span></tt>)
@@ -782,6 +775,20 @@ SETTINGS_MAX_CONCURRENT_STREAMS</p>
 <tt class="descname">NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE</tt><a class="headerlink" href="#c.NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x04</span></tt>)
 SETTINGS_INITIAL_WINDOW_SIZE</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_SETTINGS_MAX_FRAME_SIZE">
+<tt class="descname">NGHTTP2_SETTINGS_MAX_FRAME_SIZE</tt><a class="headerlink" href="#c.NGHTTP2_SETTINGS_MAX_FRAME_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x05</span></tt>)
+SETTINGS_MAX_FRAME_SIZE</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE">
+<tt class="descname">NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE</tt><a class="headerlink" href="#c.NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x06</span></tt>)
+SETTINGS_MAX_HEADER_LIST_SIZE</p>
 </dd></dl>
 
 </dd></dl>
@@ -941,7 +948,9 @@ stream.</p>
 <tt class="descname">NGHTTP2_HCAT_HEADERS</tt><a class="headerlink" href="#c.NGHTTP2_HCAT_HEADERS" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">3</span></tt>)
 The HEADERS frame which does not apply for the above categories,
-which is analogous to HEADERS in SPDY.</p>
+which is analogous to HEADERS in SPDY.  If non-final response
+(e.g., status 1xx) is used, final response HEADERS frame will be
+categorized here.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1980,25 +1989,14 @@ void <tt class="descname">nghttp2_option_del</tt><big>(</big><a class="reference
 </dd></dl>
 
 <dl class="function">
-<dt id="c.nghttp2_option_set_no_auto_stream_window_update">
-void <tt class="descname">nghttp2_option_set_no_auto_stream_window_update</tt><big>(</big><a class="reference internal" href="#c.nghttp2_option" title="nghttp2_option">nghttp2_option</a><em>&nbsp;*option</em>, int<em>&nbsp;val</em><big>)</big><a class="headerlink" href="#c.nghttp2_option_set_no_auto_stream_window_update" title="Permalink to this definition">¶</a></dt>
-<dd><p>This option prevents the library from sending WINDOW_UPDATE for a
-stream automatically.  If this option is set to nonzero, the
-library won&#8217;t send WINDOW_UPDATE for a stream and the application
-is responsible for sending WINDOW_UPDATE using
-<a class="reference internal" href="#c.nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>.  By default, this option is set to
-zero.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="c.nghttp2_option_set_no_auto_connection_window_update">
-void <tt class="descname">nghttp2_option_set_no_auto_connection_window_update</tt><big>(</big><a class="reference internal" href="#c.nghttp2_option" title="nghttp2_option">nghttp2_option</a><em>&nbsp;*option</em>, int<em>&nbsp;val</em><big>)</big><a class="headerlink" href="#c.nghttp2_option_set_no_auto_connection_window_update" title="Permalink to this definition">¶</a></dt>
+<dt id="c.nghttp2_option_set_no_auto_window_update">
+void <tt class="descname">nghttp2_option_set_no_auto_window_update</tt><big>(</big><a class="reference internal" href="#c.nghttp2_option" title="nghttp2_option">nghttp2_option</a><em>&nbsp;*option</em>, int<em>&nbsp;val</em><big>)</big><a class="headerlink" href="#c.nghttp2_option_set_no_auto_window_update" title="Permalink to this definition">¶</a></dt>
 <dd><p>This option prevents the library from sending WINDOW_UPDATE for a
 connection automatically.  If this option is set to nonzero, the
-library won&#8217;t send WINDOW_UPDATE for a connection and the
-application is responsible for sending WINDOW_UPDATE with stream ID
-0 using <a class="reference internal" href="#c.nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a>.  By default, this option is
-set to zero.</p>
+library won&#8217;t send WINDOW_UPDATE for DATA until application calls
+<a class="reference internal" href="#c.nghttp2_session_consume" title="nghttp2_session_consume"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_consume()</span></tt></a> to indicate the consumed amount of
+data.  Don&#8217;t use <a class="reference internal" href="#c.nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a> for this purpose.
+By default, this option is set to zero.</p>
 </dd></dl>
 
 <dl class="function">
@@ -2454,6 +2452,26 @@ The <em>id</em> must be one of values defined in
 </dd></dl>
 
 <dl class="function">
+<dt id="c.nghttp2_session_consume">
+int <tt class="descname">nghttp2_session_consume</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, size_t<em>&nbsp;size</em><big>)</big><a class="headerlink" href="#c.nghttp2_session_consume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tells the <em>session</em> that <em>size</em> bytes for a stream denoted by
+<em>stream_id</em> were consumed by application and are ready to
+WINDOW_UPDATE.  This function is intended to be used without
+automatic window update (see
+<a class="reference internal" href="#c.nghttp2_option_set_no_auto_window_update" title="nghttp2_option_set_no_auto_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_no_auto_window_update()</span></tt></a>).</p>
+<p>This function returns 0 if it succeeds, or one of the following
+negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
+<dd>The <em>stream_id</em> is 0.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_STATE" title="NGHTTP2_ERR_INVALID_STATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_STATE</span></tt></a></dt>
+<dd>Automatic WINDOW_UPDATE is not disabled.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="c.nghttp2_session_upgrade">
 int <tt class="descname">nghttp2_session_upgrade</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, const uint8_t<em>&nbsp;*settings_payload</em>, size_t<em>&nbsp;settings_payloadlen</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_session_upgrade" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs post-process of HTTP Upgrade request.  This function can
@@ -2699,8 +2717,7 @@ int <tt class="descname">nghttp2_submit_data</tt><big>(</big><a class="reference
 <dd><p>Submits one or more DATA frames to the stream <em>stream_id</em>.  The
 data to be sent are provided by <em>data_prd</em>.  If <em>flags</em> contains
 <a class="reference internal" href="#c.NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a>, the last DATA frame has END_STREAM
-flag set.  If <em>flags</em> contains <a class="reference internal" href="#c.NGHTTP2_FLAG_END_SEGMENT" title="NGHTTP2_FLAG_END_SEGMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_SEGMENT</span></tt></a>,
-the last DATA frame has END_SEGMENT flag set.</p>
+flag set.</p>
 <p>This function does not take ownership of the <em>data_prd</em>.  The
 function copies the members of the <em>data_prd</em>.</p>
 <p>This function returns 0 if it succeeds, or one of the following
@@ -2896,12 +2913,11 @@ that value as window_size_increment is queued.  If the
 remote endpoint, the local window size is increased by that
 difference.</p>
 <p>If the <em>window_size_increment</em> is negative, the local window size
-is decreased by -<em>window_size_increment</em>.  If
-<tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_STREAM_WINDOW_UPDATE</span></tt> (or
-<tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_OPT_NO_AUTO_CONNECTION_WINDOW_UPDATE</span></tt> if <em>stream_id</em>
-is 0) is not set and the library decided that the WINDOW_UPDATE
-should be submitted, then WINDOW_UPDATE is queued with the current
-received bytes count.</p>
+is decreased by -<em>window_size_increment</em>.  If automatic
+WINDOW_UPDATE is enabled
+(<a class="reference internal" href="#c.nghttp2_option_set_no_auto_window_update" title="nghttp2_option_set_no_auto_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_no_auto_window_update()</span></tt></a>), and the library
+decided that the WINDOW_UPDATE should be submitted, then
+WINDOW_UPDATE is queued with the current received bytes count.</p>
 <p>If the <em>window_size_increment</em> is 0, the function does nothing and
 returns 0.</p>
 <p>This function returns 0 if it succeeds, or one of the following
@@ -2922,7 +2938,7 @@ int <tt class="descname">nghttp2_submit_altsvc</tt><big>(</big><a class="referen
 <a class="reference internal" href="#c.NGHTTP2_FLAG_NONE" title="NGHTTP2_FLAG_NONE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_NONE</span></tt></a>.</p>
 <p>Only the server can send the ALTSVC frame.  If <em>session</em> is
 initialized as client, this function fails and returns
-<a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_STATE" title="NGHTTP2_ERR_INVALID_STATE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_STATE</span></tt></a>.</p>
+<a class="reference internal" href="#c.NGHTTP2_ERR_PROTO" title="NGHTTP2_ERR_PROTO"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PROTO</span></tt></a>.</p>
 <p>If the <em>protocol_id_len</em> is 0, the <em>protocol_id</em> could be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
 <p>If the <em>host_len</em> is 0, the <em>host</em> could be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
 <p>If the <em>origin_len</em> is 0, the <em>origin</em> could be <tt class="docutils literal"><span class="pre">NULL</span></tt>.</p>
@@ -3059,16 +3075,6 @@ negative error codes:</p>
 <dt id="c.nghttp2_hd_deflate_del">
 void <tt class="descname">nghttp2_hd_deflate_del</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_del" title="Permalink to this definition">¶</a></dt>
 <dd><p>Deallocates any resources allocated for <em>deflater</em>.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="c.nghttp2_hd_deflate_set_no_refset">
-void <tt class="descname">nghttp2_hd_deflate_set_no_refset</tt><big>(</big><a class="reference internal" href="#c.nghttp2_hd_deflater" title="nghttp2_hd_deflater">nghttp2_hd_deflater</a><em>&nbsp;*deflater</em>, uint8_t<em>&nbsp;no_refset</em><big>)</big><a class="headerlink" href="#c.nghttp2_hd_deflate_set_no_refset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the availability of reference set in the <em>deflater</em>.  If
-<em>no_refset</em> is nonzero, the deflater will first emit &#8220;Reference Set
-Emptying&#8221; in the each subsequent invocation of
-<a class="reference internal" href="#c.nghttp2_hd_deflate_hd" title="nghttp2_hd_deflate_hd"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_hd_deflate_hd()</span></tt></a> to clear up reference set.  By default,
-the deflater uses reference set.</p>
 </dd></dl>
 
 <dl class="function">
@@ -3282,7 +3288,7 @@ always succeeds.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.1-DEV',
+            VERSION:'0.5.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
