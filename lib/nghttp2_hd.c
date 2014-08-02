@@ -1225,6 +1225,8 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater,
 
   inflater->left = out;
 
+  DEBUGF(fprintf(stderr, "inflatehd: decoded integer is %u\n", out));
+
   return rv;
 }
 
