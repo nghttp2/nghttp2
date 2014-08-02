@@ -50,7 +50,7 @@ implementation.
 
 * http://nghttp2.org/ (Upgrade / Direct)
 
-  ``h2c-13`` and ``http/1.1``.  We configured this server to send
+  ``h2c-14`` and ``http/1.1``.  We configured this server to send
   ALTSVC frame or Alt-Svc header field to announce that alternative
   service is available at port 443.
 
@@ -253,7 +253,7 @@ The HTTP Upgrade is performed like this::
     GET / HTTP/1.1
     Host: nghttp2.org
     Connection: Upgrade, HTTP2-Settings
-    Upgrade: h2c-13
+    Upgrade: h2c-14
     HTTP2-Settings: AwAAAGQEAAD__wUAAAAB
     Accept: */*
     User-Agent: nghttp2/0.4.0-DEV
@@ -262,7 +262,7 @@ The HTTP Upgrade is performed like this::
     [  0.024] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
-    Upgrade: h2c-13
+    Upgrade: h2c-14
 
 
     [  0.024] HTTP Upgrade success
