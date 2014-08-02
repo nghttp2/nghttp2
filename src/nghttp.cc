@@ -54,6 +54,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/conf.h>
 
 #include <event.h>
 #include <event2/event.h>
@@ -2076,6 +2077,8 @@ int main(int argc, char **argv)
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
+  OPENSSL_config(nullptr);
+  OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
   reset_timer();

@@ -45,6 +45,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/conf.h>
 
 #include <event2/listener.h>
 
@@ -1252,6 +1253,7 @@ int main(int argc, char **argv)
 
   // Initialize OpenSSL before parsing options because we create
   // SSL_CTX there.
+  OPENSSL_config(nullptr);
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();

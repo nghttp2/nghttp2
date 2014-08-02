@@ -37,6 +37,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/conf.h>
 #include <nghttp2/nghttp2.h>
 
 #include "app_helper.h"
@@ -290,6 +291,7 @@ int main(int argc, char **argv)
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
+  OPENSSL_config(nullptr);
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();

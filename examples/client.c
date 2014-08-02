@@ -44,6 +44,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/conf.h>
 
 enum {
   IO_NONE,
@@ -685,6 +686,8 @@ int main(int argc, char **argv)
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, 0);
 
+  OPENSSL_config(NULL);
+  OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
 
