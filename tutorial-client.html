@@ -658,6 +658,7 @@ here.</p>
 
 <span class="cp">#include &lt;openssl/ssl.h&gt;</span>
 <span class="cp">#include &lt;openssl/err.h&gt;</span>
+<span class="cp">#include &lt;openssl/conf.h&gt;</span>
 
 <span class="cp">#include &lt;event.h&gt;</span>
 <span class="cp">#include &lt;event2/event.h&gt;</span>
@@ -1186,6 +1187,8 @@ here.</p>
   <span class="n">act</span><span class="p">.</span><span class="n">sa_handler</span> <span class="o">=</span> <span class="n">SIG_IGN</span><span class="p">;</span>
   <span class="n">sigaction</span><span class="p">(</span><span class="n">SIGPIPE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">act</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
 
+  <span class="n">OPENSSL_config</span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
+  <span class="n">OpenSSL_add_all_algorithms</span><span class="p">();</span>
   <span class="n">SSL_load_error_strings</span><span class="p">();</span>
   <span class="n">SSL_library_init</span><span class="p">();</span>
 

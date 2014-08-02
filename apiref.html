@@ -3040,8 +3040,7 @@ int <tt class="descname">nghttp2_is_fatal</tt><big>(</big>int<em>&nbsp;lib_error
 <dt id="c.nghttp2_check_header_name">
 int <tt class="descname">nghttp2_check_header_name</tt><big>(</big>const uint8_t<em>&nbsp;*name</em>, size_t<em>&nbsp;len</em><big>)</big><a class="headerlink" href="#c.nghttp2_check_header_name" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns nonzero if HTTP header field name <em>name</em> of length <em>len</em> is
-valid according to
-<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2">http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</a></p>
+valid according to <a class="reference external" href="http://tools.ietf.org/html/rfc7230#section-3.2">http://tools.ietf.org/html/rfc7230#section-3.2</a></p>
 <p>Because this is a header field name in HTTP2, the upper cased alphabet
 is treated as error.</p>
 </dd></dl>
@@ -3051,9 +3050,7 @@ is treated as error.</p>
 int <tt class="descname">nghttp2_check_header_value</tt><big>(</big>const uint8_t<em>&nbsp;*value</em>, size_t<em>&nbsp;len</em><big>)</big><a class="headerlink" href="#c.nghttp2_check_header_value" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns nonzero if HTTP header field value <em>value</em> of length <em>len</em>
 is valid according to
-<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2">http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</a></p>
-<p>Because this is HTTP2 header field value, it can contain NULL
-character (0x00).</p>
+<a class="reference external" href="http://tools.ietf.org/html/rfc7230#section-3.2">http://tools.ietf.org/html/rfc7230#section-3.2</a></p>
 </dd></dl>
 
 <dl class="function">

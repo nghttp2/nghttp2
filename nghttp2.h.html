@@ -2964,8 +2964,7 @@
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * Returns nonzero if HTTP header field name |name| of length |len| is</span>
-<span class="cm"> * valid according to</span>
-<span class="cm"> * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</span>
+<span class="cm"> * valid according to http://tools.ietf.org/html/rfc7230#section-3.2</span>
 <span class="cm"> *</span>
 <span class="cm"> * Because this is a header field name in HTTP2, the upper cased alphabet</span>
 <span class="cm"> * is treated as error.</span>
@@ -2977,10 +2976,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * Returns nonzero if HTTP header field value |value| of length |len|</span>
 <span class="cm"> * is valid according to</span>
-<span class="cm"> * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-25#section-3.2</span>
-<span class="cm"> *</span>
-<span class="cm"> * Because this is HTTP2 header field value, it can contain NULL</span>
-<span class="cm"> * character (0x00).</span>
+<span class="cm"> * http://tools.ietf.org/html/rfc7230#section-3.2</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_check_header_value</span><span class="p">(</span><span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">);</span>
 
