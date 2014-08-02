@@ -752,7 +752,6 @@ static int emit_newname_block(nghttp2_bufs *bufs, const nghttp2_nv *nv,
 }
 
 static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
-                                                  nghttp2_bufs *bufs,
                                                   const nghttp2_nv *nv,
                                                   uint8_t entry_flags)
 {
@@ -1009,10 +1008,10 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
       nghttp2_nv nv_indname;
       nv_indname = *nv;
       nv_indname.name = nghttp2_hd_table_get(&deflater->ctx, idx)->nv.name;
-      new_ent = add_hd_table_incremental(&deflater->ctx, bufs, &nv_indname,
+      new_ent = add_hd_table_incremental(&deflater->ctx, &nv_indname,
                                          NGHTTP2_HD_FLAG_VALUE_ALLOC);
     } else {
-      new_ent = add_hd_table_incremental(&deflater->ctx, bufs, nv,
+      new_ent = add_hd_table_incremental(&deflater->ctx, nv,
                                          NGHTTP2_HD_FLAG_NAME_ALLOC |
                                          NGHTTP2_HD_FLAG_VALUE_ALLOC);
     }
@@ -1381,7 +1380,7 @@ static int hd_inflate_commit_newname(nghttp2_hd_inflater *inflater,
        management. */
     ent_flags = NGHTTP2_HD_FLAG_NAME_ALLOC | NGHTTP2_HD_FLAG_NAME_GIFT;
 
-    new_ent = add_hd_table_incremental(&inflater->ctx, NULL, &nv, ent_flags);
+    new_ent = add_hd_table_incremental(&inflater->ctx, &nv, ent_flags);
 
     if(new_ent) {
       emit_indexed_header(nv_out, new_ent);
@@ -1451,7 +1450,7 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
       ++ent_name->ref;
     }
 
-    new_ent = add_hd_table_incremental(&inflater->ctx, NULL, &nv, ent_flags);
+    new_ent = add_hd_table_incremental(&inflater->ctx, &nv, ent_flags);
 
     if(!static_name && --ent_name->ref == 0) {
       nghttp2_hd_entry_free(ent_name);
