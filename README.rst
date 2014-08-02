@@ -41,10 +41,9 @@ Public Test Server
 The following endpoints are available to try out nghttp2
 implementation.
 
-* https://nghttp2.org/ (TLS + NPN)
+* https://nghttp2.org/ (TLS + ALPN/NPN)
 
   NPN offer ``h2-14``, ``spdy/3.1`` and ``http/1.1``.
-  ALPN is currently disabled.
 
   This endpoint requires TLSv1.2 and DHE or EDCHE with GCM cipher
   suite for HTTP/2 connection.
