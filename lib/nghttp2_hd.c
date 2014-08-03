@@ -477,7 +477,7 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix)
 }
 
 /*
- * Decodes |prefx| prefixed integer stored from |in|.  The |last|
+ * Decodes |prefix| prefixed integer stored from |in|.  The |last|
  * represents the 1 beyond the last of the valid contiguous memory
  * region from |in|.  The decoded integer must be less than or equal
  * to UINT32_MAX.
