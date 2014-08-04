@@ -515,7 +515,7 @@ static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
 
     if(++in == last) {
       *res = n;
-      return in - start;
+      return (ssize_t)(in - start);
     }
   }
 
@@ -545,12 +545,12 @@ static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
 
   if(in == last) {
     *res = n;
-    return in - start;
+    return (ssize_t)(in - start);
   }
 
   *res = n;
   *final = 1;
-  return in + 1 - start;
+  return (ssize_t)(in + 1 - start);
 }
 
 static int emit_table_size(nghttp2_bufs *bufs, size_t table_size)
@@ -871,10 +871,10 @@ static search_result search_hd_table(nghttp2_hd_context *context,
     nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
     if(ent->name_hash == name_hash && name_eq(&ent->nv, nv)) {
       if(res.index == -1) {
-        res.index = (ssize_t)i + NGHTTP2_STATIC_TABLE_LENGTH;
+        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
       }
       if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
-        res.index = (ssize_t)i + NGHTTP2_STATIC_TABLE_LENGTH;
+        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
         res.name_value_match = 1;
         return res;
       }
@@ -1810,7 +1810,7 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 
     goto fail;
   }
-  return in - first;
+  return (ssize_t)(in - first);
 
  fail:
   DEBUGF(fprintf(stderr, "inflatehd: error return %zd\n", rv));
