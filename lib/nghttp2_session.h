@@ -105,7 +105,10 @@ typedef struct {
   /* padding length for the current frame */
   size_t padlen;
   nghttp2_inbound_state state;
-  uint8_t raw_sbuf[8];
+  /* Small buffer.  Currently the largest contiguous chunk to buffer
+     is frame header.  We buffer part of payload, but they are smaller
+     than frame header. */
+  uint8_t raw_sbuf[NGHTTP2_FRAME_HDLEN];
 } nghttp2_inbound_frame;
 
 typedef struct {
