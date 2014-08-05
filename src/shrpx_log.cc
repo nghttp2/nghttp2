@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
