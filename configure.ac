@@ -205,7 +205,8 @@ case "$host" in
     SRC_LIBS="$SRC_LIBS -lstdc++ -lsupc++"
     ;;
   *)
-    SRC_LIBS="$SRC_LIBS -pthread"
+    PTHREAD_LDFLAGS="-pthread"
+    SRC_LIBS="$SRC_LIBS $PTHREAD_LDFLAGS"
     ;;
 esac
 
@@ -293,7 +294,8 @@ AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 have_jemalloc=no
 if test "x${request_jemalloc}" != "xno"; then
   LIBS_OLD=$LIBS
-  AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes])
+  AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
+                 [$PTHREAD_LDFLAGS])
   LIBS=$LIBS_OLD
   if test "x${have_jemalloc}" = "xyes" &&
      test "x${ac_cv_search_malloc_stats_print}" != "xnone required"; then
