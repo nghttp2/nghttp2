@@ -168,7 +168,9 @@ struct nghttp2_hd_inflater {
  * set in the |flags|, the content pointed by the |name| with length
  * |namelen| is copied. Likewise, if NGHTTP2_HD_FLAG_VALUE_ALLOC bit
  * set in the |flags|, the content pointed by the |value| with length
- * |valuelen| is copied.
+ * |valuelen| is copied.  The |name_hash| and |value_hash| are hash
+ * value for |name| and |value| respectively.  The hash function is
+ * defined in nghttp2_hd.c.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -178,7 +180,8 @@ struct nghttp2_hd_inflater {
  */
 int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
                           uint8_t *name, size_t namelen,
-                          uint8_t *value, size_t valuelen);
+                          uint8_t *value, size_t valuelen,
+                          uint32_t name_hash, uint32_t value_hash);
 
 void nghttp2_hd_entry_free(nghttp2_hd_entry *ent);
 

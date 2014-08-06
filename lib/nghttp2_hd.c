@@ -126,7 +126,8 @@ static uint32_t hash(const uint8_t *s, size_t n)
 
 int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
                           uint8_t *name, size_t namelen,
-                          uint8_t *value, size_t valuelen)
+                          uint8_t *value, size_t valuelen,
+                          uint32_t name_hash, uint32_t value_hash)
 {
   int rv = 0;
 
@@ -167,16 +168,10 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags,
   ent->nv.valuelen = valuelen;
   ent->ref = 1;
   ent->flags = flags;
-  if(ent->nv.name) {
-    ent->name_hash = hash(ent->nv.name, ent->nv.namelen);
-  } else {
-    ent->name_hash = 0;
-  }
-  if(ent->nv.value) {
-    ent->value_hash = hash(ent->nv.value, ent->nv.valuelen);
-  } else {
-    ent->value_hash = 0;
-  }
+
+  ent->name_hash = name_hash;
+  ent->value_hash = value_hash;
+
   return 0;
 
  fail2:
@@ -753,6 +748,8 @@ static int emit_newname_block(nghttp2_bufs *bufs, const nghttp2_nv *nv,
 
 static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
                                                   const nghttp2_nv *nv,
+                                                  uint32_t name_hash,
+                                                  uint32_t value_hash,
                                                   uint8_t entry_flags)
 {
   int rv;
@@ -787,7 +784,8 @@ static nghttp2_hd_entry* add_hd_table_incremental(nghttp2_hd_context *context,
   }
 
   rv = nghttp2_hd_entry_init(new_ent, entry_flags,
-                             nv->name, nv->namelen, nv->value, nv->valuelen);
+                             nv->name, nv->namelen, nv->value, nv->valuelen,
+                             name_hash, value_hash);
   if(rv != 0) {
     free(new_ent);
     return NULL;
@@ -837,12 +835,11 @@ typedef struct {
 } search_result;
 
 static search_result search_hd_table(nghttp2_hd_context *context,
-                                     const nghttp2_nv *nv)
+                                     const nghttp2_nv *nv,
+                                     uint32_t name_hash, uint32_t value_hash)
 {
   search_result res = { -1, 0 };
   size_t i;
-  uint32_t name_hash = hash(nv->name, nv->namelen);
-  uint32_t value_hash = hash(nv->value, nv->valuelen);
   int use_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) == 0;
 
   for(i = 0; i < NGHTTP2_STATIC_TABLE_LENGTH; ++i) {
@@ -977,6 +974,8 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
   search_result res;
   ssize_t idx = -1;
   int incidx = 0;
+  uint32_t name_hash = hash(nv->name, nv->namelen);
+  uint32_t value_hash = hash(nv->value, nv->valuelen);
 
   DEBUGF(fprintf(stderr, "deflatehd: deflating "));
   DEBUGF(fwrite(nv->name, nv->namelen, 1, stderr));
@@ -984,7 +983,8 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
   DEBUGF(fwrite(nv->value, nv->valuelen, 1, stderr));
   DEBUGF(fprintf(stderr, "\n"));
 
-  res = search_hd_table(&deflater->ctx, nv);
+
+  res = search_hd_table(&deflater->ctx, nv, name_hash, value_hash);
 
   idx = res.index;
 
@@ -1012,9 +1012,11 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
       nv_indname = *nv;
       nv_indname.name = nghttp2_hd_table_get(&deflater->ctx, idx)->nv.name;
       new_ent = add_hd_table_incremental(&deflater->ctx, &nv_indname,
+                                         name_hash, value_hash,
                                          NGHTTP2_HD_FLAG_VALUE_ALLOC);
     } else {
       new_ent = add_hd_table_incremental(&deflater->ctx, nv,
+                                         name_hash, value_hash,
                                          NGHTTP2_HD_FLAG_NAME_ALLOC |
                                          NGHTTP2_HD_FLAG_VALUE_ALLOC);
     }
@@ -1383,7 +1385,10 @@ static int hd_inflate_commit_newname(nghttp2_hd_inflater *inflater,
        management. */
     ent_flags = NGHTTP2_HD_FLAG_NAME_ALLOC | NGHTTP2_HD_FLAG_NAME_GIFT;
 
-    new_ent = add_hd_table_incremental(&inflater->ctx, &nv, ent_flags);
+    new_ent = add_hd_table_incremental(&inflater->ctx, &nv,
+                                       hash(nv.name, nv.namelen),
+                                       hash(nv.value, nv.valuelen),
+                                       ent_flags);
 
     if(new_ent) {
       emit_indexed_header(nv_out, new_ent);
@@ -1453,7 +1458,10 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
       ++ent_name->ref;
     }
 
-    new_ent = add_hd_table_incremental(&inflater->ctx, &nv, ent_flags);
+    new_ent = add_hd_table_incremental(&inflater->ctx, &nv,
+                                       ent_name->name_hash,
+                                       hash(nv.value, nv.valuelen),
+                                       ent_flags);
 
     if(!static_name && --ent_name->ref == 0) {
       nghttp2_hd_entry_free(ent_name);
