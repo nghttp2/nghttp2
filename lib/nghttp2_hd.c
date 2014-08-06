@@ -959,11 +959,14 @@ static int hd_deflate_should_indexing(nghttp2_hd_deflater *deflater,
   return !name_match(nv, NGHTTP2_XHD);
 #else /* !NGHTTP2_XHD */
   return
-    !name_match(nv, "set-cookie") &&
+    !name_match(nv, ":path") &&
     !name_match(nv, "content-length") &&
-    !name_match(nv, "location") &&
+    !name_match(nv, "set-cookie") &&
     !name_match(nv, "etag") &&
-    !name_match(nv, ":path");
+    !name_match(nv, "if-modified-since") &&
+    !name_match(nv, "if-none-match") &&
+    !name_match(nv, "location") &&
+    !name_match(nv, "age");
 #endif /* !NGHTTP2_XHD */
 }
 
