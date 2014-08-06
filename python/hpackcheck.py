@@ -27,8 +27,6 @@ def testsuite(testdata):
 
         expected_hdrs = [(list(x.keys())[0],
                           list(x.values())[0]) for x in item['headers']]
-        hdrs.sort()
-        expected_hdrs.sort()
         if hdrs != expected_hdrs:
             if 'seqno' in item:
                 seqno = item['seqno']
