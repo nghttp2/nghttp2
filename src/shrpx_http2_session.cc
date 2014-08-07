@@ -895,12 +895,22 @@ int on_response_headers(Http2Session *http2session,
 
   auto upstream = downstream->get_upstream();
 
+  if(!http2::check_http2_response_pseudo_headers_without_sort
+     (downstream->get_response_headers())) {
+
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_PROTOCOL_ERROR);
+    downstream->set_response_state(Downstream::MSG_RESET);
+    call_downstream_readcb(http2session, downstream);
+    return 0;
+  }
+
   downstream->normalize_response_headers();
   auto& nva = downstream->get_response_headers();
 
   downstream->set_expect_final_response(false);
 
-  if(!http2::check_http2_response_headers(nva)) {
+  if(!http2::check_http2_headers(nva)) {
     http2session->submit_rst_stream(frame->hd.stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
