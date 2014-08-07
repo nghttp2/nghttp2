@@ -122,13 +122,6 @@ void add_header(Headers& nva,
                 const uint8_t *value, size_t valuelen,
                 bool no_index);
 
-// Returns sorted |nva| with |nvlen| elements. The headers are sorted
-// by name only and not necessarily stable. In addition to the
-// sorting, this function splits values concatenated with NULL. The
-// ordering of the concatenated values are preserved. The element of
-// the returned vector refers to the memory pointed by |nva|.
-std::vector<nghttp2_nv> sort_nva(const nghttp2_nv *nva, size_t nvlen);
-
 // Returns the iterator to the entry in |nva| which has name |name|
 // and the |name| is uinque in the |nva|. If no such entry exist,
 // returns nullptr.

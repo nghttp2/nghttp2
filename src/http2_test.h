@@ -28,7 +28,6 @@
 namespace shrpx {
 
 void test_http2_add_header(void);
-void test_http2_sort_nva(void);
 void test_http2_check_http2_headers(void);
 void test_http2_get_unique_header(void);
 void test_http2_get_header(void);

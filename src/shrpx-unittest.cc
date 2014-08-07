@@ -72,7 +72,6 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "ssl_cert_lookup_tree_add_cert_from_file",
                    shrpx::test_shrpx_ssl_cert_lookup_tree_add_cert_from_file) ||
       !CU_add_test(pSuite, "http2_add_header", shrpx::test_http2_add_header) ||
-      !CU_add_test(pSuite, "http2_sort_nva", shrpx::test_http2_sort_nva) ||
       !CU_add_test(pSuite, "http2_check_http2_headers",
                    shrpx::test_http2_check_http2_headers) ||
       !CU_add_test(pSuite, "http2_get_unique_header",

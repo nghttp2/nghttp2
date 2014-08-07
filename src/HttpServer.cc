@@ -887,7 +887,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
 
   auto promised_stream = util::make_unique<Stream>(this, promised_stream_id);
 
-  append_nv(promised_stream.get(), http2::sort_nva(nva.data(), nva.size()));
+  append_nv(promised_stream.get(), nva);
   add_stream(promised_stream_id, std::move(promised_stream));
 
   return 0;

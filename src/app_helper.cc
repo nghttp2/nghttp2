@@ -187,10 +187,11 @@ void print_nv(nghttp2_nv *nv)
 namespace {
 void print_nv(nghttp2_nv *nva, size_t nvlen)
 {
-  for(auto& nv : http2::sort_nva(nva, nvlen)) {
+  auto end = nva + nvlen;
+  for(; nva != end; ++nva) {
     print_frame_attr_indent();
 
-    print_nv(&nv);
+    print_nv(nva);
   }
 }
 } // namelen
@@ -436,18 +437,16 @@ int verbose_on_header_callback(nghttp2_session *session,
                                uint8_t flags,
                                void *user_data)
 {
-  nghttp2_nv nva = {
+  nghttp2_nv nv = {
     const_cast<uint8_t*>(name), const_cast<uint8_t*>(value),
     namelen, valuelen
   };
 
-  for(auto& nv : http2::sort_nva(&nva, 1)) {
-    print_timer();
-    fprintf(outfile, " (stream_id=%d, noind=%d) ", frame->hd.stream_id,
-            (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0);
+  print_timer();
+  fprintf(outfile, " (stream_id=%d, noind=%d) ", frame->hd.stream_id,
+          (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0);
 
-    print_nv(&nv);
-  }
+  print_nv(&nv);
 
   return 0;
 }
