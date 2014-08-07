@@ -1043,11 +1043,7 @@ int submit_request
     build_headers.emplace_back(kv.first, kv.second, no_index);
   }
   std::stable_sort(std::begin(build_headers), std::end(build_headers),
-                   [](const Headers::value_type& lhs,
-                      const Headers::value_type& rhs)
-                   {
-                     return lhs.name < rhs.name;
-                   });
+                   http2::name_less);
 
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(build_headers.size());
