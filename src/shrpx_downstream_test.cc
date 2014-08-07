@@ -35,17 +35,25 @@ namespace shrpx {
 void test_downstream_normalize_request_headers(void)
 {
   Downstream d(nullptr, 0, 0);
-  d.add_request_header("Charlie", "0");
-  d.add_request_header("Alpha", "1");
-  d.add_request_header("Delta", "2");
-  d.add_request_header("BravO", "3");
+  d.add_request_header("1", "0");
+  d.add_request_header("2", "1");
+  d.add_request_header("Charlie", "2");
+  d.add_request_header("Alpha", "3");
+  d.add_request_header("Delta", "4");
+  d.add_request_header("BravO", "5");
+  d.add_request_header(":method", "6");
+  d.add_request_header(":authority", "7");
   d.normalize_request_headers();
 
   auto ans = Headers{
-    {"alpha", "1"},
-    {"bravo", "3"},
-    {"charlie", "0"},
-    {"delta", "2"}
+    {":authority", "7"},
+    {":method", "6"},
+    {"1", "0"},
+    {"2", "1"},
+    {"alpha", "3"},
+    {"bravo", "5"},
+    {"charlie", "2"},
+    {"delta", "4"}
   };
   CU_ASSERT(ans == d.get_request_headers());
 }

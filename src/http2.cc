@@ -227,6 +227,14 @@ size_t HTTP1_IGN_HDLEN = sizeof(HTTP1_IGN_HD)/sizeof(HTTP1_IGN_HD[0]);
 bool name_less(const Headers::value_type& lhs,
                const Headers::value_type& rhs)
 {
+  if(lhs.name.c_str()[0] == ':') {
+    if(rhs.name.c_str()[0] != ':') {
+      return true;
+    }
+  } else if(rhs.name.c_str()[0] == ':') {
+    return false;
+  }
+
   return lhs.name < rhs.name;
 }
 
