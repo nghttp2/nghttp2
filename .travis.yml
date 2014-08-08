@@ -35,3 +35,4 @@ before_script:
   - ./configure --enable-werror
 script:
   - make
+  - make check
