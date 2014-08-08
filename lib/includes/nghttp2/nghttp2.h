@@ -2277,6 +2277,10 @@ int32_t nghttp2_submit_request(nghttp2_session *session,
  * the target stream denoted by the |stream_id| must be reserved using
  * `nghttp2_submit_push_promise()`.
  *
+ * To send non-final response headers (e.g., HTTP status 101), don't
+ * use this function because this function half-closes the outbound
+ * stream.  Instead, use `nghttp2_submit_headers()` for this purpose.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
