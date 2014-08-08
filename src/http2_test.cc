@@ -280,4 +280,15 @@ void test_http2_rewrite_location_uri(void)
                              "localhost", "https", 3000);
 }
 
+void test_http2_parse_http_status_code(void)
+{
+  CU_ASSERT(200 == http2::parse_http_status_code("200"));
+  CU_ASSERT(102 == http2::parse_http_status_code("102"));
+  CU_ASSERT(-1 == http2::parse_http_status_code("099"));
+  CU_ASSERT(-1 == http2::parse_http_status_code("99"));
+  CU_ASSERT(-1 == http2::parse_http_status_code("-1"));
+  CU_ASSERT(-1 == http2::parse_http_status_code("20a"));
+  CU_ASSERT(-1 == http2::parse_http_status_code(""));
+}
+
 } // namespace shrpx

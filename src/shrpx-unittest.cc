@@ -88,6 +88,8 @@ int main(int argc, char* argv[])
                    shrpx::test_http2_lws) ||
       !CU_add_test(pSuite, "http2_rewrite_location_uri",
                    shrpx::test_http2_rewrite_location_uri) ||
+      !CU_add_test(pSuite, "http2_parse_http_status_code",
+                   shrpx::test_http2_parse_http_status_code) ||
       !CU_add_test(pSuite, "downstream_normalize_request_headers",
                    shrpx::test_downstream_normalize_request_headers) ||
       !CU_add_test(pSuite, "downstream_normalize_response_headers",

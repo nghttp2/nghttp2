@@ -178,7 +178,6 @@ struct Request {
   Headers push_req_nva;
   // URI without fragment
   std::string uri;
-  std::string status;
   http_parser_url u;
   std::shared_ptr<Dependency> dep;
   nghttp2_priority_spec pri_spec;
@@ -189,10 +188,12 @@ struct Request {
   HtmlParser *html_parser;
   const nghttp2_data_provider *data_prd;
   int32_t stream_id;
+  int status;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
   // RequestPriority value defined in HtmlParser.h
   int pri;
+  bool expect_final_response;
 
   // For pushed request, |uri| is empty and |u| is zero-cleared.
   Request(const std::string& uri, const http_parser_url &u,
@@ -209,8 +210,10 @@ struct Request {
       html_parser(nullptr),
       data_prd(data_prd),
       stream_id(-1),
+      status(0),
       level(level),
-      pri(pri)
+      pri(pri),
+      expect_final_response(false)
   {}
 
   ~Request()
@@ -314,6 +317,16 @@ struct Request {
     } else {
       return false;
     }
+  }
+
+  bool response_pseudo_header_allowed() const
+  {
+    return res_nva.empty() || res_nva.back().name.c_str()[0] == ':';
+  }
+
+  bool push_request_pseudo_header_allowed() const
+  {
+    return res_nva.empty() || push_req_nva.back().name.c_str()[0] == ':';
   }
 
   void record_request_time()
@@ -1122,6 +1135,12 @@ int on_data_chunk_recv_callback
     return 0;
   }
 
+  if(req->status == 0) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                              stream_id, NGHTTP2_PROTOCOL_ERROR);
+    return 0;
+  }
+
   if(req->inflater) {
     while(len > 0) {
       const size_t MAX_OUTLEN = 4096;
@@ -1181,6 +1200,9 @@ namespace {
 void check_response_header(nghttp2_session *session, Request* req)
 {
   bool gzip = false;
+
+  req->expect_final_response = false;
+
   for(auto& nv : req->res_nva) {
     if("content-encoding" == nv.name) {
       gzip = util::strieq("gzip", nv.value) ||
@@ -1188,9 +1210,32 @@ void check_response_header(nghttp2_session *session, Request* req)
       continue;
     }
     if(":status" == nv.name) {
-      req->status.assign(nv.value);
+      int status;
+      if(req->status != 0 ||
+         (status = http2::parse_http_status_code(nv.value)) == -1) {
+
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  req->stream_id, NGHTTP2_PROTOCOL_ERROR);
+        return;
+      }
+
+      req->status = status;
     }
   }
+
+  if(req->status == 0) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
+                              NGHTTP2_PROTOCOL_ERROR);
+    return;
+  }
+
+  if(req->status / 100 == 1) {
+    req->expect_final_response = true;
+    req->status = 0;
+    req->res_nva.clear();
+    return;
+  }
+
   if(gzip) {
     if(!req->inflater) {
       req->init_inflater();
@@ -1257,15 +1302,30 @@ int on_header_callback(nghttp2_session *session,
 
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
-    if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
-       frame->headers.cat != NGHTTP2_HCAT_PUSH_RESPONSE) {
-      break;
-    }
     auto req = (Request*)nghttp2_session_get_stream_user_data
       (session, frame->hd.stream_id);
+
     if(!req) {
       break;
     }
+
+    if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
+       frame->headers.cat != NGHTTP2_HCAT_PUSH_RESPONSE &&
+       (frame->headers.cat != NGHTTP2_HCAT_HEADERS ||
+        !req->expect_final_response)) {
+      break;
+    }
+
+    if(namelen > 0 && name[0] == ':') {
+      if(!req->response_pseudo_header_allowed() ||
+         !http2::check_http2_response_pseudo_header(name, namelen)) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id,
+                                  NGHTTP2_PROTOCOL_ERROR);
+        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+      }
+    }
+
     http2::add_header(req->res_nva, name, namelen, value, valuelen,
                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
@@ -1273,9 +1333,21 @@ int on_header_callback(nghttp2_session *session,
   case NGHTTP2_PUSH_PROMISE: {
     auto req = (Request*)nghttp2_session_get_stream_user_data
       (session, frame->push_promise.promised_stream_id);
+
     if(!req) {
       break;
     }
+
+    if(namelen > 0 && name[0] == ':') {
+      if(!req->push_request_pseudo_header_allowed() ||
+         !http2::check_http2_request_pseudo_header(name, namelen)) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->push_promise.promised_stream_id,
+                                  NGHTTP2_PROTOCOL_ERROR);
+        break;
+      }
+    }
+
     http2::add_header(req->push_req_nva, name, namelen, value, valuelen,
                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
@@ -1291,21 +1363,45 @@ int on_frame_recv_callback2
 {
   int rv = 0;
 
+  if(config.verbose) {
+    verbose_on_frame_recv_callback(session, frame, user_data);
+  }
+
   auto client = get_session(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
-    if(frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
-       frame->headers.cat != NGHTTP2_HCAT_PUSH_RESPONSE) {
-      break;
-    }
     auto req = (Request*)nghttp2_session_get_stream_user_data
       (session, frame->hd.stream_id);
     // If this is the HTTP Upgrade with OPTIONS method to avoid POST,
     // req is nullptr.
-    if(req) {
+    if(!req) {
+      break;
+    }
+
+    if(frame->headers.cat == NGHTTP2_HCAT_RESPONSE ||
+       frame->headers.cat == NGHTTP2_HCAT_PUSH_RESPONSE) {
       req->record_response_time();
       check_response_header(session, req);
+
+      break;
     }
+
+    if(frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+      if(req->expect_final_response) {
+        check_response_header(session, req);
+      } else {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+        break;
+      }
+    }
+
+    if(req->status == 0 && (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+      break;
+    }
+
     break;
   }
   case NGHTTP2_SETTINGS:
@@ -1366,9 +1462,6 @@ int on_frame_recv_callback2
     req->u = u;
     break;
   }
-  }
-  if(config.verbose) {
-    verbose_on_frame_recv_callback(session, frame, user_data);
   }
   return rv;
 }

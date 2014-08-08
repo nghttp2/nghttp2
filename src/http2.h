@@ -230,6 +230,9 @@ std::string rewrite_location_uri(const std::string& uri,
 int check_nv(const uint8_t *name, size_t namelen,
              const uint8_t *value, size_t valuelen);
 
+// Returns parsed HTTP status code.  Returns -1 on failure.
+int parse_http_status_code(const std::string& src);
+
 } // namespace http2
 
 } // namespace nghttp2

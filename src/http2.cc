@@ -556,6 +556,28 @@ int check_nv(const uint8_t *name, size_t namelen,
   return 1;
 }
 
+int parse_http_status_code(const std::string& src)
+{
+  if(src.size() != 3) {
+    return -1;
+  }
+
+  int status = 0;
+  for(auto c : src) {
+    if(!isdigit(c)) {
+      return -1;
+    }
+    status *= 10;
+    status += c - '0';
+  }
+
+  if(status < 100) {
+    return -1;
+  }
+
+  return status;
+}
+
 } // namespace http2
 
 } // namespace nghttp2
