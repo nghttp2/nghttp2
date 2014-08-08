@@ -1344,12 +1344,6 @@ typedef int (*nghttp2_on_begin_headers_callback)
  * `nghttp2_check_header_value()` provide simple validation against
  * HTTP2 header field construction rule.
  *
- * One more thing to note is that the |value| may contain ``NULL``
- * (``0x00``) characters.  It is used to concatenate header values
- * which share the same header field name.  The application should
- * split these values if it wants to get individual value.  This
- * concatenation is used in order to keep the ordering of headers.
- *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
  * return without processing further input bytes.  The memory pointed
@@ -2204,17 +2198,17 @@ int nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.  The value is opaque sequence of bytes and
- * therefore can contain NULL byte (0x0).  If the application requires
- * that the ordering of values for a single header field name
- * appearing in different header fields, it has to concatenate them
- * using NULL byte (0x0) before passing them to this function.
+ * |nvlen| elements.  The application is responsible to include
+ * required pseudo-header fields (header field whose name starts with
+ * ":") in |nva| and must place pseudo-headers before regular header
+ * fields.
+ *
+ * This function creates copies of all name/value pairs in |nva|.  It
+ * also lower-cases all names in |nva|.  The order of elements in
+ * |nva| is preserved.
  *
  * HTTP/2 specification has requirement about header fields in the
  * request HEADERS.  See the specification for more details.
- *
- * This function creates copies of all name/value pairs in |nva|.  It
- * also lower-cases all names in |nva|.
  *
  * If |data_prd| is not ``NULL``, it provides data which will be sent
  * in subsequent DATA frames.  In this case, a method that allows
@@ -2259,17 +2253,17 @@ int32_t nghttp2_submit_request(nghttp2_session *session,
  * frames against the stream |stream_id|.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.  The value is opaque sequence of bytes and
- * therefore can contain NULL byte (0x0).  If the application requires
- * that the ordering of values for a single header field name
- * appearing in different header fields, it has to concatenate them
- * using NULL byte (0x0) before passing them to this function.
+ * |nvlen| elements.  The application is responsible to include
+ * required pseudo-header fields (header field whose name starts with
+ * ":") in |nva| and must place pseudo-headers before regular header
+ * fields.
+ *
+ * This function creates copies of all name/value pairs in |nva|.  It
+ * also lower-cases all names in |nva|.  The order of elements in
+ * |nva| is preserved.
  *
  * HTTP/2 specification has requirement about header fields in the
  * response HEADERS.  See the specification for more details.
- *
- * This function creates copies of all name/value pairs in |nva|.  It
- * also lower-cases all names in |nva|.
  *
  * If |data_prd| is not ``NULL``, it provides data which will be sent
  * in subsequent DATA frames.  This function does not take ownership
@@ -2329,14 +2323,14 @@ int nghttp2_submit_response(nghttp2_session *session,
  * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.  The value is opaque sequence of bytes and
- * therefore can contain NULL byte (0x0).  If the application requires
- * that the ordering of values for a single header field name
- * appearing in different header fields, it has to concatenate them
- * using NULL byte (0x0) before passing them to this function.
+ * |nvlen| elements.  The application is responsible to include
+ * required pseudo-header fields (header field whose name starts with
+ * ":") in |nva| and must place pseudo-headers before regular header
+ * fields.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
- * also lower-cases all names in |nva|.
+ * also lower-cases all names in |nva|.  The order of elements in
+ * |nva| is preserved.
  *
  * The |stream_user_data| is a pointer to an arbitrary data which is
  * associated to the stream this frame will open.  Therefore it is
@@ -2502,14 +2496,14 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  * The |stream_id| must be client initiated stream ID.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.  The value is opaque sequence of bytes and
- * therefore can contain NULL byte (0x0).  If the application requires
- * that the ordering of values for a single header field name
- * appearing in different header fields, it has to concatenate them
- * using NULL byte (0x0) before passing them to this function.
+ * |nvlen| elements.  The application is responsible to include
+ * required pseudo-header fields (header field whose name starts with
+ * ":") in |nva| and must place pseudo-headers before regular header
+ * fields.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
- * also lower-cases all names in |nva|.
+ * also lower-cases all names in |nva|.  The order of elements in
+ * |nva| is preserved.
  *
  * The |promised_stream_user_data| is a pointer to an arbitrary data
  * which is associated to the promised stream this frame will open and
