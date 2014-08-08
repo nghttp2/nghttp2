@@ -502,12 +502,12 @@ struct HttpClient {
     hints.ai_flags = AI_ADDRCONFIG;
     rv = getaddrinfo(host.c_str(), util::utos(port).c_str(), &hints, &addrs);
     if(rv != 0) {
-      std::cerr << "getaddrinfo() failed: "
+      std::cerr << "[ERROR] getaddrinfo() failed: "
                 << gai_strerror(rv) << std::endl;
       return -1;
     }
     if(addrs == nullptr) {
-      std::cerr << "No address returned" << std::endl;
+      std::cerr << "[ERROR] No address returned" << std::endl;
       return -1;
     }
     next_addr = addrs;
@@ -521,7 +521,7 @@ struct HttpClient {
       // We are establishing TLS connection.
       ssl = SSL_new(ssl_ctx);
       if(!ssl) {
-        std::cerr << "SSL_new() failed: "
+        std::cerr << "[ERROR] SSL_new() failed: "
                   << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
         return -1;
       }
@@ -686,7 +686,7 @@ struct HttpClient {
       auto htperr = HTTP_PARSER_ERRNO(htp.get());
 
       if(htperr != HPE_OK) {
-        std::cerr << "Failed to parse HTTP Upgrade response header: "
+        std::cerr << "[ERROR] Failed to parse HTTP Upgrade response header: "
                   << "(" << http_errno_name(htperr) << ") "
                   << http_errno_description(htperr) << std::endl;
         return -1;
@@ -723,7 +723,7 @@ struct HttpClient {
           return 0;
         }
 
-        std::cerr << "HTTP Upgrade failed" << std::endl;
+        std::cerr << "[ERROR] HTTP Upgrade failed" << std::endl;
 
         return -1;
       }
@@ -753,7 +753,7 @@ struct HttpClient {
       rv = nghttp2_session_upgrade(session, settings_payload,
                                    settings_payloadlen, stream_user_data);
       if(rv != 0) {
-        std::cerr << "nghttp2_session_upgrade() returned error: "
+        std::cerr << "[ERROR] nghttp2_session_upgrade() returned error: "
                   << nghttp2_strerror(rv) << std::endl;
         return -1;
       }
@@ -821,7 +821,7 @@ struct HttpClient {
       rv = nghttp2_session_mem_recv(session, mem, inputlen);
 
       if(rv < 0) {
-        std::cerr << "nghttp2_session_mem_recv() returned error: "
+        std::cerr << "[ERROR] nghttp2_session_mem_recv() returned error: "
                   << nghttp2_strerror(rv) << std::endl;
         return -1;
       }
@@ -848,7 +848,7 @@ struct HttpClient {
       auto datalen = nghttp2_session_mem_send(session, &data);
 
       if(datalen < 0) {
-        std::cerr << "nghttp2_session_mem_send() returned error: "
+        std::cerr << "[ERROR] nghttp2_session_mem_send() returned error: "
                   << nghttp2_strerror(datalen) << std::endl;
         return -1;
       }
@@ -857,13 +857,13 @@ struct HttpClient {
       }
       rv = evbbuf.add(data, datalen);
       if(rv != 0) {
-        std::cerr << "evbuffer_add() failed" << std::endl;
+        std::cerr << "[ERROR] evbuffer_add() failed" << std::endl;
         return -1;
       }
     }
     rv = evbbuf.flush();
     if(rv != 0) {
-      std::cerr << "evbuffer_add() failed" << std::endl;
+      std::cerr << "[ERROR] evbuffer_add() failed" << std::endl;
       return -1;
     }
     if(nghttp2_session_want_read(session) == 0 &&
@@ -1069,7 +1069,7 @@ int submit_request
                                           nva.data(), nva.size(),
                                           req->data_prd, req);
   if(stream_id < 0) {
-    std::cerr << "nghttp2_submit_request() returned error: "
+    std::cerr << "[ERROR] nghttp2_submit_request() returned error: "
               << nghttp2_strerror(stream_id) << std::endl;
     return -1;
   }
@@ -1530,7 +1530,7 @@ void print_stats(const HttpClient& client)
 namespace {
 void print_protocol_nego_error()
 {
-  std::cerr << "HTTP/2 protocol was not selected."
+  std::cerr << "[ERROR] HTTP/2 protocol was not selected."
             << " (nghttp2 expects " << NGHTTP2_PROTO_VERSION_ID << ")"
             << std::endl;
 }
@@ -1611,7 +1611,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
-      std::cerr << "Setting option TCP_NODELAY failed: errno="
+      std::cerr << "[ERROR] Setting option TCP_NODELAY failed: errno="
                 << errno << std::endl;
     }
     if(client->need_upgrade()) {
@@ -1672,12 +1672,12 @@ void eventcb(bufferevent *bev, short events, void *ptr)
   if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if(events & BEV_EVENT_ERROR) {
       if(client->state == STATE_IDLE) {
-        std::cerr << "Could not connect to the host" << std::endl;
+        std::cerr << "[ERROR] Could not connect to the host" << std::endl;
       } else {
-        std::cerr << "Network error" << std::endl;
+        std::cerr << "[ERROR] Network error" << std::endl;
       }
     } else {
-      std::cerr << "Timeout" << std::endl;
+      std::cerr << "[ERROR] Timeout" << std::endl;
     }
     auto state = client->state;
     client->disconnect();
@@ -1705,7 +1705,7 @@ int communicate(const std::string& scheme, const std::string& host,
   if(scheme == "https") {
     ssl_ctx = SSL_CTX_new(SSLv23_client_method());
     if(!ssl_ctx) {
-      std::cerr << "Failed to create SSL_CTX: "
+      std::cerr << "[ERROR] Failed to create SSL_CTX: "
                 << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       result = -1;
       goto fin;
@@ -1719,7 +1719,8 @@ int communicate(const std::string& scheme, const std::string& host,
     if(!config.keyfile.empty()) {
       if(SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
                                      SSL_FILETYPE_PEM) != 1) {
-        std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+        std::cerr << "[ERROR] "
+                  << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
         result = -1;
         goto fin;
       }
@@ -1727,7 +1728,8 @@ int communicate(const std::string& scheme, const std::string& host,
     if(!config.certfile.empty()) {
       if(SSL_CTX_use_certificate_chain_file(ssl_ctx,
                                             config.certfile.c_str()) != 1) {
-        std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+        std::cerr << "[ERROR] "
+                  << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
         result = -1;
         goto fin;
       }
@@ -1851,12 +1853,14 @@ int run(char **uris, int n)
   if(!config.datafile.empty()) {
     data_fd = open(config.datafile.c_str(), O_RDONLY | O_BINARY);
     if(data_fd == -1) {
-      std::cerr << "Could not open file " << config.datafile << std::endl;
+      std::cerr << "[ERROR] Could not open file "
+                << config.datafile << std::endl;
       return 1;
     }
     if(fstat(data_fd, &data_stat) == -1) {
       close(data_fd);
-      std::cerr << "Could not stat file " << config.datafile << std::endl;
+      std::cerr << "[ERROR] Could not stat file "
+                << config.datafile << std::endl;
       return 1;
     }
     data_prd.source.fd = data_fd;
@@ -2106,7 +2110,7 @@ int main(int argc, char **argv)
 #ifdef HAVE_LIBXML2
       config.get_assets = true;
 #else // !HAVE_LIBXML2
-      std::cerr << "Warning: -a, --get-assets option cannot be used because\n"
+      std::cerr << "[WARNING]: -a, --get-assets option cannot be used because\n"
                 << "the binary was not compiled with libxml2."
                 << std::endl;
 #endif // !HAVE_LIBXML2
