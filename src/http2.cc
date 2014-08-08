@@ -255,19 +255,16 @@ bool check_pseudo_headers(const Headers& nva,
                           InputIterator allowed_first,
                           InputIterator allowed_last)
 {
-  bool expect_no_pseudo_header = false;
   // strict checking for pseudo headers.
   for(auto& hd : nva) {
     auto c = hd.name.c_str()[0];
 
-    if(c != ':') {
-      expect_no_pseudo_header = true;
+    if(c < ':') {
       continue;
     }
 
-    // Pseudo headers must come before normal headers
-    if(expect_no_pseudo_header) {
-      return false;
+    if(c > ':') {
+      break;
     }
 
     auto i = allowed_first;
@@ -287,14 +284,22 @@ bool check_pseudo_headers(const Headers& nva,
 }
 } // namespace
 
-bool check_http2_request_pseudo_headers_without_sort(const Headers& nva)
+bool check_http2_request_headers(const Headers& nva)
 {
+  if(!check_http2_headers(nva)) {
+    return false;
+  }
+
   return check_pseudo_headers(nva, REQUEST_PSEUDO_HD,
                               REQUEST_PSEUDO_HD + REQUEST_PSEUDO_HDLEN);
 }
 
-bool check_http2_response_pseudo_headers_without_sort(const Headers& nva)
+bool check_http2_response_headers(const Headers& nva)
 {
+  if(!check_http2_headers(nva)) {
+    return false;
+  }
+
   return check_pseudo_headers(nva, RESPONSE_PSEUDO_HD,
                               RESPONSE_PSEUDO_HD + RESPONSE_PSEUDO_HDLEN);
 }

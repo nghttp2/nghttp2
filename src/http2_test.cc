@@ -99,20 +99,14 @@ void test_http2_check_http2_headers(void)
     { ":path", "3" },
     { ":scheme", "4" }
   };
-  CU_ASSERT(http2::check_http2_request_pseudo_headers_without_sort(nva4));
-  CU_ASSERT(!http2::check_http2_response_pseudo_headers_without_sort(nva4));
+  CU_ASSERT(http2::check_http2_request_headers(nva4));
+  CU_ASSERT(!http2::check_http2_response_headers(nva4));
 
   auto nva5 = Headers{
     { ":status", "1" }
   };
-  CU_ASSERT(!http2::check_http2_request_pseudo_headers_without_sort(nva5));
-  CU_ASSERT(http2::check_http2_response_pseudo_headers_without_sort(nva5));
-
-  auto nva6 = Headers{
-    { "content-length", "1"},
-    { ":authority", "2" },
-  };
-  CU_ASSERT(!http2::check_http2_request_pseudo_headers_without_sort(nva6));
+  CU_ASSERT(!http2::check_http2_request_headers(nva5));
+  CU_ASSERT(http2::check_http2_response_headers(nva5));
 }
 
 void test_http2_get_unique_header(void)

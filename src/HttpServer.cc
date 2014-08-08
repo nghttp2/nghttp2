@@ -1255,14 +1255,9 @@ int hd_on_frame_recv_callback
     }
 
     if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-      if(!http2::check_http2_request_pseudo_headers_without_sort
-         (stream->headers)) {
-        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
 
       http2::normalize_headers(stream->headers);
-      if(!http2::check_http2_headers(stream->headers)) {
+      if(!http2::check_http2_request_headers(stream->headers)) {
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }

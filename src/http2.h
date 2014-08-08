@@ -96,15 +96,15 @@ bool check_http2_allowed_header(const char *name);
 // contains such headers.
 bool check_http2_headers(const Headers& nva);
 
-// Checks that |nva| only contains pseudo headers allowed in request
-// and pseudo headers come before normal headers.  Returns true if all
+// Calls check_http2_headers() and also checks that |nva| only
+// contains pseudo headers allowed in request.  Returns true if all
 // checks passed.
-bool check_http2_request_pseudo_headers_without_sort(const Headers& nva);
+bool check_http2_request_headers(const Headers& nva);
 
-// Checks that |nva| only contains pseudo headers allowed in response
-// and pseudo headers come before normal headers.  Returns true if all
+// Calls check_http2_headers() and also checks that |nva| only
+// contains pseudo headers allowed in response.  Returns true if all
 // checks passed.
-bool check_http2_response_pseudo_headers_without_sort(const Headers& nva);
+bool check_http2_response_headers(const Headers& nva);
 
 bool name_less(const Headers::value_type& lhs, const Headers::value_type& rhs);
 
