@@ -1803,11 +1803,6 @@ check against the <em>name</em> and the <em>value</em>.  For example, the
 helper function <a class="reference internal" href="#c.nghttp2_check_header_name" title="nghttp2_check_header_name"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_name()</span></tt></a> and
 <a class="reference internal" href="#c.nghttp2_check_header_value" title="nghttp2_check_header_value"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_value()</span></tt></a> provide simple validation against
 HTTP2 header field construction rule.</p>
-<p>One more thing to note is that the <em>value</em> may contain <tt class="docutils literal"><span class="pre">NULL</span></tt>
-(<tt class="docutils literal"><span class="pre">0x00</span></tt>) characters.  It is used to concatenate header values
-which share the same header field name.  The application should
-split these values if it wants to get individual value.  This
-concatenation is used in order to keep the ordering of headers.</p>
 <p>If the application uses <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>, it can return
 <a class="reference internal" href="#c.NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> to make <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>
 return without processing further input bytes.  The memory pointed
@@ -2573,15 +2568,15 @@ strictly less than <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" ti
 <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>.  If it is strictly greater than
 <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>, it becomes <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.  The value is opaque sequence of bytes and
-therefore can contain NULL byte (0x0).  If the application requires
-that the ordering of values for a single header field name
-appearing in different header fields, it has to concatenate them
-using NULL byte (0x0) before passing them to this function.</p>
+<em>nvlen</em> elements.  The application is responsible to include
+required pseudo-header fields (header field whose name starts with
+&#8221;:&#8221;) in <em>nva</em> and must place pseudo-headers before regular header
+fields.</p>
+<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
+also lower-cases all names in <em>nva</em>.  The order of elements in
+<em>nva</em> is preserved.</p>
 <p>HTTP/2 specification has requirement about header fields in the
 request HEADERS.  See the specification for more details.</p>
-<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
-also lower-cases all names in <em>nva</em>.</p>
 <p>If <em>data_prd</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>, it provides data which will be sent
 in subsequent DATA frames.  In this case, a method that allows
 request message bodies
@@ -2618,15 +2613,15 @@ int <tt class="descname">nghttp2_submit_response</tt><big>(</big><a class="refer
 <dd><p>Submits response HEADERS frame and optionally one or more DATA
 frames against the stream <em>stream_id</em>.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.  The value is opaque sequence of bytes and
-therefore can contain NULL byte (0x0).  If the application requires
-that the ordering of values for a single header field name
-appearing in different header fields, it has to concatenate them
-using NULL byte (0x0) before passing them to this function.</p>
+<em>nvlen</em> elements.  The application is responsible to include
+required pseudo-header fields (header field whose name starts with
+&#8221;:&#8221;) in <em>nva</em> and must place pseudo-headers before regular header
+fields.</p>
+<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
+also lower-cases all names in <em>nva</em>.  The order of elements in
+<em>nva</em> is preserved.</p>
 <p>HTTP/2 specification has requirement about header fields in the
 response HEADERS.  See the specification for more details.</p>
-<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
-also lower-cases all names in <em>nva</em>.</p>
 <p>If <em>data_prd</em> is not <tt class="docutils literal"><span class="pre">NULL</span></tt>, it provides data which will be sent
 in subsequent DATA frames.  This function does not take ownership
 of the <em>data_prd</em>.  The function copies the members of the
@@ -2637,6 +2632,9 @@ When pushing a resource using this function, the <em>session</em> must be
 configured using <a class="reference internal" href="#c.nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a> or its variants and
 the target stream denoted by the <em>stream_id</em> must be reserved using
 <a class="reference internal" href="#c.nghttp2_submit_push_promise" title="nghttp2_submit_push_promise"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_push_promise()</span></tt></a>.</p>
+<p>To send non-final response headers (e.g., HTTP status 101), don&#8217;t
+use this function because this function half-closes the outbound
+stream.  Instead, use <a class="reference internal" href="#c.nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a> for this purpose.</p>
 <p>This function returns 0 if it succeeds, or one of the following
 negative error codes:</p>
 <dl class="docutils">
@@ -2675,13 +2673,13 @@ strictly less than <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" ti
 <a class="reference internal" href="#c.NGHTTP2_MIN_WEIGHT" title="NGHTTP2_MIN_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MIN_WEIGHT</span></tt></a>.  If it is strictly greater than
 <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>, it becomes <a class="reference internal" href="#c.NGHTTP2_MAX_WEIGHT" title="NGHTTP2_MAX_WEIGHT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_MAX_WEIGHT</span></tt></a>.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.  The value is opaque sequence of bytes and
-therefore can contain NULL byte (0x0).  If the application requires
-that the ordering of values for a single header field name
-appearing in different header fields, it has to concatenate them
-using NULL byte (0x0) before passing them to this function.</p>
+<em>nvlen</em> elements.  The application is responsible to include
+required pseudo-header fields (header field whose name starts with
+&#8221;:&#8221;) in <em>nva</em> and must place pseudo-headers before regular header
+fields.</p>
 <p>This function creates copies of all name/value pairs in <em>nva</em>.  It
-also lower-cases all names in <em>nva</em>.</p>
+also lower-cases all names in <em>nva</em>.  The order of elements in
+<em>nva</em> is preserved.</p>
 <p>The <em>stream_user_data</em> is a pointer to an arbitrary data which is
 associated to the stream this frame will open.  Therefore it is
 only used if this frame opens streams, in other words, it changes
@@ -2815,13 +2813,13 @@ CONTINUATION frame internally and it correctly sets END_HEADERS to
 the last sequence of the PUSH_PROMISE or CONTINUATION frame.</p>
 <p>The <em>stream_id</em> must be client initiated stream ID.</p>
 <p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
-<em>nvlen</em> elements.  The value is opaque sequence of bytes and
-therefore can contain NULL byte (0x0).  If the application requires
-that the ordering of values for a single header field name
-appearing in different header fields, it has to concatenate them
-using NULL byte (0x0) before passing them to this function.</p>
+<em>nvlen</em> elements.  The application is responsible to include
+required pseudo-header fields (header field whose name starts with
+&#8221;:&#8221;) in <em>nva</em> and must place pseudo-headers before regular header
+fields.</p>
 <p>This function creates copies of all name/value pairs in <em>nva</em>.  It
-also lower-cases all names in <em>nva</em>.</p>
+also lower-cases all names in <em>nva</em>.  The order of elements in
+<em>nva</em> is preserved.</p>
 <p>The <em>promised_stream_user_data</em> is a pointer to an arbitrary data
 which is associated to the promised stream this frame will open and
 make it in reserved state.  It is available using
