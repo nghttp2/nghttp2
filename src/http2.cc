@@ -249,59 +249,42 @@ bool check_http2_headers(const Headers& nva)
   return true;
 }
 
-namespace {
-template<typename InputIterator>
-bool check_pseudo_headers(const Headers& nva,
-                          InputIterator allowed_first,
-                          InputIterator allowed_last)
-{
-  // strict checking for pseudo headers.
-  for(auto& hd : nva) {
-    auto c = hd.name.c_str()[0];
-
-    if(c < ':') {
-      continue;
-    }
-
-    if(c > ':') {
-      break;
-    }
-
-    auto i = allowed_first;
-
-    for(; i != allowed_last; ++i) {
-      if(hd.name == *i) {
-        break;
-      }
-    }
-
-    if(i == allowed_last) {
-      return false;
-    }
-  }
-
-  return true;
-}
-} // namespace
-
 bool check_http2_request_headers(const Headers& nva)
 {
-  if(!check_http2_headers(nva)) {
-    return false;
-  }
-
-  return check_pseudo_headers(nva, REQUEST_PSEUDO_HD,
-                              REQUEST_PSEUDO_HD + REQUEST_PSEUDO_HDLEN);
+  return check_http2_headers(nva);
 }
 
 bool check_http2_response_headers(const Headers& nva)
 {
-  if(!check_http2_headers(nva)) {
-    return false;
+  return check_http2_headers(nva);
+}
+
+namespace {
+template<typename InputIterator>
+bool check_pseudo_header(const uint8_t *name, size_t namelen,
+                         InputIterator allowed_first,
+                         InputIterator allowed_last)
+{
+  for(auto i = allowed_first; i != allowed_last; ++i) {
+    if(util::streq(*i, name, namelen)) {
+      return true;
+    }
   }
 
-  return check_pseudo_headers(nva, RESPONSE_PSEUDO_HD,
-                              RESPONSE_PSEUDO_HD + RESPONSE_PSEUDO_HDLEN);
+  return false;
+}
+} // namespace
+
+bool check_http2_request_pseudo_header(const uint8_t *name, size_t namelen)
+{
+  return check_pseudo_header(name, namelen, REQUEST_PSEUDO_HD,
+                             REQUEST_PSEUDO_HD + REQUEST_PSEUDO_HDLEN);
+}
+
+bool check_http2_response_pseudo_header(const uint8_t *name, size_t namelen)
+{
+  return check_pseudo_header(name, namelen, RESPONSE_PSEUDO_HD,
+                             RESPONSE_PSEUDO_HD + RESPONSE_PSEUDO_HDLEN);
 }
 
 void normalize_headers(Headers& nva)

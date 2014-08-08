@@ -820,6 +820,7 @@ int on_header_callback(nghttp2_session *session,
                        uint8_t flags,
                        void *user_data)
 {
+  auto http2session = static_cast<Http2Session*>(user_data);
   auto sd = static_cast<StreamData*>
     (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
   if(!sd || !sd->dconn) {
@@ -846,6 +847,17 @@ int on_header_callback(nghttp2_session *session,
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
   }
+
+  if(namelen > 0 && name[0] == ':') {
+    if(!downstream->response_pseudo_header_allowed() ||
+       !http2::check_http2_response_pseudo_header(name, namelen)) {
+
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+  }
+
   downstream->split_add_response_header(name, namelen, value, valuelen,
                                         flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;

@@ -859,4 +859,25 @@ bool Downstream::expect_response_body() const
     response_http_status_ != 204;
 }
 
+namespace {
+bool pseudo_header_allowed(const Headers& headers)
+{
+  if(headers.empty()) {
+    return true;
+  }
+
+  return headers.back().name.c_str()[0] == ':';
+}
+} // namespace
+
+bool Downstream::request_pseudo_header_allowed() const
+{
+  return pseudo_header_allowed(request_headers_);
+}
+
+bool Downstream::response_pseudo_header_allowed() const
+{
+  return pseudo_header_allowed(response_headers_);
+}
+
 } // namespace shrpx

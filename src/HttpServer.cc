@@ -1168,6 +1168,18 @@ int on_header_callback(nghttp2_session *session,
   if(!http2::check_nv(name, namelen, value, valuelen)) {
     return 0;
   }
+
+  if(namelen > 0 && name[0] == ':') {
+    if((!stream->headers.empty() &&
+        stream->headers.back().name.c_str()[0] != ':') ||
+     !http2::check_http2_request_pseudo_header(name, namelen)) {
+
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                                NGHTTP2_PROTOCOL_ERROR);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+  }
+
   http2::add_header(stream->headers, name, namelen, value, valuelen,
                     flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;

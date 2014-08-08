@@ -144,6 +144,7 @@ public:
   int end_upload_data();
   size_t get_request_datalen() const;
   void reset_request_datalen();
+  bool request_pseudo_header_allowed() const;
   bool expect_response_body() const;
   enum {
     INITIAL,
@@ -217,6 +218,7 @@ public:
   void add_response_datalen(size_t len);
   size_t get_response_datalen() const;
   void reset_response_datalen();
+  bool response_pseudo_header_allowed() const;
 
   // Call this method when there is incoming data in downstream
   // connection.
