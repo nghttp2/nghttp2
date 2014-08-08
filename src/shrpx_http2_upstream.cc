@@ -314,9 +314,7 @@ int on_request_headers(Http2Upstream *upstream,
   }
 
   if(!http2::check_http2_request_headers(nva)) {
-    if(upstream->error_reply(downstream, 400) != 0) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-    }
+    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
 
     return 0;
   }
@@ -336,9 +334,7 @@ int on_request_headers(Http2Upstream *upstream,
     // Here we strictly require :authority header field.
     if(scheme || path || !having_authority) {
 
-      if(upstream->error_reply(downstream, 400) != 0) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      }
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
 
       return 0;
     }
@@ -351,9 +347,7 @@ int on_request_headers(Http2Upstream *upstream,
        (!get_config()->http2_proxy && !having_authority && !having_host) ||
        !http2::non_empty_value(path)) {
 
-      if(upstream->error_reply(downstream, 400) != 0) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      }
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
 
       return 0;
     }
