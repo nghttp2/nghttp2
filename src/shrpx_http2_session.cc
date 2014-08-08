@@ -921,7 +921,11 @@ int on_response_headers(Http2Session *http2session,
   }
 
   auto status = http2::get_unique_header(nva, ":status");
-  if(!status || http2::value_lws(status)) {
+  int status_code;
+
+  if(!status || http2::value_lws(status) ||
+     (status_code = http2::parse_http_status_code(status->value)) == -1) {
+
     http2session->submit_rst_stream(frame->hd.stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
@@ -930,8 +934,7 @@ int on_response_headers(Http2Session *http2session,
     return 0;
   }
 
-  downstream->set_response_http_status(strtoul(status->value.c_str(),
-                                               nullptr, 10));
+  downstream->set_response_http_status(status_code);
   downstream->set_response_major(2);
   downstream->set_response_minor(0);
 
