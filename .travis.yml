@@ -1,7 +1,8 @@
 language: cpp
 compiler:
   - clang
-  - gcc
+#Disable gcc build for the moment...
+#  - gcc
 python:
  - "3.4" 
 before_install:
@@ -34,3 +35,4 @@ before_script:
   - ./configure --enable-werror
 script:
   - make
+  - make check
