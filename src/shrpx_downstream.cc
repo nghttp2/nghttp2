@@ -949,8 +949,13 @@ void Downstream::init_upstream_timer()
 {
   auto evbase = upstream_->get_client_handler()->get_evbase();
 
-  upstream_rtimerev_ = init_timer(evbase, upstream_rtimeoutcb, this);
-  upstream_wtimerev_ = init_timer(evbase, upstream_wtimeoutcb, this);
+  if(get_config()->stream_read_timeout.tv_sec > 0) {
+    upstream_rtimerev_ = init_timer(evbase, upstream_rtimeoutcb, this);
+  }
+
+  if(get_config()->stream_write_timeout.tv_sec > 0) {
+    upstream_wtimerev_ = init_timer(evbase, upstream_wtimeoutcb, this);
+  }
 }
 
 namespace {
@@ -1074,8 +1079,13 @@ void Downstream::init_downstream_timer()
 {
   auto evbase = upstream_->get_client_handler()->get_evbase();
 
-  downstream_rtimerev_ = init_timer(evbase, downstream_rtimeoutcb, this);
-  downstream_wtimerev_ = init_timer(evbase, downstream_wtimeoutcb, this);
+  if(get_config()->stream_read_timeout.tv_sec > 0) {
+    downstream_rtimerev_ = init_timer(evbase, downstream_rtimeoutcb, this);
+  }
+
+  if(get_config()->stream_write_timeout.tv_sec > 0) {
+    downstream_wtimerev_ = init_timer(evbase, downstream_wtimeoutcb, this);
+  }
 }
 
 void Downstream::reset_downstream_rtimer()

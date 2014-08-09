@@ -489,10 +489,10 @@ void fill_default_config()
   mod_config()->downstream_write_timeout = {30, 0};
 
   // Read timeout for HTTP/2 stream
-  mod_config()->stream_read_timeout = {30, 0};
+  mod_config()->stream_read_timeout = {0, 0};
 
   // Write timeout for HTTP/2 stream
-  mod_config()->stream_write_timeout = {30, 0};
+  mod_config()->stream_write_timeout = {0, 0};
 
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout = {60, 0};
@@ -683,11 +683,12 @@ Timeout:
       << get_config()->upstream_write_timeout.tv_sec << R"(
   --stream-read-timeout=<SEC>
                      Specify read timeout for HTTP/2 and SPDY streams.
+                     0 means no timeout.
                      Default: )"
       << get_config()->stream_read_timeout.tv_sec << R"(
   --stream-write-timeout=<SEC>
                      Specify  write   timeout  for  HTTP/2   and  SPDY
-                     streams.
+                     streams.  0 means no timeout.
                      Default: )"
       << get_config()->stream_write_timeout.tv_sec << R"(
   --backend-read-timeout=<SEC>
