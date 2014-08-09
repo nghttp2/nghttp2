@@ -2118,6 +2118,10 @@ static int session_after_frame_sent(nghttp2_session *session)
       }
 
       if(data_frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+        int stream_closed;
+
+        stream_closed =
+          (stream->shut_flags & NGHTTP2_SHUT_RDWR) == NGHTTP2_SHUT_RDWR;
 
         nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
 
@@ -2126,6 +2130,9 @@ static int session_after_frame_sent(nghttp2_session *session)
           return rv;
         }
         /* stream may be NULL if it was closed */
+        if(stream_closed) {
+          stream = NULL;
+        }
       }
     }
     /* If session is closed or RST_STREAM was queued, we won't send
@@ -2133,6 +2140,15 @@ static int session_after_frame_sent(nghttp2_session *session)
     if(data_frame->eof ||
        nghttp2_session_predicate_data_send(session,
                                            data_frame->hd.stream_id) != 0) {
+
+      if(stream) {
+        rv = nghttp2_stream_detach_data(stream, &session->ob_pq,
+                                        session->last_cycle);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+      }
 
       active_outbound_item_reset(aob);
 
