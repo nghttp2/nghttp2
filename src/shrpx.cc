@@ -476,22 +476,17 @@ void fill_default_config()
   mod_config()->cert_file = nullptr;
 
   // Read timeout for HTTP2 upstream connection
-  mod_config()->http2_upstream_read_timeout.tv_sec = 180;
-  mod_config()->http2_upstream_read_timeout.tv_usec = 0;
+  mod_config()->http2_upstream_read_timeout = {180, 0};
 
   // Read timeout for non-HTTP2 upstream connection
-  mod_config()->upstream_read_timeout.tv_sec = 180;
-  mod_config()->upstream_read_timeout.tv_usec = 0;
+  mod_config()->upstream_read_timeout = {30, 0};
 
   // Write timeout for HTTP2/non-HTTP2 upstream connection
-  mod_config()->upstream_write_timeout.tv_sec = 60;
-  mod_config()->upstream_write_timeout.tv_usec = 0;
+  mod_config()->upstream_write_timeout = {30, 0};
 
   // Read/Write timeouts for downstream connection
-  mod_config()->downstream_read_timeout.tv_sec = 900;
-  mod_config()->downstream_read_timeout.tv_usec = 0;
-  mod_config()->downstream_write_timeout.tv_sec = 60;
-  mod_config()->downstream_write_timeout.tv_usec = 0;
+  mod_config()->downstream_read_timeout = {30, 0};
+  mod_config()->downstream_write_timeout = {30, 0};
 
   // Read timeout for HTTP/2 stream
   mod_config()->stream_read_timeout = {30, 0};
@@ -500,7 +495,7 @@ void fill_default_config()
   mod_config()->stream_write_timeout = {30, 0};
 
   // Timeout for pooled (idle) connections
-  mod_config()->downstream_idle_read_timeout.tv_sec = 60;
+  mod_config()->downstream_idle_read_timeout = {60, 0};
 
   // window bits for HTTP/2 and SPDY upstream/downstream connection
   // per stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please
