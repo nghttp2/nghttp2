@@ -660,9 +660,12 @@ typedef enum {
  * to outgoing queue, call `nghttp2_session_resume_data()`.  In case
  * of error, there are 2 choices. Returning
  * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close the stream
- * by issuing RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.
- * Returning :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the
- * entire session failure.
+ * by issuing RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.  If a
+ * different error code is desirable, use
+ * `nghttp2_submit_rst_stream()` with a desired error code and then
+ * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  Returning
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the entire session
+ * failure.
  */
 typedef ssize_t (*nghttp2_data_source_read_callback)
 (nghttp2_session *session, int32_t stream_id,
@@ -1356,7 +1359,10 @@ typedef int (*nghttp2_on_begin_headers_callback)
  * Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close
  * the stream by issuing RST_STREAM with
  * :enum:`NGHTTP2_INTERNAL_ERROR`.  In this case,
- * :type:`nghttp2_on_frame_recv_callback` will not be invoked.
+ * :type:`nghttp2_on_frame_recv_callback` will not be invoked.  If a
+ * different error code is desirable, use
+ * `nghttp2_submit_rst_stream()` with a desired error code and then
+ * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.
  *
  * The implementation of this function must return 0 if it succeeds.
  * It may return :enum:`NGHTTP2_ERR_PAUSE` or
