@@ -232,6 +232,33 @@ public:
 
   bool get_rst_stream_after_end_stream() const;
   void set_rst_stream_after_end_stream(bool f);
+
+  // Initializes upstream timers, but they are not pending.
+  void init_upstream_timer();
+  // Makes upstream read timer pending.  If it is already pending,
+  // timeout value is reset.  This function also resets write timer if
+  // it is already pending.
+  void reset_upstream_rtimer();
+  // Makes upstream write timer pending.  If it is already pending,
+  // timeout value is reset.  This function also resets read timer if
+  // it is already pending.
+  void reset_upstream_wtimer();
+  // Makes upstream write timer pending.  If it is already pending, do
+  // nothing.
+  void ensure_upstream_wtimer();
+  // Disables upstream read timer.
+  void disable_upstream_rtimer();
+  // Disables upstream write timer.
+  void disable_upstream_wtimer();
+
+  // Downstream timer functions.  They works in a similar way just
+  // like the upstream timer function.
+  void init_downstream_timer();
+  void reset_downstream_rtimer();
+  void reset_downstream_wtimer();
+  void ensure_downstream_wtimer();
+  void disable_downstream_rtimer();
+  void disable_downstream_wtimer();
 private:
   Headers request_headers_;
   Headers response_headers_;
@@ -254,6 +281,12 @@ private:
   // This buffer is used to temporarily store downstream response
   // body. nghttp2 library reads data from this in the callback.
   evbuffer *response_body_buf_;
+
+  event *upstream_rtimerev_;
+  event *upstream_wtimerev_;
+
+  event *downstream_rtimerev_;
+  event *downstream_wtimerev_;
 
   size_t request_headers_sum_;
   size_t response_headers_sum_;

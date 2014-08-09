@@ -57,6 +57,7 @@ public:
 
   virtual int on_read();
   virtual int on_write();
+  virtual int on_timeout();
 
   virtual void on_upstream_change(Upstream *upstream) {}
   virtual int on_priority_change(int32_t pri);
@@ -69,7 +70,9 @@ public:
   void attach_stream_data(StreamData *sd);
   StreamData* detach_stream_data();
 
-  int submit_rst_stream(Downstream *downstream);
+  int submit_rst_stream
+  (Downstream *downstream,
+   nghttp2_error_code error_code = NGHTTP2_INTERNAL_ERROR);
 private:
   Http2Session *http2session_;
   evbuffer *request_body_buf_;

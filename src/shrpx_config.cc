@@ -74,6 +74,8 @@ const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[] = "frontend-read-timeout";
 const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[] = "frontend-write-timeout";
 const char SHRPX_OPT_BACKEND_READ_TIMEOUT[] = "backend-read-timeout";
 const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[] = "backend-write-timeout";
+const char SHRPX_OPT_STREAM_READ_TIMEOUT[] = "stream-read-timeout";
+const char SHRPX_OPT_STREAM_WRITE_TIMEOUT[] = "stream-write-timeout";
 const char SHRPX_OPT_ACCESSLOG_FILE[] = "accesslog-file";
 const char SHRPX_OPT_ACCESSLOG_SYSLOG[] = "accesslog-syslog";
 const char SHRPX_OPT_ERRORLOG_FILE[] = "errorlog-file";
@@ -399,6 +401,20 @@ int parse_config(const char *opt, const char *optarg)
   if(util::strieq(opt, SHRPX_OPT_BACKEND_WRITE_TIMEOUT)) {
     timeval tv = {strtol(optarg, nullptr, 10), 0};
     mod_config()->downstream_write_timeout = tv;
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_STREAM_READ_TIMEOUT)) {
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
+    mod_config()->stream_read_timeout = tv;
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_STREAM_WRITE_TIMEOUT)) {
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
+    mod_config()->stream_write_timeout = tv;
 
     return 0;
   }

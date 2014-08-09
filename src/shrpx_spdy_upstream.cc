@@ -157,6 +157,8 @@ void on_ctrl_recv_callback
                                      frame->syn_stream.stream_id,
                                      frame->syn_stream.pri);
     upstream->add_downstream(downstream);
+    downstream->init_upstream_timer();
+    downstream->reset_upstream_rtimer();
     downstream->init_response_body_buf();
 
     auto nv = frame->syn_stream.nv;
@@ -243,6 +245,7 @@ void on_ctrl_recv_callback
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
+      downstream->disable_upstream_rtimer();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
     break;
@@ -266,6 +269,8 @@ void on_data_chunk_recv_callback(spdylay_session *session,
     upstream->handle_ign_data_chunk(len);
     return;
   }
+
+  downstream->reset_upstream_rtimer();
 
   if(downstream->push_upload_data_chunk(data, len) != 0) {
     upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -317,6 +322,7 @@ void on_data_recv_callback(spdylay_session *session, uint8_t flags,
   auto upstream = static_cast<SpdyUpstream*>(user_data);
   auto downstream = upstream->find_downstream(stream_id);
   if(downstream && (flags & SPDYLAY_DATA_FLAG_FIN)) {
+    downstream->disable_upstream_rtimer();
     downstream->end_upload_data();
     downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
@@ -795,6 +801,12 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
     }
   }
 
+  if(evbuffer_get_length(body) > 0) {
+    downstream->reset_upstream_wtimer();
+  } else {
+    downstream->disable_upstream_wtimer();
+  }
+
   if(nread == 0 && *eof != 1) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return SPDYLAY_ERR_CALLBACK_FAILURE;
@@ -993,11 +1005,15 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
 
   if(flush) {
     spdylay_session_resume_data(session_, downstream->get_stream_id());
+
+    downstream->ensure_upstream_wtimer();
   }
 
   if(evbuffer_get_length(body) >= INBUF_MAX_THRES) {
     if(!flush) {
       spdylay_session_resume_data(session_, downstream->get_stream_id());
+
+      downstream->ensure_upstream_wtimer();
     }
 
     downstream->pause_read(SHRPX_NO_BUFFER);
@@ -1013,7 +1029,10 @@ int SpdyUpstream::on_downstream_body_complete(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
   }
+
   spdylay_session_resume_data(session_, downstream->get_stream_id());
+  downstream->ensure_upstream_wtimer();
+
   return 0;
 }
 
@@ -1090,6 +1109,18 @@ int SpdyUpstream::handle_ign_data_chunk(size_t len)
   if(recv_ign_window_size_ >= window_size / 2) {
     window_update(0, recv_ign_window_size_);
   }
+
+  return 0;
+}
+
+int SpdyUpstream::on_timeout(Downstream *downstream)
+{
+  if(LOG_ENABLED(INFO)) {
+    ULOG(INFO, this) << "Stream timeout stream_id="
+                     << downstream->get_stream_id();
+  }
+
+  rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
 
   return 0;
 }

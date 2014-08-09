@@ -46,6 +46,7 @@ public:
   virtual int on_read();
   virtual int on_write();
   virtual int on_event();
+  virtual int on_timeout(Downstream *downstream);
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
   int send();

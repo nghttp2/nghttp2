@@ -999,7 +999,7 @@ int on_response_headers(Http2Session *http2session,
     if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream) != 0) {
       // If resume_read fails, just drop connection. Not ideal.
       delete upstream->get_client_handler();
-      return 0;
+      return -1;
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(LOG_ENABLED(INFO)) {
@@ -1017,7 +1017,7 @@ int on_response_headers(Http2Session *http2session,
                                     NGHTTP2_PROTOCOL_ERROR);
     downstream->set_response_state(Downstream::MSG_RESET);
   }
-  call_downstream_readcb(http2session, downstream);
+
   return 0;
 }
 } // namespace
@@ -1051,6 +1051,8 @@ int on_frame_recv_callback
 
     } else if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
 
+      downstream->disable_downstream_rtimer();
+
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
 
         downstream->set_response_state(Downstream::MSG_COMPLETE);
@@ -1082,17 +1084,16 @@ int on_frame_recv_callback
       rv = on_response_headers(http2session, downstream, session, frame);
 
       if(rv != 0) {
-        return rv;
+        return 0;
       }
     }
 
     if(frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
       if(downstream->get_expect_final_response()) {
-
         rv = on_response_headers(http2session, downstream, session, frame);
 
         if(rv != 0) {
-          return rv;
+          return 0;
         }
       } else if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
         http2session->submit_rst_stream(frame->hd.stream_id,
@@ -1102,6 +1103,9 @@ int on_frame_recv_callback
     }
 
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+
+      downstream->disable_downstream_rtimer();
+
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         downstream->set_response_state(Downstream::MSG_COMPLETE);
 
@@ -1113,7 +1117,13 @@ int on_frame_recv_callback
           downstream->set_response_state(Downstream::MSG_RESET);
         }
       }
+    } else {
+      downstream->reset_downstream_rtimer();
     }
+
+    // This may delete downstream
+    call_downstream_readcb(http2session, downstream);
+
     break;
   }
   case NGHTTP2_RST_STREAM: {
@@ -1214,6 +1224,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
     return 0;
   }
 
+  downstream->reset_downstream_rtimer();
+
   downstream->add_response_bodylen(len);
 
   auto upstream = downstream->get_upstream();
@@ -1240,6 +1252,31 @@ int on_frame_send_callback(nghttp2_session* session,
                            const nghttp2_frame *frame, void *user_data)
 {
   auto http2session = static_cast<Http2Session*>(user_data);
+
+  if(frame->hd.type == NGHTTP2_DATA || frame->hd.type == NGHTTP2_HEADERS) {
+    if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+      return 0;
+    }
+
+    auto sd = static_cast<StreamData*>
+      (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+
+    if(!sd || !sd->dconn) {
+      return 0;
+    }
+
+    auto downstream = sd->dconn->get_downstream();
+
+    if(!downstream ||
+       downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+      return 0;
+    }
+
+    downstream->reset_downstream_rtimer();
+
+    return 0;
+  }
+
   if(frame->hd.type == NGHTTP2_SETTINGS &&
      (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
     if(http2session->start_settings_timer() != 0) {

@@ -216,6 +216,7 @@ int on_header_callback(nghttp2_session *session,
   if(!downstream) {
     return 0;
   }
+
   if(downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       return 0;
@@ -273,6 +274,8 @@ int on_begin_headers_callback(nghttp2_session *session,
                                    0);
 
   upstream->add_downstream(downstream);
+  downstream->init_upstream_timer();
+  downstream->reset_upstream_rtimer();
   downstream->init_response_body_buf();
 
   // Although, we deprecated minor version from HTTP/2, we supply
@@ -387,6 +390,8 @@ int on_request_headers(Http2Upstream *upstream,
   }
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    downstream->disable_upstream_rtimer();
+
     downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
 
@@ -407,15 +412,18 @@ int on_frame_recv_callback
 
   switch(frame->hd.type) {
   case NGHTTP2_DATA: {
+    auto downstream = upstream->find_downstream(frame->hd.stream_id);
+    if(!downstream) {
+      return 0;
+    }
+
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      auto downstream = upstream->find_downstream(frame->hd.stream_id);
-      if(!downstream) {
-        return 0;
-      }
+      downstream->disable_upstream_rtimer();
 
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
+
     break;
   }
   case NGHTTP2_HEADERS: {
@@ -425,10 +433,14 @@ int on_frame_recv_callback
     }
 
     if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+      downstream->reset_upstream_rtimer();
+
       return on_request_headers(upstream, downstream, session, frame);
     }
 
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      downstream->disable_upstream_rtimer();
+
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     } else {
@@ -495,6 +507,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session,
 
     return 0;
   }
+
+  downstream->reset_upstream_rtimer();
 
   if(downstream->push_upload_data_chunk(data, len) != 0) {
     upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
@@ -1033,6 +1047,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 
   if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+
     if(!downstream->get_upgraded()) {
       *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
@@ -1051,6 +1066,12 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
       }
       upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
     }
+  }
+
+  if(evbuffer_get_length(body) > 0) {
+    downstream->reset_upstream_wtimer();
+  } else {
+    downstream->disable_upstream_wtimer();
   }
 
   if(nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
@@ -1260,11 +1281,15 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
 
   if(flush) {
     nghttp2_session_resume_data(session_, downstream->get_stream_id());
+
+    downstream->ensure_upstream_wtimer();
   }
 
   if(evbuffer_get_length(body) >= INBUF_MAX_THRES) {
     if(!flush) {
       nghttp2_session_resume_data(session_, downstream->get_stream_id());
+
+      downstream->ensure_upstream_wtimer();
     }
 
     downstream->pause_read(SHRPX_NO_BUFFER);
@@ -1281,6 +1306,8 @@ int Http2Upstream::on_downstream_body_complete(Downstream *downstream)
     DLOG(INFO, downstream) << "HTTP response completed";
   }
   nghttp2_session_resume_data(session_, downstream->get_stream_id());
+  downstream->ensure_upstream_wtimer();
+
   return 0;
 }
 
@@ -1349,6 +1376,18 @@ void Http2Upstream::log_response_headers
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n"
                    << ss.str();
+}
+
+int Http2Upstream::on_timeout(Downstream *downstream)
+{
+  if(LOG_ENABLED(INFO)) {
+    ULOG(INFO, this) << "Stream timeout stream_id="
+                     << downstream->get_stream_id();
+  }
+
+  rst_stream(downstream, NGHTTP2_NO_ERROR);
+
+  return 0;
 }
 
 } // namespace shrpx

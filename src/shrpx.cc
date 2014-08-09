@@ -493,6 +493,12 @@ void fill_default_config()
   mod_config()->downstream_write_timeout.tv_sec = 60;
   mod_config()->downstream_write_timeout.tv_usec = 0;
 
+  // Read timeout for HTTP/2 stream
+  mod_config()->stream_read_timeout = {30, 0};
+
+  // Write timeout for HTTP/2 stream
+  mod_config()->stream_write_timeout = {30, 0};
+
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout.tv_sec = 60;
 
@@ -680,6 +686,15 @@ Timeout:
                      connections.
                      Default: )"
       << get_config()->upstream_write_timeout.tv_sec << R"(
+  --stream-read-timeout=<SEC>
+                     Specify read timeout for HTTP/2 and SPDY streams.
+                     Default: )"
+      << get_config()->stream_read_timeout.tv_sec << R"(
+  --stream-write-timeout=<SEC>
+                     Specify  write   timeout  for  HTTP/2   and  SPDY
+                     streams.
+                     Default: )"
+      << get_config()->stream_write_timeout.tv_sec << R"(
   --backend-read-timeout=<SEC>
                      Specify read timeout for backend connection.
                      Default: )"
@@ -982,6 +997,8 @@ int main(int argc, char **argv)
       {"accesslog-syslog", no_argument, &flag, 57},
       {"errorlog-file", required_argument, &flag, 58},
       {"errorlog-syslog", no_argument, &flag, 59},
+      {"stream-read-timeout", required_argument, &flag, 60},
+      {"stream-write-timeout", required_argument, &flag, 61},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1241,6 +1258,14 @@ int main(int argc, char **argv)
       case 59:
         // --errorlog-syslog
         cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_SYSLOG, "yes");
+        break;
+      case 60:
+        // --stream-read-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_READ_TIMEOUT, optarg);
+        break;
+      case 61:
+        // --stream-write-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_WRITE_TIMEOUT, optarg);
         break;
       default:
         break;

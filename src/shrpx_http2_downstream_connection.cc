@@ -64,6 +64,9 @@ Http2DownstreamConnection::~Http2DownstreamConnection()
     evbuffer_free(request_body_buf_);
   }
   if(downstream_) {
+    downstream_->disable_downstream_rtimer();
+    downstream_->disable_downstream_wtimer();
+
     if(submit_rst_stream(downstream_) == 0) {
       http2session_->notify();
     }
@@ -120,6 +123,9 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream)
   }
   downstream->set_downstream_connection(this);
   downstream_ = downstream;
+
+  downstream_->init_downstream_timer();
+
   return 0;
 }
 
@@ -142,12 +148,15 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream)
   }
 
   downstream->set_downstream_connection(nullptr);
+  downstream->disable_downstream_rtimer();
+  downstream->disable_downstream_wtimer();
   downstream_ = nullptr;
 
   client_handler_->pool_downstream_connection(this);
 }
 
-int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream)
+int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
+                                                 nghttp2_error_code error_code)
 {
   int rv = -1;
   if(http2session_->get_state() == Http2Session::CONNECTED &&
@@ -163,8 +172,7 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream)
                           << downstream->get_downstream_stream_id();
       }
       rv = http2session_->submit_rst_stream
-        (downstream->get_downstream_stream_id(),
-         NGHTTP2_INTERNAL_ERROR);
+        (downstream->get_downstream_stream_id(), error_code);
     }
   }
   return rv;
@@ -205,6 +213,8 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
             !downstream->get_upgraded())) {
           *data_flags |= NGHTTP2_DATA_FLAG_EOF;
         } else {
+          downstream->disable_downstream_wtimer();
+
           return NGHTTP2_ERR_DEFERRED;
         }
         break;
@@ -227,6 +237,9 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
             *data_flags |= NGHTTP2_DATA_FLAG_EOF;
             break;
           }
+
+          downstream->disable_downstream_wtimer();
+
           return NGHTTP2_ERR_DEFERRED;
         }
       }
@@ -242,6 +255,13 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
       break;
     }
   }
+
+  if(evbuffer_get_length(body) > 0 && !downstream->get_output_buffer_full()) {
+    downstream->reset_downstream_wtimer();
+  } else {
+    downstream->disable_downstream_wtimer();
+  }
+
   return nread;
 }
 } // namespace
@@ -455,6 +475,7 @@ int Http2DownstreamConnection::push_request_headers()
   }
 
   downstream_->clear_request_headers();
+  downstream_->reset_downstream_wtimer();
 
   http2session_->notify();
   return 0;
@@ -473,6 +494,9 @@ int Http2DownstreamConnection::push_upload_data_chunk(const uint8_t *data,
     if(rv != 0) {
       return -1;
     }
+
+    downstream_->ensure_downstream_wtimer();
+
     http2session_->notify();
   }
   return 0;
@@ -486,6 +510,9 @@ int Http2DownstreamConnection::end_upload_data()
     if(rv != 0) {
       return -1;
     }
+
+    downstream_->ensure_downstream_wtimer();
+
     http2session_->notify();
   }
   return 0;
@@ -584,6 +611,15 @@ int Http2DownstreamConnection::on_priority_change(int32_t pri)
   }
   http2session_->notify();
   return 0;
+}
+
+int Http2DownstreamConnection::on_timeout()
+{
+  if(!downstream_) {
+    return 0;
+  }
+
+  return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
 }
 
 } // namespace shrpx

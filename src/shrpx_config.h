@@ -71,6 +71,8 @@ extern const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[];
 extern const char SHRPX_OPT_BACKEND_READ_TIMEOUT[];
 extern const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[];
+extern const char SHRPX_OPT_STREAM_READ_TIMEOUT[];
+extern const char SHRPX_OPT_STREAM_WRITE_TIMEOUT[];
 extern const char SHRPX_OPT_ACCESSLOG_FILE[];
 extern const char SHRPX_OPT_ACCESSLOG_SYSLOG[];
 extern const char SHRPX_OPT_ERRORLOG_FILE[];
@@ -162,6 +164,8 @@ struct Config {
   timeval upstream_write_timeout;
   timeval downstream_read_timeout;
   timeval downstream_write_timeout;
+  timeval stream_read_timeout;
+  timeval stream_write_timeout;
   timeval downstream_idle_read_timeout;
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> private_key_file;
