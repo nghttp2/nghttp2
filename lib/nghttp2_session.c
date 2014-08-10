@@ -1798,6 +1798,13 @@ static int session_prep_frame(nghttp2_session *session,
       return framerv;
     }
     if(framerv < 0) {
+      rv = nghttp2_stream_detach_data(stream, &session->ob_pq,
+                                      session->last_cycle);
+
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
       return framerv;
     }
     return 0;
