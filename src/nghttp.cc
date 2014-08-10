@@ -1135,6 +1135,11 @@ int on_data_chunk_recv_callback
     return 0;
   }
 
+  if(config.verbose) {
+    verbose_on_data_chunk_recv_callback(session, flags, stream_id, data, len,
+                                        user_data);
+  }
+
   if(req->status == 0) {
     nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                               stream_id, NGHTTP2_PROTOCOL_ERROR);

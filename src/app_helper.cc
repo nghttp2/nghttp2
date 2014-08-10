@@ -443,10 +443,11 @@ int verbose_on_header_callback(nghttp2_session *session,
   };
 
   print_timer();
-  fprintf(outfile, " (stream_id=%d, noind=%d) ", frame->hd.stream_id,
+  fprintf(outfile, " recv (stream_id=%d, noind=%d) ", frame->hd.stream_id,
           (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0);
 
   print_nv(&nv);
+  fflush(outfile);
 
   return 0;
 }
@@ -506,6 +507,23 @@ int verbose_on_frame_send_callback
   fprintf(outfile, " send ");
   print_frame(PRINT_SEND, frame);
   fflush(outfile);
+  return 0;
+}
+
+int verbose_on_data_chunk_recv_callback
+(nghttp2_session *session, uint8_t flags, int32_t stream_id,
+ const uint8_t *data, size_t len, void *user_data)
+{
+  print_timer();
+  auto srecv = nghttp2_session_get_stream_effective_recv_data_length
+    (session, stream_id);
+  auto crecv = nghttp2_session_get_effective_recv_data_length(session);
+
+  fprintf(outfile,
+          " recv (stream_id=%d, length=%zu, srecv=%d, crecv=%d) DATA\n",
+          stream_id, len, srecv, crecv);
+  fflush(outfile);
+
   return 0;
 }
 
