@@ -1324,6 +1324,21 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
+  if(get_config()->uid != 0) {
+    if(fchown(worker_config.accesslog_fd,
+              get_config()->uid, get_config()->gid)  == -1) {
+      auto error = errno;
+      LOG(WARNING) << "Changing owner of access log file failed: "
+                   << strerror(error);
+    }
+    if(fchown(worker_config.errorlog_fd,
+              get_config()->uid, get_config()->gid) == -1) {
+      auto error = errno;
+      LOG(WARNING) << "Changing owner of error log file failed: "
+                   << strerror(error);
+    }
+  }
+
   if(get_config()->npn_list.empty()) {
     mod_config()->npn_list = parse_config_str_list(DEFAULT_NPN_LIST);
   }
