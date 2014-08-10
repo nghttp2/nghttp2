@@ -911,7 +911,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
   downstream->normalize_response_headers();
-  if(!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if(!get_config()->http2_proxy && !get_config()->client_proxy &&
+     !get_config()->no_location_rewrite) {
     downstream->rewrite_norm_location_response_header
       (get_client_handler()->get_upstream_scheme(), get_config()->port);
   }

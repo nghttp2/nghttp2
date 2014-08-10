@@ -114,6 +114,7 @@ extern const char SHRPX_OPT_PADDING[];
 extern const char SHRPX_OPT_ALTSVC[];
 extern const char SHRPX_OPT_ADD_RESPONSE_HEADER[];
 extern const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[];
+extern const char SHRPX_OPT_NO_LOCATION_REWRITE[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -259,6 +260,7 @@ struct Config {
   bool backend_ipv6;
   bool http2_no_cookie_crumbling;
   bool upstream_frame_debug;
+  bool no_location_rewrite;
 };
 
 const Config* get_config();

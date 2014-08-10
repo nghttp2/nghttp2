@@ -124,6 +124,7 @@ const char SHRPX_OPT_ALTSVC[] = "altsvc";
 const char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
 const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
   "worker-frontend-connections";
+const char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
 
 namespace {
 Config *config = nullptr;
@@ -836,6 +837,12 @@ int parse_config(const char *opt, const char *optarg)
     }
 
     mod_config()->worker_frontend_connections = n;
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_NO_LOCATION_REWRITE)) {
+    mod_config()->no_location_rewrite = util::strieq(optarg, "yes");
 
     return 0;
   }

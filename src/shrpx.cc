@@ -569,6 +569,7 @@ void fill_default_config()
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->cached_time = generate_time();
+  mod_config()->no_location_rewrite = false;
 }
 } // namespace
 
@@ -873,6 +874,12 @@ Misc:
                      downstream request.
   --no-via           Don't append to Via  header field.  If Via header
                      field is received, it is left unaltered.
+  --no-location-rewrite
+                     Don't   rewrite   location    header   field   on
+                     --http2-bridge, --client  and default  mode.  For
+                     --http2-proxy  and --client-proxy  mode, location
+                     header field  will not  be altered  regardless of
+                     this option.
   --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
                      Specify  protocol ID,  port, host  and origin  of
                      alternative  service.   <HOST> and  <ORIGIN>  are
@@ -995,6 +1002,7 @@ int main(int argc, char **argv)
       {"errorlog-syslog", no_argument, &flag, 59},
       {"stream-read-timeout", required_argument, &flag, 60},
       {"stream-write-timeout", required_argument, &flag, 61},
+      {"no-location-rewrite", no_argument, &flag, 62},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1262,6 +1270,10 @@ int main(int argc, char **argv)
       case 61:
         // --stream-write-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_STREAM_WRITE_TIMEOUT, optarg);
+        break;
+      case 62:
+        // --no-location-rewrite
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_LOCATION_REWRITE, "yes");
         break;
       default:
         break;
