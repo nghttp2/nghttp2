@@ -197,9 +197,9 @@ connection, so the connection gets insecure.  To disable SSL/TLS in
 backend connection, use ``--backend-no-tls`` option.
 
 The backend server is supporsed to be a HTTP/2 web server or HTTP/2
-proxy.  Since HTTP/2 requests opaque between proxied and non-proxied
-request, the backend server may be proxy or just web server depending
-on the context of incoming requests.
+proxy.  If backend server is HTTP/2 proxy, use
+``--no-location-rewrite`` option to disable rewriting location header
+field.
 
 The use-case of this mode is aggregate the incoming connections to one
 HTTP/2 connection.  One backend HTTP/2 connection is created per
@@ -235,19 +235,12 @@ Read/write rate limit
 ---------------------
 
 nghttpx supports transfer rate limiting on frontend connections.  You
-can do rate limit per connection or per worker (thread) for reading
-and writeing individually.
-
-To rate limit per connection for reading, use ``--read-rate`` and
-``--read-burst`` options.  For writing, use ``--write-rate`` and
-``--write-burst`` options.
+can do rate limit per worker (thread) for reading and writeing
+individually.
 
 To rate limit per worker (thread), use ``--worker-read-rate`` and
 ``--worker-read-burst`` options.  For writing, use
 ``--worker-write-rate`` and ``--worker-write-burst``.
-
-If both per connection and per worker rate limit configurations are
-specified, the lower rate is used.
 
 Please note that rate limit is performed on top of TCP and nothing to
 do with HTTP/2 flow control.
