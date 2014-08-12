@@ -187,6 +187,8 @@ struct Config {
   std::unique_ptr<char[]> downstream_http_proxy_userinfo;
   // host in http proxy URI
   std::unique_ptr<char[]> downstream_http_proxy_host;
+  std::unique_ptr<char[]> http2_upstream_dump_request_header_file;
+  std::unique_ptr<char[]> http2_upstream_dump_response_header_file;
   // Rate limit configuration per worker (thread)
   ev_token_bucket_cfg *worker_rate_limit_cfg;
   // list of supported NPN/ALPN protocol strings in the order of
@@ -315,6 +317,8 @@ const char* str_syslog_facility(int facility);
 
 // Returns integer value of syslog |facility| string.
 int int_syslog_facility(const char *strfacility);
+
+FILE* open_file_for_write(const char *filename);
 
 } // namespace shrpx
 

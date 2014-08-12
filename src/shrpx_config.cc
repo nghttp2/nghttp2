@@ -192,7 +192,6 @@ bool is_secure(const char *filename)
 }
 } // namespace
 
-namespace {
 FILE* open_file_for_write(const char *filename)
 {
   auto f = fopen(filename, "wb");
@@ -205,7 +204,6 @@ FILE* open_file_for_write(const char *filename)
 
   return f;
 }
-} // namespace
 
 std::string read_passwd_from_file(const char *filename)
 {
@@ -735,21 +733,13 @@ int parse_config(const char *opt, const char *optarg)
   }
 
   if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER)) {
-    auto f = open_file_for_write(optarg);
-    if(f == nullptr) {
-      return -1;
-    }
-    mod_config()->http2_upstream_dump_request_header = f;
+    mod_config()->http2_upstream_dump_request_header_file = strcopy(optarg);
 
     return 0;
   }
 
   if(util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER)) {
-    auto f = open_file_for_write(optarg);
-    if(f == nullptr) {
-      return -1;
-    }
-    mod_config()->http2_upstream_dump_response_header = f;
+    mod_config()->http2_upstream_dump_response_header_file = strcopy(optarg);
 
     return 0;
   }

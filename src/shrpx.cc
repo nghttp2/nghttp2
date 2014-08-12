@@ -313,6 +313,17 @@ void save_pid()
                << get_config()->pid_file.get();
     exit(EXIT_FAILURE);
   }
+
+  if(get_config()->uid != 0) {
+    if(chown(get_config()->pid_file.get(),
+             get_config()->uid, get_config()->gid)  == -1) {
+      auto error = errno;
+      LOG(WARNING) << "Changing owner of pid file "
+                   << get_config()->pid_file.get()
+                   << " failed: "
+                   << strerror(error);
+    }
+  }
 }
 } // namespace
 
@@ -1554,17 +1565,66 @@ int main(int argc, char **argv)
   }
 
   if(get_config()->uid != 0) {
-    if(fchown(worker_config.accesslog_fd,
+    if(worker_config.accesslog_fd != -1 &&
+       fchown(worker_config.accesslog_fd,
               get_config()->uid, get_config()->gid)  == -1) {
       auto error = errno;
       LOG(WARNING) << "Changing owner of access log file failed: "
                    << strerror(error);
     }
-    if(fchown(worker_config.errorlog_fd,
+    if(worker_config.errorlog_fd != -1 &&
+       fchown(worker_config.errorlog_fd,
               get_config()->uid, get_config()->gid) == -1) {
       auto error = errno;
       LOG(WARNING) << "Changing owner of error log file failed: "
                    << strerror(error);
+    }
+  }
+
+  if(get_config()->http2_upstream_dump_request_header_file) {
+    auto path = get_config()->http2_upstream_dump_request_header_file.get();
+    auto f = open_file_for_write(path);
+
+    if(f == nullptr) {
+      LOG(FATAL) << "Failed to open http2 upstream request header file: "
+                 << path;
+      exit(EXIT_FAILURE);
+    }
+
+    mod_config()->http2_upstream_dump_request_header = f;
+
+    if(get_config()->uid != 0) {
+      if(chown(path, get_config()->uid, get_config()->gid) == -1) {
+        auto error = errno;
+        LOG(WARNING) << "Changing owner of http2 upstream request header file "
+                     << path
+                     << " failed: "
+                     << strerror(error);
+      }
+    }
+  }
+
+  if(get_config()->http2_upstream_dump_response_header_file) {
+    auto path = get_config()->http2_upstream_dump_response_header_file.get();
+    auto f = open_file_for_write(path);
+
+    if(f == nullptr) {
+      LOG(FATAL) << "Failed to open http2 upstream response header file: "
+                 << path;
+      exit(EXIT_FAILURE);
+    }
+
+    mod_config()->http2_upstream_dump_response_header = f;
+
+    if(get_config()->uid != 0) {
+      if(chown(path, get_config()->uid, get_config()->gid) == -1) {
+        auto error = errno;
+        LOG(WARNING) << "Changing owner of http2 upstream response header file"
+                     << " "
+                     << path
+                     << " failed: "
+                     << strerror(error);
+      }
     }
   }
 
