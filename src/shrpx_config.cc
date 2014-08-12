@@ -200,6 +200,9 @@ FILE* open_file_for_write(const char *filename)
     LOG(ERROR) << "Failed to open " << filename << " for writing. Cause: "
                << strerror(errno);
   }
+
+  evutil_make_socket_closeonexec(fileno(f));
+
   return f;
 }
 } // namespace

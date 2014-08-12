@@ -487,6 +487,14 @@ int reopen_log_file(const char *path);
 // characters are preserved.  Other characters are replaced with ".".
 std::string ascii_dump(const uint8_t *data, size_t len);
 
+// Returns absolute path of executable path.  If argc == 0 or |cwd| is
+// nullptr, this function returns nullptr.  If argv[0] starts with
+// '/', this function returns argv[0].  Oterwise return cwd + "/" +
+// argv[0].  If non-null is returned, it is NULL-terminated string and
+// dynamically allocated by malloc.  The caller is responsible to free
+// it.
+char* get_exec_path(int argc, char **const argv, const char *cwd);
+
 } // namespace util
 
 } // namespace nghttp2

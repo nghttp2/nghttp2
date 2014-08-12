@@ -81,6 +81,22 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
       continue;
     }
 
+    if(wev.type == GRACEFUL_SHUTDOWN) {
+      if(LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Graceful shutdown commencing";
+      }
+
+      worker_config.graceful_shutdown = true;
+
+      if(worker_stat_->num_connections == 0) {
+        event_base_loopbreak(evbase_);
+
+        break;
+      }
+
+      continue;
+    }
+
     if(LOG_ENABLED(INFO)) {
       TLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
                        << ", addrlen=" << wev.client_addrlen;

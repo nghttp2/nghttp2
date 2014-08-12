@@ -26,6 +26,7 @@
 
 #include <netinet/tcp.h>
 #include <unistd.h>
+
 #include <vector>
 
 #include <openssl/err.h>
@@ -197,8 +198,10 @@ int Http2Session::init_notification()
     SSLOG(FATAL, this) << "socketpair() failed: errno=" << errno;
     return -1;
   }
-  evutil_make_socket_nonblocking(sockpair[0]);
-  evutil_make_socket_nonblocking(sockpair[1]);
+  for(int i = 0; i < 2; ++i) {
+    evutil_make_socket_nonblocking(sockpair[i]);
+    evutil_make_socket_closeonexec(sockpair[i]);
+  }
   wrbev_ = bufferevent_socket_new(evbase_, sockpair[0],
                                   BEV_OPT_CLOSE_ON_FREE|
                                   BEV_OPT_DEFER_CALLBACKS);
@@ -459,6 +462,13 @@ int Http2Session::initiate_connection()
       }
       // If state_ == PROXY_CONNECTED, we has connected to the proxy
       // using fd_ and tunnel has been established.
+      if(state_ == DISCONNECTED) {
+        assert(fd_ == -1);
+
+        fd_ = socket(get_config()->downstream_addr.storage.ss_family,
+                     SOCK_STREAM | SOCK_CLOEXEC, 0);
+      }
+
       bev_ = bufferevent_openssl_socket_new(evbase_, fd_, ssl_,
                                             BUFFEREVENT_SSL_CONNECTING,
                                             BEV_OPT_DEFER_CALLBACKS);
@@ -471,33 +481,39 @@ int Http2Session::initiate_connection()
          // TODO maybe not thread-safe?
          const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
          get_config()->downstream_addrlen);
-    } else if(state_ == DISCONNECTED) {
-      // Without TLS and proxy.
-      bev_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_DEFER_CALLBACKS);
-      if(!bev_) {
-        SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
-        return SHRPX_ERR_NETWORK;
-      }
-      rv = bufferevent_socket_connect
-        (bev_,
-         const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
-         get_config()->downstream_addrlen);
     } else {
-      assert(state_ == PROXY_CONNECTED);
-      // Without TLS but with proxy.
+      if(state_ == DISCONNECTED) {
+        // Without TLS and proxy.
+        assert(fd_ == -1);
+
+        fd_ = socket(get_config()->downstream_addr.storage.ss_family,
+                     SOCK_STREAM | SOCK_CLOEXEC, 0);
+      }
+
       bev_ = bufferevent_socket_new(evbase_, fd_, BEV_OPT_DEFER_CALLBACKS);
       if(!bev_) {
         SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
         return SHRPX_ERR_NETWORK;
       }
-      // Connection already established.
-      eventcb(bev_, BEV_EVENT_CONNECTED, this);
-      // eventcb() has no return value. Check state_ to whether it was
-      // failed or not.
+
       if(state_ == DISCONNECTED) {
-        return -1;
+        rv = bufferevent_socket_connect
+          (bev_,
+           const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
+           get_config()->downstream_addrlen);
+      } else {
+        // Without TLS but with proxy.
+
+        // Connection already established.
+        eventcb(bev_, BEV_EVENT_CONNECTED, this);
+        // eventcb() has no return value. Check state_ to whether it was
+        // failed or not.
+        if(state_ == DISCONNECTED) {
+          return -1;
+        }
       }
     }
+
     if(rv != 0) {
       return SHRPX_ERR_NETWORK;
     }

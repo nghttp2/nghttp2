@@ -42,7 +42,7 @@ struct WorkerStat {
 
 class Worker {
 public:
-  Worker(const WorkerInfo& info);
+  Worker(const WorkerInfo *info);
   ~Worker();
   void run();
 private:
@@ -52,7 +52,7 @@ private:
   int fd_;
 };
 
-void start_threaded_worker(WorkerInfo info);
+void start_threaded_worker(WorkerInfo *info);
 
 } // namespace shrpx
 

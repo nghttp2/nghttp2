@@ -262,3 +262,16 @@ used in frontend, and host is replaced with which appears in
 precedence.  If the above conditions are not met with the host value
 in :authority header field, rewrite is retried with the value in host
 header field.
+
+Hot deploy
+----------
+
+nghttpx supports hot deploy feature using signals.  The host deploy in
+nghttpx is multi step process.  First send USR2 signal to nghttpx
+process.  It will do fork and execute new executable, using same
+command-line arguments and environment variables.  At this point, both
+current and new processes can accept requests.  To gracefully shutdown
+current process, send QUIT signal to current nghttpx process.  When
+all existing frontend connections are done, the current process will
+exit.  At this point, only new nghttpx process exists and serves
+incoming requests.

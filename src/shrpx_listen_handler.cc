@@ -28,7 +28,6 @@
 
 #include <cerrno>
 #include <thread>
-#include <system_error>
 
 #include <event2/bufferevent_ssl.h>
 
@@ -36,6 +35,7 @@
 #include "shrpx_thread_event_receiver.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
+#include "shrpx_worker_config.h"
 #include "shrpx_config.h"
 #include "shrpx_http2_session.h"
 #include "util.h"
@@ -51,8 +51,11 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
     cl_ssl_ctx_(cl_ssl_ctx),
     rate_limit_group_(bufferevent_rate_limit_group_new
                       (evbase, get_config()->worker_rate_limit_cfg)),
+    evlistener4_(nullptr),
+    evlistener6_(nullptr),
     worker_stat_(util::make_unique<WorkerStat>()),
-    worker_round_robin_cnt_(0)
+    worker_round_robin_cnt_(0),
+    num_worker_shutdown_(0)
 {}
 
 ListenHandler::~ListenHandler()
@@ -68,51 +71,114 @@ void ListenHandler::worker_reopen_log_files()
   wev.type = REOPEN_LOG;
 
   for(auto& info : workers_) {
-    bufferevent_write(info.bev, &wev, sizeof(wev));
+    bufferevent_write(info->bev, &wev, sizeof(wev));
   }
 }
+
+namespace {
+void worker_writecb(bufferevent *bev, void *ptr)
+{
+  auto listener_handler = static_cast<ListenHandler*>(ptr);
+  auto output = bufferevent_get_output(bev);
+
+  if(!worker_config.graceful_shutdown ||
+     evbuffer_get_length(output) != 0) {
+    return;
+  }
+
+  // If graceful_shutdown is true and nothing left to send, we sent
+  // graceful shutdown event to worker successfully.  The worker is
+  // now doing shutdown.
+  listener_handler->notify_worker_shutdown();
+
+  // Disable bev so that this won' be called accidentally in the
+  // future.
+  bufferevent_disable(bev, EV_READ | EV_WRITE);
+}
+} // namespace
 
 void ListenHandler::create_worker_thread(size_t num)
 {
   workers_.resize(0);
   for(size_t i = 0; i < num; ++i) {
     int rv;
-    auto info = WorkerInfo();
-    rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info.sv);
+    auto info = util::make_unique<WorkerInfo>();
+    rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
     if(rv == -1) {
       LLOG(ERROR, this) << "socketpair() failed: errno=" << errno;
       continue;
     }
-    evutil_make_socket_nonblocking(info.sv[0]);
-    evutil_make_socket_nonblocking(info.sv[1]);
-    info.sv_ssl_ctx = sv_ssl_ctx_;
-    info.cl_ssl_ctx = cl_ssl_ctx_;
-    try {
-      auto thread = std::thread{start_threaded_worker, info};
-      thread.detach();
-    } catch(const std::system_error& error) {
-      LLOG(ERROR, this) << "Could not start thread: code=" << error.code()
-                        << " msg=" << error.what();
-      for(size_t j = 0; j < 2; ++j) {
-        close(info.sv[j]);
-      }
-      continue;
+
+    for(int j = 0; j < 2; ++j) {
+      evutil_make_socket_nonblocking(info->sv[j]);
+      evutil_make_socket_closeonexec(info->sv[j]);
     }
-    auto bev = bufferevent_socket_new(evbase_, info.sv[0],
+
+    info->sv_ssl_ctx = sv_ssl_ctx_;
+    info->cl_ssl_ctx = cl_ssl_ctx_;
+
+    info->fut = std::async(std::launch::async, start_threaded_worker,
+                           info.get());
+
+    auto bev = bufferevent_socket_new(evbase_, info->sv[0],
                                       BEV_OPT_DEFER_CALLBACKS);
     if(!bev) {
       LLOG(ERROR, this) << "bufferevent_socket_new() failed";
       for(size_t j = 0; j < 2; ++j) {
-        close(info.sv[j]);
+        close(info->sv[j]);
       }
       continue;
     }
-    info.bev = bev;
 
-    workers_.push_back(info);
+    bufferevent_setcb(bev, nullptr, worker_writecb, nullptr, this);
+
+    info->bev = bev;
+
+    workers_.push_back(std::move(info));
 
     if(LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
+    }
+  }
+}
+
+void ListenHandler::join_worker()
+{
+  int n = 0;
+
+  if(LOG_ENABLED(INFO)) {
+    LLOG(INFO, this) << "Waiting for worker thread to join: n="
+                     << workers_.size();
+  }
+
+  for(auto& worker : workers_) {
+    worker->fut.get();
+    if(LOG_ENABLED(INFO)) {
+      LLOG(INFO, this) << "Thread #" << n << " joined";
+    }
+    ++n;
+  }
+}
+
+void ListenHandler::graceful_shutdown_worker()
+{
+  if(get_config()->num_worker == 1) {
+    return;
+  }
+
+  for(auto& worker : workers_) {
+    WorkerEvent wev;
+    memset(&wev, 0, sizeof(wev));
+    wev.type = GRACEFUL_SHUTDOWN;
+
+    if(LOG_ENABLED(INFO)) {
+      LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
+    }
+
+    auto output = bufferevent_get_output(worker->bev);
+
+    if(evbuffer_add(output, &wev, sizeof(wev)) != 0) {
+      LLOG(FATAL, this) << "evbuffer_add() failed";
     }
   }
 }
@@ -123,6 +189,9 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
   if(LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
+
+  evutil_make_socket_closeonexec(fd);
+
   if(get_config()->num_worker == 1) {
 
     if(worker_stat_->num_connections >=
@@ -158,7 +227,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
   wev.client_fd = fd;
   memcpy(&wev.client_addr, addr, addrlen);
   wev.client_addrlen = addrlen;
-  auto output = bufferevent_get_output(workers_[idx].bev);
+  auto output = bufferevent_get_output(workers_[idx]->bev);
   if(evbuffer_add(output, &wev, sizeof(wev)) != 0) {
     LLOG(FATAL, this) << "evbuffer_add() failed";
     close(fd);
@@ -179,6 +248,94 @@ int ListenHandler::create_http2_session()
   http2session_ = util::make_unique<Http2Session>(evbase_, cl_ssl_ctx_);
   rv = http2session_->init_notification();
   return rv;
+}
+
+const WorkerStat* ListenHandler::get_worker_stat() const
+{
+  return worker_stat_.get();
+}
+
+void ListenHandler::set_evlistener4(evconnlistener *evlistener4)
+{
+  evlistener4_ = evlistener4;
+}
+
+evconnlistener* ListenHandler::get_evlistener4() const
+{
+  return evlistener4_;
+}
+
+void ListenHandler::set_evlistener6(evconnlistener *evlistener6)
+{
+  evlistener6_ = evlistener6;
+}
+
+evconnlistener* ListenHandler::get_evlistener6() const
+{
+  return evlistener6_;
+}
+
+void ListenHandler::disable_evlistener()
+{
+  if(evlistener4_) {
+    evconnlistener_disable(evlistener4_);
+  }
+
+  if(evlistener6_) {
+    evconnlistener_disable(evlistener6_);
+  }
+}
+
+namespace {
+void perform_accept_pending_connection(ListenHandler *listener_handler,
+                                       evconnlistener *listener)
+{
+  if(!listener) {
+    return;
+  }
+
+  auto server_fd = evconnlistener_get_fd(listener);
+
+  for(;;) {
+    sockaddr_union sockaddr;
+    socklen_t addrlen = sizeof(sockaddr);
+
+    auto fd = accept(server_fd, &sockaddr.sa, &addrlen);
+
+    if(fd == -1) {
+      if(errno == EINTR ||
+         errno == ENETDOWN ||
+         errno == EPROTO ||
+         errno == ENOPROTOOPT ||
+         errno == EHOSTDOWN ||
+         errno == ENONET ||
+         errno == EHOSTUNREACH ||
+         errno == EOPNOTSUPP ||
+         errno == ENETUNREACH) {
+        continue;
+      }
+
+      return;
+    }
+
+    evutil_make_socket_nonblocking(fd);
+
+    listener_handler->accept_connection(fd, &sockaddr.sa, addrlen);
+  }
+}
+} // namespace
+
+void ListenHandler::accept_pending_connection()
+{
+  perform_accept_pending_connection(this, evlistener4_);
+  perform_accept_pending_connection(this, evlistener6_);
+}
+
+void ListenHandler::notify_worker_shutdown()
+{
+  if(++num_worker_shutdown_ == workers_.size()) {
+    event_base_loopbreak(evbase_);
+  }
 }
 
 } // namespace shrpx

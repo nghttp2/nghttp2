@@ -206,6 +206,8 @@ struct Config {
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_option *http2_option;
+  char **argv;
+  char *cwd;
   size_t downstream_addrlen;
   size_t num_worker;
   size_t http2_max_concurrent_streams;
@@ -232,6 +234,7 @@ struct Config {
   shrpx_proto downstream_proto;
   int syslog_facility;
   int backlog;
+  int argc;
   uid_t uid;
   gid_t gid;
   uint16_t port;

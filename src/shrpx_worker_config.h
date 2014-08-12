@@ -34,6 +34,7 @@ struct WorkerConfig {
   int errorlog_fd;
   // true if errorlog_fd is referring to a terminal.
   bool errorlog_tty;
+  bool graceful_shutdown;
 
   WorkerConfig();
 };

@@ -35,6 +35,7 @@
 #include "shrpx_http2_downstream_connection.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
+#include "shrpx_worker_config.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -265,6 +266,12 @@ ClientHandler::~ClientHandler()
   }
 
   --worker_stat_->num_connections;
+
+  // TODO If backend is http/2, and it is in CONNECTED state, signal
+  // it and make it loopbreak when output is zero.
+  if(worker_config.graceful_shutdown && worker_stat_->num_connections == 0) {
+    event_base_loopbreak(get_evbase());
+  }
 
   if(reneg_shutdown_timerev_) {
     event_free(reneg_shutdown_timerev_);

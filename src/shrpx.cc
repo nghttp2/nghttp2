@@ -36,6 +36,7 @@
 #include <getopt.h>
 #include <syslog.h>
 #include <signal.h>
+#include <limits.h>
 
 #include <limits>
 #include <cstdlib>
@@ -55,9 +56,12 @@
 #include "shrpx_listen_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker_config.h"
+#include "shrpx_worker.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
+
+extern char **environ;
 
 using namespace nghttp2;
 
@@ -65,7 +69,18 @@ namespace shrpx {
 
 namespace {
 const int REOPEN_LOG_SIGNAL = SIGUSR1;
+const int EXEC_BINARY_SIGNAL = SIGUSR2;
+const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 } // namespace
+
+// Environment variables to tell new binary the listening socket's
+// file descriptors.  They are not close-on-exec.
+#define ENV_LISTENER4_FD "NGHTTPX_LISTENER4_FD"
+#define ENV_LISTENER6_FD "NGHTTPX_LISTENER6_FD"
+
+// Environment variable to tell new binary the port number the current
+// binary is listening to.
+#define ENV_PORT "NGHTTPX_PORT"
 
 namespace {
 void ssl_acceptcb(evconnlistener *listener, int fd,
@@ -140,8 +155,49 @@ void evlistener_errorcb(evconnlistener *listener, void *ptr)
 } // namespace
 
 namespace {
+evconnlistener* new_evlistener(ListenHandler *handler, int fd)
+{
+  auto evlistener = evconnlistener_new
+    (handler->get_evbase(),
+     ssl_acceptcb,
+     handler,
+     LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
+     get_config()->backlog,
+     fd);
+  evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
+  return evlistener;
+}
+} // namespace
+
+namespace {
 evconnlistener* create_evlistener(ListenHandler *handler, int family)
 {
+  {
+    auto envfd = getenv(family == AF_INET ?
+                        ENV_LISTENER4_FD : ENV_LISTENER6_FD);
+    auto envport = getenv(ENV_PORT);
+
+    if(envfd && envport) {
+      auto fd = strtoul(envfd, nullptr, 10);
+      auto port = strtoul(envport, nullptr, 10);
+
+      // Only do this iff NGHTTPX_PORT == get_config()->port.
+      // Otherwise, close fd, and create server socket as usual.
+
+      if(port == get_config()->port) {
+        if(LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Listening on port " << get_config()->port;
+        }
+
+        return new_evlistener(handler, fd);
+      }
+
+      LOG(WARNING) << "Port was changed between old binary (" << port
+                   << ") and new binary (" << get_config()->port << ")";
+      close(fd);
+    }
+  }
+
   addrinfo hints;
   int fd = -1;
   int rv;
@@ -222,15 +278,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
     LOG(INFO) << "Listening on " << host << ", port " << get_config()->port;
   }
 
-  auto evlistener = evconnlistener_new
-    (handler->get_evbase(),
-     ssl_acceptcb,
-     handler,
-     LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
-     get_config()->backlog,
-     fd);
-  evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
-  return evlistener;
+  return new_evlistener(handler, fd);
 }
 } // namespace
 
@@ -286,6 +334,122 @@ void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg)
 } // namespace
 
 namespace {
+void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
+{
+  auto listener_handler = static_cast<ListenHandler*>(arg);
+
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Executing new binary";
+  }
+
+  auto pid = fork();
+
+  if(pid == -1) {
+    auto error = errno;
+    LOG(ERROR) << "fork() failed errno=" << error;
+    return;
+  }
+
+  if(pid != 0) {
+    return;
+  }
+
+  auto exec_path = util::get_exec_path(get_config()->argc,
+                                       get_config()->argv,
+                                       get_config()->cwd);
+
+  if(!exec_path) {
+    LOG(ERROR) << "Could not resolve the executable path";
+    return;
+  }
+
+  auto argv =
+    static_cast<char**>(malloc(sizeof(char*) * (get_config()->argc + 1)));
+
+  argv[0] = exec_path;
+  for(int i = 1; i < get_config()->argc; ++i) {
+    argv[i] = strdup(get_config()->argv[i]);
+  }
+  argv[get_config()->argc] = nullptr;
+
+  size_t envlen = 0;
+  for(char **p = environ; *p; ++p, ++envlen);
+  // 3 for missing fd4, fd6 and port.
+  auto envp = static_cast<char**>(malloc(sizeof(char*) * (envlen + 3 + 1)));
+  size_t envidx = 0;
+
+  auto evlistener4 = listener_handler->get_evlistener4();
+  if(evlistener4) {
+    std::string fd4 = ENV_LISTENER4_FD "=";
+    fd4 += util::utos(evconnlistener_get_fd(evlistener4));
+    envp[envidx++] = strdup(fd4.c_str());
+  }
+
+  auto evlistener6 = listener_handler->get_evlistener6();
+  if(evlistener6) {
+    std::string fd6 = ENV_LISTENER6_FD "=";
+    fd6 += util::utos(evconnlistener_get_fd(evlistener6));
+    envp[envidx++] = strdup(fd6.c_str());
+  }
+
+  std::string port = ENV_PORT "=";
+  port += util::utos(get_config()->port);
+  envp[envidx++] = strdup(port.c_str());
+
+  for(size_t i = 0; i < envlen; ++i) {
+    if(strcmp(ENV_LISTENER4_FD, environ[i]) == 0 ||
+       strcmp(ENV_LISTENER6_FD, environ[i]) == 0 ||
+       strcmp(ENV_PORT, environ[i]) == 0) {
+      continue;
+    }
+
+    envp[envidx++] = environ[i];
+  }
+
+  envp[envidx++] = nullptr;
+
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "cmdline";
+    for(int i = 0; argv[i]; ++i) {
+      LOG(INFO) << i << ": " << argv[i];
+    }
+    LOG(INFO) << "environ";
+    for(int i = 0; envp[i]; ++i) {
+      LOG(INFO) << i << ": " << envp[i];
+    }
+  }
+
+  if(execve(argv[0], argv, envp) == -1) {
+    auto error = errno;
+    LOG(ERROR) << "execve failed: errno=" << error;
+    exit(1);
+  }
+}
+} // namespace
+
+namespace {
+void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg)
+{
+  auto listener_handler = static_cast<ListenHandler*>(arg);
+
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Graceful shutdown signal received";
+  }
+
+  listener_handler->disable_evlistener();
+
+  // After disabling accepting new connection, disptach incoming
+  // connection in backlog.
+
+  listener_handler->accept_pending_connection();
+
+  worker_config.graceful_shutdown = true;
+
+  listener_handler->graceful_shutdown_worker();
+}
+} // namespace
+
+namespace {
 std::unique_ptr<std::string> generate_time()
 {
   char buf[32];
@@ -310,7 +474,18 @@ std::unique_ptr<std::string> generate_time()
 namespace {
 void refresh_cb(evutil_socket_t sig, short events, void *arg)
 {
+  auto listener_handler = static_cast<ListenHandler*>(arg);
+  auto worker_stat = listener_handler->get_worker_stat();
+
   mod_config()->cached_time = generate_time();
+
+  // In multi threaded mode (get_config()->num_worker > 1), we have to
+  // wait for event notification to workers to finish.
+  if(get_config()->num_worker == 1 &&
+     worker_config.graceful_shutdown &&
+     (!worker_stat || worker_stat->num_connections == 0)) {
+    event_base_loopbreak(listener_handler->get_evbase());
+  }
 }
 } // namespace
 
@@ -358,6 +533,9 @@ int event_loop()
     exit(EXIT_FAILURE);
   }
 
+  listener_handler->set_evlistener4(evlistener4);
+  listener_handler->set_evlistener6(evlistener6);
+
   // ListenHandler loads private key, and we listen on a priveleged port.
   // After that, we drop the root privileges if needed.
   drop_privileges();
@@ -366,10 +544,11 @@ int event_loop()
   sigset_t signals;
   sigemptyset(&signals);
   sigaddset(&signals, REOPEN_LOG_SIGNAL);
-
+  sigaddset(&signals, EXEC_BINARY_SIGNAL);
+  sigaddset(&signals, GRACEFUL_SHUTDOWN_SIGNAL);
   rv = pthread_sigmask(SIG_BLOCK, &signals, nullptr);
   if(rv != 0) {
-    LOG(ERROR) << "Blocking REOPEN_LOG_SIGNAL failed: " << strerror(rv);
+    LOG(ERROR) << "Blocking signals failed: " << strerror(rv);
   }
 #endif // !NOTHREADS
 
@@ -382,7 +561,7 @@ int event_loop()
 #ifndef NOTHREADS
   rv = pthread_sigmask(SIG_UNBLOCK, &signals, nullptr);
   if(rv != 0) {
-    LOG(ERROR) << "Unblocking REOPEN_LOG_SIGNAL failed: " << strerror(rv);
+    LOG(ERROR) << "Unblocking signals failed: " << strerror(rv);
   }
 #endif // !NOTHREADS
 
@@ -399,8 +578,31 @@ int event_loop()
     }
   }
 
+  auto exec_binary_signal_event = evsignal_new(evbase, EXEC_BINARY_SIGNAL,
+                                               exec_binary_signal_cb,
+                                               listener_handler);
+  rv = event_add(exec_binary_signal_event, nullptr);
+
+  if(rv == -1) {
+    LOG(FATAL) << "event_add for exec_binary_signal_event failed";
+
+    exit(EXIT_FAILURE);
+  }
+
+  auto graceful_shutdown_signal_event = evsignal_new
+    (evbase, GRACEFUL_SHUTDOWN_SIGNAL, graceful_shutdown_signal_cb,
+     listener_handler);
+
+  rv = event_add(graceful_shutdown_signal_event, nullptr);
+
+  if(rv == -1) {
+    LOG(FATAL) << "event_add for graceful_shutdown_signal_event failed";
+
+    exit(EXIT_FAILURE);
+  }
+
   auto refresh_event = event_new(evbase, -1, EV_PERSIST, refresh_cb,
-                                 nullptr);
+                                 listener_handler);
 
   if(!refresh_event) {
     LOG(ERROR) << "event_new failed";
@@ -422,8 +624,16 @@ int event_loop()
   }
   event_base_loop(evbase, 0);
 
+  listener_handler->join_worker();
+
   if(refresh_event) {
     event_free(refresh_event);
+  }
+  if(graceful_shutdown_signal_event) {
+    event_free(graceful_shutdown_signal_event);
+  }
+  if(exec_binary_signal_event) {
+    event_free(exec_binary_signal_event);
   }
   if(reopen_log_signal_event) {
     event_free(reopen_log_signal_event);
@@ -570,6 +780,8 @@ void fill_default_config()
   mod_config()->tls_proto_mask = 0;
   mod_config()->cached_time = generate_time();
   mod_config()->no_location_rewrite = false;
+  mod_config()->argc = 0;
+  mod_config()->argv = nullptr;
 }
 } // namespace
 
@@ -932,6 +1144,23 @@ int main(int argc, char **argv)
   Log::set_severity_level(WARNING);
   create_config();
   fill_default_config();
+
+  // We have to copy argv, since getopt_long may change its content.
+  mod_config()->argc = argc;
+  mod_config()->argv = new char*[argc];
+
+  for(int i = 0; i < argc; ++i) {
+    mod_config()->argv[i] = strdup(argv[i]);
+  }
+
+  char cwd[PATH_MAX];
+
+  mod_config()->cwd = getcwd(cwd, sizeof(cwd));
+  if(mod_config()->cwd == nullptr) {
+    auto error = errno;
+    LOG(FATAL) << "failed to get current working directory: errno=" << error;
+    exit(EXIT_FAILURE);
+  }
 
   std::vector<std::pair<const char*, const char*> > cmdcfgs;
   while(1) {
@@ -1487,6 +1716,10 @@ int main(int argc, char **argv)
   sigaction(SIGPIPE, &act, 0);
 
   event_loop();
+
+  if(LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Shutdown momentarily";
+  }
 
   return 0;
 }

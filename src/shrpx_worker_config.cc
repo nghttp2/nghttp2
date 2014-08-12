@@ -29,7 +29,8 @@ namespace shrpx {
 WorkerConfig::WorkerConfig()
   : accesslog_fd(-1),
     errorlog_fd(-1),
-    errorlog_tty(false)
+    errorlog_tty(false),
+    graceful_shutdown(false)
 {}
 
 #ifndef NOTHREADS

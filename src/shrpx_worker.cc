@@ -43,10 +43,10 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-Worker::Worker(const WorkerInfo& info)
-  : sv_ssl_ctx_(info.sv_ssl_ctx),
-    cl_ssl_ctx_(info.cl_ssl_ctx),
-    fd_(info.sv[1])
+Worker::Worker(const WorkerInfo *info)
+  : sv_ssl_ctx_(info->sv_ssl_ctx),
+    cl_ssl_ctx_(info->cl_ssl_ctx),
+    fd_(info->sv[1])
 {}
 
 Worker::~Worker()
@@ -108,7 +108,7 @@ void Worker::run()
   event_base_loop(evbase.get(), 0);
 }
 
-void start_threaded_worker(WorkerInfo info)
+void start_threaded_worker(WorkerInfo *info)
 {
   Worker worker(info);
   worker.run();

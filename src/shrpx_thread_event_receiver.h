@@ -42,7 +42,8 @@ struct WorkerStat;
 
 enum WorkerEventType {
   NEW_CONNECTION = 0x01,
-  REOPEN_LOG = 0x02
+  REOPEN_LOG = 0x02,
+  GRACEFUL_SHUTDOWN = 0x03,
 };
 
 struct WorkerEvent {

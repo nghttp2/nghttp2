@@ -589,7 +589,7 @@ bool numeric_host(const char *hostname)
 
 int reopen_log_file(const char *path)
 {
-  auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT,
+  auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
 
   if(fd == -1) {
@@ -614,6 +614,31 @@ std::string ascii_dump(const uint8_t *data, size_t len)
   }
 
   return res;
+}
+
+char* get_exec_path(int argc, char **const argv, const char *cwd)
+{
+  if(argc == 0 || cwd == nullptr) {
+    return nullptr;
+  }
+
+  auto argv0 = argv[0];
+  auto len = strlen(argv0);
+
+  char *path;
+
+  if(argv0[0] == '/') {
+    path = static_cast<char*>(malloc(len + 1));
+    memcpy(path, argv0, len + 1);
+  } else {
+    auto cwdlen = strlen(cwd);
+    path = static_cast<char*>(malloc(len + 1 + cwdlen + 1));
+    memcpy(path, cwd, cwdlen);
+    path[cwdlen] = '/';
+    memcpy(path + cwdlen + 1, argv0, len + 1);
+  }
+
+  return path;
 }
 
 } // namespace util

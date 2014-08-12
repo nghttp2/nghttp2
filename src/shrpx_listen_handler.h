@@ -32,15 +32,18 @@
 
 #include <memory>
 #include <vector>
+#include <future>
 
 #include <openssl/ssl.h>
 
 #include <event.h>
 #include <event2/bufferevent.h>
+#include <event2/listener.h>
 
 namespace shrpx {
 
 struct WorkerInfo {
+  std::future<void> fut;
   SSL_CTX *sv_ssl_ctx;
   SSL_CTX *cl_ssl_ctx;
   bufferevent *bev;
@@ -59,8 +62,18 @@ public:
   void worker_reopen_log_files();
   event_base* get_evbase() const;
   int create_http2_session();
+  const WorkerStat* get_worker_stat() const;
+  void set_evlistener4(evconnlistener *evlistener4);
+  evconnlistener* get_evlistener4() const;
+  void set_evlistener6(evconnlistener *evlistener6);
+  evconnlistener* get_evlistener6() const;
+  void disable_evlistener();
+  void accept_pending_connection();
+  void graceful_shutdown_worker();
+  void join_worker();
+  void notify_worker_shutdown();
 private:
-  std::vector<WorkerInfo> workers_;
+  std::vector<std::unique_ptr<WorkerInfo>> workers_;
   event_base *evbase_;
   // The frontend server SSL_CTX
   SSL_CTX *sv_ssl_ctx_;
@@ -70,8 +83,11 @@ private:
   // multi-threaded case, see shrpx_worker.cc.
   std::unique_ptr<Http2Session> http2session_;
   bufferevent_rate_limit_group *rate_limit_group_;
+  evconnlistener *evlistener4_;
+  evconnlistener *evlistener6_;
   std::unique_ptr<WorkerStat> worker_stat_;
   unsigned int worker_round_robin_cnt_;
+  int num_worker_shutdown_;
 };
 
 } // namespace shrpx

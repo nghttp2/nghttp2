@@ -77,11 +77,17 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
   auto upstream = downstream->get_upstream();
   if(!bev_) {
     auto evbase = client_handler_->get_evbase();
+
+    auto fd = socket(get_config()->downstream_addr.storage.ss_family,
+                     SOCK_STREAM | SOCK_CLOEXEC, 0);
+
     bev_ = bufferevent_socket_new
-      (evbase, -1,
+      (evbase, fd,
        BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
     if(!bev_) {
       DCLOG(INFO, this) << "bufferevent_socket_new() failed";
+      close(fd);
+
       return SHRPX_ERR_NETWORK;
     }
     int rv = bufferevent_socket_connect
