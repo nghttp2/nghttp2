@@ -103,15 +103,11 @@ void ListenHandler::create_worker_thread(size_t num)
   for(size_t i = 0; i < num; ++i) {
     int rv;
     auto info = util::make_unique<WorkerInfo>();
-    rv = socketpair(AF_UNIX, SOCK_STREAM, 0, info->sv);
+    rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0,
+                    info->sv);
     if(rv == -1) {
       LLOG(ERROR, this) << "socketpair() failed: errno=" << errno;
       continue;
-    }
-
-    for(int j = 0; j < 2; ++j) {
-      evutil_make_socket_nonblocking(info->sv[j]);
-      evutil_make_socket_closeonexec(info->sv[j]);
     }
 
     info->sv_ssl_ctx = sv_ssl_ctx_;

@@ -193,15 +193,13 @@ int Http2Session::init_notification()
 {
   int rv;
   int sockpair[2];
-  rv = socketpair(AF_UNIX, SOCK_STREAM, 0, sockpair);
+  rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0,
+                  sockpair);
   if(rv == -1) {
     SSLOG(FATAL, this) << "socketpair() failed: errno=" << errno;
     return -1;
   }
-  for(int i = 0; i < 2; ++i) {
-    evutil_make_socket_nonblocking(sockpair[i]);
-    evutil_make_socket_closeonexec(sockpair[i]);
-  }
+
   wrbev_ = bufferevent_socket_new(evbase_, sockpair[0],
                                   BEV_OPT_CLOSE_ON_FREE|
                                   BEV_OPT_DEFER_CALLBACKS);
