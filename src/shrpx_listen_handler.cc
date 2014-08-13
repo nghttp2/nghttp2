@@ -106,7 +106,8 @@ void ListenHandler::create_worker_thread(size_t num)
     rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0,
                     info->sv);
     if(rv == -1) {
-      LLOG(ERROR, this) << "socketpair() failed: errno=" << errno;
+      auto error = errno;
+      LLOG(ERROR, this) << "socketpair() failed: errno=" << error;
       continue;
     }
 

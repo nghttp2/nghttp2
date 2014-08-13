@@ -287,11 +287,13 @@ void drop_privileges()
 {
   if(getuid() == 0 && get_config()->uid != 0) {
     if(setgid(get_config()->gid) != 0) {
-      LOG(FATAL) << "Could not change gid: " << strerror(errno);
+      auto error = errno;
+      LOG(FATAL) << "Could not change gid: " << strerror(error);
       exit(EXIT_FAILURE);
     }
     if(setuid(get_config()->uid) != 0) {
-      LOG(FATAL) << "Could not change uid: " << strerror(errno);
+      auto error = errno;
+      LOG(FATAL) << "Could not change uid: " << strerror(error);
       exit(EXIT_FAILURE);
     }
     if(setuid(0) != -1) {
@@ -527,7 +529,8 @@ int event_loop()
   auto listener_handler = new ListenHandler(evbase, sv_ssl_ctx, cl_ssl_ctx);
   if(get_config()->daemon) {
     if(daemon(0, 0) == -1) {
-      LOG(FATAL) << "Failed to daemonize: " << strerror(errno);
+      auto error = errno;
+      LOG(FATAL) << "Failed to daemonize: " << strerror(error);
       exit(EXIT_FAILURE);
     }
   }

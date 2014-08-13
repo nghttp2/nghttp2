@@ -196,7 +196,8 @@ int Http2Session::init_notification()
   rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0,
                   sockpair);
   if(rv == -1) {
-    SSLOG(FATAL, this) << "socketpair() failed: errno=" << errno;
+    auto error = errno;
+    SSLOG(FATAL, this) << "socketpair() failed: errno=" << error;
     return -1;
   }
 
@@ -277,8 +278,9 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char*>(&val), sizeof(val)) == -1) {
+      auto error = errno;
       SSLOG(WARNING, http2session)
-        << "Setting option TCP_NODELAY failed: errno=" << errno;
+        << "Setting option TCP_NODELAY failed: errno=" << error;
     }
     return;
   }
