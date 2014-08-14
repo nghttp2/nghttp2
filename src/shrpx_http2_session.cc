@@ -767,7 +767,19 @@ int on_stream_close_callback
 
       downstream->reset_response_datalen();
 
-      if(error_code == NGHTTP2_NO_ERROR) {
+      if(downstream->get_upgraded() &&
+         downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+        // For tunneled connection, we have to submit RST_STREAM to
+        // upstream *after* whole response body is sent. We just set
+        // MSG_COMPLETE here. Upstream will take care of that.
+        if(LOG_ENABLED(INFO)) {
+          SSLOG(INFO, http2session) << "RST_STREAM against tunneled stream "
+                                    << "stream_id="
+                                    << stream_id;
+        }
+        downstream->get_upstream()->on_downstream_body_complete(downstream);
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
+      } else if(error_code == NGHTTP2_NO_ERROR) {
         if(downstream->get_response_state() != Downstream::MSG_COMPLETE) {
           downstream->set_response_state(Downstream::MSG_RESET);
         }
@@ -1149,23 +1161,7 @@ int on_frame_recv_callback
       auto downstream = sd->dconn->get_downstream();
       if(downstream &&
          downstream->get_downstream_stream_id() == frame->hd.stream_id) {
-        if(downstream->get_upgraded() &&
-           downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-          // For tunneled connection, we have to submit RST_STREAM to
-          // upstream *after* whole response body is sent. We just set
-          // MSG_COMPLETE here. Upstream will take care of that.
-          if(LOG_ENABLED(INFO)) {
-            SSLOG(INFO, http2session) << "RST_STREAM against tunneled stream "
-                                      << "stream_id="
-                                      << frame->hd.stream_id;
-          }
-          downstream->get_upstream()->on_downstream_body_complete(downstream);
-          downstream->set_response_state(Downstream::MSG_COMPLETE);
-        } else {
-          // If we got RST_STREAM, just flag MSG_RESET to indicate
-          // upstream connection must be terminated.
-          downstream->set_response_state(Downstream::MSG_RESET);
-        }
+
         downstream->set_response_rst_stream_error_code
           (frame->rst_stream.error_code);
         call_downstream_readcb(http2session, downstream);
