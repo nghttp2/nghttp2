@@ -917,9 +917,9 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
       (get_client_handler()->get_upstream_scheme(), get_config()->port);
   }
   size_t nheader = downstream->get_response_headers().size();
-  // 6 means :status, :version and possible via header field.
+  // 8 means server, :status, :version and possible via header field.
   auto nv = util::make_unique<const char*[]>
-    (nheader * 2 + 6 + get_config()->add_response_headers.size() * 2 + 1);
+    (nheader * 2 + 8 + get_config()->add_response_headers.size() * 2 + 1);
 
   size_t hdidx = 0;
   std::string via_value;
@@ -939,11 +939,20 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     } else if(!get_config()->no_via &&
               util::strieq(hd.name.c_str(), "via")) {
       via_value = hd.value;
+    } else if(!get_config()->http2_proxy && !get_config()->client_proxy &&
+              util::strieq(hd.name.c_str(), "server")) {
+      // Rewrite server header field later
     } else {
       nv[hdidx++] = hd.name.c_str();
       nv[hdidx++] = hd.value.c_str();
     }
   }
+
+  if(!get_config()->http2_proxy && !get_config()->client_proxy) {
+    nv[hdidx++] = "server";
+    nv[hdidx++] = get_config()->server_name;
+  }
+
   if(!get_config()->no_via) {
     if(!via_value.empty()) {
       via_value += ", ";

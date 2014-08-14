@@ -1183,8 +1183,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
   auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();
-  // 2 means :status and possible via header field.
-  nva.reserve(nheader + 2 + get_config()->add_response_headers.size());
+  // 3 means :status and possible server and via header field.
+  nva.reserve(nheader + 3 + get_config()->add_response_headers.size());
   std::string via_value;
   auto response_status = util::utos(downstream->get_response_http_status());
   nva.push_back(http2::make_nv_ls(":status", response_status));
@@ -1208,6 +1208,15 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     }
 
     return 0;
+  }
+
+  if(!get_config()->http2_proxy && !get_config()->client_proxy) {
+    nva.push_back(http2::make_nv_lc("server", get_config()->server_name));
+  } else {
+    auto server = downstream->get_norm_response_header("server");
+    if(server != end_headers) {
+      nva.push_back(http2::make_nv_ls("server", (*server).value));
+    }
   }
 
   auto via = downstream->get_norm_response_header("via");

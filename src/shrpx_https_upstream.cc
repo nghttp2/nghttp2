@@ -823,6 +823,19 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     }
   }
 
+  if(!get_config()->http2_proxy && !get_config()->client_proxy) {
+    hdrs += "Server: ";
+    hdrs += get_config()->server_name;
+    hdrs += "\r\n";
+  } else {
+    auto server = downstream->get_norm_response_header("server");
+    if(server != end_headers) {
+      hdrs += "Server: ";
+      hdrs += (*server).value;
+      hdrs += "\r\n";
+    }
+  }
+
   auto via = downstream->get_norm_response_header("via");
   if(get_config()->no_via) {
     if(via != end_headers) {
