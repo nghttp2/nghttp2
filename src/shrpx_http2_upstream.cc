@@ -139,6 +139,8 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
   http->pop_downstream();
   downstream->reset_upstream(this);
   add_downstream(downstream);
+  downstream->init_upstream_timer();
+  downstream->reset_upstream_rtimer();
   downstream->init_response_body_buf();
   downstream->set_stream_id(1);
   downstream->set_priority(0);
