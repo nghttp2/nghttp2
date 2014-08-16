@@ -266,7 +266,7 @@ header field.
 Hot deploy
 ----------
 
-nghttpx supports hot deploy feature using signals.  The host deploy in
+nghttpx supports hot deploy feature using signals.  The hot deploy in
 nghttpx is multi step process.  First send USR2 signal to nghttpx
 process.  It will do fork and execute new executable, using same
 command-line arguments and environment variables.  At this point, both
