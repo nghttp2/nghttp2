@@ -1790,7 +1790,8 @@ int main(int argc, char **argv)
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
-  sigaction(SIGPIPE, &act, 0);
+  sigaction(SIGPIPE, &act, nullptr);
+  sigaction(SIGCHLD, &act, nullptr);
 
   event_loop();
 
