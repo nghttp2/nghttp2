@@ -275,3 +275,12 @@ current process, send QUIT signal to current nghttpx process.  When
 all existing frontend connections are done, the current process will
 exit.  At this point, only new nghttpx process exists and serves
 incoming requests.
+
+Re-opening log files
+--------------------
+
+When rotating log files, it is desirable to re-open log files after
+log rotation daemon renamed existing log files.  To tell nghttpx to
+re-open log files, send USR1 signal to nghttpx process.  It will
+re-open files specified by ``--accesslog-file`` and
+``--errorlog-file`` options.
