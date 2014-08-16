@@ -21,7 +21,7 @@ dnl LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 dnl OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 dnl WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [0.5.2-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [0.6.0-DEV], [t-tujikawa@users.sourceforge.net])
 LT_PREREQ([2.2.6])
 LT_INIT()
 dnl See versioning rule:
