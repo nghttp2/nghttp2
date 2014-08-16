@@ -114,6 +114,15 @@ Performance
     frontend accepts.  Setting 0 means unlimited.
     Default: 0
 
+.. option:: --backend-connections-per-frontend=<NUM>
+
+    
+    Set  maximum   number  of   backend  simultaneous
+    connections   per  frontend.    This  option   is
+    meaningful when the combination of HTTP/2 or SPDY
+    frontend and HTTP/1 backend is used.
+    Default: 100
+
 Timeout
 ^^^^^^^
 
@@ -129,26 +138,40 @@ Timeout
     
     Specify  read   timeout  for   HTTP/1.1  frontend
     connection.
-    Default: 180
+    Default: 30
 
 .. option:: --frontend-write-timeout=<SEC>
 
     
     Specify   write   timeout    for   all   frontend
     connections.
-    Default: 60
+    Default: 30
+
+.. option:: --stream-read-timeout=<SEC>
+
+    
+    Specify read timeout for HTTP/2 and SPDY streams.
+    0 means no timeout.
+    Default: 0
+
+.. option:: --stream-write-timeout=<SEC>
+
+    
+    Specify  write   timeout  for  HTTP/2   and  SPDY
+    streams.  0 means no timeout.
+    Default: 0
 
 .. option:: --backend-read-timeout=<SEC>
 
     
     Specify read timeout for backend connection.
-    Default: 900
+    Default: 30
 
 .. option:: --backend-write-timeout=<SEC>
 
     
     Specify write timeout for backend connection.
-    Default: 60
+    Default: 30
 
 .. option:: --backend-keep-alive-timeout=<SEC>
 
@@ -242,7 +265,7 @@ SSL/TLS
     used in both ALPN and NPN.  The parameter must be
     delimited by  a single  comma only and  any white
     spaces are treated as a part of protocol string.
-    Default: h2-13,spdy/3.1,spdy/3,spdy/2,http/1.1
+    Default: h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1
 
 .. option:: --verify-client
 
@@ -443,6 +466,15 @@ Misc
     
     Don't append to Via  header field.  If Via header
     field is received, it is left unaltered.
+
+.. option:: --no-location-rewrite
+
+    
+    Don't   rewrite   location    header   field   on
+    :option:`--http2-bridge`, :option:`--client`  and default  mode.  For
+    :option:`--http2-proxy`  and :option:`--client-proxy`  mode, location
+    header field  will not  be altered  regardless of
+    this option.
 
 .. option:: --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
 

@@ -69,8 +69,8 @@ OPTIONS
     Specify  ALPN identifier  of the  protocol to  be
     used  when accessing  http  URI without  SSL/TLS.
     Available protocols: spdy/2, spdy/3, spdy/3.1 and
-    h2c-13
-    Default: h2c-13
+    h2c-14
+    Default: h2c-14
 
 .. option:: -v, --verbose
 
