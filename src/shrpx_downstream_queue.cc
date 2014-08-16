@@ -35,29 +35,87 @@ DownstreamQueue::DownstreamQueue()
 
 DownstreamQueue::~DownstreamQueue()
 {
-  for(auto& kv : downstreams_) {
+  for(auto& kv : pending_downstreams_) {
+    delete kv.second;
+  }
+
+  for(auto& kv : active_downstreams_) {
+    delete kv.second;
+  }
+
+  for(auto& kv : failure_downstreams_) {
     delete kv.second;
   }
 }
 
-void DownstreamQueue::add(Downstream *downstream)
+void DownstreamQueue::add_pending(Downstream *downstream)
 {
-  downstreams_[downstream->get_stream_id()] = downstream;
+  pending_downstreams_[downstream->get_stream_id()] = downstream;
+}
+
+void DownstreamQueue::add_failure(Downstream *downstream)
+{
+  failure_downstreams_[downstream->get_stream_id()] = downstream;
+}
+
+void DownstreamQueue::add_active(Downstream *downstream)
+{
+  active_downstreams_[downstream->get_stream_id()] = downstream;
 }
 
 void DownstreamQueue::remove(Downstream *downstream)
 {
-  downstreams_.erase(downstream->get_stream_id());
+  pending_downstreams_.erase(downstream->get_stream_id());
+  active_downstreams_.erase(downstream->get_stream_id());
+  failure_downstreams_.erase(downstream->get_stream_id());
 }
 
 Downstream* DownstreamQueue::find(int32_t stream_id)
 {
-  auto kv = downstreams_.find(stream_id);
-  if(kv == std::end(downstreams_)) {
-    return nullptr;
-  } else {
+  auto kv = pending_downstreams_.find(stream_id);
+
+  if(kv != std::end(pending_downstreams_)) {
     return (*kv).second;
   }
+
+  kv = active_downstreams_.find(stream_id);
+
+  if(kv != std::end(active_downstreams_)) {
+    return (*kv).second;
+  }
+
+  kv = failure_downstreams_.find(stream_id);
+
+  if(kv != std::end(failure_downstreams_)) {
+    return (*kv).second;
+  }
+
+  return nullptr;
+}
+
+Downstream* DownstreamQueue::pop_pending()
+{
+  auto i = std::begin(pending_downstreams_);
+
+  if(i == std::end(pending_downstreams_)) {
+    return nullptr;
+  }
+
+  auto downstream = (*i).second;
+
+  pending_downstreams_.erase(i);
+
+  return downstream;
+}
+
+size_t DownstreamQueue::num_active() const
+{
+  return active_downstreams_.size();
+}
+
+bool DownstreamQueue::pending_empty() const
+{
+  return pending_downstreams_.empty();
 }
 
 } // namespace shrpx

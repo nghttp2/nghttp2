@@ -230,24 +230,14 @@ void on_ctrl_recv_callback
                            << "\n" << ss.str();
     }
 
-    auto dconn = upstream->get_client_handler()->get_downstream_connection();
-    int rv = dconn->attach_downstream(downstream);
-    if(rv != 0) {
-      // If downstream connection fails, issue RST_STREAM.
-      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-      downstream->set_request_state(Downstream::CONNECT_FAIL);
-      return;
-    }
-    rv = downstream->push_request_headers();
-    if(rv != 0) {
-      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-      return;
-    }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
       downstream->disable_upstream_rtimer();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
+
+    upstream->maintain_downstream_concurrency();
+
     break;
   }
   default:
@@ -255,6 +245,43 @@ void on_ctrl_recv_callback
   }
 }
 } // namespace
+
+void SpdyUpstream::maintain_downstream_concurrency()
+{
+  while(get_config()->max_downstream_connections >
+        downstream_queue_.num_active()) {
+    auto downstream = downstream_queue_.pop_pending();
+
+    if(!downstream) {
+      break;
+    }
+
+    initiate_downstream(downstream);
+  }
+}
+
+void SpdyUpstream::initiate_downstream(Downstream *downstream)
+{
+  auto dconn = handler_->get_downstream_connection();
+  int rv = dconn->attach_downstream(downstream);
+  if(rv != 0) {
+    downstream_queue_.add_failure(downstream);
+
+    // If downstream connection fails, issue RST_STREAM.
+    rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    return;
+  }
+  rv = downstream->push_request_headers();
+  if(rv != 0) {
+    downstream_queue_.add_failure(downstream);
+
+    rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    return;
+  }
+
+  downstream_queue_.add_active(downstream);
+}
 
 namespace {
 void on_data_chunk_recv_callback(spdylay_session *session,
@@ -876,12 +903,14 @@ bufferevent_event_cb SpdyUpstream::get_downstream_eventcb()
 
 void SpdyUpstream::add_downstream(Downstream *downstream)
 {
-  downstream_queue_.add(downstream);
+  downstream_queue_.add_pending(downstream);
 }
 
 void SpdyUpstream::remove_downstream(Downstream *downstream)
 {
   downstream_queue_.remove(downstream);
+
+  maintain_downstream_concurrency();
 }
 
 Downstream* SpdyUpstream::find_downstream(int32_t stream_id)

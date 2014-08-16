@@ -796,6 +796,7 @@ void fill_default_config()
   mod_config()->no_location_rewrite = false;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
+  mod_config()->max_downstream_connections = 100;
 }
 } // namespace
 
@@ -891,6 +892,13 @@ Performance:
                      Set  maximum number  of simultaneous  connections
                      frontend accepts.  Setting 0 means unlimited.
                      Default: 0
+  --backend-connections-per-frontend=<NUM>
+                     Set  maximum   number  of   backend  simultaneous
+                     connections   per  frontend.    This  option   is
+                     meaningful when the combination of HTTP/2 or SPDY
+                     frontend and HTTP/1 backend is used.
+                     Default: )"
+      << get_config()->max_downstream_connections << R"(
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
@@ -1246,6 +1254,7 @@ int main(int argc, char **argv)
       {"stream-read-timeout", required_argument, &flag, 60},
       {"stream-write-timeout", required_argument, &flag, 61},
       {"no-location-rewrite", no_argument, &flag, 62},
+      {"backend-connections-per-frontend", required_argument, &flag, 63},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1517,6 +1526,11 @@ int main(int argc, char **argv)
       case 62:
         // --no-location-rewrite
         cmdcfgs.emplace_back(SHRPX_OPT_NO_LOCATION_REWRITE, "yes");
+        break;
+      case 63:
+        // --backend-connections-per-frontend
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND,
+                             optarg);
         break;
       default:
         break;

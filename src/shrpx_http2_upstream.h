@@ -82,6 +82,8 @@ public:
   int consume(int32_t stream_id, size_t len);
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp2_nv>& nva) const;
+  void maintain_downstream_concurrency();
+  void initiate_downstream(Downstream *downstream);
 private:
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;

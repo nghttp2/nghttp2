@@ -125,6 +125,8 @@ const char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
 const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
   "worker-frontend-connections";
 const char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
+const char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
+  "backend-connections-per-frontend";
 
 namespace {
 Config *config = nullptr;
@@ -836,6 +838,22 @@ int parse_config(const char *opt, const char *optarg)
 
   if(util::strieq(opt, SHRPX_OPT_NO_LOCATION_REWRITE)) {
     mod_config()->no_location_rewrite = util::strieq(optarg, "yes");
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND)) {
+    errno = 0;
+
+    auto n = strtoul(optarg, nullptr, 10);
+
+    if(errno != 0 || n < 1) {
+      LOG(ERROR) << "backend-connections-per-frontend: "
+                 << "specify the integer more than or equal to 1";
+      return -1;
+    }
+
+    mod_config()->max_downstream_connections = n;
 
     return 0;
   }

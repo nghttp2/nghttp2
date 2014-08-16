@@ -295,8 +295,6 @@ int on_request_headers(Http2Upstream *upstream,
                        nghttp2_session *session,
                        const nghttp2_frame *frame)
 {
-  int rv;
-
   if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     return 0;
   }
@@ -370,26 +368,6 @@ int on_request_headers(Http2Upstream *upstream,
 
   downstream->inspect_http2_request();
 
-  auto dconn = upstream->get_client_handler()->get_downstream_connection();
-  rv = dconn->attach_downstream(downstream);
-  if(rv != 0) {
-    // downstream connection fails, send error page
-    if(upstream->error_reply(downstream, 503) != 0) {
-      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-    }
-
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-    return 0;
-  }
-  rv = downstream->push_request_headers();
-  if(rv != 0) {
-    if(upstream->error_reply(downstream, 503) != 0) {
-      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-    }
-
-    return 0;
-  }
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
   if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
@@ -397,10 +375,59 @@ int on_request_headers(Http2Upstream *upstream,
     downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
 
+  upstream->maintain_downstream_concurrency();
+
   return 0;
 }
-
 } // namespace
+
+void Http2Upstream::maintain_downstream_concurrency()
+{
+  while(get_config()->max_downstream_connections >
+        downstream_queue_.num_active()) {
+    auto downstream = downstream_queue_.pop_pending();
+
+    if(!downstream) {
+      break;
+    }
+
+    initiate_downstream(downstream);
+  }
+}
+
+void Http2Upstream::initiate_downstream(Downstream *downstream)
+{
+  int rv;
+
+  auto dconn = handler_->get_downstream_connection();
+  rv = dconn->attach_downstream(downstream);
+  if(rv != 0) {
+    downstream_queue_.add_failure(downstream);
+
+    // downstream connection fails, send error page
+    if(error_reply(downstream, 503) != 0) {
+      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    }
+
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+    return;
+  }
+  rv = downstream->push_request_headers();
+  if(rv != 0) {
+    downstream_queue_.add_failure(downstream);
+
+    if(error_reply(downstream, 503) != 0) {
+      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    }
+
+    return;
+  }
+
+  downstream_queue_.add_active(downstream);
+
+  return;
+}
 
 namespace {
 int on_frame_recv_callback
@@ -1143,12 +1170,14 @@ bufferevent_event_cb Http2Upstream::get_downstream_eventcb()
 
 void Http2Upstream::add_downstream(Downstream *downstream)
 {
-  downstream_queue_.add(downstream);
+  downstream_queue_.add_pending(downstream);
 }
 
 void Http2Upstream::remove_downstream(Downstream *downstream)
 {
   downstream_queue_.remove(downstream);
+
+  maintain_downstream_concurrency();
 }
 
 Downstream* Http2Upstream::find_downstream(int32_t stream_id)

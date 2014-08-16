@@ -115,6 +115,7 @@ extern const char SHRPX_OPT_ALTSVC[];
 extern const char SHRPX_OPT_ADD_RESPONSE_HEADER[];
 extern const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[];
 extern const char SHRPX_OPT_NO_LOCATION_REWRITE[];
+extern const char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -217,6 +218,7 @@ struct Config {
   size_t http2_downstream_window_bits;
   size_t http2_upstream_connection_window_bits;
   size_t http2_downstream_connection_window_bits;
+  size_t max_downstream_connections;
   // actual size of downstream_http_proxy_addr
   size_t downstream_http_proxy_addrlen;
   size_t read_rate;

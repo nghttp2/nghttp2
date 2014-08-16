@@ -74,6 +74,9 @@ public:
 
   int handle_ign_data_chunk(size_t len);
 
+  void maintain_downstream_concurrency();
+  void initiate_downstream(Downstream *downstream);
+
   nghttp2::util::EvbufferBuffer sendbuf;
 private:
   DownstreamQueue downstream_queue_;
