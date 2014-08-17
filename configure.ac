@@ -517,6 +517,7 @@ AC_CONFIG_FILES([
   doc/nghttpx-howto.rst
   doc/h2load-howto.rst
   doc/python-apiref.rst
+  doc/building-android-binary.rst
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
 ])
