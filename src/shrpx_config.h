@@ -96,6 +96,10 @@ extern const char SHRPX_OPT_BACKEND_IPV4[];
 extern const char SHRPX_OPT_BACKEND_IPV6[];
 extern const char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[];
 extern const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[];
+extern const char SHRPX_OPT_READ_RATE[];
+extern const char SHRPX_OPT_READ_BURST[];
+extern const char SHRPX_OPT_WRITE_RATE[];
+extern const char SHRPX_OPT_WRITE_BURST[];
 extern const char SHRPX_OPT_WORKER_READ_RATE[];
 extern const char SHRPX_OPT_WORKER_READ_BURST[];
 extern const char SHRPX_OPT_WORKER_WRITE_RATE[];
@@ -190,6 +194,8 @@ struct Config {
   std::unique_ptr<char[]> downstream_http_proxy_host;
   std::unique_ptr<char[]> http2_upstream_dump_request_header_file;
   std::unique_ptr<char[]> http2_upstream_dump_response_header_file;
+  // Rate limit configuration per connection
+  ev_token_bucket_cfg *rate_limit_cfg;
   // Rate limit configuration per worker (thread)
   ev_token_bucket_cfg *worker_rate_limit_cfg;
   // list of supported NPN/ALPN protocol strings in the order of

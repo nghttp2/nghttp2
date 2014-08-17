@@ -770,6 +770,11 @@ void fill_default_config()
   mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
   mod_config()->downstream_http_proxy_addrlen = 0;
+  mod_config()->rate_limit_cfg = nullptr;
+  mod_config()->read_rate = 0;
+  mod_config()->read_burst = 1 << 30;
+  mod_config()->write_rate = 0;
+  mod_config()->write_burst = 0;
   mod_config()->worker_read_rate = 0;
   mod_config()->worker_read_burst = 0;
   mod_config()->worker_write_rate = 0;
@@ -864,6 +869,29 @@ Performance:
                      Set the number of worker threads.
                      Default: )"
       << get_config()->num_worker << R"(
+  --read-rate=<RATE>
+                     Set  maximum   average  read  rate   on  frontend
+                     connection.  Setting 0 to  this option means read
+                     rate is unlimited.
+                     Default: )"
+      << get_config()->read_rate << R"(
+  --read-burst=<SIZE>
+                     Set   maximum  read   burst   size  on   frontend
+                     connection.  Setting 0 does not work.
+                     Default: )"
+      << get_config()->read_burst << R"(
+  --write-rate=<RATE>
+                     Set  maximum  average   write  rate  on  frontend
+                     connection.  Setting 0 to this option means write
+                     rate is unlimited.
+                     Default: )"
+      << get_config()->write_rate << R"(
+  --write-burst=<SIZE>
+                     Set   maximum  write   burst  size   on  frontend
+                     connection.  Setting 0 to this option means write
+                     burst size is unlimited.
+                     Default: )"
+      << get_config()->write_burst << R"(
   --worker-read-rate=<RATE>
                      Set  maximum   average  read  rate   on  frontend
                      connection per worker.  Setting  0 to this option
@@ -1229,6 +1257,10 @@ int main(int argc, char **argv)
       {"frontend-no-tls", no_argument, &flag, 29},
       {"backend-tls-sni-field", required_argument, &flag, 31},
       {"dh-param-file", required_argument, &flag, 33},
+      {"read-rate", required_argument, &flag, 34},
+      {"read-burst", required_argument, &flag, 35},
+      {"write-rate", required_argument, &flag, 36},
+      {"write-burst", required_argument, &flag, 37},
       {"npn-list", required_argument, &flag, 38},
       {"verify-client", no_argument, &flag, 39},
       {"verify-client-cacert", required_argument, &flag, 40},
@@ -1422,6 +1454,22 @@ int main(int argc, char **argv)
       case 33:
         // --dh-param-file
         cmdcfgs.emplace_back(SHRPX_OPT_DH_PARAM_FILE, optarg);
+        break;
+      case 34:
+        // --read-rate
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_RATE, optarg);
+        break;
+      case 35:
+        // --read-burst
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_BURST, optarg);
+        break;
+      case 36:
+        // --write-rate
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_RATE, optarg);
+        break;
+      case 37:
+        // --write-burst
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_BURST, optarg);
         break;
       case 38:
         // --npn-list
@@ -1770,6 +1818,13 @@ int main(int argc, char **argv)
       exit(EXIT_FAILURE);
     }
   }
+
+  mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new
+    (get_rate_limit(get_config()->read_rate),
+     get_rate_limit(get_config()->read_burst),
+     get_rate_limit(get_config()->write_rate),
+     get_rate_limit(get_config()->write_burst),
+     nullptr);
 
   mod_config()->worker_rate_limit_cfg = ev_token_bucket_cfg_new
     (get_rate_limit(get_config()->worker_read_rate),

@@ -238,6 +238,11 @@ ClientHandler::ClientHandler(bufferevent *bev,
 
   ++worker_stat->num_connections;
 
+  rv = bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
+  if(rv == -1) {
+    CLOG(FATAL, this) << "bufferevent_set_rate_limit() failed";
+  }
+
   rv = bufferevent_add_to_rate_limit_group(bev_, rate_limit_group);
   if(rv == -1) {
     CLOG(FATAL, this) << "bufferevent_add_to_rate_limit_group() failed";
