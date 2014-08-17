@@ -589,8 +589,24 @@ bool numeric_host(const char *hostname)
 
 int reopen_log_file(const char *path)
 {
+#if defined(__ANDROID__) || defined(ANDROID)
+  int fd;
+
+  if(strcmp("/proc/self/fd/1", path) == 0 ||
+     strcmp("/proc/self/fd/2", path) == 0) {
+
+    // We will get permission denied error when O_APPEND is used for
+    // these paths.
+    fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC,
+              S_IRUSR | S_IWUSR | S_IRGRP);
+  } else {
+    fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
+              S_IRUSR | S_IWUSR | S_IRGRP);
+  }
+#else // !__ANDROID__ && !ANDROID
   auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
+#endif // !__ANDROID__ && !ANDROID
 
   if(fd == -1) {
     return -1;

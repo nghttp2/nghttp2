@@ -746,7 +746,12 @@ void fill_default_config()
   mod_config()->no_via = false;
   mod_config()->accesslog_file = nullptr;
   mod_config()->accesslog_syslog = false;
+#if defined(__ANDROID__) || defined(ANDROID)
+  // Android does not have /dev/stderr.  Use /proc/self/fd/2 instead.
+  mod_config()->errorlog_file = strcopy("/proc/self/fd/2");
+#else // !__ANDROID__ && ANDROID
   mod_config()->errorlog_file = strcopy("/dev/stderr");
+#endif // !__ANDROID__ && ANDROID
   mod_config()->errorlog_syslog = false;
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
   mod_config()->syslog_facility = LOG_DAEMON;
