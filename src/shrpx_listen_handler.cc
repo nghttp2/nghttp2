@@ -75,6 +75,7 @@ void ListenHandler::worker_reopen_log_files()
   }
 }
 
+#ifndef NOTHREADS
 namespace {
 void worker_writecb(bufferevent *bev, void *ptr)
 {
@@ -96,9 +97,11 @@ void worker_writecb(bufferevent *bev, void *ptr)
   bufferevent_disable(bev, EV_READ | EV_WRITE);
 }
 } // namespace
+#endif // NOTHREADS
 
 void ListenHandler::create_worker_thread(size_t num)
 {
+#ifndef NOTHREADS
   workers_.resize(0);
   for(size_t i = 0; i < num; ++i) {
     int rv;
@@ -137,10 +140,12 @@ void ListenHandler::create_worker_thread(size_t num)
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
     }
   }
+#endif // NOTHREADS
 }
 
 void ListenHandler::join_worker()
 {
+#ifndef NOTHREADS
   int n = 0;
 
   if(LOG_ENABLED(INFO)) {
@@ -155,6 +160,7 @@ void ListenHandler::join_worker()
     }
     ++n;
   }
+#endif // NOTHREADS
 }
 
 void ListenHandler::graceful_shutdown_worker()

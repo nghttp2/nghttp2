@@ -32,7 +32,9 @@
 
 #include <memory>
 #include <vector>
+#ifndef NOTHREADS
 #include <future>
+#endif // NOTHREADS
 
 #include <openssl/ssl.h>
 
@@ -43,7 +45,9 @@
 namespace shrpx {
 
 struct WorkerInfo {
+#ifndef NOTHREADS
   std::future<void> fut;
+#endif // NOTHREADS
   SSL_CTX *sv_ssl_ctx;
   SSL_CTX *cl_ssl_ctx;
   bufferevent *bev;

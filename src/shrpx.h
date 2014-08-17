@@ -29,9 +29,20 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <cassert>
 
 #include "shrpx_log.h"
+
+#ifndef SOCK_NONBLOCK
+#define SOCK_NONBLOCK 0
+#endif // !SOCK_NONBLOCK
+
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif // !SOCK_CLOEXEC
 
 #define DIE()                                   \
   assert(0);
