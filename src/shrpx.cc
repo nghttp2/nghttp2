@@ -882,7 +882,10 @@ Performance:
       << get_config()->read_rate << R"(
   --read-burst=<SIZE>
                      Set   maximum  read   burst   size  on   frontend
-                     connection.  Setting 0 does not work.
+                     connection.  Setting  0 does not work,  but it is
+                     not  a problem  because  --read-rate=0 will  give
+                     unlimited  read rate  regardless  of this  option
+                     value.
                      Default: )"
       << get_config()->read_burst << R"(
   --write-rate=<RATE>
