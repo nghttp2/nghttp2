@@ -1620,6 +1620,10 @@ int main(int argc, char **argv)
     cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
   }
 
+  // First open default log files to deal with errors occurred while
+  // parsing option values.
+  reopen_log_files();
+
   for(size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
     if(parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
       LOG(FATAL) << "Failed to parse command-line argument.";
