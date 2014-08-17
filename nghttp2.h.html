@@ -2433,13 +2433,11 @@
 <span class="cm"> *</span>
 <span class="cm"> * .. warning::</span>
 <span class="cm"> *</span>
-<span class="cm"> *   This function returns assigned stream ID if it succeeds and</span>
-<span class="cm"> *   |stream_id| is -1.  But that stream is not opened yet.  The</span>
-<span class="cm"> *   application must not submit WINDOW_UPDATE frame using</span>
-<span class="cm"> *   `nghttp2_submit_window_update()` to that stream ID before</span>
+<span class="cm"> *   This function returns assigned stream ID if it succeeds.  But</span>
+<span class="cm"> *   that stream is not opened yet.  The application must not submit</span>
+<span class="cm"> *   frame to that stream ID before</span>
 <span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> *   called for this frame.  Other types of frames can be submitted to</span>
-<span class="cm"> *   the returned stream ID.</span>
+<span class="cm"> *   called for this frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -2563,11 +2561,9 @@
 <span class="cm"> *</span>
 <span class="cm"> *   This function returns assigned stream ID if it succeeds and</span>
 <span class="cm"> *   |stream_id| is -1.  But that stream is not opened yet.  The</span>
-<span class="cm"> *   application must not submit WINDOW_UPDATE frame using</span>
-<span class="cm"> *   `nghttp2_submit_window_update()` to that stream ID before</span>
+<span class="cm"> *   application must not submit frame to that stream ID before</span>
 <span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> *   called for this frame.  Other types of frames can be submitted to</span>
-<span class="cm"> *   the returned stream ID.</span>
+<span class="cm"> *   called for this frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
@@ -2735,6 +2731,14 @@
 <span class="cm"> *     reached.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
 <span class="cm"> *     The |stream_id| is 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * .. warning::</span>
+<span class="cm"> *</span>
+<span class="cm"> *   This function returns assigned promised stream ID if it succeeds.</span>
+<span class="cm"> *   But that stream is not opened yet.  The application must not</span>
+<span class="cm"> *   submit frame to that stream ID before</span>
+<span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
+<span class="cm"> *   called for this frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>

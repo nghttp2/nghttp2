@@ -2609,13 +2609,11 @@ reached.</dd>
 </dl>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">This function returns assigned stream ID if it succeeds and
-<em>stream_id</em> is -1.  But that stream is not opened yet.  The
-application must not submit WINDOW_UPDATE frame using
-<a class="reference internal" href="#c.nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a> to that stream ID before
+<p class="last">This function returns assigned stream ID if it succeeds.  But
+that stream is not opened yet.  The application must not submit
+frame to that stream ID before
 <a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
-called for this frame.  Other types of frames can be submitted to
-the returned stream ID.</p>
+called for this frame.</p>
 </div>
 </dd></dl>
 
@@ -2715,11 +2713,9 @@ reached.</dd>
 <p class="first admonition-title">Warning</p>
 <p class="last">This function returns assigned stream ID if it succeeds and
 <em>stream_id</em> is -1.  But that stream is not opened yet.  The
-application must not submit WINDOW_UPDATE frame using
-<a class="reference internal" href="#c.nghttp2_submit_window_update" title="nghttp2_submit_window_update"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_window_update()</span></tt></a> to that stream ID before
+application must not submit frame to that stream ID before
 <a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
-called for this frame.  Other types of frames can be submitted to
-the returned stream ID.</p>
+called for this frame.</p>
 </div>
 </dd></dl>
 
@@ -2855,6 +2851,14 @@ reached.</dd>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
 <dd>The <em>stream_id</em> is 0.</dd>
 </dl>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This function returns assigned promised stream ID if it succeeds.
+But that stream is not opened yet.  The application must not
+submit frame to that stream ID before
+<a class="reference internal" href="#c.nghttp2_session_callbacks.before_frame_send_callback" title="nghttp2_session_callbacks.before_frame_send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.before_frame_send_callback</span></tt></a> is
+called for this frame.</p>
+</div>
 </dd></dl>
 
 <dl class="function">
