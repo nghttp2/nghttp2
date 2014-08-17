@@ -626,14 +626,14 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
 
 namespace {
 nghttp2_error_code infer_upstream_rst_stream_error_code
-(nghttp2_error_code downstream_error_code)
+(int downstream_error_code)
 {
   // NGHTTP2_REFUSED_STREAM is important because it tells upstream
   // client to retry.
   switch(downstream_error_code) {
   case NGHTTP2_NO_ERROR:
   case NGHTTP2_REFUSED_STREAM:
-    return downstream_error_code;
+    return static_cast<nghttp2_error_code>(downstream_error_code);
   default:
     return NGHTTP2_INTERNAL_ERROR;
   }

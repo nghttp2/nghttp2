@@ -55,7 +55,7 @@ Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
     stream_id_(stream_id),
     priority_(priority),
     downstream_stream_id_(-1),
-    response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
+    response_rst_stream_error_code_(-1),
     request_state_(INITIAL),
     request_major_(1),
     request_minor_(1),
@@ -821,13 +821,12 @@ int32_t Downstream::get_downstream_stream_id() const
   return downstream_stream_id_;
 }
 
-nghttp2_error_code Downstream::get_response_rst_stream_error_code() const
+int Downstream::get_response_rst_stream_error_code() const
 {
   return response_rst_stream_error_code_;
 }
 
-void Downstream::set_response_rst_stream_error_code
-(nghttp2_error_code error_code)
+void Downstream::set_response_rst_stream_error_code(int error_code)
 {
   response_rst_stream_error_code_ = error_code;
 }
