@@ -2239,11 +2239,13 @@ int nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  *
  * .. warning::
  *
- *   This function returns assigned stream ID if it succeeds.  But
- *   that stream is not opened yet.  The application must not submit
- *   frame to that stream ID before
+ *   This function returns assigned stream ID if it succeeds and
+ *   |stream_id| is -1.  But that stream is not opened yet.  The
+ *   application must not submit WINDOW_UPDATE frame using
+ *   `nghttp2_submit_window_update()` to that stream ID before
  *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is
- *   called for this frame.
+ *   called for this frame.  Other types of frames can be submitted to
+ *   the returned stream ID.
  *
  */
 int32_t nghttp2_submit_request(nghttp2_session *session,
@@ -2367,9 +2369,11 @@ int nghttp2_submit_response(nghttp2_session *session,
  *
  *   This function returns assigned stream ID if it succeeds and
  *   |stream_id| is -1.  But that stream is not opened yet.  The
- *   application must not submit frame to that stream ID before
+ *   application must not submit WINDOW_UPDATE frame using
+ *   `nghttp2_submit_window_update()` to that stream ID before
  *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is
- *   called for this frame.
+ *   called for this frame.  Other types of frames can be submitted to
+ *   the returned stream ID.
  *
  */
 int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
@@ -2537,14 +2541,6 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  *     reached.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is 0.
- *
- * .. warning::
- *
- *   This function returns assigned promised stream ID if it succeeds.
- *   But that stream is not opened yet.  The application must not
- *   submit frame to that stream ID before
- *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is
- *   called for this frame.
  *
  */
 int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,

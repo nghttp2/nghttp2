@@ -4666,24 +4666,11 @@ void test_nghttp2_session_on_ctrl_not_send(void)
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(1 == user_data.frame_not_send_cb_called);
   CU_ASSERT(NGHTTP2_HEADERS == user_data.not_sent_frame_type);
-  CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED == user_data.not_sent_error);
+  CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSING == user_data.not_sent_error);
 
   stream = nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
                                        &pri_spec_default,
                                        NGHTTP2_STREAM_OPENED, &user_data);
-
-  /* Check HEADERS */
-  user_data.frame_not_send_cb_called = 0;
-  /* Queue RST_STREAM */
-  CU_ASSERT(0 ==
-            nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, 3,
-                                   NULL, NULL, 0, NULL));
-  CU_ASSERT(0 == nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 3,
-                                           NGHTTP2_INTERNAL_ERROR));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(1 == user_data.frame_not_send_cb_called);
-  CU_ASSERT(NGHTTP2_HEADERS == user_data.not_sent_frame_type);
-  CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED == user_data.not_sent_error);
 
   nghttp2_session_del(session);
 

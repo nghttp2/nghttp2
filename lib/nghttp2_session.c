@@ -634,11 +634,6 @@ int nghttp2_session_add_frame(nghttp2_session *session,
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
     switch(frame->hd.type) {
-    case NGHTTP2_HEADERS:
-    case NGHTTP2_PUSH_PROMISE:
-      item->weight = NGHTTP2_MAX_WEIGHT;
-
-      break;
     case NGHTTP2_RST_STREAM:
       if(stream) {
         /* We rely on the stream state to decide whether number of
