@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx - HTTP/2 proxy - HOW-TO &mdash; nghttp2 0.5.2-DEV documentation</title>
+  <title>nghttpx - HTTP/2 proxy - HOW-TO &mdash; nghttp2 0.6.0-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/>
         <link rel="prev" title="h2load(1)" href="h2load.1.html"/> 
 
@@ -68,8 +68,10 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
@@ -126,6 +128,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#rewriting-location-header-field">Rewriting location header field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#re-opening-log-files">Re-opening log files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -359,9 +363,9 @@ only.</p>
 connection, so the connection gets insecure.  To disable SSL/TLS in
 backend connection, use <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
 <p>The backend server is supporsed to be a HTTP/2 web server or HTTP/2
-proxy.  Since HTTP/2 requests opaque between proxied and non-proxied
-request, the backend server may be proxy or just web server depending
-on the context of incoming requests.</p>
+proxy.  If backend server is HTTP/2 proxy, use
+<tt class="docutils literal"><span class="pre">--no-location-rewrite</span></tt> option to disable rewriting location header
+field.</p>
 <p>The use-case of this mode is aggregate the incoming connections to one
 HTTP/2 connection.  One backend HTTP/2 connection is created per
 worker (thread).</p>
@@ -391,16 +395,11 @@ validation.</p>
 <div class="section" id="read-write-rate-limit">
 <h2>Read/write rate limit<a class="headerlink" href="#read-write-rate-limit" title="Permalink to this headline">¶</a></h2>
 <p>nghttpx supports transfer rate limiting on frontend connections.  You
-can do rate limit per connection or per worker (thread) for reading
-and writeing individually.</p>
-<p>To rate limit per connection for reading, use <tt class="docutils literal"><span class="pre">--read-rate</span></tt> and
-<tt class="docutils literal"><span class="pre">--read-burst</span></tt> options.  For writing, use <tt class="docutils literal"><span class="pre">--write-rate</span></tt> and
-<tt class="docutils literal"><span class="pre">--write-burst</span></tt> options.</p>
+can do rate limit per worker (thread) for reading and writeing
+individually.</p>
 <p>To rate limit per worker (thread), use <tt class="docutils literal"><span class="pre">--worker-read-rate</span></tt> and
 <tt class="docutils literal"><span class="pre">--worker-read-burst</span></tt> options.  For writing, use
 <tt class="docutils literal"><span class="pre">--worker-write-rate</span></tt> and <tt class="docutils literal"><span class="pre">--worker-write-burst</span></tt>.</p>
-<p>If both per connection and per worker rate limit configurations are
-specified, the lower rate is used.</p>
 <p>Please note that rate limit is performed on top of TCP and nothing to
 do with HTTP/2 flow control.</p>
 </div>
@@ -420,6 +419,26 @@ used in frontend, and host is replaced with which appears in
 precedence.  If the above conditions are not met with the host value
 in :authority header field, rewrite is retried with the value in host
 header field.</p>
+</div>
+<div class="section" id="hot-deploy">
+<h2>Hot deploy<a class="headerlink" href="#hot-deploy" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx supports hot deploy feature using signals.  The hot deploy in
+nghttpx is multi step process.  First send USR2 signal to nghttpx
+process.  It will do fork and execute new executable, using same
+command-line arguments and environment variables.  At this point, both
+current and new processes can accept requests.  To gracefully shutdown
+current process, send QUIT signal to current nghttpx process.  When
+all existing frontend connections are done, the current process will
+exit.  At this point, only new nghttpx process exists and serves
+incoming requests.</p>
+</div>
+<div class="section" id="re-opening-log-files">
+<h2>Re-opening log files<a class="headerlink" href="#re-opening-log-files" title="Permalink to this headline">¶</a></h2>
+<p>When rotating log files, it is desirable to re-open log files after
+log rotation daemon renamed existing log files.  To tell nghttpx to
+re-open log files, send USR1 signal to nghttpx process.  It will
+re-open files specified by <tt class="docutils literal"><span class="pre">--accesslog-file</span></tt> and
+<tt class="docutils literal"><span class="pre">--errorlog-file</span></tt> options.</p>
 </div>
 </div>
 
@@ -461,7 +480,7 @@ header field.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.2-DEV',
+            VERSION:'0.6.0-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

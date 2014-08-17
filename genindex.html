@@ -8,7 +8,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; nghttp2 0.5.2-DEV documentation</title>
+  <title>Index &mdash; nghttp2 0.6.0-DEV documentation</title>
   
 
   
@@ -29,7 +29,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.2-DEV documentation" href="index.html"/> 
+    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -67,8 +67,10 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
@@ -125,6 +127,8 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -259,6 +263,17 @@
       <dd><dl>
         
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--altsvc">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
+    --backend-connections-per-frontend=&lt;NUM&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--backend-connections-per-frontend">nghttpx command line option</a>
   </dt>
 
       </dl></dd>
@@ -668,6 +683,17 @@
       </dl></dd>
       
   <dt>
+    --no-location-rewrite
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--no-location-rewrite">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
     --no-tls
   </dt>
 
@@ -734,6 +760,30 @@
       </dl></dd>
       
   <dt>
+    --stream-read-timeout=&lt;SEC&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--stream-read-timeout">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
+    --stream-write-timeout=&lt;SEC&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--stream-write-timeout">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt>
     --subcert=&lt;KEYPATH&gt;:&lt;CERTPATH&gt;
   </dt>
 
@@ -754,8 +804,6 @@
   </dt>
 
       </dl></dd>
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt>
     --tls-proto-list=&lt;LIST&gt;
@@ -2899,6 +2947,10 @@
   </dt>
 
         
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--backend-connections-per-frontend">--backend-connections-per-frontend=&lt;NUM&gt;</a>
+  </dt>
+
+        
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--backend-http-proxy-uri">--backend-http-proxy-uri=&lt;URI&gt;</a>
   </dt>
 
@@ -3019,6 +3071,10 @@
   </dt>
 
         
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--no-location-rewrite">--no-location-rewrite</a>
+  </dt>
+
+        
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--no-via">--no-via</a>
   </dt>
 
@@ -3036,6 +3092,14 @@
 
         
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--private-key-passwd-file">--private-key-passwd-file=&lt;FILEPATH&gt;</a>
+  </dt>
+
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--stream-read-timeout">--stream-read-timeout=&lt;SEC&gt;</a>
+  </dt>
+
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--stream-write-timeout">--stream-write-timeout=&lt;SEC&gt;</a>
   </dt>
 
         
@@ -3291,7 +3355,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.2-DEV',
+            VERSION:'0.6.0-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

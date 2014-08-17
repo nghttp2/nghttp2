@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.5.2-DEV documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.6.0-DEV documentation</title>
   
 
   
@@ -28,8 +28,8 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.2-DEV documentation" href="index.html"/>
-        <link rel="next" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/>
+    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/>
+        <link rel="next" title="Building Android binary" href="building-android-binary.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
   
@@ -68,8 +68,10 @@
 <li class="toctree-l2"><a class="reference internal" href="#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#python-bindings">Python bindings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contribution">Contribution</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
@@ -126,6 +128,8 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -1224,6 +1228,24 @@ BaseRequestHandler usage:</p>
 </pre></div>
 </div>
 </div>
+<div class="section" id="contribution">
+<h2>Contribution<a class="headerlink" href="#contribution" title="Permalink to this headline">¶</a></h2>
+<p>[This text was composed based on 1.2. License section of curl/libcurl
+project.]</p>
+<p>When contributing with code, you agree to put your changes and new
+code under the same license nghttp2 is already using unless stated and
+agreed otherwise.</p>
+<p>When changing existing source code, you do not alter the copyright of
+the original file(s).  The copyright will still be owned by the
+original creator(s) or those who have been assigned copyright by the
+original author(s).</p>
+<p>By submitting a patch to the nghttp2 project, you are assumed to have
+the right to the code and to be allowed by your employer or whatever
+to hand over that patch/code to us.  We will credit you for your
+changes as far as possible, to give credit but also to keep a trace
+back to who made what changes.  Please always provide us with your
+full real name when contributing!</p>
+</div>
 </div>
 
 
@@ -1232,7 +1254,7 @@ BaseRequestHandler usage:</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tutorial-client.html" class="btn btn-neutral float-right" title="Tutorial: HTTP/2 client">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="building-android-binary.html" class="btn btn-neutral float-right" title="Building Android binary">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral" title="nghttp2 - HTTP/2 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -1264,7 +1286,7 @@ BaseRequestHandler usage:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.2-DEV',
+            VERSION:'0.6.0-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.5.2-DEV documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.6.0-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -68,8 +68,10 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
@@ -126,6 +128,8 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -850,9 +854,12 @@
 <span class="cm"> * to outgoing queue, call `nghttp2_session_resume_data()`.  In case</span>
 <span class="cm"> * of error, there are 2 choices. Returning</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close the stream</span>
-<span class="cm"> * by issuing RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.</span>
-<span class="cm"> * Returning :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the</span>
-<span class="cm"> * entire session failure.</span>
+<span class="cm"> * by issuing RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.  If a</span>
+<span class="cm"> * different error code is desirable, use</span>
+<span class="cm"> * `nghttp2_submit_rst_stream()` with a desired error code and then</span>
+<span class="cm"> * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  Returning</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the entire session</span>
+<span class="cm"> * failure.</span>
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_data_source_read_callback</span><span class="p">)</span>
 <span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -1546,7 +1553,10 @@
 <span class="cm"> * Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close</span>
 <span class="cm"> * the stream by issuing RST_STREAM with</span>
 <span class="cm"> * :enum:`NGHTTP2_INTERNAL_ERROR`.  In this case,</span>
-<span class="cm"> * :type:`nghttp2_on_frame_recv_callback` will not be invoked.</span>
+<span class="cm"> * :type:`nghttp2_on_frame_recv_callback` will not be invoked.  If a</span>
+<span class="cm"> * different error code is desirable, use</span>
+<span class="cm"> * `nghttp2_submit_rst_stream()` with a desired error code and then</span>
+<span class="cm"> * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it succeeds.</span>
 <span class="cm"> * It may return :enum:`NGHTTP2_ERR_PAUSE` or</span>
@@ -2423,11 +2433,13 @@
 <span class="cm"> *</span>
 <span class="cm"> * .. warning::</span>
 <span class="cm"> *</span>
-<span class="cm"> *   This function returns assigned stream ID if it succeeds.  But</span>
-<span class="cm"> *   that stream is not opened yet.  The application must not submit</span>
-<span class="cm"> *   frame to that stream ID before</span>
+<span class="cm"> *   This function returns assigned stream ID if it succeeds and</span>
+<span class="cm"> *   |stream_id| is -1.  But that stream is not opened yet.  The</span>
+<span class="cm"> *   application must not submit WINDOW_UPDATE frame using</span>
+<span class="cm"> *   `nghttp2_submit_window_update()` to that stream ID before</span>
 <span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> *   called for this frame.</span>
+<span class="cm"> *   called for this frame.  Other types of frames can be submitted to</span>
+<span class="cm"> *   the returned stream ID.</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_request</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
@@ -2551,9 +2563,11 @@
 <span class="cm"> *</span>
 <span class="cm"> *   This function returns assigned stream ID if it succeeds and</span>
 <span class="cm"> *   |stream_id| is -1.  But that stream is not opened yet.  The</span>
-<span class="cm"> *   application must not submit frame to that stream ID before</span>
+<span class="cm"> *   application must not submit WINDOW_UPDATE frame using</span>
+<span class="cm"> *   `nghttp2_submit_window_update()` to that stream ID before</span>
 <span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> *   called for this frame.</span>
+<span class="cm"> *   called for this frame.  Other types of frames can be submitted to</span>
+<span class="cm"> *   the returned stream ID.</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_headers</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
@@ -2721,14 +2735,6 @@
 <span class="cm"> *     reached.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
 <span class="cm"> *     The |stream_id| is 0.</span>
-<span class="cm"> *</span>
-<span class="cm"> * .. warning::</span>
-<span class="cm"> *</span>
-<span class="cm"> *   This function returns assigned promised stream ID if it succeeds.</span>
-<span class="cm"> *   But that stream is not opened yet.  The application must not</span>
-<span class="cm"> *   submit frame to that stream ID before</span>
-<span class="cm"> *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is</span>
-<span class="cm"> *   called for this frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
@@ -3288,7 +3294,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.2-DEV',
+            VERSION:'0.6.0-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx(1) &mdash; nghttp2 0.5.2-DEV documentation</title>
+  <title>nghttpx(1) &mdash; nghttp2 0.6.0-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.5.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load(1)" href="h2load.1.html"/>
         <link rel="prev" title="nghttpd(1)" href="nghttpd.1.html"/> 
 
@@ -68,8 +68,10 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
 </ul>
@@ -126,6 +128,8 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -311,6 +315,16 @@ frontend accepts.  Setting 0 means unlimited.
 Default: 0</p>
 </dd></dl>
 
+<dl class="option">
+<dt id="cmdoption-nghttpx--backend-connections-per-frontend">
+<tt class="descname">--backend-connections-per-frontend</tt><tt class="descclassname">=&lt;NUM&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-connections-per-frontend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set  maximum   number  of   backend  simultaneous
+connections   per  frontend.    This  option   is
+meaningful when the combination of HTTP/2 or SPDY
+frontend and HTTP/1 backend is used.
+Default: 100</p>
+</dd></dl>
+
 </div>
 <div class="section" id="timeout">
 <h3>Timeout<a class="headerlink" href="#timeout" title="Permalink to this headline">¶</a></h3>
@@ -327,7 +341,7 @@ Default: 180</p>
 <tt class="descname">--frontend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-read-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify  read   timeout  for   HTTP/1.1  frontend
 connection.
-Default: 180</p>
+Default: 30</p>
 </dd></dl>
 
 <dl class="option">
@@ -335,21 +349,37 @@ Default: 180</p>
 <tt class="descname">--frontend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-write-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify   write   timeout    for   all   frontend
 connections.
-Default: 60</p>
+Default: 30</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-nghttpx--stream-read-timeout">
+<tt class="descname">--stream-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--stream-read-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify read timeout for HTTP/2 and SPDY streams.
+0 means no timeout.
+Default: 0</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-nghttpx--stream-write-timeout">
+<tt class="descname">--stream-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--stream-write-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  write   timeout  for  HTTP/2   and  SPDY
+streams.  0 means no timeout.
+Default: 0</p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption-nghttpx--backend-read-timeout">
 <tt class="descname">--backend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-read-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify read timeout for backend connection.
-Default: 900</p>
+Default: 30</p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption-nghttpx--backend-write-timeout">
 <tt class="descname">--backend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-write-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify write timeout for backend connection.
-Default: 60</p>
+Default: 30</p>
 </dd></dl>
 
 <dl class="option">
@@ -453,7 +483,7 @@ most  desirable protocol  comes  first.  This  is
 used in both ALPN and NPN.  The parameter must be
 delimited by  a single  comma only and  any white
 spaces are treated as a part of protocol string.
-Default: h2-13,spdy/3.1,spdy/3,spdy/2,http/1.1</p>
+Default: h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1</p>
 </dd></dl>
 
 <dl class="option">
@@ -685,6 +715,16 @@ field is received, it is left unaltered.</p>
 </dd></dl>
 
 <dl class="option">
+<dt id="cmdoption-nghttpx--no-location-rewrite">
+<tt class="descname">--no-location-rewrite</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--no-location-rewrite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Don&#8217;t   rewrite   location    header   field   on
+<a class="reference internal" href="#cmdoption-nghttpx--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a>, <a class="reference internal" href="#cmdoption-nghttpx--client"><em class="xref std std-option">--client</em></a>  and default  mode.  For
+<a class="reference internal" href="#cmdoption-nghttpx--http2-proxy"><em class="xref std std-option">--http2-proxy</em></a>  and <a class="reference internal" href="#cmdoption-nghttpx--client-proxy"><em class="xref std std-option">--client-proxy</em></a>  mode, location
+header field  will not  be altered  regardless of
+this option.</p>
+</dd></dl>
+
+<dl class="option">
 <dt id="cmdoption-nghttpx--altsvc">
 <tt class="descname">--altsvc</tt><tt class="descclassname">=&lt;PROTOID,PORT[,HOST,[ORIGIN]]&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--altsvc" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify  protocol ID,  port, host  and origin  of
@@ -821,7 +861,7 @@ Default: /etc/nghttpx/nghttpx.conf</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.2-DEV',
+            VERSION:'0.6.0-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
