@@ -462,12 +462,13 @@ void ClientHandler::set_should_close_after_write(bool f)
   should_close_after_write_ = f;
 }
 
-void ClientHandler::pool_downstream_connection(DownstreamConnection *dconn)
+void ClientHandler::pool_downstream_connection
+(std::unique_ptr<DownstreamConnection> dconn)
 {
   if(LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn;
+    CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get();
   }
-  dconn_pool_.insert(dconn);
+  dconn_pool_.insert(dconn.release());
 }
 
 void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn)
@@ -477,9 +478,11 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn)
                      << " from pool";
   }
   dconn_pool_.erase(dconn);
+  delete dconn;
 }
 
-DownstreamConnection* ClientHandler::get_downstream_connection()
+std::unique_ptr<DownstreamConnection>
+ClientHandler::get_downstream_connection()
 {
   if(dconn_pool_.empty()) {
     if(LOG_ENABLED(INFO)) {
@@ -487,19 +490,20 @@ DownstreamConnection* ClientHandler::get_downstream_connection()
                        << " Create new one";
     }
     if(http2session_) {
-      return new Http2DownstreamConnection(this);
+      return util::make_unique<Http2DownstreamConnection>(this);
     } else {
-      return new HttpDownstreamConnection(this);
+      return util::make_unique<HttpDownstreamConnection>(this);
     }
-  } else {
-    auto dconn = *std::begin(dconn_pool_);
-    dconn_pool_.erase(dconn);
-    if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "Reuse downstream connection DCONN:" << dconn
-                       << " from pool";
-    }
-    return dconn;
   }
+
+  auto dconn = std::unique_ptr<DownstreamConnection>(*std::begin(dconn_pool_));
+  dconn_pool_.erase(dconn.get());
+  if(LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Reuse downstream connection DCONN:" << dconn.get()
+                     << " from pool";
+  }
+
+  return dconn;
 }
 
 size_t ClientHandler::get_outbuf_length()

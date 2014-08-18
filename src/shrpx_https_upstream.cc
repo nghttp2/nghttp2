@@ -184,14 +184,12 @@ int htp_hdrs_completecb(http_parser *htp)
     }
   }
 
-  auto dconn = upstream->get_client_handler()->get_downstream_connection();
-
-  rv =  dconn->attach_downstream(downstream);
+  rv =  downstream->attach_downstream_connection
+    (upstream->get_client_handler()->get_downstream_connection());
 
   if(rv != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
-    downstream->set_downstream_connection(nullptr);
-    delete dconn;
+
     return -1;
   }
 
@@ -405,17 +403,13 @@ int HttpsUpstream::on_write()
     // We need to postpone detachment until all data are sent so that
     // we can notify nghttp2 library all data consumed.
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      auto dconn = downstream->get_downstream_connection();
-
       if(downstream->get_response_connection_close()) {
-
         // Connection close
-        downstream->set_downstream_connection(nullptr);
-
-        delete dconn;
+        downstream->pop_downstream_connection();
+        // dconn was deleted
       } else {
         // Keep-alive
-        dconn->detach_downstream(downstream);
+        downstream->detach_downstream_connection();
       }
     }
 
@@ -511,14 +505,12 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
   if(handler->get_outbuf_length() == 0) {
     if(downstream->get_response_connection_close()) {
       // Connection close
-      downstream->set_downstream_connection(nullptr);
-
-      delete dconn;
+      downstream->pop_downstream_connection();
 
       dconn = nullptr;
     } else {
       // Keep-alive
-      dconn->detach_downstream(downstream);
+      downstream->detach_downstream_connection();
     }
   }
 

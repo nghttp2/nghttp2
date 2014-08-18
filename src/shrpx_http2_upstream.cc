@@ -85,11 +85,7 @@ int on_stream_close_callback
     if(!downstream->get_upgraded() &&
        !downstream->get_response_connection_close()) {
       // Keep-alive
-      auto dconn = downstream->get_downstream_connection();
-
-      if(dconn) {
-        dconn->detach_downstream(downstream);
-      }
+      downstream->detach_downstream_connection();
     }
 
     upstream->remove_downstream(downstream);
@@ -399,8 +395,8 @@ void Http2Upstream::initiate_downstream(std::unique_ptr<Downstream> downstream)
 {
   int rv;
 
-  auto dconn = handler_->get_downstream_connection();
-  rv = dconn->attach_downstream(downstream.get());
+  rv = downstream->attach_downstream_connection
+    (handler_->get_downstream_connection());
   if(rv != 0) {
     // downstream connection fails, send error page
     if(error_reply(downstream.get(), 503) != 0) {
@@ -849,8 +845,8 @@ void downstream_readcb(bufferevent *bev, void *ptr)
     // on_stream_close_callback.
     upstream->rst_stream(downstream, infer_upstream_rst_stream_error_code
                          (downstream->get_response_rst_stream_error_code()));
-    downstream->set_downstream_connection(nullptr);
-    delete dconn;
+    downstream->pop_downstream_connection();
+    // dconn was deleted
     dconn = nullptr;
   } else {
     auto rv = downstream->on_read();
@@ -870,8 +866,8 @@ void downstream_readcb(bufferevent *bev, void *ptr)
       downstream->set_response_state(Downstream::MSG_COMPLETE);
       // Clearly, we have to close downstream connection on http parser
       // failure.
-      downstream->set_downstream_connection(nullptr);
-      delete dconn;
+      downstream->pop_downstream_connection();
+      // dconn was deleted
       dconn = nullptr;
     }
   }
@@ -933,8 +929,8 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
     // Delete downstream connection. If we don't delete it here, it
     // will be pooled in on_stream_close_callback.
-    downstream->set_downstream_connection(nullptr);
-    delete dconn;
+    downstream->pop_downstream_connection();
+    // dconn was deleted
     dconn = nullptr;
     // downstream wil be deleted in on_stream_close_callback.
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
@@ -989,8 +985,8 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
     // Delete downstream connection. If we don't delete it here, it
     // will be pooled in on_stream_close_callback.
-    downstream->set_downstream_connection(nullptr);
-    delete dconn;
+    downstream->pop_downstream_connection();
+    // dconn was deleted
     dconn = nullptr;
 
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {

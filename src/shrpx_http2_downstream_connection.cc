@@ -84,7 +84,7 @@ Http2DownstreamConnection::~Http2DownstreamConnection()
   // Downstream and DownstreamConnection may be deleted
   // asynchronously.
   if(downstream_) {
-    downstream_->set_downstream_connection(nullptr);
+    downstream_->release_downstream_connection();
   }
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Deleted";
@@ -121,7 +121,7 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream)
   if(http2session_->get_state() == Http2Session::DISCONNECTED) {
     http2session_->notify();
   }
-  downstream->set_downstream_connection(this);
+
   downstream_ = downstream;
 
   downstream_->init_downstream_timer();
@@ -147,12 +147,9 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream)
     http2session_->notify();
   }
 
-  downstream->set_downstream_connection(nullptr);
   downstream->disable_downstream_rtimer();
   downstream->disable_downstream_wtimer();
   downstream_ = nullptr;
-
-  client_handler_->pool_downstream_connection(this);
 }
 
 int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,

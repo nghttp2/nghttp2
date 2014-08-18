@@ -31,6 +31,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 
 #include <event.h>
 #include <event2/bufferevent.h>
@@ -64,8 +65,15 @@ public:
   void set_downstream_stream_id(int32_t stream_id);
   int32_t get_downstream_stream_id() const;
 
-  void set_downstream_connection(DownstreamConnection *dconn);
+  int attach_downstream_connection
+  (std::unique_ptr<DownstreamConnection> dconn);
+  void detach_downstream_connection();
+  // Releases dconn_, without freeing it.
+  void release_downstream_connection();
   DownstreamConnection* get_downstream_connection();
+  // Returns dconn_ and nullifies dconn_.
+  std::unique_ptr<DownstreamConnection> pop_downstream_connection();
+
   // Returns true if output buffer is full. If underlying dconn_ is
   // NULL, this function always returns false.
   bool get_output_buffer_full();
@@ -277,7 +285,7 @@ private:
   int64_t response_bodylen_;
 
   Upstream *upstream_;
-  DownstreamConnection *dconn_;
+  std::unique_ptr<DownstreamConnection> dconn_;
   // This buffer is used to temporarily store downstream response
   // body. nghttp2 library reads data from this in the callback.
   evbuffer *response_body_buf_;

@@ -120,10 +120,7 @@ void on_stream_close_callback
     if(!downstream->get_upgraded() &&
        !downstream->get_response_connection_close()) {
       // Keep-alive
-      auto dconn = downstream->get_downstream_connection();
-      if(dconn) {
-        dconn->detach_downstream(downstream);
-      }
+      downstream->detach_downstream_connection();
     }
     upstream->remove_downstream(downstream);
     // downstrea was deleted
@@ -265,8 +262,8 @@ void SpdyUpstream::maintain_downstream_concurrency()
 
 void SpdyUpstream::initiate_downstream(std::unique_ptr<Downstream> downstream)
 {
-  auto dconn = handler_->get_downstream_connection();
-  int rv = dconn->attach_downstream(downstream.get());
+  int rv = downstream->attach_downstream_connection
+    (handler_->get_downstream_connection());
   if(rv != 0) {
     // If downstream connection fails, issue RST_STREAM.
     rst_stream(downstream.get(), SPDYLAY_INTERNAL_ERROR);
@@ -583,8 +580,7 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     // on_stream_close_callback.
     upstream->rst_stream(downstream, infer_upstream_rst_stream_status_code
                          (downstream->get_response_rst_stream_error_code()));
-    downstream->set_downstream_connection(nullptr);
-    delete dconn;
+    downstream->pop_downstream_connection();
     dconn = nullptr;
   } else {
     auto rv = downstream->on_read();
@@ -604,8 +600,7 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
       downstream->set_response_state(Downstream::MSG_COMPLETE);
       // Clearly, we have to close downstream connection on http parser
       // failure.
-      downstream->set_downstream_connection(nullptr);
-      delete dconn;
+      downstream->pop_downstream_connection();
       dconn = nullptr;
     }
   }
@@ -667,8 +662,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
     // Delete downstream connection. If we don't delete it here, it
     // will be pooled in on_stream_close_callback.
-    downstream->set_downstream_connection(nullptr);
-    delete dconn;
+    downstream->pop_downstream_connection();
     dconn = nullptr;
     // downstream wil be deleted in on_stream_close_callback.
     if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
@@ -723,8 +717,7 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
     // Delete downstream connection. If we don't delete it here, it
     // will be pooled in on_stream_close_callback.
-    downstream->set_downstream_connection(nullptr);
-    delete dconn;
+    downstream->pop_downstream_connection();
     dconn = nullptr;
 
     if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {

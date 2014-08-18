@@ -42,7 +42,6 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
   : request_bodylen_(0),
     response_bodylen_(0),
     upstream_(upstream),
-    dconn_(nullptr),
     response_body_buf_(nullptr),
     upstream_rtimerev_(nullptr),
     upstream_wtimerev_(nullptr),
@@ -98,22 +97,50 @@ Downstream::~Downstream()
   if(downstream_wtimerev_) {
     event_free(downstream_wtimerev_);
   }
-  if(dconn_) {
-    delete dconn_;
-  }
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
   }
 }
 
-void Downstream::set_downstream_connection(DownstreamConnection *dconn)
+int Downstream::attach_downstream_connection
+(std::unique_ptr<DownstreamConnection> dconn)
 {
-  dconn_ = dconn;
+  if(dconn->attach_downstream(this) != 0) {
+    return -1;
+  }
+
+  dconn_ = std::move(dconn);
+
+  return 0;
+}
+
+void Downstream::detach_downstream_connection()
+{
+  if(!dconn_) {
+    return;
+  }
+
+  dconn_->detach_downstream(this);
+
+  auto handler = dconn_->get_client_handler();
+
+  handler->pool_downstream_connection
+    (std::unique_ptr<DownstreamConnection>(dconn_.release()));
+}
+
+void Downstream::release_downstream_connection()
+{
+  dconn_.release();
 }
 
 DownstreamConnection* Downstream::get_downstream_connection()
 {
-  return dconn_;
+  return dconn_.get();
+}
+
+std::unique_ptr<DownstreamConnection> Downstream::pop_downstream_connection()
+{
+  return std::unique_ptr<DownstreamConnection>(dconn_.release());
 }
 
 void Downstream::pause_read(IOCtrlReason reason)

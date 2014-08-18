@@ -64,9 +64,9 @@ public:
   void set_should_close_after_write(bool f);
   Upstream* get_upstream();
 
-  void pool_downstream_connection(DownstreamConnection *dconn);
+  void pool_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
-  DownstreamConnection* get_downstream_connection();
+  std::unique_ptr<DownstreamConnection> get_downstream_connection();
   size_t get_outbuf_length();
   SSL* get_ssl() const;
   void set_http2_session(Http2Session *http2session);

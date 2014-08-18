@@ -65,7 +65,7 @@ HttpDownstreamConnection::~HttpDownstreamConnection()
   // Downstream and DownstreamConnection may be deleted
   // asynchronously.
   if(downstream_) {
-    downstream_->set_downstream_connection(nullptr);
+    downstream_->release_downstream_connection();
   }
 }
 
@@ -104,7 +104,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
       DCLOG(INFO, this) << "Connecting to downstream server";
     }
   }
-  downstream->set_downstream_connection(this);
+
   downstream_ = downstream;
 
   ioctrl_.set_bev(bev_);
@@ -358,7 +358,7 @@ void idle_eventcb(bufferevent *bev, short events, void *arg)
   }
   auto client_handler = dconn->get_client_handler();
   client_handler->remove_downstream_connection(dconn);
-  delete dconn;
+  // dconn was deleted
 }
 } // namespace
 
@@ -367,8 +367,7 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream)
   if(LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
-  downstream->set_downstream_connection(0);
-  downstream_ = 0;
+  downstream_ = nullptr;
   ioctrl_.force_resume_read();
   bufferevent_enable(bev_, EV_READ);
   bufferevent_setcb(bev_, 0, 0, idle_eventcb, this);
@@ -377,7 +376,6 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream)
   bufferevent_set_timeouts(bev_,
                            &get_config()->downstream_idle_read_timeout,
                            &get_config()->downstream_write_timeout);
-  client_handler_->pool_downstream_connection(this);
 }
 
 bufferevent* HttpDownstreamConnection::get_bev()
