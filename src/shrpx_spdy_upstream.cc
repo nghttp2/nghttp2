@@ -109,7 +109,8 @@ void on_stream_close_callback
 
   if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
     upstream->remove_downstream(downstream);
-    delete downstream;
+    // downstrea was deleted
+
     return;
   }
 
@@ -125,7 +126,8 @@ void on_stream_close_callback
       }
     }
     upstream->remove_downstream(downstream);
-    delete downstream;
+    // downstrea was deleted
+
     return;
   }
 
@@ -134,7 +136,8 @@ void on_stream_close_callback
   // If shrpx_downstream::push_request_headers() failed, the
   // error is handled here.
   upstream->remove_downstream(downstream);
-  delete downstream;
+  // downstrea was deleted
+
   // How to test this case? Request sufficient large download
   // and make client send RST_STREAM after it gets first DATA
   // frame chunk.
@@ -153,10 +156,10 @@ void on_ctrl_recv_callback
       ULOG(INFO, upstream) << "Received upstream SYN_STREAM stream_id="
                            << frame->syn_stream.stream_id;
     }
-    auto downstream = new Downstream(upstream,
-                                     frame->syn_stream.stream_id,
-                                     frame->syn_stream.pri);
-    upstream->add_downstream(downstream);
+
+    auto downstream = upstream->add_pending_downstream
+      (frame->syn_stream.stream_id, frame->syn_stream.pri);
+
     downstream->init_upstream_timer();
     downstream->reset_upstream_rtimer();
     downstream->init_response_body_buf();
@@ -256,31 +259,33 @@ void SpdyUpstream::maintain_downstream_concurrency()
       break;
     }
 
-    initiate_downstream(downstream);
+    initiate_downstream(std::move(downstream));
   }
 }
 
-void SpdyUpstream::initiate_downstream(Downstream *downstream)
+void SpdyUpstream::initiate_downstream(std::unique_ptr<Downstream> downstream)
 {
   auto dconn = handler_->get_downstream_connection();
-  int rv = dconn->attach_downstream(downstream);
+  int rv = dconn->attach_downstream(downstream.get());
   if(rv != 0) {
-    downstream_queue_.add_failure(downstream);
-
     // If downstream connection fails, issue RST_STREAM.
-    rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    rst_stream(downstream.get(), SPDYLAY_INTERNAL_ERROR);
     downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+    downstream_queue_.add_failure(std::move(downstream));
+
     return;
   }
   rv = downstream->push_request_headers();
   if(rv != 0) {
-    downstream_queue_.add_failure(downstream);
+    rst_stream(downstream.get(), SPDYLAY_INTERNAL_ERROR);
 
-    rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    downstream_queue_.add_failure(std::move(downstream));
+
     return;
   }
 
-  downstream_queue_.add_active(downstream);
+  downstream_queue_.add_active(std::move(downstream));
 }
 
 namespace {
@@ -566,7 +571,8 @@ void spdy_downstream_readcb(bufferevent *bev, void *ptr)
     // because there is no consumer now. Downstream connection is also
     // closed in this case.
     upstream->remove_downstream(downstream);
-    delete downstream;
+    // downstrea was deleted
+
     return;
   }
 
@@ -654,7 +660,8 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
       // If stream was closed already, we don't need to send reply at
       // the first place. We can delete downstream.
       upstream->remove_downstream(downstream);
-      delete downstream;
+      // downstrea was deleted
+
       return;
     }
 
@@ -709,7 +716,8 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     }
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
       upstream->remove_downstream(downstream);
-      delete downstream;
+      // downstrea was deleted
+
       return;
     }
 
@@ -900,14 +908,20 @@ bufferevent_event_cb SpdyUpstream::get_downstream_eventcb()
   return spdy_downstream_eventcb;
 }
 
-void SpdyUpstream::add_downstream(Downstream *downstream)
+Downstream* SpdyUpstream::add_pending_downstream
+(int32_t stream_id, int32_t priority)
 {
-  downstream_queue_.add_pending(downstream);
+  auto downstream = util::make_unique<Downstream>(this, stream_id, priority);
+  auto res = downstream.get();
+
+  downstream_queue_.add_pending(std::move(downstream));
+
+  return res;
 }
 
 void SpdyUpstream::remove_downstream(Downstream *downstream)
 {
-  downstream_queue_.remove(downstream);
+  downstream_queue_.remove(downstream->get_stream_id());
 
   maintain_downstream_concurrency();
 }

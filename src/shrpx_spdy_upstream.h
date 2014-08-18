@@ -27,6 +27,8 @@
 
 #include "shrpx.h"
 
+#include <memory>
+
 #include <spdylay/spdylay.h>
 
 #include "shrpx_upstream.h"
@@ -52,7 +54,7 @@ public:
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
   virtual bufferevent_event_cb get_downstream_eventcb();
-  void add_downstream(Downstream *downstream);
+  Downstream* add_pending_downstream(int32_t stream_id, int32_t priority);
   void remove_downstream(Downstream *downstream);
   Downstream* find_downstream(int32_t stream_id);
 
@@ -75,7 +77,7 @@ public:
   int handle_ign_data_chunk(size_t len);
 
   void maintain_downstream_concurrency();
-  void initiate_downstream(Downstream *downstream);
+  void initiate_downstream(std::unique_ptr<Downstream> downstream);
 
   nghttp2::util::EvbufferBuffer sendbuf;
 private:

@@ -50,7 +50,6 @@ const size_t OUTBUF_MAX_THRES = 16*1024;
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
   : handler_(handler),
     current_header_length_(0),
-    downstream_(nullptr),
     ioctrl_(handler->get_bev())
 {
   http_parser_init(&htp_, HTTP_REQUEST);
@@ -58,9 +57,7 @@ HttpsUpstream::HttpsUpstream(ClientHandler *handler)
 }
 
 HttpsUpstream::~HttpsUpstream()
-{
-  delete downstream_;
-}
+{}
 
 void HttpsUpstream::reset_current_header_length()
 {
@@ -76,8 +73,7 @@ int htp_msg_begin(http_parser *htp)
   }
   upstream->reset_current_header_length();
   // TODO specify 0 as priority for now
-  auto downstream = new Downstream(upstream, 0, 0);
-  upstream->attach_downstream(downstream);
+  upstream->attach_downstream(util::make_unique<Downstream>(upstream, 0, 0));
   return 0;
 }
 } // namespace
@@ -723,28 +719,25 @@ bufferevent_event_cb HttpsUpstream::get_downstream_eventcb()
   return https_downstream_eventcb;
 }
 
-void HttpsUpstream::attach_downstream(Downstream *downstream)
+void HttpsUpstream::attach_downstream(std::unique_ptr<Downstream> downstream)
 {
   assert(!downstream_);
-  downstream_ = downstream;
+  downstream_ = std::move(downstream);
 }
 
 void HttpsUpstream::delete_downstream()
 {
-  delete downstream_;
-  downstream_ = 0;
+  downstream_.reset();
 }
 
 Downstream* HttpsUpstream::get_downstream() const
 {
-  return downstream_;
+  return downstream_.get();
 }
 
-Downstream* HttpsUpstream::pop_downstream()
+std::unique_ptr<Downstream> HttpsUpstream::pop_downstream()
 {
-  auto downstream = downstream_;
-  downstream_ = nullptr;
-  return downstream;
+  return std::unique_ptr<Downstream>(downstream_.release());
 }
 
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)

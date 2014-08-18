@@ -38,7 +38,7 @@
 
 namespace shrpx {
 
-Downstream::Downstream(Upstream *upstream, int stream_id, int priority)
+Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
   : request_bodylen_(0),
     response_bodylen_(0),
     upstream_(upstream),

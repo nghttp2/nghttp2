@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 
 namespace shrpx {
 
@@ -39,12 +40,13 @@ class DownstreamQueue {
 public:
   DownstreamQueue();
   ~DownstreamQueue();
-  void add_pending(Downstream *downstream);
-  void add_failure(Downstream *downstream);
-  void add_active(Downstream *downstream);
+  void add_pending(std::unique_ptr<Downstream> downstream);
+  void add_failure(std::unique_ptr<Downstream> downstream);
+  void add_active(std::unique_ptr<Downstream> downstream);
   // Removes |downstream| from either pending_downstreams_,
-  // active_downstreams_ or failure_downstreams_.
-  void remove(Downstream *downstream);
+  // active_downstreams_ or failure_downstreams_ and returns it
+  // wrapped in std::unique_ptr.
+  std::unique_ptr<Downstream> remove(int32_t stream_id);
   // Finds Downstream object denoted by |stream_id| either in
   // pending_downstreams_, active_downstreams_ or
   // failure_downstreams_.
@@ -55,14 +57,14 @@ public:
   bool pending_empty() const;
   // Pops first Downstream object in pending_downstreams_ and returns
   // it.
-  Downstream* pop_pending();
+  std::unique_ptr<Downstream> pop_pending();
 private:
   // Downstream objects, not processed yet
-  std::map<int32_t, Downstream*> pending_downstreams_;
+  std::map<int32_t, std::unique_ptr<Downstream>> pending_downstreams_;
   // Downstream objects in use, consuming downstream concurrency limit
-  std::map<int32_t, Downstream*> active_downstreams_;
+  std::map<int32_t, std::unique_ptr<Downstream>> active_downstreams_;
   // Downstream objects, failed to connect to downstream server
-  std::map<int32_t, Downstream*> failure_downstreams_;
+  std::map<int32_t, std::unique_ptr<Downstream>> failure_downstreams_;
 };
 
 } // namespace shrpx

@@ -49,7 +49,7 @@ class DownstreamConnection;
 
 class Downstream {
 public:
-  Downstream(Upstream *upstream, int stream_id, int priority);
+  Downstream(Upstream *upstream, int32_t stream_id, int32_t priority);
   ~Downstream();
   void reset_upstream(Upstream *upstream);
   Upstream* get_upstream() const;

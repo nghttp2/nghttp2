@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "http-parser/http_parser.h"
 
 #include "shrpx_upstream.h"
@@ -50,10 +52,10 @@ public:
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
   virtual bufferevent_event_cb get_downstream_eventcb();
-  void attach_downstream(Downstream *downstream);
+  void attach_downstream(std::unique_ptr<Downstream> downstream);
   void delete_downstream();
   Downstream* get_downstream() const;
-  Downstream* pop_downstream();
+  std::unique_ptr<Downstream> pop_downstream();
   int error_reply(unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);
@@ -70,7 +72,7 @@ private:
   ClientHandler *handler_;
   http_parser htp_;
   size_t current_header_length_;
-  Downstream *downstream_;
+  std::unique_ptr<Downstream> downstream_;
   IOControl ioctrl_;
 };
 

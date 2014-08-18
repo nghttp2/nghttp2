@@ -54,7 +54,7 @@ public:
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
   virtual bufferevent_event_cb get_downstream_eventcb();
-  void add_pending_downstream(Downstream *downstream);
+  void add_pending_downstream(std::unique_ptr<Downstream> downstream);
   void remove_downstream(Downstream *downstream);
   Downstream* find_downstream(int32_t stream_id);
 
@@ -83,7 +83,7 @@ public:
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp2_nv>& nva) const;
   void maintain_downstream_concurrency();
-  void initiate_downstream(Downstream *downstream);
+  void initiate_downstream(std::unique_ptr<Downstream> downstream);
 private:
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;

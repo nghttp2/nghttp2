@@ -73,8 +73,7 @@ int on_stream_close_callback
 
   if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
     upstream->remove_downstream(downstream);
-
-    delete downstream;
+    // downstream was deleted
 
     return 0;
   }
@@ -94,8 +93,7 @@ int on_stream_close_callback
     }
 
     upstream->remove_downstream(downstream);
-
-    delete downstream;
+    // downstream was deleted
 
     return 0;
   }
@@ -105,7 +103,8 @@ int on_stream_close_callback
   // If shrpx_downstream::push_request_headers() failed, the
   // error is handled here.
   upstream->remove_downstream(downstream);
-  delete downstream;
+  // downstream was deleted
+
   // How to test this case? Request sufficient large download
   // and make client send RST_STREAM after it gets first DATA
   // frame chunk.
@@ -117,9 +116,8 @@ int on_stream_close_callback
 int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
 {
   int rv;
-  auto downstream = http->get_downstream();
 
-  auto http2_settings = downstream->get_http2_settings();
+  auto http2_settings = http->get_downstream()->get_http2_settings();
   util::to_base64(http2_settings);
 
   auto settings_payload = base64::decode(std::begin(http2_settings),
@@ -136,15 +134,16 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
     return -1;
   }
   pre_upstream_.reset(http);
-  http->pop_downstream();
+  auto downstream = http->pop_downstream();
   downstream->reset_upstream(this);
   downstream->set_stream_id(1);
-  downstream_queue_.add_active(downstream);
   downstream->init_upstream_timer();
   downstream->reset_upstream_rtimer();
   downstream->init_response_body_buf();
   downstream->set_stream_id(1);
   downstream->set_priority(0);
+
+  downstream_queue_.add_active(std::move(downstream));
 
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "Connection upgraded to HTTP/2";
@@ -272,11 +271,9 @@ int on_begin_headers_callback(nghttp2_session *session,
   }
 
   // TODO Use priority 0 for now
-  auto downstream = new Downstream(upstream,
-                                   frame->hd.stream_id,
-                                   0);
+  auto downstream = util::make_unique<Downstream>
+    (upstream, frame->hd.stream_id, 0);
 
-  upstream->add_pending_downstream(downstream);
   downstream->init_upstream_timer();
   downstream->reset_upstream_rtimer();
   downstream->init_response_body_buf();
@@ -285,6 +282,8 @@ int on_begin_headers_callback(nghttp2_session *session,
   // minor version 0 to use via header field in a conventional way.
   downstream->set_request_major(2);
   downstream->set_request_minor(0);
+
+  upstream->add_pending_downstream(std::move(downstream));
 
   return 0;
 }
@@ -392,40 +391,41 @@ void Http2Upstream::maintain_downstream_concurrency()
       break;
     }
 
-    initiate_downstream(downstream);
+    initiate_downstream(std::move(downstream));
   }
 }
 
-void Http2Upstream::initiate_downstream(Downstream *downstream)
+void Http2Upstream::initiate_downstream(std::unique_ptr<Downstream> downstream)
 {
   int rv;
 
   auto dconn = handler_->get_downstream_connection();
-  rv = dconn->attach_downstream(downstream);
+  rv = dconn->attach_downstream(downstream.get());
   if(rv != 0) {
-    downstream_queue_.add_failure(downstream);
-
     // downstream connection fails, send error page
-    if(error_reply(downstream, 503) != 0) {
-      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if(error_reply(downstream.get(), 503) != 0) {
+      rst_stream(downstream.get(), NGHTTP2_INTERNAL_ERROR);
     }
 
     downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+    downstream_queue_.add_failure(std::move(downstream));
 
     return;
   }
   rv = downstream->push_request_headers();
   if(rv != 0) {
-    downstream_queue_.add_failure(downstream);
 
-    if(error_reply(downstream, 503) != 0) {
-      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if(error_reply(downstream.get(), 503) != 0) {
+      rst_stream(downstream.get(), NGHTTP2_INTERNAL_ERROR);
     }
+
+    downstream_queue_.add_failure(std::move(downstream));
 
     return;
   }
 
-  downstream_queue_.add_active(downstream);
+  downstream_queue_.add_active(std::move(downstream));
 
   return;
 }
@@ -837,7 +837,8 @@ void downstream_readcb(bufferevent *bev, void *ptr)
     // because there is no consumer now. Downstream connection is also
     // closed in this case.
     upstream->remove_downstream(downstream);
-    delete downstream;
+    // downstream was deleted
+
     return;
   }
 
@@ -925,7 +926,7 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
       // If stream was closed already, we don't need to send reply at
       // the first place. We can delete downstream.
       upstream->remove_downstream(downstream);
-      delete downstream;
+      // downstream was deleted
 
       return;
     }
@@ -981,7 +982,7 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
 
     if(downstream->get_request_state() == Downstream::STREAM_CLOSED) {
       upstream->remove_downstream(downstream);
-      delete downstream;
+      // downstream was deleted
 
       return;
     }
@@ -1169,14 +1170,15 @@ bufferevent_event_cb Http2Upstream::get_downstream_eventcb()
   return downstream_eventcb;
 }
 
-void Http2Upstream::add_pending_downstream(Downstream *downstream)
+void Http2Upstream::add_pending_downstream
+(std::unique_ptr<Downstream> downstream)
 {
-  downstream_queue_.add_pending(downstream);
+  downstream_queue_.add_pending(std::move(downstream));
 }
 
 void Http2Upstream::remove_downstream(Downstream *downstream)
 {
-  downstream_queue_.remove(downstream);
+  downstream_queue_.remove(downstream->get_stream_id());
 
   maintain_downstream_concurrency();
 }
