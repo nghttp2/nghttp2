@@ -276,7 +276,7 @@ int on_begin_headers_callback(nghttp2_session *session,
                                    frame->hd.stream_id,
                                    0);
 
-  upstream->add_downstream(downstream);
+  upstream->add_pending_downstream(downstream);
   downstream->init_upstream_timer();
   downstream->reset_upstream_rtimer();
   downstream->init_response_body_buf();
@@ -1169,7 +1169,7 @@ bufferevent_event_cb Http2Upstream::get_downstream_eventcb()
   return downstream_eventcb;
 }
 
-void Http2Upstream::add_downstream(Downstream *downstream)
+void Http2Upstream::add_pending_downstream(Downstream *downstream)
 {
   downstream_queue_.add_pending(downstream);
 }

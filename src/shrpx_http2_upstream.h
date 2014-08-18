@@ -54,7 +54,7 @@ public:
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
   virtual bufferevent_event_cb get_downstream_eventcb();
-  void add_downstream(Downstream *downstream);
+  void add_pending_downstream(Downstream *downstream);
   void remove_downstream(Downstream *downstream);
   Downstream* find_downstream(int32_t stream_id);
 
