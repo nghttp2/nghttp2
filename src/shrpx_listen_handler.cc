@@ -38,6 +38,7 @@
 #include "shrpx_worker_config.h"
 #include "shrpx_config.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_connect_blocker.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -220,6 +221,8 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
     }
 
     client->set_http2_session(http2session_.get());
+    client->set_http1_connect_blocker(http1_connect_blocker_.get());
+
     return 0;
   }
   size_t idx = worker_round_robin_cnt_ % workers_.size();
@@ -251,6 +254,20 @@ int ListenHandler::create_http2_session()
   http2session_ = util::make_unique<Http2Session>(evbase_, cl_ssl_ctx_);
   rv = http2session_->init_notification();
   return rv;
+}
+
+int ListenHandler::create_http1_connect_blocker()
+{
+  int rv;
+  http1_connect_blocker_ = util::make_unique<ConnectBlocker>();
+
+  rv = http1_connect_blocker_->init(evbase_);
+
+  if(rv != 0) {
+    return -1;
+  }
+
+  return 0;
 }
 
 const WorkerStat* ListenHandler::get_worker_stat() const

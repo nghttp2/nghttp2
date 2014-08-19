@@ -38,6 +38,7 @@
 namespace shrpx {
 
 class Http2Session;
+class ConnectBlocker;
 struct WorkerStat;
 
 enum WorkerEventType {
@@ -60,7 +61,8 @@ struct WorkerEvent {
 class ThreadEventReceiver {
 public:
   ThreadEventReceiver(event_base *evbase, SSL_CTX *ssl_ctx,
-                      Http2Session *http2session);
+                      Http2Session *http2session,
+                      ConnectBlocker *http1_connect_blocker);
   ~ThreadEventReceiver();
   void on_read(bufferevent *bev);
 private:
@@ -69,6 +71,7 @@ private:
   // Shared HTTP2 session for each thread. NULL if not client
   // mode. Not deleted by this object.
   Http2Session *http2session_;
+  ConnectBlocker *http1_connect_blocker_;
   bufferevent_rate_limit_group *rate_limit_group_;
   std::unique_ptr<WorkerStat> worker_stat_;
 };

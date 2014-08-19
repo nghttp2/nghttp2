@@ -31,6 +31,7 @@
 #include "shrpx_error.h"
 #include "shrpx_http.h"
 #include "shrpx_worker_config.h"
+#include "shrpx_connect_blocker.h"
 #include "http2.h"
 #include "util.h"
 
@@ -76,12 +77,20 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
   }
   auto upstream = downstream->get_upstream();
   if(!bev_) {
+    auto connect_blocker = client_handler_->get_http1_connect_blocker();
+
+    if(connect_blocker->blocked()) {
+      return -1;
+    }
+
     auto evbase = client_handler_->get_evbase();
 
     auto fd = socket(get_config()->downstream_addr.storage.ss_family,
                      SOCK_STREAM | SOCK_CLOEXEC, 0);
 
     if(fd == -1) {
+      connect_blocker->on_failure();
+
       return SHRPX_ERR_NETWORK;
     }
 
@@ -89,6 +98,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
       (evbase, fd,
        BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
     if(!bev_) {
+      connect_blocker->on_failure();
+
       DCLOG(INFO, this) << "bufferevent_socket_new() failed";
       close(fd);
 
@@ -100,10 +111,15 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
        const_cast<sockaddr*>(&get_config()->downstream_addr.sa),
        get_config()->downstream_addrlen);
     if(rv != 0) {
+      connect_blocker->on_failure();
+
       bufferevent_free(bev_);
       bev_ = nullptr;
       return SHRPX_ERR_NETWORK;
     }
+
+    connect_blocker->on_success();
+
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, this) << "Connecting to downstream server";
     }

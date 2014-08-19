@@ -55,6 +55,7 @@ struct WorkerInfo {
 };
 
 class Http2Session;
+class ConnectBlocker;
 struct WorkerStat;
 
 class ListenHandler {
@@ -66,6 +67,7 @@ public:
   void worker_reopen_log_files();
   event_base* get_evbase() const;
   int create_http2_session();
+  int create_http1_connect_blocker();
   const WorkerStat* get_worker_stat() const;
   void set_evlistener4(evconnlistener *evlistener4);
   evconnlistener* get_evlistener4() const;
@@ -86,6 +88,7 @@ private:
   // Shared backend HTTP2 session. NULL if multi-threaded. In
   // multi-threaded case, see shrpx_worker.cc.
   std::unique_ptr<Http2Session> http2session_;
+  std::unique_ptr<ConnectBlocker> http1_connect_blocker_;
   bufferevent_rate_limit_group *rate_limit_group_;
   evconnlistener *evlistener4_;
   evconnlistener *evlistener6_;

@@ -526,6 +526,17 @@ Http2Session* ClientHandler::get_http2_session() const
   return http2session_;
 }
 
+void ClientHandler::set_http1_connect_blocker
+(ConnectBlocker *http1_connect_blocker)
+{
+  http1_connect_blocker_ = http1_connect_blocker;
+}
+
+ConnectBlocker* ClientHandler::get_http1_connect_blocker() const
+{
+  return http1_connect_blocker_;
+}
+
 size_t ClientHandler::get_left_connhd_len() const
 {
   return left_connhd_len_;

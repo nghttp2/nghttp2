@@ -41,6 +41,7 @@ class Upstream;
 class DownstreamConnection;
 class Http2Session;
 class HttpsUpstream;
+class ConnectBlocker;
 struct WorkerStat;
 
 class ClientHandler {
@@ -71,6 +72,8 @@ public:
   SSL* get_ssl() const;
   void set_http2_session(Http2Session *http2session);
   Http2Session* get_http2_session() const;
+  void set_http1_connect_blocker(ConnectBlocker *http1_connect_blocker);
+  ConnectBlocker* get_http1_connect_blocker() const;
   size_t get_left_connhd_len() const;
   void set_left_connhd_len(size_t left);
   // Call this function when HTTP/2 connection header is received at
@@ -95,6 +98,7 @@ private:
   // Shared HTTP2 session for each thread. NULL if backend is not
   // HTTP2. Not deleted by this object.
   Http2Session *http2session_;
+  ConnectBlocker *http1_connect_blocker_;
   SSL *ssl_;
   event *reneg_shutdown_timerev_;
   WorkerStat *worker_stat_;
