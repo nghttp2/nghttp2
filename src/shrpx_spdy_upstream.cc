@@ -834,12 +834,14 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
     downstream->disable_upstream_wtimer();
   }
 
-  if(nread == 0 && *eof != 1) {
+  if(nread == 0) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return SPDYLAY_ERR_CALLBACK_FAILURE;
     }
 
-    return SPDYLAY_ERR_DEFERRED;
+    if(*eof != 1) {
+      return SPDYLAY_ERR_DEFERRED;
+    }
   }
 
   return nread;

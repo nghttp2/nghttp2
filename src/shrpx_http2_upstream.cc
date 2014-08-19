@@ -1101,12 +1101,14 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     downstream->disable_upstream_wtimer();
   }
 
-  if(nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
+  if(nread == 0) {
     if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
 
-    return NGHTTP2_ERR_DEFERRED;
+    if(((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
+      return NGHTTP2_ERR_DEFERRED;
+    }
   }
   return nread;
 }

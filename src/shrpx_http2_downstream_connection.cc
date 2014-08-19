@@ -204,6 +204,20 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
     if(nread == 0) {
+      // This is important because it will handle flow control
+      // stuff.
+      if(downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
+                                                 downstream) != 0) {
+        // In this case, downstream may be deleted.
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
+
+      // Check dconn is still alive because Upstream::resume_read()
+      // may delete downstream which will delete dconn.
+      if(sd->dconn == nullptr) {
+        return NGHTTP2_ERR_DEFERRED;
+      }
+
       if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
         if(!downstream->get_upgrade_request() ||
            (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
@@ -216,18 +230,6 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
         }
         break;
       } else {
-        // This is important because it will handle flow control
-        // stuff.
-        if(downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
-                                                   downstream) != 0) {
-          // In this case, downstream may be deleted.
-          return NGHTTP2_ERR_CALLBACK_FAILURE;
-        }
-        // Check dconn is still alive because Upstream::resume_read()
-        // may delete downstream which will delete dconn.
-        if(sd->dconn == nullptr) {
-          return NGHTTP2_ERR_DEFERRED;
-        }
         if(evbuffer_get_length(body) == 0) {
           // Check get_request_state() == MSG_COMPLETE just in case
           if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
