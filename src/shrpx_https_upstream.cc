@@ -375,7 +375,16 @@ int HttpsUpstream::on_read()
       handler->set_should_close_after_write(true);
       pause_read(SHRPX_MSG_BLOCK);
 
-      if(error_reply(400) != 0) {
+      unsigned int status_code;
+
+      if(downstream && downstream->get_request_state() ==
+         Downstream::CONNECT_FAIL) {
+        status_code = 503;
+      } else {
+        status_code = 400;
+      }
+
+      if(error_reply(status_code) != 0) {
         return -1;
       }
 
