@@ -81,6 +81,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
     auto fd = socket(get_config()->downstream_addr.storage.ss_family,
                      SOCK_STREAM | SOCK_CLOEXEC, 0);
 
+    if(fd == -1) {
+      return SHRPX_ERR_NETWORK;
+    }
+
     bev_ = bufferevent_socket_new
       (evbase, fd,
        BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);

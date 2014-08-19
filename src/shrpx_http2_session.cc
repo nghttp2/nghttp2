@@ -401,9 +401,18 @@ int Http2Session::initiate_connection()
                         << ":"
                         << get_config()->downstream_http_proxy_port;
     }
-    bev_ = bufferevent_socket_new(evbase_, -1, BEV_OPT_DEFER_CALLBACKS);
+
+    auto fd = socket(get_config()->downstream_http_proxy_addr.storage.ss_family,
+                     SOCK_STREAM | SOCK_CLOEXEC, 0);
+
+    if(fd == -1) {
+      return SHRPX_ERR_NETWORK;
+    }
+
+    bev_ = bufferevent_socket_new(evbase_, fd, BEV_OPT_DEFER_CALLBACKS);
     if(!bev_) {
       SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
+      close(fd);
       return SHRPX_ERR_NETWORK;
     }
     bufferevent_enable(bev_, EV_READ);
@@ -488,6 +497,10 @@ int Http2Session::initiate_connection()
 
         fd_ = socket(get_config()->downstream_addr.storage.ss_family,
                      SOCK_STREAM | SOCK_CLOEXEC, 0);
+
+        if(fd_ == -1) {
+          return SHRPX_ERR_NETWORK;
+        }
       }
 
       bev_ = bufferevent_socket_new(evbase_, fd_, BEV_OPT_DEFER_CALLBACKS);
