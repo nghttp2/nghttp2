@@ -36,7 +36,7 @@ WorkerConfig::WorkerConfig()
 #ifndef NOTHREADS
 thread_local
 #endif // NOTHREADS
-WorkerConfig worker_config;
+WorkerConfig *worker_config = new WorkerConfig();
 
 } // namespace shrpx
 

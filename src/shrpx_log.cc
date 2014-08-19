@@ -102,8 +102,10 @@ Log::~Log()
 {
   int rv;
 
+  auto wconf = worker_config;
+
   if(!log_enabled(severity_) ||
-     (worker_config.errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
+     (wconf->errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
     return;
   }
 
@@ -116,7 +118,7 @@ Log::~Log()
   }
 
   char buf[4096];
-  auto tty = worker_config.errorlog_tty;
+  auto tty = wconf->errorlog_tty;
 
   auto cached_time = get_config()->cached_time;
 
@@ -138,13 +140,15 @@ Log::~Log()
 
   auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
 
-  while(write(worker_config.errorlog_fd, buf, nwrite) == -1 && errno == EINTR);
+  while(write(wconf->errorlog_fd, buf, nwrite) == -1 && errno == EINTR);
 }
 
 void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
                         Downstream *downstream)
 {
-  if(worker_config.accesslog_fd == -1 && !get_config()->accesslog_syslog) {
+  auto wconf = worker_config;
+
+  if(wconf->accesslog_fd == -1 && !get_config()->accesslog_syslog) {
     return;
   }
 
@@ -209,25 +213,26 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
     return;
   }
 
-  while(write(worker_config.accesslog_fd, buf, nwrite) == -1 &&
-        errno == EINTR);
+  while(write(wconf->accesslog_fd, buf, nwrite) == -1 && errno == EINTR);
 }
 
 int reopen_log_files()
 {
   int res = 0;
 
-  if(worker_config.accesslog_fd != -1) {
-    close(worker_config.accesslog_fd);
-    worker_config.accesslog_fd = -1;
+  auto wconf = worker_config;
+
+  if(wconf->accesslog_fd != -1) {
+    close(wconf->accesslog_fd);
+    wconf->accesslog_fd = -1;
   }
 
   if(!get_config()->accesslog_syslog && get_config()->accesslog_file) {
 
-    worker_config.accesslog_fd =
+    wconf->accesslog_fd =
       util::reopen_log_file(get_config()->accesslog_file.get());
 
-    if(worker_config.accesslog_fd == -1) {
+    if(wconf->accesslog_fd == -1) {
       LOG(ERROR) << "Failed to open accesslog file "
                  << get_config()->accesslog_file.get();
       res = -1;
@@ -241,7 +246,7 @@ int reopen_log_files()
     new_errorlog_fd = util::reopen_log_file(get_config()->errorlog_file.get());
 
     if(new_errorlog_fd == -1) {
-      if(worker_config.errorlog_fd != -1) {
+      if(wconf->errorlog_fd != -1) {
         LOG(ERROR) << "Failed to open errorlog file "
                    << get_config()->errorlog_file.get();
       } else {
@@ -254,15 +259,15 @@ int reopen_log_files()
     }
   }
 
-  if(worker_config.errorlog_fd != -1) {
-    close(worker_config.errorlog_fd);
-    worker_config.errorlog_fd = -1;
-    worker_config.errorlog_tty = false;
+  if(wconf->errorlog_fd != -1) {
+    close(wconf->errorlog_fd);
+    wconf->errorlog_fd = -1;
+    wconf->errorlog_tty = false;
   }
 
   if(new_errorlog_fd != -1) {
-    worker_config.errorlog_fd = new_errorlog_fd;
-    worker_config.errorlog_tty = isatty(worker_config.errorlog_fd);
+    wconf->errorlog_fd = new_errorlog_fd;
+    wconf->errorlog_tty = isatty(wconf->errorlog_fd);
   }
 
   return res;

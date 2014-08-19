@@ -335,7 +335,7 @@ void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg)
   auto listener_handler = static_cast<ListenHandler*>(arg);
 
   if(LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Reopening log files: worker_info(" << &worker_config << ")";
+    LOG(INFO) << "Reopening log files: worker_info(" << worker_config << ")";
   }
 
   (void)reopen_log_files();
@@ -456,7 +456,7 @@ void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg)
 
   listener_handler->accept_pending_connection();
 
-  worker_config.graceful_shutdown = true;
+  worker_config->graceful_shutdown = true;
 
   listener_handler->graceful_shutdown_worker();
 }
@@ -495,7 +495,7 @@ void refresh_cb(evutil_socket_t sig, short events, void *arg)
   // In multi threaded mode (get_config()->num_worker > 1), we have to
   // wait for event notification to workers to finish.
   if(get_config()->num_worker == 1 &&
-     worker_config.graceful_shutdown &&
+     worker_config->graceful_shutdown &&
      (!worker_stat || worker_stat->num_connections == 0)) {
     event_base_loopbreak(listener_handler->get_evbase());
   }
@@ -1642,15 +1642,15 @@ int main(int argc, char **argv)
   }
 
   if(get_config()->uid != 0) {
-    if(worker_config.accesslog_fd != -1 &&
-       fchown(worker_config.accesslog_fd,
+    if(worker_config->accesslog_fd != -1 &&
+       fchown(worker_config->accesslog_fd,
               get_config()->uid, get_config()->gid)  == -1) {
       auto error = errno;
       LOG(WARNING) << "Changing owner of access log file failed: "
                    << strerror(error);
     }
-    if(worker_config.errorlog_fd != -1 &&
-       fchown(worker_config.errorlog_fd,
+    if(worker_config->errorlog_fd != -1 &&
+       fchown(worker_config->errorlog_fd,
               get_config()->uid, get_config()->gid) == -1) {
       auto error = errno;
       LOG(WARNING) << "Changing owner of error log file failed: "

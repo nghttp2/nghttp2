@@ -73,7 +73,7 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
     if(wev.type == REOPEN_LOG) {
       if(LOG_ENABLED(INFO)) {
         LOG(INFO) << "Reopening log files: worker_info("
-                  << &worker_config << ")";
+                  << worker_config << ")";
       }
 
       reopen_log_files();
@@ -86,7 +86,7 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
         LOG(INFO) << "Graceful shutdown commencing";
       }
 
-      worker_config.graceful_shutdown = true;
+      worker_config->graceful_shutdown = true;
 
       if(worker_stat_->num_connections == 0) {
         event_base_loopbreak(evbase_);

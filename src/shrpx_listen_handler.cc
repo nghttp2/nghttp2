@@ -82,7 +82,7 @@ void worker_writecb(bufferevent *bev, void *ptr)
   auto listener_handler = static_cast<ListenHandler*>(ptr);
   auto output = bufferevent_get_output(bev);
 
-  if(!worker_config.graceful_shutdown ||
+  if(!worker_config->graceful_shutdown ||
      evbuffer_get_length(output) != 0) {
     return;
   }

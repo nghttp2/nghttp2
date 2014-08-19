@@ -44,7 +44,7 @@ extern
 #ifndef NOTHREADS
 thread_local
 #endif // NOTHREADS
-WorkerConfig worker_config;
+WorkerConfig *worker_config;
 
 } // namespace shrpx
 
