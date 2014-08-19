@@ -204,6 +204,7 @@ FILE* open_file_for_write(const char *filename)
   if(f == nullptr) {
     LOG(ERROR) << "Failed to open " << filename << " for writing. Cause: "
                << strerror(errno);
+    return nullptr;
   }
 
   evutil_make_socket_closeonexec(fileno(f));
