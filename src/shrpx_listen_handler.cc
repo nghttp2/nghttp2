@@ -55,8 +55,8 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
     evlistener4_(nullptr),
     evlistener6_(nullptr),
     worker_stat_(util::make_unique<WorkerStat>()),
-    worker_round_robin_cnt_(0),
-    num_worker_shutdown_(0)
+    num_worker_shutdown_(0),
+    worker_round_robin_cnt_(0)
 {}
 
 ListenHandler::~ListenHandler()

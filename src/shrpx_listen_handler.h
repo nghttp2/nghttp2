@@ -93,8 +93,8 @@ private:
   evconnlistener *evlistener4_;
   evconnlistener *evlistener6_;
   std::unique_ptr<WorkerStat> worker_stat_;
+  size_t num_worker_shutdown_;
   unsigned int worker_round_robin_cnt_;
-  int num_worker_shutdown_;
 };
 
 } // namespace shrpx
