@@ -49,7 +49,7 @@ public:
   virtual int end_upload_data();
 
   virtual void pause_read(IOCtrlReason reason);
-  virtual int resume_read(IOCtrlReason reason);
+  virtual int resume_read(IOCtrlReason reason, size_t consumed);
   virtual void force_resume_read();
 
   virtual bool get_output_buffer_full();

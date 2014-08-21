@@ -886,9 +886,7 @@ void downstream_writecb(bufferevent *bev, void *ptr)
     return;
   }
   auto dconn = static_cast<DownstreamConnection*>(ptr);
-  auto downstream = dconn->get_downstream();
-  auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
-  upstream->resume_read(SHRPX_NO_BUFFER, downstream);
+  dconn->on_write();
 }
 } // namespace
 
@@ -1101,15 +1099,14 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     downstream->disable_upstream_wtimer();
   }
 
-  if(nread == 0) {
-    if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
-
-    if(((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
-      return NGHTTP2_ERR_DEFERRED;
-    }
+  if(nread > 0 && downstream->resume_read(SHRPX_NO_BUFFER, nread) != 0) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
+
+  if(nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
+    return NGHTTP2_ERR_DEFERRED;
+  }
+
   return nread;
 }
 } // namespace
@@ -1361,15 +1358,17 @@ bool Http2Upstream::get_flow_control() const
 void Http2Upstream::pause_read(IOCtrlReason reason)
 {}
 
-int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream)
+int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream,
+                               size_t consumed)
 {
   if(get_flow_control()) {
-    if(consume(downstream->get_stream_id(),
-               downstream->get_request_datalen()) != 0) {
+    assert(downstream->get_request_datalen() >= consumed);
+
+    if(consume(downstream->get_stream_id(), consumed) != 0) {
       return -1;
     }
 
-    downstream->reset_request_datalen();
+    downstream->dec_request_datalen(consumed);
   }
 
   return send();

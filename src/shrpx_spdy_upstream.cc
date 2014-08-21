@@ -107,6 +107,10 @@ void on_stream_close_callback
     return;
   }
 
+  upstream->consume(stream_id, downstream->get_request_datalen());
+
+  downstream->reset_request_datalen();
+
   if(downstream->get_request_state() == Downstream::CONNECT_FAIL) {
     upstream->remove_downstream(downstream);
     // downstrea was deleted
@@ -295,7 +299,8 @@ void on_data_chunk_recv_callback(spdylay_session *session,
   auto downstream = upstream->find_downstream(stream_id);
 
   if(!downstream) {
-    upstream->handle_ign_data_chunk(len);
+    upstream->consume(stream_id, len);
+
     return;
   }
 
@@ -303,7 +308,9 @@ void on_data_chunk_recv_callback(spdylay_session *session,
 
   if(downstream->push_upload_data_chunk(data, len) != 0) {
     upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-    upstream->handle_ign_data_chunk(len);
+
+    upstream->consume(stream_id, len);
+
     return;
   }
 
@@ -456,7 +463,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
     flow_control_ = true;
     initial_window_size_ = 1 << get_config()->http2_upstream_window_bits;
     rv = spdylay_session_set_option(session_,
-                                    SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
+                                    SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE2, &val,
                                     sizeof(val));
     assert(rv == 0);
   } else {
@@ -619,9 +626,7 @@ void spdy_downstream_writecb(bufferevent *bev, void *ptr)
     return;
   }
   auto dconn = static_cast<DownstreamConnection*>(ptr);
-  auto downstream = dconn->get_downstream();
-  auto upstream = static_cast<SpdyUpstream*>(downstream->get_upstream());
-  upstream->resume_read(SHRPX_NO_BUFFER, downstream);
+  dconn->on_write();
 }
 } // namespace
 
@@ -834,14 +839,12 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
     downstream->disable_upstream_wtimer();
   }
 
-  if(nread == 0) {
-    if(downstream->resume_read(SHRPX_NO_BUFFER) != 0) {
-      return SPDYLAY_ERR_CALLBACK_FAILURE;
-    }
+  if(nread > 0 && downstream->resume_read(SHRPX_NO_BUFFER, nread) != 0) {
+    return SPDYLAY_ERR_CALLBACK_FAILURE;
+  }
 
-    if(*eof != 1) {
-      return SPDYLAY_ERR_DEFERRED;
-    }
+  if(nread == 0 && *eof != 1) {
+    return SPDYLAY_ERR_DEFERRED;
   }
 
   return nread;
@@ -1091,40 +1094,19 @@ bool SpdyUpstream::get_flow_control() const
 void SpdyUpstream::pause_read(IOCtrlReason reason)
 {}
 
-namespace {
-int32_t determine_window_update_transmission(spdylay_session *session,
-                                             int32_t stream_id)
-{
-  int32_t recv_length, window_size;
-  if(stream_id == 0) {
-    recv_length = spdylay_session_get_recv_data_length(session);
-    window_size = 1 << get_config()->http2_upstream_connection_window_bits;
-  } else {
-    recv_length = spdylay_session_get_stream_recv_data_length
-      (session, stream_id);
-    window_size = 1 << get_config()->http2_upstream_window_bits;
-  }
-  if(recv_length != -1 && recv_length >= window_size / 2) {
-    return recv_length;
-  }
-  return -1;
-}
-} // namespace
-
-int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream)
+int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream,
+                              size_t consumed)
 {
   if(get_flow_control()) {
-    int32_t delta;
-    delta = determine_window_update_transmission(session_, 0);
-    if(delta != -1) {
-      window_update(0, delta);
+    assert(downstream->get_request_datalen() >= consumed);
+
+    if(consume(downstream->get_stream_id(), consumed) != 0) {
+      return -1;
     }
-    delta = determine_window_update_transmission
-      (session_, downstream->get_stream_id());
-    if(delta != -1) {
-      window_update(downstream, delta);
-    }
+
+    downstream->dec_request_datalen(consumed);
   }
+
   return send();
 }
 
@@ -1142,23 +1124,21 @@ int SpdyUpstream::on_downstream_abort_request(Downstream *downstream,
   return send();
 }
 
-int SpdyUpstream::handle_ign_data_chunk(size_t len)
+int SpdyUpstream::consume(int32_t stream_id, size_t len)
 {
-  int32_t window_size;
+  int rv;
 
-  if(spdylay_session_get_recv_data_length(session_) == -1) {
-    // No connection flow control
-    return 0;
-  }
+  rv = spdylay_session_consume(session_, stream_id, len);
 
-  window_size = 1 << get_config()->http2_upstream_connection_window_bits;
-
-  if(recv_ign_window_size_ >= window_size / 2) {
-    window_update(0, recv_ign_window_size_);
+  if(rv != 0) {
+    ULOG(WARNING, this) << "spdylay_session_consume() returned error: "
+                        << spdylay_strerror(rv);
+    return -1;
   }
 
   return 0;
 }
+
 
 int SpdyUpstream::on_timeout(Downstream *downstream)
 {

@@ -59,7 +59,7 @@ public:
   void set_priority(int32_t pri);
   int32_t get_priority() const;
   void pause_read(IOCtrlReason reason);
-  int resume_read(IOCtrlReason reason);
+  int resume_read(IOCtrlReason reason, size_t consumed);
   void force_resume_read();
   // Set stream ID for downstream HTTP2 connection.
   void set_downstream_stream_id(int32_t stream_id);
@@ -151,6 +151,7 @@ public:
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
   size_t get_request_datalen() const;
+  void dec_request_datalen(size_t len);
   void reset_request_datalen();
   bool request_pseudo_header_allowed() const;
   bool expect_response_body() const;
@@ -224,6 +225,7 @@ public:
   void set_expect_final_response(bool f);
   bool get_expect_final_response() const;
   void add_response_datalen(size_t len);
+  void dec_response_datalen(size_t len);
   size_t get_response_datalen() const;
   void reset_response_datalen();
   bool response_pseudo_header_allowed() const;

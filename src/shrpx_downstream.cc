@@ -150,13 +150,13 @@ void Downstream::pause_read(IOCtrlReason reason)
   }
 }
 
-int Downstream::resume_read(IOCtrlReason reason)
+int Downstream::resume_read(IOCtrlReason reason, size_t consumed)
 {
   if(dconn_) {
-    return dconn_->resume_read(reason);
-  } else {
-    return 0;
+    return dconn_->resume_read(reason, consumed);
   }
+
+  return 0;
 }
 
 void Downstream::force_resume_read()
@@ -873,6 +873,12 @@ size_t Downstream::get_request_datalen() const
   return request_datalen_;
 }
 
+void Downstream::dec_request_datalen(size_t len)
+{
+  assert(request_datalen_ >= len);
+  request_datalen_ -= len;
+}
+
 void Downstream::reset_request_datalen()
 {
   request_datalen_ = 0;
@@ -881,6 +887,12 @@ void Downstream::reset_request_datalen()
 void Downstream::add_response_datalen(size_t len)
 {
   response_datalen_ += len;
+}
+
+void Downstream::dec_response_datalen(size_t len)
+{
+  assert(response_datalen_ >= len);
+  response_datalen_ -= len;
 }
 
 size_t Downstream::get_response_datalen() const

@@ -203,11 +203,12 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
       DCLOG(FATAL, dconn) << "evbuffer_remove() failed";
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
-    if(nread == 0) {
+
+    if(nread > 0) {
       // This is important because it will handle flow control
       // stuff.
-      if(downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
-                                                 downstream) != 0) {
+      if(downstream->get_upstream()->resume_read
+         (SHRPX_NO_BUFFER, downstream, nread) != 0) {
         // In this case, downstream may be deleted.
         return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
@@ -218,40 +219,32 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
         return NGHTTP2_ERR_DEFERRED;
       }
 
-      if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-        if(!downstream->get_upgrade_request() ||
-           (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
-            !downstream->get_upgraded())) {
-          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-        } else {
-          downstream->disable_downstream_wtimer();
+      break;
+    }
 
-          return NGHTTP2_ERR_DEFERRED;
-        }
-        break;
+    if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+      if(!downstream->get_upgrade_request() ||
+         (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
+          !downstream->get_upgraded())) {
+        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
       } else {
-        if(evbuffer_get_length(body) == 0) {
-          // Check get_request_state() == MSG_COMPLETE just in case
-          if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-            *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-            break;
-          }
+        downstream->disable_downstream_wtimer();
 
-          downstream->disable_downstream_wtimer();
-
-          return NGHTTP2_ERR_DEFERRED;
-        }
-      }
-    } else {
-      // Send WINDOW_UPDATE before buffer is empty to avoid delay
-      // because of RTT.
-      if(!downstream->get_output_buffer_full() &&
-         downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER,
-                                                 downstream) == -1) {
-        // In this case, downstream may be deleted.
         return NGHTTP2_ERR_DEFERRED;
       }
       break;
+    } else {
+      if(evbuffer_get_length(body) == 0) {
+        // Check get_request_state() == MSG_COMPLETE just in case
+        if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+          break;
+        }
+
+        downstream->disable_downstream_wtimer();
+
+        return NGHTTP2_ERR_DEFERRED;
+      }
     }
   }
 
@@ -517,7 +510,8 @@ int Http2DownstreamConnection::end_upload_data()
   return 0;
 }
 
-int Http2DownstreamConnection::resume_read(IOCtrlReason reason)
+int Http2DownstreamConnection::resume_read
+(IOCtrlReason reason, size_t consumed)
 {
   int rv;
 
@@ -530,16 +524,20 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason)
     return 0;
   }
 
-  rv = http2session_->consume(downstream_->get_downstream_stream_id(),
-                              downstream_->get_response_datalen());
+  if(consumed > 0) {
+    assert(downstream_->get_response_datalen() >= consumed);
 
-  if(rv != 0) {
-    return -1;
+    rv = http2session_->consume(downstream_->get_downstream_stream_id(),
+                                consumed);
+
+    if(rv != 0) {
+      return -1;
+    }
+
+    downstream_->dec_response_datalen(consumed);
+
+    http2session_->notify();
   }
-
-  downstream_->reset_response_datalen();
-
-  http2session_->notify();
 
   return 0;
 }

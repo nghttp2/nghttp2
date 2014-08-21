@@ -312,7 +312,7 @@ fi
 # spdylay (for src/nghttpx and src/h2load)
 have_spdylay=no
 if test "x${request_spdylay}" != "xno"; then
-  PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.2.3],
+  PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.3.0],
                     [have_spdylay=yes], [have_spdylay=no])
   if test "x${have_spdylay}" = "xyes"; then
     AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])

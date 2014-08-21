@@ -65,7 +65,8 @@ public:
   int error_reply(Downstream *downstream, unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);
-  virtual int resume_read(IOCtrlReason reason, Downstream *downstream);
+  virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
+                          size_t consumed);
 
   virtual int on_downstream_header_complete(Downstream *downstream);
   virtual int on_downstream_body(Downstream *downstream,
@@ -74,7 +75,7 @@ public:
 
   bool get_flow_control() const;
 
-  int handle_ign_data_chunk(size_t len);
+  int consume(int32_t stream_id, size_t len);
 
   void maintain_downstream_concurrency();
   void initiate_downstream(std::unique_ptr<Downstream> downstream);

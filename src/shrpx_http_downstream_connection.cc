@@ -408,7 +408,7 @@ void HttpDownstreamConnection::pause_read(IOCtrlReason reason)
   ioctrl_.pause_read(reason);
 }
 
-int HttpDownstreamConnection::resume_read(IOCtrlReason reason)
+int HttpDownstreamConnection::resume_read(IOCtrlReason reason, size_t consumed)
 {
   ioctrl_.resume_read(reason);
   return 0;
@@ -475,7 +475,7 @@ int htp_hdrs_completecb(http_parser *htp)
 
   if(downstream->get_upgraded()) {
     // Upgrade complete, read until EOF in both ends
-    if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream) != 0) {
+    if(upstream->resume_read(SHRPX_MSG_BLOCK, downstream, 0) != 0) {
       return -1;
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
@@ -652,6 +652,9 @@ int HttpDownstreamConnection::on_read()
 
 int HttpDownstreamConnection::on_write()
 {
+  auto upstream = downstream_->get_upstream();
+  upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
+                        downstream_->get_request_datalen());
   return 0;
 }
 
