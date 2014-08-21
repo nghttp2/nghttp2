@@ -84,7 +84,7 @@ ALPN support requires unreleased version OpenSSL >= 1.0.2.
 To enable SPDY protocol in the application program ``nghttpx`` and
 ``h2load``, the following package is required:
 
-* spdylay >= 1.2.3
+* spdylay >= 1.3.0
 
 To enable ``-a`` option (getting linked assets from the downloaded
 resource) in ``nghttp``, the following package is required:
