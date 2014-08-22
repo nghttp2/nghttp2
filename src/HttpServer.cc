@@ -213,19 +213,29 @@ void remove_stream_write_timeout(Stream *stream)
 }
 } // namespace
 
+namespace {
+void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config);
+} // namespace
+
 class Sessions {
 public:
   Sessions(event_base *evbase, const Config *config, SSL_CTX *ssl_ctx)
     : evbase_(evbase),
       config_(config),
       ssl_ctx_(ssl_ctx),
+      callbacks_(nullptr),
       next_session_id_(1)
-  {}
+  {
+    nghttp2_session_callbacks_new(&callbacks_);
+
+    fill_callback(callbacks_, config_);
+  }
   ~Sessions()
   {
     for(auto handler : handlers_) {
       delete handler;
     }
+    nghttp2_session_callbacks_del(callbacks_);
   }
   void add_handler(Http2Handler *handler)
   {
@@ -269,6 +279,10 @@ public:
     }
     return session_id;
   }
+  const nghttp2_session_callbacks* get_callbacks() const
+  {
+    return callbacks_;
+  }
   void accept_connection(int fd)
   {
     int val = 1;
@@ -297,6 +311,7 @@ private:
   event_base *evbase_;
   const Config *config_;
   SSL_CTX *ssl_ctx_;
+  nghttp2_session_callbacks *callbacks_;
   int64_t next_session_id_;
 };
 
@@ -309,10 +324,6 @@ void on_session_closed(Http2Handler *hd, int64_t session_id)
     std::cout << " closed" << std::endl;
   }
 }
-} // namespace
-
-namespace {
-void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config);
 } // namespace
 
 Http2Handler::Http2Handler(Sessions *sessions,
@@ -724,9 +735,8 @@ void settings_timeout_cb(evutil_socket_t fd, short what, void *arg)
 int Http2Handler::on_connect()
 {
   int r;
-  nghttp2_session_callbacks callbacks;
-  fill_callback(callbacks, sessions_->get_config());
-  r = nghttp2_session_server_new(&session_, &callbacks, this);
+
+  r = nghttp2_session_server_new(&session_, sessions_->get_callbacks(), this);
   if(r != 0) {
     return r;
   }
@@ -1436,23 +1446,37 @@ int on_stream_close_callback
 } // namespace
 
 namespace {
-void fill_callback(nghttp2_session_callbacks& callbacks, const Config *config)
+void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config)
 {
-  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_frame_recv_callback = hd_on_frame_recv_callback;
-  callbacks.on_frame_send_callback = hd_on_frame_send_callback;
+  nghttp2_session_callbacks_set_on_stream_close_callback
+    (callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_on_frame_recv_callback
+    (callbacks, hd_on_frame_recv_callback);
+
+  nghttp2_session_callbacks_set_on_frame_send_callback
+    (callbacks, hd_on_frame_send_callback);
+
   if(config->verbose) {
-    callbacks.on_invalid_frame_recv_callback =
-      verbose_on_invalid_frame_recv_callback;
-    callbacks.on_unknown_frame_recv_callback =
-      verbose_on_unknown_frame_recv_callback;
+    nghttp2_session_callbacks_set_on_invalid_frame_recv_callback
+      (callbacks, verbose_on_invalid_frame_recv_callback);
+
+    nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
+      (callbacks, verbose_on_unknown_frame_recv_callback);
   }
-  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_header_callback = on_header_callback;
-  callbacks.on_begin_headers_callback = on_begin_headers_callback;
+
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback
+    (callbacks, on_data_chunk_recv_callback);
+
+  nghttp2_session_callbacks_set_on_header_callback
+    (callbacks, on_header_callback);
+
+  nghttp2_session_callbacks_set_on_begin_headers_callback
+    (callbacks, on_begin_headers_callback);
+
   if(config->padding) {
-    callbacks.select_padding_callback = select_padding_callback;
+    nghttp2_session_callbacks_set_select_padding_callback
+      (callbacks, select_padding_callback);
   }
 }
 } // namespace

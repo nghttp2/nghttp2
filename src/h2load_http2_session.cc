@@ -102,13 +102,26 @@ void Http2Session::on_connect()
 {
   int rv;
 
-  nghttp2_session_callbacks callbacks = {0};
-  callbacks.on_frame_recv_callback = on_frame_recv_callback;
-  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_header_callback = on_header_callback;
+  nghttp2_session_callbacks *callbacks;
 
-  nghttp2_session_client_new(&session_, &callbacks, client_);
+  nghttp2_session_callbacks_new(&callbacks);
+
+  util::auto_delete<nghttp2_session_callbacks*> callbacks_deleter
+    (callbacks, nghttp2_session_callbacks_del);
+
+  nghttp2_session_callbacks_set_on_frame_recv_callback
+    (callbacks, on_frame_recv_callback);
+
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback
+    (callbacks, on_data_chunk_recv_callback);
+
+  nghttp2_session_callbacks_set_on_stream_close_callback
+    (callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_on_header_callback
+    (callbacks, on_header_callback);
+
+  nghttp2_session_client_new(&session_, callbacks, client_);
 
   nghttp2_settings_entry iv[2];
   iv[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;

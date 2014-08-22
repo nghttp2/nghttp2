@@ -38,6 +38,7 @@
 #include "nghttp2_outbound_item.h"
 #include "nghttp2_int.h"
 #include "nghttp2_buf.h"
+#include "nghttp2_callbacks.h"
 
 /*
  * Option flags.

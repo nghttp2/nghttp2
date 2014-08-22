@@ -555,16 +555,27 @@ static int on_stream_close_callback(nghttp2_session *session,
 
 static void initialize_nghttp2_session(http2_session_data *session_data)
 {
-  nghttp2_session_callbacks callbacks;
+  nghttp2_session_callbacks *callbacks;
 
-  memset(&callbacks, 0, sizeof(callbacks));
+  nghttp2_session_callbacks_new(&callbacks);
 
-  callbacks.send_callback = send_callback;
-  callbacks.on_frame_recv_callback = on_frame_recv_callback;
-  callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_header_callback = on_header_callback;
-  callbacks.on_begin_headers_callback = on_begin_headers_callback;
-  nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
+  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+
+  nghttp2_session_callbacks_set_on_frame_recv_callback
+    (callbacks, on_frame_recv_callback);
+
+  nghttp2_session_callbacks_set_on_stream_close_callback
+    (callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_on_header_callback
+    (callbacks, on_header_callback);
+
+  nghttp2_session_callbacks_set_on_begin_headers_callback
+    (callbacks, on_begin_headers_callback);
+
+  nghttp2_session_server_new(&session_data->session, callbacks, session_data);
+
+  nghttp2_session_callbacks_del(callbacks);
 }
 
 /* Send HTTP/2 client connection header, which includes 24 bytes

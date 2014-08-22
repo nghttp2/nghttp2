@@ -645,22 +645,46 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
                                  &get_config()->upstream_write_timeout);
 
-  nghttp2_session_callbacks callbacks;
-  memset(&callbacks, 0, sizeof(callbacks));
-  callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_frame_recv_callback = on_frame_recv_callback;
-  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_frame_send_callback = on_frame_send_callback;
-  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
-  callbacks.on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
-  callbacks.on_header_callback = on_header_callback;
-  callbacks.on_begin_headers_callback = on_begin_headers_callback;
+  int rv;
+
+  nghttp2_session_callbacks *callbacks;
+  rv = nghttp2_session_callbacks_new(&callbacks);
+
+  assert(rv == 0);
+
+  util::auto_delete<nghttp2_session_callbacks*> callbacks_deleter
+    (callbacks, nghttp2_session_callbacks_del);
+
+  nghttp2_session_callbacks_set_on_stream_close_callback
+    (callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_on_frame_recv_callback
+    (callbacks, on_frame_recv_callback);
+
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback
+    (callbacks, on_data_chunk_recv_callback);
+
+  nghttp2_session_callbacks_set_on_frame_send_callback
+    (callbacks, on_frame_send_callback);
+
+  nghttp2_session_callbacks_set_on_frame_not_send_callback
+    (callbacks, on_frame_not_send_callback);
+
+  nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
+    (callbacks, on_unknown_frame_recv_callback);
+
+  nghttp2_session_callbacks_set_on_header_callback
+    (callbacks, on_header_callback);
+
+  nghttp2_session_callbacks_set_on_begin_headers_callback
+    (callbacks, on_begin_headers_callback);
+
   if(get_config()->padding) {
-    callbacks.select_padding_callback = http::select_padding_callback;
+    nghttp2_session_callbacks_set_select_padding_callback
+      (callbacks, http::select_padding_callback);
   }
 
-  int rv;
-  rv = nghttp2_session_server_new2(&session_, &callbacks, this,
+  rv = nghttp2_session_server_new2(&session_, callbacks, this,
                                    get_config()->http2_option);
 
   assert(rv == 0);

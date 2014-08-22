@@ -1104,6 +1104,9 @@ typedef union {
  * `nghttp2_session_send()` to send data to the remote endpoint.  If
  * the application uses solely `nghttp2_session_mem_send()` instead,
  * this callback function is unnecessary.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_send_callback()`.
  */
 typedef ssize_t (*nghttp2_send_callback)
 (nghttp2_session *session,
@@ -1129,6 +1132,9 @@ typedef ssize_t (*nghttp2_send_callback)
  * `nghttp2_session_recv()` to receive data from the remote endpoint.
  * If the application uses solely `nghttp2_session_mem_recv()`
  * instead, this callback function is unnecessary.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_recv_callback()`.
  */
 typedef ssize_t (*nghttp2_recv_callback)
 (nghttp2_session *session,
@@ -1161,6 +1167,9 @@ typedef ssize_t (*nghttp2_recv_callback)
  * If nonzero value is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_frame_recv_callback()`.
  */
 typedef int (*nghttp2_on_frame_recv_callback)
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
@@ -1184,6 +1193,9 @@ typedef int (*nghttp2_on_frame_recv_callback)
  * If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_invalid_frame_recv_callback()`.
  */
 typedef int (*nghttp2_on_invalid_frame_recv_callback)
 (nghttp2_session *session, const nghttp2_frame *frame,
@@ -1215,6 +1227,9 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)
  * If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_data_chunk_recv_callback()`.
  */
 typedef int (*nghttp2_on_data_chunk_recv_callback)
 (nghttp2_session *session, uint8_t flags, int32_t stream_id,
@@ -1232,6 +1247,9 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)
  * If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_before_frame_send_callback()`.
  */
 typedef int (*nghttp2_before_frame_send_callback)
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
@@ -1247,6 +1265,9 @@ typedef int (*nghttp2_before_frame_send_callback)
  * If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_frame_send_callback()`.
  */
 typedef int (*nghttp2_on_frame_send_callback)
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
@@ -1265,6 +1286,9 @@ typedef int (*nghttp2_on_frame_send_callback)
  * If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_frame_not_send_callback()`.
  */
 typedef int (*nghttp2_on_frame_not_send_callback)
 (nghttp2_session *session, const nghttp2_frame *frame, int lib_error_code,
@@ -1287,6 +1311,9 @@ typedef int (*nghttp2_on_frame_not_send_callback)
  * If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_stream_close_callback()`.
  */
 typedef int (*nghttp2_on_stream_close_callback)
 (nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
@@ -1309,6 +1336,9 @@ typedef int (*nghttp2_on_stream_close_callback)
  * If nonzero is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_unknown_frame_recv_callback()`.
  */
 typedef int (*nghttp2_on_unknown_frame_recv_callback)
 (nghttp2_session *session,
@@ -1336,6 +1366,9 @@ typedef int (*nghttp2_on_unknown_frame_recv_callback)
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
  * `nghttp2_session_mem_recv()` function will immediately return
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_begin_headers_callback()`.
  */
 typedef int (*nghttp2_on_begin_headers_callback)
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
@@ -1397,6 +1430,9 @@ typedef int (*nghttp2_on_begin_headers_callback)
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
  * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_header_callback()`.
  */
 typedef int (*nghttp2_on_header_callback)
 (nghttp2_session *session,
@@ -1419,6 +1455,9 @@ typedef int (*nghttp2_on_header_callback)
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will make
  * `nghttp2_session_send()` function immediately return
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_select_padding_callback()`.
  */
 typedef ssize_t (*nghttp2_select_padding_callback)
 (nghttp2_session *session,
@@ -1426,85 +1465,183 @@ typedef ssize_t (*nghttp2_select_padding_callback)
  size_t max_payloadlen,
  void *user_data);
 
+struct nghttp2_session_callbacks;
+
 /**
  * @struct
  *
- * Callback functions.
+ * Callback functions for :type:`nghttp2_session`.  The details of
+ * this structure are intentionally hidden from the public API.
  */
-typedef struct {
-  /**
-   * Callback function invoked when the |session| wants to send data
-   * to the remote peer.  This callback is not necessary if the
-   * application uses solely `nghttp2_session_mem_send()` to serialize
-   * data to transmit.
-   */
-  nghttp2_send_callback send_callback;
-  /**
-   * Callback function invoked when the |session| wants to receive
-   * data from the remote peer.  This callback is not necessary if the
-   * application uses solely `nghttp2_session_mem_recv()` to process
-   * received data.
-   */
-  nghttp2_recv_callback recv_callback;
-  /**
-   * Callback function invoked by `nghttp2_session_recv()` when a
-   * frame is received.
-   */
-  nghttp2_on_frame_recv_callback on_frame_recv_callback;
-  /**
-   * Callback function invoked by `nghttp2_session_recv()` when an
-   * invalid non-DATA frame is received.
-   */
-  nghttp2_on_invalid_frame_recv_callback on_invalid_frame_recv_callback;
-  /**
-   * Callback function invoked when a chunk of data in DATA frame is
-   * received.
-   */
-  nghttp2_on_data_chunk_recv_callback on_data_chunk_recv_callback;
-  /**
-   * Callback function invoked before a non-DATA frame is sent.
-   */
-  nghttp2_before_frame_send_callback before_frame_send_callback;
-  /**
-   * Callback function invoked after a frame is sent.
-   */
-  nghttp2_on_frame_send_callback on_frame_send_callback;
-  /**
-   * The callback function invoked when a non-DATA frame is not sent
-   * because of an error.
-   */
-  nghttp2_on_frame_not_send_callback on_frame_not_send_callback;
-  /**
-   * Callback function invoked when the stream is closed.
-   */
-  nghttp2_on_stream_close_callback on_stream_close_callback;
-  /**
-   * Callback function invoked when the received frame type is
-   * unknown.
-   */
-  nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback;
-  /**
-   * Callback function invoked when the reception of header block in
-   * HEADERS or PUSH_PROMISE is started.
-   */
-  nghttp2_on_begin_headers_callback on_begin_headers_callback;
-  /**
-   * Callback function invoked when a header name/value pair is
-   * received.
-   */
-  nghttp2_on_header_callback on_header_callback;
-  /**
-   * Callback function invoked when the library asks application how
-   * many padding bytes are required for the transmission of the given
-   * frame.
-   */
-  nghttp2_select_padding_callback select_padding_callback;
-  /**
-   * The callback function used to determine the |length| allowed
-   * in `nghttp2_data_source_read_callback()`
-   */
-  nghttp2_data_source_read_length_callback read_length_callback;
-} nghttp2_session_callbacks;
+typedef struct nghttp2_session_callbacks nghttp2_session_callbacks;
+
+/**
+ * @function
+ *
+ * Initializes |*callbacks_ptr| with NULL values.
+ *
+ * The initialized object can be used when initializing multiple
+ * :type:`nghttp2_session` objects.
+ *
+ * When the application finished using this object, it can use
+ * `nghttp2_session_callbacks_del()` to free its memory.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int nghttp2_session_callbacks_new(nghttp2_session_callbacks **callbacks_ptr);
+
+/**
+ * @function
+ *
+ * Frees any resources allocated for |callbacks|.  If |callbacks| is
+ * ``NULL``, this function does nothing.
+ */
+void nghttp2_session_callbacks_del(nghttp2_session_callbacks *callbacks);
+
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a session wants to send data to
+ * the remote peer.  This callback is not necessary if the application
+ * uses solely `nghttp2_session_mem_send()` to serialize data to
+ * transmit.
+ */
+void nghttp2_session_callbacks_set_send_callback
+(nghttp2_session_callbacks *cbs, nghttp2_send_callback send_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when the a session wants to receive
+ * data from the remote peer.  This callback is not necessary if the
+ * application uses solely `nghttp2_session_mem_recv()` to process
+ * received data.
+ */
+void nghttp2_session_callbacks_set_recv_callback
+(nghttp2_session_callbacks *cbs, nghttp2_recv_callback recv_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked by `nghttp2_session_recv()` when a
+ * frame is received.
+ */
+void nghttp2_session_callbacks_set_on_frame_recv_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_frame_recv_callback on_frame_recv_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked by `nghttp2_session_recv()` when an
+ * invalid non-DATA frame is received.
+ */
+void nghttp2_session_callbacks_set_on_invalid_frame_recv_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_invalid_frame_recv_callback on_invalid_frame_recv_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a chunk of data in DATA frame
+ * is received.
+ */
+void nghttp2_session_callbacks_set_on_data_chunk_recv_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_data_chunk_recv_callback on_data_chunk_recv_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked before a non-DATA frame is sent.
+ */
+void nghttp2_session_callbacks_set_before_frame_send_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_before_frame_send_callback before_frame_send_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked after a frame is sent.
+ */
+void nghttp2_session_callbacks_set_on_frame_send_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_frame_send_callback on_frame_send_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a non-DATA frame is not sent
+ * because of an error.
+ */
+void nghttp2_session_callbacks_set_on_frame_not_send_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_frame_not_send_callback on_frame_not_send_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when the stream is closed.
+ */
+void nghttp2_session_callbacks_set_on_stream_close_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_stream_close_callback on_stream_close_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when the received frame type is
+ * unknown.
+ */
+void nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when the reception of header block
+ * in HEADERS or PUSH_PROMISE is started.
+ */
+void nghttp2_session_callbacks_set_on_begin_headers_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_begin_headers_callback on_begin_headers_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a header name/value pair is
+ * received.
+ */
+void nghttp2_session_callbacks_set_on_header_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_header_callback on_header_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when the library asks application
+ * how many padding bytes are required for the transmission of the
+ * given frame.
+ */
+void nghttp2_session_callbacks_set_select_padding_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_select_padding_callback select_padding_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function determine the length allowed in
+ * :type:`nghttp2_data_source_read_callback`.
+ */
+void nghttp2_session_callbacks_set_data_source_read_length_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_data_source_read_length_callback data_source_read_length_callback);
 
 struct nghttp2_option;
 
@@ -1578,10 +1715,10 @@ void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
  * does not store |callbacks|.  The |user_data| is an arbitrary user
  * supplied data, which will be passed to the callback functions.
  *
- * The :member:`nghttp2_session_callbacks.send_callback` must be
- * specified.  If the application code uses `nghttp2_session_recv()`,
- * the :member:`nghttp2_session_callbacks.recv_callback` must be
- * specified.  The other members of |callbacks| can be ``NULL``.
+ * The :type:`nghttp2_send_callback` must be specified.  If the
+ * application code uses `nghttp2_session_recv()`, the
+ * :type:`nghttp2_recv_callback` must be specified.  The other members
+ * of |callbacks| can be ``NULL``.
  *
  * If this function fails, |*session_ptr| is left untouched.
  *
@@ -1603,10 +1740,10 @@ int nghttp2_session_client_new(nghttp2_session **session_ptr,
  * does not store |callbacks|.  The |user_data| is an arbitrary user
  * supplied data, which will be passed to the callback functions.
  *
- * The :member:`nghttp2_session_callbacks.send_callback` must be
- * specified.  If the application code uses `nghttp2_session_recv()`,
- * the :member:`nghttp2_session_callbacks.recv_callback` must be
- * specified.  The other members of |callbacks| can be ``NULL``.
+ * The :type:`nghttp2_send_callback` must be specified.  If the
+ * application code uses `nghttp2_session_recv()`, the
+ * :type:`nghttp2_recv_callback` must be specified.  The other members
+ * of |callbacks| can be ``NULL``.
  *
  * If this function fails, |*session_ptr| is left untouched.
  *
@@ -1688,32 +1825,36 @@ void nghttp2_session_del(nghttp2_session *session);
  * This function retrieves the highest prioritized frame from the
  * outbound queue and sends it to the remote peer.  It does this as
  * many as possible until the user callback
- * :member:`nghttp2_session_callbacks.send_callback` returns
+ * :type:`nghttp2_send_callback` returns
  * :enum:`NGHTTP2_ERR_WOULDBLOCK` or the outbound queue becomes empty.
  * This function calls several callback functions which are passed
  * when initializing the |session|.  Here is the simple time chart
  * which tells when each callback is invoked:
  *
  * 1. Get the next frame to send from outbound queue.
+ *
  * 2. Prepare transmission of the frame.
+ *
  * 3. If the control frame cannot be sent because some preconditions
  *    are not met (e.g., request HEADERS cannot be sent after GOAWAY),
- *    :member:`nghttp2_session_callbacks.on_frame_not_send_callback`
- *    is invoked.  Abort the following steps.
+ *    :type:`nghttp2_on_frame_not_send_callback` is invoked.  Abort
+ *    the following steps.
+ *
  * 4. If the frame is HEADERS, PUSH_PROMISE or DATA,
- *    :member:`nghttp2_session_callbacks.select_padding_callback` is
- *    invoked.
+ *    :type:`nghttp2_select_padding_callback` is invoked.
+ *
  * 5. If the frame is request HEADERS, the stream is opened here.
- * 6. :member:`nghttp2_session_callbacks.before_frame_send_callback` is
- *    invoked.
- * 7. :member:`nghttp2_session_callbacks.send_callback` is invoked one
- *    or more times to send the frame.
- * 8. :member:`nghttp2_session_callbacks.on_frame_send_callback` is
- *    invoked.
+ *
+ * 6. :type:`nghttp2_before_frame_send_callback` is invoked.
+ *
+ * 7. :type:`nghttp2_send_callback` is invoked one or more times to
+ *    send the frame.
+ *
+ * 8. :type:`nghttp2_on_frame_send_callback` is invoked.
+ *
  * 9. If the transmission of the frame triggers closure of the stream,
  *    the stream is closed and
- *    :member:`nghttp2_session_callbacks.on_stream_close_callback` is
- *    invoked.
+ *    :type:`nghttp2_on_stream_close_callback` is invoked.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1731,11 +1872,10 @@ int nghttp2_session_send(nghttp2_session *session);
  * Returns the serialized data to send.
  *
  * This function behaves like `nghttp2_session_send()` except that it
- * does not use :member:`nghttp2_session_callbacks.send_callback` to
- * transmit data.  Instead, it assigns the pointer to the serialized
- * data to the |*data_ptr| and returns its length.  The other
- * callbacks are called in the same way as they are in
- * `nghttp2_session_send()`.
+ * does not use :type:`nghttp2_send_callback` to transmit data.
+ * Instead, it assigns the pointer to the serialized data to the
+ * |*data_ptr| and returns its length.  The other callbacks are called
+ * in the same way as they are in `nghttp2_session_send()`.
  *
  * If no data is available to send, this function returns 0.
  *
@@ -1765,51 +1905,45 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  * Receives frames from the remote peer.
  *
  * This function receives as many frames as possible until the user
- * callback :member:`nghttp2_session_callbacks.recv_callback` returns
+ * callback :type:`nghttp2_recv_callback` returns
  * :enum:`NGHTTP2_ERR_WOULDBLOCK`.  This function calls several
  * callback functions which are passed when initializing the
  * |session|.  Here is the simple time chart which tells when each
  * callback is invoked:
  *
- * 1. :member:`nghttp2_session_callbacks.recv_callback` is invoked one
- *    or more times to receive frame header.
+ * 1. :type:`nghttp2_recv_callback` is invoked one or more times to
+ *    receive frame header.
+ *
  * 2. If the frame is DATA frame:
  *
- *    1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
- *       to receive DATA payload. For each chunk of data,
- *       :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`
- *       is invoked.
+ *    1. :type:`nghttp2_recv_callback` is invoked to receive DATA
+ *       payload. For each chunk of data,
+ *       :type:`nghttp2_on_data_chunk_recv_callback` is invoked.
+ *
  *    2. If one DATA frame is completely received,
- *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
- *       invoked.  If the reception of the frame triggers the
- *       closure of the stream,
- *       :member:`nghttp2_session_callbacks.on_stream_close_callback`
- *       is invoked.
+ *       :type:`nghttp2_on_frame_recv_callback` is invoked.  If the
+ *       reception of the frame triggers the closure of the stream,
+ *       :type:`nghttp2_on_stream_close_callback` is invoked.
  *
  * 3. If the frame is the control frame:
  *
- *    1. :member:`nghttp2_session_callbacks.recv_callback` is invoked
- *       one or more times to receive whole frame.
+ *    1. :type:`nghttp2_recv_callback` is invoked one or more times to
+ *       receive whole frame.
  *
  *    2. If the received frame is valid, then following actions are
  *       taken.  If the frame is either HEADERS or PUSH_PROMISE,
- *       :member:`nghttp2_session_callbacks.on_begin_headers_callback`
- *       is invoked.  Then
- *       :member:`nghttp2_session_callbacks.on_header_callback` is
- *       invoked for each header name/value pair.  After all name/value
- *       pairs are emitted successfully,
- *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
+ *       :type:`nghttp2_on_begin_headers_callback` is invoked.  Then
+ *       :type:`nghttp2_on_header_callback` is invoked for each header
+ *       name/value pair.  After all name/value pairs are emitted
+ *       successfully, :type:`nghttp2_on_frame_recv_callback` is
  *       invoked.  For other frames,
- *       :member:`nghttp2_session_callbacks.on_frame_recv_callback` is
- *       invoked.
- *       If the reception of the frame triggers the closure of the
- *       stream,
- *       :member:`nghttp2_session_callbacks.on_stream_close_callback`
- *       is invoked.
+ *       :type:`nghttp2_on_frame_recv_callback` is invoked.  If the
+ *       reception of the frame triggers the closure of the stream,
+ *       :type:`nghttp2_on_stream_close_callback` is invoked.
+ *
  *    3. If the received frame is unpacked but is interpreted as
- *       invalid,
- *       :member:`nghttp2_session_callbacks.on_invalid_frame_recv_callback`
- *       is invoked.
+ *       invalid, :type:`nghttp2_on_invalid_frame_recv_callback` is
+ *       invoked.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1830,18 +1964,17 @@ int nghttp2_session_recv(nghttp2_session *session);
  * |inlen| indicates the number of bytes in the |in|.
  *
  * This function behaves like `nghttp2_session_recv()` except that it
- * does not use :member:`nghttp2_session_callbacks.recv_callback` to
- * receive data; the |in| is the only data for the invocation of this
- * function.  If all bytes are processed, this function returns.  The
- * other callbacks are called in the same way as they are in
- * `nghttp2_session_recv()`.
+ * does not use :type:`nghttp2_recv_callback` to receive data; the
+ * |in| is the only data for the invocation of this function.  If all
+ * bytes are processed, this function returns.  The other callbacks
+ * are called in the same way as they are in `nghttp2_session_recv()`.
  *
  * In the current implementation, this function always tries to
  * processes all input data unless either an error occurs or
  * :enum:`NGHTTP2_ERR_PAUSE` is returned from
- * :member:`nghttp2_session_callbacks.on_header_callback` or
- * :member:`nghttp2_session_callbacks.on_data_chunk_recv_callback`.
- * If :enum:`NGHTTP2_ERR_PAUSE` is used, the return value includes the
+ * :type:`nghttp2_on_header_callback` or
+ * :type:`nghttp2_on_data_chunk_recv_callback`.  If
+ * :enum:`NGHTTP2_ERR_PAUSE` is used, the return value includes the
  * number of bytes which was used to produce the data or frame for the
  * callback.
  *
@@ -2270,8 +2403,8 @@ int nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  *   This function returns assigned stream ID if it succeeds.  But
  *   that stream is not opened yet.  The application must not submit
  *   frame to that stream ID before
- *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is
- *   called for this frame.
+ *   :type:`nghttp2_before_frame_send_callback` is called for this
+ *   frame.
  *
  */
 int32_t nghttp2_submit_request(nghttp2_session *session,
@@ -2396,8 +2529,8 @@ int nghttp2_submit_response(nghttp2_session *session,
  *   This function returns assigned stream ID if it succeeds and
  *   |stream_id| is -1.  But that stream is not opened yet.  The
  *   application must not submit frame to that stream ID before
- *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is
- *   called for this frame.
+ *   :type:`nghttp2_before_frame_send_callback` is called for this
+ *   frame.
  *
  */
 int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
@@ -2571,8 +2704,8 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  *   This function returns assigned promised stream ID if it succeeds.
  *   But that stream is not opened yet.  The application must not
  *   submit frame to that stream ID before
- *   :member:`nghttp2_session_callbacks.before_frame_send_callback` is
- *   called for this frame.
+ *   :type:`nghttp2_before_frame_send_callback` is called for this
+ *   frame.
  *
  */
 int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,

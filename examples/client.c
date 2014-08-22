@@ -310,13 +310,21 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
  */
 static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks)
 {
-  memset(callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks->send_callback = send_callback;
-  callbacks->recv_callback = recv_callback;
-  callbacks->on_frame_send_callback = on_frame_send_callback;
-  callbacks->on_frame_recv_callback = on_frame_recv_callback;
-  callbacks->on_stream_close_callback = on_stream_close_callback;
-  callbacks->on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+
+  nghttp2_session_callbacks_set_recv_callback(callbacks, recv_callback);
+
+  nghttp2_session_callbacks_set_on_frame_send_callback
+    (callbacks, on_frame_send_callback);
+
+  nghttp2_session_callbacks_set_on_frame_recv_callback
+    (callbacks, on_frame_recv_callback);
+
+  nghttp2_session_callbacks_set_on_stream_close_callback
+    (callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback
+    (callbacks, on_data_chunk_recv_callback);
 }
 
 /*
@@ -507,7 +515,7 @@ static void request_free(struct Request *req)
  */
 static void fetch_uri(const struct URI *uri)
 {
-  nghttp2_session_callbacks callbacks;
+  nghttp2_session_callbacks *callbacks;
   int fd;
   SSL_CTX *ssl_ctx;
   SSL *ssl;
@@ -518,8 +526,6 @@ static void fetch_uri(const struct URI *uri)
   struct pollfd pollfds[1];
 
   request_init(&req, uri);
-
-  setup_nghttp2_callbacks(&callbacks);
 
   /* Establish connection and setup SSL */
   fd = connect_to(req.host, req.port);
@@ -551,8 +557,20 @@ static void fetch_uri(const struct URI *uri)
   set_tcp_nodelay(fd);
 
   printf("[INFO] SSL/TLS handshake completed\n");
-  rv = nghttp2_session_client_new(&connection.session, &callbacks,
+
+  rv = nghttp2_session_callbacks_new(&callbacks);
+
+  if(rv != 0) {
+    diec("nghttp2_session_callbacks_new", rv);
+  }
+
+  setup_nghttp2_callbacks(callbacks);
+
+  rv = nghttp2_session_client_new(&connection.session, callbacks,
                                   &connection);
+
+  nghttp2_session_callbacks_del(callbacks);
+
   if(rv != 0) {
     diec("nghttp2_session_client_new", rv);
   }

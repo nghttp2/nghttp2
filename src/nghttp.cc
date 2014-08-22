@@ -1829,22 +1829,41 @@ ssize_t file_read_callback
 namespace {
 int run(char **uris, int n)
 {
-  nghttp2_session_callbacks callbacks;
-  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.on_stream_close_callback = on_stream_close_callback;
-  callbacks.on_frame_recv_callback = on_frame_recv_callback2;
+  nghttp2_session_callbacks *callbacks;
+
+  nghttp2_session_callbacks_new(&callbacks);
+  util::auto_delete<nghttp2_session_callbacks*> cbsdel
+    (callbacks, nghttp2_session_callbacks_del);
+
+  nghttp2_session_callbacks_set_on_stream_close_callback
+    (callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_on_frame_recv_callback
+    (callbacks, on_frame_recv_callback2);
+
   if(config.verbose) {
-    callbacks.on_frame_send_callback = verbose_on_frame_send_callback;
-    callbacks.on_invalid_frame_recv_callback =
-      verbose_on_invalid_frame_recv_callback;
-    callbacks.on_unknown_frame_recv_callback =
-      verbose_on_unknown_frame_recv_callback;
+    nghttp2_session_callbacks_set_on_frame_send_callback
+      (callbacks, verbose_on_frame_send_callback);
+
+    nghttp2_session_callbacks_set_on_invalid_frame_recv_callback
+      (callbacks, verbose_on_invalid_frame_recv_callback);
+
+    nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
+      (callbacks, verbose_on_unknown_frame_recv_callback);
   }
-  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-  callbacks.on_begin_headers_callback = on_begin_headers_callback;
-  callbacks.on_header_callback = on_header_callback;
+
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback
+    (callbacks, on_data_chunk_recv_callback);
+
+  nghttp2_session_callbacks_set_on_begin_headers_callback
+    (callbacks, on_begin_headers_callback);
+
+  nghttp2_session_callbacks_set_on_header_callback
+    (callbacks, on_header_callback);
+
   if(config.padding) {
-    callbacks.select_padding_callback = select_padding_callback;
+    nghttp2_session_callbacks_set_select_padding_callback
+      (callbacks, select_padding_callback);
   }
 
   std::string prev_scheme;
@@ -1886,7 +1905,7 @@ int run(char **uris, int n)
          port != prev_port) {
         if(!requests.empty()) {
           if (communicate(prev_scheme, prev_host, prev_port,
-                          std::move(requests), &callbacks) != 0) {
+                          std::move(requests), callbacks) != 0) {
             ++failures;
           }
           requests.clear();
@@ -1901,7 +1920,7 @@ int run(char **uris, int n)
   }
   if(!requests.empty()) {
     if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
-                    &callbacks) != 0) {
+                    callbacks) != 0) {
       ++failures;
     }
   }
