@@ -412,27 +412,14 @@ HTTP/2 communication. These two functions are described later.</p>
 <tt class="docutils literal"><span class="pre">initialize_nghttp2_session()</span></tt>:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">initialize_nghttp2_session</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">;</span>
+  <span class="n">nghttp2_session_callbacks</span> <span class="n">callbacks</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
 
-  <span class="n">nghttp2_session_callbacks_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">callbacks</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_send_callback</span><span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">send_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_frame_recv_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_frame_recv_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_stream_close_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_stream_close_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_header_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_header_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_begin_headers_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_begin_headers_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_server_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_del</span><span class="p">(</span><span class="n">callbacks</span><span class="p">);</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">send_callback</span> <span class="o">=</span> <span class="n">send_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_stream_close_callback</span> <span class="o">=</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_header_callback</span> <span class="o">=</span> <span class="n">on_header_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_begin_headers_callback</span> <span class="o">=</span> <span class="n">on_begin_headers_callback</span><span class="p">;</span>
+  <span class="n">nghttp2_session_server_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -512,9 +499,11 @@ frames. The <tt class="docutils literal"><span class="pre">session_send()</span>
 </pre></div>
 </div>
 <p>The <a class="reference internal" href="apiref.html#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> function serializes the frame into wire
-format and calls <tt class="docutils literal"><span class="pre">send_callback()</span></tt> of type
-<a class="reference internal" href="apiref.html#c.nghttp2_send_callback" title="nghttp2_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_send_callback</span></tt></a>.  The <tt class="docutils literal"><span class="pre">send_callback()</span></tt> is defined as
-follows:</p>
+format and calls <a class="reference internal" href="apiref.html#c.nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> with
+it. We set the <tt class="docutils literal"><span class="pre">send_callback()</span></tt> function to
+<a class="reference internal" href="apiref.html#c.nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a> in
+<tt class="docutils literal"><span class="pre">initialize_nghttp2_session()</span></tt> function described earlier. It is
+defined as follows:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">send_callback</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                              <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>
                              <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">)</span>
@@ -531,20 +520,20 @@ follows:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Since we use bufferevent to abstract network I/O, we just write the
-data to the bufferevent object. Note that <a class="reference internal" href="apiref.html#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a>
-continues to write all frames queued so far. If we were writing the
-data to a non-blocking socket directly using <tt class="docutils literal"><span class="pre">write()</span></tt> system call
-in the <tt class="docutils literal"><span class="pre">send_callback()</span></tt>, we would surely get <tt class="docutils literal"><span class="pre">EAGAIN</span></tt> or
-<tt class="docutils literal"><span class="pre">EWOULDBLOCK</span></tt> back since the socket has limited send buffer. If that
-happens, we can return <a class="reference internal" href="apiref.html#c.NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a> to signal the
-nghttp2 library to stop sending further data. But when writing to the
-bufferevent, we have to regulate the amount data to get buffered
-ourselves to avoid using huge amounts of memory. To achieve this, we
-check the size of the output buffer and if it reaches more than or
-equal to <tt class="docutils literal"><span class="pre">OUTPUT_WOULDBLOCK_THRESHOLD</span></tt> bytes, we stop writing data
-and return <a class="reference internal" href="apiref.html#c.NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a> to tell the library to stop
-calling send_callback.</p>
+<p>Since we use bufferevent to abstract network I/O, we just write the data to
+the bufferevent object. Note that <a class="reference internal" href="apiref.html#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> continues to write
+all frames queued so far. If we were writing the data to a non-blocking socket
+directly using <tt class="docutils literal"><span class="pre">write()</span></tt> system call in the
+<a class="reference internal" href="apiref.html#c.nghttp2_session_callbacks.send_callback" title="nghttp2_session_callbacks.send_callback"><tt class="xref c c-member docutils literal"><span class="pre">nghttp2_session_callbacks.send_callback</span></tt></a>, we would surely get
+<tt class="docutils literal"><span class="pre">EAGAIN</span></tt> or <tt class="docutils literal"><span class="pre">EWOULDBLOCK</span></tt> back since the socket has limited send
+buffer. If that happens, we can return <a class="reference internal" href="apiref.html#c.NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a> to
+signal the nghttp2 library to stop sending further data. But when writing to
+the bufferevent, we have to regulate the amount data to get buffered ourselves
+to avoid using huge amounts of memory. To achieve this, we check the size of
+the output buffer and if it reaches more than or equal to
+<tt class="docutils literal"><span class="pre">OUTPUT_WOULDBLOCK_THRESHOLD</span></tt> bytes, we stop writing data and return
+<a class="reference internal" href="apiref.html#c.NGHTTP2_ERR_WOULDBLOCK" title="NGHTTP2_ERR_WOULDBLOCK"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_WOULDBLOCK</span></tt></a> to tell the library to stop calling
+send_callback.</p>
 <p>The next bufferevent callback is <tt class="docutils literal"><span class="pre">readcb()</span></tt>, which is invoked when
 data is available to read in the bufferevent input buffer:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">readcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
@@ -1326,27 +1315,16 @@ is about to close and we no longer use that object.</p>
 
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">initialize_nghttp2_session</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">;</span>
+  <span class="n">nghttp2_session_callbacks</span> <span class="n">callbacks</span><span class="p">;</span>
 
-  <span class="n">nghttp2_session_callbacks_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">callbacks</span><span class="p">);</span>
+  <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">callbacks</span><span class="p">));</span>
 
-  <span class="n">nghttp2_session_callbacks_set_send_callback</span><span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">send_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_frame_recv_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_frame_recv_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_stream_close_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_stream_close_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_header_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_header_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_set_on_begin_headers_callback</span>
-    <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_begin_headers_callback</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_server_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
-
-  <span class="n">nghttp2_session_callbacks_del</span><span class="p">(</span><span class="n">callbacks</span><span class="p">);</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">send_callback</span> <span class="o">=</span> <span class="n">send_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_frame_recv_callback</span> <span class="o">=</span> <span class="n">on_frame_recv_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_stream_close_callback</span> <span class="o">=</span> <span class="n">on_stream_close_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_header_callback</span> <span class="o">=</span> <span class="n">on_header_callback</span><span class="p">;</span>
+  <span class="n">callbacks</span><span class="p">.</span><span class="n">on_begin_headers_callback</span> <span class="o">=</span> <span class="n">on_begin_headers_callback</span><span class="p">;</span>
+  <span class="n">nghttp2_session_server_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="cm">/* Send HTTP/2 client connection header, which includes 24 bytes</span>
