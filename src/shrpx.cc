@@ -435,7 +435,7 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
   if(execve(argv[0], argv, envp) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
-    exit(1);
+    _Exit(EXIT_FAILURE);
   }
 }
 } // namespace
