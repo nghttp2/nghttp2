@@ -2656,6 +2656,9 @@ static int inflate_header_block(nghttp2_session *session,
     in += proclen;
     inlen -= proclen;
     *readlen_ptr += proclen;
+
+    DEBUGF(fprintf(stderr, "recv: proclen=%zd\n", proclen));
+
     if(call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
       rv = session_call_on_header(session, frame, &nv);
       /* This handles NGHTTP2_ERR_PAUSE and
@@ -4866,13 +4869,13 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           return in - first;
         }
 
-        in += readlen;
-        iframe->payloadleft -= readlen;
-
         if(rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
           /* The application says no more headers. We decompress the
              rest of the header block but not invoke on_header_callback
              and on_frame_recv_callback. */
+          in += hd_proclen;
+          iframe->payloadleft -= hd_proclen;
+
           rv = nghttp2_session_add_rst_stream(session,
                                               iframe->frame.hd.stream_id,
                                               NGHTTP2_INTERNAL_ERROR);
@@ -4883,6 +4886,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
           break;
         }
+
+        in += readlen;
+        iframe->payloadleft -= readlen;
+
         if(rv == NGHTTP2_ERR_HEADER_COMP) {
           /* GOAWAY is already issued */
           if(iframe->payloadleft == 0) {

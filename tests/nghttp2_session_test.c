@@ -319,6 +319,19 @@ static int pause_on_header_callback(nghttp2_session *session,
   return NGHTTP2_ERR_PAUSE;
 }
 
+static int temporal_failure_on_header_callback
+(nghttp2_session *session,
+ const nghttp2_frame *frame,
+ const uint8_t *name, size_t namelen,
+ const uint8_t *value, size_t valuelen,
+ uint8_t flags,
+ void *user_data)
+{
+  on_header_callback(session, frame, name, namelen, value, valuelen, flags,
+                     user_data);
+  return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+}
+
 static int on_begin_headers_callback(nghttp2_session *session,
                                      const nghttp2_frame *frame,
                                      void *user_data)
@@ -6072,5 +6085,73 @@ void test_nghttp2_session_graceful_shutdown(void)
   CU_ASSERT(1 == ud.frame_send_cb_called);
   CU_ASSERT(300 == session->local_last_stream_id);
 
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_on_header_temporal_failure(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_hd_deflater deflater;
+  nghttp2_nv nv[] = {
+    MAKE_NV("alpha", "bravo"),
+    MAKE_NV("charlie", "delta")
+  };
+  nghttp2_nv *nva;
+  size_t hdpos;
+  ssize_t rv;
+  nghttp2_frame frame;
+  nghttp2_frame_hd hd;
+  nghttp2_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.on_header_callback = temporal_failure_on_header_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  frame_pack_bufs_init(&bufs);
+
+  nghttp2_hd_deflate_init(&deflater);
+
+  nghttp2_nv_array_copy(&nva, nv, 1);
+
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM, 1,
+                             NGHTTP2_HCAT_REQUEST, NULL, nva, 1);
+  nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+  nghttp2_frame_headers_free(&frame.headers);
+
+  /* We are going to create CONTINUATION.  First serialize header
+     block, and then frame header. */
+  hdpos = nghttp2_bufs_len(&bufs);
+
+  buf = &bufs.head->buf;
+  buf->last += NGHTTP2_FRAME_HDLEN;
+
+  nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, &nv[1], 1);
+
+  hd.length = nghttp2_bufs_len(&bufs) - hdpos - NGHTTP2_FRAME_HDLEN;
+  hd.type = NGHTTP2_CONTINUATION;
+  hd.flags = NGHTTP2_FLAG_END_HEADERS;
+  hd.stream_id = 1;
+
+  nghttp2_frame_pack_frame_hd(&buf->pos[hdpos], &hd);
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT(rv == nghttp2_bufs_len(&bufs));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NGHTTP2_RST_STREAM == OB_CTRL_TYPE(item));
+
+  /* Make sure no header decompression error occurred */
+  CU_ASSERT(NGHTTP2_GOAWAY_NONE == session->goaway_flags);
+
+  nghttp2_bufs_free(&bufs);
+
+  nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 }
