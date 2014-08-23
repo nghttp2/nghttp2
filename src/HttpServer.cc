@@ -1359,8 +1359,9 @@ int hd_on_frame_send_callback
 
     if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_write_timeout(stream);
-    } else if(nghttp2_session_get_stream_remote_window_size
-              (session, frame->hd.stream_id) == 0) {
+    } else if(std::min(nghttp2_session_get_stream_remote_window_size
+                       (session, frame->hd.stream_id),
+                       nghttp2_session_get_remote_window_size(session)) <= 0) {
       // If stream is blocked by flow control, enable write timeout.
       add_stream_read_timeout_if_pending(stream);
       add_stream_write_timeout(stream);

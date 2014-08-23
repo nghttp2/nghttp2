@@ -5812,8 +5812,8 @@ int32_t nghttp2_session_get_effective_local_window_size
   return session->local_window_size;
 }
 
-int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session* session,
-                                                      int32_t stream_id)
+int32_t nghttp2_session_get_stream_remote_window_size
+(nghttp2_session *session, int32_t stream_id)
 {
   nghttp2_stream *stream;
 
@@ -5822,7 +5822,14 @@ int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session* session,
     return -1;
   }
 
-  return (int32_t)nghttp2_session_next_data_read(session, stream);
+  /* stream->remote_window_size can be negative when
+     SETTINGS_INITIAL_WINDOW_SIZE is changed. */
+  return nghttp2_max(0, stream->remote_window_size);
+}
+
+int32_t nghttp2_session_get_remote_window_size(nghttp2_session *session)
+{
+  return session->remote_window_size;
 }
 
 uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
