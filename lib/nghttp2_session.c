@@ -4655,7 +4655,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
       switch(iframe->frame.hd.type) {
       case NGHTTP2_HEADERS:
         if(iframe->padlen == 0 &&
-           iframe->frame.hd.flags & NGHTTP2_FLAG_PADDED) {
+           (iframe->frame.hd.flags & NGHTTP2_FLAG_PADDED)) {
           padlen = inbound_frame_compute_pad(iframe);
           if(padlen < 0) {
             busy = 1;
@@ -4721,7 +4721,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         break;
       case NGHTTP2_PUSH_PROMISE:
         if(iframe->padlen == 0 &&
-           iframe->frame.hd.flags & NGHTTP2_FLAG_PADDED) {
+           (iframe->frame.hd.flags & NGHTTP2_FLAG_PADDED)) {
           padlen = inbound_frame_compute_pad(iframe);
           if(padlen < 0) {
             busy = 1;
