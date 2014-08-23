@@ -3999,72 +3999,58 @@ static int session_update_recv_connection_window_size
   return 0;
 }
 
-static int session_update_stream_consumed_size
-(nghttp2_session *session, nghttp2_stream *stream, size_t delta_size)
+static int session_update_consumed_size
+(nghttp2_session *session,
+ int32_t *consumed_size_ptr,
+ int32_t *recv_window_size_ptr,
+ int32_t stream_id,
+ size_t delta_size,
+ int32_t local_window_size)
 {
   int32_t recv_size;
   int rv;
 
-  if((size_t)stream->consumed_size > NGHTTP2_MAX_WINDOW_SIZE - delta_size) {
+  if((size_t)*consumed_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta_size) {
     return nghttp2_session_terminate_session(session,
                                              NGHTTP2_FLOW_CONTROL_ERROR);
   }
 
-  stream->consumed_size += delta_size;
+  *consumed_size_ptr += delta_size;
 
   /* recv_window_size may be smaller than consumed_size, because it
      may be decreased by negative value with
      nghttp2_submit_window_update(). */
-  recv_size = nghttp2_min(stream->consumed_size, stream->recv_window_size);
+  recv_size = nghttp2_min(*consumed_size_ptr, *recv_window_size_ptr);
 
-  if(nghttp2_should_send_window_update(stream->local_window_size, recv_size)) {
+  if(nghttp2_should_send_window_update(local_window_size, recv_size)) {
     rv = nghttp2_session_add_window_update(session, NGHTTP2_FLAG_NONE,
-                                           stream->stream_id, recv_size);
+                                           stream_id, recv_size);
 
     if(rv != 0) {
       return rv;
     }
 
-    stream->recv_window_size -= recv_size;
-    stream->consumed_size -= recv_size;
+    *recv_window_size_ptr -= recv_size;
+    *consumed_size_ptr -= recv_size;
   }
 
   return 0;
 }
 
+static int session_update_stream_consumed_size
+(nghttp2_session *session, nghttp2_stream *stream, size_t delta_size)
+{
+  return session_update_consumed_size
+    (session, &stream->consumed_size, &stream->recv_window_size,
+     stream->stream_id, delta_size, stream->local_window_size);
+}
+
 static int session_update_connection_consumed_size
 (nghttp2_session *session, size_t delta_size)
 {
-  int32_t recv_size;
-  int rv;
-
-  if((size_t)session->consumed_size > NGHTTP2_MAX_WINDOW_SIZE - delta_size) {
-    return nghttp2_session_terminate_session(session,
-                                             NGHTTP2_FLOW_CONTROL_ERROR);
-  }
-
-  session->consumed_size += delta_size;
-
-  /* recv_window_size may be smaller than consumed_size, because it
-     may be decreased by negative value with
-     nghttp2_submit_window_update(). */
-  recv_size = nghttp2_min(session->consumed_size, session->recv_window_size);
-
-  if(nghttp2_should_send_window_update(session->local_window_size,
-                                       recv_size)) {
-
-    rv = nghttp2_session_add_window_update(session, NGHTTP2_FLAG_NONE, 0,
-                                           recv_size);
-
-    if(rv != 0) {
-      return rv;
-    }
-
-    session->recv_window_size -= recv_size;
-    session->consumed_size -= recv_size;
-  }
-
-  return 0;
+  return session_update_consumed_size
+    (session, &session->consumed_size, &session->recv_window_size,
+     0, delta_size, session->local_window_size);
 }
 
 /*
