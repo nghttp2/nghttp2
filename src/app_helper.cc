@@ -473,33 +473,6 @@ int verbose_on_invalid_frame_recv_callback
   return 0;
 }
 
-namespace {
-void dump_header(const uint8_t *head, size_t headlen)
-{
-  size_t i;
-  print_frame_attr_indent();
-  fprintf(outfile, "Header dump: ");
-  for(i = 0; i < headlen; ++i) {
-    fprintf(outfile, "%02X ", head[i]);
-  }
-  fprintf(outfile, "\n");
-}
-} // namespace
-
-int verbose_on_unknown_frame_recv_callback(nghttp2_session *session,
-                                           const uint8_t *head,
-                                           size_t headlen,
-                                           const uint8_t *payload,
-                                           size_t payloadlen,
-                                           void *user_data)
-{
-  print_timer();
-  fprintf(outfile, " recv unknown frame\n");
-  dump_header(head, headlen);
-  fflush(outfile);
-  return 0;
-}
-
 int verbose_on_frame_send_callback
 (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
 {

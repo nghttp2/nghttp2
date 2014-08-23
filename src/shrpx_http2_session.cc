@@ -1345,20 +1345,6 @@ int on_frame_not_send_callback(nghttp2_session *session,
 }
 } // namespace
 
-namespace {
-int on_unknown_frame_recv_callback(nghttp2_session *session,
-                                   const uint8_t *head, size_t headlen,
-                                   const uint8_t *payload, size_t payloadlen,
-                                   void *user_data)
-{
-  auto http2session = static_cast<Http2Session*>(user_data);
-  if(LOG_ENABLED(INFO)) {
-    SSLOG(INFO, http2session) << "Received unknown control frame";
-  }
-  return 0;
-}
-} // namespace
-
 int Http2Session::on_connect()
 {
   int rv;
@@ -1413,9 +1399,6 @@ int Http2Session::on_connect()
 
   nghttp2_session_callbacks_set_on_frame_not_send_callback
     (callbacks, on_frame_not_send_callback);
-
-  nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
-    (callbacks, on_unknown_frame_recv_callback);
 
   nghttp2_session_callbacks_set_on_header_callback
     (callbacks, on_header_callback);

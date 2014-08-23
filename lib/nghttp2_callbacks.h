@@ -82,11 +82,6 @@ struct nghttp2_session_callbacks {
    */
   nghttp2_on_stream_close_callback on_stream_close_callback;
   /**
-   * Callback function invoked when the received frame type is
-   * unknown.
-   */
-  nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback;
-  /**
    * Callback function invoked when the reception of header block in
    * HEADERS or PUSH_PROMISE is started.
    */

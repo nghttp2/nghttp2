@@ -103,13 +103,6 @@ void nghttp2_session_callbacks_set_on_stream_close_callback
   cbs->on_stream_close_callback = on_stream_close_callback;
 }
 
-void nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
-(nghttp2_session_callbacks *cbs,
- nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback)
-{
-  cbs->on_unknown_frame_recv_callback = on_unknown_frame_recv_callback;
-}
-
 void nghttp2_session_callbacks_set_on_begin_headers_callback
 (nghttp2_session_callbacks *cbs,
  nghttp2_on_begin_headers_callback on_begin_headers_callback)

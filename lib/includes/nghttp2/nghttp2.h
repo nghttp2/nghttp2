@@ -1324,33 +1324,6 @@ typedef int (*nghttp2_on_stream_close_callback)
 /**
  * @functypedef
  *
- * Callback function invoked when the received frame type is unknown.
- * The |head| is the pointer to the header of the received frame.  The
- * |headlen| is the length of the |head|.  According to the spec, the
- * |headlen| is always 8.  In other words, the |head| is the first 8
- * bytes of the received frame.  The |payload| is the pointer to the
- * data portion of the received frame.  The |payloadlen| is the length
- * of the |payload|.  This is the data after the length field.  The
- * |user_data| pointer is the third argument passed in to the call to
- * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
- *
- * The implementation of this function must return 0 if it succeeds.
- * If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
- * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
- *
- * To set this callback to :type:`nghttp2_session_callbacks`, use
- * `nghttp2_session_callbacks_set_on_unknown_frame_recv_callback()`.
- */
-typedef int (*nghttp2_on_unknown_frame_recv_callback)
-(nghttp2_session *session,
- const uint8_t *head, size_t headlen,
- const uint8_t *payload, size_t payloadlen,
- void *user_data);
-
-/**
- * @functypedef
- *
  * Callback function invoked when the reception of header block in
  * HEADERS or PUSH_PROMISE is started.  Each header name/value pair
  * will be emitted by :type:`nghttp2_on_header_callback`.
@@ -1593,16 +1566,6 @@ void nghttp2_session_callbacks_set_on_frame_not_send_callback
 void nghttp2_session_callbacks_set_on_stream_close_callback
 (nghttp2_session_callbacks *cbs,
  nghttp2_on_stream_close_callback on_stream_close_callback);
-
-/**
- * @function
- *
- * Sets callback function invoked when the received frame type is
- * unknown.
- */
-void nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
-(nghttp2_session_callbacks *cbs,
- nghttp2_on_unknown_frame_recv_callback on_unknown_frame_recv_callback);
 
 /**
  * @function

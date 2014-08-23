@@ -608,20 +608,6 @@ int on_frame_not_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int on_unknown_frame_recv_callback(nghttp2_session *session,
-                                   const uint8_t *head, size_t headlen,
-                                   const uint8_t *payload, size_t payloadlen,
-                                   void *user_data)
-{
-  auto upstream = static_cast<Http2Upstream*>(user_data);
-  if(LOG_ENABLED(INFO)) {
-    ULOG(INFO, upstream) << "Received unknown control frame.";
-  }
-  return 0;
-}
-} // namespace
-
-namespace {
 uint32_t infer_upstream_rst_stream_error_code(uint32_t downstream_error_code)
 {
   // NGHTTP2_REFUSED_STREAM is important because it tells upstream
@@ -668,9 +654,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   nghttp2_session_callbacks_set_on_frame_not_send_callback
     (callbacks, on_frame_not_send_callback);
-
-  nghttp2_session_callbacks_set_on_unknown_frame_recv_callback
-    (callbacks, on_unknown_frame_recv_callback);
 
   nghttp2_session_callbacks_set_on_header_callback
     (callbacks, on_header_callback);
