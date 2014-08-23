@@ -153,7 +153,7 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream)
 }
 
 int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
-                                                 nghttp2_error_code error_code)
+                                                 uint32_t error_code)
 {
   int rv = -1;
   if(http2session_->get_state() == Http2Session::CONNECTED &&

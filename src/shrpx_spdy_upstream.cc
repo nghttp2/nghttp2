@@ -420,7 +420,7 @@ void on_unknown_ctrl_recv_callback(spdylay_session *session,
 namespace {
 // Infer upstream RST_STREAM status code from downstream HTTP/2
 // error code.
-uint32_t infer_upstream_rst_stream_status_code(int downstream_error_code)
+uint32_t infer_upstream_rst_stream_status_code(uint32_t downstream_error_code)
 {
   // Only propagate *_REFUSED_STREAM so that upstream client can
   // resend request.

@@ -477,7 +477,7 @@ void nghttp2_frame_priority_free(nghttp2_priority *frame);
 
 void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
                                    int32_t stream_id,
-                                   nghttp2_error_code error_code);
+                                   uint32_t error_code);
 
 void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame);
 
@@ -519,7 +519,7 @@ void nghttp2_frame_ping_free(nghttp2_ping *frame);
  * free it. If the |opaque_data_len| is 0, opaque_data could be NULL.
  */
 void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
-                               nghttp2_error_code error_code,
+                               uint32_t error_code,
                                uint8_t *opaque_data, size_t opaque_data_len);
 
 void nghttp2_frame_goaway_free(nghttp2_goaway *frame);

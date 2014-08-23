@@ -1474,7 +1474,7 @@ int on_frame_recv_callback2
 
 namespace {
 int on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
+(nghttp2_session *session, int32_t stream_id, uint32_t error_code,
  void *user_data)
 {
   auto client = get_session(user_data);

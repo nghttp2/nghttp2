@@ -290,7 +290,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
  */
 int nghttp2_session_add_rst_stream(nghttp2_session *session,
                                    int32_t stream_id,
-                                   nghttp2_error_code error_code);
+                                   uint32_t error_code);
 
 /*
  * Adds PING frame. This is a convenient functin built on top of
@@ -324,7 +324,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
  */
 int nghttp2_session_add_goaway(nghttp2_session *session,
                                int32_t last_stream_id,
-                               nghttp2_error_code error_code,
+                               uint32_t error_code,
                                const uint8_t *opaque_data,
                                size_t opaque_data_len);
 
@@ -396,7 +396,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
  *     The callback function failed.
  */
 int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
-                                 nghttp2_error_code error_code);
+                                 uint32_t error_code);
 
 /*
  * Deletes |stream| from memory.  After this function returns, stream
@@ -739,6 +739,6 @@ int nghttp2_session_reprioritize_stream
  *     The |reason| is too long.
  */
 int nghttp2_session_terminate_session_with_reason
-(nghttp2_session *session, nghttp2_error_code error_code, const char *reason);
+(nghttp2_session *session, uint32_t error_code, const char *reason);
 
 #endif /* NGHTTP2_SESSION_H */

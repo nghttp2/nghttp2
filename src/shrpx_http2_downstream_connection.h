@@ -71,8 +71,7 @@ public:
   StreamData* detach_stream_data();
 
   int submit_rst_stream
-  (Downstream *downstream,
-   nghttp2_error_code error_code = NGHTTP2_INTERNAL_ERROR);
+  (Downstream *downstream, uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
 private:
   Http2Session *http2session_;
   evbuffer *request_body_buf_;

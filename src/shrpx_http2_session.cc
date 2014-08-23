@@ -669,8 +669,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
   return 0;
 }
 
-int Http2Session::submit_rst_stream(int32_t stream_id,
-                                   nghttp2_error_code error_code)
+int Http2Session::submit_rst_stream(int32_t stream_id, uint32_t error_code)
 {
   assert(state_ == CONNECTED);
   if(LOG_ENABLED(INFO)) {
@@ -755,7 +754,7 @@ void call_downstream_readcb(Http2Session *http2session, Downstream *downstream)
 
 namespace {
 int on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
+(nghttp2_session *session, int32_t stream_id, uint32_t error_code,
  void *user_data)
 {
   auto http2session = static_cast<Http2Session*>(user_data);
@@ -1632,7 +1631,7 @@ void Http2Session::set_state(int state)
   state_ = state;
 }
 
-int Http2Session::terminate_session(nghttp2_error_code error_code)
+int Http2Session::terminate_session(uint32_t error_code)
 {
   int rv;
   rv = nghttp2_session_terminate_session(session_, error_code);

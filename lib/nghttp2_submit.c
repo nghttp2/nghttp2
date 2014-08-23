@@ -234,7 +234,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
 
 int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
                               int32_t stream_id,
-                              nghttp2_error_code error_code)
+                              uint32_t error_code)
 {
   if(stream_id == 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
@@ -245,7 +245,7 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
 
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           int32_t last_stream_id,
-                          nghttp2_error_code error_code,
+                          uint32_t error_code,
                           const uint8_t *opaque_data, size_t opaque_data_len)
 {
   return nghttp2_session_add_goaway(session, last_stream_id,

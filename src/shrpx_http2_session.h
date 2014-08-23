@@ -68,11 +68,11 @@ public:
                      int32_t pri, const nghttp2_nv *nva, size_t nvlen,
                      const nghttp2_data_provider *data_prd);
 
-  int submit_rst_stream(int32_t stream_id, nghttp2_error_code error_code);
+  int submit_rst_stream(int32_t stream_id, uint32_t error_code);
 
   int submit_priority(Http2DownstreamConnection *dconn, int32_t pri);
 
-  int terminate_session(nghttp2_error_code error_code);
+  int terminate_session(uint32_t error_code);
 
   nghttp2_session* get_session() const;
 

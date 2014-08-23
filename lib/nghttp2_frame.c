@@ -101,7 +101,7 @@ void nghttp2_frame_priority_free(nghttp2_priority *frame)
 
 void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
                                    int32_t stream_id,
-                                   nghttp2_error_code error_code)
+                                   uint32_t error_code)
 {
   frame_set_hd(&frame->hd, 4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE,
                stream_id);
@@ -158,7 +158,7 @@ void nghttp2_frame_ping_free(nghttp2_ping *frame)
 {}
 
 void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
-                               nghttp2_error_code error_code,
+                               uint32_t error_code,
                                uint8_t *opaque_data, size_t opaque_data_len)
 {
   frame_set_hd(&frame->hd, 8+opaque_data_len, NGHTTP2_GOAWAY,
@@ -477,33 +477,11 @@ int nghttp2_frame_pack_rst_stream(nghttp2_bufs *bufs,
   return 0;
 }
 
-static nghttp2_error_code normalize_error_code(uint32_t error_code)
-{
-  switch(error_code) {
-  case NGHTTP2_NO_ERROR:
-  case NGHTTP2_PROTOCOL_ERROR:
-  case NGHTTP2_INTERNAL_ERROR:
-  case NGHTTP2_FLOW_CONTROL_ERROR:
-  case NGHTTP2_SETTINGS_TIMEOUT:
-  case NGHTTP2_STREAM_CLOSED:
-  case NGHTTP2_FRAME_SIZE_ERROR:
-  case NGHTTP2_REFUSED_STREAM:
-  case NGHTTP2_CANCEL:
-  case NGHTTP2_COMPRESSION_ERROR:
-  case NGHTTP2_CONNECT_ERROR:
-  case NGHTTP2_ENHANCE_YOUR_CALM:
-  case NGHTTP2_INADEQUATE_SECURITY:
-    return error_code;
-  default:
-    return NGHTTP2_INTERNAL_ERROR;
-  }
-}
-
 void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
                                              const uint8_t *payload,
                                              size_t payloadlen)
 {
-  frame->error_code = normalize_error_code(nghttp2_get_uint32(payload));
+  frame->error_code = nghttp2_get_uint32(payload);
 }
 
 int nghttp2_frame_pack_settings(nghttp2_bufs *bufs, nghttp2_settings *frame)
@@ -712,7 +690,7 @@ void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
                                          size_t var_gift_payloadlen)
 {
   frame->last_stream_id = nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
-  frame->error_code = normalize_error_code(nghttp2_get_uint32(payload + 4));
+  frame->error_code = nghttp2_get_uint32(payload + 4);
 
   frame->opaque_data = var_gift_payload;
   frame->opaque_data_len = var_gift_payloadlen;

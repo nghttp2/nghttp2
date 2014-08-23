@@ -903,8 +903,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
   return 0;
 }
 
-int Http2Handler::submit_rst_stream(Stream *stream,
-                                    nghttp2_error_code error_code)
+int Http2Handler::submit_rst_stream(Stream *stream, uint32_t error_code)
 {
   remove_stream_read_timeout(stream);
   remove_stream_write_timeout(stream);
@@ -967,7 +966,7 @@ void Http2Handler::remove_settings_timer()
   }
 }
 
-void Http2Handler::terminate_session(nghttp2_error_code error_code)
+void Http2Handler::terminate_session(uint32_t error_code)
 {
   nghttp2_session_terminate_session(session_, error_code);
 }
@@ -1430,7 +1429,7 @@ int on_data_chunk_recv_callback
 
 namespace {
 int on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
+(nghttp2_session *session, int32_t stream_id, uint32_t error_code,
  void *user_data)
 {
   auto hd = static_cast<Http2Handler*>(user_data);

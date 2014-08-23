@@ -89,7 +89,7 @@ int on_data_chunk_recv_callback
 
 namespace {
 int on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
+(nghttp2_session *session, int32_t stream_id, uint32_t error_code,
  void *user_data)
 {
   auto client = static_cast<Client*>(user_data);

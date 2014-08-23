@@ -845,7 +845,7 @@ typedef struct {
   /**
    * The error code.  See :type:`nghttp2_error_code`.
    */
-  nghttp2_error_code error_code;
+  uint32_t error_code;
 } nghttp2_rst_stream;
 
 /**
@@ -946,7 +946,7 @@ typedef struct {
   /**
    * The error code.  See :type:`nghttp2_error_code`.
    */
-  nghttp2_error_code error_code;
+  uint32_t error_code;
   /**
    * The additional debug data
    */
@@ -1178,12 +1178,13 @@ typedef int (*nghttp2_on_frame_recv_callback)
  * @functypedef
  *
  * Callback function invoked by `nghttp2_session_recv()` when an
- * invalid non-DATA frame is received.  The |error_code| is one of the
- * :enum:`nghttp2_error_code` and indicates the error.  When this
- * callback function is invoked, the library automatically submits
- * either RST_STREAM or GOAWAY frame.  The |user_data| pointer is the
- * third argument passed in to the call to
- * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
+ * invalid non-DATA frame is received.  The |error_code| indicates the
+ * error.  It is usually one of the :enum:`nghttp2_error_code` but
+ * that is not guaranteed.  When this callback function is invoked,
+ * the library automatically submits either RST_STREAM or GOAWAY
+ * frame.  The |user_data| pointer is the third argument passed in to
+ * the call to `nghttp2_session_client_new()` or
+ * `nghttp2_session_server_new()`.
  *
  * If frame is HEADERS or PUSH_PROMISE, the ``nva`` and ``nvlen``
  * member of their data structure are always ``NULL`` and 0
@@ -1199,7 +1200,7 @@ typedef int (*nghttp2_on_frame_recv_callback)
  */
 typedef int (*nghttp2_on_invalid_frame_recv_callback)
 (nghttp2_session *session, const nghttp2_frame *frame,
- nghttp2_error_code error_code, void *user_data);
+ uint32_t error_code, void *user_data);
 
 /**
  * @functypedef
@@ -1299,10 +1300,11 @@ typedef int (*nghttp2_on_frame_not_send_callback)
  *
  * Callback function invoked when the stream |stream_id| is closed.
  * The reason of closure is indicated by the |error_code|.  The
- * stream_user_data, which was specified in `nghttp2_submit_request()`
- * or `nghttp2_submit_headers()`, is still available in this function.
- * The |user_data| pointer is the third argument passed in to the call
- * to `nghttp2_session_client_new()` or
+ * |error_code| is usually one of :enum:`nghttp2_error_code`, but that
+ * is not guaranteed.  The stream_user_data, which was specified in
+ * `nghttp2_submit_request()` or `nghttp2_submit_headers()`, is still
+ * available in this function.  The |user_data| pointer is the third
+ * argument passed in to the call to `nghttp2_session_client_new()` or
  * `nghttp2_session_server_new()`.
  *
  * This function is also called for a stream in reserved state.
@@ -1316,7 +1318,7 @@ typedef int (*nghttp2_on_frame_not_send_callback)
  * `nghttp2_session_callbacks_set_on_stream_close_callback()`.
  */
 typedef int (*nghttp2_on_stream_close_callback)
-(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
+(nghttp2_session *session, int32_t stream_id, uint32_t error_code,
  void *user_data);
 
 /**
@@ -2173,7 +2175,8 @@ int nghttp2_session_get_stream_remote_close(nghttp2_session* session,
  * The last stream ID is the ID of a stream for which
  * :type:`nghttp2_on_frame_recv_callback` was called most recently.
  *
- * The |error_code| is the error code of this GOAWAY frame.
+ * The |error_code| is the error code of this GOAWAY frame.  The
+ * pre-defined error code is one of :enum:`nghttp2_error_code`.
  *
  * After the transmission, both `nghttp2_session_want_read()` and
  * `nghttp2_session_want_write()` return 0.
@@ -2189,7 +2192,7 @@ int nghttp2_session_get_stream_remote_close(nghttp2_session* session,
  *     Out of memory.
  */
 int nghttp2_session_terminate_session(nghttp2_session *session,
-                                      nghttp2_error_code error_code);
+                                      uint32_t error_code);
 
 /**
  * @function
@@ -2208,7 +2211,7 @@ int nghttp2_session_terminate_session(nghttp2_session *session,
  */
 int nghttp2_session_terminate_session2(nghttp2_session *session,
                                        int32_t last_stream_id,
-                                       nghttp2_error_code error_code);
+                                       uint32_t error_code);
 
 /**
  * @function
@@ -2603,6 +2606,8 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
  * Submits RST_STREAM frame to cancel/reject the stream |stream_id|
  * with the error code |error_code|.
  *
+ * The pre-defined error code is one of :enum:`nghttp2_error_code`.
+ *
  * The |flags| is currently ignored and should be
  * :enum:`NGHTTP2_FLAG_NONE`.
  *
@@ -2616,7 +2621,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
  */
 int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
                               int32_t stream_id,
-                              nghttp2_error_code error_code);
+                              uint32_t error_code);
 
 /**
  * @function
@@ -2743,6 +2748,8 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
  * Submits GOAWAY frame with the last stream ID |last_stream_id| and
  * the error code |error_code|.
  *
+ * The pre-defined error code is one of :enum:`nghttp2_error_code`.
+ *
  * The |flags| is currently ignored and should be
  * :enum:`NGHTTP2_FLAG_NONE`.
  *
@@ -2769,7 +2776,7 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
  */
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           int32_t last_stream_id,
-                          nghttp2_error_code error_code,
+                          uint32_t error_code,
                           const uint8_t *opaque_data, size_t opaque_data_len);
 
 /**

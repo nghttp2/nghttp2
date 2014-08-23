@@ -52,7 +52,7 @@ const size_t INBUF_MAX_THRES = 16*1024;
 
 namespace {
 int on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, nghttp2_error_code error_code,
+(nghttp2_session *session, int32_t stream_id, uint32_t error_code,
  void *user_data)
 {
   auto upstream = static_cast<Http2Upstream*>(user_data);
@@ -622,15 +622,14 @@ int on_unknown_frame_recv_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-nghttp2_error_code infer_upstream_rst_stream_error_code
-(int downstream_error_code)
+uint32_t infer_upstream_rst_stream_error_code(uint32_t downstream_error_code)
 {
   // NGHTTP2_REFUSED_STREAM is important because it tells upstream
   // client to retry.
   switch(downstream_error_code) {
   case NGHTTP2_NO_ERROR:
   case NGHTTP2_REFUSED_STREAM:
-    return static_cast<nghttp2_error_code>(downstream_error_code);
+    return downstream_error_code;
   default:
     return NGHTTP2_INTERNAL_ERROR;
   }
@@ -1045,8 +1044,7 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
 }
 } // namespace
 
-int Http2Upstream::rst_stream(Downstream *downstream,
-                              nghttp2_error_code error_code)
+int Http2Upstream::rst_stream(Downstream *downstream, uint32_t error_code)
 {
   if(LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "RST_STREAM stream_id="
@@ -1065,7 +1063,7 @@ int Http2Upstream::rst_stream(Downstream *downstream,
   return 0;
 }
 
-int Http2Upstream::terminate_session(nghttp2_error_code error_code)
+int Http2Upstream::terminate_session(uint32_t error_code)
 {
   int rv;
   rv = nghttp2_session_terminate_session(session_, error_code);

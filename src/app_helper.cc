@@ -52,7 +52,7 @@
 namespace nghttp2 {
 
 namespace {
-const char* strstatus(nghttp2_error_code error_code)
+const char* strstatus(uint32_t error_code)
 {
   switch(error_code) {
   case NGHTTP2_NO_ERROR:
@@ -464,7 +464,7 @@ int verbose_on_frame_recv_callback
 
 int verbose_on_invalid_frame_recv_callback
 (nghttp2_session *session, const nghttp2_frame *frame,
- nghttp2_error_code error_code, void *user_data)
+ uint32_t error_code, void *user_data)
 {
   print_timer();
   fprintf(outfile, " [INVALID; status=%s] recv ", strstatus(error_code));

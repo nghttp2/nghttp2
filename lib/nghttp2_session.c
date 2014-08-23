@@ -134,7 +134,7 @@ static int session_detect_idle_stream(nghttp2_session *session,
 
 static int session_terminate_session
 (nghttp2_session *session, int32_t last_stream_id,
- nghttp2_error_code error_code, const char *reason)
+ uint32_t error_code, const char *reason)
 {
   const uint8_t *debug_data;
   size_t debug_datalen;
@@ -157,7 +157,7 @@ static int session_terminate_session
 }
 
 int nghttp2_session_terminate_session(nghttp2_session *session,
-                                      nghttp2_error_code error_code)
+                                      uint32_t error_code)
 {
   return session_terminate_session(session, session->last_proc_stream_id,
                                    error_code, NULL);
@@ -165,13 +165,13 @@ int nghttp2_session_terminate_session(nghttp2_session *session,
 
 int nghttp2_session_terminate_session2(nghttp2_session *session,
                                        int32_t last_stream_id,
-                                       nghttp2_error_code error_code)
+                                       uint32_t error_code)
 {
   return session_terminate_session(session, last_stream_id, error_code, NULL);
 }
 
 int nghttp2_session_terminate_session_with_reason
-(nghttp2_session *session, nghttp2_error_code error_code, const char *reason)
+(nghttp2_session *session, uint32_t error_code, const char *reason)
 {
   return session_terminate_session(session, session->last_proc_stream_id,
                                    error_code, reason);
@@ -707,7 +707,7 @@ int nghttp2_session_add_frame(nghttp2_session *session,
 
 int nghttp2_session_add_rst_stream(nghttp2_session *session,
                                    int32_t stream_id,
-                                   nghttp2_error_code error_code)
+                                   uint32_t error_code)
 {
   int rv;
   nghttp2_frame *frame;
@@ -832,7 +832,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
 }
 
 int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
-                                 nghttp2_error_code error_code)
+                                 uint32_t error_code)
 {
   int rv;
   nghttp2_stream *stream;
@@ -2525,7 +2525,7 @@ static int session_handle_frame_size_error(nghttp2_session *session,
 static int session_handle_invalid_stream
 (nghttp2_session *session,
  nghttp2_frame *frame,
- nghttp2_error_code error_code)
+ uint32_t error_code)
 {
   int rv;
   rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id, error_code);
@@ -2544,7 +2544,7 @@ static int session_handle_invalid_stream
 static int session_inflate_handle_invalid_stream
 (nghttp2_session *session,
  nghttp2_frame *frame,
- nghttp2_error_code error_code)
+ uint32_t error_code)
 {
   int rv;
   rv = session_handle_invalid_stream(session, frame, error_code);
@@ -2560,7 +2560,7 @@ static int session_inflate_handle_invalid_stream
 static int session_handle_invalid_connection
 (nghttp2_session *session,
  nghttp2_frame *frame,
- nghttp2_error_code error_code,
+ uint32_t error_code,
  const char *reason)
 {
   if(session->callbacks.on_invalid_frame_recv_callback) {
@@ -2576,7 +2576,7 @@ static int session_handle_invalid_connection
 static int session_inflate_handle_invalid_connection
 (nghttp2_session *session,
  nghttp2_frame *frame,
- nghttp2_error_code error_code,
+ uint32_t error_code,
  const char *reason)
 {
   int rv;
@@ -3345,7 +3345,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     session->inflight_iv = NULL;
     session->inflight_niv = -1;
     if(rv != 0) {
-      nghttp2_error_code error_code = NGHTTP2_INTERNAL_ERROR;
+      uint32_t error_code = NGHTTP2_INTERNAL_ERROR;
       if(nghttp2_is_fatal(rv)) {
         return rv;
       }
@@ -5416,7 +5416,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
 
 int nghttp2_session_add_goaway(nghttp2_session *session,
                                int32_t last_stream_id,
-                               nghttp2_error_code error_code,
+                               uint32_t error_code,
                                const uint8_t *opaque_data,
                                size_t opaque_data_len)
 {

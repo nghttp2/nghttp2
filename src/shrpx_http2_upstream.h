@@ -60,8 +60,8 @@ public:
 
   nghttp2_session* get_http2_session();
 
-  int rst_stream(Downstream *downstream, nghttp2_error_code error_code);
-  int terminate_session(nghttp2_error_code error_code);
+  int rst_stream(Downstream *downstream, uint32_t error_code);
+  int terminate_session(uint32_t error_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);

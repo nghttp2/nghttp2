@@ -215,8 +215,8 @@ public:
   evbuffer* get_response_body_buf();
   void add_response_bodylen(size_t amount);
   int64_t get_response_bodylen() const;
-  int get_response_rst_stream_error_code() const;
-  void set_response_rst_stream_error_code(int error_code);
+  uint32_t get_response_rst_stream_error_code() const;
+  void set_response_rst_stream_error_code(uint32_t error_code);
   // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
   void inspect_http1_response();
   // Clears some of member variables for response.
@@ -311,7 +311,7 @@ private:
   int32_t downstream_stream_id_;
 
   // RST_STREAM error_code from downstream HTTP2 connection
-  int response_rst_stream_error_code_;
+  uint32_t response_rst_stream_error_code_;
 
   int request_state_;
   int request_major_;

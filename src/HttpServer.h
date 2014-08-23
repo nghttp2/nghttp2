@@ -130,7 +130,7 @@ public:
 
   int submit_push_promise(Stream *stream, const std::string& push_path);
 
-  int submit_rst_stream(Stream *stream, nghttp2_error_code error_code);
+  int submit_rst_stream(Stream *stream, uint32_t error_code);
 
   void add_stream(int32_t stream_id, std::unique_ptr<Stream> stream);
   void remove_stream(int32_t stream_id);
@@ -141,7 +141,7 @@ public:
   size_t get_left_connhd_len() const;
   void set_left_connhd_len(size_t left);
   void remove_settings_timer();
-  void terminate_session(nghttp2_error_code error_code);
+  void terminate_session(uint32_t error_code);
   int tls_handshake();
 private:
   int handle_ssl_temporal_error(int err);
