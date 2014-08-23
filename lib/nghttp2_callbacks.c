@@ -130,3 +130,10 @@ void nghttp2_session_callbacks_set_data_source_read_length_callback
 {
   cbs->read_length_callback = data_source_read_length_callback;
 }
+
+void nghttp2_session_callbacks_set_on_begin_frame_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_begin_frame_callback on_begin_frame_callback)
+{
+  cbs->on_begin_frame_callback = on_begin_frame_callback;
+}

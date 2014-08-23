@@ -102,6 +102,10 @@ struct nghttp2_session_callbacks {
    * `nghttp2_data_source_read_callback()`
    */
   nghttp2_data_source_read_length_callback read_length_callback;
+  /**
+   * Sets callback function invoked when a frame header is received.
+   */
+  nghttp2_on_begin_frame_callback on_begin_frame_callback;
 };
 
 #endif /* NGHTTP2_CALLBACKS_H */

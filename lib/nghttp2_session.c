@@ -2453,6 +2453,24 @@ static ssize_t session_recv(nghttp2_session *session, uint8_t *buf, size_t len)
   return rv;
 }
 
+static int session_call_on_begin_frame
+(nghttp2_session *session, const nghttp2_frame_hd *hd)
+{
+  int rv;
+
+  if(session->callbacks.on_begin_frame_callback) {
+
+    rv = session->callbacks.on_begin_frame_callback
+      (session, hd, session->user_data);
+
+    if(rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+
+  return 0;
+}
+
 static int session_call_on_frame_received
 (nghttp2_session *session, nghttp2_frame *frame)
 {
@@ -4295,7 +4313,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
   for(;;) {
     switch(iframe->state) {
-    case NGHTTP2_IB_READ_HEAD:
+    case NGHTTP2_IB_READ_HEAD: {
+      int on_begin_frame_called = 0;
+
       DEBUGF(fprintf(stderr, "recv: [IB_READ_HEAD]\n"));
 
       readlen = inbound_frame_buf_read(iframe, in, last);
@@ -4423,6 +4443,17 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
           break;
         }
+
+        /* Call on_begin_frame_callback here because
+           session_process_headers_frame() may call
+           on_begin_headers_callback */
+        rv = session_call_on_begin_frame(session, &iframe->frame.hd);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        on_begin_frame_called = 1;
 
         rv = session_process_headers_frame(session);
         if(nghttp2_is_fatal(rv)) {
@@ -4632,7 +4663,25 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
         break;
       }
+
+      if(!on_begin_frame_called) {
+        switch(iframe->state) {
+        case NGHTTP2_IB_IGN_HEADER_BLOCK:
+        case NGHTTP2_IB_IGN_PAYLOAD:
+        case NGHTTP2_IB_FRAME_SIZE_ERROR:
+        case NGHTTP2_IB_IGN_DATA:
+          break;
+        default:
+          rv = session_call_on_begin_frame(session, &iframe->frame.hd);
+
+          if(nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
+      }
+
       break;
+    }
     case NGHTTP2_IB_READ_NBYTE:
       DEBUGF(fprintf(stderr, "recv: [IB_READ_NBYTE]\n"));
 
@@ -5105,6 +5154,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
       if(iframe->state == NGHTTP2_IB_EXPECT_CONTINUATION) {
         iframe->state = NGHTTP2_IB_READ_HEADER_BLOCK;
+
+        rv = session_call_on_begin_frame(session, &cont_hd);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
       } else {
         iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
       }

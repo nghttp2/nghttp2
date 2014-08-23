@@ -1163,6 +1163,9 @@ typedef ssize_t (*nghttp2_recv_callback)
  * If ``frame->hd.flags & NGHTTP2_FLAG_END_STREAM`` is nonzero, the
  * |frame| is the last frame from the remote peer in this stream.
  *
+ * This callback won't be called for CONTINUATION frames.
+ * HEADERS/PUSH_PROMISE + CONTINUATIONs are treated as single frame.
+ *
  * The implementation of this function must return 0 if it succeeds.
  * If nonzero value is returned, it is treated as fatal error and
  * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
@@ -1440,6 +1443,31 @@ typedef ssize_t (*nghttp2_select_padding_callback)
  size_t max_payloadlen,
  void *user_data);
 
+/**
+ * @functypedef
+ *
+ * Callback function invoked when a frame header is received.  The
+ * |hd| points to received frame header.
+ *
+ * Unlike :type:`nghttp2_on_frame_recv_callback`, this callback will
+ * also be called when frame header of CONTINUATION frame is received.
+ *
+ * If both :type:`nghttp2_on_begin_frame_callback` and
+ * :type:`nghttp2_on_begin_headers_callback` are set and HEADERS or
+ * PUSH_PROMISE is received, :type:`nghttp2_on_begin_frame_callback`
+ * will be called first.
+ *
+ * The implementation of this function must return 0 if it succeeds.
+ * If nonzero value is returned, it is treated as fatal error and
+ * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_on_begin_frame_callback()`.
+ */
+typedef int (*nghttp2_on_begin_frame_callback)
+(nghttp2_session *session, const nghttp2_frame_hd *hd, void *user_data);
+
 struct nghttp2_session_callbacks;
 
 /**
@@ -1607,6 +1635,15 @@ void nghttp2_session_callbacks_set_select_padding_callback
 void nghttp2_session_callbacks_set_data_source_read_length_callback
 (nghttp2_session_callbacks *cbs,
  nghttp2_data_source_read_length_callback data_source_read_length_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a frame header is received.
+ */
+void nghttp2_session_callbacks_set_on_begin_frame_callback
+(nghttp2_session_callbacks *cbs,
+ nghttp2_on_begin_frame_callback on_begin_frame_callback);
 
 struct nghttp2_option;
 
@@ -1879,7 +1916,10 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  * 1. :type:`nghttp2_recv_callback` is invoked one or more times to
  *    receive frame header.
  *
- * 2. If the frame is DATA frame:
+ * 2. When frame header is received,
+ *    :type:`nghttp2_on_begin_frame_callback` is invoked.
+ *
+ * 3. If the frame is DATA frame:
  *
  *    1. :type:`nghttp2_recv_callback` is invoked to receive DATA
  *       payload. For each chunk of data,
@@ -1890,7 +1930,7 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  *       reception of the frame triggers the closure of the stream,
  *       :type:`nghttp2_on_stream_close_callback` is invoked.
  *
- * 3. If the frame is the control frame:
+ * 4. If the frame is the control frame:
  *
  *    1. :type:`nghttp2_recv_callback` is invoked one or more times to
  *       receive whole frame.
