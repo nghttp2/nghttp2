@@ -156,15 +156,30 @@ finished successfully. We first initialize nghttp2 session object in
 
     static void initialize_nghttp2_session(http2_session_data *session_data)
     {
-      nghttp2_session_callbacks callbacks = {0};
+      nghttp2_session_callbacks *callbacks;
 
-      callbacks.send_callback = send_callback;
-      callbacks.on_frame_recv_callback = on_frame_recv_callback;
-      callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
-      callbacks.on_stream_close_callback = on_stream_close_callback;
-      callbacks.on_header_callback = on_header_callback;
-      callbacks.on_begin_headers_callback = on_begin_headers_callback;
-      nghttp2_session_client_new(&session_data->session, &callbacks, session_data);
+      nghttp2_session_callbacks_new(&callbacks);
+
+      nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+
+      nghttp2_session_callbacks_set_on_frame_recv_callback
+        (callbacks, on_frame_recv_callback);
+
+      nghttp2_session_callbacks_set_on_data_chunk_recv_callback
+        (callbacks, on_data_chunk_recv_callback);
+
+      nghttp2_session_callbacks_set_on_stream_close_callback
+        (callbacks, on_stream_close_callback);
+
+      nghttp2_session_callbacks_set_on_header_callback
+        (callbacks, on_header_callback);
+
+      nghttp2_session_callbacks_set_on_begin_headers_callback
+        (callbacks, on_begin_headers_callback);
+
+      nghttp2_session_client_new(&session_data->session, callbacks, session_data);
+
+      nghttp2_session_callbacks_del(callbacks);
     }
 
 Since we are creating client, we use `nghttp2_session_client_new()` to
@@ -291,11 +306,9 @@ frames. The ``session_send()`` function is defined as follows::
     }
 
 The `nghttp2_session_send()` function serializes the frame into wire
-format and call :member:`nghttp2_session_callbacks.send_callback` with
-it. We set ``send_callback()`` function to
-:member:`nghttp2_session_callbacks.send_callback` in
-``initialize_nghttp2_session()`` function described earlier. It is
-defined as follows::
+format and call ``send_callback()`` function of type
+:type:`nghttp2_send_callback`.  The ``send_callback()`` is defined as
+follows::
 
     static ssize_t send_callback(nghttp2_session *session,
                                  const uint8_t *data, size_t length,
@@ -311,15 +324,14 @@ Since we use bufferevent to abstract network I/O, we just write the
 data to the bufferevent object. Note that `nghttp2_session_send()`
 continues to write all frames queued so far. If we were writing the
 data to the non-blocking socket directly using ``write()`` system call
-in the :member:`nghttp2_session_callbacks.send_callback`, we will
-surely get ``EAGAIN`` or ``EWOULDBLOCK`` since the socket has limited
-send buffer. If that happens, we can return
-:macro:`NGHTTP2_ERR_WOULDBLOCK` to signal the nghttp2 library to stop
-sending further data. But writing to the bufferevent, we have to
-regulate the amount data to be buffered by ourselves to avoid possible
-huge memory consumption. In this example client, we do not limit
-anything. To see how to regulate the amount of buffered data, see the
-``send_callback()`` in the server tutorial.
+in the ``send_callback()``, we will surely get ``EAGAIN`` or
+``EWOULDBLOCK`` since the socket has limited send buffer. If that
+happens, we can return :macro:`NGHTTP2_ERR_WOULDBLOCK` to signal the
+nghttp2 library to stop sending further data. But writing to the
+bufferevent, we have to regulate the amount data to be buffered by
+ourselves to avoid possible huge memory consumption. In this example
+client, we do not limit anything. To see how to regulate the amount of
+buffered data, see the ``send_callback()`` in the server tutorial.
 
 The third bufferevent callback is ``writecb()``, which is invoked when
 all data written in the bufferevent output buffer have been sent::

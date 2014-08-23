@@ -229,14 +229,27 @@ We initialize a nghttp2 session object which is done in
 
     static void initialize_nghttp2_session(http2_session_data *session_data)
     {
-      nghttp2_session_callbacks callbacks = {0};
+      nghttp2_session_callbacks *callbacks;
 
-      callbacks.send_callback = send_callback;
-      callbacks.on_frame_recv_callback = on_frame_recv_callback;
-      callbacks.on_stream_close_callback = on_stream_close_callback;
-      callbacks.on_header_callback = on_header_callback;
-      callbacks.on_begin_headers_callback = on_begin_headers_callback;
-      nghttp2_session_server_new(&session_data->session, &callbacks, session_data);
+      nghttp2_session_callbacks_new(&callbacks);
+
+      nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+
+      nghttp2_session_callbacks_set_on_frame_recv_callback
+        (callbacks, on_frame_recv_callback);
+
+      nghttp2_session_callbacks_set_on_stream_close_callback
+        (callbacks, on_stream_close_callback);
+
+      nghttp2_session_callbacks_set_on_header_callback
+        (callbacks, on_header_callback);
+
+      nghttp2_session_callbacks_set_on_begin_headers_callback
+        (callbacks, on_begin_headers_callback);
+
+      nghttp2_session_server_new(&session_data->session, callbacks, session_data);
+
+      nghttp2_session_callbacks_del(callbacks);
     }
 
 Since we are creating a server, the nghttp2 session object is created using
@@ -317,11 +330,9 @@ frames. The ``session_send()`` function is defined as follows::
     }
 
 The `nghttp2_session_send()` function serializes the frame into wire
-format and calls :member:`nghttp2_session_callbacks.send_callback` with
-it. We set the ``send_callback()`` function to
-:member:`nghttp2_session_callbacks.send_callback` in
-``initialize_nghttp2_session()`` function described earlier. It is
-defined as follows::
+format and calls ``send_callback()`` of type
+:type:`nghttp2_send_callback`.  The ``send_callback()`` is defined as
+follows::
 
     static ssize_t send_callback(nghttp2_session *session,
                                  const uint8_t *data, size_t length,
@@ -338,20 +349,20 @@ defined as follows::
       return length;
     }
 
-Since we use bufferevent to abstract network I/O, we just write the data to
-the bufferevent object. Note that `nghttp2_session_send()` continues to write
-all frames queued so far. If we were writing the data to a non-blocking socket
-directly using ``write()`` system call in the
-:member:`nghttp2_session_callbacks.send_callback`, we would surely get
-``EAGAIN`` or ``EWOULDBLOCK`` back since the socket has limited send
-buffer. If that happens, we can return :macro:`NGHTTP2_ERR_WOULDBLOCK` to
-signal the nghttp2 library to stop sending further data. But when writing to
-the bufferevent, we have to regulate the amount data to get buffered ourselves
-to avoid using huge amounts of memory. To achieve this, we check the size of
-the output buffer and if it reaches more than or equal to
-``OUTPUT_WOULDBLOCK_THRESHOLD`` bytes, we stop writing data and return
-:macro:`NGHTTP2_ERR_WOULDBLOCK` to tell the library to stop calling
-send_callback.
+Since we use bufferevent to abstract network I/O, we just write the
+data to the bufferevent object. Note that `nghttp2_session_send()`
+continues to write all frames queued so far. If we were writing the
+data to a non-blocking socket directly using ``write()`` system call
+in the ``send_callback()``, we would surely get ``EAGAIN`` or
+``EWOULDBLOCK`` back since the socket has limited send buffer. If that
+happens, we can return :macro:`NGHTTP2_ERR_WOULDBLOCK` to signal the
+nghttp2 library to stop sending further data. But when writing to the
+bufferevent, we have to regulate the amount data to get buffered
+ourselves to avoid using huge amounts of memory. To achieve this, we
+check the size of the output buffer and if it reaches more than or
+equal to ``OUTPUT_WOULDBLOCK_THRESHOLD`` bytes, we stop writing data
+and return :macro:`NGHTTP2_ERR_WOULDBLOCK` to tell the library to stop
+calling send_callback.
 
 The next bufferevent callback is ``readcb()``, which is invoked when
 data is available to read in the bufferevent input buffer::
