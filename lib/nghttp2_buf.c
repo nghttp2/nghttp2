@@ -45,7 +45,12 @@ int nghttp2_buf_init2(nghttp2_buf *buf, size_t initial)
 
 void nghttp2_buf_free(nghttp2_buf *buf)
 {
+  if(buf == NULL) {
+    return;
+  }
+
   free(buf->begin);
+  buf->begin = NULL;
 }
 
 int nghttp2_buf_reserve(nghttp2_buf *buf, size_t new_cap)
@@ -168,6 +173,10 @@ void nghttp2_bufs_free(nghttp2_bufs *bufs)
 {
   nghttp2_buf_chain *chain, *next_chain;
 
+  if(bufs == NULL) {
+    return;
+  }
+
   for(chain = bufs->head; chain;) {
     next_chain = chain->next;
 
@@ -175,6 +184,8 @@ void nghttp2_bufs_free(nghttp2_bufs *bufs)
 
     chain = next_chain;
   }
+
+  bufs->head = NULL;
 }
 
 int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len)
@@ -205,7 +216,12 @@ int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len)
 
 void nghttp2_bufs_wrap_free(nghttp2_bufs *bufs)
 {
+  if(bufs == NULL) {
+    return;
+  }
+
   free(bufs->head);
+  bufs->head = NULL;
 }
 
 void nghttp2_bufs_seek_last_present(nghttp2_bufs *bufs)
