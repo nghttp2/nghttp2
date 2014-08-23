@@ -2255,12 +2255,12 @@
   <dt><a href="apiref.html#c.NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE">NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE (C macro)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="apiref.html#c.NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS">NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS (C macro)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="apiref.html#c.NGHTTP2_INITIAL_WINDOW_SIZE">NGHTTP2_INITIAL_WINDOW_SIZE (C macro)</a>
   </dt>
@@ -2330,6 +2330,10 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.nghttp2_on_begin_frame_callback">nghttp2_on_begin_frame_callback (C type)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.nghttp2_on_begin_headers_callback">nghttp2_on_begin_headers_callback (C type)</a>
   </dt>
 
@@ -2359,10 +2363,6 @@
 
       
   <dt><a href="apiref.html#c.nghttp2_on_stream_close_callback">nghttp2_on_stream_close_callback (C type)</a>
-  </dt>
-
-      
-  <dt><a href="apiref.html#c.nghttp2_on_unknown_frame_recv_callback">nghttp2_on_unknown_frame_recv_callback (C type)</a>
   </dt>
 
       
@@ -2530,55 +2530,63 @@
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.before_frame_send_callback">nghttp2_session_callbacks.before_frame_send_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_del">nghttp2_session_callbacks_del (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_begin_headers_callback">nghttp2_session_callbacks.on_begin_headers_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_new">nghttp2_session_callbacks_new (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_data_chunk_recv_callback">nghttp2_session_callbacks.on_data_chunk_recv_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_before_frame_send_callback">nghttp2_session_callbacks_set_before_frame_send_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_frame_not_send_callback">nghttp2_session_callbacks.on_frame_not_send_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_begin_frame_callback">nghttp2_session_callbacks_set_on_begin_frame_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_frame_recv_callback">nghttp2_session_callbacks.on_frame_recv_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_begin_headers_callback">nghttp2_session_callbacks_set_on_begin_headers_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_frame_send_callback">nghttp2_session_callbacks.on_frame_send_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_data_chunk_recv_callback">nghttp2_session_callbacks_set_on_data_chunk_recv_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_header_callback">nghttp2_session_callbacks.on_header_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_frame_not_send_callback">nghttp2_session_callbacks_set_on_frame_not_send_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_invalid_frame_recv_callback">nghttp2_session_callbacks.on_invalid_frame_recv_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_frame_recv_callback">nghttp2_session_callbacks_set_on_frame_recv_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_stream_close_callback">nghttp2_session_callbacks.on_stream_close_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_frame_send_callback">nghttp2_session_callbacks_set_on_frame_send_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.on_unknown_frame_recv_callback">nghttp2_session_callbacks.on_unknown_frame_recv_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_header_callback">nghttp2_session_callbacks_set_on_header_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.recv_callback">nghttp2_session_callbacks.recv_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_invalid_frame_recv_callback">nghttp2_session_callbacks_set_on_invalid_frame_recv_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.select_padding_callback">nghttp2_session_callbacks.select_padding_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_on_stream_close_callback">nghttp2_session_callbacks_set_on_stream_close_callback (C function)</a>
   </dt>
 
       
-  <dt><a href="apiref.html#c.nghttp2_session_callbacks.send_callback">nghttp2_session_callbacks.send_callback (C member)</a>
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_recv_callback">nghttp2_session_callbacks_set_recv_callback (C function)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_select_padding_callback">nghttp2_session_callbacks_set_select_padding_callback (C function)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_session_callbacks_set_send_callback">nghttp2_session_callbacks_set_send_callback (C function)</a>
   </dt>
 
       
