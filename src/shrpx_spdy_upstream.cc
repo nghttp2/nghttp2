@@ -434,8 +434,7 @@ uint32_t infer_upstream_rst_stream_status_code(int downstream_error_code)
 
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   : handler_(handler),
-    session_(nullptr),
-    recv_ign_window_size_(0)
+    session_(nullptr)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
@@ -770,28 +769,6 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code)
                                  status_code);
   if(rv < SPDYLAY_ERR_FATAL) {
     ULOG(FATAL, this) << "spdylay_submit_rst_stream() failed: "
-                      << spdylay_strerror(rv);
-    DIE();
-  }
-  return 0;
-}
-
-int SpdyUpstream::window_update(Downstream *downstream, int32_t delta)
-{
-  int rv;
-  int32_t stream_id;
-
-  if(downstream) {
-    stream_id = downstream->get_stream_id();
-  } else {
-    stream_id = 0;
-    recv_ign_window_size_ = 0;
-  }
-
-  rv = spdylay_submit_window_update(session_, stream_id, delta);
-
-  if(rv < SPDYLAY_ERR_FATAL) {
-    ULOG(FATAL, this) << "spdylay_submit_window_update() failed: "
                       << spdylay_strerror(rv);
     DIE();
   }
