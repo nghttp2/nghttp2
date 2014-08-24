@@ -5114,6 +5114,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                      readlen, iframe->payloadleft,
                      nghttp2_buf_mark_avail(&iframe->sbuf)));
 
+      if(nghttp2_buf_mark_avail(&iframe->sbuf)) {
+        return in - first;
+      }
+
       /* Pad Length field is subject to flow control */
       rv = session_update_recv_connection_window_size(session, readlen);
       if(nghttp2_is_fatal(rv)) {
@@ -5139,8 +5143,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           return rv;
         }
       }
-
-      assert(nghttp2_buf_mark_avail(&iframe->sbuf) == 0);
 
       busy = 1;
 
