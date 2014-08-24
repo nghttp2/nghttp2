@@ -50,6 +50,7 @@ std::string get_status_string(unsigned int status_code)
   case 305: return "305 Use Proxy";
     // case 306: return "306 (Unused)";
   case 307: return "307 Temporary Redirect";
+  case 308: return "308 Permanent Redirect";
   case 400: return "400 Bad Request";
   case 401: return "401 Unauthorized";
   case 402: return "402 Payment Required";
