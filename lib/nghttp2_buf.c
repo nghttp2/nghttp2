@@ -169,6 +169,33 @@ int nghttp2_bufs_init3(nghttp2_bufs *bufs, size_t chunk_length,
   return 0;
 }
 
+int nghttp2_bufs_realloc(nghttp2_bufs *bufs, size_t chunk_length)
+{
+  int rv;
+  nghttp2_buf_chain *chain;
+
+  if(chunk_length < bufs->offset) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  rv = buf_chain_new(&chain, chunk_length);
+  if(rv != 0) {
+    return rv;
+  }
+
+  nghttp2_bufs_free(bufs);
+
+  bufs->head = chain;
+  bufs->cur = bufs->head;
+
+  nghttp2_buf_shift_right(&bufs->cur->buf, bufs->offset);
+
+  bufs->chunk_length = chunk_length;
+  bufs->chunk_used = 1;
+
+  return 0;
+}
+
 void nghttp2_bufs_free(nghttp2_bufs *bufs)
 {
   nghttp2_buf_chain *chain, *next_chain;

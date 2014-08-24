@@ -317,3 +317,27 @@ void test_nghttp2_bufs_next_present(void)
 
   nghttp2_bufs_free(&bufs);
 }
+
+void test_nghttp2_bufs_realloc(void)
+{
+  int rv;
+  nghttp2_bufs bufs;
+
+  rv = nghttp2_bufs_init3(&bufs, 266, 3, 1, 10);
+  CU_ASSERT(0 == rv);
+
+  /* Create new buffer to see that these buffers are deallocated on
+     realloc */
+  rv = nghttp2_bufs_advance(&bufs);
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_bufs_realloc(&bufs, 522);
+  CU_ASSERT(0 == rv);
+
+  CU_ASSERT(512 == nghttp2_bufs_cur_avail(&bufs));
+
+  rv = nghttp2_bufs_realloc(&bufs, 9);
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  nghttp2_bufs_free(&bufs);
+}

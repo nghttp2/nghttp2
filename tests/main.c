@@ -302,7 +302,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "bufs_seek_present",
                    test_nghttp2_bufs_seek_last_present) ||
       !CU_add_test(pSuite, "bufs_next_present",
-                   test_nghttp2_bufs_next_present)
+                   test_nghttp2_bufs_next_present) ||
+      !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc)
       ) {
      CU_cleanup_registry();
      return CU_get_error();
