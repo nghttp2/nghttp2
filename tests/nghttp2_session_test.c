@@ -4517,12 +4517,20 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void)
   uint8_t data[1024];
   nghttp2_frame_hd hd;
   nghttp2_stream *stream;
+  nghttp2_option *option;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
 
+  nghttp2_option_new(&option);
+  /* Disable auto window update so that we can check padding is
+     consumed automatically */
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
   /* Initial window size to 64KiB - 1*/
-  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_session_client_new2(&session, &callbacks, NULL, option);
+
+  nghttp2_option_del(option);
 
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
                                        &pri_spec_default,
@@ -4544,6 +4552,8 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void)
 
   CU_ASSERT((int32_t)hd.length == session->recv_window_size);
   CU_ASSERT((int32_t)hd.length == stream->recv_window_size);
+  CU_ASSERT(256 == session->consumed_size);
+  CU_ASSERT(256 == stream->consumed_size);
 
   nghttp2_session_del(session);
 }
