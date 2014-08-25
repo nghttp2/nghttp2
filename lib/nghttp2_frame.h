@@ -55,8 +55,9 @@
 /* Number of inbound buffer */
 #define NGHTTP2_FRAMEBUF_MAX_NUM 5
 
-/* The maximum length of DATA frame payload. */
-#define NGHTTP2_DATA_PAYLOADLEN 4096
+/* The default length of DATA frame payload. This should be small enough
+ * for the data payload and the header to fit into 1 TLS record */
+#define NGHTTP2_DATA_PAYLOADLEN ((NGHTTP2_MAX_FRAME_SIZE_MIN) - (NGHTTP2_FRAME_HDLEN))
 
 /* Maximum headers payload length, calculated in compressed form.
    This applies to transmission only. */
@@ -78,6 +79,9 @@
 /* Minimum length of ALTSVC extension frame payload.
    NGHTTP2_ALTSVC_FIXED_PARTLEN + Host-Len. */
 #define NGHTTP2_ALTSVC_MINLEN 8
+
+/* Maximum length of padding in bytes. */
+#define NGHTTP2_MAX_PADLEN 256
 
 /* Category of frames. */
 typedef enum {
