@@ -62,6 +62,8 @@ void test_nghttp2_session_is_my_stream_id(void);
 void test_nghttp2_session_upgrade(void);
 void test_nghttp2_session_reprioritize_stream(void);
 void test_nghttp2_submit_data(void);
+void test_nghttp2_submit_data_read_length_too_large(void);
+void test_nghttp2_submit_data_read_length_smallest(void);
 void test_nghttp2_submit_request_with_data(void);
 void test_nghttp2_submit_request_without_data(void);
 void test_nghttp2_submit_response_with_data(void);

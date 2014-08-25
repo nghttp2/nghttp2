@@ -333,7 +333,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
                                  int32_t window_size_increment)
 {
   int rv;
-  nghttp2_stream *stream;
+  nghttp2_stream *stream = 0;
   if(window_size_increment == 0) {
     return 0;
   }

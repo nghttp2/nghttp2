@@ -1323,33 +1323,41 @@ static int nghttp2_session_predicate_settings_send(nghttp2_session *session,
   return 0;
 }
 
-/*
- * Returns the maximum length of next data read. If the
- * connection-level and/or stream-wise flow control are enabled, the
- * return value takes into account those current window sizes.
- */
-static size_t nghttp2_session_next_data_read(nghttp2_session *session,
-                                             nghttp2_stream *stream)
+/* Take into account settings max frame size and both connection-level flow control here */
+static ssize_t nghttp2_session_enforce_flow_control_limits(nghttp2_session *session,
+                                                           nghttp2_stream *stream,
+                                                           ssize_t requested_window_size)
 {
-  int32_t window_size = NGHTTP2_DATA_PAYLOADLEN;
-
   DEBUGF(fprintf(stderr,
-                 "send: remote windowsize connection=%d, "
+                 "send: remote windowsize connection=%d, remote maxframsize=%u, "
                  "stream(id %d)=%d\n",
                  session->remote_window_size,
+                 session->remote_settings.max_frame_size,
                  stream->stream_id,
                  stream->remote_window_size));
 
-  /* Take into account both connection-level flow control here */
-  window_size = nghttp2_min(window_size, session->remote_window_size);
-  window_size = nghttp2_min(window_size, stream->remote_window_size);
+  return nghttp2_min(
+            nghttp2_min(nghttp2_min(requested_window_size, stream->remote_window_size),
+            session->remote_window_size),
+         session->remote_settings.max_frame_size);
+}
 
-  DEBUGF(fprintf(stderr, "send: available window=%d\n", window_size));
+/*
+ * Returns the maximum length of next data read. If the
+ * connection-level and/or stream-wise flow control are enabled, the
+ * return value takes into account those current window sizes. The remote
+ * settings for max frame size is also taken into account.
+ */
+static size_t nghttp2_session_next_data_read(nghttp2_session *session,
+                                              nghttp2_stream *stream)
+{
+  ssize_t window_size = nghttp2_session_enforce_flow_control_limits(session,
+                                                                    stream,
+                                                                    NGHTTP2_DATA_PAYLOADLEN);
 
-  if(window_size > 0) {
-    return window_size;
-  }
-  return 0;
+  DEBUGF(fprintf(stderr, "send: available window=%zd\n", window_size));
+
+  return window_size > 0 ? (size_t) window_size : 0;
 }
 
 /*
@@ -1414,8 +1422,7 @@ static ssize_t session_call_select_padding(nghttp2_session *session,
   if(session->callbacks.select_padding_callback) {
     size_t max_paddedlen;
 
-    /* 256 is maximum padding size */
-    max_paddedlen = nghttp2_min(frame->hd.length + 256, max_payloadlen);
+    max_paddedlen = nghttp2_min(frame->hd.length + NGHTTP2_MAX_PADLEN, max_payloadlen);
 
     rv = session->callbacks.select_padding_callback(session, frame,
                                                     max_paddedlen,
@@ -1444,7 +1451,7 @@ static int session_headers_add_pad(nghttp2_session *session,
   aob = &session->aob;
   framebufs = &aob->framebufs;
 
-  max_payloadlen = nghttp2_min(NGHTTP2_MAX_PAYLOADLEN, frame->hd.length + 256);
+  max_payloadlen = nghttp2_min(NGHTTP2_MAX_PAYLOADLEN, frame->hd.length + NGHTTP2_MAX_PADLEN);
 
   padded_payloadlen = session_call_select_padding(session, frame,
                                                   max_payloadlen);
@@ -5563,6 +5570,36 @@ int nghttp2_session_pack_data(nghttp2_session *session,
 
   buf = &bufs->cur->buf;
 
+  if(session->callbacks.read_length_callback) {
+    nghttp2_stream *stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+    if(!stream) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+
+    payloadlen = session->callbacks.read_length_callback(session, stream->stream_id,
+        session->remote_window_size, stream->remote_window_size,
+        session->remote_settings.max_frame_size, frame->hd.type, session->user_data);
+    DEBUGF(fprintf(stderr, "send: read_length_callback=%zd\n", payloadlen));
+    payloadlen = nghttp2_session_enforce_flow_control_limits(session, stream, payloadlen);
+    DEBUGF(fprintf(stderr, "send: read_length_callback after flow control=%zd\n", payloadlen));
+    if(payloadlen <= 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    } else if(payloadlen > nghttp2_buf_avail(buf)) {
+      // Resize the current buffer(s)
+      nghttp2_bufs_free(&session->aob.framebufs);
+
+      // The reason why we do +1 for buffer size is for possible padding field.
+      rv = nghttp2_bufs_init3(&session->aob.framebufs,
+                              NGHTTP2_FRAME_HDLEN + 1 + payloadlen,
+                              NGHTTP2_FRAMEBUF_MAX_NUM,
+                              1, NGHTTP2_FRAME_HDLEN + 1);
+      if(rv != 0) {
+        return rv;
+      }
+    }
+    datamax = (size_t) payloadlen;
+  }
+
   /* Current max DATA length is less then buffer chunk size */
   assert(nghttp2_buf_avail(buf) >= (ssize_t)datamax);
 
@@ -5606,7 +5643,7 @@ int nghttp2_session_pack_data(nghttp2_session *session,
   data_frame.hd.flags = flags;
   data_frame.data.padlen = 0;
 
-  max_payloadlen = nghttp2_min(datamax, data_frame.hd.length + 256);
+  max_payloadlen = nghttp2_min(datamax, data_frame.hd.length + NGHTTP2_MAX_PADLEN);
 
   padded_payloadlen = session_call_select_padding(session, &data_frame,
                                                   max_payloadlen);
