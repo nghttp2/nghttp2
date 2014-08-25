@@ -5681,6 +5681,10 @@ int nghttp2_session_pack_data(nghttp2_session *session,
 
         DEBUGF(fprintf(stderr, "send: use safe limit payloadlen=%zu",
                        payloadlen));
+      } else {
+        assert(&session->aob.framebufs == bufs);
+
+        buf = &bufs->cur->buf;
       }
     }
     datamax = (size_t) payloadlen;

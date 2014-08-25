@@ -3124,6 +3124,39 @@ void test_nghttp2_submit_data_read_length_too_large(void)
   CU_ASSERT(NGHTTP2_FLAG_END_STREAM == data_frame->hd.flags);
 
   nghttp2_session_del(session);
+
+  /* Check that buffers are expanded */
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+
+  ud.data_source_length = NGHTTP2_MAX_FRAME_SIZE_MAX;
+
+  session->remote_settings.max_frame_size = NGHTTP2_MAX_FRAME_SIZE_MAX;
+
+  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING,
+                              NULL);
+  CU_ASSERT(0 == nghttp2_submit_data(session,
+                                     NGHTTP2_FLAG_END_STREAM, 1, &data_prd));
+
+  ud.block_count = 0;
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  aob = &session->aob;
+
+  data_frame = nghttp2_outbound_item_get_data_frame(aob->item);
+
+  framebufs = &aob->framebufs;
+
+  buf = &framebufs->head->buf;
+  nghttp2_frame_unpack_frame_hd(&hd, buf->pos);
+
+  CU_ASSERT(NGHTTP2_FLAG_NONE == hd.flags);
+  CU_ASSERT(nghttp2_min(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE,
+                        NGHTTP2_INITIAL_WINDOW_SIZE) == hd.length);
+  /* frame->hd.flags has these flags */
+  CU_ASSERT(NGHTTP2_FLAG_END_STREAM == data_frame->hd.flags);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_submit_data_read_length_smallest(void)
