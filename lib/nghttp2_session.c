@@ -2109,21 +2109,24 @@ static int session_after_frame_sent(nghttp2_session *session)
       stream->remote_window_size -= data_frame->hd.length;
     }
 
-    if(session->callbacks.on_frame_send_callback) {
-      nghttp2_frame public_data_frame;
-      nghttp2_frame_data_init(&public_data_frame.data, data_frame);
-      rv = session_call_on_frame_send(session, &public_data_frame);
-      if(nghttp2_is_fatal(rv)) {
-        return rv;
-      }
-    }
-
     if(stream && data_frame->eof) {
       rv = nghttp2_stream_detach_data(stream, &session->ob_pq,
                                       session->last_cycle);
 
       if(nghttp2_is_fatal(rv)) {
         return rv;
+      }
+
+      /* Call on_frame_send_callback after
+         nghttp2_stream_detach_data(), so that application can issue
+         nghttp2_submit_data() in the callback. */
+      if(session->callbacks.on_frame_send_callback) {
+        nghttp2_frame public_data_frame;
+        nghttp2_frame_data_init(&public_data_frame.data, data_frame);
+        rv = session_call_on_frame_send(session, &public_data_frame);
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
       }
 
       if(data_frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
@@ -2143,7 +2146,15 @@ static int session_after_frame_sent(nghttp2_session *session)
           stream = NULL;
         }
       }
+    } else if(session->callbacks.on_frame_send_callback) {
+      nghttp2_frame public_data_frame;
+      nghttp2_frame_data_init(&public_data_frame.data, data_frame);
+      rv = session_call_on_frame_send(session, &public_data_frame);
+      if(nghttp2_is_fatal(rv)) {
+        return rv;
+      }
     }
+
     /* If session is closed or RST_STREAM was queued, we won't send
        further data. */
     if(data_frame->eof ||
