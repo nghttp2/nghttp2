@@ -5642,9 +5642,10 @@ int nghttp2_session_pack_data(nghttp2_session *session,
       return NGHTTP2_ERR_INVALID_ARGUMENT;
     }
 
-    payloadlen = session->callbacks.read_length_callback(session, stream->stream_id,
-        session->remote_window_size, stream->remote_window_size,
-        session->remote_settings.max_frame_size, frame->hd.type, session->user_data);
+    payloadlen = session->callbacks.read_length_callback
+      (session, frame->hd.type, stream->stream_id,
+       session->remote_window_size, stream->remote_window_size,
+       session->remote_settings.max_frame_size, session->user_data);
     DEBUGF(fprintf(stderr, "send: read_length_callback=%zd\n", payloadlen));
     payloadlen = nghttp2_session_enforce_flow_control_limits(session, stream, payloadlen);
     DEBUGF(fprintf(stderr, "send: read_length_callback after flow control=%zd\n", payloadlen));

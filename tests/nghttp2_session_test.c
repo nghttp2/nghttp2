@@ -239,16 +239,16 @@ static ssize_t select_padding_callback(nghttp2_session *session,
 }
 
 static ssize_t too_large_data_source_length_callback
-(nghttp2_session *session, int32_t stream_id,
+(nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
  int32_t session_remote_window_size, int32_t stream_remote_window_size,
- uint32_t remote_max_frame_size, uint8_t frame_type, void *user_data) {
+ uint32_t remote_max_frame_size, void *user_data) {
     return NGHTTP2_MAX_FRAME_SIZE_MAX + 1;
 }
 
 static ssize_t smallest_length_data_source_length_callback
-(nghttp2_session *session, int32_t stream_id,
+(nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
  int32_t session_remote_window_size, int32_t stream_remote_window_size,
- uint32_t remote_max_frame_size, uint8_t frame_type, void *user_data) {
+ uint32_t remote_max_frame_size, void *user_data) {
     return 1;
 }
 

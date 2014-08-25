@@ -1444,11 +1444,10 @@ typedef ssize_t (*nghttp2_select_padding_callback)
  * `nghttp2_session_callbacks_set_data_source_read_length_callback()`.
  */
 typedef ssize_t (*nghttp2_data_source_read_length_callback)
-(nghttp2_session *session, int32_t stream_id,
+(nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
  int32_t session_remote_window_size,
  int32_t stream_remote_window_size,
  uint32_t remote_max_frame_size,
- uint8_t frame_type,
  void *user_data);
 
 /**
