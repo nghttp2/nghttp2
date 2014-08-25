@@ -3094,6 +3094,7 @@ void test_nghttp2_submit_data_read_length_too_large(void)
   nghttp2_active_outbound_item *aob;
   nghttp2_bufs *framebufs;
   nghttp2_buf *buf;
+  size_t payloadlen;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = block_count_send_callback;
@@ -3150,9 +3151,13 @@ void test_nghttp2_submit_data_read_length_too_large(void)
   buf = &framebufs->head->buf;
   nghttp2_frame_unpack_frame_hd(&hd, buf->pos);
 
+  payloadlen = nghttp2_min(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE,
+                           NGHTTP2_INITIAL_WINDOW_SIZE);
+
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 1 + payloadlen ==
+            (size_t)nghttp2_buf_cap(buf));
   CU_ASSERT(NGHTTP2_FLAG_NONE == hd.flags);
-  CU_ASSERT(nghttp2_min(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE,
-                        NGHTTP2_INITIAL_WINDOW_SIZE) == hd.length);
+  CU_ASSERT(payloadlen == hd.length);
   /* frame->hd.flags has these flags */
   CU_ASSERT(NGHTTP2_FLAG_END_STREAM == data_frame->hd.flags);
 
