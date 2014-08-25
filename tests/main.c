@@ -144,6 +144,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "submit_data", test_nghttp2_submit_data) ||
       !CU_add_test(pSuite, "submit_data_read_length_too_large",
                    test_nghttp2_submit_data_read_length_too_large) ||
+      !CU_add_test(pSuite, "submit_data_twice",
+                   test_nghttp2_submit_data_twice) ||
       !CU_add_test(pSuite, "submit_request_with_data",
                    test_nghttp2_submit_request_with_data) ||
       !CU_add_test(pSuite, "submit_request_without_data",

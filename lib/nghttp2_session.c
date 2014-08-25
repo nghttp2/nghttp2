@@ -2160,12 +2160,21 @@ static int session_after_frame_sent(nghttp2_session *session)
       }
     }
 
+    /* On EOF, we have already detached data if stream is not NULL.
+       If stream is NULL, we cannot detach data.  Please note that
+       application may issue nghttp2_submit_data() in
+       on_frame_send_callback, which attach data to stream.  We don't
+       want to detach it. */
+    if(data_frame->eof) {
+      active_outbound_item_reset(aob);
+
+      return 0;
+    }
+
     /* If session is closed or RST_STREAM was queued, we won't send
        further data. */
-    if(data_frame->eof ||
-       nghttp2_session_predicate_data_send(session,
+    if(nghttp2_session_predicate_data_send(session,
                                            data_frame->hd.stream_id) != 0) {
-
       if(stream) {
         rv = nghttp2_stream_detach_data(stream, &session->ob_pq,
                                         session->last_cycle);

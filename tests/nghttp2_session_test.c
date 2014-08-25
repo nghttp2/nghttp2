@@ -3207,6 +3207,72 @@ void test_nghttp2_submit_data_read_length_smallest(void)
   nghttp2_session_del(session);
 }
 
+static ssize_t submit_data_twice_data_source_read_callback
+(nghttp2_session *session, int32_t stream_id,
+ uint8_t *buf, size_t len, uint32_t *data_flags,
+ nghttp2_data_source *source, void *user_data)
+{
+  *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+  return nghttp2_min(len, 16);
+}
+
+static int submit_data_twice_on_frame_send_callback(nghttp2_session *session,
+                                                    const nghttp2_frame *frame,
+                                                    void *user_data)
+{
+  static int called = 0;
+  int rv;
+  nghttp2_data_provider data_prd;
+
+  if(called == 0) {
+    called = 1;
+
+    data_prd.read_callback = submit_data_twice_data_source_read_callback;
+
+    rv = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
+                             frame->hd.stream_id, &data_prd);
+    CU_ASSERT(0 == rv);
+  }
+
+  return 0;
+}
+
+void test_nghttp2_submit_data_twice(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_data_provider data_prd;
+  my_user_data ud;
+  accumulator acc;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = accumulator_send_callback;
+  callbacks.on_frame_send_callback = submit_data_twice_on_frame_send_callback;
+
+  data_prd.read_callback = submit_data_twice_data_source_read_callback;
+
+  acc.length = 0;
+  ud.acc = &acc;
+
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
+
+  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING,
+                              NULL);
+
+  CU_ASSERT(0 == nghttp2_submit_data(session,
+                                     NGHTTP2_FLAG_NONE, 1, &data_prd));
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  fprintf(stderr, "acc.length=%zu\n", acc.length);
+
+  /* We should have sent 2 DATA frame with 16 bytes payload each */
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN * 2 + 16 * 2 == acc.length);
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_submit_request_with_data(void)
 {
   nghttp2_session *session;
