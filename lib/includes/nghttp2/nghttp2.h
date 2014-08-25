@@ -645,30 +645,6 @@ typedef enum {
 /**
  * @functypedef
  *
- * Callback function invoked when |session| wants to get max |length|
- * of data to send data to the remote peer.  The implementation of this
- * function should return a value in the following range.
- * [1, min(session window, stream window, settings remote max frame size)].
- * If a window size greater than this range is returned than the max allow
- * value will be used.  Returning a window size smaller than this range is
- * a callback error.  The frame_type is provided for future extensibility
- * and identifies the type of frame (see nghttp2_frame_type) for which to
- * get the |length| for.  Currently supported frame types are: NGHTTP2_DATA.
- *
- * This callback can be used to control the |length| in bytes
- * for which `nghttp2_data_source_read_callback()` is allowed to send to the
- * remote endpoint.  This callback is optional.
- * Returning :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the entire session
- * failure.
- */
-typedef ssize_t (*nghttp2_data_source_read_length_callback)
-(nghttp2_session *session, int32_t stream_id, int32_t session_remote_window_size,
- int32_t stream_remote_window_size, uint32_t remote_max_frame_size, uint8_t frame_type,
- void *user_data);
-
-/**
- * @functypedef
- *
  * Callback function invoked when the library wants to read data from
  * the |source|.  The read data is sent in the stream |stream_id|.
  * The implementation of this function must read at most |length|
@@ -1441,6 +1417,38 @@ typedef ssize_t (*nghttp2_select_padding_callback)
 (nghttp2_session *session,
  const nghttp2_frame *frame,
  size_t max_payloadlen,
+ void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when library wants to get max length of
+ * data to send data to the remote peer.  The implementation of this
+ * function should return a value in the following range.  [1,
+ * min(|session_remote_window_size|, |stream_remote_window_size|,
+ * |remote_max_frame_size|)].  If a value greater than this range is
+ * returned than the max allow value will be used.  Returning a value
+ * smaller than this range is treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  The |frame_type| is provided
+ * for future extensibility and identifies the type of frame (see
+ * :type:`nghttp2_frame_type`) for which to get the length for.
+ * Currently supported frame types are: :enum:`NGHTTP2_DATA`.
+ *
+ * This callback can be used to control the length in bytes for which
+ * :type:`nghttp2_data_source_read_callback` is allowed to send to the
+ * remote endpoint.  This callback is optional.  Returning
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the entire session
+ * failure.
+ *
+ * To set this callback to :type:`nghttp2_session_callbacks`, use
+ * `nghttp2_session_callbacks_set_data_source_read_length_callback()`.
+ */
+typedef ssize_t (*nghttp2_data_source_read_length_callback)
+(nghttp2_session *session, int32_t stream_id,
+ int32_t session_remote_window_size,
+ int32_t stream_remote_window_size,
+ uint32_t remote_max_frame_size,
+ uint8_t frame_type,
  void *user_data);
 
 /**
