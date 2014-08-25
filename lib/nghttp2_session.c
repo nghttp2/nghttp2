@@ -5665,17 +5665,22 @@ int nghttp2_session_pack_data(nghttp2_session *session,
 
     if(payloadlen <= 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
-    } else if(payloadlen > nghttp2_buf_avail(buf)) {
-      // Resize the current buffer(s)
-      nghttp2_bufs_free(&session->aob.framebufs);
+    }
 
-      // The reason why we do +1 for buffer size is for possible padding field.
-      rv = nghttp2_bufs_init3(&session->aob.framebufs,
-                              NGHTTP2_FRAME_HDLEN + 1 + payloadlen,
-                              NGHTTP2_FRAMEBUF_MAX_NUM,
-                              1, NGHTTP2_FRAME_HDLEN + 1);
+    if(payloadlen > nghttp2_buf_avail(buf)) {
+      /* Resize the current buffer(s).  The reason why we do +1 for
+         buffer size is for possible padding field. */
+      rv = nghttp2_bufs_realloc(&session->aob.framebufs,
+                                NGHTTP2_FRAME_HDLEN + 1 + payloadlen);
+
       if(rv != 0) {
-        return rv;
+        DEBUGF(fprintf(stderr, "send: realloc buffer failed rv=%d", rv));
+        /* If reallocation failed, old buffers are still in tact.  So
+           use safe limit. */
+        payloadlen = datamax;
+
+        DEBUGF(fprintf(stderr, "send: use safe limit payloadlen=%zu",
+                       payloadlen));
       }
     }
     datamax = (size_t) payloadlen;
