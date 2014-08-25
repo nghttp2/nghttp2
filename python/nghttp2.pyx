@@ -430,7 +430,7 @@ cdef int server_on_frame_not_send(cnghttp2.nghttp2_session *session,
 
 cdef int server_on_stream_close(cnghttp2.nghttp2_session *session,
                                 int32_t stream_id,
-                                cnghttp2.nghttp2_error_code error_code,
+                                uint32_t error_code,
                                 void *user_data):
     cdef http2 = <_HTTP2SessionCore>user_data
 
@@ -479,7 +479,7 @@ cdef class _HTTP2SessionCore:
     cdef settings_timer
 
     def __cinit__(self, transport, handler_class):
-        cdef cnghttp2.nghttp2_session_callbacks callbacks
+        cdef cnghttp2.nghttp2_session_callbacks *callbacks
         cdef cnghttp2.nghttp2_settings_entry iv[2]
         cdef int rv
 
@@ -490,17 +490,32 @@ cdef class _HTTP2SessionCore:
         self.handlers = set()
         self.settings_timer = None
 
-        memset(&callbacks, 0, sizeof(callbacks))
-        callbacks.on_header_callback = server_on_header
-        callbacks.on_begin_headers_callback = server_on_begin_headers
-        callbacks.on_frame_recv_callback = server_on_frame_recv
-        callbacks.on_stream_close_callback = server_on_stream_close
-        callbacks.on_frame_send_callback = server_on_frame_send
-        callbacks.on_frame_not_send_callback = server_on_frame_not_send
-        callbacks.on_data_chunk_recv_callback = server_on_data_chunk_recv
+        rv = cnghttp2.nghttp2_session_callbacks_new(&callbacks)
 
-        rv = cnghttp2.nghttp2_session_server_new(&self.session, &callbacks,
+        if rv != 0:
+            raise Exception('nghttp2_session_callbacks_new failed: {}'.format\
+                            (_strerror(rv)))
+
+        cnghttp2.nghttp2_session_callbacks_set_on_header_callback(
+            callbacks, server_on_header)
+        cnghttp2.nghttp2_session_callbacks_set_on_begin_headers_callback(
+            callbacks, server_on_begin_headers)
+        cnghttp2.nghttp2_session_callbacks_set_on_frame_recv_callback(
+            callbacks, server_on_frame_recv)
+        cnghttp2.nghttp2_session_callbacks_set_on_stream_close_callback(
+            callbacks, server_on_stream_close)
+        cnghttp2.nghttp2_session_callbacks_set_on_frame_send_callback(
+            callbacks, server_on_frame_send)
+        cnghttp2.nghttp2_session_callbacks_set_on_frame_not_send_callback(
+            callbacks, server_on_frame_not_send)
+        cnghttp2.nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
+            callbacks, server_on_data_chunk_recv)
+
+        rv = cnghttp2.nghttp2_session_server_new(&self.session, callbacks,
                                                  <void*>self)
+
+        cnghttp2.nghttp2_session_callbacks_del(callbacks)
+
         if rv != 0:
             raise Exception('nghttp2_session_server_new failed: {}'.format\
                             (_strerror(rv)))

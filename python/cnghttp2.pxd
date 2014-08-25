@@ -102,7 +102,7 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     ctypedef struct nghttp2_rst_stream:
         nghttp2_frame_hd hd
-        nghttp2_error_code error_code
+        uint32_t error_code
 
 
     ctypedef struct nghttp2_push_promise:
@@ -114,7 +114,7 @@ cdef extern from 'nghttp2/nghttp2.h':
     ctypedef struct nghttp2_goaway:
         nghttp2_frame_hd hd
         int32_t last_stream_id
-        nghttp2_error_code error_code
+        uint32_t error_code
         uint8_t *opaque_data
         size_t opaque_data_len
 
@@ -142,7 +142,7 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     ctypedef int (*nghttp2_on_stream_close_callback)\
         (nghttp2_session *session, int32_t stream_id,
-         nghttp2_error_code error_code, void *user_data)
+         uint32_t error_code, void *user_data)
 
     ctypedef int (*nghttp2_on_begin_headers_callback)\
         (nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
@@ -163,15 +163,47 @@ cdef extern from 'nghttp2/nghttp2.h':
          int lib_error_code, void *user_data)
 
     ctypedef struct nghttp2_session_callbacks:
-        nghttp2_send_callback send_callback
-        nghttp2_on_frame_recv_callback on_frame_recv_callback
-        nghttp2_on_data_chunk_recv_callback on_data_chunk_recv_callback
-        nghttp2_before_frame_send_callback before_frame_send_callback
-        nghttp2_on_frame_send_callback on_frame_send_callback
-        nghttp2_on_frame_not_send_callback on_frame_not_send_callback
-        nghttp2_on_stream_close_callback on_stream_close_callback
-        nghttp2_on_begin_headers_callback on_begin_headers_callback
-        nghttp2_on_header_callback on_header_callback
+        pass
+
+    int nghttp2_session_callbacks_new(
+        nghttp2_session_callbacks **callbacks_ptr)
+
+    void nghttp2_session_callbacks_del(nghttp2_session_callbacks *callbacks)
+
+    void nghttp2_session_callbacks_set_send_callback(
+        nghttp2_session_callbacks *cbs, nghttp2_send_callback send_callback)
+
+    void nghttp2_session_callbacks_set_on_frame_recv_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_on_frame_recv_callback on_frame_recv_callback)
+
+    void nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_on_data_chunk_recv_callback on_data_chunk_recv_callback)
+
+    void nghttp2_session_callbacks_set_before_frame_send_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_before_frame_send_callback before_frame_send_callback)
+
+    void nghttp2_session_callbacks_set_on_frame_send_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_on_frame_send_callback on_frame_send_callback)
+
+    void nghttp2_session_callbacks_set_on_frame_not_send_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_on_frame_not_send_callback on_frame_not_send_callback)
+
+    void nghttp2_session_callbacks_set_on_stream_close_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_on_stream_close_callback on_stream_close_callback)
+
+    void nghttp2_session_callbacks_set_on_begin_headers_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_on_begin_headers_callback on_begin_headers_callback)
+
+    void nghttp2_session_callbacks_set_on_header_callback(
+        nghttp2_session_callbacks *cbs,
+        nghttp2_on_header_callback on_header_callback)
 
     int nghttp2_session_client_new(nghttp2_session **session_ptr,
                                    const nghttp2_session_callbacks *callbacks,
@@ -233,7 +265,7 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
                                   int32_t stream_id,
-                                  nghttp2_error_code error_code)
+                                  uint32_t error_code)
 
     void* nghttp2_session_get_stream_user_data(nghttp2_session *session,
                                                uint32_t stream_id)
@@ -243,7 +275,7 @@ cdef extern from 'nghttp2/nghttp2.h':
                                              void *stream_user_data)
 
     int nghttp2_session_terminate_session(nghttp2_session *session,
-                                          nghttp2_error_code error_code)
+                                          uint32_t error_code)
 
     const char* nghttp2_strerror(int lib_error_code)
 
